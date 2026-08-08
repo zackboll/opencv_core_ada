@@ -1,0 +1,25 @@
+name = "tests"
+description = "Unit tests for opencvcore_ada crate"
+version = "0.1.0-dev"
+
+authors = ["Zack Boll"]
+maintainers = ["Zack Boll <zackboll@gmail.com>"]
+maintainers-logins = ["zackboll"]
+licenses = "Apache-2.0"
+website = ""
+tags = []
+
+[[depends-on]]
+aunit = "^26.0.0"
+
+[[depends-on]]
+opencvcore_ada = "*"
+
+[[pins]]
+opencvcore_ada = { path='..' }
+
+[[depends-on]]
+gnatprove = "^16.1.0"
+
+[[depends-on]]
+gnatcov = "^26.2.1"
