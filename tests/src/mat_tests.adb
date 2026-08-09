@@ -20,6 +20,7 @@ package body Mat_Tests is
    use type Interfaces.IEEE_Float_32;
    use type Interfaces.Unsigned_8;
    use type OpenCV.Core.Depth_Type;
+   use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Mat_Size;
    use type OpenCV.Core.Point_Coordinate;
    use type OpenCV.Core.Size_Coordinate;

@@ -7,7 +7,7 @@ package OpenCV.Core is
    type Depth_Type is
      (UInt8, Int8, UInt16, Int16, Int32, Float32, Float64, Float16);
 
-   subtype Channel_Count is Positive range 1 .. 512;
+   type Channel_Count is new Interfaces.Integer_32 range 1 .. 512;
 
    type Mat_Size is new Interfaces.Integer_64
      range 0 .. Interfaces.Integer_64'Last;
