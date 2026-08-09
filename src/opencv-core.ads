@@ -9,8 +9,23 @@ package OpenCV.Core is
 
    subtype Channel_Count is Positive range 1 .. 512;
 
-   type Mat_Size is range 0 .. 9_223_372_036_854_775_807;
-   for Mat_Size'Size use 64;
+   type Mat_Size is new Interfaces.Integer_64
+     range 0 .. Interfaces.Integer_64'Last;
+
+   type Size_Coordinate is new Interfaces.Integer_32
+     range 0 .. Interfaces.Integer_32'Last;
+
+   type Point_Coordinate is new Interfaces.Integer_32;
+
+   type Size is record
+      Width  : Size_Coordinate := 0;
+      Height : Size_Coordinate := 0;
+   end record;
+
+   type Point is record
+      X : Point_Coordinate := 0;
+      Y : Point_Coordinate := 0;
+   end record;
 
    --  CV_8U and CV_32F element value domains used by typed Mat accessors.
    subtype UInt8_Value is Interfaces.Unsigned_8;
@@ -47,6 +62,9 @@ package OpenCV.Core is
      (Rows, Columns : Natural; Element_Type : Mat_Type) return Mat
    with Pre => Rows <= 2_147_483_647 and then Columns <= 2_147_483_647;
 
+   function Create
+     (Dimensions : Size; Element_Type : Mat_Type) return Mat;
+
    --  Both operations create a distinct Mat header sharing Self's storage.
    --  Depth and total scalar storage are preserved; Columns is derived.
    function Reshape (Self : Mat; Channels : Channel_Count) return Mat;
@@ -62,6 +80,10 @@ package OpenCV.Core is
    function Is_Empty (Self : Mat) return Boolean;
    function Rows (Self : Mat) return Natural;
    function Columns (Self : Mat) return Natural;
+
+   --  Composed from the established column and row queries: Width = Columns,
+   --  Height = Rows.  No separate C ABI accessor is required.
+   function Dimensions (Self : Mat) return Size;
    function Channels (Self : Mat) return Channel_Count;
    function Depth (Self : Mat) return Depth_Type;
    function Total (Self : Mat) return Mat_Size;

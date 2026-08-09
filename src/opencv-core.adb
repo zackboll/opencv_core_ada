@@ -168,6 +168,14 @@ package body OpenCV.Core is
       return Result;
    end Create;
 
+   function Create
+     (Dimensions : Size; Element_Type : Mat_Type) return Mat
+   is
+     (Create
+        (Rows         => Natural (Dimensions.Height),
+         Columns      => Natural (Dimensions.Width),
+         Element_Type => Element_Type));
+
    overriding
    procedure Adjust (Self : in out Mat) is
       Source_Handle : constant OpenCV.Internal.C_API.Mat_Handle := Self.Handle;
@@ -381,6 +389,11 @@ package body OpenCV.Core is
       Raise_On_Error (Result, "Mat columns query");
       return Natural (Value);
    end Columns;
+
+   function Dimensions (Self : Mat) return Size is
+     (Size'
+        (Width  => Size_Coordinate (Self.Columns),
+         Height => Size_Coordinate (Self.Rows)));
 
    function Channels (Self : Mat) return Channel_Count is
       Value  : aliased OpenCV.Internal.C_API.C_Int32 := 0;

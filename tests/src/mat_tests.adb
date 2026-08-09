@@ -21,6 +21,8 @@ package body Mat_Tests is
    use type Interfaces.Unsigned_8;
    use type OpenCV.Core.Depth_Type;
    use type OpenCV.Core.Mat_Size;
+   use type OpenCV.Core.Point_Coordinate;
+   use type OpenCV.Core.Size_Coordinate;
    use type OpenCV.Core.UInt8_Row_Access.Row_Array;
    use type OpenCV.Core.UInt8_Vec3.Vector;
    use type OpenCV.Core.UInt8_Vec3_Row_Access.Row_Array;
@@ -2153,8 +2155,137 @@ package body Mat_Tests is
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
 
+   procedure Size_And_Point_Are_Ordinary_Value_Types
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Dimensions : constant OpenCV.Core.Size :=
+        (Width  => 5, Height => 3);
+      Empty_Size : constant OpenCV.Core.Size :=
+        (Width  => 0, Height => 0);
+      Positive   : constant OpenCV.Core.Point :=
+        (X => 7, Y => 11);
+      Negative   : constant OpenCV.Core.Point :=
+        (X => -7, Y => -11);
+   begin
+      AUnit.Assertions.Assert
+        (Dimensions.Width = 5 and then Dimensions.Height = 3,
+         "Size must preserve its width and height");
+      AUnit.Assertions.Assert
+        (Empty_Size.Width = 0 and then Empty_Size.Height = 0,
+         "Size must permit zero width and height");
+      AUnit.Assertions.Assert
+        (Positive.X = 7 and then Positive.Y = 11,
+         "Point must preserve positive X and Y coordinates");
+      AUnit.Assertions.Assert
+        (Negative.X = -7 and then Negative.Y = -11,
+         "Point must preserve negative X and Y coordinates");
+   end Size_And_Point_Are_Ordinary_Value_Types;
+
+   procedure Mat_Dimensions_Reflect_Mat_And_View_Shapes
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      UInt8_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 3,
+           Columns      => 5,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Float_Vec3_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 4,
+           Columns      => 6,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 3));
+      View : constant OpenCV.Core.Mat :=
+        UInt8_Image.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+      Reshaped : constant OpenCV.Core.Mat :=
+        Float_Vec3_Image.Reshape (Channels => 1, Rows => 6);
+      Converted : constant OpenCV.Core.Mat :=
+        UInt8_Image.Convert_To (Depth => OpenCV.Core.Float32);
+   begin
+      AUnit.Assertions.Assert
+        (UInt8_Image.Dimensions.Width = 5
+         and then UInt8_Image.Dimensions.Height = 3,
+         "A UInt8 Mat dimensions must map columns to width and rows"
+         & " to height");
+      AUnit.Assertions.Assert
+        (Float_Vec3_Image.Dimensions.Width = 6
+         and then Float_Vec3_Image.Dimensions.Height = 4,
+         "A Float32 Vec3 Mat dimensions must preserve its shape");
+      AUnit.Assertions.Assert
+        (View.Dimensions.Width = 3 and then View.Dimensions.Height = 2,
+         "A Region dimensions must report its ROI width and height");
+      AUnit.Assertions.Assert
+        (Reshaped.Dimensions.Width = 12
+         and then Reshaped.Dimensions.Height = 6,
+         "A reshape result dimensions must report its derived shape");
+      AUnit.Assertions.Assert
+        (Converted.Dimensions.Width =
+           OpenCV.Core.Size_Coordinate (UInt8_Image.Columns)
+         and then Converted.Dimensions.Height =
+                    OpenCV.Core.Size_Coordinate (UInt8_Image.Rows),
+         "A Convert_To result dimensions must preserve its source shape");
+   end Mat_Dimensions_Reflect_Mat_And_View_Shapes;
+
+   procedure Create_With_Size_Integrates_With_Typed_Access
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Dimensions   => (Width => 5, Height => 3),
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+   begin
+      AUnit.Assertions.Assert
+        (Image.Rows = 3 and then Image.Columns = 5,
+         "Create with Size must map height to rows and width to columns");
+      AUnit.Assertions.Assert
+        (Image.Dimensions.Width = 5 and then Image.Dimensions.Height = 3,
+         "Create with Size must preserve dimensions");
+      AUnit.Assertions.Assert
+        (Image.Depth = OpenCV.Core.UInt8 and then Image.Channels = 1,
+         "Create with Size must preserve the requested element type");
+      OpenCV.Core.UInt8_Access.Set
+        (Image, Row => 2, Column => 4, Value => 123);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Image, Row => 2, Column => 4) = 123,
+         "Create with Size must interoperate with typed element access");
+   end Create_With_Size_Integrates_With_Typed_Access;
+
+   procedure Empty_Mat_Has_Zero_Dimensions
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat;
+   begin
+      AUnit.Assertions.Assert
+        (Image.Dimensions.Width = 0 and then Image.Dimensions.Height = 0,
+         "A default empty Mat must have zero width and height");
+      AUnit.Assertions.Assert
+        (Image.Dimensions.Width = OpenCV.Core.Size_Coordinate (Image.Columns)
+         and then Image.Dimensions.Height =
+                    OpenCV.Core.Size_Coordinate (Image.Rows),
+         "Mat dimensions must remain consistent with columns and rows");
+   end Empty_Mat_Has_Zero_Dimensions;
+
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
+      Result.Add_Test
+        (Caller.Create
+           ("Size and Point are ordinary value types",
+            Size_And_Point_Are_Ordinary_Value_Types'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat dimensions reflect Mat and view shapes",
+            Mat_Dimensions_Reflect_Mat_And_View_Shapes'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Create with Size integrates with typed access",
+            Create_With_Size_Integrates_With_Typed_Access'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Empty Mat has zero dimensions",
+            Empty_Mat_Has_Zero_Dimensions'Access));
       Result.Add_Test
         (Caller.Create
            ("Default Mat reports empty", Default_Mat_Is_Empty'Access));
