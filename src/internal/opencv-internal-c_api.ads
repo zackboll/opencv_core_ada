@@ -133,6 +133,31 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_add_weighted";
 
+   function Mat_Bitwise_And
+     (Left, Right : Mat_Handle; Result : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_bitwise_and";
+
+   function Mat_Bitwise_Or
+     (Left, Right : Mat_Handle; Result : access Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_bitwise_or";
+
+   function Mat_Bitwise_Xor
+     (Left, Right : Mat_Handle; Result : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_bitwise_xor";
+
+   function Mat_Bitwise_Not
+     (Self : Mat_Handle; Result : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_bitwise_not";
+
    function Mat_Region
      (Source : Mat_Handle;
       X      : C_Int32;

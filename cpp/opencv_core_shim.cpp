@@ -653,6 +653,121 @@ opencv_core_mat_add_weighted(const opencv_core_mat_handle *left, double alpha,
 }
 
 opencv_core_status
+opencv_core_mat_bitwise_and(const opencv_core_mat_handle *left,
+                            const opencv_core_mat_handle *right,
+                            opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (left == nullptr || right == nullptr) {
+        return invalid_argument("Mat operand handles must not be null");
+    }
+
+    if (!mats_have_same_shape_and_type(left->value, right->value)) {
+        return invalid_argument("Mat operands must have identical shape and type");
+    }
+
+    try {
+        cv::Mat result;
+        cv::bitwise_and(left->value, right->value, result);
+        *out_mat = new opencv_core_mat_handle(result);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_bitwise_or(const opencv_core_mat_handle *left,
+                           const opencv_core_mat_handle *right,
+                           opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (left == nullptr || right == nullptr) {
+        return invalid_argument("Mat operand handles must not be null");
+    }
+
+    if (!mats_have_same_shape_and_type(left->value, right->value)) {
+        return invalid_argument("Mat operands must have identical shape and type");
+    }
+
+    try {
+        cv::Mat result;
+        cv::bitwise_or(left->value, right->value, result);
+        *out_mat = new opencv_core_mat_handle(result);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_bitwise_xor(const opencv_core_mat_handle *left,
+                            const opencv_core_mat_handle *right,
+                            opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (left == nullptr || right == nullptr) {
+        return invalid_argument("Mat operand handles must not be null");
+    }
+
+    if (!mats_have_same_shape_and_type(left->value, right->value)) {
+        return invalid_argument("Mat operands must have identical shape and type");
+    }
+
+    try {
+        cv::Mat result;
+        cv::bitwise_xor(left->value, right->value, result);
+        *out_mat = new opencv_core_mat_handle(result);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_bitwise_not(const opencv_core_mat_handle *source,
+                            opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (source == nullptr) {
+        return invalid_argument("source Mat handle must not be null");
+    }
+
+    try {
+        cv::Mat result;
+        cv::bitwise_not(source->value, result);
+        *out_mat = new opencv_core_mat_handle(result);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_region(const opencv_core_mat_handle *source, int32_t x,
                        int32_t y, int32_t width, int32_t height,
                        opencv_core_mat_handle **out_mat) {

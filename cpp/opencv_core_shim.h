@@ -153,6 +153,26 @@ opencv_core_mat_add_weighted(const opencv_core_mat_handle *left, double alpha,
                              const opencv_core_mat_handle *right, double beta,
                              double gamma, opencv_core_mat_handle **out_mat);
 
+/* Unmasked bitwise operations preserve the complete stored bit pattern. */
+opencv_core_status
+opencv_core_mat_bitwise_and(const opencv_core_mat_handle *left,
+                            const opencv_core_mat_handle *right,
+                            opencv_core_mat_handle **out_mat);
+
+opencv_core_status
+opencv_core_mat_bitwise_or(const opencv_core_mat_handle *left,
+                           const opencv_core_mat_handle *right,
+                           opencv_core_mat_handle **out_mat);
+
+opencv_core_status
+opencv_core_mat_bitwise_xor(const opencv_core_mat_handle *left,
+                            const opencv_core_mat_handle *right,
+                            opencv_core_mat_handle **out_mat);
+
+opencv_core_status
+opencv_core_mat_bitwise_not(const opencv_core_mat_handle *source,
+                            opencv_core_mat_handle **out_mat);
+
 /*
  * Creates a distinct Mat header for the indicated non-empty 2D region. The
  * header shares source storage through OpenCV reference counting.

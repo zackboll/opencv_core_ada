@@ -339,6 +339,74 @@ package body OpenCV.Core is
       return Result;
    end Add_Weighted;
 
+   function Bitwise_And (Left, Right : Mat) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Bitwise_And
+          (Left   => Left.Handle,
+           Right  => Right.Handle,
+           Result => New_Handle'Access);
+      Raise_On_Error (Status, "Mat bitwise and operation");
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Bitwise_And;
+
+   function Bitwise_Or (Left, Right : Mat) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Bitwise_Or
+          (Left   => Left.Handle,
+           Right  => Right.Handle,
+           Result => New_Handle'Access);
+      Raise_On_Error (Status, "Mat bitwise or operation");
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Bitwise_Or;
+
+   function Bitwise_Xor (Left, Right : Mat) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Bitwise_Xor
+          (Left   => Left.Handle,
+           Right  => Right.Handle,
+           Result => New_Handle'Access);
+      Raise_On_Error (Status, "Mat bitwise xor operation");
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Bitwise_Xor;
+
+   function Bitwise_Not (Self : Mat) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Status :=
+        OpenCV.Internal.C_API.Mat_Bitwise_Not (Self.Handle, New_Handle'Access);
+      Raise_On_Error (Status, "Mat bitwise not operation");
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Bitwise_Not;
+
    function Normalize
      (Self  : Mat;
       Kind  : Normalize_Kind := L2;

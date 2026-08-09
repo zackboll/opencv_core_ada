@@ -120,6 +120,10 @@ package OpenCV.Core is
       Right : Mat;
       Beta  : Long_Float;
       Gamma : Long_Float := 0.0) return Mat;
+   function Bitwise_And (Left, Right : Mat) return Mat;
+   function Bitwise_Or (Left, Right : Mat) return Mat;
+   function Bitwise_Xor (Left, Right : Mat) return Mat;
+   function Bitwise_Not (Self : Mat) return Mat;
    function Is_Empty (Self : Mat) return Boolean;
    function Rows (Self : Mat) return Natural;
    function Columns (Self : Mat) return Natural;
