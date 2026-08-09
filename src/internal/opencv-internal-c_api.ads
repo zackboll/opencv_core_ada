@@ -93,6 +93,39 @@ package OpenCV.Internal.C_API is
       Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_region";
 
+   function Mat_Row_View
+     (Source : Mat_Handle; Row : C_Int32; Result : access Mat_Handle)
+      return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_row_view";
+
+   function Mat_Column_View
+     (Source : Mat_Handle; Column : C_Int32; Result : access Mat_Handle)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_column_view";
+
+   function Mat_Row_Range_View
+     (Source : Mat_Handle;
+      Start  : C_Int32;
+      Stop   : C_Int32;
+      Result : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_row_range_view";
+
+   function Mat_Column_Range_View
+     (Source : Mat_Handle;
+      Start  : C_Int32;
+      Stop   : C_Int32;
+      Result : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_column_range_view";
+
    function Mat_Reshape
      (Source   : Mat_Handle;
       Channels : C_Int32;

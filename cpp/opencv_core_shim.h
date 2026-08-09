@@ -93,6 +93,31 @@ opencv_core_mat_region(const opencv_core_mat_handle *source, int32_t x,
                        opencv_core_mat_handle **out_mat);
 
 /*
+ * Create distinct Mat headers for a single row, single column, or half-open
+ * row/column range. The headers share source storage through OpenCV reference
+ * counting and do not copy data. Range start is inclusive and range stop is
+ * exclusive; equal endpoints are accepted and yield an empty Mat.
+ */
+opencv_core_status
+opencv_core_mat_row_view(const opencv_core_mat_handle *source, int32_t row,
+                         opencv_core_mat_handle **out_mat);
+
+opencv_core_status
+opencv_core_mat_column_view(const opencv_core_mat_handle *source,
+                            int32_t column,
+                            opencv_core_mat_handle **out_mat);
+
+opencv_core_status
+opencv_core_mat_row_range_view(const opencv_core_mat_handle *source,
+                               int32_t start, int32_t stop,
+                               opencv_core_mat_handle **out_mat);
+
+opencv_core_status
+opencv_core_mat_column_range_view(const opencv_core_mat_handle *source,
+                                  int32_t start, int32_t stop,
+                                  opencv_core_mat_handle **out_mat);
+
+/*
  * Creates a distinct two-dimensional Mat header by invoking Mat::reshape.
  * channels must be in 1 .. OPENCV_CORE_MAX_CHANNELS. A rows value of zero
  * preserves the source row count; otherwise it is the requested positive row

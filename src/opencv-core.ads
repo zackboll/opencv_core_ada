@@ -9,13 +9,19 @@ package OpenCV.Core is
 
    type Channel_Count is new Interfaces.Integer_32 range 1 .. 512;
 
-   type Mat_Size is new Interfaces.Integer_64
-     range 0 .. Interfaces.Integer_64'Last;
+   type Mat_Size is
+     new Interfaces.Integer_64 range 0 .. Interfaces.Integer_64'Last;
 
-   type Size_Coordinate is new Interfaces.Integer_32
-     range 0 .. Interfaces.Integer_32'Last;
+   type Size_Coordinate is
+     new Interfaces.Integer_32 range 0 .. Interfaces.Integer_32'Last;
 
    type Point_Coordinate is new Interfaces.Integer_32;
+
+   --  A zero-based half-open index interval: Start <= index < Stop.
+   type Index_Range is record
+      Start : Size_Coordinate := 0;
+      Stop  : Size_Coordinate := 0;
+   end record;
 
    type Size is record
       Width  : Size_Coordinate := 0;
@@ -44,10 +50,10 @@ package OpenCV.Core is
    end record;
 
    type Rect is record
-      X      : Natural;
-      Y      : Natural;
-      Width  : Natural;
-      Height : Natural;
+      X      : Size_Coordinate := 0;
+      Y      : Size_Coordinate := 0;
+      Width  : Size_Coordinate := 0;
+      Height : Size_Coordinate := 0;
    end record;
 
    function Make_Scalar
@@ -62,8 +68,7 @@ package OpenCV.Core is
      (Rows, Columns : Natural; Element_Type : Mat_Type) return Mat
    with Pre => Rows <= 2_147_483_647 and then Columns <= 2_147_483_647;
 
-   function Create
-     (Dimensions : Size; Element_Type : Mat_Type) return Mat;
+   function Create (Dimensions : Size; Element_Type : Mat_Type) return Mat;
 
    --  Both operations create a distinct Mat header sharing Self's storage.
    --  Depth and total scalar storage are preserved; Columns is derived.
@@ -92,6 +97,14 @@ package OpenCV.Core is
    function Is_Continuous (Self : Mat) return Boolean;
    function Is_Submatrix (Self : Mat) return Boolean;
    function Region (Self : Mat; Area : Rect) return Mat;
+
+   --  These operations create distinct Mat headers sharing Self's storage.
+   --  Index_Range uses its direct half-open [Start, Stop) representation.
+   function Row_View (Self : Mat; Row : Size_Coordinate) return Mat;
+   function Row_View (Self : Mat; Rows : Index_Range) return Mat;
+   function Column_View (Self : Mat; Column : Size_Coordinate) return Mat;
+   function Column_View (Self : Mat; Columns : Index_Range) return Mat;
+
    procedure Set_To (Self : in out Mat; Value : Scalar);
    function Sum (Self : Mat) return Scalar;
 

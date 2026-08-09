@@ -443,6 +443,163 @@ opencv_core_mat_region(const opencv_core_mat_handle *source, int32_t x,
 }
 
 opencv_core_status
+opencv_core_mat_row_view(const opencv_core_mat_handle *source, int32_t row,
+                         opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (source == nullptr) {
+        return invalid_argument("source Mat handle must not be null");
+    }
+
+    if (row < 0) {
+        return invalid_argument("row must not be negative");
+    }
+
+    try {
+        if (source->value.dims != 2) {
+            return invalid_argument("source Mat must be two-dimensional");
+        }
+
+        if (row >= source->value.rows) {
+            return invalid_argument("row is outside source Mat bounds");
+        }
+
+        *out_mat = new opencv_core_mat_handle(
+            source->value.row(static_cast<int>(row)));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_column_view(const opencv_core_mat_handle *source,
+                            int32_t column,
+                            opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (source == nullptr) {
+        return invalid_argument("source Mat handle must not be null");
+    }
+
+    if (column < 0) {
+        return invalid_argument("column must not be negative");
+    }
+
+    try {
+        if (source->value.dims != 2) {
+            return invalid_argument("source Mat must be two-dimensional");
+        }
+
+        if (column >= source->value.cols) {
+            return invalid_argument("column is outside source Mat bounds");
+        }
+
+        *out_mat = new opencv_core_mat_handle(
+            source->value.col(static_cast<int>(column)));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_row_range_view(const opencv_core_mat_handle *source,
+                               int32_t start, int32_t stop,
+                               opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (source == nullptr) {
+        return invalid_argument("source Mat handle must not be null");
+    }
+
+    if (start < 0 || stop < 0) {
+        return invalid_argument("range endpoints must not be negative");
+    }
+
+    if (start > stop) {
+        return invalid_argument("range start must not exceed range stop");
+    }
+
+    try {
+        if (source->value.dims != 2) {
+            return invalid_argument("source Mat must be two-dimensional");
+        }
+
+        if (stop > source->value.rows) {
+            return invalid_argument("range stop is outside source Mat bounds");
+        }
+
+        *out_mat = new opencv_core_mat_handle(
+            source->value.rowRange(static_cast<int>(start),
+                                   static_cast<int>(stop)));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_column_range_view(const opencv_core_mat_handle *source,
+                                  int32_t start, int32_t stop,
+                                  opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (source == nullptr) {
+        return invalid_argument("source Mat handle must not be null");
+    }
+
+    if (start < 0 || stop < 0) {
+        return invalid_argument("range endpoints must not be negative");
+    }
+
+    if (start > stop) {
+        return invalid_argument("range start must not exceed range stop");
+    }
+
+    try {
+        if (source->value.dims != 2) {
+            return invalid_argument("source Mat must be two-dimensional");
+        }
+
+        if (stop > source->value.cols) {
+            return invalid_argument("range stop is outside source Mat bounds");
+        }
+
+        *out_mat = new opencv_core_mat_handle(
+            source->value.colRange(static_cast<int>(start),
+                                   static_cast<int>(stop)));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_reshape(const opencv_core_mat_handle *source, int32_t channels,
                         int32_t rows, opencv_core_mat_handle **out_mat) {
     clear_error();

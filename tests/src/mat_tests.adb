@@ -2152,6 +2152,251 @@ package body Mat_Tests is
          "Float32 reshape must preserve scalar values independently of size");
    end Float32_Reshape_Preserves_Values;
 
+   procedure Row_View_Has_Metadata_And_Shares_Data
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 3,
+           Columns      => 4,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      View   : OpenCV.Core.Mat := Source.Row_View (1);
+   begin
+      AUnit.Assertions.Assert
+        (View.Rows = 1 and then View.Columns = 4,
+         "A row view must have one row and all source columns");
+      AUnit.Assertions.Assert
+        (View.Depth = Source.Depth and then View.Channels = Source.Channels,
+         "A row view must preserve source element type");
+      AUnit.Assertions.Assert
+        (View.Is_Submatrix,
+         "A row view of a proper source row must be a submatrix");
+      AUnit.Assertions.Assert
+        (View.Is_Continuous,
+         "A complete row view of a continuous source must be continuous");
+      AUnit.Assertions.Assert
+        (View.Total = 4
+         and then View.Dimensions.Width = 4
+         and then View.Dimensions.Height = 1,
+         "A row view must report its scalar total and dimensions");
+
+      OpenCV.Core.UInt8_Access.Set (View, Row => 0, Column => 2, Value => 45);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Source, Row => 1, Column => 2) = 45,
+         "A write through a row view must modify its source");
+   end Row_View_Has_Metadata_And_Shares_Data;
+
+   procedure Column_View_Has_Metadata_And_Shares_Data
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 3,
+           Columns      => 4,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      View   : OpenCV.Core.Mat := Source.Column_View (2);
+   begin
+      AUnit.Assertions.Assert
+        (View.Rows = 3 and then View.Columns = 1,
+         "A column view must have all source rows and one column");
+      AUnit.Assertions.Assert
+        (View.Depth = Source.Depth and then View.Channels = Source.Channels,
+         "A column view must preserve source element type");
+      AUnit.Assertions.Assert
+        (View.Is_Submatrix, "A column view must be a submatrix");
+      AUnit.Assertions.Assert
+        (not View.Is_Continuous,
+         "A column view of a multi-column source must be non-continuous");
+      AUnit.Assertions.Assert
+        (View.Total = 3
+         and then View.Dimensions.Width = 1
+         and then View.Dimensions.Height = 3,
+         "A column view must report its scalar total and dimensions");
+
+      OpenCV.Core.UInt8_Access.Set (View, Row => 2, Column => 0, Value => 87);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Source, Row => 2, Column => 2) = 87,
+         "A write through a column view must modify its source");
+   end Column_View_Has_Metadata_And_Shares_Data;
+
+   procedure Range_Views_Have_Metadata_And_Share_Data
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source            : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 4,
+           Columns      => 5,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Row_Range_View    : OpenCV.Core.Mat :=
+        Source.Row_View ((Start => 1, Stop => 3));
+      Column_Range_View : OpenCV.Core.Mat :=
+        Source.Column_View ((Start => 1, Stop => 4));
+   begin
+      AUnit.Assertions.Assert
+        (Row_Range_View.Rows = 2
+         and then Row_Range_View.Columns = 5
+         and then Row_Range_View.Total = 10
+         and then Row_Range_View.Is_Submatrix
+         and then Row_Range_View.Is_Continuous,
+         "A row range view must preserve full-row continuity and metadata");
+      OpenCV.Core.UInt8_Access.Set
+        (Row_Range_View, Row => 1, Column => 4, Value => 10);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Source, Row => 2, Column => 4) = 10,
+         "A row range view must share its source data");
+
+      AUnit.Assertions.Assert
+        (Column_Range_View.Rows = 4
+         and then Column_Range_View.Columns = 3
+         and then Column_Range_View.Total = 12
+         and then Column_Range_View.Is_Submatrix
+         and then not Column_Range_View.Is_Continuous,
+         "A proper column range must report OpenCV's non-contiguous layout");
+      OpenCV.Core.UInt8_Access.Set
+        (Column_Range_View, Row => 3, Column => 2, Value => 20);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Source, Row => 3, Column => 3) = 20,
+         "A column range view must share its source data");
+   end Range_Views_Have_Metadata_And_Share_Data;
+
+   procedure Range_View_Preserves_UInt8_Vec3_Access
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      View   : OpenCV.Core.Mat := Source.Column_View ((Start => 1, Stop => 3));
+      Value  : constant OpenCV.Core.UInt8_Vec3.Vector := (10, 20, 30);
+      Pixel  : OpenCV.Core.UInt8_Vec3.Vector;
+   begin
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (View, Row => 1, Column => 1, Value => Value);
+      Pixel :=
+        OpenCV.Core.UInt8_Vec3_Access.Get (Source, Row => 1, Column => 2);
+      AUnit.Assertions.Assert
+        (Pixel (0) = Value (0)
+         and then Pixel (1) = Value (1)
+         and then Pixel (2) = Value (2),
+         "A Vec3 write through a range view must preserve all components");
+   end Range_View_Preserves_UInt8_Vec3_Access;
+
+   procedure Range_View_Survives_Source_Finalization_And_Clone
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Retained_View : OpenCV.Core.Mat;
+   begin
+      declare
+         Source : OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 2,
+              Columns      => 3,
+              Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      begin
+         Retained_View := Source.Row_View ((Start => 1, Stop => 2));
+         OpenCV.Core.UInt8_Access.Set
+           (Source, Row => 1, Column => 0, Value => 5);
+      end;
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Retained_View, Row => 0, Column => 0)
+         = 5,
+         "A range view must remain readable after its source finalizes");
+      OpenCV.Core.UInt8_Access.Set
+        (Retained_View, Row => 0, Column => 1, Value => 8);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Retained_View, Row => 0, Column => 1)
+         = 8,
+         "A range view must remain writable after its source finalizes");
+
+      declare
+         Source : OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 2,
+              Columns      => 2,
+              Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+         View   : constant OpenCV.Core.Mat := Source.Column_View (0);
+         Copy   : OpenCV.Core.Mat;
+      begin
+         OpenCV.Core.UInt8_Access.Set
+           (Source, Row => 0, Column => 0, Value => 11);
+         Copy := View.Clone;
+         OpenCV.Core.UInt8_Access.Set
+           (Source, Row => 0, Column => 0, Value => 99);
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Access.Get (View, Row => 0, Column => 0) = 99,
+            "A view must observe later source changes");
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Access.Get (Copy, Row => 0, Column => 0) = 11,
+            "A clone of a range view must not share source storage");
+      end;
+   end Range_View_Survives_Source_Finalization_And_Clone;
+
+   procedure View_Operations_Reject_Invalid_Ranges_And_Accept_Empty
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+
+      procedure Row_After_Last is
+         Ignored : constant OpenCV.Core.Mat := Source.Row_View (2);
+      begin
+         pragma Unreferenced (Ignored);
+      end Row_After_Last;
+
+      procedure Column_After_Last is
+         Ignored : constant OpenCV.Core.Mat := Source.Column_View (3);
+      begin
+         pragma Unreferenced (Ignored);
+      end Column_After_Last;
+
+      procedure Reversed_Row_Range is
+         Ignored : constant OpenCV.Core.Mat :=
+           Source.Row_View ((Start => 2, Stop => 1));
+      begin
+         pragma Unreferenced (Ignored);
+      end Reversed_Row_Range;
+
+      procedure Column_Range_Past_End is
+         Ignored : constant OpenCV.Core.Mat :=
+           Source.Column_View ((Start => 1, Stop => 4));
+      begin
+         pragma Unreferenced (Ignored);
+      end Column_Range_Past_End;
+
+      Empty_Row_View    : constant OpenCV.Core.Mat :=
+        Source.Row_View ((Start => 2, Stop => 2));
+      Empty_Column_View : constant OpenCV.Core.Mat :=
+        Source.Column_View ((Start => 3, Stop => 3));
+   begin
+      Assert_Raises_OpenCV_Error
+        (Row_After_Last'Access,
+         "Row_View must reject an index after the last row");
+      Assert_Raises_OpenCV_Error
+        (Column_After_Last'Access,
+         "Column_View must reject an index after the last column");
+      Assert_Raises_OpenCV_Error
+        (Reversed_Row_Range'Access,
+         "Row_View must reject a range whose start exceeds its stop");
+      Assert_Raises_OpenCV_Error
+        (Column_Range_Past_End'Access,
+         "Column_View must reject a range whose stop exceeds source columns");
+      AUnit.Assertions.Assert
+        (Empty_Row_View.Is_Empty and then Empty_Column_View.Is_Empty,
+         "Equal range endpoints at the dimension boundary must yield"
+         & " empty Mats");
+   end View_Operations_Reject_Invalid_Ranges_And_Accept_Empty;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -2160,14 +2405,10 @@ package body Mat_Tests is
      (Test : in out Mat_Test_Fixture)
    is
       pragma Unreferenced (Test);
-      Dimensions : constant OpenCV.Core.Size :=
-        (Width  => 5, Height => 3);
-      Empty_Size : constant OpenCV.Core.Size :=
-        (Width  => 0, Height => 0);
-      Positive   : constant OpenCV.Core.Point :=
-        (X => 7, Y => 11);
-      Negative   : constant OpenCV.Core.Point :=
-        (X => -7, Y => -11);
+      Dimensions : constant OpenCV.Core.Size := (Width => 5, Height => 3);
+      Empty_Size : constant OpenCV.Core.Size := (Width => 0, Height => 0);
+      Positive   : constant OpenCV.Core.Point := (X => 7, Y => 11);
+      Negative   : constant OpenCV.Core.Point := (X => -7, Y => -11);
    begin
       AUnit.Assertions.Assert
         (Dimensions.Width = 5 and then Dimensions.Height = 3,
@@ -2187,7 +2428,7 @@ package body Mat_Tests is
      (Test : in out Mat_Test_Fixture)
    is
       pragma Unreferenced (Test);
-      UInt8_Image : constant OpenCV.Core.Mat :=
+      UInt8_Image      : constant OpenCV.Core.Mat :=
         OpenCV.Core.Create
           (Rows         => 3,
            Columns      => 5,
@@ -2197,11 +2438,11 @@ package body Mat_Tests is
           (Rows         => 4,
            Columns      => 6,
            Element_Type => (Depth => OpenCV.Core.Float32, Channels => 3));
-      View : constant OpenCV.Core.Mat :=
+      View             : constant OpenCV.Core.Mat :=
         UInt8_Image.Region ((X => 1, Y => 1, Width => 3, Height => 2));
-      Reshaped : constant OpenCV.Core.Mat :=
+      Reshaped         : constant OpenCV.Core.Mat :=
         Float_Vec3_Image.Reshape (Channels => 1, Rows => 6);
-      Converted : constant OpenCV.Core.Mat :=
+      Converted        : constant OpenCV.Core.Mat :=
         UInt8_Image.Convert_To (Depth => OpenCV.Core.Float32);
    begin
       AUnit.Assertions.Assert
@@ -2221,10 +2462,10 @@ package body Mat_Tests is
          and then Reshaped.Dimensions.Height = 6,
          "A reshape result dimensions must report its derived shape");
       AUnit.Assertions.Assert
-        (Converted.Dimensions.Width =
-           OpenCV.Core.Size_Coordinate (UInt8_Image.Columns)
-         and then Converted.Dimensions.Height =
-                    OpenCV.Core.Size_Coordinate (UInt8_Image.Rows),
+        (Converted.Dimensions.Width
+         = OpenCV.Core.Size_Coordinate (UInt8_Image.Columns)
+         and then Converted.Dimensions.Height
+                  = OpenCV.Core.Size_Coordinate (UInt8_Image.Rows),
          "A Convert_To result dimensions must preserve its source shape");
    end Mat_Dimensions_Reflect_Mat_And_View_Shapes;
 
@@ -2253,9 +2494,7 @@ package body Mat_Tests is
          "Create with Size must interoperate with typed element access");
    end Create_With_Size_Integrates_With_Typed_Access;
 
-   procedure Empty_Mat_Has_Zero_Dimensions
-     (Test : in out Mat_Test_Fixture)
-   is
+   procedure Empty_Mat_Has_Zero_Dimensions (Test : in out Mat_Test_Fixture) is
       pragma Unreferenced (Test);
       Image : OpenCV.Core.Mat;
    begin
@@ -2264,8 +2503,8 @@ package body Mat_Tests is
          "A default empty Mat must have zero width and height");
       AUnit.Assertions.Assert
         (Image.Dimensions.Width = OpenCV.Core.Size_Coordinate (Image.Columns)
-         and then Image.Dimensions.Height =
-                    OpenCV.Core.Size_Coordinate (Image.Rows),
+         and then Image.Dimensions.Height
+                  = OpenCV.Core.Size_Coordinate (Image.Rows),
          "Mat dimensions must remain consistent with columns and rows");
    end Empty_Mat_Has_Zero_Dimensions;
 
@@ -2287,6 +2526,30 @@ package body Mat_Tests is
         (Caller.Create
            ("Empty Mat has zero dimensions",
             Empty_Mat_Has_Zero_Dimensions'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Row view has metadata and shares data",
+            Row_View_Has_Metadata_And_Shares_Data'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Column view has metadata and shares data",
+            Column_View_Has_Metadata_And_Shares_Data'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Range views have metadata and share data",
+            Range_Views_Have_Metadata_And_Share_Data'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Range view preserves UInt8 Vec3 access",
+            Range_View_Preserves_UInt8_Vec3_Access'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Range view survives source finalization and Clone",
+            Range_View_Survives_Source_Finalization_And_Clone'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("View operations reject invalid ranges and accept empty",
+            View_Operations_Reject_Invalid_Ranges_And_Accept_Empty'Access));
       Result.Add_Test
         (Caller.Create
            ("Default Mat reports empty", Default_Mat_Is_Empty'Access));

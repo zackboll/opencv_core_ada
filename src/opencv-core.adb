@@ -168,13 +168,11 @@ package body OpenCV.Core is
       return Result;
    end Create;
 
-   function Create
-     (Dimensions : Size; Element_Type : Mat_Type) return Mat
-   is
-     (Create
-        (Rows         => Natural (Dimensions.Height),
-         Columns      => Natural (Dimensions.Width),
-         Element_Type => Element_Type));
+   function Create (Dimensions : Size; Element_Type : Mat_Type) return Mat
+   is (Create
+         (Rows         => Natural (Dimensions.Height),
+          Columns      => Natural (Dimensions.Width),
+          Element_Type => Element_Type));
 
    overriding
    procedure Adjust (Self : in out Mat) is
@@ -390,10 +388,10 @@ package body OpenCV.Core is
       return Natural (Value);
    end Columns;
 
-   function Dimensions (Self : Mat) return Size is
-     (Size'
-        (Width  => Size_Coordinate (Self.Columns),
-         Height => Size_Coordinate (Self.Rows)));
+   function Dimensions (Self : Mat) return Size
+   is (Size'
+         (Width  => Size_Coordinate (Self.Columns),
+          Height => Size_Coordinate (Self.Rows)));
 
    function Channels (Self : Mat) return Channel_Count is
       Value  : aliased OpenCV.Internal.C_API.C_Int32 := 0;
@@ -462,8 +460,9 @@ package body OpenCV.Core is
    end Is_Submatrix;
 
    function Region (Self : Mat; Area : Rect) return Mat is
-      Source_Rows    : constant Natural := Self.Rows;
-      Source_Columns : constant Natural := Self.Columns;
+      Source_Rows    : constant Size_Coordinate := Size_Coordinate (Self.Rows);
+      Source_Columns : constant Size_Coordinate :=
+        Size_Coordinate (Self.Columns);
       Result         : Mat;
       New_Handle     : aliased OpenCV.Internal.C_API.Mat_Handle :=
         OpenCV.Internal.C_API.Null_Mat_Handle;
@@ -502,6 +501,121 @@ package body OpenCV.Core is
       Result.Handle := New_Handle;
       return Result;
    end Region;
+
+   function Row_View (Self : Mat; Row : Size_Coordinate) return Mat is
+      Source_Rows : constant Size_Coordinate := Size_Coordinate (Self.Rows);
+      Result      : Mat;
+      New_Handle  : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status      : OpenCV.Internal.C_API.Status;
+   begin
+      if Row >= Source_Rows then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Mat row index is outside source bounds");
+      end if;
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_Row_View
+          (Source => Self.Handle,
+           Row    => OpenCV.Internal.C_API.C_Int32 (Row),
+           Result => New_Handle'Access);
+      Raise_On_Error (Status, "Mat row view creation");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Row_View;
+
+   function Row_View (Self : Mat; Rows : Index_Range) return Mat is
+      Source_Rows : constant Size_Coordinate := Size_Coordinate (Self.Rows);
+      Result      : Mat;
+      New_Handle  : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status      : OpenCV.Internal.C_API.Status;
+   begin
+      if Rows.Start > Rows.Stop then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat row range start must not exceed its stop");
+      end if;
+
+      if Rows.Stop > Source_Rows then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat row range stop is outside source bounds");
+      end if;
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_Row_Range_View
+          (Source => Self.Handle,
+           Start  => OpenCV.Internal.C_API.C_Int32 (Rows.Start),
+           Stop   => OpenCV.Internal.C_API.C_Int32 (Rows.Stop),
+           Result => New_Handle'Access);
+      Raise_On_Error (Status, "Mat row range view creation");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Row_View;
+
+   function Column_View (Self : Mat; Column : Size_Coordinate) return Mat is
+      Source_Columns : constant Size_Coordinate :=
+        Size_Coordinate (Self.Columns);
+      Result         : Mat;
+      New_Handle     : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status         : OpenCV.Internal.C_API.Status;
+   begin
+      if Column >= Source_Columns then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat column index is outside source bounds");
+      end if;
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_Column_View
+          (Source => Self.Handle,
+           Column => OpenCV.Internal.C_API.C_Int32 (Column),
+           Result => New_Handle'Access);
+      Raise_On_Error (Status, "Mat column view creation");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Column_View;
+
+   function Column_View (Self : Mat; Columns : Index_Range) return Mat is
+      Source_Columns : constant Size_Coordinate :=
+        Size_Coordinate (Self.Columns);
+      Result         : Mat;
+      New_Handle     : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status         : OpenCV.Internal.C_API.Status;
+   begin
+      if Columns.Start > Columns.Stop then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat column range start must not exceed its stop");
+      end if;
+
+      if Columns.Stop > Source_Columns then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat column range stop is outside source bounds");
+      end if;
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_Column_Range_View
+          (Source => Self.Handle,
+           Start  => OpenCV.Internal.C_API.C_Int32 (Columns.Start),
+           Stop   => OpenCV.Internal.C_API.C_Int32 (Columns.Stop),
+           Result => New_Handle'Access);
+      Raise_On_Error (Status, "Mat column range view creation");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Column_View;
 
    procedure Set_To (Self : in out Mat; Value : Scalar) is
       C_Value : aliased OpenCV.Internal.C_API.Scalar := To_C_Scalar (Value);
