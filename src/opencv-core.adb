@@ -216,6 +216,31 @@ package body OpenCV.Core is
       end if;
    end Validate_Arithmetic_Compatibility;
 
+   procedure Validate_Mask (Source, Mask : Mat) is
+   begin
+      if Mask.Depth /= UInt8 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Mat mask must have UInt8 depth");
+      end if;
+
+      if Mask.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Mat mask must have exactly one channel");
+      end if;
+
+      if Mask.Rows /= Source.Rows then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat mask must have the same row count as its source");
+      end if;
+
+      if Mask.Columns /= Source.Columns then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat mask must have the same column count as its source");
+      end if;
+   end Validate_Mask;
+
    function Add (Left, Right : Mat) return Mat is
       Result     : Mat;
       New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
@@ -357,6 +382,26 @@ package body OpenCV.Core is
       return Result;
    end Bitwise_And;
 
+   function Bitwise_And (Left, Right, Mask : Mat) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      Validate_Mask (Left, Mask);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Bitwise_And_Masked
+          (Left   => Left.Handle,
+           Right  => Right.Handle,
+           Mask   => Mask.Handle,
+           Result => New_Handle'Access);
+      Raise_On_Error (Status, "Masked Mat bitwise and operation");
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Bitwise_And;
+
    function Bitwise_Or (Left, Right : Mat) return Mat is
       Result     : Mat;
       New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
@@ -370,6 +415,26 @@ package body OpenCV.Core is
            Right  => Right.Handle,
            Result => New_Handle'Access);
       Raise_On_Error (Status, "Mat bitwise or operation");
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Bitwise_Or;
+
+   function Bitwise_Or (Left, Right, Mask : Mat) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      Validate_Mask (Left, Mask);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Bitwise_Or_Masked
+          (Left   => Left.Handle,
+           Right  => Right.Handle,
+           Mask   => Mask.Handle,
+           Result => New_Handle'Access);
+      Raise_On_Error (Status, "Masked Mat bitwise or operation");
       OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
       Result.Handle := New_Handle;
       return Result;
@@ -393,6 +458,26 @@ package body OpenCV.Core is
       return Result;
    end Bitwise_Xor;
 
+   function Bitwise_Xor (Left, Right, Mask : Mat) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      Validate_Mask (Left, Mask);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Bitwise_Xor_Masked
+          (Left   => Left.Handle,
+           Right  => Right.Handle,
+           Mask   => Mask.Handle,
+           Result => New_Handle'Access);
+      Raise_On_Error (Status, "Masked Mat bitwise xor operation");
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Bitwise_Xor;
+
    function Bitwise_Not (Self : Mat) return Mat is
       Result     : Mat;
       New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
@@ -402,6 +487,24 @@ package body OpenCV.Core is
       Status :=
         OpenCV.Internal.C_API.Mat_Bitwise_Not (Self.Handle, New_Handle'Access);
       Raise_On_Error (Status, "Mat bitwise not operation");
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Bitwise_Not;
+
+   function Bitwise_Not (Self, Mask : Mat) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Mask (Self, Mask);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Bitwise_Not_Masked
+          (Self   => Self.Handle,
+           Mask   => Mask.Handle,
+           Result => New_Handle'Access);
+      Raise_On_Error (Status, "Masked Mat bitwise not operation");
       OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
       Result.Handle := New_Handle;
       return Result;

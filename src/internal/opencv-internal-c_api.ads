@@ -158,6 +158,34 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_bitwise_not";
 
+   function Mat_Bitwise_And_Masked
+     (Left, Right, Mask : Mat_Handle; Result : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_bitwise_and_masked";
+
+   function Mat_Bitwise_Or_Masked
+     (Left, Right, Mask : Mat_Handle; Result : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_bitwise_or_masked";
+
+   function Mat_Bitwise_Xor_Masked
+     (Left, Right, Mask : Mat_Handle; Result : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_bitwise_xor_masked";
+
+   function Mat_Bitwise_Not_Masked
+     (Self, Mask : Mat_Handle; Result : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_bitwise_not_masked";
+
    function Mat_Region
      (Source : Mat_Handle;
       X      : C_Int32;

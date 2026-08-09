@@ -3612,6 +3612,134 @@ package body Mat_Tests is
         (Bad_Channels'Access, "Bitwise_And must reject mismatched channels");
    end Mat_Bitwise_Compatibility_Failures;
 
+   procedure Masked_Bitwise_Operations_Select_Nonzero_Values
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left, Right, Mask                             : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      And_Result, Or_Result, Xor_Result, Not_Result : OpenCV.Core.Mat;
+   begin
+      Left.Set_To (OpenCV.Core.Make_Scalar (170.0));
+      Right.Set_To (OpenCV.Core.Make_Scalar (15.0));
+      OpenCV.Core.UInt8_Access.Set (Mask, 0, 0, 0);
+      OpenCV.Core.UInt8_Access.Set (Mask, 0, 1, 1);
+      OpenCV.Core.UInt8_Access.Set (Mask, 1, 0, 255);
+      OpenCV.Core.UInt8_Access.Set (Mask, 1, 1, 0);
+      And_Result := Left.Bitwise_And (Right, Mask);
+      Or_Result := Left.Bitwise_Or (Right, Mask);
+      Xor_Result := Left.Bitwise_Xor (Right, Mask);
+      Not_Result := Left.Bitwise_Not (Mask);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (And_Result, 0, 0) = 0
+         and then OpenCV.Core.UInt8_Access.Get (And_Result, 0, 1) = 16#0A#
+         and then OpenCV.Core.UInt8_Access.Get (And_Result, 1, 0) = 16#0A#
+         and then OpenCV.Core.UInt8_Access.Get (Or_Result, 0, 1) = 16#AF#
+         and then OpenCV.Core.UInt8_Access.Get (Xor_Result, 1, 0) = 16#A5#
+         and then OpenCV.Core.UInt8_Access.Get (Not_Result, 0, 1) = 16#55#
+         and then OpenCV.Core.UInt8_Access.Get (Not_Result, 1, 1) = 0,
+         "Masked bitwise operations must select any nonzero UInt8 mask value"
+         & " and zero unselected new output");
+   end Masked_Bitwise_Operations_Select_Nonzero_Values;
+
+   procedure Masked_Bitwise_Vec3_Regions_Independence
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Vec_Left, Vec_Right        : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 3));
+      Vec_Mask                   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 1));
+      Source, Other, Mask_Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.UInt8, 1));
+      Vec_Result, Region_Result  : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Vec_Left, 0, 0, (16#F0#, 16#0F#, 16#AA#));
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Vec_Right, 0, 0, (16#0F#, 16#F0#, 16#55#));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Vec_Left, 0, 1, (1, 2, 3));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Vec_Right, 0, 1, (4, 5, 6));
+      Vec_Mask.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.UInt8_Access.Set (Vec_Mask, 0, 0, 1);
+      Vec_Result := Vec_Left.Bitwise_Xor (Vec_Right, Vec_Mask);
+      Source.Set_To (OpenCV.Core.Make_Scalar (240.0));
+      Other.Set_To (OpenCV.Core.Make_Scalar (15.0));
+      Mask_Parent.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.UInt8_Access.Set (Mask_Parent, 0, 1, 255);
+      OpenCV.Core.UInt8_Access.Set (Mask_Parent, 1, 2, 1);
+      Region_Result :=
+        Source.Region ((1, 0, 2, 2)).Bitwise_Or
+          (Other.Region ((1, 0, 2, 2)), Mask_Parent.Region ((1, 0, 2, 2)));
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 1, 0);
+      OpenCV.Core.UInt8_Access.Set (Mask_Parent, 0, 1, 0);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Vec3_Access.Get (Vec_Result, 0, 0)
+         = (16#FF#, 16#FF#, 16#FF#)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Vec_Result, 0, 1)
+                  = (0, 0, 0)
+         and then not Mask_Parent.Region ((1, 0, 2, 2)).Is_Continuous
+         and then Region_Result.Is_Continuous
+         and then OpenCV.Core.UInt8_Access.Get (Region_Result, 0, 0) = 16#FF#
+         and then OpenCV.Core.UInt8_Access.Get (Region_Result, 0, 1) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Region_Result, 1, 1) = 16#FF#,
+         "Masked bitwise operations must support Vec3 and non-continuous masks"
+         & " with independent output");
+   end Masked_Bitwise_Vec3_Regions_Independence;
+
+   procedure Masked_Bitwise_Invalid_Masks_And_Empty
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source, Other                          : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+      Float_Mask                             : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Multi_Mask                             : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 3));
+      Rows_Mask                              : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 1, (OpenCV.Core.UInt8, 1));
+      Columns_Mask                           : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 1));
+      Empty_Source, Empty_Mask, Empty_Result : OpenCV.Core.Mat;
+      procedure Float_Depth is
+         X : constant OpenCV.Core.Mat :=
+           Source.Bitwise_And (Other, Float_Mask);
+      begin
+         pragma Unreferenced (X);
+      end Float_Depth;
+      procedure Multi_Channel is
+         X : constant OpenCV.Core.Mat := Source.Bitwise_Or (Other, Multi_Mask);
+      begin
+         pragma Unreferenced (X);
+      end Multi_Channel;
+      procedure Wrong_Rows is
+         X : constant OpenCV.Core.Mat := Source.Bitwise_Xor (Other, Rows_Mask);
+      begin
+         pragma Unreferenced (X);
+      end Wrong_Rows;
+      procedure Wrong_Columns is
+         X : constant OpenCV.Core.Mat := Source.Bitwise_Not (Columns_Mask);
+      begin
+         pragma Unreferenced (X);
+      end Wrong_Columns;
+   begin
+      Empty_Result := Empty_Source.Bitwise_Not (Empty_Mask);
+      AUnit.Assertions.Assert
+        (Empty_Result.Is_Empty,
+         "Masked empty Mat operation must remain empty");
+      Assert_Raises_OpenCV_Error
+        (Float_Depth'Access, "Mask must reject Float32 depth");
+      Assert_Raises_OpenCV_Error
+        (Multi_Channel'Access, "Mask must reject multiple channels");
+      Assert_Raises_OpenCV_Error
+        (Wrong_Rows'Access, "Mask must reject wrong rows");
+      Assert_Raises_OpenCV_Error
+        (Wrong_Columns'Access, "Mask must reject wrong columns");
+   end Masked_Bitwise_Invalid_Masks_And_Empty;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -4536,6 +4664,18 @@ package body Mat_Tests is
         (Caller.Create
            ("Mat bitwise binary operations reject incompatible operands",
             Mat_Bitwise_Compatibility_Failures'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Masked bitwise operations select nonzero values",
+            Masked_Bitwise_Operations_Select_Nonzero_Values'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Masked bitwise operations handle Vec3, Regions, and independence",
+            Masked_Bitwise_Vec3_Regions_Independence'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Masked bitwise operations reject invalid masks and handle empty",
+            Masked_Bitwise_Invalid_Masks_And_Empty'Access));
       Result.Add_Test
         (Caller.Create
            ("Min_Max_Loc UInt8 returns values and column-row Points",

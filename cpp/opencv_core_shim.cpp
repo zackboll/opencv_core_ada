@@ -97,6 +97,11 @@ bool mats_have_same_shape_and_type(const cv::Mat &left,
            left.cols == right.cols && left.type() == right.type();
 }
 
+bool is_valid_mask_for(const cv::Mat &source, const cv::Mat &mask) noexcept {
+    return mask.depth() == CV_8U && mask.channels() == 1 &&
+           mask.rows == source.rows && mask.cols == source.cols;
+}
+
 bool to_opencv_depth(int32_t depth, int &opencv_depth) noexcept {
     switch (depth) {
     case OPENCV_CORE_DEPTH_UINT8:
@@ -760,6 +765,145 @@ opencv_core_mat_bitwise_not(const opencv_core_mat_handle *source,
     try {
         cv::Mat result;
         cv::bitwise_not(source->value, result);
+        *out_mat = new opencv_core_mat_handle(result);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_bitwise_and_masked(const opencv_core_mat_handle *left,
+                                   const opencv_core_mat_handle *right,
+                                   const opencv_core_mat_handle *mask,
+                                   opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (left == nullptr || right == nullptr || mask == nullptr) {
+        return invalid_argument("Mat operand and mask handles must not be null");
+    }
+
+    if (!mats_have_same_shape_and_type(left->value, right->value)) {
+        return invalid_argument("Mat operands must have identical shape and type");
+    }
+
+    if (!is_valid_mask_for(left->value, mask->value)) {
+        return invalid_argument(
+            "mask must be a same-sized single-channel UInt8 Mat");
+    }
+
+    try {
+        cv::Mat result;
+        cv::bitwise_and(left->value, right->value, result, mask->value);
+        *out_mat = new opencv_core_mat_handle(result);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_bitwise_or_masked(const opencv_core_mat_handle *left,
+                                  const opencv_core_mat_handle *right,
+                                  const opencv_core_mat_handle *mask,
+                                  opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (left == nullptr || right == nullptr || mask == nullptr) {
+        return invalid_argument("Mat operand and mask handles must not be null");
+    }
+
+    if (!mats_have_same_shape_and_type(left->value, right->value)) {
+        return invalid_argument("Mat operands must have identical shape and type");
+    }
+
+    if (!is_valid_mask_for(left->value, mask->value)) {
+        return invalid_argument(
+            "mask must be a same-sized single-channel UInt8 Mat");
+    }
+
+    try {
+        cv::Mat result;
+        cv::bitwise_or(left->value, right->value, result, mask->value);
+        *out_mat = new opencv_core_mat_handle(result);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_bitwise_xor_masked(const opencv_core_mat_handle *left,
+                                   const opencv_core_mat_handle *right,
+                                   const opencv_core_mat_handle *mask,
+                                   opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (left == nullptr || right == nullptr || mask == nullptr) {
+        return invalid_argument("Mat operand and mask handles must not be null");
+    }
+
+    if (!mats_have_same_shape_and_type(left->value, right->value)) {
+        return invalid_argument("Mat operands must have identical shape and type");
+    }
+
+    if (!is_valid_mask_for(left->value, mask->value)) {
+        return invalid_argument(
+            "mask must be a same-sized single-channel UInt8 Mat");
+    }
+
+    try {
+        cv::Mat result;
+        cv::bitwise_xor(left->value, right->value, result, mask->value);
+        *out_mat = new opencv_core_mat_handle(result);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_bitwise_not_masked(const opencv_core_mat_handle *source,
+                                   const opencv_core_mat_handle *mask,
+                                   opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (source == nullptr || mask == nullptr) {
+        return invalid_argument("source Mat and mask handles must not be null");
+    }
+
+    if (!is_valid_mask_for(source->value, mask->value)) {
+        return invalid_argument(
+            "mask must be a same-sized single-channel UInt8 Mat");
+    }
+
+    try {
+        cv::Mat result;
+        cv::bitwise_not(source->value, result, mask->value);
         *out_mat = new opencv_core_mat_handle(result);
         return OPENCV_CORE_OK;
     } catch (...) {

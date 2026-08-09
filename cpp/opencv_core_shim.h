@@ -173,6 +173,30 @@ opencv_core_status
 opencv_core_mat_bitwise_not(const opencv_core_mat_handle *source,
                             opencv_core_mat_handle **out_mat);
 
+/* Masked operations accept a same-sized, single-channel UInt8 mask. */
+opencv_core_status
+opencv_core_mat_bitwise_and_masked(const opencv_core_mat_handle *left,
+                                   const opencv_core_mat_handle *right,
+                                   const opencv_core_mat_handle *mask,
+                                   opencv_core_mat_handle **out_mat);
+
+opencv_core_status
+opencv_core_mat_bitwise_or_masked(const opencv_core_mat_handle *left,
+                                  const opencv_core_mat_handle *right,
+                                  const opencv_core_mat_handle *mask,
+                                  opencv_core_mat_handle **out_mat);
+
+opencv_core_status
+opencv_core_mat_bitwise_xor_masked(const opencv_core_mat_handle *left,
+                                   const opencv_core_mat_handle *right,
+                                   const opencv_core_mat_handle *mask,
+                                   opencv_core_mat_handle **out_mat);
+
+opencv_core_status
+opencv_core_mat_bitwise_not_masked(const opencv_core_mat_handle *source,
+                                   const opencv_core_mat_handle *mask,
+                                   opencv_core_mat_handle **out_mat);
+
 /*
  * Creates a distinct Mat header for the indicated non-empty 2D region. The
  * header shares source storage through OpenCV reference counting.
