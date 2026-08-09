@@ -166,6 +166,21 @@ package body OpenCV.Core is
       OpenCV.Internal.C_API.Mat_Destroy (Old_Handle);
    end Finalize;
 
+   function Clone (Self : Mat) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Status :=
+        OpenCV.Internal.C_API.Mat_Clone (Self.Handle, New_Handle'Access);
+      Raise_On_Error (Status, "Mat clone");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Clone;
+
    function Is_Empty (Self : Mat) return Boolean is
       Empty  : aliased OpenCV.Internal.C_API.C_Boolean :=
         OpenCV.Internal.C_API.C_False;

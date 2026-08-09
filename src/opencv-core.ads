@@ -32,6 +32,7 @@ package OpenCV.Core is
      (Rows, Columns : Natural; Element_Type : Mat_Type) return Mat
    with Pre => Rows <= 2_147_483_647 and then Columns <= 2_147_483_647;
 
+   function Clone (Self : Mat) return Mat;
    function Is_Empty (Self : Mat) return Boolean;
    function Rows (Self : Mat) return Natural;
    function Columns (Self : Mat) return Natural;

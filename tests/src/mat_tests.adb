@@ -226,6 +226,101 @@ package body Mat_Tests is
          "The source should remain valid after its copy is finalized");
    end Original_Survives_Copy_Finalization;
 
+   procedure Clone_Copies_Metadata_And_Data (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      Copy   : OpenCV.Core.Mat;
+      Total  : OpenCV.Core.Scalar;
+   begin
+      Source.Set_To (OpenCV.Core.Make_Scalar (1.0, 2.0, 3.0));
+      Copy := Source.Clone;
+
+      AUnit.Assertions.Assert
+        (Copy.Rows = Source.Rows, "A clone should preserve rows");
+      AUnit.Assertions.Assert
+        (Copy.Columns = Source.Columns, "A clone should preserve columns");
+      AUnit.Assertions.Assert
+        (Copy.Channels = Source.Channels, "A clone should preserve channels");
+      AUnit.Assertions.Assert
+        (Copy.Depth = Source.Depth, "A clone should preserve depth");
+
+      Total := Copy.Sum;
+      AUnit.Assertions.Assert
+        (Total.Component_0 = 6.0
+         and then Total.Component_1 = 12.0
+         and then Total.Component_2 = 18.0
+         and then Total.Component_3 = 0.0,
+         "A clone should initially preserve all channel sums");
+
+      Source.Set_To (OpenCV.Core.Make_Scalar (4.0, 5.0, 6.0));
+      Total := Source.Sum;
+      AUnit.Assertions.Assert
+        (Total.Component_0 = 24.0
+         and then Total.Component_1 = 30.0
+         and then Total.Component_2 = 36.0,
+         "The source should contain its replacement value");
+
+      Total := Copy.Sum;
+      AUnit.Assertions.Assert
+        (Total.Component_0 = 6.0
+         and then Total.Component_1 = 12.0
+         and then Total.Component_2 = 18.0
+         and then Total.Component_3 = 0.0,
+         "A clone should not share Set_To-modified matrix data");
+   end Clone_Copies_Metadata_And_Data;
+
+   procedure Assignment_Shares_But_Clone_Is_Independent
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Shallow_Copy : OpenCV.Core.Mat;
+      Deep_Copy    : OpenCV.Core.Mat;
+      Total        : OpenCV.Core.Scalar;
+   begin
+      Source.Set_To (OpenCV.Core.Make_Scalar (2.0));
+      Shallow_Copy := Source;
+      Deep_Copy := Source.Clone;
+
+      Source.Set_To (OpenCV.Core.Make_Scalar (5.0));
+
+      Total := Shallow_Copy.Sum;
+      AUnit.Assertions.Assert
+        (Total.Component_0 = 20.0,
+         "Ordinary Mat assignment should share modified matrix data");
+
+      Total := Deep_Copy.Sum;
+      AUnit.Assertions.Assert
+        (Total.Component_0 = 8.0,
+         "Clone should retain data from before the source was modified");
+   end Assignment_Shares_But_Clone_Is_Independent;
+
+   procedure Empty_Mat_Clone_Is_Empty_And_Finalizes_Safely
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat;
+   begin
+      declare
+         Copy : constant OpenCV.Core.Mat := Source.Clone;
+      begin
+         AUnit.Assertions.Assert
+           (Copy.Is_Empty, "A clone of a default Mat should be empty");
+      end;
+
+      AUnit.Assertions.Assert
+        (Source.Is_Empty,
+         "The source should remain valid after its clone is finalized");
+   end Empty_Mat_Clone_Is_Empty_And_Finalizes_Safely;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -269,6 +364,18 @@ package body Mat_Tests is
         (Caller.Create
            ("Original survives copy finalization",
             Original_Survives_Copy_Finalization'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Clone copies Mat metadata and data",
+            Clone_Copies_Metadata_And_Data'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Assignment shares data while Clone isolates data",
+            Assignment_Shares_But_Clone_Is_Independent'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Empty Mat clone finalizes safely",
+            Empty_Mat_Clone_Is_Empty_And_Finalizes_Safely'Access));
       return Result'Access;
    end Suite;
 

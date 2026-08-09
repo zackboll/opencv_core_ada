@@ -59,6 +59,10 @@ opencv_core_status
 opencv_core_mat_copy(const opencv_core_mat_handle *source,
                      opencv_core_mat_handle **out_mat);
 
+opencv_core_status
+opencv_core_mat_clone(const opencv_core_mat_handle *source,
+                      opencv_core_mat_handle **out_mat);
+
 /* Null-safe and non-throwing. */
 void opencv_core_mat_destroy(opencv_core_mat_handle *mat);
 
