@@ -164,6 +164,74 @@ package body OpenCV.Core.Internal.Typed_Access is
       Raise_On_Error (Status, "Float32 typed Mat row write");
    end Write_Float32_Row;
 
+   procedure Read_UInt8_Vec3_Row
+     (Image : Mat; Row : Integer; Data : out UInt8_Row_Buffer)
+   is
+      pragma
+        Warnings
+          (GNAT,
+           Off,
+           Data,
+           Reason =>
+             "Data is written by the imported C Vec3 row-read operation"
+             & " through its address.");
+      Status : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Read_UInt8_Vec3_Row
+          (Self          => Image.Handle,
+           Row           => OpenCV.Internal.C_API.C_Int32 (Row),
+           Data          => Address_Of (Data),
+           Element_Count => OpenCV.Internal.C_API.C_UInt64 (Data'Length / 3));
+   begin
+      Raise_On_Error (Status, "UInt8 Vec3 typed Mat row read");
+   end Read_UInt8_Vec3_Row;
+
+   procedure Write_UInt8_Vec3_Row
+     (Image : in out Mat; Row : Integer; Data : UInt8_Row_Buffer)
+   is
+      Status : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Write_UInt8_Vec3_Row
+          (Self          => Image.Handle,
+           Row           => OpenCV.Internal.C_API.C_Int32 (Row),
+           Data          => Address_Of (Data),
+           Element_Count => OpenCV.Internal.C_API.C_UInt64 (Data'Length / 3));
+   begin
+      Raise_On_Error (Status, "UInt8 Vec3 typed Mat row write");
+   end Write_UInt8_Vec3_Row;
+
+   procedure Read_Float32_Vec3_Row
+     (Image : Mat; Row : Integer; Data : out Float32_Row_Buffer)
+   is
+      pragma
+        Warnings
+          (GNAT,
+           Off,
+           Data,
+           Reason =>
+             "Data is written by the imported C Vec3 row-read operation"
+             & " through its address.");
+      Status : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Read_Float32_Vec3_Row
+          (Self          => Image.Handle,
+           Row           => OpenCV.Internal.C_API.C_Int32 (Row),
+           Data          => Address_Of (Data),
+           Element_Count => OpenCV.Internal.C_API.C_UInt64 (Data'Length / 3));
+   begin
+      Raise_On_Error (Status, "Float32 Vec3 typed Mat row read");
+   end Read_Float32_Vec3_Row;
+
+   procedure Write_Float32_Vec3_Row
+     (Image : in out Mat; Row : Integer; Data : Float32_Row_Buffer)
+   is
+      Status : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Write_Float32_Vec3_Row
+          (Self          => Image.Handle,
+           Row           => OpenCV.Internal.C_API.C_Int32 (Row),
+           Data          => Address_Of (Data),
+           Element_Count => OpenCV.Internal.C_API.C_UInt64 (Data'Length / 3));
+   begin
+      Raise_On_Error (Status, "Float32 Vec3 typed Mat row write");
+   end Write_Float32_Vec3_Row;
+
    function Get_UInt8_Vec3
      (Image : Mat; Row, Column : Integer) return OpenCV.Core.UInt8_Vec3.Vector
    is

@@ -35,6 +35,18 @@ package OpenCV.Core.Internal.Typed_Access is
    procedure Write_Float32_Row
      (Image : in out Mat; Row : Integer; Data : Float32_Row_Buffer);
 
+   procedure Read_UInt8_Vec3_Row
+     (Image : Mat; Row : Integer; Data : out UInt8_Row_Buffer);
+
+   procedure Write_UInt8_Vec3_Row
+     (Image : in out Mat; Row : Integer; Data : UInt8_Row_Buffer);
+
+   procedure Read_Float32_Vec3_Row
+     (Image : Mat; Row : Integer; Data : out Float32_Row_Buffer);
+
+   procedure Write_Float32_Vec3_Row
+     (Image : in out Mat; Row : Integer; Data : Float32_Row_Buffer);
+
    function Get_UInt8_Vec3
      (Image : Mat; Row, Column : Integer) return OpenCV.Core.UInt8_Vec3.Vector;
 

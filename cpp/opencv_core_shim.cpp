@@ -175,6 +175,53 @@ opencv_core_status prepare_row(const opencv_core_mat_handle *mat, int32_t row,
     row_data = mat->value.template ptr<T>(static_cast<int>(row));
     return OPENCV_CORE_OK;
 }
+
+template <typename T>
+opencv_core_status
+prepare_vec3_row(const opencv_core_mat_handle *mat, int32_t row,
+                 uint64_t element_count, int expected_depth,
+                 const char *depth_name,
+                 const cv::Vec<T, 3> *&row_data) {
+    row_data = nullptr;
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    if (row < 0) {
+        return invalid_argument("row must not be negative");
+    }
+
+    if (mat->value.dims != 2) {
+        return invalid_argument("Mat must be two-dimensional");
+    }
+
+    if (mat->value.depth() != expected_depth) {
+        return invalid_argument(depth_name);
+    }
+
+    if (mat->value.channels() != 3) {
+        return invalid_argument("Mat must have exactly three channels");
+    }
+
+    if (row >= mat->value.rows) {
+        return invalid_argument("row is outside Mat bounds");
+    }
+
+    if (element_count != static_cast<uint64_t>(mat->value.cols)) {
+        return invalid_argument("element_count must equal Mat columns");
+    }
+
+    if (element_count >
+        static_cast<uint64_t>(std::numeric_limits<std::size_t>::max() / 3)) {
+        return invalid_argument(
+            "Vec3 scalar count exceeds the native size range");
+    }
+
+    row_data =
+        mat->value.template ptr<cv::Vec<T, 3>>(static_cast<int>(row));
+    return OPENCV_CORE_OK;
+}
  
 bool from_opencv_depth(int opencv_depth, int32_t &depth) noexcept {
     switch (opencv_depth) {
@@ -926,6 +973,142 @@ opencv_core_mat_write_float32_row(opencv_core_mat_handle *mat, int32_t row,
     }
 }
  
+opencv_core_status
+opencv_core_mat_read_uint8_vec3_row(const opencv_core_mat_handle *mat,
+                                    int32_t row, uint8_t *data,
+                                    uint64_t element_count) {
+    clear_error();
+
+    if (data == nullptr && element_count != 0) {
+        return invalid_argument(
+            "data must not be null when element_count is nonzero");
+    }
+
+    try {
+        const cv::Vec<uint8_t, 3> *row_data = nullptr;
+        const opencv_core_status status =
+            prepare_vec3_row(mat, row, element_count, CV_8U,
+                             "Mat depth must be UInt8", row_data);
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        for (std::size_t column = 0;
+             column < static_cast<std::size_t>(element_count); ++column) {
+            const std::size_t offset = column * 3;
+            data[offset] = row_data[column][0];
+            data[offset + 1] = row_data[column][1];
+            data[offset + 2] = row_data[column][2];
+        }
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_write_uint8_vec3_row(opencv_core_mat_handle *mat, int32_t row,
+                                     const uint8_t *data,
+                                     uint64_t element_count) {
+    clear_error();
+
+    if (data == nullptr && element_count != 0) {
+        return invalid_argument(
+            "data must not be null when element_count is nonzero");
+    }
+
+    try {
+        const cv::Vec<uint8_t, 3> *const_row_data = nullptr;
+        const opencv_core_status status =
+            prepare_vec3_row(mat, row, element_count, CV_8U,
+                             "Mat depth must be UInt8", const_row_data);
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        cv::Vec<uint8_t, 3> *const row_data =
+            const_cast<cv::Vec<uint8_t, 3> *>(const_row_data);
+        for (std::size_t column = 0;
+             column < static_cast<std::size_t>(element_count); ++column) {
+            const std::size_t offset = column * 3;
+            row_data[column] =
+                cv::Vec<uint8_t, 3>(data[offset], data[offset + 1],
+                                    data[offset + 2]);
+        }
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_read_float32_vec3_row(const opencv_core_mat_handle *mat,
+                                      int32_t row, float *data,
+                                      uint64_t element_count) {
+    clear_error();
+
+    if (data == nullptr && element_count != 0) {
+        return invalid_argument(
+            "data must not be null when element_count is nonzero");
+    }
+
+    try {
+        const cv::Vec<float, 3> *row_data = nullptr;
+        const opencv_core_status status =
+            prepare_vec3_row(mat, row, element_count, CV_32F,
+                             "Mat depth must be Float32", row_data);
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        for (std::size_t column = 0;
+             column < static_cast<std::size_t>(element_count); ++column) {
+            const std::size_t offset = column * 3;
+            data[offset] = row_data[column][0];
+            data[offset + 1] = row_data[column][1];
+            data[offset + 2] = row_data[column][2];
+        }
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_write_float32_vec3_row(opencv_core_mat_handle *mat,
+                                       int32_t row, const float *data,
+                                       uint64_t element_count) {
+    clear_error();
+
+    if (data == nullptr && element_count != 0) {
+        return invalid_argument(
+            "data must not be null when element_count is nonzero");
+    }
+
+    try {
+        const cv::Vec<float, 3> *const_row_data = nullptr;
+        const opencv_core_status status =
+            prepare_vec3_row(mat, row, element_count, CV_32F,
+                             "Mat depth must be Float32", const_row_data);
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        cv::Vec<float, 3> *const row_data =
+            const_cast<cv::Vec<float, 3> *>(const_row_data);
+        for (std::size_t column = 0;
+             column < static_cast<std::size_t>(element_count); ++column) {
+            const std::size_t offset = column * 3;
+            row_data[column] =
+                cv::Vec<float, 3>(data[offset], data[offset + 1],
+                                  data[offset + 2]);
+        }
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
 opencv_core_status
 opencv_core_mat_get_uint8_vec3(const opencv_core_mat_handle *mat, int32_t row,
                                int32_t column,

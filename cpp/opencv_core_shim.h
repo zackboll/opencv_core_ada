@@ -197,9 +197,36 @@ opencv_core_mat_get_float32_vec3(const opencv_core_mat_handle *mat,
                                  opencv_core_float32_vec3 *out_value);
 
 opencv_core_status
-opencv_core_mat_set_float32_vec3(opencv_core_mat_handle *mat, int32_t row,
-                                 int32_t column,
+opencv_core_mat_set_float32_vec3(opencv_core_mat_handle *mat,
+                                 int32_t row, int32_t column,
                                  const opencv_core_float32_vec3 *value);
+
+/*
+ * Copy one complete row of a two-dimensional, exactly three-channel Mat.
+ * element_count is the logical Vec3 element count and must equal mat columns.
+ * data is a flat scalar buffer ordered as column0.component0,
+ * column0.component1, column0.component2, column1.component0, and so on.
+ * The representation is independent of cv::Vec layout.
+ */
+opencv_core_status
+opencv_core_mat_read_uint8_vec3_row(const opencv_core_mat_handle *mat,
+                                    int32_t row, uint8_t *data,
+                                    uint64_t element_count);
+
+opencv_core_status
+opencv_core_mat_write_uint8_vec3_row(opencv_core_mat_handle *mat,
+                                     int32_t row, const uint8_t *data,
+                                     uint64_t element_count);
+
+opencv_core_status
+opencv_core_mat_read_float32_vec3_row(const opencv_core_mat_handle *mat,
+                                      int32_t row, float *data,
+                                      uint64_t element_count);
+
+opencv_core_status
+opencv_core_mat_write_float32_vec3_row(opencv_core_mat_handle *mat,
+                                       int32_t row, const float *data,
+                                       uint64_t element_count);
 
 opencv_core_status
 opencv_core_mat_set_to(opencv_core_mat_handle *mat,
