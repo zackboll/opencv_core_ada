@@ -280,6 +280,20 @@ opencv_core_mat_sum(const opencv_core_mat_handle *mat,
                     opencv_core_scalar *out_sum);
 
 /*
+ * Computes unmasked per-channel mean values. Both operations support one to
+ * four channels so each complete result fits opencv_core_scalar. Mean accepts
+ * empty Mats and returns all zeroes; mean/stddev requires a non-empty Mat.
+ */
+opencv_core_status
+opencv_core_mat_mean(const opencv_core_mat_handle *mat,
+                     opencv_core_scalar *out_mean);
+
+opencv_core_status
+opencv_core_mat_mean_std_dev(const opencv_core_mat_handle *mat,
+                             opencv_core_scalar *out_mean,
+                             opencv_core_scalar *out_standard_deviation);
+
+/*
  * Computes the requested absolute norm over every scalar component of mat.
  * Empty Mats return zero according to OpenCV semantics.
  */

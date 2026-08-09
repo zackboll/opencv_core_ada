@@ -3043,8 +3043,289 @@ package body Mat_Tests is
          "Min_Max_Loc must reject OpenCV's unsupported Float16 depth");
    end Min_Max_Loc_Rejects_Invalid_Mats;
 
+   procedure Float32_Mean_Returns_Arithmetic_Mean_And_Zeroes
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Result : OpenCV.Core.Scalar;
+   begin
+      OpenCV.Core.Float32_Access.Set (Image, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Image, 0, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 0, 3.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 1, 6.0);
+      Result := Image.Mean;
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Result.Component_0, 3.0),
+         "Mean must return the arithmetic mean of Float32 values");
+      AUnit.Assertions.Assert
+        (Result.Component_1 = 0.0
+         and then Result.Component_2 = 0.0
+         and then Result.Component_3 = 0.0,
+         "Mean must leave unused Scalar components at zero");
+   end Float32_Mean_Returns_Arithmetic_Mean_And_Zeroes;
+
+   procedure UInt8_Mean_Is_Not_Float32_Specific
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+   begin
+      OpenCV.Core.UInt8_Access.Set (Image, 0, 0, 1);
+      OpenCV.Core.UInt8_Access.Set (Image, 0, 1, 2);
+      OpenCV.Core.UInt8_Access.Set (Image, 0, 2, 9);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Image.Mean.Component_0, 4.0),
+         "Mean must support UInt8 data");
+   end UInt8_Mean_Is_Not_Float32_Specific;
+
+   procedure Vec3_Mean_Returns_Independent_Channel_Values
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      Result : OpenCV.Core.Scalar;
+   begin
+      OpenCV.Core.UInt8_Vec3_Access.Set (Image, 0, 0, (1, 10, 100));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Image, 0, 1, (3, 14, 104));
+      Result := Image.Mean;
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Result.Component_0, 2.0)
+         and then Approximately_Equal (Result.Component_1, 12.0)
+         and then Approximately_Equal (Result.Component_2, 102.0)
+         and then Result.Component_3 = 0.0,
+         "Mean must report each Vec3 channel independently and preserve zero"
+         & " in the unused Scalar component");
+   end Vec3_Mean_Returns_Independent_Channel_Values;
+
+   procedure Float32_Mean_Std_Dev_Uses_Population_Deviation
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Result : OpenCV.Core.Mean_Std_Dev_Result;
+   begin
+      OpenCV.Core.Float32_Access.Set (Image, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Image, 0, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 0, 3.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 1, 4.0);
+      Result := Image.Mean_Std_Dev;
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Result.Mean.Component_0, 2.5)
+         and then Approximately_Equal
+                    (Result.Standard_Deviation.Component_0,
+                     1.118_033_988_749_895),
+         "Mean_Std_Dev must use OpenCV's population standard deviation");
+      AUnit.Assertions.Assert
+        (Result.Mean.Component_1 = 0.0
+         and then Result.Standard_Deviation.Component_1 = 0.0,
+         "Mean_Std_Dev must preserve zero in unused Scalar components");
+   end Float32_Mean_Std_Dev_Uses_Population_Deviation;
+
+   procedure Vec3_Mean_Std_Dev_Returns_Independent_Channel_Values
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      Result : OpenCV.Core.Mean_Std_Dev_Result;
+   begin
+      OpenCV.Core.UInt8_Vec3_Access.Set (Image, 0, 0, (1, 10, 100));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Image, 0, 1, (3, 14, 104));
+      Result := Image.Mean_Std_Dev;
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Result.Mean.Component_0, 2.0)
+         and then Approximately_Equal (Result.Mean.Component_1, 12.0)
+         and then Approximately_Equal (Result.Mean.Component_2, 102.0)
+         and then Approximately_Equal
+                    (Result.Standard_Deviation.Component_0, 1.0)
+         and then Approximately_Equal
+                    (Result.Standard_Deviation.Component_1, 2.0)
+         and then Approximately_Equal
+                    (Result.Standard_Deviation.Component_2, 2.0),
+         "Mean_Std_Dev must reduce every Vec3 channel independently");
+   end Vec3_Mean_Std_Dev_Returns_Independent_Channel_Values;
+
+   procedure Mean_Reductions_Operate_On_Non_Continuous_Region
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 3,
+           Columns      => 4,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      View   : OpenCV.Core.Mat;
+      Result : OpenCV.Core.Mean_Std_Dev_Result;
+   begin
+      for Row in 0 .. 2 loop
+         for Column in 0 .. 3 loop
+            OpenCV.Core.UInt8_Access.Set
+              (Source,
+               Row,
+               Column,
+               OpenCV.Core.UInt8_Value (Row * 4 + Column));
+         end loop;
+      end loop;
+
+      View := Source.Region ((X => 1, Y => 1, Width => 2, Height => 2));
+      Result := View.Mean_Std_Dev;
+
+      AUnit.Assertions.Assert
+        (not View.Is_Continuous
+         and then Approximately_Equal (View.Mean.Component_0, 7.5)
+         and then Approximately_Equal (Result.Mean.Component_0, 7.5)
+         and then Approximately_Equal
+                    (Result.Standard_Deviation.Component_0,
+                     2.061_552_812_808_831),
+         "Mean reductions must use only values in a non-continuous Region");
+   end Mean_Reductions_Operate_On_Non_Continuous_Region;
+
+   procedure Reshape_Preserves_Single_Channel_Mean_Reductions
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Reshaped     : OpenCV.Core.Mat;
+      Source_Stats : OpenCV.Core.Mean_Std_Dev_Result;
+      View_Stats   : OpenCV.Core.Mean_Std_Dev_Result;
+   begin
+      for Row in 0 .. 1 loop
+         for Column in 0 .. 2 loop
+            OpenCV.Core.Float32_Access.Set
+              (Source,
+               Row,
+               Column,
+               OpenCV.Core.Float32_Value (Row * 3 + Column + 1));
+         end loop;
+      end loop;
+
+      Reshaped := Source.Reshape (Channels => 1, Rows => 3);
+      Source_Stats := Source.Mean_Std_Dev;
+      View_Stats := Reshaped.Mean_Std_Dev;
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Source.Mean.Component_0, Reshaped.Mean.Component_0)
+         and then Approximately_Equal
+                    (Source_Stats.Mean.Component_0,
+                     View_Stats.Mean.Component_0)
+         and then Approximately_Equal
+                    (Source_Stats.Standard_Deviation.Component_0,
+                     View_Stats.Standard_Deviation.Component_0),
+         "Reshape must preserve single-channel mean reduction results");
+   end Reshape_Preserves_Single_Channel_Mean_Reductions;
+
+   procedure Mean_Reductions_Handle_Empty_And_Too_Many_Channels
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Empty_Image        : OpenCV.Core.Mat;
+      Five_Channel_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 5));
+
+      procedure Compute_Empty_Std_Dev is
+         Result : constant OpenCV.Core.Mean_Std_Dev_Result :=
+           Empty_Image.Mean_Std_Dev;
+      begin
+         pragma Unreferenced (Result);
+      end Compute_Empty_Std_Dev;
+
+      procedure Compute_Five_Channel_Mean is
+         Result : constant OpenCV.Core.Scalar := Five_Channel_Image.Mean;
+      begin
+         pragma Unreferenced (Result);
+      end Compute_Five_Channel_Mean;
+
+      procedure Compute_Five_Channel_Std_Dev is
+         Result : constant OpenCV.Core.Mean_Std_Dev_Result :=
+           Five_Channel_Image.Mean_Std_Dev;
+      begin
+         pragma Unreferenced (Result);
+      end Compute_Five_Channel_Std_Dev;
+   begin
+      AUnit.Assertions.Assert
+        (Empty_Image.Mean.Component_0 = 0.0
+         and then Empty_Image.Mean.Component_1 = 0.0
+         and then Empty_Image.Mean.Component_2 = 0.0
+         and then Empty_Image.Mean.Component_3 = 0.0,
+         "Mean must return OpenCV's zero Scalar for an empty Mat");
+      Assert_Raises_OpenCV_Error
+        (Compute_Empty_Std_Dev'Access,
+         "Mean_Std_Dev must reject an empty Mat");
+      Assert_Raises_OpenCV_Error
+        (Compute_Five_Channel_Mean'Access,
+         "Mean must reject channel results that do not fit Scalar");
+      Assert_Raises_OpenCV_Error
+        (Compute_Five_Channel_Std_Dev'Access,
+         "Mean_Std_Dev must reject channel results that do not fit Scalar");
+   end Mean_Reductions_Handle_Empty_And_Too_Many_Channels;
+
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 Mean returns arithmetic mean and zeroes",
+            Float32_Mean_Returns_Arithmetic_Mean_And_Zeroes'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt8 Mean is not Float32-specific",
+            UInt8_Mean_Is_Not_Float32_Specific'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Vec3 Mean returns independent channel values",
+            Vec3_Mean_Returns_Independent_Channel_Values'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 Mean_Std_Dev uses population deviation",
+            Float32_Mean_Std_Dev_Uses_Population_Deviation'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Vec3 Mean_Std_Dev returns independent channel values",
+            Vec3_Mean_Std_Dev_Returns_Independent_Channel_Values'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mean reductions operate on a non-continuous Region",
+            Mean_Reductions_Operate_On_Non_Continuous_Region'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Reshape preserves single-channel Mean reductions",
+            Reshape_Preserves_Single_Channel_Mean_Reductions'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mean reductions handle empty and unsupported channel layouts",
+            Mean_Reductions_Handle_Empty_And_Too_Many_Channels'Access));
       Result.Add_Test
         (Caller.Create
            ("Float32 Norm computes L1, L2, and Infinity",

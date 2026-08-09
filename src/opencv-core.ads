@@ -58,6 +58,11 @@ package OpenCV.Core is
       Maximum_Location : Point;
    end record;
 
+   type Mean_Std_Dev_Result is record
+      Mean               : Scalar;
+      Standard_Deviation : Scalar;
+   end record;
+
    type Rect is record
       X      : Size_Coordinate := 0;
       Y      : Size_Coordinate := 0;
@@ -116,6 +121,11 @@ package OpenCV.Core is
 
    procedure Set_To (Self : in out Mat; Value : Scalar);
    function Sum (Self : Mat) return Scalar;
+   --  Both reductions operate independently on each channel.  They support
+   --  one through four channels, matching Scalar's complete representation.
+   --  Mean returns a zero Scalar for an empty Mat; Mean_Std_Dev rejects one.
+   function Mean (Self : Mat) return Scalar;
+   function Mean_Std_Dev (Self : Mat) return Mean_Std_Dev_Result;
    function Norm (Self : Mat; Kind : Norm_Kind := L2) return Long_Float;
    function Min_Max_Loc (Self : Mat) return Min_Max_Result;
 

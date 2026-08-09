@@ -342,6 +342,18 @@ package OpenCV.Internal.C_API is
    function Mat_Sum (Self : Mat_Handle; Result : access Scalar) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_sum";
 
+   function Mat_Mean (Self : Mat_Handle; Result : access Scalar) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_mean";
+
+   function Mat_Mean_Std_Dev
+     (Self               : Mat_Handle;
+      Mean               : access Scalar;
+      Standard_Deviation : access Scalar) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_mean_std_dev";
+
    function Mat_Norm
      (Self : Mat_Handle; Kind : C_Int32; Result : access C_Double)
       return Status
