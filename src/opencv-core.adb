@@ -181,6 +181,31 @@ package body OpenCV.Core is
       return Result;
    end Clone;
 
+   function Convert_To
+     (Self   : Mat;
+      Depth  : Depth_Type;
+      Scale  : Long_Float := 1.0;
+      Offset : Long_Float := 0.0) return Mat
+   is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Status :=
+        OpenCV.Internal.C_API.Mat_Convert_To
+          (Source => Self.Handle,
+           Depth  => To_C_Depth (Depth),
+           Scale  => Interfaces.C.double (Scale),
+           Offset => Interfaces.C.double (Offset),
+           Result => New_Handle'Access);
+      Raise_On_Error (Status, "Mat type conversion");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Convert_To;
+
    function Is_Empty (Self : Mat) return Boolean is
       Empty  : aliased OpenCV.Internal.C_API.C_Boolean :=
         OpenCV.Internal.C_API.C_False;

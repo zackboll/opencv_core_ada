@@ -45,6 +45,11 @@ package OpenCV.Core is
    with Pre => Rows <= 2_147_483_647 and then Columns <= 2_147_483_647;
 
    function Clone (Self : Mat) return Mat;
+   function Convert_To
+     (Self   : Mat;
+      Depth  : Depth_Type;
+      Scale  : Long_Float := 1.0;
+      Offset : Long_Float := 0.0) return Mat;
    function Is_Empty (Self : Mat) return Boolean;
    function Rows (Self : Mat) return Natural;
    function Columns (Self : Mat) return Natural;

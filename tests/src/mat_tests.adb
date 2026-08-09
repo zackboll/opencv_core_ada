@@ -997,6 +997,154 @@ package body Mat_Tests is
         (Zero_Height'Access, "Region must reject zero height");
    end Region_Rejects_Invalid_Areas;
 
+   procedure Convert_To_UInt8_To_Float32_Preserves_Metadata_And_Source
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Converted : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.UInt8_Access.Set
+        (Source, Row => 0, Column => 0, Value => 10);
+      OpenCV.Core.UInt8_Access.Set
+        (Source, Row => 0, Column => 1, Value => 20);
+      Converted := Source.Convert_To (Depth => OpenCV.Core.Float32);
+
+      AUnit.Assertions.Assert
+        (Converted.Rows = 1 and then Converted.Columns = 2,
+         "Convert_To should preserve source dimensions");
+      AUnit.Assertions.Assert
+        (Converted.Channels = 1 and then Converted.Depth = OpenCV.Core.Float32,
+         "Convert_To should preserve channels and use the requested depth");
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float
+              (OpenCV.Core.Float32_Access.Get
+                 (Converted, Row => 0, Column => 0)),
+            10.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get
+                          (Converted, Row => 0, Column => 1)),
+                     20.0),
+         "Convert_To should preserve UInt8 values in Float32 output");
+      AUnit.Assertions.Assert
+        (Source.Depth = OpenCV.Core.UInt8
+         and then OpenCV.Core.UInt8_Access.Get (Source, Row => 0, Column => 0)
+                  = 10
+         and then OpenCV.Core.UInt8_Access.Get (Source, Row => 0, Column => 1)
+                  = 20,
+         "Convert_To must leave its UInt8 source unchanged");
+
+      OpenCV.Core.UInt8_Access.Set
+        (Source, Row => 0, Column => 0, Value => 99);
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float
+              (OpenCV.Core.Float32_Access.Get
+                 (Converted, Row => 0, Column => 0)),
+            10.0),
+         "Convert_To output must not share source storage");
+   end Convert_To_UInt8_To_Float32_Preserves_Metadata_And_Source;
+
+   procedure Convert_To_Applies_Scale_And_Offset
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Converted : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.UInt8_Access.Set
+        (Source, Row => 0, Column => 0, Value => 10);
+      Converted :=
+        Source.Convert_To
+          (Depth => OpenCV.Core.Float32, Scale => 2.0, Offset => 5.0);
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float
+              (OpenCV.Core.Float32_Access.Get
+                 (Converted, Row => 0, Column => 0)),
+            25.0),
+         "Convert_To should calculate source * Scale + Offset");
+   end Convert_To_Applies_Scale_And_Offset;
+
+   procedure Convert_To_Float32_To_UInt8_Saturates
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Converted : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set
+        (Source, Row => 0, Column => 0, Value => -1.2);
+      OpenCV.Core.Float32_Access.Set
+        (Source, Row => 0, Column => 1, Value => 12.6);
+      OpenCV.Core.Float32_Access.Set
+        (Source, Row => 0, Column => 2, Value => 300.0);
+      Converted := Source.Convert_To (Depth => OpenCV.Core.UInt8);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Converted, Row => 0, Column => 0) = 0
+         and then OpenCV.Core.UInt8_Access.Get
+                    (Converted, Row => 0, Column => 1)
+                  = 13
+         and then OpenCV.Core.UInt8_Access.Get
+                    (Converted, Row => 0, Column => 2)
+                  = 255,
+         "Float32-to-UInt8 conversion must round then saturate to 0 .. 255");
+   end Convert_To_Float32_To_UInt8_Saturates;
+
+   procedure Convert_To_Preserves_Vec3_Channels
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 3));
+      Converted : OpenCV.Core.Mat;
+      Pixel     : OpenCV.Core.UInt8_Vec3.Vector;
+   begin
+      OpenCV.Core.Float32_Vec3_Access.Set
+        (Source, Row => 0, Column => 0, Value => (1.4, 127.6, 260.0));
+      Converted := Source.Convert_To (Depth => OpenCV.Core.UInt8);
+      Pixel :=
+        OpenCV.Core.UInt8_Vec3_Access.Get (Converted, Row => 0, Column => 0);
+
+      AUnit.Assertions.Assert
+        (Converted.Channels = 3 and then Converted.Depth = OpenCV.Core.UInt8,
+         "Convert_To must preserve Vec3 channel count");
+      AUnit.Assertions.Assert
+        (Pixel (0) = 1 and then Pixel (1) = 128 and then Pixel (2) = 255,
+         "Convert_To must apply conversion independently to Vec3 components");
+   end Convert_To_Preserves_Vec3_Channels;
+
+   procedure Convert_To_Empty_Mat_Remains_Empty
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source    : OpenCV.Core.Mat;
+      Converted : constant OpenCV.Core.Mat :=
+        Source.Convert_To (Depth => OpenCV.Core.Float32);
+   begin
+      AUnit.Assertions.Assert
+        (Converted.Is_Empty,
+         "Converting a default Mat should produce an empty Mat");
+   end Convert_To_Empty_Mat_Remains_Empty;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -1111,6 +1259,26 @@ package body Mat_Tests is
         (Caller.Create
            ("Region rejects invalid areas",
             Region_Rejects_Invalid_Areas'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Convert_To UInt8 to Float32 preserves metadata and source",
+            Convert_To_UInt8_To_Float32_Preserves_Metadata_And_Source'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Convert_To applies scale and offset",
+            Convert_To_Applies_Scale_And_Offset'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Convert_To Float32 to UInt8 saturates",
+            Convert_To_Float32_To_UInt8_Saturates'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Convert_To preserves Vec3 channels",
+            Convert_To_Preserves_Vec3_Channels'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Convert_To empty Mat remains empty",
+            Convert_To_Empty_Mat_Remains_Empty'Access));
       return Result'Access;
    end Suite;
 

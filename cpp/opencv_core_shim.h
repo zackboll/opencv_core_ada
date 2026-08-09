@@ -75,6 +75,15 @@ opencv_core_mat_clone(const opencv_core_mat_handle *source,
                       opencv_core_mat_handle **out_mat);
 
 /*
+ * Converts source data to the requested depth, preserving its channel count,
+ * using OpenCV's saturating alpha * source + beta transformation.
+ */
+opencv_core_status
+opencv_core_mat_convert_to(const opencv_core_mat_handle *source,
+                           int32_t depth, double scale, double offset,
+                           opencv_core_mat_handle **out_mat);
+
+/*
  * Creates a distinct Mat header for the indicated non-empty 2D region. The
  * header shares source storage through OpenCV reference counting.
  */
