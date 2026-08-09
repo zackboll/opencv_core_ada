@@ -6,6 +6,7 @@ package body OpenCV.Core is
    use type OpenCV.Internal.C_API.C_Boolean;
    use type OpenCV.Internal.C_API.C_UInt64;
    use type OpenCV.Internal.C_API.Status;
+   use type Depth_Type;
 
    procedure Raise_On_Error
      (Result : OpenCV.Internal.C_API.Status; Operation : String)
@@ -637,5 +638,54 @@ package body OpenCV.Core is
       Raise_On_Error (Result, "Mat sum operation");
       return From_C_Scalar (C_Result);
    end Sum;
+
+   function Min_Max_Loc (Self : Mat) return Min_Max_Result is
+      Minimum   : aliased OpenCV.Internal.C_API.C_Double := 0.0;
+      Maximum   : aliased OpenCV.Internal.C_API.C_Double := 0.0;
+      Minimum_X : aliased OpenCV.Internal.C_API.C_Int32 := 0;
+      Minimum_Y : aliased OpenCV.Internal.C_API.C_Int32 := 0;
+      Maximum_X : aliased OpenCV.Internal.C_API.C_Int32 := 0;
+      Maximum_Y : aliased OpenCV.Internal.C_API.C_Int32 := 0;
+      Status    : OpenCV.Internal.C_API.Status;
+   begin
+      if Self.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Min/max location requires a non-empty Mat");
+      end if;
+
+      if Self.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Min/max location requires a single-channel Mat");
+      end if;
+
+      if Self.Depth = Float16 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Min/max location does not support Float16 Mats");
+      end if;
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_Min_Max_Loc
+          (Self      => Self.Handle,
+           Minimum   => Minimum'Access,
+           Maximum   => Maximum'Access,
+           Minimum_X => Minimum_X'Access,
+           Minimum_Y => Minimum_Y'Access,
+           Maximum_X => Maximum_X'Access,
+           Maximum_Y => Maximum_Y'Access);
+      Raise_On_Error (Status, "Mat min/max location operation");
+
+      return
+        (Minimum          => Long_Float (Minimum),
+         Maximum          => Long_Float (Maximum),
+         Minimum_Location =>
+           (X => Point_Coordinate (Minimum_X),
+            Y => Point_Coordinate (Minimum_Y)),
+         Maximum_Location =>
+           (X => Point_Coordinate (Maximum_X),
+            Y => Point_Coordinate (Maximum_Y)));
+   end Min_Max_Loc;
 
 end OpenCV.Core;

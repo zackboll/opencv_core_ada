@@ -1527,4 +1527,64 @@ opencv_core_mat_sum(const opencv_core_mat_handle *mat,
     }
 }
 
+opencv_core_status
+opencv_core_mat_min_max_loc(const opencv_core_mat_handle *mat,
+                            double *out_minimum, double *out_maximum,
+                            int32_t *out_minimum_x, int32_t *out_minimum_y,
+                            int32_t *out_maximum_x, int32_t *out_maximum_y) {
+    clear_error();
+
+    if (out_minimum == nullptr || out_maximum == nullptr ||
+        out_minimum_x == nullptr || out_minimum_y == nullptr ||
+        out_maximum_x == nullptr || out_maximum_y == nullptr) {
+        return invalid_argument("Min/max output pointers must not be null");
+    }
+
+    *out_minimum = 0.0;
+    *out_maximum = 0.0;
+    *out_minimum_x = 0;
+    *out_minimum_y = 0;
+    *out_maximum_x = 0;
+    *out_maximum_y = 0;
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        if (mat->value.dims != 2) {
+            return invalid_argument("Mat must be two-dimensional");
+        }
+
+        if (mat->value.channels() != 1) {
+            return invalid_argument("Mat must have exactly one channel");
+        }
+
+        if (mat->value.empty()) {
+            return invalid_argument("Mat must not be empty");
+        }
+
+        if (mat->value.depth() == CV_16F) {
+            return invalid_argument("Mat depth Float16 is not supported");
+        }
+
+        double minimum = 0.0;
+        double maximum = 0.0;
+        cv::Point minimum_location;
+        cv::Point maximum_location;
+        cv::minMaxLoc(mat->value, &minimum, &maximum, &minimum_location,
+                      &maximum_location);
+
+        *out_minimum = minimum;
+        *out_maximum = maximum;
+        *out_minimum_x = static_cast<int32_t>(minimum_location.x);
+        *out_minimum_y = static_cast<int32_t>(minimum_location.y);
+        *out_maximum_x = static_cast<int32_t>(maximum_location.x);
+        *out_maximum_y = static_cast<int32_t>(maximum_location.y);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
 } // extern "C"

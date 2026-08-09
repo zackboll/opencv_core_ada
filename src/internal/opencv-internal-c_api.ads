@@ -338,4 +338,17 @@ package OpenCV.Internal.C_API is
    function Mat_Sum (Self : Mat_Handle; Result : access Scalar) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_sum";
 
+   function Mat_Min_Max_Loc
+     (Self      : Mat_Handle;
+      Minimum   : access C_Double;
+      Maximum   : access C_Double;
+      Minimum_X : access C_Int32;
+      Minimum_Y : access C_Int32;
+      Maximum_X : access C_Int32;
+      Maximum_Y : access C_Int32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_min_max_loc";
+
 end OpenCV.Internal.C_API;

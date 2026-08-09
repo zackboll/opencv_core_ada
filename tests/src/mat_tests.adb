@@ -2710,8 +2710,216 @@ package body Mat_Tests is
          "Matx3x3 conversion must reject a Mat with wrong channel count");
    end Float32_Matx3x3_Rejects_Incompatible_Mat_Layouts;
 
+   procedure Min_Max_Loc_UInt8_Returns_Values_And_Column_Row_Points
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 3,
+           Columns      => 4,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Result : OpenCV.Core.Min_Max_Result;
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (50.0));
+      OpenCV.Core.UInt8_Access.Set (Image, Row => 1, Column => 3, Value => 4);
+      OpenCV.Core.UInt8_Access.Set
+        (Image, Row => 2, Column => 0, Value => 220);
+
+      Result := Image.Min_Max_Loc;
+
+      AUnit.Assertions.Assert
+        (Result.Minimum = 4.0 and then Result.Maximum = 220.0,
+         "Min_Max_Loc must return UInt8 extrema as Long_Float values");
+      AUnit.Assertions.Assert
+        (Result.Minimum_Location.X = 3 and then Result.Minimum_Location.Y = 1,
+         "The minimum Point must map X to column and Y to row");
+      AUnit.Assertions.Assert
+        (Result.Maximum_Location.X = 0 and then Result.Maximum_Location.Y = 2,
+         "The maximum Point must map X to column and Y to row");
+   end Min_Max_Loc_UInt8_Returns_Values_And_Column_Row_Points;
+
+   procedure Min_Max_Loc_Float32_Returns_Negative_Fractional_Values
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Result : OpenCV.Core.Min_Max_Result;
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (0.25));
+      OpenCV.Core.Float32_Access.Set
+        (Image, Row => 0, Column => 2, Value => -3.5);
+      OpenCV.Core.Float32_Access.Set
+        (Image, Row => 1, Column => 1, Value => 7.125);
+
+      Result := Image.Min_Max_Loc;
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Result.Minimum, -3.5)
+         and then Approximately_Equal (Result.Maximum, 7.125),
+         "Min_Max_Loc must preserve Float32 negative fractional extrema");
+      AUnit.Assertions.Assert
+        (Result.Minimum_Location.X = 2
+         and then Result.Minimum_Location.Y = 0
+         and then Result.Maximum_Location.X = 1
+         and then Result.Maximum_Location.Y = 1,
+         "Float32 extrema locations must use column-row Point ordering");
+   end Min_Max_Loc_Float32_Returns_Negative_Fractional_Values;
+
+   procedure Min_Max_Loc_Supports_Int32 (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Image  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.Int32, Channels => 1));
+      Result : OpenCV.Core.Min_Max_Result;
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (-100.0));
+      Result := Image.Min_Max_Loc;
+
+      AUnit.Assertions.Assert
+        (Result.Minimum = -100.0 and then Result.Maximum = -100.0,
+         "Min_Max_Loc must support OpenCV's Int32 depth");
+   end Min_Max_Loc_Supports_Int32;
+
+   procedure Min_Max_Loc_Uses_Region_Relative_Coordinates
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 5,
+           Columns      => 6,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      View   : OpenCV.Core.Mat;
+      Result : OpenCV.Core.Min_Max_Result;
+   begin
+      Source.Set_To (OpenCV.Core.Make_Scalar (100.0));
+      View := Source.Region ((X => 1, Y => 1, Width => 4, Height => 3));
+      OpenCV.Core.UInt8_Access.Set (View, Row => 0, Column => 3, Value => 2);
+      OpenCV.Core.UInt8_Access.Set (View, Row => 2, Column => 0, Value => 240);
+
+      AUnit.Assertions.Assert
+        (not View.Is_Continuous,
+         "The Region test must exercise a non-contiguous view");
+      Result := View.Min_Max_Loc;
+
+      AUnit.Assertions.Assert
+        (Result.Minimum = 2.0 and then Result.Maximum = 240.0,
+         "Min_Max_Loc must operate on a non-contiguous Region");
+      AUnit.Assertions.Assert
+        (Result.Minimum_Location.X = 3
+         and then Result.Minimum_Location.Y = 0
+         and then Result.Maximum_Location.X = 0
+         and then Result.Maximum_Location.Y = 2,
+         "Region extrema locations must be relative to the Region");
+   end Min_Max_Loc_Uses_Region_Relative_Coordinates;
+
+   procedure Min_Max_Loc_Operates_On_Row_View (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 3,
+           Columns      => 4,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      View   : OpenCV.Core.Mat;
+      Result : OpenCV.Core.Min_Max_Result;
+   begin
+      Source.Set_To (OpenCV.Core.Make_Scalar (30.0));
+      View := Source.Row_View (1);
+      OpenCV.Core.UInt8_Access.Set (View, Row => 0, Column => 3, Value => 1);
+      OpenCV.Core.UInt8_Access.Set (View, Row => 0, Column => 0, Value => 99);
+
+      Result := View.Min_Max_Loc;
+
+      AUnit.Assertions.Assert
+        (Result.Minimum = 1.0 and then Result.Maximum = 99.0,
+         "Min_Max_Loc must operate on a row view");
+      AUnit.Assertions.Assert
+        (Result.Minimum_Location.X = 3
+         and then Result.Minimum_Location.Y = 0
+         and then Result.Maximum_Location.X = 0
+         and then Result.Maximum_Location.Y = 0,
+         "Row-view extrema locations must be relative to the view");
+   end Min_Max_Loc_Operates_On_Row_View;
+
+   procedure Min_Max_Loc_Rejects_Invalid_Mats (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Empty_Image   : OpenCV.Core.Mat;
+      Multi_Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      Float16_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.Float16, Channels => 1));
+
+      procedure Find_Empty is
+         Result : constant OpenCV.Core.Min_Max_Result :=
+           Empty_Image.Min_Max_Loc;
+      begin
+         pragma Unreferenced (Result);
+      end Find_Empty;
+
+      procedure Find_Multi_Channel is
+         Result : constant OpenCV.Core.Min_Max_Result :=
+           Multi_Image.Min_Max_Loc;
+      begin
+         pragma Unreferenced (Result);
+      end Find_Multi_Channel;
+
+      procedure Find_Float16 is
+         Result : constant OpenCV.Core.Min_Max_Result :=
+           Float16_Image.Min_Max_Loc;
+      begin
+         pragma Unreferenced (Result);
+      end Find_Float16;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Find_Empty'Access, "Min_Max_Loc must reject an empty Mat");
+      Assert_Raises_OpenCV_Error
+        (Find_Multi_Channel'Access,
+         "Min_Max_Loc must reject a multi-channel Mat");
+      Assert_Raises_OpenCV_Error
+        (Find_Float16'Access,
+         "Min_Max_Loc must reject OpenCV's unsupported Float16 depth");
+   end Min_Max_Loc_Rejects_Invalid_Mats;
+
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
+      Result.Add_Test
+        (Caller.Create
+           ("Min_Max_Loc UInt8 returns values and column-row Points",
+            Min_Max_Loc_UInt8_Returns_Values_And_Column_Row_Points'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Min_Max_Loc Float32 returns negative fractional values",
+            Min_Max_Loc_Float32_Returns_Negative_Fractional_Values'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Min_Max_Loc supports Int32", Min_Max_Loc_Supports_Int32'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Min_Max_Loc uses Region-relative coordinates",
+            Min_Max_Loc_Uses_Region_Relative_Coordinates'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Min_Max_Loc operates on a row view",
+            Min_Max_Loc_Operates_On_Row_View'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Min_Max_Loc rejects invalid Mats",
+            Min_Max_Loc_Rejects_Invalid_Mats'Access));
       Result.Add_Test
         (Caller.Create
            ("Size and Point are ordinary value types",

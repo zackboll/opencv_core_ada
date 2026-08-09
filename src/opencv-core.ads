@@ -49,6 +49,13 @@ package OpenCV.Core is
       Component_3 : Long_Float := 0.0;
    end record;
 
+   type Min_Max_Result is record
+      Minimum          : Long_Float;
+      Maximum          : Long_Float;
+      Minimum_Location : Point;
+      Maximum_Location : Point;
+   end record;
+
    type Rect is record
       X      : Size_Coordinate := 0;
       Y      : Size_Coordinate := 0;
@@ -107,6 +114,7 @@ package OpenCV.Core is
 
    procedure Set_To (Self : in out Mat; Value : Scalar);
    function Sum (Self : Mat) return Scalar;
+   function Min_Max_Loc (Self : Mat) return Min_Max_Result;
 
 private
 

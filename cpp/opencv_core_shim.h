@@ -271,6 +271,16 @@ opencv_core_status
 opencv_core_mat_sum(const opencv_core_mat_handle *mat,
                     opencv_core_scalar *out_sum);
 
+/*
+ * Finds extrema in a non-empty, two-dimensional, single-channel Mat.
+ * Locations are reported as zero-based X (column) and Y (row) coordinates.
+ */
+opencv_core_status
+opencv_core_mat_min_max_loc(const opencv_core_mat_handle *mat,
+                            double *out_minimum, double *out_maximum,
+                            int32_t *out_minimum_x, int32_t *out_minimum_y,
+                            int32_t *out_maximum_x, int32_t *out_maximum_y);
+
 #ifdef __cplusplus
 }
 #endif
