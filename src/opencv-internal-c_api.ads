@@ -28,6 +28,19 @@ package OpenCV.Internal.C_API is
    end record
    with Convention => C;
 
+   type UInt8_Vec3 is record
+      Component_0 : C_UInt8;
+      Component_1 : C_UInt8;
+      Component_2 : C_UInt8;
+   end record
+   with Convention => C;
+
+   type Float32_Vec3 is record
+      Component_0 : C_Float32;
+      Component_1 : C_Float32;
+      Component_2 : C_Float32;
+   end record
+   with Convention => C;
    Depth_UInt8   : constant C_Int32 := 0;
    Depth_Int8    : constant C_Int32 := 1;
    Depth_UInt16  : constant C_Int32 := 2;
@@ -108,6 +121,46 @@ package OpenCV.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_core_mat_set_float32";
+
+   function Mat_Get_UInt8_Vec3
+     (Self   : Mat_Handle;
+      Row    : C_Int32;
+      Column : C_Int32;
+      Result : access UInt8_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_uint8_vec3";
+
+   function Mat_Set_UInt8_Vec3
+     (Self   : Mat_Handle;
+      Row    : C_Int32;
+      Column : C_Int32;
+      Value  : access constant UInt8_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_uint8_vec3";
+
+   function Mat_Get_Float32_Vec3
+     (Self   : Mat_Handle;
+      Row    : C_Int32;
+      Column : C_Int32;
+      Result : access Float32_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_float32_vec3";
+
+   function Mat_Set_Float32_Vec3
+     (Self   : Mat_Handle;
+      Row    : C_Int32;
+      Column : C_Int32;
+      Value  : access constant Float32_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_float32_vec3";
 
    function Mat_Set_To (Self : Mat_Handle; Value : access Scalar) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_set_to";

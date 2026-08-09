@@ -5,7 +5,11 @@ with AUnit.Test_Fixtures;
 with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
+with OpenCV.Core.Float32_Vec3;
+with OpenCV.Core.Float32_Vec3_Access;
 with OpenCV.Core.UInt8_Access;
+with OpenCV.Core.UInt8_Vec3;
+with OpenCV.Core.UInt8_Vec3_Access;
 
 package body Mat_Tests is
 
@@ -552,6 +556,245 @@ package body Mat_Tests is
          "The source should remain valid after its clone is finalized");
    end Empty_Mat_Clone_Is_Empty_And_Finalizes_Safely;
 
+   procedure UInt8_Vec3_Typed_Element_Access (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      First  : constant OpenCV.Core.UInt8_Vec3.Vector := (1, 2, 3);
+      Second : constant OpenCV.Core.UInt8_Vec3.Vector := (10, 20, 30);
+      Pixel  : OpenCV.Core.UInt8_Vec3.Vector;
+      Total  : OpenCV.Core.Scalar;
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Image, Row => 0, Column => 1, Value => First);
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Image, Row => 1, Column => 2, Value => Second);
+
+      Pixel :=
+        OpenCV.Core.UInt8_Vec3_Access.Get (Image, Row => 0, Column => 1);
+      AUnit.Assertions.Assert
+        (Pixel (0) = 1 and then Pixel (1) = 2 and then Pixel (2) = 3,
+         "UInt8 Vec3 Get should preserve all first pixel components");
+
+      Pixel :=
+        OpenCV.Core.UInt8_Vec3_Access.Get (Image, Row => 1, Column => 2);
+      AUnit.Assertions.Assert
+        (Pixel (0) = 10 and then Pixel (1) = 20 and then Pixel (2) = 30,
+         "UInt8 Vec3 Get should preserve all second pixel components");
+
+      Total := Image.Sum;
+      AUnit.Assertions.Assert
+        (Total.Component_0 = 11.0
+         and then Total.Component_1 = 22.0
+         and then Total.Component_2 = 33.0
+         and then Total.Component_3 = 0.0,
+         "Sum should independently include written UInt8 Vec3 components");
+   end UInt8_Vec3_Typed_Element_Access;
+
+   procedure Float32_Vec3_Typed_Element_Access (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 3));
+      First  : constant OpenCV.Core.Float32_Vec3.Vector := (1.25, -2.5, 3.75);
+      Second : constant OpenCV.Core.Float32_Vec3.Vector :=
+        (-0.5, 0.125, 9.875);
+      Pixel  : OpenCV.Core.Float32_Vec3.Vector;
+   begin
+      OpenCV.Core.Float32_Vec3_Access.Set
+        (Image, Row => 0, Column => 0, Value => First);
+      OpenCV.Core.Float32_Vec3_Access.Set
+        (Image, Row => 1, Column => 1, Value => Second);
+
+      Pixel :=
+        OpenCV.Core.Float32_Vec3_Access.Get (Image, Row => 0, Column => 0);
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Long_Float (Pixel (0)), 1.25)
+         and then Approximately_Equal (Long_Float (Pixel (1)), -2.5)
+         and then Approximately_Equal (Long_Float (Pixel (2)), 3.75),
+         "Float32 Vec3 Get should preserve fractional first pixel components");
+
+      Pixel :=
+        OpenCV.Core.Float32_Vec3_Access.Get (Image, Row => 1, Column => 1);
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Long_Float (Pixel (0)), -0.5)
+         and then Approximately_Equal (Long_Float (Pixel (1)), 0.125)
+         and then Approximately_Equal (Long_Float (Pixel (2)), 9.875),
+         "Float32 Vec3 Get should preserve fractional second pixel"
+         & " components");
+   end Float32_Vec3_Typed_Element_Access;
+
+   procedure Vec3_Typed_Access_Rejects_Invalid_Mats_And_Indices
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      UInt8_Vec3_Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      Float32_Vec3_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 3));
+      UInt8_Scalar_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      UInt8_Vec2_Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 2));
+
+      procedure Read_UInt8_From_Float32 is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Vec3_Access.Get
+              (Float32_Vec3_Image, Row => 0, Column => 0) (0)
+            = 255,
+            "An incompatible UInt8 Vec3 read unexpectedly succeeded");
+      end Read_UInt8_From_Float32;
+
+      procedure Read_Float32_From_UInt8 is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float32_Vec3_Access.Get
+              (UInt8_Vec3_Image, Row => 0, Column => 0) (0)
+            = 1.0,
+            "An incompatible Float32 Vec3 read unexpectedly succeeded");
+      end Read_Float32_From_UInt8;
+
+      procedure Read_Single_Channel is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Vec3_Access.Get
+              (UInt8_Scalar_Image, Row => 0, Column => 0) (0)
+            = 255,
+            "A single-channel Vec3 read unexpectedly succeeded");
+      end Read_Single_Channel;
+
+      procedure Read_Two_Channel is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Vec3_Access.Get
+              (UInt8_Vec2_Image, Row => 0, Column => 0) (0)
+            = 255,
+            "A two-channel Vec3 read unexpectedly succeeded");
+      end Read_Two_Channel;
+
+      procedure Read_Negative_Row is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Vec3_Access.Get
+              (UInt8_Vec3_Image, Row => -1, Column => 0) (0)
+            = 255,
+            "A negative Vec3 row read unexpectedly succeeded");
+      end Read_Negative_Row;
+
+      procedure Read_Row_After_Last is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Vec3_Access.Get
+              (UInt8_Vec3_Image, Row => 2, Column => 0) (0)
+            = 255,
+            "A past-the-end Vec3 row read unexpectedly succeeded");
+      end Read_Row_After_Last;
+
+      procedure Read_Negative_Column is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Vec3_Access.Get
+              (UInt8_Vec3_Image, Row => 0, Column => -1) (0)
+            = 255,
+            "A negative Vec3 column read unexpectedly succeeded");
+      end Read_Negative_Column;
+
+      procedure Read_Column_After_Last is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Vec3_Access.Get
+              (UInt8_Vec3_Image, Row => 0, Column => 2) (0)
+            = 255,
+            "A past-the-end Vec3 column read unexpectedly succeeded");
+      end Read_Column_After_Last;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Read_UInt8_From_Float32'Access,
+         "UInt8 Vec3 access must reject a Float32 Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_Float32_From_UInt8'Access,
+         "Float32 Vec3 access must reject a UInt8 Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_Single_Channel'Access,
+         "Vec3 access must reject a single-channel Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_Two_Channel'Access,
+         "Vec3 access must reject a Mat without three channels");
+      Assert_Raises_OpenCV_Error
+        (Read_Negative_Row'Access, "Vec3 access must reject a negative row");
+      Assert_Raises_OpenCV_Error
+        (Read_Row_After_Last'Access,
+         "Vec3 access must reject a row after the last row");
+      Assert_Raises_OpenCV_Error
+        (Read_Negative_Column'Access,
+         "Vec3 access must reject a negative column");
+      Assert_Raises_OpenCV_Error
+        (Read_Column_After_Last'Access,
+         "Vec3 access must reject a column after the last column");
+   end Vec3_Typed_Access_Rejects_Invalid_Mats_And_Indices;
+
+   procedure Vec3_Access_Proves_Assignment_And_Clone_Semantics
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      Shallow_Copy : OpenCV.Core.Mat;
+      Deep_Copy    : OpenCV.Core.Mat;
+      Original     : constant OpenCV.Core.UInt8_Vec3.Vector := (1, 2, 3);
+      Replacement  : constant OpenCV.Core.UInt8_Vec3.Vector := (10, 20, 30);
+      Pixel        : OpenCV.Core.UInt8_Vec3.Vector;
+   begin
+      Shallow_Copy := Source;
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Source, Row => 0, Column => 0, Value => Original);
+
+      Pixel :=
+        OpenCV.Core.UInt8_Vec3_Access.Get
+          (Shallow_Copy, Row => 0, Column => 0);
+      AUnit.Assertions.Assert
+        (Pixel (0) = Original (0)
+         and then Pixel (1) = Original (1)
+         and then Pixel (2) = Original (2),
+         "An assigned Mat must share Vec3 element writes");
+
+      Deep_Copy := Source.Clone;
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Source, Row => 0, Column => 0, Value => Replacement);
+
+      Pixel :=
+        OpenCV.Core.UInt8_Vec3_Access.Get (Deep_Copy, Row => 0, Column => 0);
+      AUnit.Assertions.Assert
+        (Pixel (0) = Original (0)
+         and then Pixel (1) = Original (1)
+         and then Pixel (2) = Original (2),
+         "A cloned Mat must retain its original Vec3 element value");
+   end Vec3_Access_Proves_Assignment_And_Clone_Semantics;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -630,6 +873,22 @@ package body Mat_Tests is
         (Caller.Create
            ("Empty Mat clone finalizes safely",
             Empty_Mat_Clone_Is_Empty_And_Finalizes_Safely'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt8 Vec3 typed element access",
+            UInt8_Vec3_Typed_Element_Access'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 Vec3 typed element access",
+            Float32_Vec3_Typed_Element_Access'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Vec3 typed access rejects invalid Mats and indices",
+            Vec3_Typed_Access_Rejects_Invalid_Mats_And_Indices'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Vec3 access proves assignment and Clone semantics",
+            Vec3_Access_Proves_Assignment_And_Clone_Semantics'Access));
       return Result'Access;
    end Suite;
 

@@ -24,6 +24,17 @@ typedef struct {
     double component_3;
 } opencv_core_scalar;
 
+typedef struct {
+    uint8_t component_0;
+    uint8_t component_1;
+    uint8_t component_2;
+} opencv_core_uint8_vec3;
+
+typedef struct {
+    float component_0;
+    float component_1;
+    float component_2;
+} opencv_core_float32_vec3;
 /*
  * Stable depth identifiers for the C ABI. These are translated explicitly to
  * OpenCV depth constants by the shim and are not OpenCV's encoded Mat types.
@@ -104,6 +115,31 @@ opencv_core_mat_get_float32(const opencv_core_mat_handle *mat, int32_t row,
 opencv_core_status
 opencv_core_mat_set_float32(opencv_core_mat_handle *mat, int32_t row,
                             int32_t column, float value);
+
+/*
+ * Read or write one element of a two-dimensional, exactly three-channel Mat.
+ * Row, column, and component numbering are zero-based. The ABI Vec structs
+ * are converted explicitly to/from cv::Vec; their layouts are independent.
+ */
+opencv_core_status
+opencv_core_mat_get_uint8_vec3(const opencv_core_mat_handle *mat, int32_t row,
+                               int32_t column,
+                               opencv_core_uint8_vec3 *out_value);
+
+opencv_core_status
+opencv_core_mat_set_uint8_vec3(opencv_core_mat_handle *mat, int32_t row,
+                               int32_t column,
+                               const opencv_core_uint8_vec3 *value);
+
+opencv_core_status
+opencv_core_mat_get_float32_vec3(const opencv_core_mat_handle *mat,
+                                 int32_t row, int32_t column,
+                                 opencv_core_float32_vec3 *out_value);
+
+opencv_core_status
+opencv_core_mat_set_float32_vec3(opencv_core_mat_handle *mat, int32_t row,
+                                 int32_t column,
+                                 const opencv_core_float32_vec3 *value);
 
 opencv_core_status
 opencv_core_mat_set_to(opencv_core_mat_handle *mat,

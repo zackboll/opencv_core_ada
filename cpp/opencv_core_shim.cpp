@@ -92,6 +92,28 @@ opencv_core_scalar from_opencv_scalar(const cv::Scalar &value) noexcept {
     return {value[0], value[1], value[2], value[3]};
 }
 
+cv::Vec<uint8_t, 3>
+to_opencv_vec3(const opencv_core_uint8_vec3 &value) noexcept {
+    return cv::Vec<uint8_t, 3>(value.component_0, value.component_1,
+                               value.component_2);
+}
+
+opencv_core_uint8_vec3
+from_opencv_vec3(const cv::Vec<uint8_t, 3> &value) noexcept {
+    return {value[0], value[1], value[2]};
+}
+
+cv::Vec<float, 3>
+to_opencv_vec3(const opencv_core_float32_vec3 &value) noexcept {
+    return cv::Vec<float, 3>(value.component_0, value.component_1,
+                             value.component_2);
+}
+
+opencv_core_float32_vec3
+from_opencv_vec3(const cv::Vec<float, 3> &value) noexcept {
+    return {value[0], value[1], value[2]};
+}
+
 bool from_opencv_depth(int opencv_depth, int32_t &depth) noexcept {
     switch (opencv_depth) {
     case CV_8U:
@@ -522,6 +544,186 @@ opencv_core_mat_set_float32(opencv_core_mat_handle *mat, int32_t row,
 
         mat->value.at<float>(static_cast<int>(row),
                              static_cast<int>(column)) = value;
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_get_uint8_vec3(const opencv_core_mat_handle *mat, int32_t row,
+                               int32_t column,
+                               opencv_core_uint8_vec3 *out_value) {
+    clear_error();
+
+    if (out_value == nullptr) {
+        return invalid_argument("out_value must not be null");
+    }
+
+    *out_value = {0, 0, 0};
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    if (row < 0 || column < 0) {
+        return invalid_argument("row and column must not be negative");
+    }
+
+    try {
+        if (mat->value.dims != 2) {
+            return invalid_argument("Mat must be two-dimensional");
+        }
+
+        if (mat->value.depth() != CV_8U) {
+            return invalid_argument("Mat depth must be UInt8");
+        }
+
+        if (mat->value.channels() != 3) {
+            return invalid_argument("Mat must have exactly three channels");
+        }
+
+        if (row >= mat->value.rows || column >= mat->value.cols) {
+            return invalid_argument("row or column is outside Mat bounds");
+        }
+
+        *out_value = from_opencv_vec3(
+            mat->value.at<cv::Vec<uint8_t, 3>>(static_cast<int>(row),
+                                                static_cast<int>(column)));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_set_uint8_vec3(opencv_core_mat_handle *mat, int32_t row,
+                               int32_t column,
+                               const opencv_core_uint8_vec3 *value) {
+    clear_error();
+
+    if (value == nullptr) {
+        return invalid_argument("value must not be null");
+    }
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    if (row < 0 || column < 0) {
+        return invalid_argument("row and column must not be negative");
+    }
+
+    try {
+        if (mat->value.dims != 2) {
+            return invalid_argument("Mat must be two-dimensional");
+        }
+
+        if (mat->value.depth() != CV_8U) {
+            return invalid_argument("Mat depth must be UInt8");
+        }
+
+        if (mat->value.channels() != 3) {
+            return invalid_argument("Mat must have exactly three channels");
+        }
+
+        if (row >= mat->value.rows || column >= mat->value.cols) {
+            return invalid_argument("row or column is outside Mat bounds");
+        }
+
+        mat->value.at<cv::Vec<uint8_t, 3>>(static_cast<int>(row),
+                                             static_cast<int>(column)) =
+            to_opencv_vec3(*value);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_get_float32_vec3(const opencv_core_mat_handle *mat,
+                                 int32_t row, int32_t column,
+                                 opencv_core_float32_vec3 *out_value) {
+    clear_error();
+
+    if (out_value == nullptr) {
+        return invalid_argument("out_value must not be null");
+    }
+
+    *out_value = {0.0F, 0.0F, 0.0F};
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    if (row < 0 || column < 0) {
+        return invalid_argument("row and column must not be negative");
+    }
+
+    try {
+        if (mat->value.dims != 2) {
+            return invalid_argument("Mat must be two-dimensional");
+        }
+
+        if (mat->value.depth() != CV_32F) {
+            return invalid_argument("Mat depth must be Float32");
+        }
+
+        if (mat->value.channels() != 3) {
+            return invalid_argument("Mat must have exactly three channels");
+        }
+
+        if (row >= mat->value.rows || column >= mat->value.cols) {
+            return invalid_argument("row or column is outside Mat bounds");
+        }
+
+        *out_value = from_opencv_vec3(
+            mat->value.at<cv::Vec<float, 3>>(static_cast<int>(row),
+                                              static_cast<int>(column)));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_set_float32_vec3(opencv_core_mat_handle *mat, int32_t row,
+                                 int32_t column,
+                                 const opencv_core_float32_vec3 *value) {
+    clear_error();
+
+    if (value == nullptr) {
+        return invalid_argument("value must not be null");
+    }
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    if (row < 0 || column < 0) {
+        return invalid_argument("row and column must not be negative");
+    }
+
+    try {
+        if (mat->value.dims != 2) {
+            return invalid_argument("Mat must be two-dimensional");
+        }
+
+        if (mat->value.depth() != CV_32F) {
+            return invalid_argument("Mat depth must be Float32");
+        }
+
+        if (mat->value.channels() != 3) {
+            return invalid_argument("Mat must have exactly three channels");
+        }
+
+        if (row >= mat->value.rows || column >= mat->value.cols) {
+            return invalid_argument("row or column is outside Mat bounds");
+        }
+
+        mat->value.at<cv::Vec<float, 3>>(static_cast<int>(row),
+                                          static_cast<int>(column)) =
+            to_opencv_vec3(*value);
         return OPENCV_CORE_OK;
     } catch (...) {
         return translate_current_exception();

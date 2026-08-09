@@ -78,4 +78,81 @@ package body OpenCV.Core.Internal.Typed_Access is
       Raise_On_Error (Status, "Float32 typed Mat write");
    end Set_Float32;
 
+   function Get_UInt8_Vec3
+     (Image : Mat; Row, Column : Integer) return OpenCV.Core.UInt8_Vec3.Vector
+   is
+      Result : aliased OpenCV.Internal.C_API.UInt8_Vec3 := (others => 0);
+      Status : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Get_UInt8_Vec3
+          (Self   => Image.Handle,
+           Row    => OpenCV.Internal.C_API.C_Int32 (Row),
+           Column => OpenCV.Internal.C_API.C_Int32 (Column),
+           Result => Result'Access);
+   begin
+      Raise_On_Error (Status, "UInt8 Vec3 typed Mat read");
+      return
+        (0 => UInt8_Value (Result.Component_0),
+         1 => UInt8_Value (Result.Component_1),
+         2 => UInt8_Value (Result.Component_2));
+   end Get_UInt8_Vec3;
+
+   procedure Set_UInt8_Vec3
+     (Image  : in out Mat;
+      Row    : Integer;
+      Column : Integer;
+      Value  : OpenCV.Core.UInt8_Vec3.Vector)
+   is
+      C_Value : aliased constant OpenCV.Internal.C_API.UInt8_Vec3 :=
+        (Component_0 => OpenCV.Internal.C_API.C_UInt8 (Value (0)),
+         Component_1 => OpenCV.Internal.C_API.C_UInt8 (Value (1)),
+         Component_2 => OpenCV.Internal.C_API.C_UInt8 (Value (2)));
+      Status  : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Set_UInt8_Vec3
+          (Self   => Image.Handle,
+           Row    => OpenCV.Internal.C_API.C_Int32 (Row),
+           Column => OpenCV.Internal.C_API.C_Int32 (Column),
+           Value  => C_Value'Access);
+   begin
+      Raise_On_Error (Status, "UInt8 Vec3 typed Mat write");
+   end Set_UInt8_Vec3;
+
+   function Get_Float32_Vec3
+     (Image : Mat; Row, Column : Integer)
+      return OpenCV.Core.Float32_Vec3.Vector
+   is
+      Result : aliased OpenCV.Internal.C_API.Float32_Vec3 := (others => 0.0);
+      Status : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Get_Float32_Vec3
+          (Self   => Image.Handle,
+           Row    => OpenCV.Internal.C_API.C_Int32 (Row),
+           Column => OpenCV.Internal.C_API.C_Int32 (Column),
+           Result => Result'Access);
+   begin
+      Raise_On_Error (Status, "Float32 Vec3 typed Mat read");
+      return
+        (0 => Float32_Value (Result.Component_0),
+         1 => Float32_Value (Result.Component_1),
+         2 => Float32_Value (Result.Component_2));
+   end Get_Float32_Vec3;
+
+   procedure Set_Float32_Vec3
+     (Image  : in out Mat;
+      Row    : Integer;
+      Column : Integer;
+      Value  : OpenCV.Core.Float32_Vec3.Vector)
+   is
+      C_Value : aliased constant OpenCV.Internal.C_API.Float32_Vec3 :=
+        (Component_0 => OpenCV.Internal.C_API.C_Float32 (Value (0)),
+         Component_1 => OpenCV.Internal.C_API.C_Float32 (Value (1)),
+         Component_2 => OpenCV.Internal.C_API.C_Float32 (Value (2)));
+      Status  : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Set_Float32_Vec3
+          (Self   => Image.Handle,
+           Row    => OpenCV.Internal.C_API.C_Int32 (Row),
+           Column => OpenCV.Internal.C_API.C_Int32 (Column),
+           Value  => C_Value'Access);
+   begin
+      Raise_On_Error (Status, "Float32 Vec3 typed Mat write");
+   end Set_Float32_Vec3;
+
 end OpenCV.Core.Internal.Typed_Access;
