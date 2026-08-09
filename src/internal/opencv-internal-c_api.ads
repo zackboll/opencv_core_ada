@@ -121,6 +121,18 @@ package OpenCV.Internal.C_API is
      (Left, Right : Mat_Handle; Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_abs_diff";
 
+   function Mat_Add_Weighted
+     (Left   : Mat_Handle;
+      Alpha  : C_Double;
+      Right  : Mat_Handle;
+      Beta   : C_Double;
+      Gamma  : C_Double;
+      Result : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_add_weighted";
+
    function Mat_Region
      (Source : Mat_Handle;
       X      : C_Int32;

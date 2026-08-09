@@ -145,6 +145,15 @@ opencv_core_mat_abs_diff(const opencv_core_mat_handle *left,
                          opencv_core_mat_handle **out_mat);
 
 /*
+ * Returns alpha * left + beta * right + gamma for two Mats with identical
+ * dimensions and type, using the same output type and independent storage.
+ */
+opencv_core_status
+opencv_core_mat_add_weighted(const opencv_core_mat_handle *left, double alpha,
+                             const opencv_core_mat_handle *right, double beta,
+                             double gamma, opencv_core_mat_handle **out_mat);
+
+/*
  * Creates a distinct Mat header for the indicated non-empty 2D region. The
  * header shares source storage through OpenCV reference counting.
  */

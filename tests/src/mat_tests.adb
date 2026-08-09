@@ -3325,6 +3325,152 @@ package body Mat_Tests is
         (Bad_Channels'Access, "Abs_Diff must reject mismatched channels");
    end Mat_Abs_Diff_Rejects_Incompatible_Operands;
 
+   procedure Mat_Add_Weighted_Handles_Float32_And_Metadata
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left, Right : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+      Result      : OpenCV.Core.Mat;
+   begin
+      Left.Set_To (OpenCV.Core.Make_Scalar (10.0));
+      Right.Set_To (OpenCV.Core.Make_Scalar (20.0));
+      Result :=
+        Left.Add_Weighted
+          (Alpha => 0.25, Right => Right, Beta => 0.75, Gamma => 2.0);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float (OpenCV.Core.Float32_Access.Get (Result, 0, 0)), 19.5)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 0, 1)),
+                     19.5)
+         and then Result.Rows = Left.Rows
+         and then Result.Columns = Left.Columns
+         and then Result.Depth = Left.Depth
+         and then Result.Channels = Left.Channels,
+         "Add_Weighted must apply Alpha, Beta, Gamma, and preserve metadata");
+   end Mat_Add_Weighted_Handles_Float32_And_Metadata;
+
+   procedure Mat_Add_Weighted_Handles_UInt8_Vec3_And_Int16
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      UInt8_Left, UInt8_Right               : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 3));
+      Int16_Left, Int16_Right               : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Int16, 1));
+      UInt8_Result, Saturated, Int16_Result : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.UInt8_Vec3_Access.Set (UInt8_Left, 0, 0, (1, 10, 200));
+      OpenCV.Core.UInt8_Vec3_Access.Set (UInt8_Right, 0, 0, (2, 20, 100));
+      UInt8_Result :=
+        UInt8_Left.Add_Weighted
+          (Alpha => 0.5, Right => UInt8_Right, Beta => 0.5, Gamma => 0.5);
+      Saturated :=
+        UInt8_Left.Add_Weighted
+          (Alpha => 2.0, Right => UInt8_Right, Beta => 2.0, Gamma => 100.0);
+      Int16_Left.Set_To (OpenCV.Core.Make_Scalar (-10.0));
+      Int16_Right.Set_To (OpenCV.Core.Make_Scalar (20.0));
+      Int16_Result :=
+        Int16_Left.Add_Weighted
+          (Alpha => 0.5, Right => Int16_Right, Beta => 0.5);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Vec3_Access.Get (UInt8_Result, 0, 0) = (2, 16, 150)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Saturated, 0, 0)
+                  = (106, 160, 255)
+         and then Int16_Result.Sum.Component_0 = 5.0,
+         "Add_Weighted must use OpenCV rounded saturation per channel");
+   end Mat_Add_Weighted_Handles_UInt8_Vec3_And_Int16;
+
+   procedure Mat_Add_Weighted_Handles_Regions_Empty_And_Independence
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left, Right                           : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.Float32, 1));
+      Result                                : OpenCV.Core.Mat;
+      Empty_Left, Empty_Right, Empty_Result : OpenCV.Core.Mat;
+   begin
+      Left.Set_To (OpenCV.Core.Make_Scalar (4.0));
+      Right.Set_To (OpenCV.Core.Make_Scalar (12.0));
+      Result :=
+        Left.Region ((1, 0, 2, 3)).Add_Weighted
+          (Alpha => 0.25,
+           Right => Right.Region ((1, 0, 2, 3)),
+           Beta  => 0.75,
+           Gamma => 1.0);
+      OpenCV.Core.Float32_Access.Set (Left, 0, 1, 99.0);
+      OpenCV.Core.Float32_Access.Set (Result, 0, 1, 9.0);
+      Empty_Result :=
+        Empty_Left.Add_Weighted
+          (Alpha => 1.0, Right => Empty_Right, Beta => 1.0);
+
+      AUnit.Assertions.Assert
+        (Result.Is_Continuous
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 0, 0)),
+                     11.0)
+         and then Approximately_Equal
+                    (Long_Float (OpenCV.Core.Float32_Access.Get (Left, 0, 2)),
+                     4.0)
+         and then Approximately_Equal
+                    (Long_Float (OpenCV.Core.Float32_Access.Get (Right, 0, 2)),
+                     12.0)
+         and then Empty_Result.Is_Empty,
+         "Add_Weighted must support Regions, independent output, and empty"
+         & " Mats");
+   end Mat_Add_Weighted_Handles_Regions_Empty_And_Independence;
+
+   procedure Mat_Add_Weighted_Rejects_Incompatible_Operands
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Base     : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+      Rows     : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 1, (OpenCV.Core.UInt8, 1));
+      Columns  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 1));
+      Depth    : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Channels : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 3));
+      procedure Bad_Rows is
+         X : constant OpenCV.Core.Mat := Base.Add_Weighted (1.0, Rows, 1.0);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Rows;
+      procedure Bad_Columns is
+         X : constant OpenCV.Core.Mat := Base.Add_Weighted (1.0, Columns, 1.0);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Columns;
+      procedure Bad_Depth is
+         X : constant OpenCV.Core.Mat := Base.Add_Weighted (1.0, Depth, 1.0);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Depth;
+      procedure Bad_Channels is
+         X : constant OpenCV.Core.Mat :=
+           Base.Add_Weighted (1.0, Channels, 1.0);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Channels;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Bad_Rows'Access, "Add_Weighted must reject mismatched rows");
+      Assert_Raises_OpenCV_Error
+        (Bad_Columns'Access, "Add_Weighted must reject mismatched columns");
+      Assert_Raises_OpenCV_Error
+        (Bad_Depth'Access, "Add_Weighted must reject mismatched depths");
+      Assert_Raises_OpenCV_Error
+        (Bad_Channels'Access, "Add_Weighted must reject mismatched channels");
+   end Mat_Add_Weighted_Rejects_Incompatible_Operands;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -4217,6 +4363,22 @@ package body Mat_Tests is
         (Caller.Create
            ("Mat Abs_Diff rejects incompatible operands",
             Mat_Abs_Diff_Rejects_Incompatible_Operands'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Add_Weighted handles Float32 and metadata",
+            Mat_Add_Weighted_Handles_Float32_And_Metadata'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Add_Weighted handles UInt8, Vec3, and Int16",
+            Mat_Add_Weighted_Handles_UInt8_Vec3_And_Int16'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Add_Weighted handles Regions, empty, and independence",
+            Mat_Add_Weighted_Handles_Regions_Empty_And_Independence'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Add_Weighted rejects incompatible operands",
+            Mat_Add_Weighted_Rejects_Incompatible_Operands'Access));
       Result.Add_Test
         (Caller.Create
            ("Min_Max_Loc UInt8 returns values and column-row Points",
