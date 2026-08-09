@@ -16,6 +16,8 @@ package OpenCV.Internal.C_API is
    Null_Mat_Handle : constant Mat_Handle := Mat_Handle (System.Null_Address);
 
    subtype C_Int32 is Interfaces.Integer_32;
+   subtype C_UInt8 is Interfaces.Unsigned_8;
+   subtype C_Float32 is Interfaces.C.C_float;
    subtype C_Double is Interfaces.C.double;
 
    type Scalar is record
@@ -81,6 +83,31 @@ package OpenCV.Internal.C_API is
    function Mat_Depth
      (Self : Mat_Handle; Result : access C_Int32) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_depth";
+
+   function Mat_Get_UInt8
+     (Self : Mat_Handle; Row, Column : C_Int32; Result : access C_UInt8)
+      return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_get_uint8";
+
+   function Mat_Set_UInt8
+     (Self : Mat_Handle; Row, Column : C_Int32; Value : C_UInt8) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_set_uint8";
+
+   function Mat_Get_Float32
+     (Self : Mat_Handle; Row, Column : C_Int32; Result : access C_Float32)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_float32";
+
+   function Mat_Set_Float32
+     (Self : Mat_Handle; Row, Column : C_Int32; Value : C_Float32)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_float32";
 
    function Mat_Set_To (Self : Mat_Handle; Value : access Scalar) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_set_to";

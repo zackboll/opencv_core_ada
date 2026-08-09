@@ -84,6 +84,27 @@ opencv_core_mat_channels(const opencv_core_mat_handle *mat,
 opencv_core_status
 opencv_core_mat_depth(const opencv_core_mat_handle *mat, int32_t *out_depth);
 
+/*
+ * Read or write one element of a two-dimensional, single-channel Mat with the
+ * indicated storage type. Row and column are zero-based. These functions
+ * validate the handle, type, channel count, and bounds before access.
+ */
+opencv_core_status
+opencv_core_mat_get_uint8(const opencv_core_mat_handle *mat, int32_t row,
+                          int32_t column, uint8_t *out_value);
+
+opencv_core_status
+opencv_core_mat_set_uint8(opencv_core_mat_handle *mat, int32_t row,
+                          int32_t column, uint8_t value);
+
+opencv_core_status
+opencv_core_mat_get_float32(const opencv_core_mat_handle *mat, int32_t row,
+                            int32_t column, float *out_value);
+
+opencv_core_status
+opencv_core_mat_set_float32(opencv_core_mat_handle *mat, int32_t row,
+                            int32_t column, float value);
+
 opencv_core_status
 opencv_core_mat_set_to(opencv_core_mat_handle *mat,
                        const opencv_core_scalar *value);

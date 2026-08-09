@@ -364,6 +364,171 @@ opencv_core_mat_depth(const opencv_core_mat_handle *mat, int32_t *out_depth) {
 }
 
 opencv_core_status
+opencv_core_mat_get_uint8(const opencv_core_mat_handle *mat, int32_t row,
+                          int32_t column, uint8_t *out_value) {
+    clear_error();
+
+    if (out_value == nullptr) {
+        return invalid_argument("out_value must not be null");
+    }
+
+    *out_value = 0;
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    if (row < 0 || column < 0) {
+        return invalid_argument("row and column must not be negative");
+    }
+
+    try {
+        if (mat->value.dims != 2) {
+            return invalid_argument("Mat must be two-dimensional");
+        }
+
+        if (mat->value.depth() != CV_8U) {
+            return invalid_argument("Mat depth must be UInt8");
+        }
+
+        if (mat->value.channels() != 1) {
+            return invalid_argument("Mat must have exactly one channel");
+        }
+
+        if (row >= mat->value.rows || column >= mat->value.cols) {
+            return invalid_argument("row or column is outside Mat bounds");
+        }
+
+        *out_value =
+            mat->value.at<uint8_t>(static_cast<int>(row),
+                                   static_cast<int>(column));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_set_uint8(opencv_core_mat_handle *mat, int32_t row,
+                          int32_t column, uint8_t value) {
+    clear_error();
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    if (row < 0 || column < 0) {
+        return invalid_argument("row and column must not be negative");
+    }
+
+    try {
+        if (mat->value.dims != 2) {
+            return invalid_argument("Mat must be two-dimensional");
+        }
+
+        if (mat->value.depth() != CV_8U) {
+            return invalid_argument("Mat depth must be UInt8");
+        }
+
+        if (mat->value.channels() != 1) {
+            return invalid_argument("Mat must have exactly one channel");
+        }
+
+        if (row >= mat->value.rows || column >= mat->value.cols) {
+            return invalid_argument("row or column is outside Mat bounds");
+        }
+
+        mat->value.at<uint8_t>(static_cast<int>(row),
+                               static_cast<int>(column)) = value;
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_get_float32(const opencv_core_mat_handle *mat, int32_t row,
+                            int32_t column, float *out_value) {
+    clear_error();
+
+    if (out_value == nullptr) {
+        return invalid_argument("out_value must not be null");
+    }
+
+    *out_value = 0.0F;
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    if (row < 0 || column < 0) {
+        return invalid_argument("row and column must not be negative");
+    }
+
+    try {
+        if (mat->value.dims != 2) {
+            return invalid_argument("Mat must be two-dimensional");
+        }
+
+        if (mat->value.depth() != CV_32F) {
+            return invalid_argument("Mat depth must be Float32");
+        }
+
+        if (mat->value.channels() != 1) {
+            return invalid_argument("Mat must have exactly one channel");
+        }
+
+        if (row >= mat->value.rows || column >= mat->value.cols) {
+            return invalid_argument("row or column is outside Mat bounds");
+        }
+
+        *out_value = mat->value.at<float>(static_cast<int>(row),
+                                          static_cast<int>(column));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_set_float32(opencv_core_mat_handle *mat, int32_t row,
+                            int32_t column, float value) {
+    clear_error();
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    if (row < 0 || column < 0) {
+        return invalid_argument("row and column must not be negative");
+    }
+
+    try {
+        if (mat->value.dims != 2) {
+            return invalid_argument("Mat must be two-dimensional");
+        }
+
+        if (mat->value.depth() != CV_32F) {
+            return invalid_argument("Mat depth must be Float32");
+        }
+
+        if (mat->value.channels() != 1) {
+            return invalid_argument("Mat must have exactly one channel");
+        }
+
+        if (row >= mat->value.rows || column >= mat->value.cols) {
+            return invalid_argument("row or column is outside Mat bounds");
+        }
+
+        mat->value.at<float>(static_cast<int>(row),
+                             static_cast<int>(column)) = value;
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_set_to(opencv_core_mat_handle *mat,
                        const opencv_core_scalar *value) {
     clear_error();

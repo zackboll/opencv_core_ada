@@ -1,10 +1,16 @@
 with AUnit.Assertions;
 with AUnit.Test_Caller;
+with Interfaces;
 with AUnit.Test_Fixtures;
+with OpenCV;
 with OpenCV.Core;
+with OpenCV.Core.Float32_Access;
+with OpenCV.Core.UInt8_Access;
 
 package body Mat_Tests is
 
+   use type Interfaces.IEEE_Float_32;
+   use type Interfaces.Unsigned_8;
    use type OpenCV.Core.Depth_Type;
 
    type Mat_Test_Fixture is new AUnit.Test_Fixtures.Test_Fixture
@@ -303,6 +309,231 @@ package body Mat_Tests is
          "Clone should retain data from before the source was modified");
    end Assignment_Shares_But_Clone_Is_Independent;
 
+   procedure Assert_Raises_OpenCV_Error
+     (Attempt : not null access procedure; Message : String)
+   is
+      Raised : Boolean := False;
+   begin
+      begin
+         Attempt.all;
+      exception
+         when OpenCV.OpenCV_Error =>
+            Raised := True;
+      end;
+
+      AUnit.Assertions.Assert (Raised, Message);
+   end Assert_Raises_OpenCV_Error;
+
+   procedure UInt8_Typed_Element_Access (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Total : OpenCV.Core.Scalar;
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.UInt8_Access.Set (Image, Row => 0, Column => 0, Value => 5);
+      OpenCV.Core.UInt8_Access.Set (Image, Row => 0, Column => 2, Value => 17);
+      OpenCV.Core.UInt8_Access.Set
+        (Image, Row => 1, Column => 1, Value => 200);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Image, Row => 0, Column => 0) = 5,
+         "UInt8 Get should return the value written at row zero, column zero");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Image, Row => 0, Column => 2) = 17,
+         "UInt8 Get should return the value written at row zero, column two");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Image, Row => 1, Column => 1) = 200,
+         "UInt8 Get should return the value written at row one, column one");
+
+      Total := Image.Sum;
+      AUnit.Assertions.Assert
+        (Total.Component_0 = 222.0,
+         "Sum should include precisely the UInt8 values written individually");
+   end UInt8_Typed_Element_Access;
+
+   procedure Float32_Typed_Element_Access (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+   begin
+      OpenCV.Core.Float32_Access.Set
+        (Image, Row => 0, Column => 0, Value => 1.25);
+      OpenCV.Core.Float32_Access.Set
+        (Image, Row => 0, Column => 1, Value => -2.5);
+      OpenCV.Core.Float32_Access.Set
+        (Image, Row => 1, Column => 0, Value => 3.75);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float
+              (OpenCV.Core.Float32_Access.Get (Image, Row => 0, Column => 0)),
+            1.25),
+         "Float32 Get should preserve the first fractional value");
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float
+              (OpenCV.Core.Float32_Access.Get (Image, Row => 0, Column => 1)),
+            -2.5),
+         "Float32 Get should preserve the negative fractional value");
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float
+              (OpenCV.Core.Float32_Access.Get (Image, Row => 1, Column => 0)),
+            3.75),
+         "Float32 Get should preserve the third fractional value");
+   end Float32_Typed_Element_Access;
+
+   procedure Typed_Access_Rejects_Incompatible_Depth
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      UInt8_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Float_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+
+      procedure Read_UInt8_From_Float is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Access.Get (Float_Image, Row => 0, Column => 0)
+            = 0,
+            "An incompatible UInt8 read unexpectedly succeeded");
+      end Read_UInt8_From_Float;
+
+      procedure Read_Float32_From_UInt8 is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float32_Access.Get (UInt8_Image, Row => 0, Column => 0)
+            = 0.0,
+            "An incompatible Float32 read unexpectedly succeeded");
+      end Read_Float32_From_UInt8;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Read_UInt8_From_Float'Access,
+         "UInt8 access must reject a Float32 Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_Float32_From_UInt8'Access,
+         "Float32 access must reject a UInt8 Mat");
+   end Typed_Access_Rejects_Incompatible_Depth;
+
+   procedure Typed_Access_Rejects_Multi_Channel_Mat
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+
+      procedure Read_Multi_Channel is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Access.Get (Image, Row => 0, Column => 0) = 0,
+            "A multi-channel typed read unexpectedly succeeded");
+      end Read_Multi_Channel;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Read_Multi_Channel'Access,
+         "Typed access must reject a multi-channel Mat");
+   end Typed_Access_Rejects_Multi_Channel_Mat;
+
+   procedure Typed_Access_Rejects_Out_Of_Bounds_Indices
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+
+      procedure Read_Negative_Row is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Access.Get (Image, Row => -1, Column => 0) = 0,
+            "A negative row read unexpectedly succeeded");
+      end Read_Negative_Row;
+
+      procedure Read_Row_After_Last is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Access.Get (Image, Row => 2, Column => 0) = 0,
+            "A past-the-end row read unexpectedly succeeded");
+      end Read_Row_After_Last;
+
+      procedure Read_Negative_Column is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Access.Get (Image, Row => 0, Column => -1) = 0,
+            "A negative column read unexpectedly succeeded");
+      end Read_Negative_Column;
+
+      procedure Read_Column_After_Last is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Access.Get (Image, Row => 0, Column => 2) = 0,
+            "A past-the-end column read unexpectedly succeeded");
+      end Read_Column_After_Last;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Read_Negative_Row'Access,
+         "Typed access must reject a row before the first row");
+      Assert_Raises_OpenCV_Error
+        (Read_Row_After_Last'Access,
+         "Typed access must reject a row after the last row");
+      Assert_Raises_OpenCV_Error
+        (Read_Negative_Column'Access,
+         "Typed access must reject a column before the first column");
+      Assert_Raises_OpenCV_Error
+        (Read_Column_After_Last'Access,
+         "Typed access must reject a column after the last column");
+   end Typed_Access_Rejects_Out_Of_Bounds_Indices;
+
+   procedure Clone_Isolates_Typed_Element_Writes
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Copy   : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.UInt8_Access.Set
+        (Source, Row => 0, Column => 0, Value => 10);
+      OpenCV.Core.UInt8_Access.Set
+        (Source, Row => 0, Column => 1, Value => 20);
+      Copy := Source.Clone;
+
+      OpenCV.Core.UInt8_Access.Set
+        (Source, Row => 0, Column => 0, Value => 99);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Source, Row => 0, Column => 0) = 99,
+         "The source should reflect its typed element write");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Copy, Row => 0, Column => 0) = 10,
+         "A clone must retain the original typed element value");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Copy, Row => 0, Column => 1) = 20,
+         "A clone must retain unaffected typed element values");
+   end Clone_Isolates_Typed_Element_Writes;
+
    procedure Empty_Mat_Clone_Is_Empty_And_Finalizes_Safely
      (Test : in out Mat_Test_Fixture)
    is
@@ -372,6 +603,29 @@ package body Mat_Tests is
         (Caller.Create
            ("Assignment shares data while Clone isolates data",
             Assignment_Shares_But_Clone_Is_Independent'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt8 typed element access", UInt8_Typed_Element_Access'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 typed element access",
+            Float32_Typed_Element_Access'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Typed access rejects incompatible depth",
+            Typed_Access_Rejects_Incompatible_Depth'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Typed access rejects multi-channel Mat",
+            Typed_Access_Rejects_Multi_Channel_Mat'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Typed access rejects out-of-bounds indices",
+            Typed_Access_Rejects_Out_Of_Bounds_Indices'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Clone isolates typed element writes",
+            Clone_Isolates_Typed_Element_Writes'Access));
       Result.Add_Test
         (Caller.Create
            ("Empty Mat clone finalizes safely",

@@ -1,4 +1,5 @@
 with Ada.Finalization;
+with Interfaces;
 private with OpenCV.Internal.C_API;
 
 package OpenCV.Core is
@@ -7,6 +8,10 @@ package OpenCV.Core is
      (UInt8, Int8, UInt16, Int16, Int32, Float32, Float64, Float16);
 
    subtype Channel_Count is Positive range 1 .. 512;
+
+   --  CV_8U and CV_32F element value domains used by typed Mat accessors.
+   subtype UInt8_Value is Interfaces.Unsigned_8;
+   subtype Float32_Value is Interfaces.IEEE_Float_32;
 
    type Mat_Type is record
       Depth    : Depth_Type;
