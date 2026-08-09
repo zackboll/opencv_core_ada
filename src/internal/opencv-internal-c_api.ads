@@ -55,6 +55,11 @@ package OpenCV.Internal.C_API is
    Norm_L2  : constant C_Int32 := 2;
    Norm_Inf : constant C_Int32 := 3;
 
+   Normalize_L1      : constant C_Int32 := 1;
+   Normalize_L2      : constant C_Int32 := 2;
+   Normalize_Inf     : constant C_Int32 := 3;
+   Normalize_Min_Max : constant C_Int32 := 4;
+
    subtype C_Boolean is Interfaces.Unsigned_8;
    C_False : constant C_Boolean := 0;
    C_True  : constant C_Boolean := 1;
@@ -87,6 +92,14 @@ package OpenCV.Internal.C_API is
       Offset : C_Double;
       Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_convert_to";
+
+   function Mat_Normalize
+     (Source : Mat_Handle;
+      Kind   : C_Int32;
+      Alpha  : C_Double;
+      Beta   : C_Double;
+      Result : access Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_normalize";
 
    function Mat_Region
      (Source : Mat_Handle;

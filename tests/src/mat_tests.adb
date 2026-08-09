@@ -2547,6 +2547,231 @@ package body Mat_Tests is
          "Norm must preserve installed OpenCV Float16 support");
    end Float16_Norm_Is_Supported;
 
+   procedure Float32_Normalize_L2_Preserves_Metadata_And_Source
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, 3.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 1, 4.0);
+      Result :=
+        Source.Normalize (Kind => OpenCV.Core.L2, Alpha => 1.0, Beta => 123.0);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float (OpenCV.Core.Float32_Access.Get (Result, 0, 0)), 0.6)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 0, 1)),
+                     0.8)
+         and then Approximately_Equal (Result.Norm, 1.0),
+         "L2 normalization must scale Float32 values to the requested norm");
+      AUnit.Assertions.Assert
+        (Result.Rows = Source.Rows
+         and then Result.Columns = Source.Columns
+         and then Result.Channels = Source.Channels
+         and then Result.Depth = Source.Depth,
+         "Normalization must preserve source Mat metadata");
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float (OpenCV.Core.Float32_Access.Get (Source, 0, 0)), 3.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Source, 0, 1)),
+                     4.0),
+         "Norm-based normalization must ignore Beta and leave its source"
+         & " unchanged");
+   end Float32_Normalize_L2_Preserves_Metadata_And_Source;
+
+   procedure Normalize_L1_And_Infinity_Support_Vec3
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 3));
+      L1_Result  : OpenCV.Core.Mat;
+      Inf_Result : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Vec3_Access.Set
+        (Source, Row => 0, Column => 0, Value => (1.0, -2.0, 3.0));
+      L1_Result := Source.Normalize (Kind => OpenCV.Core.L1, Alpha => 12.0);
+      Inf_Result :=
+        Source.Normalize (Kind => OpenCV.Core.Infinity, Alpha => 7.0);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal (L1_Result.Norm (OpenCV.Core.L1), 12.0),
+         "L1 normalization must include every Vec3 scalar component");
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Inf_Result.Norm (OpenCV.Core.Infinity), 7.0),
+         "Infinity normalization must include every Vec3 scalar component");
+   end Normalize_L1_And_Infinity_Support_Vec3;
+
+   procedure Float32_Normalize_Min_Max_Maps_Range
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Result  : OpenCV.Core.Mat;
+      Extrema : OpenCV.Core.Min_Max_Result;
+   begin
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, -2.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 2, 4.0);
+      Result :=
+        Source.Normalize
+          (Kind => OpenCV.Core.Min_Max, Alpha => 0.0, Beta => 1.0);
+      Extrema := Result.Min_Max_Loc;
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Extrema.Minimum, 0.0)
+         and then Approximately_Equal (Extrema.Maximum, 1.0),
+         "Min_Max normalization must map distinct Float32 extrema to its"
+         & " range");
+   end Float32_Normalize_Min_Max_Maps_Range;
+
+   procedure Normalize_Returns_Independent_Storage
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, 3.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 1, 4.0);
+      Result := Source.Normalize;
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, 30.0);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float (OpenCV.Core.Float32_Access.Get (Result, 0, 0)), 0.6),
+         "A normalized result must not share later source writes");
+
+      OpenCV.Core.Float32_Access.Set (Result, 0, 1, 9.0);
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float (OpenCV.Core.Float32_Access.Get (Source, 0, 1)), 4.0),
+         "A source Mat must not share later normalized-result writes");
+   end Normalize_Returns_Independent_Storage;
+
+   procedure Normalize_Operates_On_Non_Continuous_Region
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 4,
+           Columns      => 4,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      View   : OpenCV.Core.Mat;
+      Result : OpenCV.Core.Mat;
+   begin
+      for Row in 0 .. 3 loop
+         for Column in 0 .. 3 loop
+            OpenCV.Core.Float32_Access.Set
+              (Source,
+               Row,
+               Column,
+               OpenCV.Core.Float32_Value (Row * 10 + Column));
+         end loop;
+      end loop;
+
+      View := Source.Region ((X => 1, Y => 1, Width => 2, Height => 2));
+      Result := View.Normalize (Kind => OpenCV.Core.L1, Alpha => 1.0);
+
+      AUnit.Assertions.Assert
+        (not View.Is_Continuous
+         and then Result.Is_Continuous
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 0, 0)),
+                     11.0 / 66.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 1, 1)),
+                     22.0 / 66.0)
+         and then Approximately_Equal (Result.Norm (OpenCV.Core.L1), 1.0),
+         "Normalization must use only a non-continuous Region's values");
+   end Normalize_Operates_On_Non_Continuous_Region;
+
+   procedure UInt8_Normalize_Uses_OpenCV_Rounding_And_Saturation
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Rounded   : OpenCV.Core.Mat;
+      Saturated : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 0, 0);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 1, 2);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 2, 3);
+      Rounded :=
+        Source.Normalize
+          (Kind => OpenCV.Core.Min_Max, Alpha => 0.0, Beta => 10.0);
+      Saturated :=
+        Source.Normalize
+          (Kind => OpenCV.Core.Min_Max, Alpha => 0.0, Beta => 300.0);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Rounded, 0, 0) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Rounded, 0, 1) = 7
+         and then OpenCV.Core.UInt8_Access.Get (Rounded, 0, 2) = 10,
+         "UInt8 normalization must use OpenCV's rounded preserved-depth"
+         & " output");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Saturated, 0, 0) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Saturated, 0, 1) = 200
+         and then OpenCV.Core.UInt8_Access.Get (Saturated, 0, 2) = 255,
+         "UInt8 normalization must saturate preserved-depth output");
+   end UInt8_Normalize_Uses_OpenCV_Rounding_And_Saturation;
+
+   procedure Normalize_Handles_Empty_And_Zero_Input
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Empty_Source : OpenCV.Core.Mat;
+      Empty_Result : OpenCV.Core.Mat;
+      Zero_Source  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Zero_Result  : OpenCV.Core.Mat;
+   begin
+      Empty_Result := Empty_Source.Normalize;
+      Zero_Result :=
+        Zero_Source.Normalize (Kind => OpenCV.Core.L2, Alpha => 5.0);
+
+      AUnit.Assertions.Assert
+        (Empty_Result.Is_Empty,
+         "OpenCV normalization of an empty Mat must return an empty Mat");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Zero_Result, 0, 0) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Zero_Result, 0, 1) = 0.0
+         and then Zero_Result.Norm = 0.0,
+         "OpenCV normalization of a zero Mat must retain zero values");
+   end Normalize_Handles_Empty_And_Zero_Input;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -3351,6 +3576,34 @@ package body Mat_Tests is
       Result.Add_Test
         (Caller.Create
            ("Float16 Norm is supported", Float16_Norm_Is_Supported'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 Normalize L2 preserves metadata and source",
+            Float32_Normalize_L2_Preserves_Metadata_And_Source'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Normalize L1 and Infinity support Vec3",
+            Normalize_L1_And_Infinity_Support_Vec3'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 Normalize Min_Max maps range",
+            Float32_Normalize_Min_Max_Maps_Range'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Normalize returns independent storage",
+            Normalize_Returns_Independent_Storage'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Normalize operates on a non-continuous Region",
+            Normalize_Operates_On_Non_Continuous_Region'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt8 Normalize uses OpenCV rounding and saturation",
+            UInt8_Normalize_Uses_OpenCV_Rounding_And_Saturation'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Normalize handles empty and zero input",
+            Normalize_Handles_Empty_And_Zero_Input'Access));
       Result.Add_Test
         (Caller.Create
            ("Min_Max_Loc UInt8 returns values and column-row Points",

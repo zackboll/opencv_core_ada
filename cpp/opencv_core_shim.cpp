@@ -70,6 +70,26 @@ bool to_opencv_norm(int32_t norm_kind, int &opencv_norm) noexcept {
     }
 }
 
+bool to_opencv_normalize_kind(int32_t normalize_kind,
+                              int &opencv_normalize_kind) noexcept {
+    switch (normalize_kind) {
+    case OPENCV_CORE_NORMALIZE_L1:
+        opencv_normalize_kind = cv::NORM_L1;
+        return true;
+    case OPENCV_CORE_NORMALIZE_L2:
+        opencv_normalize_kind = cv::NORM_L2;
+        return true;
+    case OPENCV_CORE_NORMALIZE_INF:
+        opencv_normalize_kind = cv::NORM_INF;
+        return true;
+    case OPENCV_CORE_NORMALIZE_MIN_MAX:
+        opencv_normalize_kind = cv::NORM_MINMAX;
+        return true;
+    default:
+        return false;
+    }
+}
+
 bool to_opencv_depth(int32_t depth, int &opencv_depth) noexcept {
     switch (depth) {
     case OPENCV_CORE_DEPTH_UINT8:
@@ -406,6 +426,38 @@ opencv_core_mat_convert_to(const opencv_core_mat_handle *source, int32_t depth,
         cv::Mat converted;
         source->value.convertTo(converted, opencv_depth, scale, offset);
         *out_mat = new opencv_core_mat_handle(converted);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_normalize(const opencv_core_mat_handle *source,
+                          int32_t normalize_kind, double alpha, double beta,
+                          opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (source == nullptr) {
+        return invalid_argument("source Mat handle must not be null");
+    }
+
+    int opencv_normalize_kind = 0;
+    if (!to_opencv_normalize_kind(normalize_kind, opencv_normalize_kind)) {
+        return invalid_argument("normalization kind is not supported");
+    }
+
+    try {
+        cv::Mat normalized;
+        cv::normalize(source->value, normalized, alpha, beta,
+                      opencv_normalize_kind, -1);
+        *out_mat = new opencv_core_mat_handle(normalized);
         return OPENCV_CORE_OK;
     } catch (...) {
         return translate_current_exception();

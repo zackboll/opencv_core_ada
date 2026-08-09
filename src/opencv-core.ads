@@ -9,6 +9,9 @@ package OpenCV.Core is
 
    type Norm_Kind is (L1, L2, Infinity);
 
+   --  Min_Max is a normalization mode rather than a Mat.Norm reduction kind.
+   type Normalize_Kind is (L1, L2, Infinity, Min_Max);
+
    type Channel_Count is new Interfaces.Integer_32 range 1 .. 512;
 
    type Mat_Size is
@@ -96,6 +99,14 @@ package OpenCV.Core is
       Depth  : Depth_Type;
       Scale  : Long_Float := 1.0;
       Offset : Long_Float := 0.0) return Mat;
+   --  Returns an independent Mat with Self's shape and element type.  For L1,
+   --  L2, and Infinity, Alpha is the target norm and Beta is ignored.  For
+   --  Min_Max, Alpha and Beta specify the destination range bounds.
+   function Normalize
+     (Self  : Mat;
+      Kind  : Normalize_Kind := L2;
+      Alpha : Long_Float := 1.0;
+      Beta  : Long_Float := 0.0) return Mat;
    function Is_Empty (Self : Mat) return Boolean;
    function Rows (Self : Mat) return Natural;
    function Columns (Self : Mat) return Natural;

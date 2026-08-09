@@ -80,6 +80,14 @@ package body OpenCV.Core is
          when L2       => OpenCV.Internal.C_API.Norm_L2,
          when Infinity => OpenCV.Internal.C_API.Norm_Inf);
 
+   function To_C_Normalize_Kind
+     (Value : Normalize_Kind) return OpenCV.Internal.C_API.C_Int32
+   is (case Value is
+         when L1       => OpenCV.Internal.C_API.Normalize_L1,
+         when L2       => OpenCV.Internal.C_API.Normalize_L2,
+         when Infinity => OpenCV.Internal.C_API.Normalize_Inf,
+         when Min_Max  => OpenCV.Internal.C_API.Normalize_Min_Max);
+
    function To_Mat_Size
      (Value : OpenCV.Internal.C_API.C_UInt64) return Mat_Size is
    begin
@@ -180,6 +188,31 @@ package body OpenCV.Core is
          (Rows         => Natural (Dimensions.Height),
           Columns      => Natural (Dimensions.Width),
           Element_Type => Element_Type));
+
+   function Normalize
+     (Self  : Mat;
+      Kind  : Normalize_Kind := L2;
+      Alpha : Long_Float := 1.0;
+      Beta  : Long_Float := 0.0) return Mat
+   is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Status :=
+        OpenCV.Internal.C_API.Mat_Normalize
+          (Source => Self.Handle,
+           Kind   => To_C_Normalize_Kind (Kind),
+           Alpha  => OpenCV.Internal.C_API.C_Double (Alpha),
+           Beta   => OpenCV.Internal.C_API.C_Double (Beta),
+           Result => New_Handle'Access);
+      Raise_On_Error (Status, "Mat normalization operation");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Normalize;
 
    overriding
    procedure Adjust (Self : in out Mat) is

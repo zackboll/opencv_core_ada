@@ -58,6 +58,12 @@ typedef struct {
 #define OPENCV_CORE_NORM_L2 ((int32_t)2)
 #define OPENCV_CORE_NORM_INF ((int32_t)3)
 
+/* Stable normalization identifiers, translated explicitly by the shim. */
+#define OPENCV_CORE_NORMALIZE_L1 ((int32_t)1)
+#define OPENCV_CORE_NORMALIZE_L2 ((int32_t)2)
+#define OPENCV_CORE_NORMALIZE_INF ((int32_t)3)
+#define OPENCV_CORE_NORMALIZE_MIN_MAX ((int32_t)4)
+
 /*
  * Returns a borrowed pointer to the diagnostic for the most recent failed shim
  * operation on the calling thread. The pointer remains valid only until a
@@ -90,6 +96,16 @@ opencv_core_status
 opencv_core_mat_convert_to(const opencv_core_mat_handle *source,
                            int32_t depth, double scale, double offset,
                            opencv_core_mat_handle **out_mat);
+
+/*
+ * Returns a newly allocated, independent Mat normalized with no mask and the
+ * same depth as source. For norm modes beta is ignored by OpenCV; for min/max
+ * mode alpha and beta define the destination range.
+ */
+opencv_core_status
+opencv_core_mat_normalize(const opencv_core_mat_handle *source,
+                          int32_t normalize_kind, double alpha, double beta,
+                          opencv_core_mat_handle **out_mat);
 
 /*
  * Creates a distinct Mat header for the indicated non-empty 2D region. The
