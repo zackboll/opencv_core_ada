@@ -8,3 +8,7 @@ maintainers-logins = ["zackboll"]
 licenses = "Apache-2.0"
 website = ""
 tags = ["opencv", "computer-vision", "binding", "ada"]
+
+[[actions]]
+type = "pre-build"
+command = ["sh", "scripts/configure_opencv.sh"]
