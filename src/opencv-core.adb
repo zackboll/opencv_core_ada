@@ -510,6 +510,34 @@ package body OpenCV.Core is
       return Result;
    end Bitwise_Not;
 
+   function In_Range (Self : Mat; Lower, Upper : Scalar) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      C_Lower    : aliased OpenCV.Internal.C_API.Scalar := To_C_Scalar (Lower);
+      C_Upper    : aliased OpenCV.Internal.C_API.Scalar := To_C_Scalar (Upper);
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      if Self.Channels > 4 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Scalar-bounded In_Range supports Mats with at most four"
+            & " channels");
+      end if;
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_In_Range_Scalar
+          (Self   => Self.Handle,
+           Lower  => C_Lower'Access,
+           Upper  => C_Upper'Access,
+           Result => New_Handle'Access);
+      Raise_On_Error (Status, "Mat scalar-bounded in-range operation");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end In_Range;
+
    function Normalize
      (Self  : Mat;
       Kind  : Normalize_Kind := L2;

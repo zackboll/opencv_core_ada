@@ -912,6 +912,42 @@ opencv_core_mat_bitwise_not_masked(const opencv_core_mat_handle *source,
 }
 
 opencv_core_status
+opencv_core_mat_in_range_scalar(const opencv_core_mat_handle *source,
+                                const opencv_core_scalar *lower,
+                                const opencv_core_scalar *upper,
+                                opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (source == nullptr || lower == nullptr || upper == nullptr) {
+        return invalid_argument("source Mat and scalar bounds must not be null");
+    }
+
+    try {
+        if (source->value.channels() > 4) {
+            return invalid_argument(
+                "scalar-bounded in-range supports Mats with at most four channels");
+        }
+
+        cv::Mat result;
+        cv::inRange(source->value, to_opencv_scalar(*lower),
+                    to_opencv_scalar(*upper), result);
+        if (result.type() != CV_8UC1 || result.size() != source->value.size()) {
+            return invalid_argument("in-range produced an invalid mask result");
+        }
+        *out_mat = new opencv_core_mat_handle(result);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_region(const opencv_core_mat_handle *source, int32_t x,
                        int32_t y, int32_t width, int32_t height,
                        opencv_core_mat_handle **out_mat) {

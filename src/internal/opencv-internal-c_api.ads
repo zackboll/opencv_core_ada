@@ -186,6 +186,16 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_bitwise_not_masked";
 
+   function Mat_In_Range_Scalar
+     (Self   : Mat_Handle;
+      Lower  : access constant Scalar;
+      Upper  : access constant Scalar;
+      Result : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_in_range_scalar";
+
    function Mat_Region
      (Source : Mat_Handle;
       X      : C_Int32;

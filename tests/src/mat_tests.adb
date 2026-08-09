@@ -3740,6 +3740,145 @@ package body Mat_Tests is
         (Wrong_Columns'Access, "Mask must reject wrong columns");
    end Masked_Bitwise_Invalid_Masks_And_Empty;
 
+   procedure In_Range_Uses_Inclusive_UInt8_Bounds_And_Mask_Contract
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source              : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 5, (OpenCV.Core.UInt8, 1));
+      Range_Mask, Applied : OpenCV.Core.Mat;
+      Other               : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 5, (OpenCV.Core.UInt8, 1));
+   begin
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 0, 9);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 1, 10);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 2, 15);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 3, 20);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 4, 21);
+      Other.Set_To (OpenCV.Core.Make_Scalar (255.0));
+      Range_Mask :=
+        Source.In_Range
+          (Lower => OpenCV.Core.Make_Scalar (10.0),
+           Upper => OpenCV.Core.Make_Scalar (20.0));
+      Applied := Source.Bitwise_And (Other, Range_Mask);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 2, 0);
+
+      AUnit.Assertions.Assert
+        (Range_Mask.Rows = Source.Rows
+         and then Range_Mask.Columns = Source.Columns
+         and then Range_Mask.Depth = OpenCV.Core.UInt8
+         and then Range_Mask.Channels = 1
+         and then OpenCV.Core.UInt8_Access.Get (Range_Mask, 0, 0) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Range_Mask, 0, 1) = 255
+         and then OpenCV.Core.UInt8_Access.Get (Range_Mask, 0, 2) = 255
+         and then OpenCV.Core.UInt8_Access.Get (Range_Mask, 0, 3) = 255
+         and then OpenCV.Core.UInt8_Access.Get (Range_Mask, 0, 4) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Applied, 0, 2) = 15,
+         "In_Range must be inclusive and produce a directly usable mask");
+   end In_Range_Uses_Inclusive_UInt8_Bounds_And_Mask_Contract;
+
+   procedure In_Range_Handles_Float32_Vec3_And_Regions
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Float_Image                       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 4, (OpenCV.Core.Float32, 1));
+      Vec_Image                         : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 5, (OpenCV.Core.Float32, 3));
+      Region_Source                     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.UInt8, 1));
+      Float_Mask, Vec_Mask, Region_Mask : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set (Float_Image, 0, 0, -1.5);
+      OpenCV.Core.Float32_Access.Set (Float_Image, 0, 1, -1.0);
+      OpenCV.Core.Float32_Access.Set (Float_Image, 0, 2, 0.5);
+      OpenCV.Core.Float32_Access.Set (Float_Image, 0, 3, 1.25);
+      Float_Mask :=
+        Float_Image.In_Range
+          (OpenCV.Core.Make_Scalar (-1.0), OpenCV.Core.Make_Scalar (1.0));
+      OpenCV.Core.Float32_Vec3_Access.Set (Vec_Image, 0, 0, (1.0, 2.0, 3.0));
+      OpenCV.Core.Float32_Vec3_Access.Set (Vec_Image, 0, 1, (0.0, 2.0, 3.0));
+      OpenCV.Core.Float32_Vec3_Access.Set (Vec_Image, 0, 2, (1.0, 4.0, 3.0));
+      OpenCV.Core.Float32_Vec3_Access.Set (Vec_Image, 0, 3, (1.0, 2.0, 4.0));
+      OpenCV.Core.Float32_Vec3_Access.Set (Vec_Image, 0, 4, (1.0, 2.0, 3.0));
+      Vec_Mask :=
+        Vec_Image.In_Range
+          (OpenCV.Core.Make_Scalar (1.0, 2.0, 3.0),
+           OpenCV.Core.Make_Scalar (1.0, 2.0, 3.0));
+      Region_Source.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.UInt8_Access.Set (Region_Source, 0, 1, 10);
+      OpenCV.Core.UInt8_Access.Set (Region_Source, 0, 2, 20);
+      OpenCV.Core.UInt8_Access.Set (Region_Source, 1, 1, 15);
+      OpenCV.Core.UInt8_Access.Set (Region_Source, 1, 2, 25);
+      Region_Mask :=
+        Region_Source.Region ((1, 0, 2, 2)).In_Range
+          (OpenCV.Core.Make_Scalar (10.0), OpenCV.Core.Make_Scalar (20.0));
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Float_Mask, 0, 0) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Float_Mask, 0, 1) = 255
+         and then OpenCV.Core.UInt8_Access.Get (Float_Mask, 0, 2) = 255
+         and then OpenCV.Core.UInt8_Access.Get (Float_Mask, 0, 3) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Vec_Mask, 0, 0) = 255
+         and then OpenCV.Core.UInt8_Access.Get (Vec_Mask, 0, 1) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Vec_Mask, 0, 2) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Vec_Mask, 0, 3) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Vec_Mask, 0, 4) = 255
+         and then Region_Mask.Is_Continuous
+         and then OpenCV.Core.UInt8_Access.Get (Region_Mask, 0, 0) = 255
+         and then OpenCV.Core.UInt8_Access.Get (Region_Mask, 0, 1) = 255
+         and then OpenCV.Core.UInt8_Access.Get (Region_Mask, 1, 0) = 255
+         and then OpenCV.Core.UInt8_Access.Get (Region_Mask, 1, 1) = 0,
+         "In_Range must use fractional bounds, all Vec3 channels, and"
+         & " Regions");
+   end In_Range_Handles_Float32_Vec3_And_Regions;
+
+   procedure In_Range_Handles_Nonfinite_Empty_And_Channel_Failures
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Numerator, Zeroes : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 3, (OpenCV.Core.Float32, 1));
+      Nonfinite, Mask   : OpenCV.Core.Mat;
+      Empty             : OpenCV.Core.Mat;
+      Five_Channel      : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 5));
+      procedure Empty_Source is
+         X : constant OpenCV.Core.Mat :=
+           Empty.In_Range
+             (OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+      begin
+         pragma Unreferenced (X);
+      end Empty_Source;
+      procedure Too_Many_Channels is
+         X : constant OpenCV.Core.Mat :=
+           Five_Channel.In_Range
+             (OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (255.0));
+      begin
+         pragma Unreferenced (X);
+      end Too_Many_Channels;
+   begin
+      OpenCV.Core.Float32_Access.Set (Numerator, 0, 0, 0.0);
+      OpenCV.Core.Float32_Access.Set (Numerator, 0, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Numerator, 0, 2, -1.0);
+      Zeroes.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Nonfinite := Numerator.Divide (Zeroes);
+      Mask :=
+        Nonfinite.In_Range
+          (OpenCV.Core.Make_Scalar (-1.0), OpenCV.Core.Make_Scalar (1.0));
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Mask, 0, 0) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Mask, 0, 1) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Mask, 0, 2) = 0,
+         "In_Range must reject NaN and infinite values against finite bounds");
+      Assert_Raises_OpenCV_Error
+        (Empty_Source'Access, "In_Range must reject an empty source");
+      Assert_Raises_OpenCV_Error
+        (Too_Many_Channels'Access,
+         "In_Range must reject more than four channels");
+   end In_Range_Handles_Nonfinite_Empty_And_Channel_Failures;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -4676,6 +4815,18 @@ package body Mat_Tests is
         (Caller.Create
            ("Masked bitwise operations reject invalid masks and handle empty",
             Masked_Bitwise_Invalid_Masks_And_Empty'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("In_Range uses inclusive UInt8 bounds and mask contract",
+            In_Range_Uses_Inclusive_UInt8_Bounds_And_Mask_Contract'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("In_Range handles Float32, Vec3, and Regions",
+            In_Range_Handles_Float32_Vec3_And_Regions'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("In_Range handles nonfinite, empty, and channel failures",
+            In_Range_Handles_Nonfinite_Empty_And_Channel_Failures'Access));
       Result.Add_Test
         (Caller.Create
            ("Min_Max_Loc UInt8 returns values and column-row Points",

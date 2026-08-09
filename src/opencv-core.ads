@@ -128,6 +128,7 @@ package OpenCV.Core is
    function Bitwise_Xor (Left, Right, Mask : Mat) return Mat;
    function Bitwise_Not (Self : Mat) return Mat;
    function Bitwise_Not (Self, Mask : Mat) return Mat;
+   function In_Range (Self : Mat; Lower, Upper : Scalar) return Mat;
    function Is_Empty (Self : Mat) return Boolean;
    function Rows (Self : Mat) return Natural;
    function Columns (Self : Mat) return Natural;

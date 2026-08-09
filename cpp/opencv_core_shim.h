@@ -197,6 +197,13 @@ opencv_core_mat_bitwise_not_masked(const opencv_core_mat_handle *source,
                                    const opencv_core_mat_handle *mask,
                                    opencv_core_mat_handle **out_mat);
 
+/* Produces a UInt8 single-channel inclusive range mask for one to four channels. */
+opencv_core_status
+opencv_core_mat_in_range_scalar(const opencv_core_mat_handle *source,
+                                const opencv_core_scalar *lower,
+                                const opencv_core_scalar *upper,
+                                opencv_core_mat_handle **out_mat);
+
 /*
  * Creates a distinct Mat header for the indicated non-empty 2D region. The
  * header shares source storage through OpenCV reference counting.
