@@ -74,6 +74,15 @@ opencv_core_status
 opencv_core_mat_clone(const opencv_core_mat_handle *source,
                       opencv_core_mat_handle **out_mat);
 
+/*
+ * Creates a distinct Mat header for the indicated non-empty 2D region. The
+ * header shares source storage through OpenCV reference counting.
+ */
+opencv_core_status
+opencv_core_mat_region(const opencv_core_mat_handle *source, int32_t x,
+                       int32_t y, int32_t width, int32_t height,
+                       opencv_core_mat_handle **out_mat);
+
 /* Null-safe and non-throwing. */
 void opencv_core_mat_destroy(opencv_core_mat_handle *mat);
 

@@ -256,6 +256,52 @@ opencv_core_mat_clone(const opencv_core_mat_handle *source,
     }
 }
 
+opencv_core_status
+opencv_core_mat_region(const opencv_core_mat_handle *source, int32_t x,
+                       int32_t y, int32_t width, int32_t height,
+                       opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (source == nullptr) {
+        return invalid_argument("source Mat handle must not be null");
+    }
+
+    if (x < 0 || y < 0) {
+        return invalid_argument("region origin must not be negative");
+    }
+
+    if (width <= 0 || height <= 0) {
+        return invalid_argument("region width and height must be positive");
+    }
+
+    try {
+        if (source->value.dims != 2) {
+            return invalid_argument("source Mat must be two-dimensional");
+        }
+
+        if (x >= source->value.cols || y >= source->value.rows) {
+            return invalid_argument("region origin is outside source Mat bounds");
+        }
+
+        if (width > source->value.cols - x ||
+            height > source->value.rows - y) {
+            return invalid_argument("region extends outside source Mat bounds");
+        }
+
+        *out_mat = new opencv_core_mat_handle(
+            cv::Mat(source->value, cv::Rect(x, y, width, height)));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
 void opencv_core_mat_destroy(opencv_core_mat_handle *mat) {
     clear_error();
 

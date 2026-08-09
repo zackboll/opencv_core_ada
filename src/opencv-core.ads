@@ -25,6 +25,13 @@ package OpenCV.Core is
       Component_3 : Long_Float := 0.0;
    end record;
 
+   type Rect is record
+      X      : Natural;
+      Y      : Natural;
+      Width  : Natural;
+      Height : Natural;
+   end record;
+
    function Make_Scalar
      (Component_0 : Long_Float;
       Component_1 : Long_Float := 0.0;
@@ -43,6 +50,7 @@ package OpenCV.Core is
    function Columns (Self : Mat) return Natural;
    function Channels (Self : Mat) return Channel_Count;
    function Depth (Self : Mat) return Depth_Type;
+   function Region (Self : Mat; Area : Rect) return Mat;
    procedure Set_To (Self : in out Mat; Value : Scalar);
    function Sum (Self : Mat) return Scalar;
 

@@ -795,6 +795,208 @@ package body Mat_Tests is
          "A cloned Mat must retain its original Vec3 element value");
    end Vec3_Access_Proves_Assignment_And_Clone_Semantics;
 
+   procedure Region_Has_Metadata_And_Shares_Data
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 4,
+           Columns      => 5,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      View   : OpenCV.Core.Mat :=
+        Source.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+   begin
+      AUnit.Assertions.Assert
+        (View.Rows = 2, "A region should have the requested height");
+      AUnit.Assertions.Assert
+        (View.Columns = 3, "A region should have the requested width");
+      AUnit.Assertions.Assert
+        (View.Depth = Source.Depth, "A region should preserve source depth");
+      AUnit.Assertions.Assert
+        (View.Channels = Source.Channels,
+         "A region should preserve source channels");
+      AUnit.Assertions.Assert
+        (not View.Is_Empty, "A non-empty region should not be empty");
+
+      OpenCV.Core.UInt8_Access.Set (View, Row => 0, Column => 1, Value => 45);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Source, Row => 1, Column => 2) = 45,
+         "A write through a region must change its source");
+
+      OpenCV.Core.UInt8_Access.Set
+        (Source, Row => 2, Column => 3, Value => 99);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (View, Row => 1, Column => 2) = 99,
+         "A write through a source must be visible through its region");
+   end Region_Has_Metadata_And_Shares_Data;
+
+   procedure Region_Preserves_UInt8_Vec3_Access
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 3,
+           Columns      => 4,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      View   : OpenCV.Core.Mat :=
+        Source.Region ((X => 1, Y => 1, Width => 2, Height => 1));
+      Value  : constant OpenCV.Core.UInt8_Vec3.Vector := (10, 20, 30);
+      Pixel  : OpenCV.Core.UInt8_Vec3.Vector;
+   begin
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (View, Row => 0, Column => 1, Value => Value);
+      Pixel :=
+        OpenCV.Core.UInt8_Vec3_Access.Get (Source, Row => 1, Column => 2);
+      AUnit.Assertions.Assert
+        (Pixel (0) = Value (0)
+         and then Pixel (1) = Value (1)
+         and then Pixel (2) = Value (2),
+         "A Vec3 write through a region must preserve all source components");
+   end Region_Preserves_UInt8_Vec3_Access;
+
+   procedure Region_Survives_Source_And_Temporary_Finalization
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+   begin
+      OpenCV.Core.UInt8_Access.Set (Source, Row => 0, Column => 0, Value => 7);
+      declare
+         Temporary : constant OpenCV.Core.Mat :=
+           Source.Region ((X => 1, Y => 1, Width => 1, Height => 1));
+      begin
+         AUnit.Assertions.Assert
+           (not Temporary.Is_Empty, "A temporary region should be valid");
+      end;
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Source, Row => 0, Column => 0) = 7,
+         "A source must remain valid after a temporary region finalizes");
+
+      declare
+         Retained_View : OpenCV.Core.Mat;
+      begin
+         declare
+            Short_Lived_Source : OpenCV.Core.Mat :=
+              OpenCV.Core.Create
+                (Rows         => 1,
+                 Columns      => 1,
+                 Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+         begin
+            Retained_View :=
+              Short_Lived_Source.Region
+                ((X => 0, Y => 0, Width => 1, Height => 1));
+            OpenCV.Core.UInt8_Access.Set
+              (Short_Lived_Source, Row => 0, Column => 0, Value => 12);
+         end;
+
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Access.Get (Retained_View, Row => 0, Column => 0)
+            = 12,
+            "A region must remain readable after its source finalizes");
+         OpenCV.Core.UInt8_Access.Set
+           (Retained_View, Row => 0, Column => 0, Value => 34);
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Access.Get (Retained_View, Row => 0, Column => 0)
+            = 34,
+            "A region must remain writable after its source finalizes");
+      end;
+   end Region_Survives_Source_And_Temporary_Finalization;
+
+   procedure Region_Clone_Is_Independent (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      View   : constant OpenCV.Core.Mat :=
+        Source.Region ((X => 0, Y => 0, Width => 1, Height => 1));
+      Copy   : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.UInt8_Access.Set (Source, Row => 0, Column => 0, Value => 5);
+      Copy := View.Clone;
+      OpenCV.Core.UInt8_Access.Set
+        (Source, Row => 0, Column => 0, Value => 88);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (View, Row => 0, Column => 0) = 88,
+         "A region must observe source changes before clone comparison");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Copy, Row => 0, Column => 0) = 5,
+         "A clone of a region must not share region storage");
+   end Region_Clone_Is_Independent;
+
+   procedure Region_Rejects_Invalid_Areas (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+
+      procedure X_Beyond_Source is
+         Ignored : constant OpenCV.Core.Mat :=
+           Source.Region ((X => 3, Y => 0, Width => 1, Height => 1));
+      begin
+         pragma Unreferenced (Ignored);
+      end X_Beyond_Source;
+
+      procedure Y_Beyond_Source is
+         Ignored : constant OpenCV.Core.Mat :=
+           Source.Region ((X => 0, Y => 2, Width => 1, Height => 1));
+      begin
+         pragma Unreferenced (Ignored);
+      end Y_Beyond_Source;
+
+      procedure Width_Past_Right_Edge is
+         Ignored : constant OpenCV.Core.Mat :=
+           Source.Region ((X => 2, Y => 0, Width => 2, Height => 1));
+      begin
+         pragma Unreferenced (Ignored);
+      end Width_Past_Right_Edge;
+
+      procedure Height_Past_Bottom_Edge is
+         Ignored : constant OpenCV.Core.Mat :=
+           Source.Region ((X => 0, Y => 1, Width => 1, Height => 2));
+      begin
+         pragma Unreferenced (Ignored);
+      end Height_Past_Bottom_Edge;
+
+      procedure Zero_Width is
+         Ignored : constant OpenCV.Core.Mat :=
+           Source.Region ((X => 0, Y => 0, Width => 0, Height => 1));
+      begin
+         pragma Unreferenced (Ignored);
+      end Zero_Width;
+
+      procedure Zero_Height is
+         Ignored : constant OpenCV.Core.Mat :=
+           Source.Region ((X => 0, Y => 0, Width => 1, Height => 0));
+      begin
+         pragma Unreferenced (Ignored);
+      end Zero_Height;
+   begin
+      Assert_Raises_OpenCV_Error
+        (X_Beyond_Source'Access, "Region must reject an X outside source");
+      Assert_Raises_OpenCV_Error
+        (Y_Beyond_Source'Access, "Region must reject a Y outside source");
+      Assert_Raises_OpenCV_Error
+        (Width_Past_Right_Edge'Access,
+         "Region must reject a width beyond the right edge");
+      Assert_Raises_OpenCV_Error
+        (Height_Past_Bottom_Edge'Access,
+         "Region must reject a height beyond the bottom edge");
+      Assert_Raises_OpenCV_Error
+        (Zero_Width'Access, "Region must reject zero width");
+      Assert_Raises_OpenCV_Error
+        (Zero_Height'Access, "Region must reject zero height");
+   end Region_Rejects_Invalid_Areas;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -889,6 +1091,26 @@ package body Mat_Tests is
         (Caller.Create
            ("Vec3 access proves assignment and Clone semantics",
             Vec3_Access_Proves_Assignment_And_Clone_Semantics'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Region has metadata and shares data",
+            Region_Has_Metadata_And_Shares_Data'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Region preserves UInt8 Vec3 access",
+            Region_Preserves_UInt8_Vec3_Access'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Region survives source and temporary finalization",
+            Region_Survives_Source_And_Temporary_Finalization'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Region Clone is independent",
+            Region_Clone_Is_Independent'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Region rejects invalid areas",
+            Region_Rejects_Invalid_Areas'Access));
       return Result'Access;
    end Suite;
 

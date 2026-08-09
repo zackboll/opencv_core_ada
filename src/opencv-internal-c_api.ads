@@ -75,6 +75,15 @@ package OpenCV.Internal.C_API is
      (Source : Mat_Handle; Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_clone";
 
+   function Mat_Region
+     (Source : Mat_Handle;
+      X      : C_Int32;
+      Y      : C_Int32;
+      Width  : C_Int32;
+      Height : C_Int32;
+      Result : access Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_region";
+
    procedure Mat_Destroy (Self : Mat_Handle)
    with Import, Convention => C, External_Name => "opencv_core_mat_destroy";
 

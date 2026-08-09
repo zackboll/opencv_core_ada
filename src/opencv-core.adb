@@ -237,6 +237,48 @@ package body OpenCV.Core is
       return From_C_Depth (Value);
    end Depth;
 
+   function Region (Self : Mat; Area : Rect) return Mat is
+      Source_Rows    : constant Natural := Self.Rows;
+      Source_Columns : constant Natural := Self.Columns;
+      Result         : Mat;
+      New_Handle     : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status         : OpenCV.Internal.C_API.Status;
+   begin
+      if Area.Width = 0 or else Area.Height = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat region width and height must be positive");
+      end if;
+
+      if Area.X >= Source_Columns or else Area.Y >= Source_Rows then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat region origin is outside source bounds");
+      end if;
+
+      if Area.Width > Source_Columns - Area.X
+        or else Area.Height > Source_Rows - Area.Y
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Mat region extends outside source bounds");
+      end if;
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_Region
+          (Source => Self.Handle,
+           X      => OpenCV.Internal.C_API.C_Int32 (Area.X),
+           Y      => OpenCV.Internal.C_API.C_Int32 (Area.Y),
+           Width  => OpenCV.Internal.C_API.C_Int32 (Area.Width),
+           Height => OpenCV.Internal.C_API.C_Int32 (Area.Height),
+           Result => New_Handle'Access);
+      Raise_On_Error (Status, "Mat region creation");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Region;
+
    procedure Set_To (Self : in out Mat; Value : Scalar) is
       C_Value : aliased OpenCV.Internal.C_API.Scalar := To_C_Scalar (Value);
       Result  : constant OpenCV.Internal.C_API.Status :=
