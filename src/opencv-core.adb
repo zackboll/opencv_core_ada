@@ -292,6 +292,25 @@ package body OpenCV.Core is
       return Result;
    end Divide;
 
+   function Abs_Diff (Left, Right : Mat) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Abs_Diff
+          (Left   => Left.Handle,
+           Right  => Right.Handle,
+           Result => New_Handle'Access);
+      Raise_On_Error (Status, "Mat absolute difference operation");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Abs_Diff;
+
    function Normalize
      (Self  : Mat;
       Kind  : Normalize_Kind := L2;

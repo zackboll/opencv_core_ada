@@ -113,6 +113,7 @@ package OpenCV.Core is
    function Subtract (Left, Right : Mat) return Mat;
    function Multiply (Left, Right : Mat) return Mat;
    function Divide (Left, Right : Mat) return Mat;
+   function Abs_Diff (Left, Right : Mat) return Mat;
    function Is_Empty (Self : Mat) return Boolean;
    function Rows (Self : Mat) return Natural;
    function Columns (Self : Mat) return Natural;

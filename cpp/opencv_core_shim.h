@@ -136,6 +136,15 @@ opencv_core_mat_divide(const opencv_core_mat_handle *left,
                        opencv_core_mat_handle **out_mat);
 
 /*
+ * Calculates the OpenCV absolute difference of two Mats with identical
+ * dimensions and type, returning an independently allocated result.
+ */
+opencv_core_status
+opencv_core_mat_abs_diff(const opencv_core_mat_handle *left,
+                         const opencv_core_mat_handle *right,
+                         opencv_core_mat_handle **out_mat);
+
+/*
  * Creates a distinct Mat header for the indicated non-empty 2D region. The
  * header shares source storage through OpenCV reference counting.
  */

@@ -3182,6 +3182,149 @@ package body Mat_Tests is
          "Multiply must reject mismatched channel counts");
    end Mat_Multiply_Divide_Int16_Empty_Compatibility;
 
+   procedure Mat_Abs_Diff_Handles_Float32_And_Metadata
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left, Right : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+      Result      : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set (Left, 0, 0, -3.0);
+      OpenCV.Core.Float32_Access.Set (Left, 0, 1, 5.5);
+      OpenCV.Core.Float32_Access.Set (Right, 0, 0, 2.0);
+      OpenCV.Core.Float32_Access.Set (Right, 0, 1, -1.5);
+      Result := Left.Abs_Diff (Right);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float (OpenCV.Core.Float32_Access.Get (Result, 0, 0)), 5.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 0, 1)),
+                     7.0)
+         and then Result.Rows = Left.Rows
+         and then Result.Columns = Left.Columns
+         and then Result.Depth = Left.Depth
+         and then Result.Channels = Left.Channels,
+         "Float32 absolute difference must preserve values and metadata");
+   end Mat_Abs_Diff_Handles_Float32_And_Metadata;
+
+   procedure Mat_Abs_Diff_Handles_UInt8_Vec3_And_Int16
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      UInt8_Left, UInt8_Right    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 3));
+      Int16_Left, Int16_Right    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Int16, 1));
+      UInt8_Result, Int16_Result : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.UInt8_Vec3_Access.Set (UInt8_Left, 0, 0, (10, 250, 50));
+      OpenCV.Core.UInt8_Vec3_Access.Set (UInt8_Right, 0, 0, (200, 20, 80));
+      UInt8_Result := UInt8_Left.Abs_Diff (UInt8_Right);
+      Int16_Left.Set_To (OpenCV.Core.Make_Scalar (-32_768.0));
+      Int16_Right.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Int16_Result := Int16_Left.Abs_Diff (Int16_Right);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Vec3_Access.Get (UInt8_Result, 0, 0)
+         = (190, 230, 30)
+         and then Int16_Result.Sum.Component_0 = 32_767.0,
+         "Abs_Diff must process Vec3 channels and saturate Int16 minimum");
+   end Mat_Abs_Diff_Handles_UInt8_Vec3_And_Int16;
+
+   procedure Mat_Abs_Diff_Handles_Regions_Nonfinite_And_Independence
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left, Right                           : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.Float32, 1));
+      Result                                : OpenCV.Core.Mat;
+      Zeros                                 : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+      Numerator                             : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+      Nonfinite                             : OpenCV.Core.Mat;
+      Empty_Left, Empty_Right, Empty_Result : OpenCV.Core.Mat;
+   begin
+      Left.Set_To (OpenCV.Core.Make_Scalar (8.0));
+      Right.Set_To (OpenCV.Core.Make_Scalar (3.0));
+      Result :=
+        Left.Region ((1, 0, 2, 3)).Abs_Diff (Right.Region ((1, 0, 2, 3)));
+      OpenCV.Core.Float32_Access.Set (Left, 0, 1, 99.0);
+      OpenCV.Core.Float32_Access.Set (Result, 0, 1, 9.0);
+      OpenCV.Core.Float32_Access.Set (Numerator, 0, 0, 1.0);
+      Zeros.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Nonfinite := Numerator.Divide (Zeros);
+      Empty_Result := Empty_Left.Abs_Diff (Empty_Right);
+
+      AUnit.Assertions.Assert
+        (Result.Is_Continuous
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 0, 0)),
+                     5.0)
+         and then Approximately_Equal
+                    (Long_Float (OpenCV.Core.Float32_Access.Get (Left, 0, 2)),
+                     8.0)
+         and then OpenCV.Core.Float32_Access.Classify (Nonfinite, 0, 0)
+                  = OpenCV.Core.Float32_Access.Positive_Infinity
+         and then OpenCV.Core.Float32_Access.Classify (Nonfinite, 0, 1)
+                  = OpenCV.Core.Float32_Access.Not_A_Number
+         and then OpenCV.Core.Float32_Access.Classify
+                    (Nonfinite.Abs_Diff (Nonfinite), 0, 0)
+                  = OpenCV.Core.Float32_Access.Not_A_Number
+         and then Empty_Result.Is_Empty,
+         "Abs_Diff must support Regions, independent output, empty, and IEEE"
+         & " Float32 semantics");
+   end Mat_Abs_Diff_Handles_Regions_Nonfinite_And_Independence;
+
+   procedure Mat_Abs_Diff_Rejects_Incompatible_Operands
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Base     : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+      Rows     : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 1, (OpenCV.Core.UInt8, 1));
+      Columns  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 1));
+      Depth    : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Channels : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 3));
+      procedure Bad_Rows is
+         X : constant OpenCV.Core.Mat := Base.Abs_Diff (Rows);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Rows;
+      procedure Bad_Columns is
+         X : constant OpenCV.Core.Mat := Base.Abs_Diff (Columns);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Columns;
+      procedure Bad_Depth is
+         X : constant OpenCV.Core.Mat := Base.Abs_Diff (Depth);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Depth;
+      procedure Bad_Channels is
+         X : constant OpenCV.Core.Mat := Base.Abs_Diff (Channels);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Channels;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Bad_Rows'Access, "Abs_Diff must reject mismatched rows");
+      Assert_Raises_OpenCV_Error
+        (Bad_Columns'Access, "Abs_Diff must reject mismatched columns");
+      Assert_Raises_OpenCV_Error
+        (Bad_Depth'Access, "Abs_Diff must reject mismatched depths");
+      Assert_Raises_OpenCV_Error
+        (Bad_Channels'Access, "Abs_Diff must reject mismatched channels");
+   end Mat_Abs_Diff_Rejects_Incompatible_Operands;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -4058,6 +4201,22 @@ package body Mat_Tests is
         (Caller.Create
            ("Mat Multiply and Divide handle Int16, empty, and compatibility",
             Mat_Multiply_Divide_Int16_Empty_Compatibility'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Abs_Diff handles Float32 and metadata",
+            Mat_Abs_Diff_Handles_Float32_And_Metadata'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Abs_Diff handles UInt8, Vec3, and Int16",
+            Mat_Abs_Diff_Handles_UInt8_Vec3_And_Int16'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Abs_Diff handles Regions, nonfinite, and independence",
+            Mat_Abs_Diff_Handles_Regions_Nonfinite_And_Independence'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Abs_Diff rejects incompatible operands",
+            Mat_Abs_Diff_Rejects_Incompatible_Operands'Access));
       Result.Add_Test
         (Caller.Create
            ("Min_Max_Loc UInt8 returns values and column-row Points",
