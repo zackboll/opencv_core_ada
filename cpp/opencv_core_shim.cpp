@@ -3,6 +3,7 @@
 #include <opencv2/core.hpp>
 
 #include <cstdio>
+#include <cstring>
 #include <exception>
 #include <limits>
 #include <new>
@@ -128,6 +129,53 @@ bool size_to_abi(std::size_t value, uint64_t &result) noexcept {
     return true;
 }
 
+template <typename T>
+opencv_core_status prepare_row(const opencv_core_mat_handle *mat, int32_t row,
+                               uint64_t element_count, int expected_depth,
+                               const char *depth_name, const T *&row_data,
+                               std::size_t &byte_count) {
+    row_data = nullptr;
+    byte_count = 0;
+ 
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+ 
+    if (row < 0) {
+        return invalid_argument("row must not be negative");
+    }
+ 
+    if (mat->value.dims != 2) {
+        return invalid_argument("Mat must be two-dimensional");
+    }
+ 
+    if (mat->value.depth() != expected_depth) {
+        return invalid_argument(depth_name);
+    }
+ 
+    if (mat->value.channels() != 1) {
+        return invalid_argument("Mat must have exactly one channel");
+    }
+ 
+    if (row >= mat->value.rows) {
+        return invalid_argument("row is outside Mat bounds");
+    }
+ 
+    if (element_count != static_cast<uint64_t>(mat->value.cols)) {
+        return invalid_argument("element_count must equal Mat columns");
+    }
+ 
+    if (element_count >
+        static_cast<uint64_t>(std::numeric_limits<std::size_t>::max() /
+                              sizeof(T))) {
+        return invalid_argument("row byte count exceeds the native size range");
+    }
+ 
+    byte_count = static_cast<std::size_t>(element_count) * sizeof(T);
+    row_data = mat->value.template ptr<T>(static_cast<int>(row));
+    return OPENCV_CORE_OK;
+}
+ 
 bool from_opencv_depth(int opencv_depth, int32_t &depth) noexcept {
     switch (opencv_depth) {
     case CV_8U:
@@ -765,6 +813,119 @@ opencv_core_mat_set_float32(opencv_core_mat_handle *mat, int32_t row,
     }
 }
 
+opencv_core_status
+opencv_core_mat_read_uint8_row(const opencv_core_mat_handle *mat, int32_t row,
+                               uint8_t *data, uint64_t element_count) {
+    clear_error();
+ 
+    if (data == nullptr && element_count != 0) {
+        return invalid_argument("data must not be null when element_count is nonzero");
+    }
+ 
+    try {
+        const uint8_t *row_data = nullptr;
+        std::size_t byte_count = 0;
+        const opencv_core_status status =
+            prepare_row(mat, row, element_count, CV_8U,
+                        "Mat depth must be UInt8", row_data, byte_count);
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+ 
+        if (byte_count != 0) {
+            std::memcpy(data, row_data, byte_count);
+        }
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+ 
+opencv_core_status
+opencv_core_mat_write_uint8_row(opencv_core_mat_handle *mat, int32_t row,
+                                const uint8_t *data, uint64_t element_count) {
+    clear_error();
+ 
+    if (data == nullptr && element_count != 0) {
+        return invalid_argument("data must not be null when element_count is nonzero");
+    }
+ 
+    try {
+        const uint8_t *row_data = nullptr;
+        std::size_t byte_count = 0;
+        const opencv_core_status status =
+            prepare_row(mat, row, element_count, CV_8U,
+                        "Mat depth must be UInt8", row_data, byte_count);
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+ 
+        if (byte_count != 0) {
+            std::memcpy(const_cast<uint8_t *>(row_data), data, byte_count);
+        }
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+ 
+opencv_core_status
+opencv_core_mat_read_float32_row(const opencv_core_mat_handle *mat,
+                                 int32_t row, float *data,
+                                 uint64_t element_count) {
+    clear_error();
+ 
+    if (data == nullptr && element_count != 0) {
+        return invalid_argument("data must not be null when element_count is nonzero");
+    }
+ 
+    try {
+        const float *row_data = nullptr;
+        std::size_t byte_count = 0;
+        const opencv_core_status status =
+            prepare_row(mat, row, element_count, CV_32F,
+                        "Mat depth must be Float32", row_data, byte_count);
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+ 
+        if (byte_count != 0) {
+            std::memcpy(data, row_data, byte_count);
+        }
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+ 
+opencv_core_status
+opencv_core_mat_write_float32_row(opencv_core_mat_handle *mat, int32_t row,
+                                  const float *data, uint64_t element_count) {
+    clear_error();
+ 
+    if (data == nullptr && element_count != 0) {
+        return invalid_argument("data must not be null when element_count is nonzero");
+    }
+ 
+    try {
+        const float *row_data = nullptr;
+        std::size_t byte_count = 0;
+        const opencv_core_status status =
+            prepare_row(mat, row, element_count, CV_32F,
+                        "Mat depth must be Float32", row_data, byte_count);
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+ 
+        if (byte_count != 0) {
+            std::memcpy(const_cast<float *>(row_data), data, byte_count);
+        }
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+ 
 opencv_core_status
 opencv_core_mat_get_uint8_vec3(const opencv_core_mat_handle *mat, int32_t row,
                                int32_t column,

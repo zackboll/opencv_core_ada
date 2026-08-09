@@ -172,6 +172,46 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_set_float32";
 
+   function Mat_Read_UInt8_Row
+     (Self          : Mat_Handle;
+      Row           : C_Int32;
+      Data          : System.Address;
+      Element_Count : C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_read_uint8_row";
+
+   function Mat_Write_UInt8_Row
+     (Self          : Mat_Handle;
+      Row           : C_Int32;
+      Data          : System.Address;
+      Element_Count : C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_write_uint8_row";
+
+   function Mat_Read_Float32_Row
+     (Self          : Mat_Handle;
+      Row           : C_Int32;
+      Data          : System.Address;
+      Element_Count : C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_read_float32_row";
+
+   function Mat_Write_Float32_Row
+     (Self          : Mat_Handle;
+      Row           : C_Int32;
+      Data          : System.Address;
+      Element_Count : C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_write_float32_row";
+
    function Mat_Get_UInt8_Vec3
      (Self   : Mat_Handle;
       Row    : C_Int32;

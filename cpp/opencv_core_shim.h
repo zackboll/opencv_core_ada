@@ -154,6 +154,29 @@ opencv_core_mat_set_float32(opencv_core_mat_handle *mat, int32_t row,
                             int32_t column, float value);
 
 /*
+ * Copy one complete row of a two-dimensional, single-channel Mat. The caller
+ * supplies exactly mat columns elements. Each row may be copied independently;
+ * whole-Mat continuity is not required.
+ */
+opencv_core_status
+opencv_core_mat_read_uint8_row(const opencv_core_mat_handle *mat, int32_t row,
+                               uint8_t *data, uint64_t element_count);
+
+opencv_core_status
+opencv_core_mat_write_uint8_row(opencv_core_mat_handle *mat, int32_t row,
+                                const uint8_t *data, uint64_t element_count);
+
+opencv_core_status
+opencv_core_mat_read_float32_row(const opencv_core_mat_handle *mat,
+                                 int32_t row, float *data,
+                                 uint64_t element_count);
+
+opencv_core_status
+opencv_core_mat_write_float32_row(opencv_core_mat_handle *mat,
+                                  int32_t row, const float *data,
+                                  uint64_t element_count);
+
+/*
  * Read or write one element of a two-dimensional, exactly three-channel Mat.
  * Row, column, and component numbering are zero-based. The ABI Vec structs
  * are converted explicitly to/from cv::Vec; their layouts are independent.
