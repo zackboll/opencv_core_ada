@@ -17,6 +17,13 @@ typedef int32_t opencv_core_status;
 
 typedef struct opencv_core_mat_handle opencv_core_mat_handle;
 
+typedef struct {
+    double component_0;
+    double component_1;
+    double component_2;
+    double component_3;
+} opencv_core_scalar;
+
 /*
  * Stable depth identifiers for the C ABI. These are translated explicitly to
  * OpenCV depth constants by the shim and are not OpenCV's encoded Mat types.
@@ -72,6 +79,14 @@ opencv_core_mat_channels(const opencv_core_mat_handle *mat,
 
 opencv_core_status
 opencv_core_mat_depth(const opencv_core_mat_handle *mat, int32_t *out_depth);
+
+opencv_core_status
+opencv_core_mat_set_to(opencv_core_mat_handle *mat,
+                       const opencv_core_scalar *value);
+
+opencv_core_status
+opencv_core_mat_sum(const opencv_core_mat_handle *mat,
+                    opencv_core_scalar *out_sum);
 
 #ifdef __cplusplus
 }

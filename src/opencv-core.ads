@@ -13,6 +13,19 @@ package OpenCV.Core is
       Channels : Channel_Count;
    end record;
 
+   type Scalar is record
+      Component_0 : Long_Float := 0.0;
+      Component_1 : Long_Float := 0.0;
+      Component_2 : Long_Float := 0.0;
+      Component_3 : Long_Float := 0.0;
+   end record;
+
+   function Make_Scalar
+     (Component_0 : Long_Float;
+      Component_1 : Long_Float := 0.0;
+      Component_2 : Long_Float := 0.0;
+      Component_3 : Long_Float := 0.0) return Scalar;
+
    type Mat is tagged private;
 
    function Create
@@ -24,6 +37,8 @@ package OpenCV.Core is
    function Columns (Self : Mat) return Natural;
    function Channels (Self : Mat) return Channel_Count;
    function Depth (Self : Mat) return Depth_Type;
+   procedure Set_To (Self : in out Mat; Value : Scalar);
+   function Sum (Self : Mat) return Scalar;
 
 private
 

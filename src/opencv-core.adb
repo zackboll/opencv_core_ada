@@ -1,4 +1,5 @@
 with Ada.Exceptions;
+with Interfaces.C;
 
 package body OpenCV.Core is
 
@@ -36,6 +37,28 @@ package body OpenCV.Core is
          end if;
       end;
    end Raise_On_Error;
+
+   function To_C_Scalar (Value : Scalar) return OpenCV.Internal.C_API.Scalar
+   is (Component_0 => Interfaces.C.double (Value.Component_0),
+       Component_1 => Interfaces.C.double (Value.Component_1),
+       Component_2 => Interfaces.C.double (Value.Component_2),
+       Component_3 => Interfaces.C.double (Value.Component_3));
+
+   function From_C_Scalar (Value : OpenCV.Internal.C_API.Scalar) return Scalar
+   is (Component_0 => Long_Float (Value.Component_0),
+       Component_1 => Long_Float (Value.Component_1),
+       Component_2 => Long_Float (Value.Component_2),
+       Component_3 => Long_Float (Value.Component_3));
+
+   function Make_Scalar
+     (Component_0 : Long_Float;
+      Component_1 : Long_Float := 0.0;
+      Component_2 : Long_Float := 0.0;
+      Component_3 : Long_Float := 0.0) return Scalar
+   is (Component_0 => Component_0,
+       Component_1 => Component_1,
+       Component_2 => Component_2,
+       Component_3 => Component_3);
 
    function To_C_Depth
      (Value : Depth_Type) return OpenCV.Internal.C_API.C_Int32
@@ -198,5 +221,26 @@ package body OpenCV.Core is
       Raise_On_Error (Result, "Mat depth query");
       return From_C_Depth (Value);
    end Depth;
+
+   procedure Set_To (Self : in out Mat; Value : Scalar) is
+      C_Value : aliased OpenCV.Internal.C_API.Scalar := To_C_Scalar (Value);
+      Result  : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Set_To (Self.Handle, C_Value'Access);
+   begin
+      Raise_On_Error (Result, "Mat set-to operation");
+   end Set_To;
+
+   function Sum (Self : Mat) return Scalar is
+      C_Result : aliased OpenCV.Internal.C_API.Scalar :=
+        (Component_0 => 0.0,
+         Component_1 => 0.0,
+         Component_2 => 0.0,
+         Component_3 => 0.0);
+      Result   : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Sum (Self.Handle, C_Result'Access);
+   begin
+      Raise_On_Error (Result, "Mat sum operation");
+      return From_C_Scalar (C_Result);
+   end Sum;
 
 end OpenCV.Core;

@@ -1,4 +1,5 @@
 with Interfaces;
+with Interfaces.C;
 with System;
 
 package OpenCV.Internal.C_API is
@@ -15,6 +16,15 @@ package OpenCV.Internal.C_API is
    Null_Mat_Handle : constant Mat_Handle := Mat_Handle (System.Null_Address);
 
    subtype C_Int32 is Interfaces.Integer_32;
+   subtype C_Double is Interfaces.C.double;
+
+   type Scalar is record
+      Component_0 : C_Double;
+      Component_1 : C_Double;
+      Component_2 : C_Double;
+      Component_3 : C_Double;
+   end record
+   with Convention => C;
 
    Depth_UInt8   : constant C_Int32 := 0;
    Depth_Int8    : constant C_Int32 := 1;
@@ -67,5 +77,11 @@ package OpenCV.Internal.C_API is
    function Mat_Depth
      (Self : Mat_Handle; Result : access C_Int32) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_depth";
+
+   function Mat_Set_To (Self : Mat_Handle; Value : access Scalar) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_set_to";
+
+   function Mat_Sum (Self : Mat_Handle; Result : access Scalar) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_sum";
 
 end OpenCV.Internal.C_API;

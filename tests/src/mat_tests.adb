@@ -119,6 +119,95 @@ package body Mat_Tests is
          "The source depth should survive copy finalization");
    end Constructed_Mat_Copy_Preserves_Metadata;
 
+   function Approximately_Equal
+     (Left, Right : Long_Float; Tolerance : Long_Float := 0.000_001)
+      return Boolean
+   is (abs (Left - Right) <= Tolerance);
+
+   procedure UInt8_Set_To_And_Sum (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Total : OpenCV.Core.Scalar;
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (10.0));
+      Total := Image.Sum;
+
+      AUnit.Assertions.Assert
+        (Total.Component_0 = 60.0,
+         "A 2x3 UInt8 Mat filled with 10 should sum to 60");
+      AUnit.Assertions.Assert
+        (Total.Component_1 = 0.0
+         and then Total.Component_2 = 0.0
+         and then Total.Component_3 = 0.0,
+         "Unused Scalar components should remain zero");
+   end UInt8_Set_To_And_Sum;
+
+   procedure Three_Channel_Set_To_And_Sum (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      Total : OpenCV.Core.Scalar;
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (1.0, 2.0, 3.0));
+      Total := Image.Sum;
+
+      AUnit.Assertions.Assert
+        (Total.Component_0 = 4.0,
+         "The first channel should sum independently");
+      AUnit.Assertions.Assert
+        (Total.Component_1 = 8.0,
+         "The second channel should sum independently");
+      AUnit.Assertions.Assert
+        (Total.Component_2 = 12.0,
+         "The third channel should sum independently");
+      AUnit.Assertions.Assert
+        (Total.Component_3 = 0.0,
+         "The unused fourth channel total should be zero");
+   end Three_Channel_Set_To_And_Sum;
+
+   procedure Float32_Set_To_And_Sum (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Total : OpenCV.Core.Scalar;
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (1.25));
+      Total := Image.Sum;
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Total.Component_0, 7.5),
+         "A Float32 Mat sum should preserve fractional values");
+   end Float32_Set_To_And_Sum;
+
+   procedure Assignment_Shares_Set_To_Data (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Copy   : OpenCV.Core.Mat;
+      Total  : OpenCV.Core.Scalar;
+   begin
+      Copy := Source;
+      Source.Set_To (OpenCV.Core.Make_Scalar (10.0));
+      Total := Copy.Sum;
+
+      AUnit.Assertions.Assert
+        (Total.Component_0 = 60.0,
+         "A normal Mat assignment should share Set_To-modified data");
+   end Assignment_Shares_Set_To_Data;
+
    procedure Original_Survives_Copy_Finalization
      (Test : in out Mat_Test_Fixture)
    is
@@ -162,6 +251,20 @@ package body Mat_Tests is
         (Caller.Create
            ("Constructed Mat copy preserves metadata",
             Constructed_Mat_Copy_Preserves_Metadata'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt8 Mat set-to and sum", UInt8_Set_To_And_Sum'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Three-channel Mat set-to and sum",
+            Three_Channel_Set_To_And_Sum'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 Mat set-to and sum", Float32_Set_To_And_Sum'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Assignment shares Set_To data",
+            Assignment_Shares_Set_To_Data'Access));
       Result.Add_Test
         (Caller.Create
            ("Original survives copy finalization",

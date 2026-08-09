@@ -83,6 +83,15 @@ bool to_opencv_depth(int32_t depth, int &opencv_depth) noexcept {
     }
 }
 
+cv::Scalar to_opencv_scalar(const opencv_core_scalar &value) {
+    return cv::Scalar(value.component_0, value.component_1, value.component_2,
+                      value.component_3);
+}
+
+opencv_core_scalar from_opencv_scalar(const cv::Scalar &value) noexcept {
+    return {value[0], value[1], value[2], value[3]};
+}
+
 bool from_opencv_depth(int opencv_depth, int32_t &depth) noexcept {
     switch (opencv_depth) {
     case CV_8U:
@@ -325,6 +334,50 @@ opencv_core_mat_depth(const opencv_core_mat_handle *mat, int32_t *out_depth) {
         if (!from_opencv_depth(mat->value.depth(), *out_depth)) {
             return invalid_argument("Mat has an unsupported OpenCV depth");
         }
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_set_to(opencv_core_mat_handle *mat,
+                       const opencv_core_scalar *value) {
+    clear_error();
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    if (value == nullptr) {
+        return invalid_argument("Scalar value must not be null");
+    }
+
+    try {
+        mat->value.setTo(to_opencv_scalar(*value));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_sum(const opencv_core_mat_handle *mat,
+                    opencv_core_scalar *out_sum) {
+    clear_error();
+
+    if (out_sum == nullptr) {
+        return invalid_argument("out_sum must not be null");
+    }
+
+    *out_sum = {0.0, 0.0, 0.0, 0.0};
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        *out_sum = from_opencv_scalar(cv::sum(mat->value));
         return OPENCV_CORE_OK;
     } catch (...) {
         return translate_current_exception();
