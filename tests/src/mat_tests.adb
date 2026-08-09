@@ -5,6 +5,8 @@ with AUnit.Test_Fixtures;
 with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
+with OpenCV.Core.Float32_Matx3x3;
+with OpenCV.Core.Float32_Matx3x3_Conversions;
 with OpenCV.Core.Float32_Row_Access;
 with OpenCV.Core.Float32_Vec3;
 with OpenCV.Core.Float32_Vec3_Access;
@@ -2508,6 +2510,206 @@ package body Mat_Tests is
          "Mat dimensions must remain consistent with columns and rows");
    end Empty_Mat_Has_Zero_Dimensions;
 
+   procedure Float32_Matx3x3_Has_Value_And_Zero_Based_Index_Semantics
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Float32_Matx3x3.Matrix :=
+        ((1.25, -2.5, 3.75), (4.5, 5.25, -6.75), (7.0, 8.125, 9.875));
+      Copy   : OpenCV.Core.Float32_Matx3x3.Matrix := Source;
+   begin
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Long_Float (Source (0, 0)), 1.25)
+         and then Approximately_Equal (Long_Float (Source (1, 2)), -6.75)
+         and then Approximately_Equal (Long_Float (Source (2, 1)), 8.125),
+         "Float32 Matx3x3 must preserve zero-based row and column indexing");
+
+      Copy (1, 2) := 42.0;
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Long_Float (Copy (1, 2)), 42.0)
+         and then Approximately_Equal (Long_Float (Source (1, 2)), -6.75),
+         "Float32 Matx3x3 assignment must use independent Ada value"
+         & " semantics");
+   end Float32_Matx3x3_Has_Value_And_Zero_Based_Index_Semantics;
+
+   procedure Float32_Matx3x3_To_Mat_Copies_Metadata_Values_And_Storage
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Fixed : OpenCV.Core.Float32_Matx3x3.Matrix :=
+        ((1.25, -2.5, 3.75), (4.5, 5.25, -6.75), (7.0, 8.125, 9.875));
+      Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Float32_Matx3x3_Conversions.To_Mat (Fixed);
+   begin
+      AUnit.Assertions.Assert
+        (Image.Rows = 3
+         and then Image.Columns = 3
+         and then Image.Depth = OpenCV.Core.Float32
+         and then Image.Channels = 1,
+         "Matx3x3 To_Mat must create a 3x3 Float32 single-channel Mat");
+
+      for Row in Fixed'Range (1) loop
+         for Column in Fixed'Range (2) loop
+            AUnit.Assertions.Assert
+              (Approximately_Equal
+                 (Long_Float
+                    (OpenCV.Core.Float32_Access.Get (Image, Row, Column)),
+                  Long_Float (Fixed (Row, Column))),
+               "Matx3x3 To_Mat must copy every element in row-major order");
+         end loop;
+      end loop;
+
+      Fixed (0, 0) := 42.0;
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Long_Float (Fixed (0, 0)), 42.0)
+         and then Approximately_Equal
+                    (Long_Float (OpenCV.Core.Float32_Access.Get (Image, 0, 0)),
+                     1.25),
+         "Matx3x3 To_Mat output must not share storage with the Ada value");
+   end Float32_Matx3x3_To_Mat_Copies_Metadata_Values_And_Storage;
+
+   procedure Mat_To_Float32_Matx3x3_Copies_Values_And_Storage
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 3,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Fixed : OpenCV.Core.Float32_Matx3x3.Matrix;
+   begin
+      for Row in OpenCV.Core.Float32_Matx3x3.Row_Index loop
+         for Column in OpenCV.Core.Float32_Matx3x3.Column_Index loop
+            OpenCV.Core.Float32_Access.Set
+              (Image,
+               Row,
+               Column,
+               OpenCV.Core.Float32_Value (Row * 3 + Column) + 0.25);
+         end loop;
+      end loop;
+
+      Fixed := OpenCV.Core.Float32_Matx3x3_Conversions.To_Matx3x3 (Image);
+
+      for Row in Fixed'Range (1) loop
+         for Column in Fixed'Range (2) loop
+            AUnit.Assertions.Assert
+              (Approximately_Equal
+                 (Long_Float (Fixed (Row, Column)),
+                  Long_Float (Row * 3 + Column) + 0.25),
+               "Mat To_Matx3x3 must copy every Float32 element");
+         end loop;
+      end loop;
+
+      OpenCV.Core.Float32_Access.Set (Image, 2, 2, 99.0);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Long_Float (Fixed (2, 2)), 8.25),
+         "Mat To_Matx3x3 output must not share storage with the Mat");
+   end Mat_To_Float32_Matx3x3_Copies_Values_And_Storage;
+
+   procedure Float32_Matx3x3_Converts_Non_Continuous_Region
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 5,
+           Columns      => 5,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      View   : constant OpenCV.Core.Mat :=
+        Source.Region ((X => 1, Y => 1, Width => 3, Height => 3));
+      Fixed  : OpenCV.Core.Float32_Matx3x3.Matrix;
+   begin
+      for Row in 0 .. 4 loop
+         for Column in 0 .. 4 loop
+            OpenCV.Core.Float32_Access.Set
+              (Source,
+               Row,
+               Column,
+               OpenCV.Core.Float32_Value (Row * 10 + Column));
+         end loop;
+      end loop;
+
+      Fixed := OpenCV.Core.Float32_Matx3x3_Conversions.To_Matx3x3 (View);
+
+      AUnit.Assertions.Assert
+        (not View.Is_Continuous
+         and then Approximately_Equal (Long_Float (Fixed (0, 0)), 11.0)
+         and then Approximately_Equal (Long_Float (Fixed (1, 2)), 23.0)
+         and then Approximately_Equal (Long_Float (Fixed (2, 1)), 32.0),
+         "Matx3x3 conversion must copy values from a non-continuous Region");
+   end Float32_Matx3x3_Converts_Non_Continuous_Region;
+
+   procedure Float32_Matx3x3_Rejects_Incompatible_Mat_Layouts
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Wrong_Rows     : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Wrong_Columns  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 3,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Wrong_Depth    : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 3,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Wrong_Channels : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 3,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 3));
+
+      procedure Convert_Wrong_Rows is
+         Ignored : constant OpenCV.Core.Float32_Matx3x3.Matrix :=
+           OpenCV.Core.Float32_Matx3x3_Conversions.To_Matx3x3 (Wrong_Rows);
+      begin
+         pragma Unreferenced (Ignored);
+      end Convert_Wrong_Rows;
+
+      procedure Convert_Wrong_Columns is
+         Ignored : constant OpenCV.Core.Float32_Matx3x3.Matrix :=
+           OpenCV.Core.Float32_Matx3x3_Conversions.To_Matx3x3 (Wrong_Columns);
+      begin
+         pragma Unreferenced (Ignored);
+      end Convert_Wrong_Columns;
+
+      procedure Convert_Wrong_Depth is
+         Ignored : constant OpenCV.Core.Float32_Matx3x3.Matrix :=
+           OpenCV.Core.Float32_Matx3x3_Conversions.To_Matx3x3 (Wrong_Depth);
+      begin
+         pragma Unreferenced (Ignored);
+      end Convert_Wrong_Depth;
+
+      procedure Convert_Wrong_Channels is
+         Ignored : constant OpenCV.Core.Float32_Matx3x3.Matrix :=
+           OpenCV.Core.Float32_Matx3x3_Conversions.To_Matx3x3 (Wrong_Channels);
+      begin
+         pragma Unreferenced (Ignored);
+      end Convert_Wrong_Channels;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Convert_Wrong_Rows'Access,
+         "Matx3x3 conversion must reject a Mat with wrong rows");
+      Assert_Raises_OpenCV_Error
+        (Convert_Wrong_Columns'Access,
+         "Matx3x3 conversion must reject a Mat with wrong columns");
+      Assert_Raises_OpenCV_Error
+        (Convert_Wrong_Depth'Access,
+         "Matx3x3 conversion must reject a Mat with wrong depth");
+      Assert_Raises_OpenCV_Error
+        (Convert_Wrong_Channels'Access,
+         "Matx3x3 conversion must reject a Mat with wrong channel count");
+   end Float32_Matx3x3_Rejects_Incompatible_Mat_Layouts;
+
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
       Result.Add_Test
@@ -2770,6 +2972,26 @@ package body Mat_Tests is
         (Caller.Create
            ("Float32 reshape preserves values",
             Float32_Reshape_Preserves_Values'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 Matx3x3 has value and zero-based index semantics",
+            Float32_Matx3x3_Has_Value_And_Zero_Based_Index_Semantics'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 Matx3x3 To_Mat copies metadata, values, and storage",
+            Float32_Matx3x3_To_Mat_Copies_Metadata_Values_And_Storage'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat To_Float32_Matx3x3 copies values and storage",
+            Mat_To_Float32_Matx3x3_Copies_Values_And_Storage'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 Matx3x3 converts non-continuous Region",
+            Float32_Matx3x3_Converts_Non_Continuous_Region'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 Matx3x3 rejects incompatible Mat layouts",
+            Float32_Matx3x3_Rejects_Incompatible_Mat_Layouts'Access));
       return Result'Access;
    end Suite;
 
