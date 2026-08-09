@@ -5,6 +5,8 @@ with OpenCV.Core;
 
 package body Mat_Tests is
 
+   use type OpenCV.Core.Depth_Type;
+
    type Mat_Test_Fixture is new AUnit.Test_Fixtures.Test_Fixture
    with null record;
 
@@ -31,6 +33,91 @@ package body Mat_Tests is
       AUnit.Assertions.Assert
         (Copy.Is_Empty, "An assigned default Mat should be valid and empty");
    end Assigned_Mat_Is_Empty;
+
+   procedure UInt8_Single_Channel_Mat_Has_Requested_Metadata
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+   begin
+      AUnit.Assertions.Assert
+        (not Image.Is_Empty, "A dimensioned Mat should not be empty");
+      AUnit.Assertions.Assert
+        (Image.Rows = 2, "Rows should report the requested row count");
+      AUnit.Assertions.Assert
+        (Image.Columns = 3,
+         "Columns should report the requested column count");
+      AUnit.Assertions.Assert
+        (Image.Channels = 1, "Channels should report one channel");
+      AUnit.Assertions.Assert
+        (Image.Depth = OpenCV.Core.UInt8, "Depth should report UInt8");
+   end UInt8_Single_Channel_Mat_Has_Requested_Metadata;
+
+   procedure Float32_Three_Channel_Mat_Has_Requested_Metadata
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 4,
+           Columns      => 5,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 3));
+   begin
+      AUnit.Assertions.Assert
+        (not Image.Is_Empty,
+         "A Float32 three-channel Mat should not be empty");
+      AUnit.Assertions.Assert
+        (Image.Rows = 4, "Rows should preserve the Float32 Mat shape");
+      AUnit.Assertions.Assert
+        (Image.Columns = 5, "Columns should preserve the Float32 Mat shape");
+      AUnit.Assertions.Assert
+        (Image.Channels = 3,
+         "Channels should preserve the three-channel type");
+      AUnit.Assertions.Assert
+        (Image.Depth = OpenCV.Core.Float32, "Depth should preserve Float32");
+   end Float32_Three_Channel_Mat_Has_Requested_Metadata;
+
+   procedure Constructed_Mat_Copy_Preserves_Metadata
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 6,
+           Columns      => 7,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 3));
+   begin
+      declare
+         Copy : constant OpenCV.Core.Mat := Source;
+      begin
+         AUnit.Assertions.Assert
+           (Source.Rows = Copy.Rows, "A copy should preserve rows");
+         AUnit.Assertions.Assert
+           (Source.Columns = Copy.Columns, "A copy should preserve columns");
+         AUnit.Assertions.Assert
+           (Source.Channels = Copy.Channels,
+            "A copy should preserve channels");
+         AUnit.Assertions.Assert
+           (Source.Depth = Copy.Depth, "A copy should preserve depth");
+      end;
+
+      AUnit.Assertions.Assert
+        (Source.Rows = 6,
+         "The source should remain valid after the copy is finalized");
+      AUnit.Assertions.Assert
+        (Source.Columns = 7,
+         "The source columns should survive copy finalization");
+      AUnit.Assertions.Assert
+        (Source.Channels = 3,
+         "The source channels should survive copy finalization");
+      AUnit.Assertions.Assert
+        (Source.Depth = OpenCV.Core.Float32,
+         "The source depth should survive copy finalization");
+   end Constructed_Mat_Copy_Preserves_Metadata;
 
    procedure Original_Survives_Copy_Finalization
      (Test : in out Mat_Test_Fixture)
@@ -63,6 +150,18 @@ package body Mat_Tests is
         (Caller.Create
            ("Assigned default Mat reports empty",
             Assigned_Mat_Is_Empty'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt8 single-channel Mat metadata",
+            UInt8_Single_Channel_Mat_Has_Requested_Metadata'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 three-channel Mat metadata",
+            Float32_Three_Channel_Mat_Has_Requested_Metadata'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Constructed Mat copy preserves metadata",
+            Constructed_Mat_Copy_Preserves_Metadata'Access));
       Result.Add_Test
         (Caller.Create
            ("Original survives copy finalization",
