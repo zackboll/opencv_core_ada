@@ -2772,6 +2772,161 @@ package body Mat_Tests is
          "OpenCV normalization of a zero Mat must retain zero values");
    end Normalize_Handles_Empty_And_Zero_Input;
 
+   procedure Mat_Add_And_Subtract_Work_For_Float32
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left            : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+      Right           : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+      Sum, Difference : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set (Left, 0, 0, 1.5);
+      OpenCV.Core.Float32_Access.Set (Left, 0, 1, -2.0);
+      OpenCV.Core.Float32_Access.Set (Right, 0, 0, 2.5);
+      OpenCV.Core.Float32_Access.Set (Right, 0, 1, 3.0);
+      Sum := Left.Add (Right);
+      Difference := Left.Subtract (Right);
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float (OpenCV.Core.Float32_Access.Get (Sum, 0, 0)), 4.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Difference, 0, 1)),
+                     -5.0),
+         "Float32 addition and subtraction must preserve arithmetic results");
+      AUnit.Assertions.Assert
+        (Sum.Rows = Left.Rows
+         and then Sum.Columns = Left.Columns
+         and then Sum.Depth = Left.Depth
+         and then Sum.Channels = Left.Channels,
+         "Mat addition must preserve compatible operand metadata");
+   end Mat_Add_And_Subtract_Work_For_Float32;
+
+   procedure Mat_Arithmetic_Saturates_And_Supports_Vec3
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left            : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 3));
+      Right           : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 3));
+      Sum, Difference : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.UInt8_Vec3_Access.Set (Left, 0, 0, (250, 5, 10));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Right, 0, 0, (20, 20, 30));
+      Sum := Left.Add (Right);
+      Difference := Left.Subtract (Right);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Vec3_Access.Get (Sum, 0, 0) = (255, 25, 40)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Difference, 0, 0)
+                  = (230, 0, 0),
+         "UInt8 Vec3 arithmetic must process components independently with"
+         & " saturation");
+   end Mat_Arithmetic_Saturates_And_Supports_Vec3;
+
+   procedure Mat_Arithmetic_Supports_Int16 (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Left       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Int16, 1));
+      Right      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Int16, 1));
+      Sum        : OpenCV.Core.Mat;
+      Difference : OpenCV.Core.Mat;
+   begin
+      Left.Set_To (OpenCV.Core.Make_Scalar (1_000.0));
+      Right.Set_To (OpenCV.Core.Make_Scalar (-250.0));
+      Sum := Left.Add (Right);
+      Difference := Left.Subtract (Right);
+
+      AUnit.Assertions.Assert
+        (Sum.Sum.Component_0 = 750.0
+         and then Difference.Sum.Component_0 = 1_250.0,
+         "Mat arithmetic must support preserved-depth Int16 operands");
+   end Mat_Arithmetic_Supports_Int16;
+
+   procedure Mat_Arithmetic_Is_Independent_And_Handles_Regions
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.Float32, 1));
+      Right  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      Left.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      Right.Set_To (OpenCV.Core.Make_Scalar (2.0));
+      Result := Left.Region ((1, 0, 2, 3)).Add (Right.Region ((1, 0, 2, 3)));
+      OpenCV.Core.Float32_Access.Set (Left, 0, 1, 9.0);
+      OpenCV.Core.Float32_Access.Set (Result, 0, 1, 7.0);
+      AUnit.Assertions.Assert
+        (Result.Is_Continuous
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 0, 0)),
+                     3.0)
+         and then Approximately_Equal
+                    (Long_Float (OpenCV.Core.Float32_Access.Get (Left, 0, 2)),
+                     1.0)
+         and then Approximately_Equal
+                    (Long_Float (OpenCV.Core.Float32_Access.Get (Right, 0, 2)),
+                     2.0),
+         "Arithmetic Regions must produce independent continuous results");
+   end Mat_Arithmetic_Is_Independent_And_Handles_Regions;
+
+   procedure Mat_Arithmetic_Compatibility_And_Empty
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Empty_Left, Empty_Right, Empty_Result : OpenCV.Core.Mat;
+      One_By_One                            : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+      Two_By_One                            : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 1, (OpenCV.Core.UInt8, 1));
+      One_By_Two                            : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 1));
+      Depth                                 : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Channels                              : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 3));
+      procedure Bad_Rows is
+         X : constant OpenCV.Core.Mat := One_By_One.Add (Two_By_One);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Rows;
+      procedure Bad_Columns is
+         X : constant OpenCV.Core.Mat := One_By_One.Add (One_By_Two);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Columns;
+      procedure Bad_Depth is
+         X : constant OpenCV.Core.Mat := One_By_One.Add (Depth);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Depth;
+      procedure Bad_Channels is
+         X : constant OpenCV.Core.Mat := One_By_One.Subtract (Channels);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Channels;
+   begin
+      Empty_Result := Empty_Left.Add (Empty_Right);
+      AUnit.Assertions.Assert
+        (Empty_Result.Is_Empty,
+         "Adding two empty Mats must produce an empty Mat");
+      Assert_Raises_OpenCV_Error
+        (Bad_Rows'Access, "Add must reject mismatched rows");
+      Assert_Raises_OpenCV_Error
+        (Bad_Columns'Access, "Add must reject mismatched columns");
+      Assert_Raises_OpenCV_Error
+        (Bad_Depth'Access, "Add must reject mismatched depths");
+      Assert_Raises_OpenCV_Error
+        (Bad_Channels'Access,
+         "Subtract must reject mismatched channel counts");
+   end Mat_Arithmetic_Compatibility_And_Empty;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -3604,6 +3759,26 @@ package body Mat_Tests is
         (Caller.Create
            ("Normalize handles empty and zero input",
             Normalize_Handles_Empty_And_Zero_Input'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Add and Subtract work for Float32",
+            Mat_Add_And_Subtract_Work_For_Float32'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat arithmetic saturates and supports Vec3",
+            Mat_Arithmetic_Saturates_And_Supports_Vec3'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat arithmetic supports Int16",
+            Mat_Arithmetic_Supports_Int16'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat arithmetic is independent and handles Regions",
+            Mat_Arithmetic_Is_Independent_And_Handles_Regions'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat arithmetic rejects incompatible operands and handles empty",
+            Mat_Arithmetic_Compatibility_And_Empty'Access));
       Result.Add_Test
         (Caller.Create
            ("Min_Max_Loc UInt8 returns values and column-row Points",

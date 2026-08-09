@@ -107,6 +107,10 @@ package OpenCV.Core is
       Kind  : Normalize_Kind := L2;
       Alpha : Long_Float := 1.0;
       Beta  : Long_Float := 0.0) return Mat;
+   --  Both operands must have identical 2D shape and element type.  Each
+   --  result owns independent storage and preserves that element type.
+   function Add (Left, Right : Mat) return Mat;
+   function Subtract (Left, Right : Mat) return Mat;
    function Is_Empty (Self : Mat) return Boolean;
    function Rows (Self : Mat) return Natural;
    function Columns (Self : Mat) return Natural;

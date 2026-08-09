@@ -101,6 +101,14 @@ package OpenCV.Internal.C_API is
       Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_normalize";
 
+   function Mat_Add
+     (Left, Right : Mat_Handle; Result : access Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_add";
+
+   function Mat_Subtract
+     (Left, Right : Mat_Handle; Result : access Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_subtract";
+
    function Mat_Region
      (Source : Mat_Handle;
       X      : C_Int32;

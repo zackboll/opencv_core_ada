@@ -90,6 +90,12 @@ bool to_opencv_normalize_kind(int32_t normalize_kind,
     }
 }
 
+bool mats_have_same_shape_and_type(const cv::Mat &left,
+                                   const cv::Mat &right) noexcept {
+    return left.dims == right.dims && left.rows == right.rows &&
+           left.cols == right.cols && left.type() == right.type();
+}
+
 bool to_opencv_depth(int32_t depth, int &opencv_depth) noexcept {
     switch (depth) {
     case OPENCV_CORE_DEPTH_UINT8:
@@ -458,6 +464,66 @@ opencv_core_mat_normalize(const opencv_core_mat_handle *source,
         cv::normalize(source->value, normalized, alpha, beta,
                       opencv_normalize_kind, -1);
         *out_mat = new opencv_core_mat_handle(normalized);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_add(const opencv_core_mat_handle *left,
+                    const opencv_core_mat_handle *right,
+                    opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (left == nullptr || right == nullptr) {
+        return invalid_argument("Mat operand handles must not be null");
+    }
+
+    if (!mats_have_same_shape_and_type(left->value, right->value)) {
+        return invalid_argument("Mat operands must have identical shape and type");
+    }
+
+    try {
+        cv::Mat sum;
+        cv::add(left->value, right->value, sum, cv::noArray(), -1);
+        *out_mat = new opencv_core_mat_handle(sum);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_subtract(const opencv_core_mat_handle *left,
+                         const opencv_core_mat_handle *right,
+                         opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (left == nullptr || right == nullptr) {
+        return invalid_argument("Mat operand handles must not be null");
+    }
+
+    if (!mats_have_same_shape_and_type(left->value, right->value)) {
+        return invalid_argument("Mat operands must have identical shape and type");
+    }
+
+    try {
+        cv::Mat difference;
+        cv::subtract(left->value, right->value, difference, cv::noArray(), -1);
+        *out_mat = new opencv_core_mat_handle(difference);
         return OPENCV_CORE_OK;
     } catch (...) {
         return translate_current_exception();

@@ -189,6 +189,71 @@ package body OpenCV.Core is
           Columns      => Natural (Dimensions.Width),
           Element_Type => Element_Type));
 
+   procedure Validate_Arithmetic_Compatibility (Left, Right : Mat) is
+   begin
+      if Left.Rows /= Right.Rows then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat arithmetic requires operands with identical row counts");
+      end if;
+
+      if Left.Columns /= Right.Columns then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat arithmetic requires operands with identical column counts");
+      end if;
+
+      if Left.Depth /= Right.Depth then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat arithmetic requires operands with identical depths");
+      end if;
+
+      if Left.Channels /= Right.Channels then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat arithmetic requires operands with identical channel counts");
+      end if;
+   end Validate_Arithmetic_Compatibility;
+
+   function Add (Left, Right : Mat) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Add
+          (Left   => Left.Handle,
+           Right  => Right.Handle,
+           Result => New_Handle'Access);
+      Raise_On_Error (Status, "Mat addition operation");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Add;
+
+   function Subtract (Left, Right : Mat) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Subtract
+          (Left   => Left.Handle,
+           Right  => Right.Handle,
+           Result => New_Handle'Access);
+      Raise_On_Error (Status, "Mat subtraction operation");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Subtract;
+
    function Normalize
      (Self  : Mat;
       Kind  : Normalize_Kind := L2;

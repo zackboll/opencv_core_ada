@@ -108,6 +108,20 @@ opencv_core_mat_normalize(const opencv_core_mat_handle *source,
                           opencv_core_mat_handle **out_mat);
 
 /*
+ * Adds or subtracts two Mats with identical dimensions and type. Each returns
+ * a newly allocated, independent result with the same type as its operands.
+ */
+opencv_core_status
+opencv_core_mat_add(const opencv_core_mat_handle *left,
+                    const opencv_core_mat_handle *right,
+                    opencv_core_mat_handle **out_mat);
+
+opencv_core_status
+opencv_core_mat_subtract(const opencv_core_mat_handle *left,
+                         const opencv_core_mat_handle *right,
+                         opencv_core_mat_handle **out_mat);
+
+/*
  * Creates a distinct Mat header for the indicated non-empty 2D region. The
  * header shares source storage through OpenCV reference counting.
  */
