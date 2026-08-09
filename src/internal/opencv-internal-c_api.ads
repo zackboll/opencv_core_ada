@@ -109,6 +109,14 @@ package OpenCV.Internal.C_API is
      (Left, Right : Mat_Handle; Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_subtract";
 
+   function Mat_Multiply
+     (Left, Right : Mat_Handle; Result : access Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_multiply";
+
+   function Mat_Divide
+     (Left, Right : Mat_Handle; Result : access Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_divide";
+
    function Mat_Region
      (Source : Mat_Handle;
       X      : C_Int32;
@@ -228,6 +236,19 @@ package OpenCV.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_core_mat_get_float32";
+
+   Float32_Finite            : constant C_Int32 := 0;
+   Float32_Positive_Infinity : constant C_Int32 := 1;
+   Float32_Negative_Infinity : constant C_Int32 := 2;
+   Float32_Not_A_Number      : constant C_Int32 := 3;
+
+   function Mat_Classify_Float32
+     (Self : Mat_Handle; Row, Column : C_Int32; Result : access C_Int32)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_classify_float32";
 
    function Mat_Set_Float32
      (Self : Mat_Handle; Row, Column : C_Int32; Value : C_Float32)

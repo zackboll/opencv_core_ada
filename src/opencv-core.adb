@@ -254,6 +254,44 @@ package body OpenCV.Core is
       return Result;
    end Subtract;
 
+   function Multiply (Left, Right : Mat) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Multiply
+          (Left   => Left.Handle,
+           Right  => Right.Handle,
+           Result => New_Handle'Access);
+      Raise_On_Error (Status, "Mat multiplication operation");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Multiply;
+
+   function Divide (Left, Right : Mat) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Divide
+          (Left   => Left.Handle,
+           Right  => Right.Handle,
+           Result => New_Handle'Access);
+      Raise_On_Error (Status, "Mat division operation");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Divide;
+
    function Normalize
      (Self  : Mat;
       Kind  : Normalize_Kind := L2;

@@ -26,6 +26,7 @@ package body Mat_Tests is
    use type OpenCV.Core.Mat_Size;
    use type OpenCV.Core.Point_Coordinate;
    use type OpenCV.Core.Size_Coordinate;
+   use type OpenCV.Core.Float32_Access.Float32_Classification;
    use type OpenCV.Core.UInt8_Row_Access.Row_Array;
    use type OpenCV.Core.UInt8_Vec3.Vector;
    use type OpenCV.Core.UInt8_Vec3_Row_Access.Row_Array;
@@ -2927,6 +2928,260 @@ package body Mat_Tests is
          "Subtract must reject mismatched channel counts");
    end Mat_Arithmetic_Compatibility_And_Empty;
 
+   procedure Mat_Multiply_And_Divide_Work_For_Float32
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left              : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 3, (OpenCV.Core.Float32, 1));
+      Right             : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 3, (OpenCV.Core.Float32, 1));
+      Product, Quotient : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set (Left, 0, 0, 6.0);
+      OpenCV.Core.Float32_Access.Set (Left, 0, 1, -9.0);
+      OpenCV.Core.Float32_Access.Set (Left, 0, 2, 5.0);
+      OpenCV.Core.Float32_Access.Set (Right, 0, 0, 2.0);
+      OpenCV.Core.Float32_Access.Set (Right, 0, 1, 3.0);
+      OpenCV.Core.Float32_Access.Set (Right, 0, 2, 2.0);
+      Product := Left.Multiply (Right);
+      Quotient := Left.Divide (Right);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float (OpenCV.Core.Float32_Access.Get (Product, 0, 0)), 12.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Product, 0, 1)),
+                     -27.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Quotient, 0, 0)),
+                     3.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Quotient, 0, 1)),
+                     -3.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Quotient, 0, 2)),
+                     2.5),
+         "Float32 multiplication and division must preserve arithmetic"
+         & " results");
+      AUnit.Assertions.Assert
+        (Product.Rows = Left.Rows
+         and then Product.Columns = Left.Columns
+         and then Product.Depth = Left.Depth
+         and then Product.Channels = Left.Channels,
+         "Mat multiplication must preserve compatible operand metadata");
+   end Mat_Multiply_And_Divide_Work_For_Float32;
+
+   procedure Mat_Multiply_And_Divide_Handle_UInt8_And_Vec3
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left              : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 3));
+      Right             : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 3));
+      Product, Quotient : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.UInt8_Vec3_Access.Set (Left, 0, 0, (20, 7, 5));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Right, 0, 0, (20, 2, 0));
+      Product := Left.Multiply (Right);
+      Quotient := Left.Divide (Right);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Vec3_Access.Get (Product, 0, 0) = (255, 14, 0)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Quotient, 0, 0)
+                  = (1, 4, 0),
+         "UInt8 Vec3 multiplication and division must use OpenCV saturation"
+         & " and preserved-depth rounding");
+   end Mat_Multiply_And_Divide_Handle_UInt8_And_Vec3;
+
+   procedure Mat_Divide_By_Zero_Preserves_OpenCV_Semantics
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Integer_Numerator   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+      Integer_Denominator : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+      Float_Numerator     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 3, (OpenCV.Core.Float32, 1));
+      Float_Denominator   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 3, (OpenCV.Core.Float32, 1));
+      Integer_Result      : OpenCV.Core.Mat;
+      Float_Result        : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.UInt8_Access.Set (Integer_Numerator, 0, 0, 20);
+      Integer_Result := Integer_Numerator.Divide (Integer_Denominator);
+      OpenCV.Core.Float32_Access.Set (Float_Numerator, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Float_Numerator, 0, 1, -1.0);
+      Float_Denominator.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Float_Result := Float_Numerator.Divide (Float_Denominator);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Integer_Result, 0, 0) = 0,
+         "OpenCV integer division by zero must produce zero");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Classify (Float_Result, 0, 0)
+         = OpenCV.Core.Float32_Access.Positive_Infinity
+         and then OpenCV.Core.Float32_Access.Classify (Float_Result, 0, 1)
+                  = OpenCV.Core.Float32_Access.Negative_Infinity
+         and then OpenCV.Core.Float32_Access.Classify (Float_Result, 0, 2)
+                  = OpenCV.Core.Float32_Access.Not_A_Number,
+         "OpenCV Float32 division by zero must preserve IEEE Inf and NaN");
+   end Mat_Divide_By_Zero_Preserves_OpenCV_Semantics;
+
+   procedure Float32_Classification_Identifies_Stored_Values
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Numerator    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 4, (OpenCV.Core.Float32, 1));
+      Denominator  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 4, (OpenCV.Core.Float32, 1));
+      Finite_Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Result       : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set (Numerator, 0, 0, 2.0);
+      OpenCV.Core.Float32_Access.Set (Numerator, 0, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Numerator, 0, 2, -1.0);
+      OpenCV.Core.Float32_Access.Set (Finite_Image, 0, 0, 2.0);
+      Denominator.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Result := Numerator.Divide (Denominator);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Classify (Finite_Image, 0, 0)
+         = OpenCV.Core.Float32_Access.Finite
+         and then OpenCV.Core.Float32_Access.Classify (Result, 0, 0)
+                  = OpenCV.Core.Float32_Access.Positive_Infinity
+         and then OpenCV.Core.Float32_Access.Classify (Result, 0, 1)
+                  = OpenCV.Core.Float32_Access.Positive_Infinity
+         and then OpenCV.Core.Float32_Access.Classify (Result, 0, 2)
+                  = OpenCV.Core.Float32_Access.Negative_Infinity
+         and then OpenCV.Core.Float32_Access.Classify (Result, 0, 3)
+                  = OpenCV.Core.Float32_Access.Not_A_Number,
+         "Float32 classification must identify finite, infinite, and NaN"
+         & " values");
+   end Float32_Classification_Identifies_Stored_Values;
+
+   procedure Mat_Multiply_And_Divide_Handle_Regions_And_Independence
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.Float32, 1));
+      Right    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.Float32, 1));
+      Product  : OpenCV.Core.Mat;
+      Quotient : OpenCV.Core.Mat;
+   begin
+      Left.Set_To (OpenCV.Core.Make_Scalar (6.0));
+      Right.Set_To (OpenCV.Core.Make_Scalar (2.0));
+      Product :=
+        Left.Region ((1, 0, 2, 3)).Multiply (Right.Region ((1, 0, 2, 3)));
+      Quotient :=
+        Left.Region ((1, 0, 2, 3)).Divide (Right.Region ((1, 0, 2, 3)));
+      OpenCV.Core.Float32_Access.Set (Left, 0, 1, 10.0);
+      OpenCV.Core.Float32_Access.Set (Product, 0, 1, 9.0);
+
+      AUnit.Assertions.Assert
+        (Product.Is_Continuous
+         and then Quotient.Is_Continuous
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Product, 0, 0)),
+                     12.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Quotient, 1, 1)),
+                     3.0)
+         and then Approximately_Equal
+                    (Long_Float (OpenCV.Core.Float32_Access.Get (Left, 0, 2)),
+                     6.0)
+         and then Approximately_Equal
+                    (Long_Float (OpenCV.Core.Float32_Access.Get (Right, 0, 2)),
+                     2.0),
+         "Arithmetic Regions must produce independent continuous results");
+   end Mat_Multiply_And_Divide_Handle_Regions_And_Independence;
+
+   procedure Mat_Multiply_Divide_Int16_Empty_Compatibility
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Int16_Left                                             :
+        OpenCV.Core.Mat := OpenCV.Core.Create (1, 1, (OpenCV.Core.Int16, 1));
+      Int16_Right                                            :
+        OpenCV.Core.Mat := OpenCV.Core.Create (1, 1, (OpenCV.Core.Int16, 1));
+      Empty_Left, Empty_Right, Empty_Product, Empty_Quotient : OpenCV.Core.Mat;
+      Different_Rows                                         :
+        constant OpenCV.Core.Mat :=
+          OpenCV.Core.Create (2, 1, (OpenCV.Core.Int16, 1));
+      Different_Columns                                      :
+        constant OpenCV.Core.Mat :=
+          OpenCV.Core.Create (1, 2, (OpenCV.Core.Int16, 1));
+      Different_Depth                                        :
+        constant OpenCV.Core.Mat :=
+          OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Different_Channels                                     :
+        constant OpenCV.Core.Mat :=
+          OpenCV.Core.Create (1, 1, (OpenCV.Core.Int16, 3));
+      Product, Quotient                                      : OpenCV.Core.Mat;
+      procedure Multiply_Mismatched_Rows is
+         Ignored : constant OpenCV.Core.Mat :=
+           Int16_Left.Multiply (Different_Rows);
+      begin
+         pragma Unreferenced (Ignored);
+      end Multiply_Mismatched_Rows;
+      procedure Divide_Mismatched_Columns is
+         Ignored : constant OpenCV.Core.Mat :=
+           Int16_Left.Divide (Different_Columns);
+      begin
+         pragma Unreferenced (Ignored);
+      end Divide_Mismatched_Columns;
+      procedure Divide_Mismatched_Depth is
+         Ignored : constant OpenCV.Core.Mat :=
+           Int16_Left.Divide (Different_Depth);
+      begin
+         pragma Unreferenced (Ignored);
+      end Divide_Mismatched_Depth;
+      procedure Multiply_Mismatched_Channels is
+         Ignored : constant OpenCV.Core.Mat :=
+           Int16_Left.Multiply (Different_Channels);
+      begin
+         pragma Unreferenced (Ignored);
+      end Multiply_Mismatched_Channels;
+   begin
+      Int16_Left.Set_To (OpenCV.Core.Make_Scalar (-12.0));
+      Int16_Right.Set_To (OpenCV.Core.Make_Scalar (3.0));
+      Product := Int16_Left.Multiply (Int16_Right);
+      Quotient := Int16_Left.Divide (Int16_Right);
+      Empty_Product := Empty_Left.Multiply (Empty_Right);
+      Empty_Quotient := Empty_Left.Divide (Empty_Right);
+
+      AUnit.Assertions.Assert
+        (Product.Sum.Component_0 = -36.0
+         and then Quotient.Sum.Component_0 = -4.0
+         and then Empty_Product.Is_Empty
+         and then Empty_Quotient.Is_Empty,
+         "Multiply and Divide must support Int16 and preserve empty Mat"
+         & " results");
+      Assert_Raises_OpenCV_Error
+        (Multiply_Mismatched_Rows'Access,
+         "Multiply must reject mismatched rows");
+      Assert_Raises_OpenCV_Error
+        (Divide_Mismatched_Columns'Access,
+         "Divide must reject mismatched columns");
+      Assert_Raises_OpenCV_Error
+        (Divide_Mismatched_Depth'Access,
+         "Divide must reject mismatched depths");
+      Assert_Raises_OpenCV_Error
+        (Multiply_Mismatched_Channels'Access,
+         "Multiply must reject mismatched channel counts");
+   end Mat_Multiply_Divide_Int16_Empty_Compatibility;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -3779,6 +4034,30 @@ package body Mat_Tests is
         (Caller.Create
            ("Mat arithmetic rejects incompatible operands and handles empty",
             Mat_Arithmetic_Compatibility_And_Empty'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Multiply and Divide work for Float32",
+            Mat_Multiply_And_Divide_Work_For_Float32'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Multiply and Divide handle UInt8 and Vec3",
+            Mat_Multiply_And_Divide_Handle_UInt8_And_Vec3'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Divide by zero preserves OpenCV semantics",
+            Mat_Divide_By_Zero_Preserves_OpenCV_Semantics'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 classification identifies stored values",
+            Float32_Classification_Identifies_Stored_Values'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Multiply and Divide handle Regions and independence",
+            Mat_Multiply_And_Divide_Handle_Regions_And_Independence'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Multiply and Divide handle Int16, empty, and compatibility",
+            Mat_Multiply_Divide_Int16_Empty_Compatibility'Access));
       Result.Add_Test
         (Caller.Create
            ("Min_Max_Loc UInt8 returns values and column-row Points",

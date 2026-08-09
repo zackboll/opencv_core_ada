@@ -111,6 +111,8 @@ package OpenCV.Core is
    --  result owns independent storage and preserves that element type.
    function Add (Left, Right : Mat) return Mat;
    function Subtract (Left, Right : Mat) return Mat;
+   function Multiply (Left, Right : Mat) return Mat;
+   function Divide (Left, Right : Mat) return Mat;
    function Is_Empty (Self : Mat) return Boolean;
    function Rows (Self : Mat) return Natural;
    function Columns (Self : Mat) return Natural;

@@ -3,6 +3,7 @@
 #include <opencv2/core.hpp>
 
 #include <cstdio>
+#include <cmath>
 #include <cstring>
 #include <exception>
 #include <limits>
@@ -524,6 +525,66 @@ opencv_core_mat_subtract(const opencv_core_mat_handle *left,
         cv::Mat difference;
         cv::subtract(left->value, right->value, difference, cv::noArray(), -1);
         *out_mat = new opencv_core_mat_handle(difference);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_multiply(const opencv_core_mat_handle *left,
+                         const opencv_core_mat_handle *right,
+                         opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (left == nullptr || right == nullptr) {
+        return invalid_argument("Mat operand handles must not be null");
+    }
+
+    if (!mats_have_same_shape_and_type(left->value, right->value)) {
+        return invalid_argument("Mat operands must have identical shape and type");
+    }
+
+    try {
+        cv::Mat product;
+        cv::multiply(left->value, right->value, product, 1.0, -1);
+        *out_mat = new opencv_core_mat_handle(product);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_divide(const opencv_core_mat_handle *left,
+                       const opencv_core_mat_handle *right,
+                       opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (left == nullptr || right == nullptr) {
+        return invalid_argument("Mat operand handles must not be null");
+    }
+
+    if (!mats_have_same_shape_and_type(left->value, right->value)) {
+        return invalid_argument("Mat operands must have identical shape and type");
+    }
+
+    try {
+        cv::Mat quotient;
+        cv::divide(left->value, right->value, quotient, 1.0, -1);
+        *out_mat = new opencv_core_mat_handle(quotient);
         return OPENCV_CORE_OK;
     } catch (...) {
         return translate_current_exception();
@@ -1144,6 +1205,58 @@ opencv_core_mat_get_float32(const opencv_core_mat_handle *mat, int32_t row,
 
         *out_value = mat->value.at<float>(static_cast<int>(row),
                                           static_cast<int>(column));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_classify_float32(const opencv_core_mat_handle *mat,
+                                 int32_t row, int32_t column,
+                                 int32_t *out_classification) {
+    clear_error();
+
+    if (out_classification == nullptr) {
+        return invalid_argument("out_classification must not be null");
+    }
+
+    *out_classification = OPENCV_CORE_FLOAT32_FINITE;
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    if (row < 0 || column < 0) {
+        return invalid_argument("row and column must not be negative");
+    }
+
+    try {
+        if (mat->value.dims != 2) {
+            return invalid_argument("Mat must be two-dimensional");
+        }
+
+        if (mat->value.depth() != CV_32F) {
+            return invalid_argument("Mat depth must be Float32");
+        }
+
+        if (mat->value.channels() != 1) {
+            return invalid_argument("Mat must have exactly one channel");
+        }
+
+        if (row >= mat->value.rows || column >= mat->value.cols) {
+            return invalid_argument("row or column is outside Mat bounds");
+        }
+
+        const float value = mat->value.at<float>(static_cast<int>(row),
+                                                  static_cast<int>(column));
+        if (std::isnan(value)) {
+            *out_classification = OPENCV_CORE_FLOAT32_NOT_A_NUMBER;
+        } else if (std::isinf(value)) {
+            *out_classification = value > 0.0F
+                                      ? OPENCV_CORE_FLOAT32_POSITIVE_INFINITY
+                                      : OPENCV_CORE_FLOAT32_NEGATIVE_INFINITY;
+        }
         return OPENCV_CORE_OK;
     } catch (...) {
         return translate_current_exception();

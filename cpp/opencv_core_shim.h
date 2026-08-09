@@ -122,6 +122,20 @@ opencv_core_mat_subtract(const opencv_core_mat_handle *left,
                          opencv_core_mat_handle **out_mat);
 
 /*
+ * Multiplies or divides two Mats with identical dimensions and type using an
+ * OpenCV scale of 1.0. Each returns an independent result of the same type.
+ */
+opencv_core_status
+opencv_core_mat_multiply(const opencv_core_mat_handle *left,
+                         const opencv_core_mat_handle *right,
+                         opencv_core_mat_handle **out_mat);
+
+opencv_core_status
+opencv_core_mat_divide(const opencv_core_mat_handle *left,
+                       const opencv_core_mat_handle *right,
+                       opencv_core_mat_handle **out_mat);
+
+/*
  * Creates a distinct Mat header for the indicated non-empty 2D region. The
  * header shares source storage through OpenCV reference counting.
  */
@@ -221,6 +235,17 @@ opencv_core_mat_set_uint8(opencv_core_mat_handle *mat, int32_t row,
 opencv_core_status
 opencv_core_mat_get_float32(const opencv_core_mat_handle *mat, int32_t row,
                             int32_t column, float *out_value);
+
+/* Stable Float32 classification identifiers. */
+#define OPENCV_CORE_FLOAT32_FINITE ((int32_t)0)
+#define OPENCV_CORE_FLOAT32_POSITIVE_INFINITY ((int32_t)1)
+#define OPENCV_CORE_FLOAT32_NEGATIVE_INFINITY ((int32_t)2)
+#define OPENCV_CORE_FLOAT32_NOT_A_NUMBER ((int32_t)3)
+
+opencv_core_status
+opencv_core_mat_classify_float32(const opencv_core_mat_handle *mat,
+                                 int32_t row, int32_t column,
+                                 int32_t *out_classification);
 
 opencv_core_status
 opencv_core_mat_set_float32(opencv_core_mat_handle *mat, int32_t row,
