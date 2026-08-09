@@ -4,6 +4,7 @@ with Interfaces.C;
 package body OpenCV.Core is
 
    use type OpenCV.Internal.C_API.C_Boolean;
+   use type OpenCV.Internal.C_API.C_UInt64;
    use type OpenCV.Internal.C_API.Status;
 
    procedure Raise_On_Error
@@ -71,6 +72,33 @@ package body OpenCV.Core is
          when Float32 => OpenCV.Internal.C_API.Depth_Float32,
          when Float64 => OpenCV.Internal.C_API.Depth_Float64,
          when Float16 => OpenCV.Internal.C_API.Depth_Float16);
+
+   function To_Mat_Size
+     (Value : OpenCV.Internal.C_API.C_UInt64) return Mat_Size is
+   begin
+      if Value > OpenCV.Internal.C_API.C_UInt64 (Mat_Size'Last) then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat size query returned a value outside the public size range");
+      end if;
+
+      return Mat_Size (Value);
+   end To_Mat_Size;
+
+   function From_C_Boolean
+     (Value : OpenCV.Internal.C_API.C_Boolean; Operation : String)
+      return Boolean is
+   begin
+      if Value = OpenCV.Internal.C_API.C_True then
+         return True;
+      elsif Value = OpenCV.Internal.C_API.C_False then
+         return False;
+      else
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            Operation & " returned an invalid Boolean value");
+      end if;
+   end From_C_Boolean;
 
    function From_C_Depth
      (Value : OpenCV.Internal.C_API.C_Int32) return Depth_Type is
@@ -214,15 +242,7 @@ package body OpenCV.Core is
    begin
       Raise_On_Error (Result, "Mat empty query");
 
-      if Empty = OpenCV.Internal.C_API.C_True then
-         return True;
-      elsif Empty = OpenCV.Internal.C_API.C_False then
-         return False;
-      else
-         Ada.Exceptions.Raise_Exception
-           (OpenCV_Error'Identity,
-            "Mat empty query returned an invalid Boolean value");
-      end if;
+      return From_C_Boolean (Empty, "Mat empty query");
    end Is_Empty;
 
    function Rows (Self : Mat) return Natural is
@@ -261,6 +281,53 @@ package body OpenCV.Core is
       Raise_On_Error (Result, "Mat depth query");
       return From_C_Depth (Value);
    end Depth;
+
+   function Total (Self : Mat) return Mat_Size is
+      Value  : aliased OpenCV.Internal.C_API.C_UInt64 := 0;
+      Result : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Total (Self.Handle, Value'Access);
+   begin
+      Raise_On_Error (Result, "Mat total query");
+      return To_Mat_Size (Value);
+   end Total;
+
+   function Element_Size (Self : Mat) return Mat_Size is
+      Value  : aliased OpenCV.Internal.C_API.C_UInt64 := 0;
+      Result : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Element_Size (Self.Handle, Value'Access);
+   begin
+      Raise_On_Error (Result, "Mat element size query");
+      return To_Mat_Size (Value);
+   end Element_Size;
+
+   function Channel_Size (Self : Mat) return Mat_Size is
+      Value  : aliased OpenCV.Internal.C_API.C_UInt64 := 0;
+      Result : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Channel_Size (Self.Handle, Value'Access);
+   begin
+      Raise_On_Error (Result, "Mat channel size query");
+      return To_Mat_Size (Value);
+   end Channel_Size;
+
+   function Is_Continuous (Self : Mat) return Boolean is
+      Value  : aliased OpenCV.Internal.C_API.C_Boolean :=
+        OpenCV.Internal.C_API.C_False;
+      Result : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Is_Continuous (Self.Handle, Value'Access);
+   begin
+      Raise_On_Error (Result, "Mat continuity query");
+      return From_C_Boolean (Value, "Mat continuity query");
+   end Is_Continuous;
+
+   function Is_Submatrix (Self : Mat) return Boolean is
+      Value  : aliased OpenCV.Internal.C_API.C_Boolean :=
+        OpenCV.Internal.C_API.C_False;
+      Result : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Is_Submatrix (Self.Handle, Value'Access);
+   begin
+      Raise_On_Error (Result, "Mat submatrix query");
+      return From_C_Boolean (Value, "Mat submatrix query");
+   end Is_Submatrix;
 
    function Region (Self : Mat; Area : Rect) return Mat is
       Source_Rows    : constant Natural := Self.Rows;

@@ -17,6 +17,7 @@ package OpenCV.Internal.C_API is
 
    subtype C_Int32 is Interfaces.Integer_32;
    subtype C_UInt8 is Interfaces.Unsigned_8;
+   subtype C_UInt64 is Interfaces.Unsigned_64;
    subtype C_Float32 is Interfaces.C.C_float;
    subtype C_Double is Interfaces.C.double;
 
@@ -113,6 +114,38 @@ package OpenCV.Internal.C_API is
    function Mat_Depth
      (Self : Mat_Handle; Result : access C_Int32) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_depth";
+
+   function Mat_Total
+     (Self : Mat_Handle; Result : access C_UInt64) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_total";
+
+   function Mat_Element_Size
+     (Self : Mat_Handle; Result : access C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_element_size";
+
+   function Mat_Channel_Size
+     (Self : Mat_Handle; Result : access C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_channel_size";
+
+   function Mat_Is_Continuous
+     (Self : Mat_Handle; Result : access C_Boolean) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_is_continuous";
+
+   function Mat_Is_Submatrix
+     (Self : Mat_Handle; Result : access C_Boolean) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_is_submatrix";
 
    function Mat_Get_UInt8
      (Self : Mat_Handle; Row, Column : C_Int32; Result : access C_UInt8)

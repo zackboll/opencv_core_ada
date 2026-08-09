@@ -4,6 +4,7 @@
 
 #include <cstdio>
 #include <exception>
+#include <limits>
 #include <new>
 
 struct opencv_core_mat_handle {
@@ -112,6 +113,19 @@ to_opencv_vec3(const opencv_core_float32_vec3 &value) noexcept {
 opencv_core_float32_vec3
 from_opencv_vec3(const cv::Vec<float, 3> &value) noexcept {
     return {value[0], value[1], value[2]};
+}
+
+bool size_to_abi(std::size_t value, uint64_t &result) noexcept {
+    if constexpr (std::numeric_limits<std::size_t>::max() >
+                  std::numeric_limits<uint64_t>::max()) {
+        if (value > static_cast<std::size_t>(
+                        std::numeric_limits<uint64_t>::max())) {
+            return false;
+        }
+    }
+
+    result = static_cast<uint64_t>(value);
+    return true;
 }
 
 bool from_opencv_depth(int opencv_depth, int32_t &depth) noexcept {
@@ -456,6 +470,130 @@ opencv_core_mat_depth(const opencv_core_mat_handle *mat, int32_t *out_depth) {
         if (!from_opencv_depth(mat->value.depth(), *out_depth)) {
             return invalid_argument("Mat has an unsupported OpenCV depth");
         }
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_total(const opencv_core_mat_handle *mat, uint64_t *out_total) {
+    clear_error();
+
+    if (out_total == nullptr) {
+        return invalid_argument("out_total must not be null");
+    }
+
+    *out_total = 0;
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        if (!size_to_abi(mat->value.total(), *out_total)) {
+            return invalid_argument("Mat total exceeds the C ABI size range");
+        }
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_element_size(const opencv_core_mat_handle *mat,
+                             uint64_t *out_element_size) {
+    clear_error();
+
+    if (out_element_size == nullptr) {
+        return invalid_argument("out_element_size must not be null");
+    }
+
+    *out_element_size = 0;
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        if (!size_to_abi(mat->value.elemSize(), *out_element_size)) {
+            return invalid_argument(
+                "Mat element size exceeds the C ABI size range");
+        }
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_channel_size(const opencv_core_mat_handle *mat,
+                             uint64_t *out_channel_size) {
+    clear_error();
+
+    if (out_channel_size == nullptr) {
+        return invalid_argument("out_channel_size must not be null");
+    }
+
+    *out_channel_size = 0;
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        if (!size_to_abi(mat->value.elemSize1(), *out_channel_size)) {
+            return invalid_argument(
+                "Mat channel size exceeds the C ABI size range");
+        }
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_is_continuous(const opencv_core_mat_handle *mat,
+                              uint8_t *out_is_continuous) {
+    clear_error();
+
+    if (out_is_continuous == nullptr) {
+        return invalid_argument("out_is_continuous must not be null");
+    }
+
+    *out_is_continuous = 0;
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        *out_is_continuous =
+            mat->value.isContinuous() ? UINT8_C(1) : UINT8_C(0);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_is_submatrix(const opencv_core_mat_handle *mat,
+                             uint8_t *out_is_submatrix) {
+    clear_error();
+
+    if (out_is_submatrix == nullptr) {
+        return invalid_argument("out_is_submatrix must not be null");
+    }
+
+    *out_is_submatrix = 0;
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        *out_is_submatrix =
+            mat->value.isSubmatrix() ? UINT8_C(1) : UINT8_C(0);
         return OPENCV_CORE_OK;
     } catch (...) {
         return translate_current_exception();

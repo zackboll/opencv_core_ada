@@ -9,6 +9,9 @@ package OpenCV.Core is
 
    subtype Channel_Count is Positive range 1 .. 512;
 
+   type Mat_Size is range 0 .. 9_223_372_036_854_775_807;
+   for Mat_Size'Size use 64;
+
    --  CV_8U and CV_32F element value domains used by typed Mat accessors.
    subtype UInt8_Value is Interfaces.Unsigned_8;
    subtype Float32_Value is Interfaces.IEEE_Float_32;
@@ -55,6 +58,11 @@ package OpenCV.Core is
    function Columns (Self : Mat) return Natural;
    function Channels (Self : Mat) return Channel_Count;
    function Depth (Self : Mat) return Depth_Type;
+   function Total (Self : Mat) return Mat_Size;
+   function Element_Size (Self : Mat) return Mat_Size;
+   function Channel_Size (Self : Mat) return Mat_Size;
+   function Is_Continuous (Self : Mat) return Boolean;
+   function Is_Submatrix (Self : Mat) return Boolean;
    function Region (Self : Mat; Area : Rect) return Mat;
    procedure Set_To (Self : in out Mat; Value : Scalar);
    function Sum (Self : Mat) return Scalar;

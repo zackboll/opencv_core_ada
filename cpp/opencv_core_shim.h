@@ -113,6 +113,25 @@ opencv_core_mat_channels(const opencv_core_mat_handle *mat,
 opencv_core_status
 opencv_core_mat_depth(const opencv_core_mat_handle *mat, int32_t *out_depth);
 
+opencv_core_status
+opencv_core_mat_total(const opencv_core_mat_handle *mat, uint64_t *out_total);
+
+opencv_core_status
+opencv_core_mat_element_size(const opencv_core_mat_handle *mat,
+                             uint64_t *out_element_size);
+
+opencv_core_status
+opencv_core_mat_channel_size(const opencv_core_mat_handle *mat,
+                             uint64_t *out_channel_size);
+
+opencv_core_status
+opencv_core_mat_is_continuous(const opencv_core_mat_handle *mat,
+                              uint8_t *out_is_continuous);
+
+opencv_core_status
+opencv_core_mat_is_submatrix(const opencv_core_mat_handle *mat,
+                             uint8_t *out_is_submatrix);
+
 /*
  * Read or write one element of a two-dimensional, single-channel Mat with the
  * indicated storage type. Row and column are zero-based. These functions

@@ -16,6 +16,7 @@ package body Mat_Tests is
    use type Interfaces.IEEE_Float_32;
    use type Interfaces.Unsigned_8;
    use type OpenCV.Core.Depth_Type;
+   use type OpenCV.Core.Mat_Size;
 
    type Mat_Test_Fixture is new AUnit.Test_Fixtures.Test_Fixture
    with null record;
@@ -1145,6 +1146,168 @@ package body Mat_Tests is
          "Converting a default Mat should produce an empty Mat");
    end Convert_To_Empty_Mat_Remains_Empty;
 
+   procedure Mat_Storage_Metadata_For_Basic_And_Multi_Channel_Mats
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Basic : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      RGB   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+   begin
+      AUnit.Assertions.Assert
+        (Basic.Total = 6, "A 2x3 Mat total should count six logical elements");
+      AUnit.Assertions.Assert
+        (Basic.Element_Size = 1,
+         "A single-channel UInt8 element should occupy one byte");
+      AUnit.Assertions.Assert
+        (Basic.Channel_Size = 1, "A UInt8 channel should occupy one byte");
+      AUnit.Assertions.Assert
+        (Basic.Is_Continuous,
+         "A newly allocated two-dimensional Mat should be continuous");
+      AUnit.Assertions.Assert
+        (not Basic.Is_Submatrix,
+         "A newly allocated Mat should not be a submatrix");
+
+      AUnit.Assertions.Assert
+        (RGB.Total = 6,
+         "A three-channel Mat total should count pixels, not channels");
+      AUnit.Assertions.Assert
+        (RGB.Element_Size = 3,
+         "A three-channel UInt8 element should occupy three bytes");
+      AUnit.Assertions.Assert
+        (RGB.Channel_Size = 1,
+         "A three-channel UInt8 Mat should retain one-byte channels");
+   end Mat_Storage_Metadata_For_Basic_And_Multi_Channel_Mats;
+
+   procedure Mat_Storage_Metadata_For_Float32_Mats
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Scalar_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Vec3_Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 3));
+   begin
+      AUnit.Assertions.Assert
+        (Scalar_Image.Element_Size = 4 and then Scalar_Image.Channel_Size = 4,
+         "A Float32 scalar element and channel should each occupy four bytes");
+      AUnit.Assertions.Assert
+        (Vec3_Image.Total = 2,
+         "A Float32 Vec3 Mat total should count logical pixels");
+      AUnit.Assertions.Assert
+        (Vec3_Image.Element_Size = 12 and then Vec3_Image.Channel_Size = 4,
+         "A Float32 Vec3 element should occupy twelve bytes with four-byte"
+         & " channels");
+   end Mat_Storage_Metadata_For_Float32_Mats;
+
+   procedure Region_Reports_Authoritative_Storage_Layout
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source        : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 4,
+           Columns      => 5,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      Partial_Width : constant OpenCV.Core.Mat :=
+        Source.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+      Full_Width    : constant OpenCV.Core.Mat :=
+        Source.Region ((X => 0, Y => 1, Width => 5, Height => 2));
+   begin
+      AUnit.Assertions.Assert
+        (Partial_Width.Is_Submatrix,
+         "A Region should report that it is a submatrix");
+      AUnit.Assertions.Assert
+        (Partial_Width.Total = 6,
+         "A Region total should reflect only its dimensions");
+      AUnit.Assertions.Assert
+        (Partial_Width.Element_Size = Source.Element_Size
+         and then Partial_Width.Channel_Size = Source.Channel_Size,
+         "A Region should preserve source element and channel sizes");
+      AUnit.Assertions.Assert
+        (not Partial_Width.Is_Continuous,
+         "A partial-width multi-row Region should retain non-contiguous"
+         & " source row layout");
+      AUnit.Assertions.Assert
+        (Full_Width.Is_Submatrix and then Full_Width.Is_Continuous,
+         "A full-width Region should remain continuous while reporting"
+         & " submatrix status");
+   end Region_Reports_Authoritative_Storage_Layout;
+
+   procedure Clone_And_Convert_To_Report_Storage_Metadata
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 3,
+           Columns      => 4,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      View   : constant OpenCV.Core.Mat :=
+        Source.Region ((X => 1, Y => 1, Width => 2, Height => 2));
+      Copy   : constant OpenCV.Core.Mat := View.Clone;
+      Result : constant OpenCV.Core.Mat :=
+        Source.Convert_To (Depth => OpenCV.Core.Float32);
+   begin
+      AUnit.Assertions.Assert
+        (not Copy.Is_Submatrix,
+         "Clone should produce an independent non-submatrix Mat");
+      AUnit.Assertions.Assert
+        (Copy.Is_Continuous,
+         "Clone should allocate continuous storage for a Region copy");
+      AUnit.Assertions.Assert
+        (Copy.Total = View.Total
+         and then Copy.Element_Size = View.Element_Size
+         and then Copy.Channel_Size = View.Channel_Size,
+         "Clone should preserve its Region's logical count and element type");
+
+      AUnit.Assertions.Assert
+        (Result.Total = Source.Total,
+         "Convert_To should preserve the logical element count");
+      AUnit.Assertions.Assert
+        (Result.Element_Size = 12 and then Result.Channel_Size = 4,
+         "Float32 Vec3 Convert_To output should report twelve-byte elements"
+         & " and four-byte channels");
+      AUnit.Assertions.Assert
+        (not Result.Is_Submatrix and then Result.Is_Continuous,
+         "Convert_To should produce a continuous independent Mat");
+   end Clone_And_Convert_To_Report_Storage_Metadata;
+
+   procedure Empty_Mat_Reports_Authoritative_Storage_Metadata
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat;
+   begin
+      AUnit.Assertions.Assert
+        (Image.Total = 0, "A default Mat should have zero logical elements");
+      AUnit.Assertions.Assert
+        (Image.Element_Size = 0,
+         "The installed OpenCV default Mat reports zero element bytes");
+      AUnit.Assertions.Assert
+        (Image.Channel_Size = 1,
+         "The installed OpenCV default Mat reports a one-byte channel size");
+      AUnit.Assertions.Assert
+        (not Image.Is_Continuous,
+         "The installed OpenCV default Mat should not be continuous");
+      AUnit.Assertions.Assert
+        (not Image.Is_Submatrix,
+         "The installed OpenCV default Mat should not be a submatrix");
+   end Empty_Mat_Reports_Authoritative_Storage_Metadata;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -1279,6 +1442,26 @@ package body Mat_Tests is
         (Caller.Create
            ("Convert_To empty Mat remains empty",
             Convert_To_Empty_Mat_Remains_Empty'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat storage metadata for basic and multi-channel Mats",
+            Mat_Storage_Metadata_For_Basic_And_Multi_Channel_Mats'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat storage metadata for Float32 Mats",
+            Mat_Storage_Metadata_For_Float32_Mats'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Region reports authoritative storage layout",
+            Region_Reports_Authoritative_Storage_Layout'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Clone and Convert_To report storage metadata",
+            Clone_And_Convert_To_Report_Storage_Metadata'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Empty Mat reports authoritative storage metadata",
+            Empty_Mat_Reports_Authoritative_Storage_Metadata'Access));
       return Result'Access;
    end Suite;
 
