@@ -47,6 +47,12 @@ package OpenCV.Core is
      (Rows, Columns : Natural; Element_Type : Mat_Type) return Mat
    with Pre => Rows <= 2_147_483_647 and then Columns <= 2_147_483_647;
 
+   --  Both operations create a distinct Mat header sharing Self's storage.
+   --  Depth and total scalar storage are preserved; Columns is derived.
+   function Reshape (Self : Mat; Channels : Channel_Count) return Mat;
+   function Reshape
+     (Self : Mat; Channels : Channel_Count; Rows : Positive) return Mat;
+
    function Clone (Self : Mat) return Mat;
    function Convert_To
      (Self   : Mat;

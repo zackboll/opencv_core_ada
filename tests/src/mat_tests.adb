@@ -1883,6 +1883,272 @@ package body Mat_Tests is
          "Vec3 row access must reject an output array of the wrong length");
    end Vec3_Row_Access_Rejects_Invalid_Mats_Indices_And_Lengths;
 
+   procedure Reshape_Changes_Channels_And_Preserves_Scalar_Order
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 6,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      View   : OpenCV.Core.Mat;
+      Pixel  : OpenCV.Core.UInt8_Vec3.Vector;
+   begin
+      for Row in 0 .. 1 loop
+         for Column in 0 .. 5 loop
+            OpenCV.Core.UInt8_Access.Set
+              (Source,
+               Row    => Row,
+               Column => Column,
+               Value  => Interfaces.Unsigned_8 (Row * 6 + Column));
+         end loop;
+      end loop;
+
+      View := Source.Reshape (Channels => 3);
+
+      AUnit.Assertions.Assert
+        (View.Depth = OpenCV.Core.UInt8 and then View.Channels = 3,
+         "Channel reshape must preserve UInt8 depth and use three channels");
+      AUnit.Assertions.Assert
+        (View.Rows = 2 and then View.Columns = 2,
+         "Channel reshape must preserve rows and derive columns");
+      AUnit.Assertions.Assert
+        (View.Total * OpenCV.Core.Mat_Size (View.Channels)
+         = Source.Total * OpenCV.Core.Mat_Size (Source.Channels),
+         "Channel reshape must preserve the total scalar element count");
+
+      Pixel := OpenCV.Core.UInt8_Vec3_Access.Get (View, Row => 0, Column => 0);
+      AUnit.Assertions.Assert
+        (Pixel = (0, 1, 2),
+         "Channel reshape must group the first three scalar values as Vec3");
+      Pixel := OpenCV.Core.UInt8_Vec3_Access.Get (View, Row => 1, Column => 1);
+      AUnit.Assertions.Assert
+        (Pixel = (9, 10, 11),
+         "Channel reshape must preserve scalar ordering across rows");
+   end Reshape_Changes_Channels_And_Preserves_Scalar_Order;
+
+   procedure Reshape_To_One_Channel_Preserves_Scalar_Order
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      View   : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Source, Row => 0, Column => 0, Value => (0, 1, 2));
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Source, Row => 0, Column => 1, Value => (3, 4, 5));
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Source, Row => 1, Column => 0, Value => (6, 7, 8));
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Source, Row => 1, Column => 1, Value => (9, 10, 11));
+
+      View := Source.Reshape (Channels => 1);
+
+      AUnit.Assertions.Assert
+        (View.Rows = 2 and then View.Columns = 6 and then View.Channels = 1,
+         "Reshape to one channel must derive six scalar columns");
+      for Row in 0 .. 1 loop
+         for Column in 0 .. 5 loop
+            AUnit.Assertions.Assert
+              (OpenCV.Core.UInt8_Access.Get (View, Row, Column)
+               = Interfaces.Unsigned_8 (Row * 6 + Column),
+               "Reshape to one channel must retain scalar ordering");
+         end loop;
+      end loop;
+   end Reshape_To_One_Channel_Preserves_Scalar_Order;
+
+   procedure Reshape_Shares_Data_But_Clone_Is_Independent
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 6,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      View   : OpenCV.Core.Mat;
+      Copy   : OpenCV.Core.Mat;
+   begin
+      View := Source.Reshape (Channels => 3);
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (View, Row => 0, Column => 1, Value => (10, 20, 30));
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Source, Row => 0, Column => 3) = 10
+         and then OpenCV.Core.UInt8_Access.Get (Source, Row => 0, Column => 5)
+                  = 30,
+         "Writes through a reshape view must be visible through its source");
+
+      OpenCV.Core.UInt8_Access.Set (Source, Row => 0, Column => 1, Value => 7);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Vec3_Access.Get (View, Row => 0, Column => 0)
+         = (0, 7, 0),
+         "Writes through a source must be visible through its reshape view");
+
+      Copy := View.Clone;
+      OpenCV.Core.UInt8_Access.Set
+        (Source, Row => 0, Column => 0, Value => 99);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Vec3_Access.Get (View, Row => 0, Column => 0) (0)
+         = 99,
+         "A reshape view must continue sharing source storage after Clone");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Vec3_Access.Get (Copy, Row => 0, Column => 0)
+         = (0, 7, 0),
+         "A Clone of a reshape view must not share its storage");
+   end Reshape_Shares_Data_But_Clone_Is_Independent;
+
+   procedure Reshape_Changes_Rows_And_Preserves_Scalar_Order
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 6,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      View   : OpenCV.Core.Mat;
+   begin
+      for Row in 0 .. 1 loop
+         for Column in 0 .. 5 loop
+            OpenCV.Core.UInt8_Access.Set
+              (Source,
+               Row    => Row,
+               Column => Column,
+               Value  => Interfaces.Unsigned_8 (Row * 6 + Column));
+         end loop;
+      end loop;
+
+      View := Source.Reshape (Channels => 1, Rows => 3);
+
+      AUnit.Assertions.Assert
+        (View.Rows = 3 and then View.Columns = 4,
+         "Row reshape must derive columns from the scalar element count");
+      for Row in 0 .. 2 loop
+         for Column in 0 .. 3 loop
+            AUnit.Assertions.Assert
+              (OpenCV.Core.UInt8_Access.Get (View, Row, Column)
+               = Interfaces.Unsigned_8 (Row * 4 + Column),
+               "Row reshape must preserve scalar ordering");
+         end loop;
+      end loop;
+   end Reshape_Changes_Rows_And_Preserves_Scalar_Order;
+
+   procedure Reshape_Rejects_Invalid_Shapes (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+
+      procedure Invalid_Channel_Shape is
+         Ignored : constant OpenCV.Core.Mat := Source.Reshape (Channels => 2);
+      begin
+         pragma Unreferenced (Ignored);
+      end Invalid_Channel_Shape;
+
+      procedure Invalid_Row_Shape is
+         Ignored : constant OpenCV.Core.Mat :=
+           Source.Reshape (Channels => 1, Rows => 4);
+      begin
+         pragma Unreferenced (Ignored);
+      end Invalid_Row_Shape;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Invalid_Channel_Shape'Access,
+         "Reshape must reject a channel count that cannot preserve scalars");
+      Assert_Raises_OpenCV_Error
+        (Invalid_Row_Shape'Access,
+         "Reshape must reject a row count that cannot preserve scalars");
+   end Reshape_Rejects_Invalid_Shapes;
+
+   procedure Reshape_Region_Respects_Continuity_Requirements
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 4,
+           Columns      => 5,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      View   : constant OpenCV.Core.Mat :=
+        Source.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+      Packed : OpenCV.Core.Mat;
+
+      procedure Change_Region_Rows is
+         Ignored : constant OpenCV.Core.Mat :=
+           View.Reshape (Channels => 1, Rows => 1);
+      begin
+         pragma Unreferenced (Ignored);
+      end Change_Region_Rows;
+   begin
+      AUnit.Assertions.Assert
+        (not View.Is_Continuous,
+         "The reshape continuity test requires a non-continuous Region");
+
+      Packed := View.Reshape (Channels => 3);
+      AUnit.Assertions.Assert
+        (Packed.Rows = 2
+         and then Packed.Columns = 1
+         and then Packed.Channels = 3,
+         "A non-continuous Region may change channels while preserving rows");
+      Assert_Raises_OpenCV_Error
+        (Change_Region_Rows'Access,
+         "Changing rows of a non-continuous Region must raise OpenCV_Error");
+   end Reshape_Region_Respects_Continuity_Requirements;
+
+   procedure Empty_Mat_Reshape_Remains_Empty (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat;
+      View   : constant OpenCV.Core.Mat := Source.Reshape (Channels => 3);
+   begin
+      AUnit.Assertions.Assert
+        (View.Is_Empty,
+         "Reshaping an empty Mat with a new channel count should remain"
+         & " empty");
+      AUnit.Assertions.Assert
+        (View.Channels = 3,
+         "Reshaping an empty Mat should apply the requested channel count");
+   end Empty_Mat_Reshape_Remains_Empty;
+
+   procedure Float32_Reshape_Preserves_Values (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      View   : OpenCV.Core.Mat;
+      Pixel  : OpenCV.Core.Float32_Vec3.Vector;
+   begin
+      OpenCV.Core.Float32_Access.Set
+        (Source, Row => 0, Column => 0, Value => 1.25);
+      OpenCV.Core.Float32_Access.Set
+        (Source, Row => 0, Column => 1, Value => -2.5);
+      OpenCV.Core.Float32_Access.Set
+        (Source, Row => 0, Column => 2, Value => 3.75);
+      View := Source.Reshape (Channels => 3);
+      Pixel :=
+        OpenCV.Core.Float32_Vec3_Access.Get (View, Row => 0, Column => 0);
+
+      AUnit.Assertions.Assert
+        (View.Depth = OpenCV.Core.Float32 and then View.Columns = 1,
+         "Float32 reshape must preserve depth and derive its column count");
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Long_Float (Pixel (0)), 1.25)
+         and then Approximately_Equal (Long_Float (Pixel (1)), -2.5)
+         and then Approximately_Equal (Long_Float (Pixel (2)), 3.75),
+         "Float32 reshape must preserve scalar values independently of size");
+   end Float32_Reshape_Preserves_Values;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -2077,6 +2343,38 @@ package body Mat_Tests is
         (Caller.Create
            ("Vec3 row access rejects invalid Mats, indices, and lengths",
             Vec3_Row_Access_Rejects_Invalid_Mats_Indices_And_Lengths'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Reshape changes channels and preserves scalar order",
+            Reshape_Changes_Channels_And_Preserves_Scalar_Order'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Reshape to one channel preserves scalar order",
+            Reshape_To_One_Channel_Preserves_Scalar_Order'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Reshape shares data while Clone is independent",
+            Reshape_Shares_Data_But_Clone_Is_Independent'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Reshape changes rows and preserves scalar order",
+            Reshape_Changes_Rows_And_Preserves_Scalar_Order'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Reshape rejects invalid shapes",
+            Reshape_Rejects_Invalid_Shapes'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Reshape Region respects continuity requirements",
+            Reshape_Region_Respects_Continuity_Requirements'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Empty Mat reshape remains empty",
+            Empty_Mat_Reshape_Remains_Empty'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 reshape preserves values",
+            Float32_Reshape_Preserves_Values'Access));
       return Result'Access;
    end Suite;
 

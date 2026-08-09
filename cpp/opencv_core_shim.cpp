@@ -442,6 +442,43 @@ opencv_core_mat_region(const opencv_core_mat_handle *source, int32_t x,
     }
 }
 
+opencv_core_status
+opencv_core_mat_reshape(const opencv_core_mat_handle *source, int32_t channels,
+                        int32_t rows, opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (source == nullptr) {
+        return invalid_argument("source Mat handle must not be null");
+    }
+
+    if (channels < 1 || channels > OPENCV_CORE_MAX_CHANNELS) {
+        return invalid_argument("channels must be in the range 1 .. 512");
+    }
+
+    if (rows < 0) {
+        return invalid_argument("rows must not be negative");
+    }
+
+    try {
+        if (!source->value.empty() && source->value.dims != 2) {
+            return invalid_argument("source Mat must be two-dimensional");
+        }
+
+        *out_mat = new opencv_core_mat_handle(
+            source->value.reshape(static_cast<int>(channels),
+                                  static_cast<int>(rows)));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
 void opencv_core_mat_destroy(opencv_core_mat_handle *mat) {
     clear_error();
 

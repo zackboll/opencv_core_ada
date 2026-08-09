@@ -194,6 +194,125 @@ package body OpenCV.Core is
       OpenCV.Internal.C_API.Mat_Destroy (Old_Handle);
    end Finalize;
 
+   function Greatest_Common_Divisor (Left, Right : Mat_Size) return Mat_Size is
+      A : Mat_Size := Left;
+      B : Mat_Size := Right;
+      R : Mat_Size;
+   begin
+      while B /= 0 loop
+         R := A mod B;
+         A := B;
+         B := R;
+      end loop;
+
+      return A;
+   end Greatest_Common_Divisor;
+
+   procedure Validate_Reshape_Shape
+     (Self : Mat; Requested_Channels : Channel_Count; Requested_Rows : Natural)
+   is
+      Source_Rows     : Mat_Size := Mat_Size (Self.Rows);
+      Source_Columns  : Mat_Size := Mat_Size (Self.Columns);
+      Source_Channels : Mat_Size := Mat_Size (Self.Channels);
+      Target_Rows     : Mat_Size := Mat_Size (Requested_Rows);
+      Target_Channels : Mat_Size := Mat_Size (Requested_Channels);
+      Product         : Mat_Size := 1;
+      Maximum_Columns : constant Mat_Size := 2_147_483_647;
+
+      procedure Cancel (Factor : in out Mat_Size) is
+         Common : Mat_Size;
+      begin
+         if Factor = 0 then
+            return;
+         end if;
+
+         Common := Greatest_Common_Divisor (Source_Rows, Factor);
+         Source_Rows := Source_Rows / Common;
+         Factor := Factor / Common;
+
+         Common := Greatest_Common_Divisor (Source_Columns, Factor);
+         Source_Columns := Source_Columns / Common;
+         Factor := Factor / Common;
+
+         Common := Greatest_Common_Divisor (Source_Channels, Factor);
+         Source_Channels := Source_Channels / Common;
+         Factor := Factor / Common;
+      end Cancel;
+
+      procedure Multiply_Within_Column_Range (Factor : Mat_Size) is
+      begin
+         if Factor /= 0 and then Product > Maximum_Columns / Factor then
+            Ada.Exceptions.Raise_Exception
+              (OpenCV_Error'Identity,
+               "Mat reshape would derive a column count outside the supported"
+               & " range");
+         end if;
+
+         Product := Product * Factor;
+      end Multiply_Within_Column_Range;
+   begin
+      if Requested_Rows = 0 then
+         return;
+      end if;
+
+      Cancel (Target_Rows);
+      Cancel (Target_Channels);
+
+      if Target_Rows /= 1 or else Target_Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat reshape dimensions do not preserve scalar element count");
+      end if;
+
+      Multiply_Within_Column_Range (Source_Rows);
+      Multiply_Within_Column_Range (Source_Columns);
+      Multiply_Within_Column_Range (Source_Channels);
+   end Validate_Reshape_Shape;
+
+   function Reshape (Self : Mat; Channels : Channel_Count) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Reshape_Shape
+        (Self, Requested_Channels => Channels, Requested_Rows => Self.Rows);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Reshape
+          (Source   => Self.Handle,
+           Channels => OpenCV.Internal.C_API.C_Int32 (Channels),
+           Rows     => 0,
+           Result   => New_Handle'Access);
+      Raise_On_Error (Status, "Mat reshape");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Reshape;
+
+   function Reshape
+     (Self : Mat; Channels : Channel_Count; Rows : Positive) return Mat
+   is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Reshape_Shape
+        (Self, Requested_Channels => Channels, Requested_Rows => Rows);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Reshape
+          (Source   => Self.Handle,
+           Channels => OpenCV.Internal.C_API.C_Int32 (Channels),
+           Rows     => OpenCV.Internal.C_API.C_Int32 (Rows),
+           Result   => New_Handle'Access);
+      Raise_On_Error (Status, "Mat reshape");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Reshape;
+
    function Clone (Self : Mat) return Mat is
       Result     : Mat;
       New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=

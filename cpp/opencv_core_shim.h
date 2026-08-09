@@ -92,6 +92,16 @@ opencv_core_mat_region(const opencv_core_mat_handle *source, int32_t x,
                        int32_t y, int32_t width, int32_t height,
                        opencv_core_mat_handle **out_mat);
 
+/*
+ * Creates a distinct two-dimensional Mat header by invoking Mat::reshape.
+ * channels must be in 1 .. OPENCV_CORE_MAX_CHANNELS. A rows value of zero
+ * preserves the source row count; otherwise it is the requested positive row
+ * count. The returned header shares source storage and never copies data.
+ */
+opencv_core_status
+opencv_core_mat_reshape(const opencv_core_mat_handle *source, int32_t channels,
+                        int32_t rows, opencv_core_mat_handle **out_mat);
+
 /* Null-safe and non-throwing. */
 void opencv_core_mat_destroy(opencv_core_mat_handle *mat);
 
