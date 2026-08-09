@@ -7,6 +7,8 @@ package OpenCV.Core is
    type Depth_Type is
      (UInt8, Int8, UInt16, Int16, Int32, Float32, Float64, Float16);
 
+   type Norm_Kind is (L1, L2, Infinity);
+
    type Channel_Count is new Interfaces.Integer_32 range 1 .. 512;
 
    type Mat_Size is
@@ -114,6 +116,7 @@ package OpenCV.Core is
 
    procedure Set_To (Self : in out Mat; Value : Scalar);
    function Sum (Self : Mat) return Scalar;
+   function Norm (Self : Mat; Kind : Norm_Kind := L2) return Long_Float;
    function Min_Max_Loc (Self : Mat) return Min_Max_Result;
 
 private

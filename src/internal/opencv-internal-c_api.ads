@@ -51,6 +51,10 @@ package OpenCV.Internal.C_API is
    Depth_Float64 : constant C_Int32 := 6;
    Depth_Float16 : constant C_Int32 := 7;
 
+   Norm_L1  : constant C_Int32 := 1;
+   Norm_L2  : constant C_Int32 := 2;
+   Norm_Inf : constant C_Int32 := 3;
+
    subtype C_Boolean is Interfaces.Unsigned_8;
    C_False : constant C_Boolean := 0;
    C_True  : constant C_Boolean := 1;
@@ -337,6 +341,11 @@ package OpenCV.Internal.C_API is
 
    function Mat_Sum (Self : Mat_Handle; Result : access Scalar) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_sum";
+
+   function Mat_Norm
+     (Self : Mat_Handle; Kind : C_Int32; Result : access C_Double)
+      return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_norm";
 
    function Mat_Min_Max_Loc
      (Self      : Mat_Handle;

@@ -6,7 +6,6 @@ package body OpenCV.Core is
    use type OpenCV.Internal.C_API.C_Boolean;
    use type OpenCV.Internal.C_API.C_UInt64;
    use type OpenCV.Internal.C_API.Status;
-   use type Depth_Type;
 
    procedure Raise_On_Error
      (Result : OpenCV.Internal.C_API.Status; Operation : String)
@@ -73,6 +72,13 @@ package body OpenCV.Core is
          when Float32 => OpenCV.Internal.C_API.Depth_Float32,
          when Float64 => OpenCV.Internal.C_API.Depth_Float64,
          when Float16 => OpenCV.Internal.C_API.Depth_Float16);
+
+   function To_C_Norm_Kind
+     (Value : Norm_Kind) return OpenCV.Internal.C_API.C_Int32
+   is (case Value is
+         when L1       => OpenCV.Internal.C_API.Norm_L1,
+         when L2       => OpenCV.Internal.C_API.Norm_L2,
+         when Infinity => OpenCV.Internal.C_API.Norm_Inf);
 
    function To_Mat_Size
      (Value : OpenCV.Internal.C_API.C_UInt64) return Mat_Size is
@@ -638,6 +644,18 @@ package body OpenCV.Core is
       Raise_On_Error (Result, "Mat sum operation");
       return From_C_Scalar (C_Result);
    end Sum;
+
+   function Norm (Self : Mat; Kind : Norm_Kind := L2) return Long_Float is
+      C_Result : aliased OpenCV.Internal.C_API.C_Double := 0.0;
+      Status   : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Norm
+          (Self   => Self.Handle,
+           Kind   => To_C_Norm_Kind (Kind),
+           Result => C_Result'Access);
+   begin
+      Raise_On_Error (Status, "Mat norm operation");
+      return Long_Float (C_Result);
+   end Norm;
 
    function Min_Max_Loc (Self : Mat) return Min_Max_Result is
       Minimum   : aliased OpenCV.Internal.C_API.C_Double := 0.0;

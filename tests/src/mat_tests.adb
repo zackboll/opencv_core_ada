@@ -2399,6 +2399,154 @@ package body Mat_Tests is
          & " empty Mats");
    end View_Operations_Reject_Invalid_Ranges_And_Accept_Empty;
 
+   procedure Float32_Norm_Computes_L1_L2_And_Infinity
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Image, 0, 0, -1.0);
+      OpenCV.Core.Float32_Access.Set (Image, 0, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 0, -3.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 1, 4.0);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Image.Norm (OpenCV.Core.L1), 10.0),
+         "L1 norm must sum the absolute Float32 scalar values");
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Image.Norm, 5.477_225_575_051_661),
+         "The default norm must be the L2 norm");
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Image.Norm (OpenCV.Core.Infinity), 4.0),
+         "Infinity norm must be the greatest absolute scalar value");
+   end Float32_Norm_Computes_L1_L2_And_Infinity;
+
+   procedure UInt8_Norm_Is_Not_Float32_Specific
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+   begin
+      OpenCV.Core.UInt8_Access.Set (Image, 0, 0, 3);
+      OpenCV.Core.UInt8_Access.Set (Image, 0, 1, 4);
+      OpenCV.Core.UInt8_Access.Set (Image, 0, 2, 12);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Image.Norm (OpenCV.Core.L1), 19.0)
+         and then Approximately_Equal (Image.Norm (OpenCV.Core.L2), 13.0)
+         and then Approximately_Equal
+                    (Image.Norm (OpenCV.Core.Infinity), 12.0),
+         "Norm must support UInt8 data for every exposed norm kind");
+   end UInt8_Norm_Is_Not_Float32_Specific;
+
+   procedure Vec3_Norm_Combines_All_Channels (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+   begin
+      OpenCV.Core.UInt8_Vec3_Access.Set (Image, 0, 0, (1, 2, 3));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Image, 0, 1, (4, 5, 6));
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Image.Norm (OpenCV.Core.L1), 21.0)
+         and then Approximately_Equal
+                    (Image.Norm (OpenCV.Core.L2), 9.539_392_014_169_456)
+         and then Approximately_Equal (Image.Norm (OpenCV.Core.Infinity), 6.0),
+         "Norm must combine every scalar component of a multi-channel Mat");
+   end Vec3_Norm_Combines_All_Channels;
+
+   procedure Norm_Operates_On_Non_Continuous_Region
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 3,
+           Columns      => 4,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      View   : OpenCV.Core.Mat;
+   begin
+      for Row in 0 .. 2 loop
+         for Column in 0 .. 3 loop
+            OpenCV.Core.UInt8_Access.Set
+              (Source,
+               Row,
+               Column,
+               OpenCV.Core.UInt8_Value (Row * 4 + Column));
+         end loop;
+      end loop;
+
+      View := Source.Region ((X => 1, Y => 1, Width => 2, Height => 2));
+
+      AUnit.Assertions.Assert
+        (not View.Is_Continuous
+         and then Approximately_Equal (View.Norm (OpenCV.Core.L1), 30.0)
+         and then Approximately_Equal (View.Norm (OpenCV.Core.Infinity), 10.0),
+         "Norm must use only the scalar values in a non-continuous Region");
+   end Norm_Operates_On_Non_Continuous_Region;
+
+   procedure Reshape_Preserves_Norm (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      View   : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, -1.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 2, -3.0);
+      OpenCV.Core.Float32_Access.Set (Source, 1, 0, 4.0);
+      OpenCV.Core.Float32_Access.Set (Source, 1, 1, -5.0);
+      OpenCV.Core.Float32_Access.Set (Source, 1, 2, 6.0);
+      View := Source.Reshape (Channels => 3);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Source.Norm, View.Norm),
+         "Reshape must preserve the L2 norm of unchanged scalar storage");
+   end Reshape_Preserves_Norm;
+
+   procedure Empty_Mat_Norm_Is_Zero (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat;
+   begin
+      AUnit.Assertions.Assert
+        (Image.Norm (OpenCV.Core.L1) = 0.0
+         and then Image.Norm = 0.0
+         and then Image.Norm (OpenCV.Core.Infinity) = 0.0,
+         "OpenCV norm semantics require empty Mats to return zero");
+   end Empty_Mat_Norm_Is_Zero;
+
+   procedure Float16_Norm_Is_Supported (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.Float16, Channels => 1));
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (3.0));
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Image.Norm (OpenCV.Core.L1), 12.0)
+         and then Approximately_Equal (Image.Norm, 6.0)
+         and then Approximately_Equal (Image.Norm (OpenCV.Core.Infinity), 3.0),
+         "Norm must preserve installed OpenCV Float16 support");
+   end Float16_Norm_Is_Supported;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -2897,6 +3045,31 @@ package body Mat_Tests is
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 Norm computes L1, L2, and Infinity",
+            Float32_Norm_Computes_L1_L2_And_Infinity'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt8 Norm is not Float32-specific",
+            UInt8_Norm_Is_Not_Float32_Specific'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Vec3 Norm combines all channels",
+            Vec3_Norm_Combines_All_Channels'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Norm operates on a non-continuous Region",
+            Norm_Operates_On_Non_Continuous_Region'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Reshape preserves Norm", Reshape_Preserves_Norm'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Empty Mat Norm is zero", Empty_Mat_Norm_Is_Zero'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float16 Norm is supported", Float16_Norm_Is_Supported'Access));
       Result.Add_Test
         (Caller.Create
            ("Min_Max_Loc UInt8 returns values and column-row Points",

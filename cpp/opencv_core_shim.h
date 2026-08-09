@@ -51,6 +51,14 @@ typedef struct {
 #define OPENCV_CORE_MAX_CHANNELS ((int32_t)512)
 
 /*
+ * Stable norm identifiers for the C ABI. These are translated explicitly to
+ * OpenCV norm constants by the shim.
+ */
+#define OPENCV_CORE_NORM_L1 ((int32_t)1)
+#define OPENCV_CORE_NORM_L2 ((int32_t)2)
+#define OPENCV_CORE_NORM_INF ((int32_t)3)
+
+/*
  * Returns a borrowed pointer to the diagnostic for the most recent failed shim
  * operation on the calling thread. The pointer remains valid only until a
  * subsequent shim operation changes that thread's error state. The caller must
@@ -270,6 +278,14 @@ opencv_core_mat_set_to(opencv_core_mat_handle *mat,
 opencv_core_status
 opencv_core_mat_sum(const opencv_core_mat_handle *mat,
                     opencv_core_scalar *out_sum);
+
+/*
+ * Computes the requested absolute norm over every scalar component of mat.
+ * Empty Mats return zero according to OpenCV semantics.
+ */
+opencv_core_status
+opencv_core_mat_norm(const opencv_core_mat_handle *mat, int32_t norm_kind,
+                     double *out_norm);
 
 /*
  * Finds extrema in a non-empty, two-dimensional, single-channel Mat.

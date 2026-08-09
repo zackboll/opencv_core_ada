@@ -54,6 +54,22 @@ opencv_core_status invalid_argument(const char *message) noexcept {
     return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
 }
 
+bool to_opencv_norm(int32_t norm_kind, int &opencv_norm) noexcept {
+    switch (norm_kind) {
+    case OPENCV_CORE_NORM_L1:
+        opencv_norm = cv::NORM_L1;
+        return true;
+    case OPENCV_CORE_NORM_L2:
+        opencv_norm = cv::NORM_L2;
+        return true;
+    case OPENCV_CORE_NORM_INF:
+        opencv_norm = cv::NORM_INF;
+        return true;
+    default:
+        return false;
+    }
+}
+
 bool to_opencv_depth(int32_t depth, int &opencv_depth) noexcept {
     switch (depth) {
     case OPENCV_CORE_DEPTH_UINT8:
@@ -1521,6 +1537,34 @@ opencv_core_mat_sum(const opencv_core_mat_handle *mat,
 
     try {
         *out_sum = from_opencv_scalar(cv::sum(mat->value));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_norm(const opencv_core_mat_handle *mat, int32_t norm_kind,
+                     double *out_norm) {
+    clear_error();
+
+    if (out_norm == nullptr) {
+        return invalid_argument("norm output pointer must not be null");
+    }
+
+    *out_norm = 0.0;
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    int opencv_norm = 0;
+    if (!to_opencv_norm(norm_kind, opencv_norm)) {
+        return invalid_argument("norm kind is not supported");
+    }
+
+    try {
+        *out_norm = cv::norm(mat->value, opencv_norm);
         return OPENCV_CORE_OK;
     } catch (...) {
         return translate_current_exception();
