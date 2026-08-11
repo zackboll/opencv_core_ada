@@ -2366,4 +2366,35 @@ opencv_core_mat_min_max_loc(const opencv_core_mat_handle *mat,
     }
 }
 
+opencv_core_status
+opencv_core_mat_count_non_zero(const opencv_core_mat_handle *mat,
+                               int64_t *out_count) {
+    clear_error();
+
+    if (out_count == nullptr) {
+        return invalid_argument("out_count must not be null");
+    }
+
+    *out_count = 0;
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        if (mat->value.dims != 2) {
+            return invalid_argument("Mat must be two-dimensional");
+        }
+
+        if (mat->value.channels() != 1) {
+            return invalid_argument("Mat must have exactly one channel");
+        }
+
+        *out_count = static_cast<int64_t>(cv::countNonZero(mat->value));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
 } // extern "C"

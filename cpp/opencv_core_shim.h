@@ -457,6 +457,15 @@ opencv_core_mat_min_max_loc(const opencv_core_mat_handle *mat,
                             int32_t *out_minimum_x, int32_t *out_minimum_y,
                             int32_t *out_maximum_x, int32_t *out_maximum_y);
 
+/*
+ * Counts the number of nonzero scalar elements in a single-channel Mat.
+ * Supports non-contiguous views. The result is returned as int64_t.
+ * Defensive validation requires a valid 2D single-channel handle.
+ */
+opencv_core_status
+opencv_core_mat_count_non_zero(const opencv_core_mat_handle *mat,
+                               int64_t *out_count);
+
 #ifdef __cplusplus
 }
 #endif

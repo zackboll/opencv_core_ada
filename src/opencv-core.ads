@@ -174,6 +174,11 @@ package OpenCV.Core is
    function Norm (Self : Mat; Kind : Norm_Kind := L2) return Long_Float;
    function Min_Max_Loc (Self : Mat) return Min_Max_Result;
 
+   --  Counts nonzero scalar elements. Supports single-channel Mats of any
+   --  supported depth (including Float16). Rejects multi-channel Mats.
+   --  Non-contiguous views are supported. Empty Mat returns 0.
+   function Count_Non_Zero (Self : Mat) return Mat_Size;
+
 private
 
    type Mat is new Ada.Finalization.Controlled with record

@@ -4074,6 +4074,28 @@ package body Mat_Tests is
         (Multi_Left'Access, "Compare must reject multi-channel left");
    end Compare_Rejects_Incompatible_Operands;
 
+   procedure Count_Non_Zero_UInt8_Zero_And_Nonzero
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.UInt8, 1));
+      Count : OpenCV.Core.Mat_Size;
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Count := Image.Count_Non_Zero;
+      AUnit.Assertions.Assert
+        (Count = 0,
+         "Count_Non_Zero must return 0 for all-zero UInt8 Mat");
+
+      OpenCV.Core.UInt8_Access.Set (Image, 0, 1, 5);
+      OpenCV.Core.UInt8_Access.Set (Image, 1, 2, 255);
+      Count := Image.Count_Non_Zero;
+      AUnit.Assertions.Assert
+        (Count = 2,
+         "Count_Non_Zero must count nonzero UInt8 elements");
+   end Count_Non_Zero_UInt8_Zero_And_Nonzero;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -5034,6 +5056,10 @@ package body Mat_Tests is
         (Caller.Create
            ("Compare rejects incompatible operands",
             Compare_Rejects_Incompatible_Operands'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Count_Non_Zero UInt8 zero and nonzero",
+            Count_Non_Zero_UInt8_Zero_And_Nonzero'Access));
       Result.Add_Test
         (Caller.Create
            ("Min_Max_Loc UInt8 returns values and column-row Points",

@@ -6,6 +6,7 @@ package body OpenCV.Core is
    use type OpenCV.Internal.C_API.C_Boolean;
    use type OpenCV.Internal.C_API.C_UInt64;
    use type OpenCV.Internal.C_API.Status;
+   use type Interfaces.Integer_64;
 
    procedure Raise_On_Error
      (Result : OpenCV.Internal.C_API.Status; Operation : String)
@@ -1199,5 +1200,28 @@ package body OpenCV.Core is
            (X => Point_Coordinate (Maximum_X),
             Y => Point_Coordinate (Maximum_Y)));
    end Min_Max_Loc;
+
+   function Count_Non_Zero (Self : Mat) return Mat_Size is
+      Count  : aliased Interfaces.Integer_64 := 0;
+      Status : OpenCV.Internal.C_API.Status;
+   begin
+      if Self.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Count_Non_Zero requires a single-channel Mat");
+      end if;
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_Count_Non_Zero (Self.Handle, Count'Access);
+      Raise_On_Error (Status, "Mat count non-zero operation");
+
+      if Count < 0 or else Count > Interfaces.Integer_64 (Mat_Size'Last) then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Count_Non_Zero result exceeds Mat_Size range");
+      end if;
+
+      return Mat_Size (Count);
+   end Count_Non_Zero;
 
 end OpenCV.Core;
