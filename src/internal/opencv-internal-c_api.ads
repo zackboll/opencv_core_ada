@@ -60,6 +60,13 @@ package OpenCV.Internal.C_API is
    Normalize_Inf     : constant C_Int32 := 3;
    Normalize_Min_Max : constant C_Int32 := 4;
 
+   Compare_Equal            : constant C_Int32 := 0;
+   Compare_Not_Equal        : constant C_Int32 := 1;
+   Compare_Less_Than        : constant C_Int32 := 2;
+   Compare_Less_Or_Equal    : constant C_Int32 := 3;
+   Compare_Greater_Than     : constant C_Int32 := 4;
+   Compare_Greater_Or_Equal : constant C_Int32 := 5;
+
    subtype C_Boolean is Interfaces.Unsigned_8;
    C_False : constant C_Boolean := 0;
    C_True  : constant C_Boolean := 1;
@@ -195,6 +202,11 @@ package OpenCV.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_core_mat_in_range_scalar";
+
+   function Mat_Compare
+     (Left, Right : Mat_Handle; Kind : C_Int32; Result : access Mat_Handle)
+      return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_compare";
 
    function Mat_Region
      (Source : Mat_Handle;

@@ -91,6 +91,32 @@ bool to_opencv_normalize_kind(int32_t normalize_kind,
     }
 }
 
+bool to_opencv_compare_kind(int32_t comparison_kind,
+                            int &opencv_compare_kind) noexcept {
+    switch (comparison_kind) {
+    case OPENCV_CORE_COMPARE_EQUAL:
+        opencv_compare_kind = cv::CMP_EQ;
+        return true;
+    case OPENCV_CORE_COMPARE_NOT_EQUAL:
+        opencv_compare_kind = cv::CMP_NE;
+        return true;
+    case OPENCV_CORE_COMPARE_LESS_THAN:
+        opencv_compare_kind = cv::CMP_LT;
+        return true;
+    case OPENCV_CORE_COMPARE_LESS_OR_EQUAL:
+        opencv_compare_kind = cv::CMP_LE;
+        return true;
+    case OPENCV_CORE_COMPARE_GREATER_THAN:
+        opencv_compare_kind = cv::CMP_GT;
+        return true;
+    case OPENCV_CORE_COMPARE_GREATER_OR_EQUAL:
+        opencv_compare_kind = cv::CMP_GE;
+        return true;
+    default:
+        return false;
+    }
+}
+
 bool mats_have_same_shape_and_type(const cv::Mat &left,
                                    const cv::Mat &right) noexcept {
     return left.dims == right.dims && left.rows == right.rows &&
@@ -939,6 +965,63 @@ opencv_core_mat_in_range_scalar(const opencv_core_mat_handle *source,
                     to_opencv_scalar(*upper), result);
         if (result.type() != CV_8UC1 || result.size() != source->value.size()) {
             return invalid_argument("in-range produced an invalid mask result");
+        }
+        *out_mat = new opencv_core_mat_handle(result);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_compare(const opencv_core_mat_handle *left,
+                        const opencv_core_mat_handle *right,
+                        int32_t comparison_kind,
+                        opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (left == nullptr || right == nullptr) {
+        return invalid_argument("Mat operand handles must not be null");
+    }
+
+    int opencv_compare_kind = 0;
+    if (!to_opencv_compare_kind(comparison_kind, opencv_compare_kind)) {
+        return invalid_argument("comparison kind is not supported");
+    }
+
+    const cv::Mat &left_mat = left->value;
+    const cv::Mat &right_mat = right->value;
+
+    if (left_mat.dims > 2 || right_mat.dims > 2) {
+        return invalid_argument("Mat compare supports two-dimensional Mats only");
+    }
+
+    if (left_mat.channels() != 1 || right_mat.channels() != 1) {
+        return invalid_argument("Mat compare requires single-channel operands");
+    }
+
+    if (left_mat.rows != right_mat.rows || left_mat.cols != right_mat.cols) {
+        return invalid_argument(
+            "Mat compare requires operands with identical dimensions");
+    }
+
+    if (left_mat.depth() != right_mat.depth()) {
+        return invalid_argument(
+            "Mat compare requires operands with identical depths");
+    }
+
+    try {
+        cv::Mat result;
+        cv::compare(left_mat, right_mat, result, opencv_compare_kind);
+        if (result.type() != CV_8UC1 || result.rows != left_mat.rows ||
+            result.cols != left_mat.cols) {
+            return invalid_argument("compare produced an invalid mask result");
         }
         *out_mat = new opencv_core_mat_handle(result);
         return OPENCV_CORE_OK;

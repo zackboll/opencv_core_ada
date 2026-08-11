@@ -3879,6 +3879,201 @@ package body Mat_Tests is
          "In_Range must reject more than four channels");
    end In_Range_Handles_Nonfinite_Empty_And_Channel_Failures;
 
+   procedure Compare_UInt8_All_Modes_And_Mask_Contract
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left                   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 4, (OpenCV.Core.UInt8, 1));
+      Right                  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 4, (OpenCV.Core.UInt8, 1));
+      Eq, Ne, Lt, Le, Gt, Ge : OpenCV.Core.Mat;
+      Other, Applied         : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.UInt8_Access.Set (Left, 0, 0, 1);
+      OpenCV.Core.UInt8_Access.Set (Left, 0, 1, 5);
+      OpenCV.Core.UInt8_Access.Set (Left, 0, 2, 10);
+      OpenCV.Core.UInt8_Access.Set (Left, 0, 3, 20);
+      OpenCV.Core.UInt8_Access.Set (Right, 0, 0, 1);
+      OpenCV.Core.UInt8_Access.Set (Right, 0, 1, 4);
+      OpenCV.Core.UInt8_Access.Set (Right, 0, 2, 10);
+      OpenCV.Core.UInt8_Access.Set (Right, 0, 3, 30);
+
+      Eq := Left.Compare (Right, OpenCV.Core.Equal);
+      Ne := Left.Compare (Right, OpenCV.Core.Not_Equal);
+      Lt := Left.Compare (Right, OpenCV.Core.Less_Than);
+      Le := Left.Compare (Right, OpenCV.Core.Less_Or_Equal);
+      Gt := Left.Compare (Right, OpenCV.Core.Greater_Than);
+      Ge := Left.Compare (Right, OpenCV.Core.Greater_Or_Equal);
+
+      Other := OpenCV.Core.Create (1, 4, (OpenCV.Core.UInt8, 1));
+      Other.Set_To (OpenCV.Core.Make_Scalar (255.0));
+      Applied := Left.Bitwise_And (Other, Ge);
+      OpenCV.Core.UInt8_Access.Set (Left, 0, 1, 0);
+
+      AUnit.Assertions.Assert
+        (Eq.Rows = 1
+         and then Eq.Columns = 4
+         and then Eq.Depth = OpenCV.Core.UInt8
+         and then Eq.Channels = 1
+         and then OpenCV.Core.UInt8_Access.Get (Eq, 0, 0) = 255
+         and then OpenCV.Core.UInt8_Access.Get (Eq, 0, 1) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Eq, 0, 2) = 255
+         and then OpenCV.Core.UInt8_Access.Get (Eq, 0, 3) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Ne, 0, 0) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Ne, 0, 1) = 255
+         and then OpenCV.Core.UInt8_Access.Get (Ne, 0, 2) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Ne, 0, 3) = 255
+         and then OpenCV.Core.UInt8_Access.Get (Lt, 0, 0) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Lt, 0, 1) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Lt, 0, 2) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Lt, 0, 3) = 255
+         and then OpenCV.Core.UInt8_Access.Get (Le, 0, 0) = 255
+         and then OpenCV.Core.UInt8_Access.Get (Le, 0, 1) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Le, 0, 2) = 255
+         and then OpenCV.Core.UInt8_Access.Get (Le, 0, 3) = 255
+         and then OpenCV.Core.UInt8_Access.Get (Gt, 0, 0) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Gt, 0, 1) = 255
+         and then OpenCV.Core.UInt8_Access.Get (Gt, 0, 2) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Gt, 0, 3) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Ge, 0, 0) = 255
+         and then OpenCV.Core.UInt8_Access.Get (Ge, 0, 1) = 255
+         and then OpenCV.Core.UInt8_Access.Get (Ge, 0, 2) = 255
+         and then OpenCV.Core.UInt8_Access.Get (Ge, 0, 3) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Applied, 0, 1) = 5,
+         "Compare must cover all UInt8 modes and produce a usable mask");
+   end Compare_UInt8_All_Modes_And_Mask_Contract;
+
+   procedure Compare_Float32_NaN_And_Regions (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left                         : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 4, (OpenCV.Core.Float32, 1));
+      Right                        : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 4, (OpenCV.Core.Float32, 1));
+      Eq, Ne                       : OpenCV.Core.Mat;
+      Region_Left                  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.UInt8, 1));
+      Region_Right                 : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.UInt8, 1));
+      Region_Mask                  : OpenCV.Core.Mat;
+      Numerator, Zeroes, Nonfinite : OpenCV.Core.Mat;
+      Finite                       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 3, (OpenCV.Core.Float32, 1));
+      Nan_Eq                       : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set (Left, 0, 0, -1.5);
+      OpenCV.Core.Float32_Access.Set (Left, 0, 1, 0.5);
+      OpenCV.Core.Float32_Access.Set (Left, 0, 2, 1.0);
+      OpenCV.Core.Float32_Access.Set (Left, 0, 3, 2.25);
+      OpenCV.Core.Float32_Access.Set (Right, 0, 0, -1.5);
+      OpenCV.Core.Float32_Access.Set (Right, 0, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Right, 0, 2, 1.0);
+      OpenCV.Core.Float32_Access.Set (Right, 0, 3, 0.0);
+      Eq := Left.Compare (Right, OpenCV.Core.Equal);
+      Ne := Left.Compare (Right, OpenCV.Core.Not_Equal);
+
+      Region_Left.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Region_Right.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.UInt8_Access.Set (Region_Left, 0, 1, 10);
+      OpenCV.Core.UInt8_Access.Set (Region_Left, 0, 2, 20);
+      OpenCV.Core.UInt8_Access.Set (Region_Left, 1, 1, 30);
+      OpenCV.Core.UInt8_Access.Set (Region_Left, 1, 2, 5);
+      OpenCV.Core.UInt8_Access.Set (Region_Right, 0, 1, 10);
+      OpenCV.Core.UInt8_Access.Set (Region_Right, 0, 2, 15);
+      OpenCV.Core.UInt8_Access.Set (Region_Right, 1, 1, 25);
+      OpenCV.Core.UInt8_Access.Set (Region_Right, 1, 2, 5);
+      Region_Mask :=
+        Region_Left.Region ((1, 0, 2, 2)).Compare
+          (Region_Right.Region ((1, 0, 2, 2)), OpenCV.Core.Greater_Than);
+
+      Numerator := OpenCV.Core.Create (1, 3, (OpenCV.Core.Float32, 1));
+      Zeroes := OpenCV.Core.Create (1, 3, (OpenCV.Core.Float32, 1));
+      OpenCV.Core.Float32_Access.Set (Numerator, 0, 0, 0.0);
+      OpenCV.Core.Float32_Access.Set (Numerator, 0, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Numerator, 0, 2, -1.0);
+      Zeroes.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Nonfinite := Numerator.Divide (Zeroes);
+      Finite.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Nan_Eq := Nonfinite.Compare (Finite, OpenCV.Core.Equal);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Eq, 0, 0) = 255
+         and then OpenCV.Core.UInt8_Access.Get (Eq, 0, 1) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Eq, 0, 2) = 255
+         and then OpenCV.Core.UInt8_Access.Get (Eq, 0, 3) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Ne, 0, 1) = 255
+         and then OpenCV.Core.UInt8_Access.Get (Ne, 0, 3) = 255
+         and then Region_Mask.Is_Continuous
+         and then Region_Mask.Rows = 2
+         and then Region_Mask.Columns = 2
+         and then OpenCV.Core.UInt8_Access.Get (Region_Mask, 0, 0) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Region_Mask, 0, 1) = 255
+         and then OpenCV.Core.UInt8_Access.Get (Region_Mask, 1, 0) = 255
+         and then OpenCV.Core.UInt8_Access.Get (Region_Mask, 1, 1) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Nan_Eq, 0, 0) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Nan_Eq, 0, 1) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Nan_Eq, 0, 2) = 0,
+         "Compare must handle Float32, NaN, and non-contiguous Regions");
+   end Compare_Float32_NaN_And_Regions;
+
+   procedure Compare_Rejects_Incompatible_Operands
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Base  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.UInt8, 1));
+      Rows  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.UInt8, 1));
+      Cols  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 4, (OpenCV.Core.UInt8, 1));
+      Depth : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Multi : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.UInt8, 3));
+      procedure Bad_Rows is
+         X : constant OpenCV.Core.Mat :=
+           Base.Compare (Rows, OpenCV.Core.Equal);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Rows;
+      procedure Bad_Columns is
+         X : constant OpenCV.Core.Mat :=
+           Base.Compare (Cols, OpenCV.Core.Equal);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Columns;
+      procedure Bad_Depth is
+         X : constant OpenCV.Core.Mat :=
+           Base.Compare (Depth, OpenCV.Core.Equal);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Depth;
+      procedure Bad_Channels is
+         X : constant OpenCV.Core.Mat :=
+           Base.Compare (Multi, OpenCV.Core.Equal);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Channels;
+      procedure Multi_Left is
+         X : constant OpenCV.Core.Mat :=
+           Multi.Compare (Base, OpenCV.Core.Equal);
+      begin
+         pragma Unreferenced (X);
+      end Multi_Left;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Bad_Rows'Access, "Compare must reject mismatched rows");
+      Assert_Raises_OpenCV_Error
+        (Bad_Columns'Access, "Compare must reject mismatched columns");
+      Assert_Raises_OpenCV_Error
+        (Bad_Depth'Access, "Compare must reject mismatched depths");
+      Assert_Raises_OpenCV_Error
+        (Bad_Channels'Access, "Compare must reject multi-channel right");
+      Assert_Raises_OpenCV_Error
+        (Multi_Left'Access, "Compare must reject multi-channel left");
+   end Compare_Rejects_Incompatible_Operands;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -4827,6 +5022,18 @@ package body Mat_Tests is
         (Caller.Create
            ("In_Range handles nonfinite, empty, and channel failures",
             In_Range_Handles_Nonfinite_Empty_And_Channel_Failures'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Compare covers UInt8 modes and mask contract",
+            Compare_UInt8_All_Modes_And_Mask_Contract'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Compare handles Float32, NaN, and Regions",
+            Compare_Float32_NaN_And_Regions'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Compare rejects incompatible operands",
+            Compare_Rejects_Incompatible_Operands'Access));
       Result.Add_Test
         (Caller.Create
            ("Min_Max_Loc UInt8 returns values and column-row Points",

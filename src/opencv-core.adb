@@ -88,6 +88,17 @@ package body OpenCV.Core is
          when Infinity => OpenCV.Internal.C_API.Normalize_Inf,
          when Min_Max  => OpenCV.Internal.C_API.Normalize_Min_Max);
 
+   function To_C_Comparison_Kind
+     (Value : Comparison_Kind) return OpenCV.Internal.C_API.C_Int32
+   is (case Value is
+         when Equal            => OpenCV.Internal.C_API.Compare_Equal,
+         when Not_Equal        => OpenCV.Internal.C_API.Compare_Not_Equal,
+         when Less_Than        => OpenCV.Internal.C_API.Compare_Less_Than,
+         when Less_Or_Equal    => OpenCV.Internal.C_API.Compare_Less_Or_Equal,
+         when Greater_Than     => OpenCV.Internal.C_API.Compare_Greater_Than,
+         when Greater_Or_Equal =>
+           OpenCV.Internal.C_API.Compare_Greater_Or_Equal);
+
    function To_Mat_Size
      (Value : OpenCV.Internal.C_API.C_UInt64) return Mat_Size is
    begin
@@ -240,6 +251,33 @@ package body OpenCV.Core is
             "Mat mask must have the same column count as its source");
       end if;
    end Validate_Mask;
+
+   procedure Validate_Compare_Compatibility (Left, Right : Mat) is
+   begin
+      if Left.Channels /= 1 or else Right.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat compare requires single-channel operands");
+      end if;
+
+      if Left.Rows /= Right.Rows then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat compare requires operands with identical row counts");
+      end if;
+
+      if Left.Columns /= Right.Columns then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat compare requires operands with identical column counts");
+      end if;
+
+      if Left.Depth /= Right.Depth then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat compare requires operands with identical depths");
+      end if;
+   end Validate_Compare_Compatibility;
 
    function Add (Left, Right : Mat) return Mat is
       Result     : Mat;
@@ -537,6 +575,26 @@ package body OpenCV.Core is
       Result.Handle := New_Handle;
       return Result;
    end In_Range;
+
+   function Compare (Left, Right : Mat; Kind : Comparison_Kind) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Compare_Compatibility (Left, Right);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Compare
+          (Left   => Left.Handle,
+           Right  => Right.Handle,
+           Kind   => To_C_Comparison_Kind (Kind),
+           Result => New_Handle'Access);
+      Raise_On_Error (Status, "Mat compare operation");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Compare;
 
    function Normalize
      (Self  : Mat;

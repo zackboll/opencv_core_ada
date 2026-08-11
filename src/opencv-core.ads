@@ -12,6 +12,14 @@ package OpenCV.Core is
    --  Min_Max is a normalization mode rather than a Mat.Norm reduction kind.
    type Normalize_Kind is (L1, L2, Infinity, Min_Max);
 
+   type Comparison_Kind is
+     (Equal,
+      Not_Equal,
+      Less_Than,
+      Less_Or_Equal,
+      Greater_Than,
+      Greater_Or_Equal);
+
    type Channel_Count is new Interfaces.Integer_32 range 1 .. 512;
 
    type Mat_Size is
@@ -129,6 +137,10 @@ package OpenCV.Core is
    function Bitwise_Not (Self : Mat) return Mat;
    function Bitwise_Not (Self, Mask : Mat) return Mat;
    function In_Range (Self : Mat; Lower, Upper : Scalar) return Mat;
+   --  Both operands must be single-channel with identical rows, columns, and
+   --  depth.  The result is an independent UInt8 single-channel mask with 255
+   --  where the comparison is true and 0 otherwise, suitable for masked ops.
+   function Compare (Left, Right : Mat; Kind : Comparison_Kind) return Mat;
    function Is_Empty (Self : Mat) return Boolean;
    function Rows (Self : Mat) return Natural;
    function Columns (Self : Mat) return Natural;

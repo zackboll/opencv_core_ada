@@ -65,6 +65,17 @@ typedef struct {
 #define OPENCV_CORE_NORMALIZE_MIN_MAX ((int32_t)4)
 
 /*
+ * Stable comparison-kind identifiers for the C ABI. These are translated
+ * explicitly to OpenCV CmpTypes by the shim and are not cv::CmpTypes values.
+ */
+#define OPENCV_CORE_COMPARE_EQUAL ((int32_t)0)
+#define OPENCV_CORE_COMPARE_NOT_EQUAL ((int32_t)1)
+#define OPENCV_CORE_COMPARE_LESS_THAN ((int32_t)2)
+#define OPENCV_CORE_COMPARE_LESS_OR_EQUAL ((int32_t)3)
+#define OPENCV_CORE_COMPARE_GREATER_THAN ((int32_t)4)
+#define OPENCV_CORE_COMPARE_GREATER_OR_EQUAL ((int32_t)5)
+
+/*
  * Returns a borrowed pointer to the diagnostic for the most recent failed shim
  * operation on the calling thread. The pointer remains valid only until a
  * subsequent shim operation changes that thread's error state. The caller must
@@ -203,6 +214,17 @@ opencv_core_mat_in_range_scalar(const opencv_core_mat_handle *source,
                                 const opencv_core_scalar *lower,
                                 const opencv_core_scalar *upper,
                                 opencv_core_mat_handle **out_mat);
+
+/*
+ * Compares two single-channel Mats with identical rows, columns, and depth.
+ * Returns an independently allocated UInt8 single-channel mask with 255 where
+ * the comparison is true and 0 otherwise. Non-contiguous views are supported.
+ */
+opencv_core_status
+opencv_core_mat_compare(const opencv_core_mat_handle *left,
+                        const opencv_core_mat_handle *right,
+                        int32_t comparison_kind,
+                        opencv_core_mat_handle **out_mat);
 
 /*
  * Creates a distinct Mat header for the indicated non-empty 2D region. The
