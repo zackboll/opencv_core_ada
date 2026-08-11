@@ -1,0 +1,1133 @@
+with AUnit.Assertions;
+with AUnit.Test_Caller;
+with Interfaces;
+with OpenCV.Core;
+with OpenCV.Core.Float32_Access;
+with OpenCV.Core.Float32_Row_Access;
+with OpenCV.Core.Float32_Vec3;
+with OpenCV.Core.Float32_Vec3_Access;
+with OpenCV.Core.Float32_Vec3_Row_Access;
+with OpenCV.Core.UInt8_Access;
+with OpenCV.Core.UInt8_Row_Access;
+with OpenCV.Core.UInt8_Vec3;
+with OpenCV.Core.UInt8_Vec3_Access;
+with OpenCV.Core.UInt8_Vec3_Row_Access;
+with Mat_Test_Support;
+
+package body Mat_Access_Tests is
+
+   use type Interfaces.IEEE_Float_32;
+   use type Interfaces.Unsigned_8;
+   use type OpenCV.Core.Depth_Type;
+   use type OpenCV.Core.UInt8_Row_Access.Row_Array;
+   use type OpenCV.Core.UInt8_Vec3.Vector;
+   use type OpenCV.Core.UInt8_Vec3_Row_Access.Row_Array;
+
+   use Mat_Test_Support;
+
+   procedure UInt8_Typed_Element_Access (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Total : OpenCV.Core.Scalar;
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.UInt8_Access.Set (Image, Row => 0, Column => 0, Value => 5);
+      OpenCV.Core.UInt8_Access.Set (Image, Row => 0, Column => 2, Value => 17);
+      OpenCV.Core.UInt8_Access.Set
+        (Image, Row => 1, Column => 1, Value => 200);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Image, Row => 0, Column => 0) = 5,
+         "UInt8 Get should return the value written at row zero, column zero");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Image, Row => 0, Column => 2) = 17,
+         "UInt8 Get should return the value written at row zero, column two");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Image, Row => 1, Column => 1) = 200,
+         "UInt8 Get should return the value written at row one, column one");
+
+      Total := Image.Sum;
+      AUnit.Assertions.Assert
+        (Total.Component_0 = 222.0,
+         "Sum should include precisely the UInt8 values written individually");
+   end UInt8_Typed_Element_Access;
+
+   procedure Float32_Typed_Element_Access (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+   begin
+      OpenCV.Core.Float32_Access.Set
+        (Image, Row => 0, Column => 0, Value => 1.25);
+      OpenCV.Core.Float32_Access.Set
+        (Image, Row => 0, Column => 1, Value => -2.5);
+      OpenCV.Core.Float32_Access.Set
+        (Image, Row => 1, Column => 0, Value => 3.75);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float
+              (OpenCV.Core.Float32_Access.Get (Image, Row => 0, Column => 0)),
+            1.25),
+         "Float32 Get should preserve the first fractional value");
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float
+              (OpenCV.Core.Float32_Access.Get (Image, Row => 0, Column => 1)),
+            -2.5),
+         "Float32 Get should preserve the negative fractional value");
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float
+              (OpenCV.Core.Float32_Access.Get (Image, Row => 1, Column => 0)),
+            3.75),
+         "Float32 Get should preserve the third fractional value");
+   end Float32_Typed_Element_Access;
+
+   procedure Typed_Access_Rejects_Incompatible_Depth
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      UInt8_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Float_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+
+      procedure Read_UInt8_From_Float is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Access.Get (Float_Image, Row => 0, Column => 0)
+            = 0,
+            "An incompatible UInt8 read unexpectedly succeeded");
+      end Read_UInt8_From_Float;
+
+      procedure Read_Float32_From_UInt8 is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float32_Access.Get (UInt8_Image, Row => 0, Column => 0)
+            = 0.0,
+            "An incompatible Float32 read unexpectedly succeeded");
+      end Read_Float32_From_UInt8;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Read_UInt8_From_Float'Access,
+         "UInt8 access must reject a Float32 Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_Float32_From_UInt8'Access,
+         "Float32 access must reject a UInt8 Mat");
+   end Typed_Access_Rejects_Incompatible_Depth;
+
+   procedure Typed_Access_Rejects_Multi_Channel_Mat
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+
+      procedure Read_Multi_Channel is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Access.Get (Image, Row => 0, Column => 0) = 0,
+            "A multi-channel typed read unexpectedly succeeded");
+      end Read_Multi_Channel;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Read_Multi_Channel'Access,
+         "Typed access must reject a multi-channel Mat");
+   end Typed_Access_Rejects_Multi_Channel_Mat;
+
+   procedure Typed_Access_Rejects_Out_Of_Bounds_Indices
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+
+      procedure Read_Negative_Row is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Access.Get (Image, Row => -1, Column => 0) = 0,
+            "A negative row read unexpectedly succeeded");
+      end Read_Negative_Row;
+
+      procedure Read_Row_After_Last is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Access.Get (Image, Row => 2, Column => 0) = 0,
+            "A past-the-end row read unexpectedly succeeded");
+      end Read_Row_After_Last;
+
+      procedure Read_Negative_Column is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Access.Get (Image, Row => 0, Column => -1) = 0,
+            "A negative column read unexpectedly succeeded");
+      end Read_Negative_Column;
+
+      procedure Read_Column_After_Last is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Access.Get (Image, Row => 0, Column => 2) = 0,
+            "A past-the-end column read unexpectedly succeeded");
+      end Read_Column_After_Last;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Read_Negative_Row'Access,
+         "Typed access must reject a row before the first row");
+      Assert_Raises_OpenCV_Error
+        (Read_Row_After_Last'Access,
+         "Typed access must reject a row after the last row");
+      Assert_Raises_OpenCV_Error
+        (Read_Negative_Column'Access,
+         "Typed access must reject a column before the first column");
+      Assert_Raises_OpenCV_Error
+        (Read_Column_After_Last'Access,
+         "Typed access must reject a column after the last column");
+   end Typed_Access_Rejects_Out_Of_Bounds_Indices;
+
+   procedure Clone_Isolates_Typed_Element_Writes
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Copy   : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.UInt8_Access.Set
+        (Source, Row => 0, Column => 0, Value => 10);
+      OpenCV.Core.UInt8_Access.Set
+        (Source, Row => 0, Column => 1, Value => 20);
+      Copy := Source.Clone;
+
+      OpenCV.Core.UInt8_Access.Set
+        (Source, Row => 0, Column => 0, Value => 99);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Source, Row => 0, Column => 0) = 99,
+         "The source should reflect its typed element write");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Copy, Row => 0, Column => 0) = 10,
+         "A clone must retain the original typed element value");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Copy, Row => 0, Column => 1) = 20,
+         "A clone must retain unaffected typed element values");
+   end Clone_Isolates_Typed_Element_Writes;
+
+   procedure UInt8_Vec3_Typed_Element_Access (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      First  : constant OpenCV.Core.UInt8_Vec3.Vector := (1, 2, 3);
+      Second : constant OpenCV.Core.UInt8_Vec3.Vector := (10, 20, 30);
+      Pixel  : OpenCV.Core.UInt8_Vec3.Vector;
+      Total  : OpenCV.Core.Scalar;
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Image, Row => 0, Column => 1, Value => First);
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Image, Row => 1, Column => 2, Value => Second);
+
+      Pixel :=
+        OpenCV.Core.UInt8_Vec3_Access.Get (Image, Row => 0, Column => 1);
+      AUnit.Assertions.Assert
+        (Pixel (0) = 1 and then Pixel (1) = 2 and then Pixel (2) = 3,
+         "UInt8 Vec3 Get should preserve all first pixel components");
+
+      Pixel :=
+        OpenCV.Core.UInt8_Vec3_Access.Get (Image, Row => 1, Column => 2);
+      AUnit.Assertions.Assert
+        (Pixel (0) = 10 and then Pixel (1) = 20 and then Pixel (2) = 30,
+         "UInt8 Vec3 Get should preserve all second pixel components");
+
+      Total := Image.Sum;
+      AUnit.Assertions.Assert
+        (Total.Component_0 = 11.0
+         and then Total.Component_1 = 22.0
+         and then Total.Component_2 = 33.0
+         and then Total.Component_3 = 0.0,
+         "Sum should independently include written UInt8 Vec3 components");
+   end UInt8_Vec3_Typed_Element_Access;
+
+   procedure Float32_Vec3_Typed_Element_Access (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 3));
+      First  : constant OpenCV.Core.Float32_Vec3.Vector := (1.25, -2.5, 3.75);
+      Second : constant OpenCV.Core.Float32_Vec3.Vector :=
+        (-0.5, 0.125, 9.875);
+      Pixel  : OpenCV.Core.Float32_Vec3.Vector;
+   begin
+      OpenCV.Core.Float32_Vec3_Access.Set
+        (Image, Row => 0, Column => 0, Value => First);
+      OpenCV.Core.Float32_Vec3_Access.Set
+        (Image, Row => 1, Column => 1, Value => Second);
+
+      Pixel :=
+        OpenCV.Core.Float32_Vec3_Access.Get (Image, Row => 0, Column => 0);
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Long_Float (Pixel (0)), 1.25)
+         and then Approximately_Equal (Long_Float (Pixel (1)), -2.5)
+         and then Approximately_Equal (Long_Float (Pixel (2)), 3.75),
+         "Float32 Vec3 Get should preserve fractional first pixel components");
+
+      Pixel :=
+        OpenCV.Core.Float32_Vec3_Access.Get (Image, Row => 1, Column => 1);
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Long_Float (Pixel (0)), -0.5)
+         and then Approximately_Equal (Long_Float (Pixel (1)), 0.125)
+         and then Approximately_Equal (Long_Float (Pixel (2)), 9.875),
+         "Float32 Vec3 Get should preserve fractional second pixel"
+         & " components");
+   end Float32_Vec3_Typed_Element_Access;
+
+   procedure Vec3_Typed_Access_Rejects_Invalid_Mats_And_Indices
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      UInt8_Vec3_Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      Float32_Vec3_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 3));
+      UInt8_Scalar_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      UInt8_Vec2_Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 2));
+
+      procedure Read_UInt8_From_Float32 is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Vec3_Access.Get
+              (Float32_Vec3_Image, Row => 0, Column => 0) (0)
+            = 255,
+            "An incompatible UInt8 Vec3 read unexpectedly succeeded");
+      end Read_UInt8_From_Float32;
+
+      procedure Read_Float32_From_UInt8 is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float32_Vec3_Access.Get
+              (UInt8_Vec3_Image, Row => 0, Column => 0) (0)
+            = 1.0,
+            "An incompatible Float32 Vec3 read unexpectedly succeeded");
+      end Read_Float32_From_UInt8;
+
+      procedure Read_Single_Channel is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Vec3_Access.Get
+              (UInt8_Scalar_Image, Row => 0, Column => 0) (0)
+            = 255,
+            "A single-channel Vec3 read unexpectedly succeeded");
+      end Read_Single_Channel;
+
+      procedure Read_Two_Channel is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Vec3_Access.Get
+              (UInt8_Vec2_Image, Row => 0, Column => 0) (0)
+            = 255,
+            "A two-channel Vec3 read unexpectedly succeeded");
+      end Read_Two_Channel;
+
+      procedure Read_Negative_Row is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Vec3_Access.Get
+              (UInt8_Vec3_Image, Row => -1, Column => 0) (0)
+            = 255,
+            "A negative Vec3 row read unexpectedly succeeded");
+      end Read_Negative_Row;
+
+      procedure Read_Row_After_Last is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Vec3_Access.Get
+              (UInt8_Vec3_Image, Row => 2, Column => 0) (0)
+            = 255,
+            "A past-the-end Vec3 row read unexpectedly succeeded");
+      end Read_Row_After_Last;
+
+      procedure Read_Negative_Column is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Vec3_Access.Get
+              (UInt8_Vec3_Image, Row => 0, Column => -1) (0)
+            = 255,
+            "A negative Vec3 column read unexpectedly succeeded");
+      end Read_Negative_Column;
+
+      procedure Read_Column_After_Last is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Vec3_Access.Get
+              (UInt8_Vec3_Image, Row => 0, Column => 2) (0)
+            = 255,
+            "A past-the-end Vec3 column read unexpectedly succeeded");
+      end Read_Column_After_Last;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Read_UInt8_From_Float32'Access,
+         "UInt8 Vec3 access must reject a Float32 Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_Float32_From_UInt8'Access,
+         "Float32 Vec3 access must reject a UInt8 Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_Single_Channel'Access,
+         "Vec3 access must reject a single-channel Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_Two_Channel'Access,
+         "Vec3 access must reject a Mat without three channels");
+      Assert_Raises_OpenCV_Error
+        (Read_Negative_Row'Access, "Vec3 access must reject a negative row");
+      Assert_Raises_OpenCV_Error
+        (Read_Row_After_Last'Access,
+         "Vec3 access must reject a row after the last row");
+      Assert_Raises_OpenCV_Error
+        (Read_Negative_Column'Access,
+         "Vec3 access must reject a negative column");
+      Assert_Raises_OpenCV_Error
+        (Read_Column_After_Last'Access,
+         "Vec3 access must reject a column after the last column");
+   end Vec3_Typed_Access_Rejects_Invalid_Mats_And_Indices;
+
+   procedure Vec3_Access_Proves_Assignment_And_Clone_Semantics
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      Shallow_Copy : OpenCV.Core.Mat;
+      Deep_Copy    : OpenCV.Core.Mat;
+      Original     : constant OpenCV.Core.UInt8_Vec3.Vector := (1, 2, 3);
+      Replacement  : constant OpenCV.Core.UInt8_Vec3.Vector := (10, 20, 30);
+      Pixel        : OpenCV.Core.UInt8_Vec3.Vector;
+   begin
+      Shallow_Copy := Source;
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Source, Row => 0, Column => 0, Value => Original);
+
+      Pixel :=
+        OpenCV.Core.UInt8_Vec3_Access.Get
+          (Shallow_Copy, Row => 0, Column => 0);
+      AUnit.Assertions.Assert
+        (Pixel (0) = Original (0)
+         and then Pixel (1) = Original (1)
+         and then Pixel (2) = Original (2),
+         "An assigned Mat must share Vec3 element writes");
+
+      Deep_Copy := Source.Clone;
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Source, Row => 0, Column => 0, Value => Replacement);
+
+      Pixel :=
+        OpenCV.Core.UInt8_Vec3_Access.Get (Deep_Copy, Row => 0, Column => 0);
+      AUnit.Assertions.Assert
+        (Pixel (0) = Original (0)
+         and then Pixel (1) = Original (1)
+         and then Pixel (2) = Original (2),
+         "A cloned Mat must retain its original Vec3 element value");
+   end Vec3_Access_Proves_Assignment_And_Clone_Semantics;
+
+   procedure UInt8_Row_Access_Reads_Writes_And_Preserves_Array_Order
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 3,
+           Columns      => 4,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Written  : constant OpenCV.Core.UInt8_Row_Access.Row_Array (5 .. 8) :=
+        (10, 20, 30, 40);
+      Readback : OpenCV.Core.UInt8_Row_Access.Row_Array (5 .. 8);
+      From_Set : OpenCV.Core.UInt8_Row_Access.Row_Array (10 .. 13);
+   begin
+      OpenCV.Core.UInt8_Row_Access.Write_Row
+        (Image, Row => 1, Data => Written);
+      OpenCV.Core.UInt8_Row_Access.Read_Row
+        (Image, Row => 1, Data => Readback);
+
+      AUnit.Assertions.Assert
+        (Readback = Written,
+         "UInt8 row access must preserve ordered values and nonzero bounds");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Image, Row => 1, Column => 0) = 10
+         and then OpenCV.Core.UInt8_Access.Get (Image, Row => 1, Column => 1)
+                  = 20
+         and then OpenCV.Core.UInt8_Access.Get (Image, Row => 1, Column => 2)
+                  = 30
+         and then OpenCV.Core.UInt8_Access.Get (Image, Row => 1, Column => 3)
+                  = 40,
+         "UInt8 element access must observe a bulk row write");
+
+      OpenCV.Core.UInt8_Access.Set (Image, Row => 0, Column => 0, Value => 4);
+      OpenCV.Core.UInt8_Access.Set (Image, Row => 0, Column => 1, Value => 3);
+      OpenCV.Core.UInt8_Access.Set (Image, Row => 0, Column => 2, Value => 2);
+      OpenCV.Core.UInt8_Access.Set (Image, Row => 0, Column => 3, Value => 1);
+      OpenCV.Core.UInt8_Row_Access.Read_Row
+        (Image, Row => 0, Data => From_Set);
+
+      AUnit.Assertions.Assert
+        (From_Set = (4, 3, 2, 1),
+         "UInt8 bulk row reads must observe per-element writes");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Image, Row => 2, Column => 0) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Image, Row => 2, Column => 3)
+                  = 0,
+         "Writing one UInt8 row must not modify adjacent rows");
+   end UInt8_Row_Access_Reads_Writes_And_Preserves_Array_Order;
+
+   procedure Float32_Row_Access_Reads_Writes_And_Preserves_Array_Order
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Written  : constant OpenCV.Core.Float32_Row_Access.Row_Array (3 .. 5) :=
+        (1.25, -2.5, 3.75);
+      Readback : OpenCV.Core.Float32_Row_Access.Row_Array (3 .. 5);
+      From_Set : OpenCV.Core.Float32_Row_Access.Row_Array (8 .. 10);
+   begin
+      OpenCV.Core.Float32_Row_Access.Write_Row
+        (Image, Row => 1, Data => Written);
+      OpenCV.Core.Float32_Row_Access.Read_Row
+        (Image, Row => 1, Data => Readback);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Long_Float (Readback (3)), 1.25)
+         and then Approximately_Equal (Long_Float (Readback (4)), -2.5)
+         and then Approximately_Equal (Long_Float (Readback (5)), 3.75),
+         "Float32 row access must preserve fractional ordered values");
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float
+              (OpenCV.Core.Float32_Access.Get (Image, Row => 1, Column => 0)),
+            1.25)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get
+                          (Image, Row => 1, Column => 2)),
+                     3.75),
+         "Float32 element access must observe a bulk row write");
+
+      OpenCV.Core.Float32_Access.Set
+        (Image, Row => 0, Column => 0, Value => -0.5);
+      OpenCV.Core.Float32_Access.Set
+        (Image, Row => 0, Column => 1, Value => 0.125);
+      OpenCV.Core.Float32_Access.Set
+        (Image, Row => 0, Column => 2, Value => 9.875);
+      OpenCV.Core.Float32_Row_Access.Read_Row
+        (Image, Row => 0, Data => From_Set);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Long_Float (From_Set (8)), -0.5)
+         and then Approximately_Equal (Long_Float (From_Set (9)), 0.125)
+         and then Approximately_Equal (Long_Float (From_Set (10)), 9.875),
+         "Float32 bulk row reads must observe per-element writes");
+   end Float32_Row_Access_Reads_Writes_And_Preserves_Array_Order;
+
+   procedure Row_Access_Handles_Non_Continuous_Regions
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 4,
+           Columns      => 6,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      View     : OpenCV.Core.Mat :=
+        Source.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+      First    : constant OpenCV.Core.UInt8_Row_Access.Row_Array (0 .. 2) :=
+        (11, 12, 13);
+      Second   : constant OpenCV.Core.UInt8_Row_Access.Row_Array (4 .. 6) :=
+        (21, 22, 23);
+      Readback : OpenCV.Core.UInt8_Row_Access.Row_Array (8 .. 10);
+   begin
+      AUnit.Assertions.Assert
+        (not View.Is_Continuous,
+         "A partial-width multi-row Region must be non-continuous");
+
+      OpenCV.Core.UInt8_Row_Access.Write_Row (View, Row => 0, Data => First);
+      OpenCV.Core.UInt8_Row_Access.Write_Row (View, Row => 1, Data => Second);
+      OpenCV.Core.UInt8_Row_Access.Read_Row (View, Row => 1, Data => Readback);
+
+      AUnit.Assertions.Assert
+        (Readback = (21, 22, 23),
+         "A non-continuous Region row must be readable as a complete row");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Source, Row => 1, Column => 1) = 11
+         and then OpenCV.Core.UInt8_Access.Get (Source, Row => 1, Column => 3)
+                  = 13
+         and then OpenCV.Core.UInt8_Access.Get (Source, Row => 2, Column => 1)
+                  = 21
+         and then OpenCV.Core.UInt8_Access.Get (Source, Row => 2, Column => 3)
+                  = 23,
+         "Bulk Region row writes must respect ROI row stride and share"
+         & " source data");
+   end Row_Access_Handles_Non_Continuous_Regions;
+
+   procedure Row_Access_Respects_Assignment_And_Clone_Semantics
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Shallow_Copy : OpenCV.Core.Mat;
+      Deep_Copy    : OpenCV.Core.Mat;
+      Initial      :
+        constant OpenCV.Core.UInt8_Row_Access.Row_Array (0 .. 1) := (5, 6);
+      Replacement  :
+        constant OpenCV.Core.UInt8_Row_Access.Row_Array (0 .. 1) := (9, 10);
+      Readback     : OpenCV.Core.UInt8_Row_Access.Row_Array (0 .. 1);
+   begin
+      OpenCV.Core.UInt8_Row_Access.Write_Row
+        (Source, Row => 0, Data => Initial);
+      Shallow_Copy := Source;
+      Deep_Copy := Source.Clone;
+      OpenCV.Core.UInt8_Row_Access.Write_Row
+        (Shallow_Copy, Row => 0, Data => Replacement);
+      OpenCV.Core.UInt8_Row_Access.Read_Row
+        (Deep_Copy, Row => 0, Data => Readback);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Source, Row => 0, Column => 0) = 9
+         and then OpenCV.Core.UInt8_Access.Get (Source, Row => 0, Column => 1)
+                  = 10,
+         "Row writes through an assigned Mat must share source storage");
+      AUnit.Assertions.Assert
+        (Readback = Initial,
+         "Row writes after Clone must not affect the deep copy");
+   end Row_Access_Respects_Assignment_And_Clone_Semantics;
+
+   procedure Row_Access_Rejects_Invalid_Mats_Indices_And_Lengths
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      UInt8_Image   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Float_Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      RGB_Image     : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      Correct_UInt8 : OpenCV.Core.UInt8_Row_Access.Row_Array (0 .. 2) :=
+        (others => 0);
+      Short_UInt8   : OpenCV.Core.UInt8_Row_Access.Row_Array (0 .. 1) :=
+        (others => 0);
+      Long_UInt8    :
+        constant OpenCV.Core.UInt8_Row_Access.Row_Array (0 .. 3) :=
+          (others => 0);
+
+      procedure Read_Wrong_Depth is
+      begin
+         OpenCV.Core.UInt8_Row_Access.Read_Row
+           (Float_Image, Row => 0, Data => Correct_UInt8);
+      end Read_Wrong_Depth;
+
+      procedure Read_Multi_Channel is
+      begin
+         OpenCV.Core.UInt8_Row_Access.Read_Row
+           (RGB_Image, Row => 0, Data => Correct_UInt8);
+      end Read_Multi_Channel;
+
+      procedure Read_Row_After_Last is
+      begin
+         OpenCV.Core.UInt8_Row_Access.Read_Row
+           (UInt8_Image, Row => 1, Data => Correct_UInt8);
+      end Read_Row_After_Last;
+
+      procedure Write_Too_Short is
+      begin
+         OpenCV.Core.UInt8_Row_Access.Write_Row
+           (UInt8_Image, Row => 0, Data => Short_UInt8);
+      end Write_Too_Short;
+
+      procedure Write_Too_Long is
+      begin
+         OpenCV.Core.UInt8_Row_Access.Write_Row
+           (UInt8_Image, Row => 0, Data => Long_UInt8);
+      end Write_Too_Long;
+
+      procedure Read_Wrong_Length is
+      begin
+         OpenCV.Core.UInt8_Row_Access.Read_Row
+           (UInt8_Image, Row => 0, Data => Short_UInt8);
+      end Read_Wrong_Length;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Read_Wrong_Depth'Access, "Row access must reject a wrong Mat depth");
+      Assert_Raises_OpenCV_Error
+        (Read_Multi_Channel'Access,
+         "Row access must reject a multi-channel Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_Row_After_Last'Access,
+         "Row access must reject a row beyond the final row");
+      Assert_Raises_OpenCV_Error
+        (Write_Too_Short'Access,
+         "Row access must reject an input array that is too short");
+      Assert_Raises_OpenCV_Error
+        (Write_Too_Long'Access,
+         "Row access must reject an input array that is too long");
+      Assert_Raises_OpenCV_Error
+        (Read_Wrong_Length'Access,
+         "Row access must reject an output array of the wrong length");
+   end Row_Access_Rejects_Invalid_Mats_Indices_And_Lengths;
+
+   procedure UInt8_Vec3_Row_Access_Reads_Writes_And_Interoperates
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 3,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      Written  :
+        constant OpenCV.Core.UInt8_Vec3_Row_Access.Row_Array (5 .. 7) :=
+          ((1, 2, 3), (10, 20, 30), (100, 150, 200));
+      Readback : OpenCV.Core.UInt8_Vec3_Row_Access.Row_Array (5 .. 7);
+      From_Set : OpenCV.Core.UInt8_Vec3_Row_Access.Row_Array (10 .. 12);
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (0.0, 0.0, 0.0));
+      OpenCV.Core.UInt8_Vec3_Row_Access.Write_Row
+        (Image, Row => 1, Data => Written);
+      OpenCV.Core.UInt8_Vec3_Row_Access.Read_Row
+        (Image, Row => 1, Data => Readback);
+
+      AUnit.Assertions.Assert
+        (Readback = Written,
+         "UInt8 Vec3 row access must preserve components and nonzero bounds");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Vec3_Access.Get (Image, Row => 1, Column => 0)
+         = Written (5)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get
+                    (Image, Row => 1, Column => 2)
+                  = Written (7),
+         "UInt8 Vec3 element access must observe a bulk row write");
+
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Image, Row => 0, Column => 0, Value => (9, 8, 7));
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Image, Row => 0, Column => 1, Value => (6, 5, 4));
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Image, Row => 0, Column => 2, Value => (3, 2, 1));
+      OpenCV.Core.UInt8_Vec3_Row_Access.Read_Row
+        (Image, Row => 0, Data => From_Set);
+
+      AUnit.Assertions.Assert
+        (From_Set = ((9, 8, 7), (6, 5, 4), (3, 2, 1)),
+         "UInt8 Vec3 bulk row reads must observe element writes");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Vec3_Access.Get (Image, Row => 2, Column => 0)
+         = (0, 0, 0)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get
+                    (Image, Row => 2, Column => 2)
+                  = (0, 0, 0),
+         "Writing one UInt8 Vec3 row must not modify adjacent rows");
+   end UInt8_Vec3_Row_Access_Reads_Writes_And_Interoperates;
+
+   procedure Float32_Vec3_Row_Access_Reads_Writes_And_Interoperates
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 3));
+      Written  :
+        constant OpenCV.Core.Float32_Vec3_Row_Access.Row_Array (3 .. 5) :=
+          ((1.25, -2.5, 3.75), (-0.5, 0.125, 9.875), (4.5, 5.25, -6.75));
+      Readback : OpenCV.Core.Float32_Vec3_Row_Access.Row_Array (3 .. 5);
+      From_Set : OpenCV.Core.Float32_Vec3_Row_Access.Row_Array (8 .. 10);
+   begin
+      OpenCV.Core.Float32_Vec3_Row_Access.Write_Row
+        (Image, Row => 1, Data => Written);
+      OpenCV.Core.Float32_Vec3_Row_Access.Read_Row
+        (Image, Row => 1, Data => Readback);
+
+      for Index in Written'Range loop
+         for Component in 0 .. 2 loop
+            AUnit.Assertions.Assert
+              (Approximately_Equal
+                 (Long_Float (Readback (Index) (Component)),
+                  Long_Float (Written (Index) (Component))),
+               "Float32 Vec3 row access must preserve fractional components");
+         end loop;
+      end loop;
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float
+              (OpenCV.Core.Float32_Vec3_Access.Get
+                 (Image, Row => 1, Column => 0) (1)),
+            -2.5)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Vec3_Access.Get
+                          (Image, Row => 1, Column => 2) (2)),
+                     -6.75),
+         "Float32 Vec3 element access must observe a bulk row write");
+
+      OpenCV.Core.Float32_Vec3_Access.Set
+        (Image, Row => 0, Column => 0, Value => (-1.5, 2.25, 3.5));
+      OpenCV.Core.Float32_Vec3_Access.Set
+        (Image, Row => 0, Column => 1, Value => (4.75, -5.125, 6.0));
+      OpenCV.Core.Float32_Vec3_Access.Set
+        (Image, Row => 0, Column => 2, Value => (7.25, 8.5, -9.75));
+      OpenCV.Core.Float32_Vec3_Row_Access.Read_Row
+        (Image, Row => 0, Data => From_Set);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Long_Float (From_Set (8) (0)), -1.5)
+         and then Approximately_Equal (Long_Float (From_Set (9) (1)), -5.125)
+         and then Approximately_Equal (Long_Float (From_Set (10) (2)), -9.75),
+         "Float32 Vec3 bulk row reads must observe element writes");
+   end Float32_Vec3_Row_Access_Reads_Writes_And_Interoperates;
+
+   procedure UInt8_Vec3_Row_Access_Handles_Non_Continuous_Regions
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 4,
+           Columns      => 6,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      View     : OpenCV.Core.Mat :=
+        Source.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+      First    :
+        constant OpenCV.Core.UInt8_Vec3_Row_Access.Row_Array (0 .. 2) :=
+          ((11, 12, 13), (21, 22, 23), (31, 32, 33));
+      Second   :
+        constant OpenCV.Core.UInt8_Vec3_Row_Access.Row_Array (4 .. 6) :=
+          ((41, 42, 43), (51, 52, 53), (61, 62, 63));
+      Readback : OpenCV.Core.UInt8_Vec3_Row_Access.Row_Array (8 .. 10);
+   begin
+      AUnit.Assertions.Assert
+        (not View.Is_Continuous,
+         "A partial-width multi-row Vec3 Region must be non-continuous");
+
+      OpenCV.Core.UInt8_Vec3_Row_Access.Write_Row
+        (View, Row => 0, Data => First);
+      OpenCV.Core.UInt8_Vec3_Row_Access.Write_Row
+        (View, Row => 1, Data => Second);
+      OpenCV.Core.UInt8_Vec3_Row_Access.Read_Row
+        (View, Row => 1, Data => Readback);
+
+      AUnit.Assertions.Assert
+        (Readback = Second,
+         "A non-continuous Vec3 Region row must be readable completely");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Vec3_Access.Get (Source, Row => 1, Column => 1)
+         = First (0)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get
+                    (Source, Row => 1, Column => 3)
+                  = First (2)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get
+                    (Source, Row => 2, Column => 1)
+                  = Second (4)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get
+                    (Source, Row => 2, Column => 3)
+                  = Second (6),
+         "Vec3 Region row writes must respect ROI row stride and share data");
+   end UInt8_Vec3_Row_Access_Handles_Non_Continuous_Regions;
+
+   procedure UInt8_Vec3_Row_Access_Respects_Assignment_And_Clone
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      Shallow_Copy : OpenCV.Core.Mat;
+      Deep_Copy    : OpenCV.Core.Mat;
+      Initial      :
+        constant OpenCV.Core.UInt8_Vec3_Row_Access.Row_Array (0 .. 1) :=
+          ((1, 2, 3), (4, 5, 6));
+      Replacement  :
+        constant OpenCV.Core.UInt8_Vec3_Row_Access.Row_Array (0 .. 1) :=
+          ((10, 20, 30), (40, 50, 60));
+      Readback     : OpenCV.Core.UInt8_Vec3_Row_Access.Row_Array (0 .. 1);
+   begin
+      OpenCV.Core.UInt8_Vec3_Row_Access.Write_Row
+        (Source, Row => 0, Data => Initial);
+      Shallow_Copy := Source;
+      Deep_Copy := Source.Clone;
+      OpenCV.Core.UInt8_Vec3_Row_Access.Write_Row
+        (Shallow_Copy, Row => 0, Data => Replacement);
+      OpenCV.Core.UInt8_Vec3_Row_Access.Read_Row
+        (Deep_Copy, Row => 0, Data => Readback);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Vec3_Access.Get (Source, Row => 0, Column => 0)
+         = Replacement (0)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get
+                    (Source, Row => 0, Column => 1)
+                  = Replacement (1),
+         "Vec3 row writes through an assigned Mat must share source storage");
+      AUnit.Assertions.Assert
+        (Readback = Initial,
+         "Vec3 row writes after Clone must not affect the deep copy");
+   end UInt8_Vec3_Row_Access_Respects_Assignment_And_Clone;
+
+   procedure Vec3_Row_Access_Rejects_Invalid_Mats_Indices_And_Lengths
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      UInt8_Image     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      Float32_Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 3));
+      Scalar_Image    : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Vec2_Image      : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 2));
+      Correct_UInt8   : OpenCV.Core.UInt8_Vec3_Row_Access.Row_Array (0 .. 2) :=
+        (others => (0, 0, 0));
+      Short_UInt8     : OpenCV.Core.UInt8_Vec3_Row_Access.Row_Array (0 .. 1) :=
+        (others => (0, 0, 0));
+      Long_UInt8      :
+        constant OpenCV.Core.UInt8_Vec3_Row_Access.Row_Array (0 .. 3) :=
+          (others => (0, 0, 0));
+      Correct_Float32 :
+        OpenCV.Core.Float32_Vec3_Row_Access.Row_Array (0 .. 2) :=
+          (others => (0.0, 0.0, 0.0));
+
+      procedure Read_UInt8_From_Float32 is
+      begin
+         OpenCV.Core.UInt8_Vec3_Row_Access.Read_Row
+           (Float32_Image, Row => 0, Data => Correct_UInt8);
+      end Read_UInt8_From_Float32;
+
+      procedure Read_Float32_From_UInt8 is
+      begin
+         OpenCV.Core.Float32_Vec3_Row_Access.Read_Row
+           (UInt8_Image, Row => 0, Data => Correct_Float32);
+      end Read_Float32_From_UInt8;
+
+      procedure Read_Single_Channel is
+      begin
+         OpenCV.Core.UInt8_Vec3_Row_Access.Read_Row
+           (Scalar_Image, Row => 0, Data => Correct_UInt8);
+      end Read_Single_Channel;
+
+      procedure Read_Two_Channel is
+      begin
+         OpenCV.Core.UInt8_Vec3_Row_Access.Read_Row
+           (Vec2_Image, Row => 0, Data => Correct_UInt8);
+      end Read_Two_Channel;
+
+      procedure Read_Row_After_Last is
+      begin
+         OpenCV.Core.UInt8_Vec3_Row_Access.Read_Row
+           (UInt8_Image, Row => 1, Data => Correct_UInt8);
+      end Read_Row_After_Last;
+
+      procedure Write_Too_Short is
+      begin
+         OpenCV.Core.UInt8_Vec3_Row_Access.Write_Row
+           (UInt8_Image, Row => 0, Data => Short_UInt8);
+      end Write_Too_Short;
+
+      procedure Write_Too_Long is
+      begin
+         OpenCV.Core.UInt8_Vec3_Row_Access.Write_Row
+           (UInt8_Image, Row => 0, Data => Long_UInt8);
+      end Write_Too_Long;
+
+      procedure Read_Wrong_Length is
+      begin
+         OpenCV.Core.UInt8_Vec3_Row_Access.Read_Row
+           (UInt8_Image, Row => 0, Data => Short_UInt8);
+      end Read_Wrong_Length;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Read_UInt8_From_Float32'Access,
+         "UInt8 Vec3 row access must reject a Float32 Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_Float32_From_UInt8'Access,
+         "Float32 Vec3 row access must reject a UInt8 Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_Single_Channel'Access,
+         "Vec3 row access must reject a single-channel Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_Two_Channel'Access,
+         "Vec3 row access must reject a Mat without three channels");
+      Assert_Raises_OpenCV_Error
+        (Read_Row_After_Last'Access,
+         "Vec3 row access must reject a row beyond the final row");
+      Assert_Raises_OpenCV_Error
+        (Write_Too_Short'Access,
+         "Vec3 row access must reject an input array that is too short");
+      Assert_Raises_OpenCV_Error
+        (Write_Too_Long'Access,
+         "Vec3 row access must reject an input array that is too long");
+      Assert_Raises_OpenCV_Error
+        (Read_Wrong_Length'Access,
+         "Vec3 row access must reject an output array of the wrong length");
+   end Vec3_Row_Access_Rejects_Invalid_Mats_Indices_And_Lengths;
+
+   package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
+
+   Result : aliased AUnit.Test_Suites.Test_Suite;
+
+   function Suite return AUnit.Test_Suites.Access_Test_Suite is
+   begin
+      Result.Add_Test
+        (Caller.Create
+           ("UInt8 typed element access", UInt8_Typed_Element_Access'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 typed element access",
+            Float32_Typed_Element_Access'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Typed access rejects incompatible depth",
+            Typed_Access_Rejects_Incompatible_Depth'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Typed access rejects multi-channel Mat",
+            Typed_Access_Rejects_Multi_Channel_Mat'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Typed access rejects out-of-bounds indices",
+            Typed_Access_Rejects_Out_Of_Bounds_Indices'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Clone isolates typed element writes",
+            Clone_Isolates_Typed_Element_Writes'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt8 Vec3 typed element access",
+            UInt8_Vec3_Typed_Element_Access'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 Vec3 typed element access",
+            Float32_Vec3_Typed_Element_Access'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Vec3 typed access rejects invalid Mats and indices",
+            Vec3_Typed_Access_Rejects_Invalid_Mats_And_Indices'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Vec3 access proves assignment and Clone semantics",
+            Vec3_Access_Proves_Assignment_And_Clone_Semantics'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt8 row access reads, writes, and preserves array order",
+            UInt8_Row_Access_Reads_Writes_And_Preserves_Array_Order'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 row access reads, writes, and preserves array order",
+            Float32_Row_Access_Reads_Writes_And_Preserves_Array_Order'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Row access handles non-continuous Regions",
+            Row_Access_Handles_Non_Continuous_Regions'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Row access respects assignment and Clone semantics",
+            Row_Access_Respects_Assignment_And_Clone_Semantics'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Row access rejects invalid Mats, indices, and lengths",
+            Row_Access_Rejects_Invalid_Mats_Indices_And_Lengths'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt8 Vec3 row access reads, writes, and interoperates",
+            UInt8_Vec3_Row_Access_Reads_Writes_And_Interoperates'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 Vec3 row access reads, writes, and interoperates",
+            Float32_Vec3_Row_Access_Reads_Writes_And_Interoperates'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt8 Vec3 row access handles non-continuous Regions",
+            UInt8_Vec3_Row_Access_Handles_Non_Continuous_Regions'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt8 Vec3 row access respects assignment and Clone",
+            UInt8_Vec3_Row_Access_Respects_Assignment_And_Clone'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Vec3 row access rejects invalid Mats, indices, and lengths",
+            Vec3_Row_Access_Rejects_Invalid_Mats_Indices_And_Lengths'Access));
+      return Result'Access;
+   end Suite;
+
+end Mat_Access_Tests;
