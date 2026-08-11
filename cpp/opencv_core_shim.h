@@ -434,6 +434,17 @@ opencv_core_status
 opencv_core_mat_mean(const opencv_core_mat_handle *mat,
                      opencv_core_scalar *out_mean);
 
+/*
+ * Computes per-channel mean of source elements selected by mask. Mask must be
+ * a same-sized single-channel UInt8 Mat; any nonzero value selects the element.
+ * An all-zero mask returns a zero Scalar. Source supports one to four channels.
+ * Empty source/mask follow OpenCV mean semantics (zero Scalar).
+ */
+opencv_core_status
+opencv_core_mat_mean_masked(const opencv_core_mat_handle *mat,
+                            const opencv_core_mat_handle *mask,
+                            opencv_core_scalar *out_mean);
+
 opencv_core_status
 opencv_core_mat_mean_std_dev(const opencv_core_mat_handle *mat,
                              opencv_core_scalar *out_mean,

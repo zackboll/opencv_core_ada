@@ -478,6 +478,13 @@ package OpenCV.Internal.C_API is
    function Mat_Mean (Self : Mat_Handle; Result : access Scalar) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_mean";
 
+   function Mat_Mean_Masked
+     (Self, Mask : Mat_Handle; Result : access Scalar) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_mean_masked";
+
    function Mat_Mean_Std_Dev
      (Self               : Mat_Handle;
       Mean               : access Scalar;
@@ -505,9 +512,11 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_min_max_loc";
 
-    function Mat_Count_Non_Zero
-      (Self   : Mat_Handle;
-       Result : access Interfaces.Integer_64) return Status
-    with Import, Convention => C, External_Name => "opencv_core_mat_count_non_zero";
+   function Mat_Count_Non_Zero
+     (Self : Mat_Handle; Result : access Interfaces.Integer_64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_count_non_zero";
 
 end OpenCV.Internal.C_API;

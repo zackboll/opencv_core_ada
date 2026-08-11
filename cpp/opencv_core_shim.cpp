@@ -2241,6 +2241,39 @@ opencv_core_mat_mean(const opencv_core_mat_handle *mat,
 }
 
 opencv_core_status
+opencv_core_mat_mean_masked(const opencv_core_mat_handle *mat,
+                            const opencv_core_mat_handle *mask,
+                            opencv_core_scalar *out_mean) {
+    clear_error();
+
+    if (out_mean == nullptr) {
+        return invalid_argument("out_mean must not be null");
+    }
+
+    *out_mean = {0.0, 0.0, 0.0, 0.0};
+
+    if (mat == nullptr || mask == nullptr) {
+        return invalid_argument("Mat and mask handles must not be null");
+    }
+
+    try {
+        if (mat->value.channels() > 4) {
+            return invalid_argument("Mean supports Mats with at most four channels");
+        }
+
+        if (!is_valid_mask_for(mat->value, mask->value)) {
+            return invalid_argument(
+                "mask must be a same-sized single-channel UInt8 Mat");
+        }
+
+        *out_mean = from_opencv_scalar(cv::mean(mat->value, mask->value));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_mean_std_dev(const opencv_core_mat_handle *mat,
                              opencv_core_scalar *out_mean,
                              opencv_core_scalar *out_standard_deviation) {

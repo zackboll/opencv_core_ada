@@ -1105,6 +1105,31 @@ package body OpenCV.Core is
       return From_C_Scalar (C_Result);
    end Mean;
 
+   function Mean (Self, Mask : Mat) return Scalar is
+      C_Result : aliased OpenCV.Internal.C_API.Scalar :=
+        (Component_0 => 0.0,
+         Component_1 => 0.0,
+         Component_2 => 0.0,
+         Component_3 => 0.0);
+      Result   : OpenCV.Internal.C_API.Status;
+   begin
+      if Self.Channels > 4 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mean supports Mats with at most four channels");
+      end if;
+
+      Validate_Mask (Self, Mask);
+
+      Result :=
+        OpenCV.Internal.C_API.Mat_Mean_Masked
+          (Self   => Self.Handle,
+           Mask   => Mask.Handle,
+           Result => C_Result'Access);
+      Raise_On_Error (Result, "Masked Mat mean operation");
+      return From_C_Scalar (C_Result);
+   end Mean;
+
    function Mean_Std_Dev (Self : Mat) return Mean_Std_Dev_Result is
       C_Mean               : aliased OpenCV.Internal.C_API.Scalar :=
         (Component_0 => 0.0,

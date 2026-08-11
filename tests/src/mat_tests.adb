@@ -4085,15 +4085,13 @@ package body Mat_Tests is
       Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
       Count := Image.Count_Non_Zero;
       AUnit.Assertions.Assert
-        (Count = 0,
-         "Count_Non_Zero must return 0 for all-zero UInt8 Mat");
+        (Count = 0, "Count_Non_Zero must return 0 for all-zero UInt8 Mat");
 
       OpenCV.Core.UInt8_Access.Set (Image, 0, 1, 5);
       OpenCV.Core.UInt8_Access.Set (Image, 1, 2, 255);
       Count := Image.Count_Non_Zero;
       AUnit.Assertions.Assert
-        (Count = 2,
-         "Count_Non_Zero must count nonzero UInt8 elements");
+        (Count = 2, "Count_Non_Zero must count nonzero UInt8 elements");
    end Count_Non_Zero_UInt8_Zero_And_Nonzero;
 
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
@@ -4841,6 +4839,212 @@ package body Mat_Tests is
          "Mean_Std_Dev must reject channel results that do not fit Scalar");
    end Mean_Reductions_Handle_Empty_And_Too_Many_Channels;
 
+   procedure Masked_Mean_UInt8_Selective_And_Nonzero_Semantics
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      Mask   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      Result : OpenCV.Core.Scalar;
+   begin
+      OpenCV.Core.UInt8_Access.Set (Image, 0, 0, 10);
+      OpenCV.Core.UInt8_Access.Set (Image, 0, 1, 20);
+      OpenCV.Core.UInt8_Access.Set (Image, 1, 0, 30);
+      OpenCV.Core.UInt8_Access.Set (Image, 1, 1, 40);
+      OpenCV.Core.UInt8_Access.Set (Mask, 0, 0, 0);
+      OpenCV.Core.UInt8_Access.Set (Mask, 0, 1, 1);
+      OpenCV.Core.UInt8_Access.Set (Mask, 1, 0, 255);
+      OpenCV.Core.UInt8_Access.Set (Mask, 1, 1, 0);
+      Result := Image.Mean (Mask);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Result.Component_0, 25.0)
+         and then Result.Component_1 = 0.0
+         and then Result.Component_2 = 0.0
+         and then Result.Component_3 = 0.0,
+         "Masked Mean must average only nonzero-mask UInt8 elements and treat"
+         & " 1 and 255 as selecting");
+   end Masked_Mean_UInt8_Selective_And_Nonzero_Semantics;
+
+   procedure Masked_Mean_Vec3_Per_Channel (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Image  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 3, (OpenCV.Core.UInt8, 3));
+      Mask   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 3, (OpenCV.Core.UInt8, 1));
+      Result : OpenCV.Core.Scalar;
+   begin
+      OpenCV.Core.UInt8_Vec3_Access.Set (Image, 0, 0, (1, 10, 100));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Image, 0, 1, (5, 50, 50));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Image, 0, 2, (3, 14, 104));
+      OpenCV.Core.UInt8_Access.Set (Mask, 0, 0, 255);
+      OpenCV.Core.UInt8_Access.Set (Mask, 0, 1, 0);
+      OpenCV.Core.UInt8_Access.Set (Mask, 0, 2, 1);
+      Result := Image.Mean (Mask);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Result.Component_0, 2.0)
+         and then Approximately_Equal (Result.Component_1, 12.0)
+         and then Approximately_Equal (Result.Component_2, 102.0)
+         and then Result.Component_3 = 0.0,
+         "Masked Mean must reduce each Vec3 channel independently over"
+         & " selected elements");
+   end Masked_Mean_Vec3_Per_Channel;
+
+   procedure Masked_Mean_Compare_And_In_Range_Interop
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image                    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 4, (OpenCV.Core.UInt8, 1));
+      Threshold                : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 4, (OpenCV.Core.UInt8, 1));
+      Compare_Mask, Range_Mask : OpenCV.Core.Mat;
+      Compare_Mean, Range_Mean : OpenCV.Core.Scalar;
+   begin
+      OpenCV.Core.UInt8_Access.Set (Image, 0, 0, 1);
+      OpenCV.Core.UInt8_Access.Set (Image, 0, 1, 5);
+      OpenCV.Core.UInt8_Access.Set (Image, 0, 2, 10);
+      OpenCV.Core.UInt8_Access.Set (Image, 0, 3, 20);
+      Threshold.Set_To (OpenCV.Core.Make_Scalar (5.0));
+      Compare_Mask := Image.Compare (Threshold, OpenCV.Core.Greater_Than);
+      Range_Mask :=
+        Image.In_Range
+          (OpenCV.Core.Make_Scalar (5.0), OpenCV.Core.Make_Scalar (10.0));
+      Compare_Mean := Image.Mean (Compare_Mask);
+      Range_Mean := Image.Mean (Range_Mask);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Compare_Mean.Component_0, 15.0),
+         "Masked Mean must accept Compare masks (values 10 and 20)");
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Range_Mean.Component_0, 7.5),
+         "Masked Mean must accept In_Range masks (values 5 and 10)");
+   end Masked_Mean_Compare_And_In_Range_Interop;
+
+   procedure Masked_Mean_Non_Continuous_Views_And_All_Zero_Mask
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source                 : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.UInt8, 1));
+      Mask_Parent            : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.UInt8, 1));
+      View, Mask_View        : OpenCV.Core.Mat;
+      Zero_Mask              : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      Region_Mean, Zero_Mean : OpenCV.Core.Scalar;
+   begin
+      Source.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 0, 1);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 1, 2);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 2, 3);
+      OpenCV.Core.UInt8_Access.Set (Source, 1, 0, 4);
+      OpenCV.Core.UInt8_Access.Set (Source, 1, 1, 10);
+      OpenCV.Core.UInt8_Access.Set (Source, 1, 2, 20);
+      OpenCV.Core.UInt8_Access.Set (Source, 2, 0, 7);
+      OpenCV.Core.UInt8_Access.Set (Source, 2, 1, 30);
+      OpenCV.Core.UInt8_Access.Set (Source, 2, 2, 40);
+      Mask_Parent.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.UInt8_Access.Set (Mask_Parent, 1, 1, 255);
+      OpenCV.Core.UInt8_Access.Set (Mask_Parent, 1, 2, 1);
+      OpenCV.Core.UInt8_Access.Set (Mask_Parent, 2, 1, 1);
+      OpenCV.Core.UInt8_Access.Set (Mask_Parent, 2, 2, 0);
+      View := Source.Region ((X => 1, Y => 1, Width => 2, Height => 2));
+      Mask_View :=
+        Mask_Parent.Region ((X => 1, Y => 1, Width => 2, Height => 2));
+      Region_Mean := View.Mean (Mask_View);
+      Zero_Mask.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Zero_Mean := View.Mean (Zero_Mask);
+
+      AUnit.Assertions.Assert
+        (not View.Is_Continuous and then not Mask_View.Is_Continuous,
+         "Region source and mask must be non-continuous for this case");
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Region_Mean.Component_0, 20.0),
+         "Masked Mean must support non-contiguous source and mask views"
+         & " (10, 20, 30 selected)");
+      AUnit.Assertions.Assert
+        (Zero_Mean.Component_0 = 0.0
+         and then Zero_Mean.Component_1 = 0.0
+         and then Zero_Mean.Component_2 = 0.0
+         and then Zero_Mean.Component_3 = 0.0,
+         "All-zero mask must return a zero Scalar");
+   end Masked_Mean_Non_Continuous_Views_And_All_Zero_Mask;
+
+   procedure Masked_Mean_Rejects_Invalid_Masks_And_Channels
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source                   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      Float_Mask               : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Multi_Mask               : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 3));
+      Rows_Mask                : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.UInt8, 1));
+      Columns_Mask             : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.UInt8, 1));
+      Five_Channel             : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 5));
+      Five_Mask                : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      Empty_Source, Empty_Mask : OpenCV.Core.Mat;
+      Empty_Result             : OpenCV.Core.Scalar;
+
+      procedure Float_Depth is
+         Result : constant OpenCV.Core.Scalar := Source.Mean (Float_Mask);
+      begin
+         pragma Unreferenced (Result);
+      end Float_Depth;
+
+      procedure Multi_Channel is
+         Result : constant OpenCV.Core.Scalar := Source.Mean (Multi_Mask);
+      begin
+         pragma Unreferenced (Result);
+      end Multi_Channel;
+
+      procedure Wrong_Rows is
+         Result : constant OpenCV.Core.Scalar := Source.Mean (Rows_Mask);
+      begin
+         pragma Unreferenced (Result);
+      end Wrong_Rows;
+
+      procedure Wrong_Columns is
+         Result : constant OpenCV.Core.Scalar := Source.Mean (Columns_Mask);
+      begin
+         pragma Unreferenced (Result);
+      end Wrong_Columns;
+
+      procedure Too_Many_Channels is
+         Result : constant OpenCV.Core.Scalar := Five_Channel.Mean (Five_Mask);
+      begin
+         pragma Unreferenced (Result);
+      end Too_Many_Channels;
+   begin
+      Empty_Result := Empty_Source.Mean (Empty_Mask);
+      AUnit.Assertions.Assert
+        (Empty_Result.Component_0 = 0.0
+         and then Empty_Result.Component_1 = 0.0
+         and then Empty_Result.Component_2 = 0.0
+         and then Empty_Result.Component_3 = 0.0,
+         "Masked Mean must return OpenCV's zero Scalar for empty source/mask");
+      Assert_Raises_OpenCV_Error
+        (Float_Depth'Access, "Masked Mean must reject Float32 mask depth");
+      Assert_Raises_OpenCV_Error
+        (Multi_Channel'Access, "Masked Mean must reject multi-channel mask");
+      Assert_Raises_OpenCV_Error
+        (Wrong_Rows'Access, "Masked Mean must reject wrong mask rows");
+      Assert_Raises_OpenCV_Error
+        (Wrong_Columns'Access, "Masked Mean must reject wrong mask columns");
+      Assert_Raises_OpenCV_Error
+        (Too_Many_Channels'Access,
+         "Masked Mean must reject source with more than four channels");
+   end Masked_Mean_Rejects_Invalid_Masks_And_Channels;
+
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
       Result.Add_Test
@@ -4875,6 +5079,26 @@ package body Mat_Tests is
         (Caller.Create
            ("Mean reductions handle empty and unsupported channel layouts",
             Mean_Reductions_Handle_Empty_And_Too_Many_Channels'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Masked Mean UInt8 selective and nonzero semantics",
+            Masked_Mean_UInt8_Selective_And_Nonzero_Semantics'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Masked Mean Vec3 per-channel",
+            Masked_Mean_Vec3_Per_Channel'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Masked Mean Compare and In_Range interop",
+            Masked_Mean_Compare_And_In_Range_Interop'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Masked Mean non-continuous views and all-zero mask",
+            Masked_Mean_Non_Continuous_Views_And_All_Zero_Mask'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Masked Mean rejects invalid masks and channels",
+            Masked_Mean_Rejects_Invalid_Masks_And_Channels'Access));
       Result.Add_Test
         (Caller.Create
            ("Float32 Norm computes L1, L2, and Infinity",
