@@ -1165,6 +1165,39 @@ package body OpenCV.Core is
          Standard_Deviation => From_C_Scalar (C_Standard_Deviation));
    end Mean_Std_Dev;
 
+   function Mean_Std_Dev (Self, Mask : Mat) return Mean_Std_Dev_Result is
+      C_Mean               : aliased OpenCV.Internal.C_API.Scalar :=
+        (Component_0 => 0.0,
+         Component_1 => 0.0,
+         Component_2 => 0.0,
+         Component_3 => 0.0);
+      C_Standard_Deviation : aliased OpenCV.Internal.C_API.Scalar :=
+        (Component_0 => 0.0,
+         Component_1 => 0.0,
+         Component_2 => 0.0,
+         Component_3 => 0.0);
+      Result               : OpenCV.Internal.C_API.Status;
+   begin
+      if Self.Channels > 4 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mean/stddev supports Mats with at most four channels");
+      end if;
+
+      Validate_Mask (Self, Mask);
+
+      Result :=
+        OpenCV.Internal.C_API.Mat_Mean_Std_Dev_Masked
+          (Self               => Self.Handle,
+           Mask               => Mask.Handle,
+           Mean               => C_Mean'Access,
+           Standard_Deviation => C_Standard_Deviation'Access);
+      Raise_On_Error (Result, "Masked Mat mean/stddev operation");
+      return
+        (Mean               => From_C_Scalar (C_Mean),
+         Standard_Deviation => From_C_Scalar (C_Standard_Deviation));
+   end Mean_Std_Dev;
+
    function Norm (Self : Mat; Kind : Norm_Kind := L2) return Long_Float is
       C_Result : aliased OpenCV.Internal.C_API.C_Double := 0.0;
       Status   : constant OpenCV.Internal.C_API.Status :=

@@ -176,6 +176,11 @@ package OpenCV.Core is
    --  Empty Self/Mask follow OpenCV mean semantics (zero Scalar).
    function Mean (Self, Mask : Mat) return Scalar;
    function Mean_Std_Dev (Self : Mat) return Mean_Std_Dev_Result;
+   --  Per-channel mean and population standard deviation of Self elements
+   --  selected by Mask. Mask uses the common mask contract. Any nonzero mask
+   --  value selects the element. An all-zero mask returns zero mean and
+   --  standard-deviation Scalars. Empty Self/Mask is rejected.
+   function Mean_Std_Dev (Self, Mask : Mat) return Mean_Std_Dev_Result;
    function Norm (Self : Mat; Kind : Norm_Kind := L2) return Long_Float;
    function Min_Max_Loc (Self : Mat) return Min_Max_Result;
 

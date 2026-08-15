@@ -2312,6 +2312,49 @@ opencv_core_mat_mean_std_dev(const opencv_core_mat_handle *mat,
 }
 
 opencv_core_status
+opencv_core_mat_mean_std_dev_masked(
+    const opencv_core_mat_handle *mat, const opencv_core_mat_handle *mask,
+    opencv_core_scalar *out_mean, opencv_core_scalar *out_standard_deviation) {
+    clear_error();
+
+    if (out_mean == nullptr || out_standard_deviation == nullptr) {
+        return invalid_argument("mean and standard deviation outputs must not be null");
+    }
+
+    *out_mean = {0.0, 0.0, 0.0, 0.0};
+    *out_standard_deviation = {0.0, 0.0, 0.0, 0.0};
+
+    if (mat == nullptr || mask == nullptr) {
+        return invalid_argument("Mat and mask handles must not be null");
+    }
+
+    try {
+        if (mat->value.empty()) {
+            return invalid_argument("Mean/stddev requires a non-empty Mat");
+        }
+
+        if (mat->value.channels() > 4) {
+            return invalid_argument(
+                "Mean/stddev supports Mats with at most four channels");
+        }
+
+        if (!is_valid_mask_for(mat->value, mask->value)) {
+            return invalid_argument(
+                "mask must be a same-sized single-channel UInt8 Mat");
+        }
+
+        cv::Scalar mean;
+        cv::Scalar standard_deviation;
+        cv::meanStdDev(mat->value, mean, standard_deviation, mask->value);
+        *out_mean = from_opencv_scalar(mean);
+        *out_standard_deviation = from_opencv_scalar(standard_deviation);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_norm(const opencv_core_mat_handle *mat, int32_t norm_kind,
                      double *out_norm) {
     clear_error();

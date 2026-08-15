@@ -451,6 +451,18 @@ opencv_core_mat_mean_std_dev(const opencv_core_mat_handle *mat,
                              opencv_core_scalar *out_standard_deviation);
 
 /*
+ * Computes per-channel mean and population standard deviation of source
+ * elements selected by mask. Mask must be a same-sized single-channel UInt8
+ * Mat; any nonzero value selects the element. All-zero masks return zero mean
+ * and standard-deviation Scalars. Empty source is rejected. Source supports
+ * one to four channels.
+ */
+opencv_core_status
+opencv_core_mat_mean_std_dev_masked(
+    const opencv_core_mat_handle *mat, const opencv_core_mat_handle *mask,
+    opencv_core_scalar *out_mean, opencv_core_scalar *out_standard_deviation);
+
+/*
  * Computes the requested absolute norm over every scalar component of mat.
  * Empty Mats return zero according to OpenCV semantics.
  */

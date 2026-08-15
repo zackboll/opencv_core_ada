@@ -494,6 +494,15 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_mean_std_dev";
 
+   function Mat_Mean_Std_Dev_Masked
+     (Self, Mask         : Mat_Handle;
+      Mean               : access Scalar;
+      Standard_Deviation : access Scalar) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_mean_std_dev_masked";
+
    function Mat_Norm
      (Self : Mat_Handle; Kind : C_Int32; Result : access C_Double)
       return Status
