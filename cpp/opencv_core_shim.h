@@ -137,6 +137,19 @@ opencv_core_mat_insert_channel(const opencv_core_mat_handle *source,
                                 int32_t channel);
 
 /*
+ * Mixes channels between preallocated Mat collections. sources and
+ * destinations are borrowed arrays of handles. from_to contains pair_count
+ * flattened source/destination channel pairs; a negative source channel
+ * zero-fills its destination channel.
+ */
+opencv_core_status
+opencv_core_mat_mix_channels(const opencv_core_mat_handle *const *sources,
+                             int32_t source_count,
+                             opencv_core_mat_handle *const *destinations,
+                             int32_t destination_count,
+                             const int32_t *from_to, int32_t pair_count);
+
+/*
  * Merges count non-empty Mats with identical dimensions and depth. Each input
  * may have multiple channels; their channels are concatenated in input order.
  * sources is borrowed and remains owned by the caller. count must be positive

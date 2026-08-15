@@ -15,14 +15,17 @@ package OpenCV.Internal.C_API is
    type Mat_Handle is new System.Address;
    Null_Mat_Handle : constant Mat_Handle := Mat_Handle (System.Null_Address);
 
-   type Mat_Handle_Array is array (Natural range <>) of aliased Mat_Handle
-   with Convention => C;
-
    subtype C_Int32 is Interfaces.Integer_32;
    subtype C_UInt8 is Interfaces.Unsigned_8;
    subtype C_UInt64 is Interfaces.Unsigned_64;
    subtype C_Float32 is Interfaces.C.C_float;
    subtype C_Double is Interfaces.C.double;
+
+   type Mat_Handle_Array is array (Natural range <>) of aliased Mat_Handle
+   with Convention => C;
+
+   type C_Int32_Array is array (Natural range <>) of aliased C_Int32
+   with Convention => C;
 
    type Scalar is record
       Component_0 : C_Double;
@@ -123,6 +126,18 @@ package OpenCV.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_core_mat_insert_channel";
+
+   function Mat_Mix_Channels
+     (Sources           : access Mat_Handle;
+      Source_Count      : C_Int32;
+      Destinations      : access Mat_Handle;
+      Destination_Count : C_Int32;
+      From_To           : access C_Int32;
+      Pair_Count        : C_Int32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_mix_channels";
 
    function Mat_Merge
      (Sources : access Mat_Handle; Count : C_Int32; Result : access Mat_Handle)

@@ -650,6 +650,124 @@ package body Mat_Channel_Tests is
          "Insert_Channel must reject a channel equal to Self.Channels");
    end Insert_Channel_Validation;
 
+   procedure Mix_Channels_Uses_Ada_Indices_And_Zero_Fill
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Sources      : OpenCV.Core.Mat_Array (5 .. 6) :=
+        (5 => OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 3)),
+         6 => OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 1)));
+      Destinations : OpenCV.Core.Mat_Array (10 .. 11) :=
+        (10 => OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 3)),
+         11 => OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 3)));
+      Routes       : constant OpenCV.Core.Channel_Route_Array (2 .. 5) :=
+        (2 =>
+           (Source_Kind         => OpenCV.Core.From_Source,
+            Destination_Index   => 10,
+            Destination_Channel => 0,
+            Source_Index        => 5,
+            Source_Channel      => 1),
+         3 =>
+           (Source_Kind         => OpenCV.Core.From_Source,
+            Destination_Index   => 10,
+            Destination_Channel => 1,
+            Source_Index        => 6,
+            Source_Channel      => 0),
+         4 =>
+           (Source_Kind         => OpenCV.Core.Zero_Fill,
+            Destination_Index   => 11,
+            Destination_Channel => 0),
+         5 =>
+           (Source_Kind         => OpenCV.Core.From_Source,
+            Destination_Index   => 11,
+            Destination_Channel => 1,
+            Source_Index        => 5,
+            Source_Channel      => 0));
+   begin
+      OpenCV.Core.UInt8_Vec3_Access.Set (Sources (5), 0, 0, (11, 12, 0));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Sources (5), 0, 1, (21, 22, 0));
+      OpenCV.Core.UInt8_Access.Set (Sources (6), 0, 0, 13);
+      OpenCV.Core.UInt8_Access.Set (Sources (6), 0, 1, 23);
+      OpenCV.Core.Mix_Channels (Sources, Destinations, Routes);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Vec3_Access.Get (Destinations (10), 0, 0)
+         = (12, 13, 0)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Destinations (10), 0, 1)
+                  = (22, 23, 0)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Destinations (11), 0, 0)
+                  = (0, 11, 0)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Destinations (11), 0, 1)
+                  = (0, 21, 0),
+         "Mix_Channels must use actual Ada array indices and zero-fill"
+         & " routes");
+   end Mix_Channels_Uses_Ada_Indices_And_Zero_Fill;
+
+   procedure Mix_Channels_Validation_And_Empty_Routes
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source              : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+      Destinations        : OpenCV.Core.Mat_Array (3 .. 3) :=
+        (3 => OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1)));
+      Sources             : constant OpenCV.Core.Mat_Array (7 .. 7) :=
+        (7 => Source);
+      Duplicate_Routes    :
+        constant OpenCV.Core.Channel_Route_Array (0 .. 1) :=
+          (0 => (OpenCV.Core.From_Source, 3, 0, 7, 0),
+           1 => (OpenCV.Core.Zero_Fill, 3, 0));
+      Invalid_Index_Route :
+        constant OpenCV.Core.Channel_Route_Array (0 .. 0) :=
+          (0 => (OpenCV.Core.From_Source, 4, 0, 7, 0));
+      Empty_Routes        :
+        constant OpenCV.Core.Channel_Route_Array (1 .. 0) := (others => <>);
+
+      procedure Mix_Duplicate is
+      begin
+         OpenCV.Core.Mix_Channels (Sources, Destinations, Duplicate_Routes);
+      end Mix_Duplicate;
+
+      procedure Mix_Invalid_Index is
+      begin
+         OpenCV.Core.Mix_Channels (Sources, Destinations, Invalid_Index_Route);
+      end Mix_Invalid_Index;
+   begin
+      OpenCV.Core.UInt8_Access.Set (Destinations (3), 0, 0, 77);
+      OpenCV.Core.Mix_Channels (Sources, Destinations, Empty_Routes);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Destinations (3), 0, 0) = 77,
+         "Mix_Channels with empty Routes must be a no-op");
+      Assert_Raises_OpenCV_Error
+        (Mix_Duplicate'Access,
+         "Mix_Channels must reject duplicate destination channels");
+      Assert_Raises_OpenCV_Error
+        (Mix_Invalid_Index'Access,
+         "Mix_Channels must validate actual destination array indices");
+   end Mix_Channels_Validation_And_Empty_Routes;
+
+   procedure Mix_Channels_Mutates_In_Place (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Image        : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 3));
+      Sources      : constant OpenCV.Core.Mat_Array (5 .. 5) := (5 => Image);
+      Destinations : OpenCV.Core.Mat_Array (10 .. 10) := (10 => Image);
+      Routes       : constant OpenCV.Core.Channel_Route_Array (0 .. 0) :=
+        (0 =>
+           (Source_Kind         => OpenCV.Core.From_Source,
+            Destination_Index   => 10,
+            Destination_Channel => 0,
+            Source_Index        => 5,
+            Source_Channel      => 2));
+   begin
+      OpenCV.Core.UInt8_Vec3_Access.Set (Image, 0, 0, (1, 2, 3));
+      OpenCV.Core.Mix_Channels (Sources, Destinations, Routes);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Vec3_Access.Get (Image, 0, 0) = (3, 2, 3),
+         "Mix_Channels must mutate preallocated shared destination storage"
+         & " in place");
+   end Mix_Channels_Mutates_In_Place;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
    Result : aliased AUnit.Test_Suites.Test_Suite;
 
@@ -669,6 +787,12 @@ package body Mat_Channel_Tests is
      Insert_Channel_Extract_Round_Trip_And_Empty_Behavior'Access;
    Insert_Validation_Test    : constant Caller.Test_Method :=
      Insert_Channel_Validation'Access;
+   Mix_Indices_Test          : constant Caller.Test_Method :=
+     Mix_Channels_Uses_Ada_Indices_And_Zero_Fill'Access;
+   Mix_Validation_Test       : constant Caller.Test_Method :=
+     Mix_Channels_Validation_And_Empty_Routes'Access;
+   Mix_In_Place_Test         : constant Caller.Test_Method :=
+     Mix_Channels_Mutates_In_Place'Access;
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
@@ -680,6 +804,14 @@ package body Mat_Channel_Tests is
         (Caller.Create
            ("Split Float32 and non-continuous Region",
             Split_Float32_And_Non_Continuous_Region'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mix channels uses Ada indices and zero fill", Mix_Indices_Test));
+      Result.Add_Test
+        (Caller.Create
+           ("Mix channels validation and empty routes", Mix_Validation_Test));
+      Result.Add_Test
+        (Caller.Create ("Mix channels mutates in place", Mix_In_Place_Test));
       Result.Add_Test
         (Caller.Create
            ("Split single-channel and empty behavior",

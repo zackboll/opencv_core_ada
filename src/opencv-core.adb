@@ -6,6 +6,7 @@ package body OpenCV.Core is
    use type OpenCV.Internal.C_API.C_Boolean;
    use type OpenCV.Internal.C_API.Mat_Handle;
    use type OpenCV.Internal.C_API.C_UInt64;
+   use type OpenCV.Internal.C_API.C_Int32;
    use type OpenCV.Internal.C_API.Status;
    use type Interfaces.Integer_64;
 
@@ -902,6 +903,193 @@ package body OpenCV.Core is
            Channel     => OpenCV.Internal.C_API.C_Int32 (Channel));
       Raise_On_Error (Status, "Mat insert channel operation");
    end Insert_Channel;
+
+   procedure Mix_Channels
+     (Sources      : Mat_Array;
+      Destinations : in out Mat_Array;
+      Routes       : Channel_Route_Array)
+   is
+      Maximum_C_Int32 : constant Natural := 2_147_483_647;
+
+      procedure Validate_Collection
+        (Collection     : Mat_Array;
+         Expected_Rows  : Natural;
+         Expected_Cols  : Natural;
+         Expected_Depth : Depth_Type;
+         Name           : String) is
+      begin
+         for Item of Collection loop
+            if Item.Rows /= Expected_Rows then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  "Mat mix channels requires "
+                  & Name
+                  & " Mats with identical row counts");
+            end if;
+            if Item.Columns /= Expected_Cols then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  "Mat mix channels requires "
+                  & Name
+                  & " Mats with identical column counts");
+            end if;
+            if Item.Depth /= Expected_Depth then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  "Mat mix channels requires "
+                  & Name
+                  & " Mats with identical depths");
+            end if;
+         end loop;
+      end Validate_Collection;
+
+      function Flattened_Channel
+        (Collection : Mat_Array; Index, Channel : Natural; Name : String)
+         return OpenCV.Internal.C_API.C_Int32
+      is
+         Offset : Natural := 0;
+      begin
+         if Index not in Collection'Range then
+            Ada.Exceptions.Raise_Exception
+              (OpenCV_Error'Identity,
+               "Mat mix channels "
+               & Name
+               & " index is outside its array range");
+         end if;
+         if Channel >= Natural (Collection (Index).Channels) then
+            Ada.Exceptions.Raise_Exception
+              (OpenCV_Error'Identity,
+               "Mat mix channels "
+               & Name
+               & " channel is outside the selected Mat channel range");
+         end if;
+
+         for Item_Index in Collection'Range loop
+            exit when Item_Index = Index;
+            Offset := Offset + Natural (Collection (Item_Index).Channels);
+         end loop;
+         if Offset > Maximum_C_Int32 - Channel then
+            Ada.Exceptions.Raise_Exception
+              (OpenCV_Error'Identity,
+               "Mat mix channels flattened channel index exceeds supported"
+               & " range");
+         end if;
+         return OpenCV.Internal.C_API.C_Int32 (Offset + Channel);
+      end Flattened_Channel;
+   begin
+      if Routes'Length = 0 then
+         return;
+      end if;
+      if Sources'Length = 0 or else Destinations'Length = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat mix channels requires nonempty source and destination"
+            & " arrays");
+      end if;
+      if Sources'Length > Maximum_C_Int32
+        or else Destinations'Length > Maximum_C_Int32
+        or else Routes'Length > Maximum_C_Int32
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat mix channels collection size exceeds supported range");
+      end if;
+
+      declare
+         Expected_Rows        : constant Natural :=
+           Destinations (Destinations'First).Rows;
+         Expected_Cols        : constant Natural :=
+           Destinations (Destinations'First).Columns;
+         Expected_Depth       : constant Depth_Type :=
+           Destinations (Destinations'First).Depth;
+         Source_Handles       :
+           OpenCV.Internal.C_API.Mat_Handle_Array (0 .. Sources'Length - 1);
+         Destination_Handles  :
+           OpenCV.Internal.C_API.Mat_Handle_Array
+             (0 .. Destinations'Length - 1);
+         From_To              :
+           OpenCV.Internal.C_API.C_Int32_Array (0 .. Routes'Length * 2 - 1);
+         Status               : OpenCV.Internal.C_API.Status;
+         Source_Position      : Natural := 0;
+         Destination_Position : Natural := 0;
+      begin
+         Validate_Collection
+           (Sources, Expected_Rows, Expected_Cols, Expected_Depth, "source");
+         Validate_Collection
+           (Destinations,
+            Expected_Rows,
+            Expected_Cols,
+            Expected_Depth,
+            "destination");
+
+         for Item of Sources loop
+            Source_Handles (Source_Position) := Item.Handle;
+            Source_Position := Source_Position + 1;
+         end loop;
+         for Item of Destinations loop
+            Destination_Handles (Destination_Position) := Item.Handle;
+            Destination_Position := Destination_Position + 1;
+         end loop;
+
+         for Route_Index in Routes'Range loop
+            declare
+               Route      : constant Channel_Route := Routes (Route_Index);
+               Pair_Index : constant Natural :=
+                 (Route_Index - Routes'First) * 2;
+            begin
+               From_To (Pair_Index + 1) :=
+                 Flattened_Channel
+                   (Destinations,
+                    Route.Destination_Index,
+                    Route.Destination_Channel,
+                    "destination");
+
+               if Route_Index /= Routes'First then
+                  for Previous_Index in Routes'First .. Route_Index - 1 loop
+                     if Routes (Previous_Index).Destination_Index
+                       = Route.Destination_Index
+                       and then Routes (Previous_Index).Destination_Channel
+                                = Route.Destination_Channel
+                     then
+                        Ada.Exceptions.Raise_Exception
+                          (OpenCV_Error'Identity,
+                           "Mat mix channels routes must not target the same"
+                           & " destination channel");
+                     end if;
+                  end loop;
+               end if;
+
+               case Route.Source_Kind is
+                  when From_Source =>
+                     From_To (Pair_Index) :=
+                       Flattened_Channel
+                         (Sources,
+                          Route.Source_Index,
+                          Route.Source_Channel,
+                          "source");
+
+                  when Zero_Fill   =>
+                     From_To (Pair_Index) := -1;
+               end case;
+            end;
+         end loop;
+
+         Status :=
+           OpenCV.Internal.C_API.Mat_Mix_Channels
+             (Sources           =>
+                Source_Handles (Source_Handles'First)'Access,
+              Source_Count      =>
+                OpenCV.Internal.C_API.C_Int32 (Sources'Length),
+              Destinations      =>
+                Destination_Handles (Destination_Handles'First)'Access,
+              Destination_Count =>
+                OpenCV.Internal.C_API.C_Int32 (Destinations'Length),
+              From_To           => From_To (From_To'First)'Access,
+              Pair_Count        =>
+                OpenCV.Internal.C_API.C_Int32 (Routes'Length));
+         Raise_On_Error (Status, "Mat mix channels operation");
+      end;
+   end Mix_Channels;
 
    function Merge (Channels : Mat_Array) return Mat is
       Maximum_Channels : constant Natural := 512;

@@ -2857,6 +2857,53 @@ opencv_core_mat_insert_channel(const opencv_core_mat_handle *source,
 }
 
 opencv_core_status
+opencv_core_mat_mix_channels(const opencv_core_mat_handle *const *sources,
+                             int32_t source_count,
+                             opencv_core_mat_handle *const *destinations,
+                             int32_t destination_count,
+                             const int32_t *from_to, int32_t pair_count) {
+    clear_error();
+
+    if (pair_count < 0 || source_count < 0 || destination_count < 0) {
+        return invalid_argument("channel counts must not be negative");
+    }
+    if (pair_count == 0) {
+        return OPENCV_CORE_OK;
+    }
+    if (sources == nullptr || destinations == nullptr || from_to == nullptr) {
+        return invalid_argument("channel arrays must not be null for nonempty routes");
+    }
+    if (source_count == 0 || destination_count == 0) {
+        return invalid_argument("source and destination counts must be positive");
+    }
+
+    try {
+        std::vector<cv::Mat> source_mats;
+        std::vector<cv::Mat> destination_mats;
+        source_mats.reserve(static_cast<size_t>(source_count));
+        destination_mats.reserve(static_cast<size_t>(destination_count));
+        for (int32_t index = 0; index < source_count; ++index) {
+            if (sources[index] == nullptr) {
+                return invalid_argument("source Mat handle must not be null");
+            }
+            source_mats.push_back(sources[index]->value);
+        }
+        for (int32_t index = 0; index < destination_count; ++index) {
+            if (destinations[index] == nullptr) {
+                return invalid_argument("destination Mat handle must not be null");
+            }
+            destination_mats.push_back(destinations[index]->value);
+        }
+        cv::mixChannels(source_mats.data(), source_mats.size(),
+                        destination_mats.data(), destination_mats.size(),
+                        from_to, static_cast<size_t>(pair_count));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_merge(const opencv_core_mat_handle *const *sources,
                       int32_t count, opencv_core_mat_handle **out_mat) {
     clear_error();

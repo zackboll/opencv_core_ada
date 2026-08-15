@@ -98,6 +98,27 @@ package OpenCV.Core is
    --  shallow-copy assignment semantics.
    type Mat_Array is array (Natural range <>) of Mat;
 
+   type Channel_Source_Kind is (From_Source, Zero_Fill);
+
+   --  Source_Index and Destination_Index are the actual indices of Sources
+   --  and Destinations, respectively. Channel indices are zero-based within
+   --  their selected Mat. Zero_Fill writes zero to the destination channel.
+   type Channel_Route (Source_Kind : Channel_Source_Kind := From_Source) is
+   record
+      Destination_Index   : Natural;
+      Destination_Channel : Natural;
+      case Source_Kind is
+         when From_Source =>
+            Source_Index   : Natural;
+            Source_Channel : Natural;
+
+         when Zero_Fill =>
+            null;
+      end case;
+   end record;
+
+   type Channel_Route_Array is array (Natural range <>) of Channel_Route;
+
    function Create
      (Rows, Columns : Natural; Element_Type : Mat_Type) return Mat
    with Pre => Rows <= 2_147_483_647 and then Columns <= 2_147_483_647;
@@ -133,6 +154,16 @@ package OpenCV.Core is
    --  Mats accept channel 0 as a no-op, matching OpenCV semantics.
    procedure Insert_Channel
      (Self : in out Mat; Source : Mat; Channel : Natural);
+   --  Copies or zero-fills the specified channels into preallocated
+   --  Destinations. Mat indices in Routes directly index the supplied arrays;
+   --  their lower bounds need not be zero. All source and destination Mats
+   --  must have identical dimensions and depth. A destination channel may
+   --  occur in at most one route. Routes are applied in array iteration order.
+   --  An empty Routes array is a no-op.
+   procedure Mix_Channels
+     (Sources      : Mat_Array;
+      Destinations : in out Mat_Array;
+      Routes       : Channel_Route_Array);
    --  Concatenates the channels of every non-empty input Mat, in array
    --  iteration order, into an independent Mat. Inputs may themselves be
    --  multi-channel, but must have identical dimensions and depth. The input
