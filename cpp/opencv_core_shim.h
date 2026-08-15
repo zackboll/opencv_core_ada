@@ -105,6 +105,17 @@ opencv_core_mat_clone(const opencv_core_mat_handle *source,
                       opencv_core_mat_handle **out_mat);
 
 /*
+ * Splits a non-empty Mat into count independently owned, single-channel Mat
+ * handles. count must equal source's channel count. out_mats must reference
+ * count writable handle slots; all slots are initialized to null before work
+ * begins. The caller owns each returned handle and must destroy it. For an
+ * empty source, count must be zero and no output handles are returned.
+ */
+opencv_core_status
+opencv_core_mat_split(const opencv_core_mat_handle *source,
+                      opencv_core_mat_handle **out_mats, int32_t count);
+
+/*
  * Copies source into destination. Destination is allocated or reallocated to
  * source's shape and type when necessary. Exact self-copy is supported;
  * partially overlapping source and destination storage is not supported.

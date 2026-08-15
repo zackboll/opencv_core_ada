@@ -93,6 +93,11 @@ package OpenCV.Core is
 
    type Mat is tagged private;
 
+   --  A zero-based, owning sequence of Mats. An empty result has the null
+   --  range 1 .. 0. Each element has normal Mat controlled ownership and
+   --  shallow-copy assignment semantics.
+   type Mat_Array is array (Natural range <>) of Mat;
+
    function Create
      (Rows, Columns : Natural; Element_Type : Mat_Type) return Mat
    with Pre => Rows <= 2_147_483_647 and then Columns <= 2_147_483_647;
@@ -106,6 +111,13 @@ package OpenCV.Core is
      (Self : Mat; Channels : Channel_Count; Rows : Positive) return Mat;
 
    function Clone (Self : Mat) return Mat;
+   --  Separates Self into one independent single-channel Mat per channel.
+   --  Results use channel indices 0 .. Self.Channels - 1, preserve Self's
+   --  depth and dimensions, and do not share pixel storage with Self. Empty
+   --  Mats return an empty Mat_Array. Single-channel Mats return one deep
+   --  copy.
+   --  Non-contiguous Regions and all supported Mat depths are accepted.
+   function Split (Self : Mat) return Mat_Array;
    --  Copies Self into Destination, allocating or reallocating Destination to
    --  Self's shape and element type when necessary. Destination may be a
    --  compatible view. Exact self-copy is supported; partially overlapping

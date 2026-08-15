@@ -15,6 +15,9 @@ package OpenCV.Internal.C_API is
    type Mat_Handle is new System.Address;
    Null_Mat_Handle : constant Mat_Handle := Mat_Handle (System.Null_Address);
 
+   type Mat_Handle_Array is array (Natural range <>) of aliased Mat_Handle
+   with Convention => C;
+
    subtype C_Int32 is Interfaces.Integer_32;
    subtype C_UInt8 is Interfaces.Unsigned_8;
    subtype C_UInt64 is Interfaces.Unsigned_64;
@@ -100,6 +103,11 @@ package OpenCV.Internal.C_API is
    function Mat_Clone
      (Source : Mat_Handle; Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_clone";
+
+   function Mat_Split
+     (Source : Mat_Handle; Results : access Mat_Handle; Count : C_Int32)
+      return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_split";
 
    function Mat_Copy_To (Source, Destination : Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_copy_to";

@@ -7,7 +7,9 @@
 #include <cstring>
 #include <exception>
 #include <limits>
+#include <memory>
 #include <new>
+#include <vector>
 
 struct opencv_core_mat_handle {
     cv::Mat value;
@@ -2726,6 +2728,61 @@ opencv_core_mat_find_non_zero(const opencv_core_mat_handle *mat,
         }
 
         *out_count = count;
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_split(const opencv_core_mat_handle *source,
+                      opencv_core_mat_handle **out_mats, int32_t count) {
+    clear_error();
+
+    if (source == nullptr) {
+        return invalid_argument("source Mat handle must not be null");
+    }
+
+    if (count < 0) {
+        return invalid_argument("output count must not be negative");
+    }
+
+    if (count > 0 && out_mats == nullptr) {
+        return invalid_argument("out_mats must not be null for nonempty output");
+    }
+
+    for (int32_t index = 0; index < count; ++index) {
+        out_mats[index] = nullptr;
+    }
+
+    std::vector<std::unique_ptr<opencv_core_mat_handle>> handles;
+    try {
+        if (source->value.empty()) {
+            if (count != 0) {
+                return invalid_argument("empty source requires zero output count");
+            }
+            return OPENCV_CORE_OK;
+        }
+
+        if (count != source->value.channels()) {
+            return invalid_argument("output count must equal source channel count");
+        }
+
+        std::vector<cv::Mat> channels;
+        cv::split(source->value, channels);
+        if (channels.size() != static_cast<size_t>(count)) {
+            return invalid_argument("split returned an unexpected channel count");
+        }
+
+        handles.reserve(channels.size());
+        for (const cv::Mat &channel : channels) {
+            handles.push_back(
+                std::make_unique<opencv_core_mat_handle>(channel));
+        }
+
+        for (int32_t index = 0; index < count; ++index) {
+            out_mats[index] = handles[static_cast<size_t>(index)].release();
+        }
         return OPENCV_CORE_OK;
     } catch (...) {
         return translate_current_exception();

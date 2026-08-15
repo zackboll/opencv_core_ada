@@ -4,6 +4,7 @@ with Interfaces.C;
 package body OpenCV.Core is
 
    use type OpenCV.Internal.C_API.C_Boolean;
+   use type OpenCV.Internal.C_API.Mat_Handle;
    use type OpenCV.Internal.C_API.C_UInt64;
    use type OpenCV.Internal.C_API.Status;
    use type Interfaces.Integer_64;
@@ -781,6 +782,47 @@ package body OpenCV.Core is
       Result.Handle := New_Handle;
       return Result;
    end Clone;
+
+   function Split (Self : Mat) return Mat_Array is
+   begin
+      if Self.Is_Empty then
+         return (1 .. 0 => <>);
+      end if;
+
+      declare
+         Count   : constant Natural := Natural (Self.Channels);
+         Handles : OpenCV.Internal.C_API.Mat_Handle_Array (0 .. Count - 1) :=
+           (others => OpenCV.Internal.C_API.Null_Mat_Handle);
+         Result  : Mat_Array (0 .. Count - 1);
+         Status  : OpenCV.Internal.C_API.Status;
+      begin
+         Status :=
+           OpenCV.Internal.C_API.Mat_Split
+             (Source  => Self.Handle,
+              Results => Handles (Handles'First)'Access,
+              Count   => OpenCV.Internal.C_API.C_Int32 (Count));
+         Raise_On_Error (Status, "Mat split operation");
+
+         for Index in Handles'Range loop
+            if Handles (Index) = OpenCV.Internal.C_API.Null_Mat_Handle then
+               for Handle of Handles loop
+                  OpenCV.Internal.C_API.Mat_Destroy (Handle);
+               end loop;
+
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  "Mat split operation returned a null channel handle");
+            end if;
+         end loop;
+
+         for Index in Result'Range loop
+            OpenCV.Internal.C_API.Mat_Destroy (Result (Index).Handle);
+            Result (Index).Handle := Handles (Index);
+         end loop;
+
+         return Result;
+      end;
+   end Split;
 
    procedure Copy_To (Self : Mat; Destination : in out Mat) is
       Status : constant OpenCV.Internal.C_API.Status :=

@@ -3,6 +3,7 @@ with Mat_Access_Tests;
 with Mat_View_Tests;
 with Mat_Conversion_Tests;
 with Mat_Arithmetic_Tests;
+with Mat_Channel_Tests;
 with Mat_Mask_Tests;
 with Mat_Reduction_Tests;
 
@@ -17,6 +18,7 @@ package body Mat_Tests is
       Result.Add_Test (Mat_View_Tests.Suite);
       Result.Add_Test (Mat_Conversion_Tests.Suite);
       Result.Add_Test (Mat_Arithmetic_Tests.Suite);
+      Result.Add_Test (Mat_Channel_Tests.Suite);
       Result.Add_Test (Mat_Mask_Tests.Suite);
       Result.Add_Test (Mat_Reduction_Tests.Suite);
       return Result'Access;
