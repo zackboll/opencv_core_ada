@@ -17,6 +17,7 @@ package body Mat_View_Tests is
    use type OpenCV.Core.Depth_Type;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Mat_Size;
+   use type OpenCV.Core.Point_Coordinate;
    use type OpenCV.Core.UInt8_Vec3.Vector;
 
    use Mat_Test_Support;
@@ -769,6 +770,187 @@ package body Mat_View_Tests is
          "Float32 reshape must preserve scalar values independently of size");
    end Float32_Reshape_Preserves_Values;
 
+   procedure Diagonal_View_Maps_Offsets_And_Shares_Data
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 4, (OpenCV.Core.UInt8, 1));
+      Main   : OpenCV.Core.Mat;
+      Above  : OpenCV.Core.Mat;
+      Below  : OpenCV.Core.Mat;
+   begin
+      for Row in 0 .. 2 loop
+         for Column in 0 .. 3 loop
+            OpenCV.Core.UInt8_Access.Set
+              (Source,
+               Row,
+               Column,
+               Interfaces.Unsigned_8 (Row * 4 + Column + 1));
+         end loop;
+      end loop;
+
+      Main := Source.Diagonal_View;
+      Above := Source.Diagonal_View (1);
+      Below := Source.Diagonal_View (-1);
+
+      AUnit.Assertions.Assert
+        (Main.Rows = 3
+         and then Main.Columns = 1
+         and then OpenCV.Core.UInt8_Access.Get (Main, 0, 0) = 1
+         and then OpenCV.Core.UInt8_Access.Get (Main, 1, 0) = 6
+         and then OpenCV.Core.UInt8_Access.Get (Main, 2, 0) = 11
+         and then Above.Rows = 3
+         and then Above.Columns = 1
+         and then OpenCV.Core.UInt8_Access.Get (Above, 0, 0) = 2
+         and then OpenCV.Core.UInt8_Access.Get (Above, 1, 0) = 7
+         and then OpenCV.Core.UInt8_Access.Get (Above, 2, 0) = 12
+         and then Below.Rows = 2
+         and then Below.Columns = 1
+         and then OpenCV.Core.UInt8_Access.Get (Below, 0, 0) = 5
+         and then OpenCV.Core.UInt8_Access.Get (Below, 1, 0) = 10,
+         "Diagonal_View must map zero, positive, and negative offsets"
+         & " exactly");
+      AUnit.Assertions.Assert
+        (Main.Depth = OpenCV.Core.UInt8
+         and then Main.Channels = 1
+         and then Main.Is_Submatrix
+         and then not Main.Is_Continuous,
+         "A multi-element diagonal must preserve type and report view layout");
+
+      OpenCV.Core.UInt8_Access.Set (Main, 1, 0, 88);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Source, 1, 1) = 88
+         and then OpenCV.Core.UInt8_Access.Get (Source, 1, 2) = 7,
+         "A diagonal write must update only its corresponding source element");
+      OpenCV.Core.UInt8_Access.Set (Source, 2, 2, 99);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Main, 2, 0) = 99,
+         "A diagonal view must observe source writes");
+   end Diagonal_View_Maps_Offsets_And_Shares_Data;
+
+   procedure Diagonal_View_Supports_Rectangles_Types_And_Regions
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Wide   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 4, (OpenCV.Core.UInt8, 1));
+      Tall   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 2, (OpenCV.Core.Float32, 1));
+      Vec    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 3));
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 5, (OpenCV.Core.UInt8, 1));
+      Region : constant OpenCV.Core.Mat :=
+        Parent.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+      View   : OpenCV.Core.Mat;
+   begin
+      for Row in 0 .. 1 loop
+         for Column in 0 .. 3 loop
+            OpenCV.Core.UInt8_Access.Set
+              (Wide,
+               Row,
+               Column,
+               Interfaces.Unsigned_8 (Row * 4 + Column + 1));
+         end loop;
+      end loop;
+      View := Wide.Diagonal_View (2);
+      AUnit.Assertions.Assert
+        (View.Rows = 2
+         and then View.Columns = 1
+         and then OpenCV.Core.UInt8_Access.Get (View, 0, 0) = 3
+         and then OpenCV.Core.UInt8_Access.Get (View, 1, 0) = 8,
+         "A wider Mat diagonal must have the authoritative rectangular"
+         & " length");
+
+      OpenCV.Core.Float32_Access.Set (Tall, 2, 0, 3.5);
+      OpenCV.Core.Float32_Access.Set (Tall, 3, 1, 4.5);
+      View := Tall.Diagonal_View (-2);
+      AUnit.Assertions.Assert
+        (View.Rows = 2
+         and then View.Depth = OpenCV.Core.Float32
+         and then OpenCV.Core.Float32_Access.Get (View, 1, 0) = 4.5,
+         "A taller Float32 Mat diagonal must preserve type and values");
+
+      OpenCV.Core.UInt8_Vec3_Access.Set (Vec, 0, 1, (1, 2, 3));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Vec, 1, 1, (4, 5, 6));
+      View := Vec.Diagonal_View (1);
+      AUnit.Assertions.Assert
+        (View.Channels = 3
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (View, 0, 0) = (1, 2, 3),
+         "A Vec3 diagonal must preserve complete channel tuples");
+
+      for Row in 0 .. 3 loop
+         for Column in 0 .. 4 loop
+            OpenCV.Core.UInt8_Access.Set
+              (Parent, Row, Column, Interfaces.Unsigned_8 (Row * 10 + Column));
+         end loop;
+      end loop;
+      View := Region.Diagonal_View;
+      OpenCV.Core.UInt8_Access.Set (View, 1, 0, 77);
+      AUnit.Assertions.Assert
+        (not Region.Is_Continuous
+         and then OpenCV.Core.UInt8_Access.Get (View, 0, 0) = 11
+         and then OpenCV.Core.UInt8_Access.Get (Parent, 2, 2) = 77
+         and then OpenCV.Core.UInt8_Access.Get (Parent, 2, 3) = 23,
+         "A diagonal of a non-continuous Region must map relative storage");
+   end Diagonal_View_Supports_Rectangles_Types_And_Regions;
+
+   procedure Diagonal_View_Validates_Offsets_And_Survives_Source
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source        : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.UInt8, 1));
+      Empty         : OpenCV.Core.Mat;
+      Retained_View : OpenCV.Core.Mat;
+
+      procedure Positive_After_Last is
+         Ignored : constant OpenCV.Core.Mat := Source.Diagonal_View (3);
+      begin
+         pragma Unreferenced (Ignored);
+      end Positive_After_Last;
+
+      procedure Negative_After_Last is
+         Ignored : constant OpenCV.Core.Mat := Source.Diagonal_View (-2);
+      begin
+         pragma Unreferenced (Ignored);
+      end Negative_After_Last;
+
+      procedure Empty_Diagonal is
+         Ignored : constant OpenCV.Core.Mat := Empty.Diagonal_View;
+      begin
+         pragma Unreferenced (Ignored);
+      end Empty_Diagonal;
+   begin
+      AUnit.Assertions.Assert
+        (Source.Diagonal_View (2).Rows = 1
+         and then Source.Diagonal_View (-1).Rows = 1,
+         "Offsets selecting the final upper and lower diagonals must be"
+         & " valid");
+      Assert_Raises_OpenCV_Error
+        (Positive_After_Last'Access,
+         "A positive offset past the final diagonal must raise OpenCV_Error");
+      Assert_Raises_OpenCV_Error
+        (Negative_After_Last'Access,
+         "A negative offset past the final diagonal must raise OpenCV_Error");
+      Assert_Raises_OpenCV_Error
+        (Empty_Diagonal'Access,
+         "An empty Mat diagonal must raise OpenCV_Error");
+
+      declare
+         Short_Lived_Source : OpenCV.Core.Mat :=
+           OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      begin
+         OpenCV.Core.UInt8_Access.Set (Short_Lived_Source, 1, 1, 42);
+         Retained_View := Short_Lived_Source.Diagonal_View;
+      end;
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Retained_View, 1, 0) = 42,
+         "A diagonal view must remain valid after its source header"
+         & " finalizes");
+   end Diagonal_View_Validates_Offsets_And_Survives_Source;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -855,6 +1037,18 @@ package body Mat_View_Tests is
         (Caller.Create
            ("Float32 reshape preserves values",
             Float32_Reshape_Preserves_Values'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Diagonal view maps offsets and shares data",
+            Diagonal_View_Maps_Offsets_And_Shares_Data'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Diagonal view supports rectangles types and Regions",
+            Diagonal_View_Supports_Rectangles_Types_And_Regions'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Diagonal view validates offsets and survives source",
+            Diagonal_View_Validates_Offsets_And_Survives_Source'Access));
       return Result'Access;
    end Suite;
 

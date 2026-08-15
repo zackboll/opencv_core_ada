@@ -1515,6 +1515,40 @@ opencv_core_mat_reshape(const opencv_core_mat_handle *source, int32_t channels,
     }
 }
 
+opencv_core_status
+opencv_core_mat_diagonal_view(const opencv_core_mat_handle *source,
+                              int32_t offset,
+                              opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (source == nullptr) {
+        return invalid_argument("source Mat handle must not be null");
+    }
+
+    try {
+        if (source->value.dims > 2) {
+            return invalid_argument("source Mat must be at most two-dimensional");
+        }
+
+        if (source->value.empty() || offset >= source->value.cols ||
+            offset <= -source->value.rows) {
+            return invalid_argument("diagonal offset selects no source elements");
+        }
+
+        *out_mat = new opencv_core_mat_handle(
+            source->value.diag(static_cast<int>(offset)));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
 void opencv_core_mat_destroy(opencv_core_mat_handle *mat) {
     clear_error();
 

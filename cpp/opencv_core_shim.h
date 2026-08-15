@@ -418,6 +418,17 @@ opencv_core_status
 opencv_core_mat_reshape(const opencv_core_mat_handle *source, int32_t channels,
                         int32_t rows, opencv_core_mat_handle **out_mat);
 
+/*
+ * Creates a distinct single-column Mat header for a non-empty source diagonal.
+ * Offset zero selects the main diagonal; positive offsets select diagonals
+ * above it and negative offsets select diagonals below it. The header shares
+ * source storage through OpenCV reference counting and does not copy data.
+ */
+opencv_core_status
+opencv_core_mat_diagonal_view(const opencv_core_mat_handle *source,
+                              int32_t offset,
+                              opencv_core_mat_handle **out_mat);
+
 /* Null-safe and non-throwing. */
 void opencv_core_mat_destroy(opencv_core_mat_handle *mat);
 

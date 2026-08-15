@@ -135,6 +135,14 @@ package OpenCV.Core is
    function Reshape
      (Self : Mat; Channels : Channel_Count; Rows : Positive) return Mat;
 
+   --  Creates a distinct single-column Mat header sharing Self's storage for
+   --  the selected diagonal. Offset zero selects the main diagonal; positive
+   --  offsets select diagonals above it (Offset 1 starts at row 0, column 1),
+   --  and negative offsets select diagonals below it (Offset -1 starts at row
+   --  1, column 0). Offset must select at least one element.
+   function Diagonal_View
+     (Self : Mat; Offset : Point_Coordinate := 0) return Mat;
+
    function Clone (Self : Mat) return Mat;
    --  Returns an independent Mat whose rows and columns are swapped. Element
    --  depth and channel count are preserved, including for multi-channel Mats.

@@ -1586,6 +1586,38 @@ package body OpenCV.Core is
       return From_C_Boolean (Value, "Mat submatrix query");
    end Is_Submatrix;
 
+   function Diagonal_View
+     (Self : Mat; Offset : Point_Coordinate := 0) return Mat
+   is
+      Result      : Mat;
+      New_Handle  : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status      : OpenCV.Internal.C_API.Status;
+      Source_Rows : constant Point_Coordinate := Point_Coordinate (Self.Rows);
+      Source_Cols : constant Point_Coordinate :=
+        Point_Coordinate (Self.Columns);
+   begin
+      if Self.Is_Empty
+        or else Offset >= Source_Cols
+        or else Offset <= -Source_Rows
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat diagonal offset selects no source elements");
+      end if;
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_Diagonal_View
+          (Source => Self.Handle,
+           Offset => OpenCV.Internal.C_API.C_Int32 (Offset),
+           Result => New_Handle'Access);
+      Raise_On_Error (Status, "Mat diagonal view creation");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Diagonal_View;
+
    function Region (Self : Mat; Area : Rect) return Mat is
       Source_Rows    : constant Size_Coordinate := Size_Coordinate (Self.Rows);
       Source_Columns : constant Size_Coordinate :=
