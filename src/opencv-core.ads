@@ -186,6 +186,12 @@ package OpenCV.Core is
    --  standard-deviation Scalars. Empty Self/Mask is rejected.
    function Mean_Std_Dev (Self, Mask : Mat) return Mean_Std_Dev_Result;
    function Norm (Self : Mat; Kind : Norm_Kind := L2) return Long_Float;
+   --  Computes the requested norm over elements selected by Mask. Mask uses
+   --  the common mask contract (UInt8, one channel, same shape as Self). Any
+   --  nonzero mask value selects every scalar component of the element. Empty
+   --  Self/Mask and all-zero masks return zero according to OpenCV semantics.
+   function Norm
+     (Self : Mat; Mask : Mat; Kind : Norm_Kind := L2) return Long_Float;
    function Min_Max_Loc (Self : Mat) return Min_Max_Result;
    --  Finds extrema among Self elements selected by Mask. Mask uses the
    --  common mask contract. Any nonzero mask value selects the element. An

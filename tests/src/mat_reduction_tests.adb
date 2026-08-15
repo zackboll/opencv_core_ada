@@ -715,6 +715,128 @@ package body Mat_Reduction_Tests is
          "Norm must combine every scalar component of a multi-channel Mat");
    end Vec3_Norm_Combines_All_Channels;
 
+   procedure Masked_Norm_Computes_L1_L2_And_Infinity
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Mask  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Image, 0, 0, -1.0);
+      OpenCV.Core.Float32_Access.Set (Image, 0, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 0, -3.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 1, 4.0);
+      OpenCV.Core.UInt8_Access.Set (Mask, 0, 0, 0);
+      OpenCV.Core.UInt8_Access.Set (Mask, 0, 1, 1);
+      OpenCV.Core.UInt8_Access.Set (Mask, 1, 0, 255);
+      OpenCV.Core.UInt8_Access.Set (Mask, 1, 1, 0);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Image.Norm (Mask, OpenCV.Core.L1), 5.0)
+         and then Approximately_Equal
+                    (Image.Norm (Mask), 3.605_551_275_463_989)
+         and then Approximately_Equal
+                    (Image.Norm (Mask, OpenCV.Core.Infinity), 3.0),
+         "Masked Norm must use nonzero 1 and 255 mask values for L1, L2,"
+         & " and Infinity");
+   end Masked_Norm_Computes_L1_L2_And_Infinity;
+
+   procedure Masked_Norm_Uses_Compare_And_In_Range_Masks
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image                    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 4, (OpenCV.Core.UInt8, 1));
+      Threshold                : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 4, (OpenCV.Core.UInt8, 1));
+      Compare_Mask, Range_Mask : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.UInt8_Access.Set (Image, 0, 0, 1);
+      OpenCV.Core.UInt8_Access.Set (Image, 0, 1, 5);
+      OpenCV.Core.UInt8_Access.Set (Image, 0, 2, 10);
+      OpenCV.Core.UInt8_Access.Set (Image, 0, 3, 20);
+      Threshold.Set_To (OpenCV.Core.Make_Scalar (5.0));
+      Compare_Mask := Image.Compare (Threshold, OpenCV.Core.Greater_Than);
+      Range_Mask :=
+        Image.In_Range
+          (OpenCV.Core.Make_Scalar (5.0), OpenCV.Core.Make_Scalar (10.0));
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Image.Norm (Compare_Mask, OpenCV.Core.L1), 30.0)
+         and then Approximately_Equal
+                    (Image.Norm (Range_Mask, OpenCV.Core.L1), 15.0),
+         "Masked Norm must accept masks produced by Compare and In_Range");
+   end Masked_Norm_Uses_Compare_And_In_Range_Masks;
+
+   procedure Masked_Norm_Supports_Vec3_And_Non_Continuous_Views
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.UInt8, 3));
+      Mask_Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.UInt8, 1));
+      View, Mask  : OpenCV.Core.Mat;
+   begin
+      Source.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Source, 1, 1, (1, 2, 3));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Source, 1, 2, (4, 5, 6));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Source, 2, 1, (7, 8, 9));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Source, 2, 2, (10, 11, 12));
+      Mask_Parent.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.UInt8_Access.Set (Mask_Parent, 1, 1, 1);
+      OpenCV.Core.UInt8_Access.Set (Mask_Parent, 2, 2, 255);
+      View := Source.Region ((X => 1, Y => 1, Width => 2, Height => 2));
+      Mask := Mask_Parent.Region ((X => 1, Y => 1, Width => 2, Height => 2));
+
+      AUnit.Assertions.Assert
+        (not View.Is_Continuous
+         and then not Mask.Is_Continuous
+         and then Approximately_Equal (View.Norm (Mask, OpenCV.Core.L1), 39.0)
+         and then Approximately_Equal
+                    (View.Norm (Mask, OpenCV.Core.L2), 19.467_922_333_931_785)
+         and then Approximately_Equal
+                    (View.Norm (Mask, OpenCV.Core.Infinity), 12.0),
+         "Masked Norm must select all Vec3 components and support"
+         & " non-continuous source and mask views");
+   end Masked_Norm_Supports_Vec3_And_Non_Continuous_Views;
+
+   procedure Masked_Norm_Handles_Zero_Empty_And_Invalid_Masks
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image             : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      Zero_Mask         : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      Invalid_Mask      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 3));
+      Empty_Image, Mask : OpenCV.Core.Mat;
+
+      procedure Compute_Invalid_Mask is
+         Result : constant Long_Float := Image.Norm (Invalid_Mask);
+      begin
+         pragma Unreferenced (Result);
+      end Compute_Invalid_Mask;
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (7.0));
+      Zero_Mask.Set_To (OpenCV.Core.Make_Scalar (0.0));
+
+      AUnit.Assertions.Assert
+        (Image.Norm (Zero_Mask, OpenCV.Core.L1) = 0.0
+         and then Image.Norm (Zero_Mask) = 0.0
+         and then Image.Norm (Zero_Mask, OpenCV.Core.Infinity) = 0.0
+         and then Empty_Image.Norm (Mask, OpenCV.Core.L1) = 0.0
+         and then Empty_Image.Norm (Mask) = 0.0
+         and then Empty_Image.Norm (Mask, OpenCV.Core.Infinity) = 0.0,
+         "Masked Norm must return zero for all-zero masks and empty inputs");
+      Assert_Raises_OpenCV_Error
+        (Compute_Invalid_Mask'Access,
+         "Masked Norm must reject multi-channel masks");
+   end Masked_Norm_Handles_Zero_Empty_And_Invalid_Masks;
+
    procedure Norm_Operates_On_Non_Continuous_Region
      (Test : in out Mat_Test_Fixture)
    is
@@ -1529,6 +1651,22 @@ package body Mat_Reduction_Tests is
         (Caller.Create
            ("Vec3 Norm combines all channels",
             Vec3_Norm_Combines_All_Channels'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Masked Norm computes L1, L2, and Infinity",
+            Masked_Norm_Computes_L1_L2_And_Infinity'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Masked Norm uses Compare and In_Range masks",
+            Masked_Norm_Uses_Compare_And_In_Range_Masks'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Masked Norm supports Vec3 and non-continuous views",
+            Masked_Norm_Supports_Vec3_And_Non_Continuous_Views'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Masked Norm handles zero, empty, and invalid masks",
+            Masked_Norm_Handles_Zero_Empty_And_Invalid_Masks'Access));
       Result.Add_Test
         (Caller.Create
            ("Norm operates on a non-continuous Region",

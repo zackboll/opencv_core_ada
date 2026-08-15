@@ -2410,6 +2410,40 @@ opencv_core_mat_norm(const opencv_core_mat_handle *mat, int32_t norm_kind,
 }
 
 opencv_core_status
+opencv_core_mat_norm_masked(const opencv_core_mat_handle *mat,
+                            const opencv_core_mat_handle *mask,
+                            int32_t norm_kind, double *out_norm) {
+    clear_error();
+
+    if (out_norm == nullptr) {
+        return invalid_argument("norm output pointer must not be null");
+    }
+
+    *out_norm = 0.0;
+
+    if (mat == nullptr || mask == nullptr) {
+        return invalid_argument("Mat and mask handles must not be null");
+    }
+
+    int opencv_norm = 0;
+    if (!to_opencv_norm(norm_kind, opencv_norm)) {
+        return invalid_argument("norm kind is not supported");
+    }
+
+    try {
+        if (!is_valid_mask_for(mat->value, mask->value)) {
+            return invalid_argument(
+                "mask must be a same-sized single-channel UInt8 Mat");
+        }
+
+        *out_norm = cv::norm(mat->value, opencv_norm, mask->value);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_min_max_loc(const opencv_core_mat_handle *mat,
                             double *out_minimum, double *out_maximum,
                             int32_t *out_minimum_x, int32_t *out_minimum_y,

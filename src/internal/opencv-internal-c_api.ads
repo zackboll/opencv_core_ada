@@ -516,6 +516,14 @@ package OpenCV.Internal.C_API is
       return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_norm";
 
+   function Mat_Norm_Masked
+     (Self, Mask : Mat_Handle; Kind : C_Int32; Result : access C_Double)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_norm_masked";
+
    function Mat_Min_Max_Loc
      (Self      : Mat_Handle;
       Minimum   : access C_Double;

@@ -1221,6 +1221,23 @@ package body OpenCV.Core is
       return Long_Float (C_Result);
    end Norm;
 
+   function Norm
+     (Self : Mat; Mask : Mat; Kind : Norm_Kind := L2) return Long_Float
+   is
+      C_Result : aliased OpenCV.Internal.C_API.C_Double := 0.0;
+      Status   : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Mask (Self, Mask);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Norm_Masked
+          (Self   => Self.Handle,
+           Mask   => Mask.Handle,
+           Kind   => To_C_Norm_Kind (Kind),
+           Result => C_Result'Access);
+      Raise_On_Error (Status, "Masked Mat norm operation");
+      return Long_Float (C_Result);
+   end Norm;
+
    function Min_Max_Loc (Self : Mat) return Min_Max_Result is
       Minimum   : aliased OpenCV.Internal.C_API.C_Double := 0.0;
       Maximum   : aliased OpenCV.Internal.C_API.C_Double := 0.0;

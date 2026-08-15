@@ -480,6 +480,17 @@ opencv_core_mat_norm(const opencv_core_mat_handle *mat, int32_t norm_kind,
                      double *out_norm);
 
 /*
+ * Computes the requested absolute norm over source elements selected by mask.
+ * Mask must be a same-sized single-channel UInt8 Mat; any nonzero value
+ * selects the complete source element, including every channel. Empty sources
+ * and all-zero masks return zero according to OpenCV semantics.
+ */
+opencv_core_status
+opencv_core_mat_norm_masked(const opencv_core_mat_handle *mat,
+                            const opencv_core_mat_handle *mask,
+                            int32_t norm_kind, double *out_norm);
+
+/*
  * Finds extrema in a non-empty, two-dimensional, single-channel Mat.
  * Locations are reported as zero-based X (column) and Y (row) coordinates.
  */
