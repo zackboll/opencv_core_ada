@@ -692,6 +692,45 @@ package body Mat_Mask_Tests is
         (Check'Access, "Has_Non_Zero must reject multi-channel Mats");
    end Has_Non_Zero_Rejects_Multi_Channel_Mat;
 
+   procedure Masked_Set_To_Uses_Common_Mask_Contract_And_Scalar_Semantics
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image              : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 3));
+      Mask               : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      Multi_Channel_Mask : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 3));
+      Value              : constant OpenCV.Core.Scalar :=
+        OpenCV.Core.Make_Scalar (10.0, 20.0, 30.0);
+
+      procedure Set_With_Multi_Channel_Mask is
+      begin
+         Image.Set_To (Value, Multi_Channel_Mask);
+      end Set_With_Multi_Channel_Mask;
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (1.0, 2.0, 3.0));
+      OpenCV.Core.UInt8_Access.Set (Mask, 0, 0, 0);
+      OpenCV.Core.UInt8_Access.Set (Mask, 0, 1, 1);
+      OpenCV.Core.UInt8_Access.Set (Mask, 1, 0, 255);
+      OpenCV.Core.UInt8_Access.Set (Mask, 1, 1, 0);
+      Image.Set_To (Value, Mask);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Vec3_Access.Get (Image, 0, 0) = (1, 2, 3)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Image, 0, 1)
+                  = (10, 20, 30)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Image, 1, 0)
+                  = (10, 20, 30)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Image, 1, 1) = (1, 2, 3),
+         "Masked Set_To must set every channel of elements selected by any"
+         & " nonzero single-channel mask value");
+      Assert_Raises_OpenCV_Error
+        (Set_With_Multi_Channel_Mask'Access,
+         "Masked Set_To must reject multi-channel UInt8 masks");
+   end Masked_Set_To_Uses_Common_Mask_Contract_And_Scalar_Semantics;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -766,6 +805,10 @@ package body Mat_Mask_Tests is
         (Caller.Create
            ("Has_Non_Zero rejects multi-channel Mat",
             Has_Non_Zero_Rejects_Multi_Channel_Mat'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Masked Set_To uses common mask contract and Scalar semantics",
+            Masked_Set_To_Uses_Common_Mask_Contract_And_Scalar_Semantics'Access));
       return Result'Access;
    end Suite;
 

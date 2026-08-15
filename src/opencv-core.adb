@@ -1073,6 +1073,17 @@ package body OpenCV.Core is
       Raise_On_Error (Result, "Mat set-to operation");
    end Set_To;
 
+   procedure Set_To (Self : in out Mat; Value : Scalar; Mask : Mat) is
+      C_Value : aliased OpenCV.Internal.C_API.Scalar := To_C_Scalar (Value);
+      Result  : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Mask (Self, Mask);
+      Result :=
+        OpenCV.Internal.C_API.Mat_Set_To_Masked
+          (Self => Self.Handle, Value => C_Value'Access, Mask => Mask.Handle);
+      Raise_On_Error (Result, "Masked Mat set-to operation");
+   end Set_To;
+
    function Sum (Self : Mat) return Scalar is
       C_Result : aliased OpenCV.Internal.C_API.Scalar :=
         (Component_0 => 0.0,

@@ -165,6 +165,10 @@ package OpenCV.Core is
    function Column_View (Self : Mat; Columns : Index_Range) return Mat;
 
    procedure Set_To (Self : in out Mat; Value : Scalar);
+   --  Sets elements selected by Mask to Value. Mask uses the common mask
+   --  contract (UInt8, one channel, same shape as Self). Any nonzero mask
+   --  value selects the complete element, including every channel.
+   procedure Set_To (Self : in out Mat; Value : Scalar; Mask : Mat);
    function Sum (Self : Mat) return Scalar;
    --  Both reductions operate independently on each channel.  They support
    --  one through four channels, matching Scalar's complete representation.

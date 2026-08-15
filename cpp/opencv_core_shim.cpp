@@ -2191,6 +2191,33 @@ opencv_core_mat_set_to(opencv_core_mat_handle *mat,
 }
 
 opencv_core_status
+opencv_core_mat_set_to_masked(opencv_core_mat_handle *mat,
+                              const opencv_core_scalar *value,
+                              const opencv_core_mat_handle *mask) {
+    clear_error();
+
+    if (mat == nullptr || mask == nullptr) {
+        return invalid_argument("Mat and mask handles must not be null");
+    }
+
+    if (value == nullptr) {
+        return invalid_argument("Scalar value must not be null");
+    }
+
+    try {
+        if (!is_valid_mask_for(mat->value, mask->value)) {
+            return invalid_argument(
+                "mask must be a same-sized single-channel UInt8 Mat");
+        }
+
+        mat->value.setTo(to_opencv_scalar(*value), mask->value);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_sum(const opencv_core_mat_handle *mat,
                     opencv_core_scalar *out_sum) {
     clear_error();

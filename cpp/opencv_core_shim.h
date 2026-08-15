@@ -421,6 +421,15 @@ opencv_core_status
 opencv_core_mat_set_to(opencv_core_mat_handle *mat,
                        const opencv_core_scalar *value);
 
+/*
+ * Sets source elements selected by mask to value. Mask must be a same-sized
+ * single-channel UInt8 Mat; any nonzero value selects the complete element.
+ */
+opencv_core_status
+opencv_core_mat_set_to_masked(opencv_core_mat_handle *mat,
+                              const opencv_core_scalar *value,
+                              const opencv_core_mat_handle *mask);
+
 opencv_core_status
 opencv_core_mat_sum(const opencv_core_mat_handle *mat,
                     opencv_core_scalar *out_sum);

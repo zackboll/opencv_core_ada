@@ -472,6 +472,14 @@ package OpenCV.Internal.C_API is
    function Mat_Set_To (Self : Mat_Handle; Value : access Scalar) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_set_to";
 
+   function Mat_Set_To_Masked
+     (Self : Mat_Handle; Value : access Scalar; Mask : Mat_Handle)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_to_masked";
+
    function Mat_Sum (Self : Mat_Handle; Result : access Scalar) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_sum";
 
