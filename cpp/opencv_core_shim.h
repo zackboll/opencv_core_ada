@@ -140,6 +140,16 @@ opencv_core_mat_rotate(const opencv_core_mat_handle *source, int32_t rotation_ki
                        opencv_core_mat_handle **out_mat);
 
 /*
+ * Returns a newly allocated, independent Mat containing row_repetitions by
+ * column_repetitions tiles of source. Both counts must be positive. Source
+ * type is preserved, including depth and channel count.
+ */
+opencv_core_status
+opencv_core_mat_repeat(const opencv_core_mat_handle *source,
+                       int32_t row_repetitions, int32_t column_repetitions,
+                       opencv_core_mat_handle **out_mat);
+
+/*
  * Splits a non-empty Mat into count independently owned, single-channel Mat
  * handles. count must equal source's channel count. out_mats must reference
  * count writable handle slots; all slots are initialized to null before work

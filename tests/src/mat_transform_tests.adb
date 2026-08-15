@@ -614,6 +614,220 @@ package body Mat_Transform_Tests is
       end;
    end Rotate_Algebraic_Cross_Checks_And_Cycles;
 
+   procedure Repeat_Rectangular_UInt8_Maps_All_Elements
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+   begin
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 0, 1);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 1, 2);
+      OpenCV.Core.UInt8_Access.Set (Source, 1, 0, 3);
+      OpenCV.Core.UInt8_Access.Set (Source, 1, 1, 4);
+
+      declare
+         Result : constant OpenCV.Core.Mat :=
+           Source.Repeat (Row_Repetitions => 2, Column_Repetitions => 3);
+      begin
+         AUnit.Assertions.Assert
+           (Result.Rows = 4
+            and then Result.Columns = 6
+            and then Result.Depth = OpenCV.Core.UInt8
+            and then Result.Channels = 1
+            and then OpenCV.Core.UInt8_Access.Get (Result, 0, 0) = 1
+            and then OpenCV.Core.UInt8_Access.Get (Result, 0, 1) = 2
+            and then OpenCV.Core.UInt8_Access.Get (Result, 0, 2) = 1
+            and then OpenCV.Core.UInt8_Access.Get (Result, 0, 3) = 2
+            and then OpenCV.Core.UInt8_Access.Get (Result, 0, 4) = 1
+            and then OpenCV.Core.UInt8_Access.Get (Result, 0, 5) = 2
+            and then OpenCV.Core.UInt8_Access.Get (Result, 1, 0) = 3
+            and then OpenCV.Core.UInt8_Access.Get (Result, 1, 1) = 4
+            and then OpenCV.Core.UInt8_Access.Get (Result, 1, 2) = 3
+            and then OpenCV.Core.UInt8_Access.Get (Result, 1, 3) = 4
+            and then OpenCV.Core.UInt8_Access.Get (Result, 1, 4) = 3
+            and then OpenCV.Core.UInt8_Access.Get (Result, 1, 5) = 4
+            and then OpenCV.Core.UInt8_Access.Get (Result, 2, 0) = 1
+            and then OpenCV.Core.UInt8_Access.Get (Result, 2, 1) = 2
+            and then OpenCV.Core.UInt8_Access.Get (Result, 2, 2) = 1
+            and then OpenCV.Core.UInt8_Access.Get (Result, 2, 3) = 2
+            and then OpenCV.Core.UInt8_Access.Get (Result, 2, 4) = 1
+            and then OpenCV.Core.UInt8_Access.Get (Result, 2, 5) = 2
+            and then OpenCV.Core.UInt8_Access.Get (Result, 3, 0) = 3
+            and then OpenCV.Core.UInt8_Access.Get (Result, 3, 1) = 4
+            and then OpenCV.Core.UInt8_Access.Get (Result, 3, 2) = 3
+            and then OpenCV.Core.UInt8_Access.Get (Result, 3, 3) = 4
+            and then OpenCV.Core.UInt8_Access.Get (Result, 3, 4) = 3
+            and then OpenCV.Core.UInt8_Access.Get (Result, 3, 5) = 4,
+            "Repeat must produce the exact vertical and horizontal tile"
+            & " order");
+      end;
+   end Repeat_Rectangular_UInt8_Maps_All_Elements;
+
+   procedure Repeat_Identity_And_Vector_Shapes (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.UInt8, 1));
+      Row    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 1));
+      Column : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 1, (OpenCV.Core.UInt8, 1));
+      Square : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+   begin
+      for Index in 0 .. 2 loop
+         OpenCV.Core.UInt8_Access.Set
+           (Source, 0, Index, Interfaces.Unsigned_8 (Index + 1));
+         OpenCV.Core.UInt8_Access.Set
+           (Source, 1, Index, Interfaces.Unsigned_8 (Index + 4));
+      end loop;
+      OpenCV.Core.UInt8_Access.Set (Row, 0, 0, 7);
+      OpenCV.Core.UInt8_Access.Set (Row, 0, 1, 8);
+      OpenCV.Core.UInt8_Access.Set (Column, 0, 0, 9);
+      OpenCV.Core.UInt8_Access.Set (Column, 1, 0, 10);
+      OpenCV.Core.UInt8_Access.Set (Square, 0, 0, 1);
+      OpenCV.Core.UInt8_Access.Set (Square, 0, 1, 2);
+      OpenCV.Core.UInt8_Access.Set (Square, 1, 0, 3);
+      OpenCV.Core.UInt8_Access.Set (Square, 1, 1, 4);
+
+      declare
+         Identity      : OpenCV.Core.Mat :=
+           Source.Repeat (Row_Repetitions => 1, Column_Repetitions => 1);
+         Vertical      : constant OpenCV.Core.Mat :=
+           Source.Repeat (Row_Repetitions => 2, Column_Repetitions => 1);
+         Horizontal    : constant OpenCV.Core.Mat :=
+           Source.Repeat (Row_Repetitions => 1, Column_Repetitions => 2);
+         Row_Result    : constant OpenCV.Core.Mat :=
+           Row.Repeat (Row_Repetitions => 3, Column_Repetitions => 2);
+         Column_Result : constant OpenCV.Core.Mat :=
+           Column.Repeat (Row_Repetitions => 2, Column_Repetitions => 3);
+         Square_Result : constant OpenCV.Core.Mat :=
+           Square.Repeat (Row_Repetitions => 2, Column_Repetitions => 2);
+      begin
+         AUnit.Assertions.Assert
+           (UInt8_Mats_Are_Equivalent (Identity, Source),
+            "Repeat identity must preserve every source value");
+         OpenCV.Core.UInt8_Access.Set (Identity, 0, 0, 20);
+         AUnit.Assertions.Assert
+           (Source.Rows = 2
+            and then Source.Columns = 3
+            and then OpenCV.Core.UInt8_Access.Get (Source, 0, 0) = 1
+            and then Vertical.Rows = 4
+            and then Vertical.Columns = 3
+            and then OpenCV.Core.UInt8_Access.Get (Vertical, 3, 2) = 6
+            and then Horizontal.Rows = 2
+            and then Horizontal.Columns = 6
+            and then OpenCV.Core.UInt8_Access.Get (Horizontal, 1, 5) = 6
+            and then Row_Result.Rows = 3
+            and then Row_Result.Columns = 4
+            and then OpenCV.Core.UInt8_Access.Get (Row_Result, 2, 3) = 8
+            and then Column_Result.Rows = 4
+            and then Column_Result.Columns = 3
+            and then OpenCV.Core.UInt8_Access.Get (Column_Result, 3, 2) = 10
+            and then Square_Result.Rows = 4
+            and then Square_Result.Columns = 4
+            and then OpenCV.Core.UInt8_Access.Get (Square_Result, 2, 2) = 1,
+            "Repeat identity must be independent and support vector and"
+            & " square shapes");
+      end;
+   end Repeat_Identity_And_Vector_Shapes;
+
+   procedure Repeat_Float32_And_UInt8_Vec3 (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Floats  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+      Vectors : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 3));
+   begin
+      OpenCV.Core.Float32_Access.Set (Floats, 0, 0, 1.5);
+      OpenCV.Core.Float32_Access.Set (Floats, 0, 1, 2.5);
+      OpenCV.Core.UInt8_Vec3_Access.Set (Vectors, 0, 0, (1, 2, 3));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Vectors, 0, 1, (4, 5, 6));
+
+      declare
+         Float_Result : constant OpenCV.Core.Mat :=
+           Floats.Repeat (Row_Repetitions => 2, Column_Repetitions => 2);
+         Vec_Result   : constant OpenCV.Core.Mat :=
+           Vectors.Repeat (Row_Repetitions => 2, Column_Repetitions => 3);
+      begin
+         AUnit.Assertions.Assert
+           (Float_Result.Rows = 2
+            and then Float_Result.Columns = 4
+            and then Float_Result.Depth = OpenCV.Core.Float32
+            and then Float_Result.Channels = 1
+            and then OpenCV.Core.Float32_Access.Get (Float_Result, 1, 2) = 1.5
+            and then Vec_Result.Rows = 2
+            and then Vec_Result.Columns = 6
+            and then Vec_Result.Depth = OpenCV.Core.UInt8
+            and then Vec_Result.Channels = 3
+            and then OpenCV.Core.UInt8_Vec3_Access.Get (Vec_Result, 0, 0)
+                     = (1, 2, 3)
+            and then OpenCV.Core.UInt8_Vec3_Access.Get (Vec_Result, 0, 3)
+                     = (4, 5, 6)
+            and then OpenCV.Core.UInt8_Vec3_Access.Get (Vec_Result, 1, 4)
+                     = (1, 2, 3),
+            "Repeat must preserve metadata and complete Float32 and Vec3"
+            & " values");
+      end;
+   end Repeat_Float32_And_UInt8_Vec3;
+
+   procedure Repeat_Region_Lifetime_Empty_And_Size_Validation
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Result : OpenCV.Core.Mat;
+      Empty  : OpenCV.Core.Mat;
+
+      procedure Repeat_Too_Many_Rows is
+         Source  : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create (2, 1, (OpenCV.Core.UInt8, 1));
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored :=
+           Source.Repeat
+             (Row_Repetitions => Positive'Last, Column_Repetitions => 1);
+      end Repeat_Too_Many_Rows;
+   begin
+      declare
+         Parent : OpenCV.Core.Mat :=
+           OpenCV.Core.Create (2, 4, (OpenCV.Core.UInt8, 1));
+      begin
+         OpenCV.Core.UInt8_Access.Set (Parent, 0, 1, 1);
+         OpenCV.Core.UInt8_Access.Set (Parent, 0, 2, 2);
+         OpenCV.Core.UInt8_Access.Set (Parent, 1, 1, 3);
+         OpenCV.Core.UInt8_Access.Set (Parent, 1, 2, 4);
+         declare
+            Region : constant OpenCV.Core.Mat :=
+              Parent.Region ((X => 1, Y => 0, Width => 2, Height => 2));
+         begin
+            Result :=
+              Region.Repeat (Row_Repetitions => 2, Column_Repetitions => 2);
+            OpenCV.Core.UInt8_Access.Set (Result, 0, 0, 20);
+            AUnit.Assertions.Assert
+              (not Region.Is_Continuous
+               and then OpenCV.Core.UInt8_Access.Get (Region, 0, 0) = 1,
+               "Repeat must accept non-continuous Regions with independent"
+               & " storage");
+         end;
+      end;
+
+      declare
+         Empty_Result : constant OpenCV.Core.Mat :=
+           Empty.Repeat (Row_Repetitions => 2, Column_Repetitions => 3);
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Access.Get (Result, 0, 0) = 20
+            and then Empty_Result.Is_Empty,
+            "A repeat result must survive source finalization and empty input"
+            & " must remain empty");
+      end;
+
+      Assert_Raises_OpenCV_Error
+        (Repeat_Too_Many_Rows'Access,
+         "Repeat must reject output dimensions beyond the supported range");
+   end Repeat_Region_Lifetime_Empty_And_Size_Validation;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
    Result : aliased AUnit.Test_Suites.Test_Suite;
 
@@ -674,6 +888,22 @@ package body Mat_Transform_Tests is
         (Caller.Create
            ("Rotate algebraic cross-checks and cycles",
             Rotate_Algebraic_Cross_Checks_And_Cycles'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Repeat rectangular UInt8 exact mapping",
+            Repeat_Rectangular_UInt8_Maps_All_Elements'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Repeat identity and vector shapes",
+            Repeat_Identity_And_Vector_Shapes'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Repeat Float32 and UInt8 Vec3",
+            Repeat_Float32_And_UInt8_Vec3'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Repeat Region, lifetime, empty Mat, and size validation",
+            Repeat_Region_Lifetime_Empty_And_Size_Validation'Access));
       return Result'Access;
    end Suite;
 

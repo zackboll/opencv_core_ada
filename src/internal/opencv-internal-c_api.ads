@@ -129,6 +129,13 @@ package OpenCV.Internal.C_API is
       return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_rotate";
 
+   function Mat_Repeat
+     (Source             : Mat_Handle;
+      Row_Repetitions    : C_Int32;
+      Column_Repetitions : C_Int32;
+      Result             : access Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_repeat";
+
    function Mat_Split
      (Source : Mat_Handle; Results : access Mat_Handle; Count : C_Int32)
       return Status

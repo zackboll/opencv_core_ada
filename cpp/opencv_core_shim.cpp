@@ -538,6 +538,40 @@ opencv_core_mat_rotate(const opencv_core_mat_handle *source, int32_t rotation_ki
 }
 
 opencv_core_status
+opencv_core_mat_repeat(const opencv_core_mat_handle *source,
+                       int32_t row_repetitions, int32_t column_repetitions,
+                       opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (source == nullptr) {
+        return invalid_argument("source Mat handle must not be null");
+    }
+
+    if (source->value.dims > 2) {
+        return invalid_argument("Mat repeat supports two-dimensional Mats only");
+    }
+
+    if (row_repetitions <= 0 || column_repetitions <= 0) {
+        return invalid_argument("repeat counts must be positive");
+    }
+
+    try {
+        cv::Mat repeated;
+        cv::repeat(source->value, row_repetitions, column_repetitions, repeated);
+        *out_mat = new opencv_core_mat_handle(repeated);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_copy_to(const opencv_core_mat_handle *source,
                         opencv_core_mat_handle *destination) {
     clear_error();

@@ -850,6 +850,56 @@ package body OpenCV.Core is
       return Result;
    end Rotate;
 
+   procedure Validate_Repeat_Dimensions
+     (Self : Mat; Row_Repetitions, Column_Repetitions : Positive)
+   is
+      Maximum_Dimension : constant Mat_Size := 2_147_483_647;
+
+      procedure Validate_Dimension
+        (Source_Dimension : Natural; Repetitions : Positive; Axis : String)
+      is
+         Source_Size : constant Mat_Size := Mat_Size (Source_Dimension);
+      begin
+         if Source_Size /= 0
+           and then Mat_Size (Repetitions) > Maximum_Dimension / Source_Size
+         then
+            Ada.Exceptions.Raise_Exception
+              (OpenCV_Error'Identity,
+               "Mat repeat result "
+               & Axis
+               & " count exceeds the supported range");
+         end if;
+      end Validate_Dimension;
+   begin
+      Validate_Dimension (Self.Rows, Row_Repetitions, "row");
+      Validate_Dimension (Self.Columns, Column_Repetitions, "column");
+   end Validate_Repeat_Dimensions;
+
+   function Repeat
+     (Self : Mat; Row_Repetitions : Positive; Column_Repetitions : Positive)
+      return Mat
+   is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Repeat_Dimensions (Self, Row_Repetitions, Column_Repetitions);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Repeat
+          (Source             => Self.Handle,
+           Row_Repetitions    =>
+             OpenCV.Internal.C_API.C_Int32 (Row_Repetitions),
+           Column_Repetitions =>
+             OpenCV.Internal.C_API.C_Int32 (Column_Repetitions),
+           Result             => New_Handle'Access);
+      Raise_On_Error (Status, "Mat repeat");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Repeat;
+
    function Split (Self : Mat) return Mat_Array is
    begin
       if Self.Is_Empty then

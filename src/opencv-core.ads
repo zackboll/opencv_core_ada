@@ -232,6 +232,12 @@ package OpenCV.Core is
    --  exchange rows and columns; a half turn preserves dimensions and every
    --  variant preserves element depth and channel count.
    function Rotate (Self : Mat; Kind : Rotation_Kind) return Mat;
+   --  Returns an independent Mat tiled vertically Row_Repetitions times and
+   --  horizontally Column_Repetitions times. Element depth and channel count
+   --  are preserved. Empty Mats produce an empty result.
+   function Repeat
+     (Self : Mat; Row_Repetitions : Positive; Column_Repetitions : Positive)
+      return Mat;
    --  Both operands must be single-channel with identical rows, columns, and
    --  depth.  The result is an independent UInt8 single-channel mask with 255
    --  where the comparison is true and 0 otherwise, suitable for masked ops.
