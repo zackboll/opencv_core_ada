@@ -243,6 +243,11 @@ package OpenCV.Core is
    --  counts may differ. An empty input array produces an empty Mat; empty
    --  individual Mats are accepted when they satisfy the same requirements.
    function HConcat (Sources : Mat_Array) return Mat;
+   --  Concatenates Sources top to bottom into an independent Mat. Inputs must
+   --  have identical column counts and complete element types. Their row
+   --  counts may differ. An empty input array produces an empty Mat; empty
+   --  individual Mats are accepted when they satisfy the same requirements.
+   function VConcat (Sources : Mat_Array) return Mat;
    --  Both operands must be single-channel with identical rows, columns, and
    --  depth.  The result is an independent UInt8 single-channel mask with 255
    --  where the comparison is true and 0 otherwise, suitable for masked ops.

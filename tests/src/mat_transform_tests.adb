@@ -1034,6 +1034,232 @@ package body Mat_Transform_Tests is
          "HConcat must reject inputs with mismatched channel counts");
    end HConcat_Region_Lifetime_Empty_And_Validation;
 
+   procedure VConcat_UInt8_Mapping_Array_Order_And_Cross_Check
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      A       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      B       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.UInt8, 1));
+      Bottom  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 1));
+      Sources : OpenCV.Core.Mat_Array (5 .. 7) :=
+        (5 => A, 6 => B, 7 => Bottom);
+   begin
+      for Row in 0 .. 1 loop
+         for Column in 0 .. 1 loop
+            OpenCV.Core.UInt8_Access.Set
+              (A, Row, Column, Interfaces.Unsigned_8 (Row * 2 + Column + 1));
+         end loop;
+      end loop;
+      for Row in 0 .. 2 loop
+         for Column in 0 .. 1 loop
+            OpenCV.Core.UInt8_Access.Set
+              (B, Row, Column, Interfaces.Unsigned_8 (Row * 2 + Column + 5));
+         end loop;
+      end loop;
+      OpenCV.Core.UInt8_Access.Set (Bottom, 0, 0, 11);
+      OpenCV.Core.UInt8_Access.Set (Bottom, 0, 1, 12);
+      Sources := (5 => A, 6 => B, 7 => Bottom);
+
+      declare
+         Two_Result  : constant OpenCV.Core.Mat :=
+           OpenCV.Core.VConcat ((0 => A, 1 => B));
+         Result      : constant OpenCV.Core.Mat :=
+           OpenCV.Core.VConcat (Sources);
+         Cross_Check : constant OpenCV.Core.Mat :=
+           OpenCV.Core.HConcat
+             ((0 => A.Transpose, 1 => B.Transpose, 2 => Bottom.Transpose))
+             .Transpose;
+      begin
+         AUnit.Assertions.Assert
+           (Two_Result.Rows = 5
+            and then Two_Result.Columns = 2
+            and then OpenCV.Core.UInt8_Access.Get (Two_Result, 0, 0) = 1
+            and then OpenCV.Core.UInt8_Access.Get (Two_Result, 0, 1) = 2
+            and then OpenCV.Core.UInt8_Access.Get (Two_Result, 1, 0) = 3
+            and then OpenCV.Core.UInt8_Access.Get (Two_Result, 1, 1) = 4
+            and then OpenCV.Core.UInt8_Access.Get (Two_Result, 2, 0) = 5
+            and then OpenCV.Core.UInt8_Access.Get (Two_Result, 2, 1) = 6
+            and then OpenCV.Core.UInt8_Access.Get (Two_Result, 3, 0) = 7
+            and then OpenCV.Core.UInt8_Access.Get (Two_Result, 3, 1) = 8
+            and then OpenCV.Core.UInt8_Access.Get (Two_Result, 4, 0) = 9
+            and then OpenCV.Core.UInt8_Access.Get (Two_Result, 4, 1) = 10,
+            "VConcat must place two inputs in exact top-to-bottom order");
+         AUnit.Assertions.Assert
+           (Result.Rows = 6
+            and then Result.Columns = 2
+            and then Result.Depth = OpenCV.Core.UInt8
+            and then Result.Channels = 1
+            and then OpenCV.Core.UInt8_Access.Get (Result, 5, 0) = 11
+            and then OpenCV.Core.UInt8_Access.Get (Result, 5, 1) = 12
+            and then UInt8_Mats_Are_Equivalent (Result, Cross_Check),
+            "VConcat must preserve arbitrary Mat_Array order and agree with"
+            & " the transpose/HConcat test oracle");
+      end;
+   end VConcat_UInt8_Mapping_Array_Order_And_Cross_Check;
+
+   procedure VConcat_Float32_And_UInt8_Vec3 (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Float_Top    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+      Float_Bottom : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Vec_Top      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 3));
+      Vec_Bottom   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 1, (OpenCV.Core.UInt8, 3));
+   begin
+      OpenCV.Core.Float32_Access.Set (Float_Top, 0, 0, 1.5);
+      OpenCV.Core.Float32_Access.Set (Float_Top, 0, 1, 2.5);
+      OpenCV.Core.Float32_Access.Set (Float_Bottom, 0, 0, 3.5);
+      OpenCV.Core.Float32_Access.Set (Float_Bottom, 0, 1, 4.5);
+      OpenCV.Core.Float32_Access.Set (Float_Bottom, 1, 0, 5.5);
+      OpenCV.Core.Float32_Access.Set (Float_Bottom, 1, 1, 6.5);
+      OpenCV.Core.UInt8_Vec3_Access.Set (Vec_Top, 0, 0, (1, 2, 3));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Vec_Bottom, 0, 0, (4, 5, 6));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Vec_Bottom, 1, 0, (7, 8, 9));
+
+      declare
+         Float_Result : constant OpenCV.Core.Mat :=
+           OpenCV.Core.VConcat ((0 => Float_Top, 1 => Float_Bottom));
+         Vec_Result   : constant OpenCV.Core.Mat :=
+           OpenCV.Core.VConcat ((0 => Vec_Top, 1 => Vec_Bottom));
+      begin
+         AUnit.Assertions.Assert
+           (Float_Result.Rows = 3
+            and then Float_Result.Columns = 2
+            and then Float_Result.Depth = OpenCV.Core.Float32
+            and then Float_Result.Channels = 1
+            and then OpenCV.Core.Float32_Access.Get (Float_Result, 2, 1) = 6.5,
+            "VConcat must preserve Float32 values and element type");
+         AUnit.Assertions.Assert
+           (Vec_Result.Rows = 3
+            and then Vec_Result.Columns = 1
+            and then Vec_Result.Depth = OpenCV.Core.UInt8
+            and then Vec_Result.Channels = 3
+            and then OpenCV.Core.UInt8_Vec3_Access.Get (Vec_Result, 0, 0)
+                     = (1, 2, 3)
+            and then OpenCV.Core.UInt8_Vec3_Access.Get (Vec_Result, 1, 0)
+                     = (4, 5, 6)
+            and then OpenCV.Core.UInt8_Vec3_Access.Get (Vec_Result, 2, 0)
+                     = (7, 8, 9),
+            "VConcat must preserve complete UInt8 Vec3 tuples");
+      end;
+   end VConcat_Float32_And_UInt8_Vec3;
+
+   procedure VConcat_Region_Lifetime_Empty_And_Validation
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Result        : OpenCV.Core.Mat;
+      Empty         : OpenCV.Core.Mat;
+      Empty_Sources : OpenCV.Core.Mat_Array (1 .. 0);
+      Empty_Inputs  : OpenCV.Core.Mat_Array (0 .. 1) := (others => Empty);
+
+      procedure Mismatched_Columns is
+         Left    : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+         Right   : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := OpenCV.Core.VConcat ((0 => Left, 1 => Right));
+      end Mismatched_Columns;
+
+      procedure Mismatched_Depth is
+         UInt8_Source : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+         Float_Source : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+         Ignored      : OpenCV.Core.Mat;
+      begin
+         Ignored :=
+           OpenCV.Core.VConcat ((0 => UInt8_Source, 1 => Float_Source));
+      end Mismatched_Depth;
+
+      procedure Mismatched_Channels is
+         UInt8_Source : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+         Vec_Source   : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 3));
+         Ignored      : OpenCV.Core.Mat;
+      begin
+         Ignored := OpenCV.Core.VConcat ((0 => UInt8_Source, 1 => Vec_Source));
+      end Mismatched_Channels;
+   begin
+      declare
+         Parent : OpenCV.Core.Mat :=
+           OpenCV.Core.Create (4, 4, (OpenCV.Core.UInt8, 1));
+      begin
+         for Row in 0 .. 3 loop
+            for Column in 0 .. 3 loop
+               OpenCV.Core.UInt8_Access.Set
+                 (Parent,
+                  Row,
+                  Column,
+                  Interfaces.Unsigned_8 (Row * 4 + Column + 1));
+            end loop;
+         end loop;
+         declare
+            Top    : constant OpenCV.Core.Mat :=
+              Parent.Region ((X => 1, Y => 0, Width => 2, Height => 2));
+            Bottom : constant OpenCV.Core.Mat :=
+              Parent.Region ((X => 1, Y => 2, Width => 2, Height => 2));
+         begin
+            Result := OpenCV.Core.VConcat ((0 => Top, 1 => Bottom));
+            OpenCV.Core.UInt8_Access.Set (Result, 0, 0, 20);
+            AUnit.Assertions.Assert
+              (not Top.Is_Continuous
+               and then Result.Rows = 4
+               and then Result.Columns = 2
+               and then OpenCV.Core.UInt8_Access.Get (Top, 0, 0) = 2,
+               "VConcat must accept non-continuous Regions with independent"
+               & " storage");
+         end;
+      end;
+
+      declare
+         Single : OpenCV.Core.Mat :=
+           OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+      begin
+         OpenCV.Core.UInt8_Access.Set (Single, 0, 0, 7);
+         declare
+            Single_Result : OpenCV.Core.Mat :=
+              OpenCV.Core.VConcat ((0 => Single));
+         begin
+            OpenCV.Core.UInt8_Access.Set (Single_Result, 0, 0, 9);
+            AUnit.Assertions.Assert
+              (OpenCV.Core.UInt8_Access.Get (Single, 0, 0) = 7,
+               "A one-element VConcat result must have independent storage");
+         end;
+      end;
+
+      declare
+         Empty_Result        : constant OpenCV.Core.Mat :=
+           OpenCV.Core.VConcat (Empty_Sources);
+         Empty_Inputs_Result : constant OpenCV.Core.Mat :=
+           OpenCV.Core.VConcat (Empty_Inputs);
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Access.Get (Result, 0, 0) = 20
+            and then Empty_Result.Is_Empty
+            and then Empty_Inputs_Result.Is_Empty,
+            "VConcat must survive source finalization and accept empty inputs");
+      end;
+
+      Assert_Raises_OpenCV_Error
+        (Mismatched_Columns'Access,
+         "VConcat must reject inputs with mismatched column counts");
+      Assert_Raises_OpenCV_Error
+        (Mismatched_Depth'Access,
+         "VConcat must reject inputs with mismatched depths");
+      Assert_Raises_OpenCV_Error
+        (Mismatched_Channels'Access,
+         "VConcat must reject inputs with mismatched channel counts");
+   end VConcat_Region_Lifetime_Empty_And_Validation;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
    Result : aliased AUnit.Test_Suites.Test_Suite;
 
@@ -1122,6 +1348,18 @@ package body Mat_Transform_Tests is
         (Caller.Create
            ("HConcat Region, lifetime, empty input, and validation",
             HConcat_Region_Lifetime_Empty_And_Validation'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("VConcat UInt8 mapping, array order, and cross-check",
+            VConcat_UInt8_Mapping_Array_Order_And_Cross_Check'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("VConcat Float32 and UInt8 Vec3",
+            VConcat_Float32_And_UInt8_Vec3'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("VConcat Region, lifetime, empty input, and validation",
+            VConcat_Region_Lifetime_Empty_And_Validation'Access));
       return Result'Access;
    end Suite;
 

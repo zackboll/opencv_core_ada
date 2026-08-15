@@ -608,6 +608,42 @@ opencv_core_mat_hconcat(const opencv_core_mat_handle *const *sources,
 }
 
 opencv_core_status
+opencv_core_mat_vconcat(const opencv_core_mat_handle *const *sources,
+                        int32_t count, opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+    *out_mat = nullptr;
+
+    if (count < 0) {
+        return invalid_argument("input count must not be negative");
+    }
+    if (count > 0 && sources == nullptr) {
+        return invalid_argument("sources must not be null for nonempty input");
+    }
+
+    try {
+        std::vector<cv::Mat> inputs;
+        inputs.reserve(static_cast<size_t>(count));
+        for (int32_t index = 0; index < count; ++index) {
+            if (sources[index] == nullptr) {
+                return invalid_argument("source Mat handle must not be null");
+            }
+            inputs.push_back(sources[index]->value);
+        }
+
+        cv::Mat concatenated;
+        cv::vconcat(inputs, concatenated);
+        *out_mat = new opencv_core_mat_handle(concatenated);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_copy_to(const opencv_core_mat_handle *source,
                         opencv_core_mat_handle *destination) {
     clear_error();
