@@ -900,6 +900,98 @@ package body OpenCV.Core is
       return Result;
    end Repeat;
 
+   function HConcat (Sources : Mat_Array) return Mat is
+      Maximum_Dimension : constant Mat_Size := 2_147_483_647;
+      Maximum_C_Int32   : constant Natural := 2_147_483_647;
+   begin
+      if Sources'Length > Maximum_C_Int32 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat horizontal concatenation input count exceeds the supported"
+            & " range");
+      end if;
+
+      if Sources'Length = 0 then
+         declare
+            Result     : Mat;
+            New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+              OpenCV.Internal.C_API.Null_Mat_Handle;
+            Status     : OpenCV.Internal.C_API.Status;
+         begin
+            Status :=
+              OpenCV.Internal.C_API.Mat_HConcat
+                (Sources => null, Count => 0, Result => New_Handle'Access);
+            Raise_On_Error (Status, "Mat horizontal concatenation");
+            OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+            Result.Handle := New_Handle;
+            return Result;
+         end;
+      end if;
+
+      declare
+         First             : constant Mat := Sources (Sources'First);
+         Expected_Rows     : constant Natural := First.Rows;
+         Expected_Depth    : constant Depth_Type := First.Depth;
+         Expected_Channels : constant Channel_Count := First.Channels;
+         Total_Columns     : Mat_Size := 0;
+         Handles           :
+           OpenCV.Internal.C_API.Mat_Handle_Array (0 .. Sources'Length - 1);
+         Position          : Natural := Handles'First;
+         Result            : Mat;
+         New_Handle        : aliased OpenCV.Internal.C_API.Mat_Handle :=
+           OpenCV.Internal.C_API.Null_Mat_Handle;
+         Status            : OpenCV.Internal.C_API.Status;
+      begin
+         for Source of Sources loop
+            if Source.Rows /= Expected_Rows then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  "Mat horizontal concatenation requires inputs with identical"
+                  & " row counts");
+            end if;
+
+            if Source.Depth /= Expected_Depth
+              or else Source.Channels /= Expected_Channels
+            then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  "Mat horizontal concatenation requires inputs with identical"
+                  & " element types");
+            end if;
+
+            if Total_Columns > Maximum_Dimension - Mat_Size (Source.Columns)
+            then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  "Mat horizontal concatenation result column count exceeds"
+                  & " the supported range");
+            end if;
+            Total_Columns := Total_Columns + Mat_Size (Source.Columns);
+            Handles (Position) := Source.Handle;
+            Position := Position + 1;
+         end loop;
+
+         Status :=
+           OpenCV.Internal.C_API.Mat_HConcat
+             (Sources => Handles (Handles'First)'Access,
+              Count   => OpenCV.Internal.C_API.C_Int32 (Sources'Length),
+              Result  => New_Handle'Access);
+         if Status /= OpenCV.Internal.C_API.Success then
+            OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+            Raise_On_Error (Status, "Mat horizontal concatenation");
+         end if;
+         if New_Handle = OpenCV.Internal.C_API.Null_Mat_Handle then
+            Ada.Exceptions.Raise_Exception
+              (OpenCV_Error'Identity,
+               "Mat horizontal concatenation returned a null result handle");
+         end if;
+
+         OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+         Result.Handle := New_Handle;
+         return Result;
+      end;
+   end HConcat;
+
    function Split (Self : Mat) return Mat_Array is
    begin
       if Self.Is_Empty then

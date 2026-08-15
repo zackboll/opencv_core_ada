@@ -238,6 +238,11 @@ package OpenCV.Core is
    function Repeat
      (Self : Mat; Row_Repetitions : Positive; Column_Repetitions : Positive)
       return Mat;
+   --  Concatenates Sources left to right into an independent Mat. Inputs must
+   --  have identical row counts and complete element types. Their column
+   --  counts may differ. An empty input array produces an empty Mat; empty
+   --  individual Mats are accepted when they satisfy the same requirements.
+   function HConcat (Sources : Mat_Array) return Mat;
    --  Both operands must be single-channel with identical rows, columns, and
    --  depth.  The result is an independent UInt8 single-channel mask with 255
    --  where the comparison is true and 0 otherwise, suitable for masked ops.

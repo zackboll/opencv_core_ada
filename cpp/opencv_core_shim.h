@@ -150,6 +150,16 @@ opencv_core_mat_repeat(const opencv_core_mat_handle *source,
                        opencv_core_mat_handle **out_mat);
 
 /*
+ * Horizontally concatenates count borrowed source Mats in input order. Inputs
+ * must have identical row counts and complete types. An empty input collection
+ * produces an empty Mat. On success out_mat receives one independently owned
+ * Mat handle.
+ */
+opencv_core_status
+opencv_core_mat_hconcat(const opencv_core_mat_handle *const *sources,
+                        int32_t count, opencv_core_mat_handle **out_mat);
+
+/*
  * Splits a non-empty Mat into count independently owned, single-channel Mat
  * handles. count must equal source's channel count. out_mats must reference
  * count writable handle slots; all slots are initialized to null before work
