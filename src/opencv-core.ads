@@ -184,6 +184,10 @@ package OpenCV.Core is
    --  Non-contiguous views are supported. Empty Mat returns 0.
    function Count_Non_Zero (Self : Mat) return Mat_Size;
 
+
+    --  Returns true if a single-channel Mat contains at least one nonzero element.
+    --  Supports non-contiguous views. Rejects multi-channel Mats. Empty Mat returns false.
+    function Has_Non_Zero (Self : Mat) return Boolean;
 private
 
    type Mat is new Ada.Finalization.Controlled with record

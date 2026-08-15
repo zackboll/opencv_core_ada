@@ -477,6 +477,15 @@ opencv_core_status
 opencv_core_mat_count_non_zero(const opencv_core_mat_handle *mat,
                                int64_t *out_count);
 
+/*
+ * Returns true if a single-channel Mat contains at least one nonzero element.
+ * Supports non-contiguous views. The result is returned as uint8_t (0 or 1).
+ * Defensive validation requires a valid 2D single-channel handle.
+ */
+opencv_core_status
+opencv_core_mat_has_non_zero(const opencv_core_mat_handle *mat,
+                              uint8_t *out_result);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1249,4 +1249,20 @@ package body OpenCV.Core is
       return Mat_Size (Count);
    end Count_Non_Zero;
 
+   function Has_Non_Zero (Self : Mat) return Boolean is
+      Result  : aliased Interfaces.Unsigned_8 := 0;
+      Status  : OpenCV.Internal.C_API.Status;
+   begin
+      if Self.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Has_Non_Zero requires a single-channel Mat");
+      end if;
+
+      Status := OpenCV.Internal.C_API.Mat_Has_Non_Zero (Self.Handle, Result'Access);
+      Raise_On_Error (Status, "Mat has non-zero operation");
+
+      return Result = 1;
+   end Has_Non_Zero;
+
 end OpenCV.Core;
