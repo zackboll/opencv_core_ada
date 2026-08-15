@@ -2,13 +2,13 @@
 
 A thick, idiomatic Ada binding for the **OpenCV Core** module.
 
-`opencvcore_ada` is intended to provide a safe Ada-facing API over OpenCV's Core data structures and array operations without exposing C++ ABI details to Ada applications. The binding uses a stable C ABI shim between Ada and C++, preserves OpenCV ownership and numeric semantics, and presents common OpenCV concepts through Ada types, controlled objects, overloads, generics, ranges, and exceptions.
+`opencvcore_ada` provides a safe Ada-facing API over OpenCV Core data structures and array operations without exposing C++ ABI details to Ada applications. The binding uses a stable C ABI shim between Ada and C++, preserves OpenCV ownership and numeric semantics, and presents common OpenCV concepts through Ada controlled types, strong enums and records, overloads, generics, ranges, and exceptions.
 
 > **Project status:** active development, `0.1.0-dev`.
 >
-> **Current baseline:** the current `main` branch passes **128/128 AUnit tests** as of August 2026.
+> **Current baseline:** **218 AUnit tests** in the current development suite as of August 2026.
 >
-> **Current practical completion:** approximately **35–40%** of a broad, portable, user-facing dense-`Mat` OpenCV Core binding, with approximately **60–65%** of the Core foundation likely to be needed by downstream Ada OpenCV modules already in place.
+> **Current milestone status:** the mask/selection and channel-manipulation milestones are complete; the core 2-D matrix layout/rearrangement milestone is largely complete; reductions now include `Trace` and axis-based `Reduce`.
 
 ## Goals
 
@@ -22,6 +22,7 @@ The project is designed around several principles:
 - Preserve OpenCV's actual numeric behavior, including integer saturation, rounding, non-contiguous matrices, masks, and IEEE floating-point edge cases.
 - Build features vertically: public Ada API → thin Ada interop → C++ shim → OpenCV → AUnit tests.
 - Keep the public library independent from test-only dependencies such as AUnit, GNATprove, and GNATcov.
+- Prefer explicit Ada abstractions over C++-specific encodings such as integer mode constants, flattened channel maps, output parameters, and STL collections.
 
 This crate is focused on **OpenCV Core**. Higher-level modules such as image processing, image codecs, GUI, video I/O, calibration, features, and DNN functionality are expected to live in separate Ada crates that depend on `opencvcore_ada`.
 
@@ -69,10 +70,12 @@ The C++ shim:
 - exports only `extern "C"` functions;
 - uses opaque handles for `cv::Mat`;
 - uses fixed-width integers and simple C-compatible records;
-- catches `cv::Exception`, `std::exception`, and unknown exceptions;
+- catches OpenCV, standard C++, and unknown exceptions;
 - translates failures into stable status codes plus a diagnostic message;
 - does not allow C++ exceptions to cross into Ada;
 - does not pass C++ objects, references, STL types, or templates across the boundary.
+
+C++ containers may be used **inside** the shim when OpenCV requires them, but they never cross the ABI.
 
 ### `Mat` ownership model
 
@@ -92,9 +95,17 @@ Use `Clone` when independent storage is required:
 B := A.Clone;
 ```
 
-Views such as `Region`, `Row_View`, `Column_View`, and `Reshape` also create distinct `Mat` headers that share storage where OpenCV defines a no-copy view.
+Views such as:
 
-Functions that compute a new result, such as `Add`, `Normalize`, `Convert_To`, `In_Range`, and bitwise operations, return independently owned result storage.
+- `Region`
+- `Row_View`
+- `Column_View`
+- `Reshape`
+- `Diagonal_View`
+
+create distinct `Mat` headers that share storage where OpenCV defines a no-copy view.
+
+Operations that compute a new result, including arithmetic, conversions, transforms, channel extraction/splitting, concatenation, diagonal-matrix construction, and reductions such as `Reduce`, return independently owned result storage unless explicitly documented otherwise.
 
 ---
 
@@ -109,7 +120,7 @@ The build currently expects:
 - OpenCV development files providing the `opencv4` pkg-config package;
 - the OpenCV Core library (`opencv_core`).
 
-The project file compiles the shim as C++17 and links against:
+The project compiles the shim as C++17 and links against:
 
 ```text
 opencv_core
@@ -122,14 +133,9 @@ OpenCV include and library paths are discovered automatically by:
 scripts/configure_opencv.sh
 ```
 
-using:
+using the `opencv4` pkg-config package.
 
-```text
-pkg-config --variable=includedir opencv4
-pkg-config --variable=libdir opencv4
-```
-
-Development and behavioral validation have primarily targeted **OpenCV 4.10**. Compatibility across every OpenCV 4.x release is not yet formally characterized.
+The binding targets portable OpenCV 4.x Core behavior. Release-by-release compatibility across all OpenCV 4.x versions is not yet formally characterized, so authoritative OpenCV declarations/source are checked when each feature is integrated.
 
 ---
 
@@ -145,7 +151,7 @@ alr build
 
 The Alire pre-build action runs `scripts/configure_opencv.sh`, which generates the local OpenCV GPR configuration from `pkg-config`.
 
-If configuration fails, first verify:
+If configuration fails, verify:
 
 ```sh
 pkg-config --exists opencv4
@@ -168,20 +174,29 @@ alr -C tests run
 
 The test crate currently depends on:
 
-- AUnit 26;
+- AUnit `^26.0.0`;
 - the local `opencvcore_ada` crate;
-- GNATprove;
-- GNATcov.
+- GNATprove `^16.1.0`;
+- GNATcov `^26.2.1`.
 
 These development dependencies are intentionally not dependencies of the public library crate.
 
-Current baseline:
+The test suite is organized into:
+
+- `Mat_Basic_Tests`
+- `Mat_Access_Tests`
+- `Mat_View_Tests`
+- `Mat_Conversion_Tests`
+- `Mat_Arithmetic_Tests`
+- `Mat_Channel_Tests`
+- `Mat_Mask_Tests`
+- `Mat_Reduction_Tests`
+- `Mat_Transform_Tests`
+
+Current development baseline:
 
 ```text
-128 tests run
-128 successful
-0 failed assertions
-0 unexpected errors
+218 AUnit tests
 ```
 
 ---
@@ -245,9 +260,34 @@ end Size_Example;
 
 ---
 
+# Typed access
+
+The public `Depth_Type` represents:
+
+```text
+UInt8
+Int8
+UInt16
+Int16
+Int32
+Float32
+Float64
+Float16
+```
+
+Typed element-access packages currently concentrate on UInt8 and Float32.
+
+## Scalar element access
+
+Available scalar accessors include:
+
+- UInt8 `Get` / `Set`;
+- Float32 `Get` / `Set`;
+- Float32 non-finite classification.
+
 ## Multi-channel `Vec3` access
 
-Three-channel UInt8 and Float32 accessors are currently provided.
+Three-channel UInt8 and Float32 accessors are provided.
 
 ```ada
 with OpenCV.Core;
@@ -275,9 +315,7 @@ begin
 end Vec3_Example;
 ```
 
-The predefined Vec3 types are intentionally component-oriented rather than assigning RGB/BGR semantics. OpenCV channel interpretation belongs to the caller or higher-level module.
-
----
+The predefined Vec3 types are component-oriented rather than assigning RGB/BGR semantics. Channel interpretation belongs to the caller or a higher-level module.
 
 ## Bulk row access
 
@@ -308,7 +346,7 @@ end Row_Example;
 
 Row arrays may use arbitrary Ada lower bounds. Their ordered elements map to matrix columns `0 .. Columns - 1`.
 
-Bulk row APIs are currently available for:
+Bulk row APIs currently exist for:
 
 - UInt8 single-channel;
 - Float32 single-channel;
@@ -317,26 +355,19 @@ Bulk row APIs are currently available for:
 
 ---
 
-# Views and copies
+# Views, copies, and shape
 
 ## Region of interest
 
-`Region` uses a `Rect` and returns a shallow view.
+`Region` returns a shallow view:
 
 ```ada
-declare
-   Source : Mat :=
-     Create (480, 640, (Depth => UInt8, Channels => 1));
-
-   ROI : Mat :=
-     Source.Region
-       ((X      => 100,
-         Y      => 50,
-         Width  => 200,
-         Height => 100));
-begin
-   null;
-end;
+ROI : Mat :=
+  Source.Region
+    ((X      => 100,
+      Y      => 50,
+      Width  => 200,
+      Height => 100));
 ```
 
 `ROI` has its own `Mat` header but shares source storage through OpenCV reference counting.
@@ -344,15 +375,11 @@ end;
 ## Row and column views
 
 ```ada
-declare
-   R1 : Mat := Source.Row_View (10);
-   R2 : Mat := Source.Row_View ((Start => 10, Stop => 20));
+R1 : Mat := Source.Row_View (10);
+R2 : Mat := Source.Row_View ((Start => 10, Stop => 20));
 
-   C1 : Mat := Source.Column_View (5);
-   C2 : Mat := Source.Column_View ((Start => 5, Stop => 15));
-begin
-   null;
-end;
+C1 : Mat := Source.Column_View (5);
+C2 : Mat := Source.Column_View ((Start => 5, Stop => 15));
 ```
 
 `Index_Range` uses half-open semantics:
@@ -361,21 +388,50 @@ end;
 Start <= index < Stop
 ```
 
-Equal endpoints produce an empty range view where OpenCV allows it.
-
-## Clone a view
+## Reshape
 
 ```ada
-Independent_Copy : Mat := ROI.Clone;
+Reshaped : Mat := Source.Reshape (Channels => 1);
 ```
 
-Changes to the original ROI storage no longer affect `Independent_Copy`.
+`Reshape` follows OpenCV no-copy semantics and therefore returns a new header sharing the original storage where valid.
+
+## Diagonal view
+
+`Diagonal_View` exposes OpenCV's shared-storage diagonal view without leaking the raw C++ `diag(int)` interface:
+
+```ada
+Main  : Mat := Matrix.Diagonal_View;
+Above : Mat := Matrix.Diagonal_View (1);
+Below : Mat := Matrix.Diagonal_View (-1);
+```
+
+Offsets are:
+
+- `0`: main diagonal;
+- positive: diagonals above the main diagonal;
+- negative: diagonals below the main diagonal.
+
+The returned matrix is a single-column view sharing source storage.
+
+## Clone and Copy_To
+
+```ada
+Independent : Mat := Source.Clone;
+
+Source.Copy_To (Destination);
+Source.Copy_To (Destination, Mask);
+```
+
+`Clone` always provides an independent deep copy.
+
+`Copy_To` follows OpenCV destination allocation/reallocation behavior. Masked `Copy_To` uses the common mask contract described below.
 
 ---
 
-# Arithmetic
+# Arithmetic and conversion
 
-The current first-generation arithmetic API intentionally favors simple, explicit Mat/Mat operations with matching shape and type.
+The current first-generation arithmetic API intentionally favors explicit Mat/Mat operations with matching shape and complete element type.
 
 ```ada
 Sum_Mat        : Mat := A.Add (B);
@@ -406,8 +462,6 @@ Blended : Mat :=
      Gamma => 2.0);
 ```
 
-This maps to OpenCV `addWeighted` behavior while preserving the input depth.
-
 ## Convert depth, scale, and offset
 
 ```ada
@@ -419,10 +473,6 @@ Converted : Mat :=
 ```
 
 The channel count is preserved.
-
----
-
-# Normalization and reductions
 
 ## Normalize
 
@@ -440,7 +490,210 @@ Supported normalization kinds:
 - `Infinity`
 - `Min_Max`
 
-For `L1`, `L2`, and `Infinity`, `Alpha` is the target norm and `Beta` is ignored. For `Min_Max`, `Alpha` and `Beta` are the destination range bounds.
+---
+
+# Masks and selection
+
+## Common mask contract
+
+Masks are ordinary `Mat` values.
+
+A valid mask is:
+
+```text
+Depth    = UInt8
+Channels = 1
+Rows     = source Rows
+Columns  = source Columns
+```
+
+Any nonzero mask value selects the corresponding complete matrix element.
+
+## Generate masks with `In_Range`
+
+```ada
+Mask : Mat :=
+  Image.In_Range
+    (Lower => Make_Scalar (10.0),
+     Upper => Make_Scalar (200.0));
+```
+
+The returned mask is UInt8, single-channel, source-sized, with `255` for selected elements and `0` otherwise.
+
+## Compare matrices
+
+```ada
+Mask : Mat := A.Compare (B, Greater_Than);
+```
+
+Comparison kinds are:
+
+- `Equal`
+- `Not_Equal`
+- `Less_Than`
+- `Less_Or_Equal`
+- `Greater_Than`
+- `Greater_Or_Equal`
+
+`Compare` currently targets compatible single-channel Mats and returns a UInt8 single-channel mask.
+
+## Mask consumers
+
+Masked operations currently include:
+
+- `Bitwise_And`
+- `Bitwise_Or`
+- `Bitwise_Xor`
+- `Bitwise_Not`
+- `Copy_To`
+- `Set_To`
+- `Mean`
+- `Mean_Std_Dev`
+- `Norm`
+- `Min_Max_Loc`
+
+Example:
+
+```ada
+Image.Set_To (Make_Scalar (255.0), Mask);
+
+Copied_Source.Copy_To (Destination, Mask);
+
+Selected_Mean : Scalar := Image.Mean (Mask);
+```
+
+## Nonzero queries
+
+```ada
+Count     : Mat_Size    := Mask.Count_Non_Zero;
+Any_Set   : Boolean     := Mask.Has_Non_Zero;
+Locations : Point_Array := Mask.Find_Non_Zero;
+```
+
+`Find_Non_Zero` returns points in row-major order with:
+
+```text
+Point.X = column
+Point.Y = row
+```
+
+For a `Region`, locations are relative to the region.
+
+---
+
+# Channel manipulation
+
+The public collection type is:
+
+```ada
+type Mat_Array is array (Natural range <>) of Mat;
+```
+
+Each element has the normal controlled `Mat` ownership model. Arrays may use arbitrary Ada lower bounds.
+
+## Split and Merge
+
+```ada
+Channels : constant Mat_Array := Image.Split;
+Rebuilt  : Mat := Merge (Channels);
+```
+
+`Split` returns one independent single-channel Mat per source channel.
+
+`Merge` concatenates channels in Ada array iteration order. Input Mats may themselves have multiple channels when allowed by OpenCV.
+
+## Extract and insert a channel
+
+```ada
+Green : Mat := Image.Extract_Channel (1);
+
+Destination.Insert_Channel
+  (Source  => Green,
+   Channel => 1);
+```
+
+Channel indices are zero-based.
+
+## Mix channels
+
+`Mix_Channels` uses an Ada-native route representation rather than exposing OpenCV's flat integer `fromTo` array.
+
+Routes can:
+
+- copy a source channel to a destination channel;
+- broadcast a source channel to multiple destination channels;
+- explicitly zero-fill a destination channel.
+
+Route Mat indices refer to the **actual Ada indices** of the supplied `Mat_Array` values, including arrays whose lower bound is not zero.
+
+Duplicate destination targets are rejected by the thick Ada API.
+
+---
+
+# Matrix layout and transforms
+
+## Transpose
+
+```ada
+T : Mat := Image.Transpose;
+```
+
+Rows and columns are exchanged; depth and channel count are preserved.
+
+## Flip
+
+```ada
+Horizontal_Flip : Mat := Image.Flip (Horizontal);
+Vertical_Flip   : Mat := Image.Flip (Vertical);
+Both            : Mat := Image.Flip (Both_Axes);
+```
+
+## Rotate
+
+```ada
+CW  : Mat := Image.Rotate (Clockwise_90);
+R180 : Mat := Image.Rotate (Half_Turn);
+CCW : Mat := Image.Rotate (Counterclockwise_90);
+```
+
+## Repeat
+
+```ada
+Tiled : Mat :=
+  Image.Repeat
+    (Row_Repetitions    => 2,
+     Column_Repetitions => 3);
+```
+
+## Concatenation
+
+```ada
+Wide : Mat :=
+  HConcat ((0 => Left, 1 => Right));
+
+Tall : Mat :=
+  VConcat ((0 => Top, 1 => Bottom));
+```
+
+`HConcat` processes inputs left-to-right in Ada array iteration order.
+
+`VConcat` processes inputs top-to-bottom in Ada array iteration order.
+
+Both return independent storage and accept arbitrary `Mat_Array` lower bounds.
+
+## Diagonal-matrix construction
+
+```ada
+D : Mat := Diagonal_Matrix (Values);
+```
+
+`Values` must be a row or column vector.
+
+The result is square, stores the vector values on its main diagonal, zero-fills all off-diagonal elements, preserves the complete element type, and owns independent storage.
+
+---
+
+# Reductions and statistics
 
 ## Sum
 
@@ -448,24 +701,35 @@ For `L1`, `L2`, and `Infinity`, `Alpha` is the target norm and `Beta` is ignored
 S : Scalar := Image.Sum;
 ```
 
+## Trace
+
+```ada
+T : Scalar := Matrix.Trace;
+```
+
+`Trace` returns the per-channel sum of the main diagonal.
+
+It accepts rectangular and non-contiguous Mats. Because the result is represented by `Scalar`, it supports up to four channels. OpenCV's trace implementation does not support Float16 in the current binding.
+
 ## Mean
 
 ```ada
-M : Scalar := Image.Mean;
+M  : Scalar := Image.Mean;
+MM : Scalar := Image.Mean (Mask);
 ```
 
 ## Mean and standard deviation
 
 ```ada
-Stats : Mean_Std_Dev_Result := Image.Mean_Std_Dev;
+Stats        : Mean_Std_Dev_Result := Image.Mean_Std_Dev;
+Masked_Stats : Mean_Std_Dev_Result := Image.Mean_Std_Dev (Mask);
 ```
-
-`Mean` and `Mean_Std_Dev` currently use `Scalar` result storage and therefore deliberately support one through four channels.
 
 ## Norm
 
 ```ada
-Magnitude : Long_Float := Image.Norm (L2);
+Magnitude        : Long_Float := Image.Norm (L2);
+Masked_Magnitude : Long_Float := Image.Norm (Mask, L2);
 ```
 
 Current norm kinds:
@@ -477,21 +741,54 @@ Current norm kinds:
 ## Minimum and maximum location
 
 ```ada
-Extrema : Min_Max_Result := Image.Min_Max_Loc;
+Extrema        : Min_Max_Result := Image.Min_Max_Loc;
+Masked_Extrema : Min_Max_Result := Image.Min_Max_Loc (Mask);
 ```
 
-`Min_Max_Loc` currently targets non-empty, 2-D, single-channel matrices. Locations use:
+Locations use:
 
 ```text
 Point.X = column
 Point.Y = row
 ```
 
+## Axis reduction
+
+`Reduce` uses Ada enums rather than OpenCV's integer `dim` and reduction constants.
+
+```ada
+Column_Sums : Mat :=
+  Image.Reduce
+    (Axis         => Across_Rows,
+     Kind         => Sum,
+     Output_Depth => Float32);
+
+Row_Maxima : Mat :=
+  Image.Reduce
+    (Axis => Across_Columns,
+     Kind => Maximum);
+```
+
+Axis semantics:
+
+- `Across_Rows` reduces rows and produces one row;
+- `Across_Columns` reduces columns and produces one column.
+
+Reduction kinds:
+
+- `Sum`
+- `Average`
+- `Maximum`
+- `Minimum`
+- `Sum_Of_Squares`
+
+An overload without `Output_Depth` preserves OpenCV's default `dtype = -1` behavior.
+
 ---
 
-# Bitwise operations and masks
+# Bitwise operations
 
-Unmasked bitwise operations are available:
+Unmasked operations:
 
 ```ada
 A_And_B : Mat := A.Bitwise_And (B);
@@ -500,71 +797,9 @@ A_Xor_B : Mat := A.Bitwise_Xor (B);
 Not_A   : Mat := A.Bitwise_Not;
 ```
 
-OpenCV bitwise behavior is preserved even for floating-point matrices, where the operation applies to the element bit representation.
+Masked overloads exist for all four operations.
 
-## Common mask contract
-
-Masks are represented by ordinary `Mat` values rather than a second owning wrapper type.
-
-A valid mask is:
-
-```text
-Depth    = UInt8
-Channels = 1
-Rows     = source Rows
-Columns  = source Columns
-```
-
-Any nonzero mask value selects the corresponding matrix element.
-
-Masked bitwise overloads are available:
-
-```ada
-Result := A.Bitwise_And (B, Mask);
-Result := A.Bitwise_Or  (B, Mask);
-Result := A.Bitwise_Xor (B, Mask);
-Result := A.Bitwise_Not (Mask);
-```
-
-For fresh OpenCV destination matrices, unselected elements are zero.
-
----
-
-# Generate masks with `In_Range`
-
-`In_Range` currently accepts Scalar lower and upper bounds for sources with one through four channels.
-
-```ada
-Mask : Mat :=
-  Image.In_Range
-    (Lower => Make_Scalar (10.0),
-     Upper => Make_Scalar (200.0));
-```
-
-The returned mask is:
-
-```text
-UInt8
-single-channel
-same rows/columns as source
-255 for selected elements
-0 otherwise
-```
-
-Bounds are inclusive.
-
-For multi-channel matrices, all channel values for an element must lie within the corresponding lower/upper bounds for that element to be selected.
-
-The resulting mask can be consumed directly by masked operations:
-
-```ada
-Mask :=
-  Image.In_Range
-    (Lower => Make_Scalar (10.0),
-     Upper => Make_Scalar (200.0));
-
-Selected := Image.Bitwise_And (Image, Mask);
-```
+OpenCV bitwise behavior is preserved for floating-point matrices as well, where the operation applies to the underlying element bit representation.
 
 ---
 
@@ -572,18 +807,10 @@ Selected := Image.Bitwise_And (Image, Mask);
 
 OpenCV arithmetic can legitimately produce IEEE infinity or NaN values.
 
-The current finite `Float32_Access.Get` conversion is intentionally not used to transport non-finite values through the ordinary Ada numeric conversion boundary.
-
 Use `Classify` when a result may be non-finite:
 
 ```ada
-with OpenCV.Core.Float32_Access;
-
-declare
-   Kind : OpenCV.Core.Float32_Access.Float32_Classification;
-begin
-   Kind := OpenCV.Core.Float32_Access.Classify (Image, 0, 0);
-end;
+Kind := OpenCV.Core.Float32_Access.Classify (Image, 0, 0);
 ```
 
 Classification values are:
@@ -610,17 +837,11 @@ generic
 package OpenCV.Core.Vectors;
 ```
 
-It provides:
-
-```ada
-type Vector is array (Component_Index) of Element_Type;
-```
-
 Predefined Vec3 packages currently exist for UInt8 and Float32.
 
 ## Fixed matrices / Matx-style values
 
-A pure-Ada fixed matrix generic is available:
+A pure-Ada fixed-matrix generic is available:
 
 ```ada
 generic
@@ -630,7 +851,7 @@ generic
 package OpenCV.Core.Fixed_Matrices;
 ```
 
-A predefined Float32 3×3 matrix and copy-only conversion to/from `Mat` are currently implemented.
+A predefined Float32 3×3 matrix and copy-only conversion to/from `Mat` are implemented.
 
 The C++ `cv::Matx` object itself is not passed through the ABI.
 
@@ -638,19 +859,9 @@ The C++ `cv::Matx` object itself is not passed through the ABI.
 
 # Current public Core functionality
 
-The current `OpenCV.Core` API includes the following major features.
-
-## Types
+## Types and enums
 
 - `Depth_Type`
-  - `UInt8`
-  - `Int8`
-  - `UInt16`
-  - `Int16`
-  - `Int32`
-  - `Float32`
-  - `Float64`
-  - `Float16`
 - `Mat_Type`
 - `Channel_Count`
 - `Mat_Size`
@@ -658,22 +869,38 @@ The current `OpenCV.Core` API includes the following major features.
 - `Point_Coordinate`
 - `Size`
 - `Point`
+- `Point_Array`
 - `Rect`
 - `Index_Range`
 - `Scalar`
 - `Mat`
+- `Mat_Array`
 - `Min_Max_Result`
 - `Mean_Std_Dev_Result`
 - `Norm_Kind`
 - `Normalize_Kind`
+- `Comparison_Kind`
+- `Flip_Kind`
+- `Rotation_Kind`
+- `Reduction_Axis`
+- `Reduction_Kind`
+- `Channel_Source_Kind`
+- `Channel_Route`
+- `Channel_Route_Array`
 
-## Matrix creation and lifetime
+## Matrix creation, lifetime, and views
 
-- `Create (Rows, Columns, Mat_Type)`
-- `Create (Size, Mat_Type)`
+- `Create`
 - controlled lifetime
 - shallow Ada assignment
 - `Clone`
+- `Copy_To`
+- `Region`
+- `Row_View`
+- `Column_View`
+- `Reshape`
+- `Diagonal_View`
+- `Diagonal_Matrix`
 
 ## Shape, type, and storage metadata
 
@@ -689,15 +916,6 @@ The current `OpenCV.Core` API includes the following major features.
 - `Is_Continuous`
 - `Is_Submatrix`
 
-## Views
-
-- `Region`
-- `Row_View`
-- `Row_View (Index_Range)`
-- `Column_View`
-- `Column_View (Index_Range)`
-- `Reshape`
-
 ## Data access
 
 - UInt8 scalar `Get` / `Set`
@@ -710,7 +928,7 @@ The current `OpenCV.Core` API includes the following major features.
 - safe copied UInt8 Vec3 rows
 - safe copied Float32 Vec3 rows
 
-## Arithmetic and conversion
+## Arithmetic / conversion
 
 - `Convert_To`
 - `Normalize`
@@ -721,22 +939,56 @@ The current `OpenCV.Core` API includes the following major features.
 - `Abs_Diff`
 - `Add_Weighted`
 
-## Bitwise / masks
+## Bitwise / masks / selection
 
 - `Bitwise_And`
 - `Bitwise_Or`
 - `Bitwise_Xor`
 - `Bitwise_Not`
-- masked overloads for all four bitwise operations
+- masked bitwise overloads
 - `In_Range`
+- `Compare`
+- masked `Copy_To`
+- masked `Set_To`
+- `Count_Non_Zero`
+- `Has_Non_Zero`
+- `Find_Non_Zero`
+
+## Channel manipulation
+
+- `Split`
+- `Merge`
+- `Extract_Channel`
+- `Insert_Channel`
+- `Mix_Channels`
+
+## Matrix layout / rearrangement
+
+- `Transpose`
+- `Flip`
+- `Rotate`
+- `Repeat`
+- `HConcat`
+- `VConcat`
+- `Diagonal_View`
+- `Diagonal_Matrix`
 
 ## Reductions / statistics
 
 - `Sum`
+- `Trace`
+- `Reduce`
 - `Mean`
+- masked `Mean`
 - `Mean_Std_Dev`
+- masked `Mean_Std_Dev`
 - `Norm`
+- masked `Norm`
 - `Min_Max_Loc`
+- masked `Min_Max_Loc`
+- `Count_Non_Zero`
+- `Has_Non_Zero`
+- `Find_Non_Zero`
 
 ## Value-like generic support
 
@@ -748,126 +1000,108 @@ The current `OpenCV.Core` API includes the following major features.
 
 ---
 
-# Current project state
+# Milestone status and roadmap
 
-The project has moved beyond an initial proof of concept. The difficult cross-language foundation is largely established:
+The roadmap tracks **portable, user-facing OpenCV Core functionality**, not every internal or backend symbol under OpenCV Core.
 
-- stable C ABI;
-- exception containment;
-- controlled Ada lifetime;
-- OpenCV shallow-copy semantics;
-- explicit deep copy;
-- safe ROI/view lifetime;
-- checked numeric conversions;
-- strong depth/channel representation;
-- typed element access;
-- safe bulk row access;
-- non-contiguous matrix handling;
-- generic Vec pattern;
-- generic fixed-matrix pattern;
-- common mask representation and validation;
-- IEEE non-finite Float32 classification;
-- tested saturation and rounding behavior;
-- repeatable vertical AUnit feature implementation.
+## Milestone 0 — Core binding foundation
 
-This means much of the remaining work is expansion of already-proven patterns rather than redesign of the binding.
+- [x] stable `extern "C"` shim
+- [x] opaque `cv::Mat` handles
+- [x] C++ exception containment
+- [x] Ada controlled lifetime
+- [x] shallow assignment semantics
+- [x] explicit deep copy with `Clone`
+- [x] checked metadata conversion
+- [x] 2-D ROI/view lifetime
+- [x] non-contiguous Mat handling
+- [x] UInt8 / Float32 typed access
+- [x] Vec3 access pattern
+- [x] bulk row-copy access pattern
+- [x] generic vector abstraction
+- [x] generic fixed-matrix abstraction
+- [x] common mask contract
+- [x] vertically integrated AUnit workflow
 
-## Estimated completion
-
-These percentages are estimates for a **portable, user-facing OpenCV Core binding**, not literal coverage of every internal/backend symbol in the OpenCV `core` module.
-
-| Area | Estimated completion | Notes |
-|---|---:|---|
-| Mat ownership/lifetime/basic structure | ~75% | Strong foundation; several useful Mat operations remain |
-| Basic Core value types / Vec / fixed matrices | ~40% | Core patterns established; breadth remains |
-| Typed data access | ~35–40% | UInt8/Float32 plus Vec3 and rows currently |
-| Element-wise arithmetic/conversion | ~60–65% | Basic Mat/Mat family is strong |
-| Masks/comparison/selection | ~50% | Common mask contract and `In_Range` implemented |
-| Reductions/statistics | ~35–40% | Core reductions present; masked and axis reductions remain |
-| Channel manipulation | ~5–10% | Major gap |
-| Matrix layout/manipulation | ~15% | Views are strong; transpose/flip/concat/etc. remain |
-| Linear algebra | ~5–10% | Major gap |
-| Element-wise mathematical functions | ~5% | Mostly not started |
-| Fourier/DCT/spectral operations | 0% | Not started |
-| Random numbers / sorting | ~0–5% | Not started |
-| Clustering | 0% | Not started |
-| Persistence | 0% | Not started |
-| N-D / SparseMat / UMat / Async | ~0–5% | Advanced future scope |
-
-Overall:
-
-- approximately **35–40%** of a broad portable dense-`Mat` Core API;
-- approximately **60–65%** of the Core foundation expected to be routinely needed by downstream Ada OpenCV crates;
-- approximately **65–70%** of the difficult architectural groundwork.
+**Status: complete as the current architectural foundation.**
 
 ---
 
-# Remaining work / roadmap
+## Milestone 1 — mask and selection ecosystem
 
-The following roadmap prioritizes useful, portable Core functionality rather than attempting a mechanical one-for-one translation of every C++ symbol.
+- [x] `In_Range`
+- [x] `Compare`
+  - [x] Equal
+  - [x] Not equal
+  - [x] Less than
+  - [x] Less than or equal
+  - [x] Greater than
+  - [x] Greater than or equal
+- [x] `Count_Non_Zero`
+- [x] `Has_Non_Zero`
+- [x] `Find_Non_Zero`
+- [x] `Copy_To`
+- [x] masked `Copy_To`
+- [x] masked `Set_To`
+- [x] masked bitwise operations
+- [x] masked `Mean`
+- [x] masked `Mean_Std_Dev`
+- [x] masked `Norm`
+- [x] masked `Min_Max_Loc`
 
-## Milestone 1 — complete the mask and selection ecosystem
-
-High-priority next features:
-
-- [ ] `Compare`
-  - Equal
-  - Not equal
-  - Less than
-  - Less than or equal
-  - Greater than
-  - Greater than or equal
-- [ ] `Count_Non_Zero`
-- [ ] `Has_Non_Zero`
-- [ ] `Find_Non_Zero`
-- [ ] `Copy_To`
-- [ ] masked `Copy_To`
-- [ ] masked `Set_To`
-- [ ] masked `Mean`
-- [ ] masked `Mean_Std_Dev`
-- [ ] masked `Norm`
-- [ ] masked `Min_Max_Loc`
-
-Expected result: a complete basic mask production/consumption workflow.
+**Status: complete for the planned basic mask production/consumption workflow.**
 
 ---
 
 ## Milestone 2 — channel manipulation
 
-This is one of the largest practical gaps.
+- [x] `Mat_Array`
+- [x] `Split`
+- [x] `Merge`
+- [x] `Extract_Channel`
+- [x] `Insert_Channel`
+- [x] `Channel_Route` / `Channel_Route_Array`
+- [x] explicit zero-fill routing
+- [x] `Mix_Channels`
 
-- [ ] `Split`
-- [ ] `Merge`
-- [ ] `Extract_Channel`
-- [ ] `Insert_Channel`
-- [ ] `Mix_Channels`
-
-This milestone will likely require an Ada design for variable collections of `Mat` objects, for example a `Mat_Array` abstraction.
-
-The design should preserve clear ownership semantics and avoid exposing C++ container types.
+**Status: complete for the planned channel-manipulation milestone.**
 
 ---
 
 ## Milestone 3 — matrix layout and rearrangement
 
-- [ ] `Transpose`
-- [ ] `Flip`
-- [ ] `Rotate`
-- [ ] `Repeat`
-- [ ] horizontal concatenation
-- [ ] vertical concatenation
-- [ ] diagonal views / `Diag`
-- [ ] `Copy_Make_Border` if it remains appropriate for the Core crate
+- [x] `Transpose`
+- [x] `Flip`
+- [x] `Rotate`
+- [x] `Repeat`
+- [x] `HConcat`
+- [x] `VConcat`
+- [x] `Diagonal_View`
+- [x] `Diagonal_Matrix`
+- [ ] `Copy_Make_Border`
 - [ ] stride / step metadata where useful
-- [ ] ROI location/adjustment helpers if needed
+- [ ] ROI location / adjustment helpers if needed
 
-N-dimensional variants should be postponed until the N-D `Mat` model is designed.
+N-dimensional variants remain deferred until an N-D public `Mat` model is designed.
+
+**Status: core 2-D rearrangement operations largely complete.**
 
 ---
 
-## Milestone 4 — finish everyday arithmetic
+## Milestone 4 — everyday arithmetic expansion
 
-The current Mat/Mat same-type layer is intentionally narrow. Future expansion may include:
+Already implemented:
+
+- [x] Mat/Mat `Add`
+- [x] Mat/Mat `Subtract`
+- [x] Mat/Mat `Multiply`
+- [x] Mat/Mat `Divide`
+- [x] Mat/Mat `Abs_Diff`
+- [x] `Add_Weighted`
+- [x] `Convert_To`
+- [x] `Normalize`
+
+Remaining candidates:
 
 - [ ] Mat/Scalar `Add`
 - [ ] Mat/Scalar and Scalar/Mat `Subtract`
@@ -878,7 +1112,7 @@ The current Mat/Mat same-type layer is intentionally narrow. Future expansion ma
 - [ ] masked `Add`
 - [ ] masked `Subtract`
 - [ ] explicit result depth where OpenCV supports it
-- [ ] mixed-depth arithmetic policy
+- [ ] deliberate mixed-depth arithmetic policy
 - [ ] configurable multiply/divide scale
 - [ ] `Scale_Add`
 - [ ] element-wise `Min`
@@ -886,13 +1120,11 @@ The current Mat/Mat same-type layer is intentionally narrow. Future expansion ma
 - [ ] `Convert_Scale_Abs`
 - [ ] lookup-table (`LUT`) operations
 
-Mixed-depth and Scalar overload proliferation should be added deliberately rather than simply mirroring every C++ overload.
+Mixed-depth and Scalar overload proliferation should be added deliberately rather than by mechanically mirroring every C++ overload.
 
 ---
 
 ## Milestone 5 — element-wise mathematical functions
-
-Likely candidates:
 
 - [ ] `Sqrt`
 - [ ] `Pow`
@@ -903,20 +1135,41 @@ Likely candidates:
 - [ ] Cartesian-to-polar conversion
 - [ ] polar-to-Cartesian conversion
 
-Most of these should reuse the existing independent-result Mat pattern.
+Most should reuse the established independent-result `Mat` pattern.
 
 ---
 
 ## Milestone 6 — reductions and statistics
 
-Remaining useful reductions include:
+Completed:
 
-- [ ] two-Mat norm/distance
+- [x] `Sum`
+- [x] `Mean`
+- [x] masked `Mean`
+- [x] `Mean_Std_Dev`
+- [x] masked `Mean_Std_Dev`
+- [x] `Norm`
+- [x] masked `Norm`
+- [x] `Min_Max_Loc`
+- [x] masked `Min_Max_Loc`
+- [x] `Count_Non_Zero`
+- [x] `Has_Non_Zero`
+- [x] `Find_Non_Zero`
+- [x] `Trace`
+- [x] axis-based `Reduce`
+  - [x] Sum
+  - [x] Average
+  - [x] Maximum
+  - [x] Minimum
+  - [x] Sum of squares
+  - [x] explicit output depth
+
+Remaining candidates:
+
+- [ ] two-Mat norm / distance
 - [ ] relative norm support where appropriate
 - [ ] additional norm kinds where useful
-- [ ] `Trace`
 - [ ] `Min_Max_Idx`
-- [ ] `Reduce`
 - [ ] arg-min reduction
 - [ ] arg-max reduction
 - [ ] `PSNR`
@@ -925,17 +1178,15 @@ Remaining useful reductions include:
 - [ ] covariance matrix
 - [ ] Mahalanobis distance
 
-Result types should remain idiomatic Ada records/enums rather than C++ output-parameter translations where possible.
+Result types should remain idiomatic Ada values rather than C++ output-parameter translations where practical.
 
 ---
 
 ## Milestone 7 — linear algebra
 
-Basic high-value linear algebra:
-
 - [ ] `Dot`
 - [ ] `Cross`
-- [ ] `Trace`
+- [x] `Trace`
 - [ ] `GEMM`
 - [ ] `Mul_Transposed`
 - [ ] `Set_Identity`
@@ -943,9 +1194,6 @@ Basic high-value linear algebra:
 - [ ] `Determinant`
 - [ ] `Invert`
 - [ ] `Solve`
-
-Decomposition/statistical linear algebra:
-
 - [ ] eigenvalues / eigenvectors
 - [ ] non-symmetric eigen decomposition
 - [ ] SVD
@@ -956,7 +1204,7 @@ Decomposition/statistical linear algebra:
 - [ ] cubic solving
 - [ ] polynomial solving
 
-These features will require careful Ada result-type design, particularly for decompositions returning multiple matrices/vectors.
+These operations may require new Ada result types for decompositions returning multiple matrices or vectors.
 
 ---
 
@@ -969,7 +1217,7 @@ These features will require careful Ada result-type design, particularly for dec
 - [ ] spectrum multiplication
 - [ ] optimal DFT size
 
-OpenCV integer flag sets should be represented by strongly typed Ada enums/options rather than leaking C++ constants into the public interface.
+OpenCV flag sets should be represented by strongly typed Ada enums/options rather than leaking C++ constants into the public interface.
 
 ---
 
@@ -1007,26 +1255,13 @@ Potential later scope:
 - [ ] `UMat` if a concrete use case requires it
 - [ ] async Core APIs if a concrete use case requires them
 
-These areas are intentionally later because they require new architectural decisions rather than simple extension of existing wrappers.
+These areas are intentionally later because they require more substantial architectural decisions.
 
 ---
 
 # Typed access still to be expanded
 
-The binding's `Depth_Type` already represents all of:
-
-```text
-UInt8
-Int8
-UInt16
-Int16
-Int32
-Float32
-Float64
-Float16
-```
-
-but public typed element/row access currently concentrates on UInt8 and Float32.
+Public typed element/row access currently concentrates on UInt8 and Float32.
 
 Potential future access packages include:
 
@@ -1038,7 +1273,36 @@ Potential future access packages include:
 - [ ] Float16
 - [ ] additional multi-channel typed access
 
-Before creating many repetitive packages, the implementation should be reviewed for opportunities to reuse Ada generics while preserving strict public typing and safe C ABI behavior.
+Before adding many repetitive packages, the implementation should continue looking for opportunities to reuse Ada generics while preserving strict public typing and a safe C ABI.
+
+---
+
+# Current project state
+
+The difficult cross-language foundation is established and several originally planned feature groups are now complete.
+
+In particular:
+
+- the basic mask production/consumption workflow is complete;
+- the planned channel-manipulation milestone is complete;
+- the major 2-D layout operations are implemented;
+- diagonal view and diagonal construction semantics are represented separately and idiomatically;
+- reductions now include both scalar-style statistics and axis-based `Reduce`;
+- non-contiguous Regions are routinely included in feature tests;
+- ownership/view/copy semantics are explicitly tested for new operations.
+
+Much of the remaining work is breadth rather than reinvention of the binding architecture.
+
+The largest remaining user-facing areas are:
+
+- broader arithmetic overloads;
+- element-wise math;
+- additional typed-access depths;
+- linear algebra;
+- spectral operations;
+- RNG/sorting/algorithms;
+- persistence;
+- N-dimensional and advanced matrix structures.
 
 ---
 
@@ -1051,27 +1315,28 @@ Current intentional limitations include:
 
 2. **No `SparseMat` or `UMat` public layer.**
 
-3. **Typed access is not yet available for every depth.**
+3. **Typed access is not yet available for every depth.**  
+   Public typed access currently concentrates on UInt8 and Float32, plus Vec3 forms.
 
-4. **Scalar-valued APIs are naturally limited to at most four represented components.**  
-   Operations returning `Scalar`, such as current `Mean`, are intentionally restricted where necessary rather than silently losing channel data.
+4. **Scalar-valued APIs represent at most four components.**  
+   Operations returning `Scalar` validate channel limits rather than silently losing data.
 
-5. **`In_Range` currently uses Scalar bounds and therefore supports one through four source channels.**
+5. **Some OpenCV operations have depth-specific restrictions.**  
+   The binding preserves those semantics; for example, `Trace` currently rejects Float16.
 
-6. **Basic arithmetic currently emphasizes same-shape, same-depth, same-channel Mat/Mat operations.**  
-   Scalar operands, masks, mixed depth, and explicit output-depth variants remain future work.
+6. **Basic arithmetic emphasizes same-shape, same-depth, same-channel Mat/Mat operations.**  
+   Scalar operands, mixed-depth policies, and many masked arithmetic variants remain future work.
 
 7. **No general C++ expression-template equivalent.**  
    `cv::MatExpr` is intentionally not exposed. The Ada API uses explicit operations.
 
 8. **No raw public data pointers.**  
-   Safe typed and row-copy access is preferred over leaking OpenCV memory layout into public Ada code.
+   Safe typed and copied-row access is preferred over leaking OpenCV memory-layout details.
 
-9. **OpenCV 4.x compatibility is not yet characterized release by release.**  
-   Development behavior has primarily been checked against OpenCV 4.10.
+9. **OpenCV 4.x compatibility is not yet characterized release by release.**
 
-10. **The API is still pre-1.0.**  
-    Public signatures may change as larger Core families reveal better Ada abstractions.
+10. **The API is pre-1.0.**  
+    Public signatures may evolve as larger Core families reveal better Ada abstractions.
 
 ---
 
@@ -1079,9 +1344,9 @@ Current intentional limitations include:
 
 The long-term goal is broad coverage of **portable, user-facing OpenCV Core functionality**.
 
-Literal wrapping of every symbol under OpenCV's `core` source tree is not currently a goal.
+Literal wrapping of every symbol under OpenCV's `core` source tree is not a goal.
 
-The following OpenCV implementation/backend surfaces are expected to remain out of scope unless a concrete need appears:
+The following implementation/backend surfaces are expected to remain out of scope unless a concrete need appears:
 
 - HAL implementation interfaces;
 - SIMD/intrinsics internals;
@@ -1093,7 +1358,7 @@ The following OpenCV implementation/backend surfaces are expected to remain out 
 - internal parallel backend/plugin interfaces;
 - other implementation-specific plumbing that is not part of a normal portable Core workflow.
 
-The project should favor a coherent Ada interface over a misleading claim of 100% symbol-for-symbol C++ coverage.
+The project favors a coherent Ada interface over a misleading claim of 100% symbol-for-symbol C++ coverage.
 
 ---
 
@@ -1103,13 +1368,14 @@ The public API raises Ada exceptions rather than returning C-style status codes.
 
 Across the language boundary:
 
-1. the C++ shim validates arguments;
-2. OpenCV is called inside exception containment;
-3. C++ exceptions are caught;
-4. a stable status and diagnostic are returned to Ada;
-5. the thick Ada layer raises the appropriate Ada exception.
+1. the thick Ada layer validates public preconditions where practical;
+2. the C++ shim validates ABI-level arguments;
+3. OpenCV is called inside exception containment;
+4. C++ exceptions are caught;
+5. a stable status and diagnostic are returned to Ada;
+6. the thick Ada layer raises the appropriate Ada exception.
 
-Public callers should not need to interact with the internal C status API.
+Public callers do not interact with the internal C status API.
 
 ---
 
@@ -1123,44 +1389,58 @@ opencvcore_ada/
 │   ├── opencvcore_ada_config.gpr
 │   └── opencvcore_ada_opencv.gpr     # generated/configured
 ├── cpp/
-│   └── ...                            # C++ C-ABI shim
+│   ├── opencv_core_shim.cpp
+│   └── opencv_core_shim.h
 ├── scripts/
 │   └── configure_opencv.sh
 ├── src/
 │   ├── opencv-core.ads
 │   ├── opencv-core.adb
-│   ├── ...                            # public child packages
+│   ├── opencv-core-*_access.*        # typed access
+│   ├── opencv-core-*_row_access.*    # copied row access
+│   ├── opencv-core-*_vec3*           # predefined Vec3 support
+│   ├── opencv-core-fixed_matrices.ads
+│   ├── opencv-core-vectors.ads
 │   └── internal/
-│       └── ...                        # thin/internal Ada interop
+│       └── opencv-internal-c_api.ads
 └── tests/
     ├── alire.toml
-    ├── ...
-    └── ...                            # AUnit test suite
+    └── src/
+        ├── mat_basic_tests.*
+        ├── mat_access_tests.*
+        ├── mat_view_tests.*
+        ├── mat_conversion_tests.*
+        ├── mat_arithmetic_tests.*
+        ├── mat_channel_tests.*
+        ├── mat_mask_tests.*
+        ├── mat_reduction_tests.*
+        └── mat_transform_tests.*
 ```
-
-The exact source-file list will continue to grow as Core functionality is added.
 
 ---
 
 # Development approach
 
-New features should generally follow this sequence:
+New features generally follow this sequence:
 
-1. Inspect the authoritative OpenCV declaration and semantics.
-2. Decide the thick Ada API.
-3. Add only the required stable C ABI surface.
-4. Implement the C++ shim with full exception containment.
-5. Add/update thin Ada imports.
-6. Implement the thick Ada operation.
-7. Add focused AUnit coverage.
-8. Include non-contiguous Mat/ROI cases where applicable.
-9. Include ownership/independence tests where applicable.
-10. Include invalid-input and boundary behavior.
-11. Format modified Ada sources.
-12. Build and run tests.
-13. Review the final diff before committing.
+1. Inspect authoritative OpenCV declaration/source and exact semantics.
+2. Inspect existing repository conventions.
+3. Decide the thick Ada API.
+4. Add only the required stable C ABI surface.
+5. Implement the C++ shim with exception containment.
+6. Add/update thin Ada imports.
+7. Implement the thick Ada operation.
+8. Add focused AUnit coverage.
+9. Include non-contiguous Mat/Region cases where applicable.
+10. Include ownership/independence/view tests where applicable.
+11. Include invalid-input and boundary behavior.
+12. Format modified Ada sources with GNATformat.
+13. Clean-build the main crate.
+14. Build and run the tests crate.
+15. Run `git diff --check`.
+16. Inspect the final diff before committing.
 
-Important design decisions should be made before implementation rather than discovered accidentally through a mechanical translation of the C++ API.
+Important public API decisions should be made deliberately rather than discovered accidentally through a mechanical translation of the C++ API.
 
 ---
 
@@ -1170,13 +1450,14 @@ Depending on the operation, tests should consider:
 
 - ordinary UInt8 behavior;
 - Float32 behavior;
-- signed integer behavior;
+- signed integer behavior where relevant;
 - integer saturation/rounding;
 - Vec3 / multi-channel behavior;
 - empty Mat behavior;
 - non-contiguous Region input;
 - shallow versus independent storage;
 - source lifetime;
+- arbitrary Ada array lower bounds for collection APIs;
 - mismatched rows;
 - mismatched columns;
 - mismatched depth;
@@ -1185,7 +1466,7 @@ Depending on the operation, tests should consider:
 - NaN and infinity where OpenCV can naturally produce them;
 - exact OpenCV boundary semantics.
 
-The installed OpenCV headers/behavior are authoritative. Tests should not assume C++ semantics from memory when they can be inspected directly.
+Installed OpenCV declarations/source are authoritative. Tests should not assume C++ behavior from memory when it can be inspected directly.
 
 ---
 
@@ -1211,7 +1492,7 @@ Please avoid:
 - adding raw pointers to the public API;
 - silently changing ownership semantics;
 - introducing test dependencies into the public library crate;
-- manually reimplementing OpenCV arithmetic in Ada when a corresponding OpenCV Core operation exists.
+- manually reimplementing OpenCV operations in Ada when a corresponding OpenCV Core primitive exists.
 
 Small, vertically complete features with focused tests are preferred over large partially integrated batches.
 
@@ -1227,7 +1508,7 @@ The crate is currently:
 
 The API should be considered experimental until a 1.0 release.
 
-Before 1.0, some names and overloads may evolve as channel manipulation, linear algebra, N-dimensional arrays, and persistence force additional design decisions.
+Before 1.0, names and overloads may evolve as linear algebra, broader typed access, N-dimensional arrays, and persistence force additional design decisions.
 
 ---
 
@@ -1241,45 +1522,19 @@ OpenCV is a separate project with its own license and copyright holders.
 
 ---
 
-# Suggested near-term implementation order
-
-A practical next sequence is:
-
-```text
-1. Compare
-2. Count_Non_Zero
-3. Has_Non_Zero
-4. Find_Non_Zero
-5. Copy_To
-6. masked Copy_To
-7. masked Set_To
-8. masked Mean / Mean_Std_Dev
-9. masked Norm
-10. masked Min_Max_Loc
-11. Split
-12. Merge
-13. Extract_Channel / Insert_Channel
-14. Transpose
-15. Flip / Rotate
-```
-
-That sequence first completes the mask ecosystem, then addresses the largest everyday Core gap: channel manipulation and matrix rearrangement.
-
----
-
 ## Summary
 
-`opencvcore_ada` already provides a tested and coherent Ada foundation for OpenCV Core:
+`opencvcore_ada` now provides a substantial, tested Ada foundation for OpenCV Core:
 
-- safe `Mat` lifetime and views;
-- typed access;
-- generic vectors/fixed matrices;
-- conversion and normalization;
-- arithmetic;
-- reductions;
-- bitwise operations;
-- mask handling;
-- range-based mask generation;
+- controlled `Mat` ownership and views;
+- typed UInt8/Float32 and Vec3 access;
+- safe bulk row access;
+- conversion, normalization, and arithmetic;
+- a complete basic mask/selection workflow;
+- complete planned channel manipulation;
+- major 2-D matrix transformations and concatenation;
+- diagonal views and diagonal-matrix construction;
+- scalar and axis reductions;
 - stable error-isolated C++ interoperability.
 
-The remaining work is substantial in function count, but much of the difficult architecture is already established. The next phase is primarily about broadening the Core API while keeping the same safety, ownership, testing, and Ada design standards.
+The project remains pre-1.0, but much of the architectural work is established. The next phase is primarily about broadening Core coverage while preserving the same ownership, safety, ABI, and testing standards.
