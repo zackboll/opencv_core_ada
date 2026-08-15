@@ -2790,6 +2790,34 @@ opencv_core_mat_split(const opencv_core_mat_handle *source,
 }
 
 opencv_core_status
+opencv_core_mat_extract_channel(const opencv_core_mat_handle *source,
+                                int32_t channel,
+                                opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+    *out_mat = nullptr;
+
+    if (source == nullptr) {
+        return invalid_argument("source Mat handle must not be null");
+    }
+    if (channel < 0 || channel >= source->value.channels()) {
+        return invalid_argument("channel index is outside the source channel range");
+    }
+
+    try {
+        cv::Mat extracted;
+        cv::extractChannel(source->value, extracted, channel);
+        *out_mat = new opencv_core_mat_handle(extracted);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_merge(const opencv_core_mat_handle *const *sources,
                       int32_t count, opencv_core_mat_handle **out_mat) {
     clear_error();

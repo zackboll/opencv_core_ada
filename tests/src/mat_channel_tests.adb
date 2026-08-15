@@ -301,8 +301,165 @@ package body Mat_Channel_Tests is
          "Split then Merge must reproduce an independent multi-channel Mat");
    end Split_Merge_Round_Trip_Is_Independent;
 
+   procedure Extract_Channel_UInt8_Values_Split_Equivalence_And_Independence
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 3));
+   begin
+      OpenCV.Core.UInt8_Vec3_Access.Set (Source, 0, 0, (1, 2, 3));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Source, 0, 1, (4, 5, 6));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Source, 1, 0, (7, 8, 9));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Source, 1, 1, (10, 11, 12));
+
+      declare
+         First       : constant OpenCV.Core.Mat := Source.Extract_Channel (0);
+         Middle      : OpenCV.Core.Mat := Source.Extract_Channel (1);
+         Last        : constant OpenCV.Core.Mat := Source.Extract_Channel (2);
+         Split_Parts : constant OpenCV.Core.Mat_Array := Source.Split;
+      begin
+         AUnit.Assertions.Assert
+           (First.Channels = 1
+            and then First.Rows = Source.Rows
+            and then First.Columns = Source.Columns
+            and then First.Depth = Source.Depth
+            and then OpenCV.Core.UInt8_Access.Get (First, 0, 0) = 1
+            and then OpenCV.Core.UInt8_Access.Get (First, 0, 1) = 4
+            and then OpenCV.Core.UInt8_Access.Get (First, 1, 0) = 7
+            and then OpenCV.Core.UInt8_Access.Get (First, 1, 1) = 10
+            and then OpenCV.Core.UInt8_Access.Get (Middle, 0, 0) = 2
+            and then OpenCV.Core.UInt8_Access.Get (Middle, 0, 1) = 5
+            and then OpenCV.Core.UInt8_Access.Get (Middle, 1, 0) = 8
+            and then OpenCV.Core.UInt8_Access.Get (Middle, 1, 1) = 11
+            and then OpenCV.Core.UInt8_Access.Get (Last, 0, 0) = 3
+            and then OpenCV.Core.UInt8_Access.Get (Last, 0, 1) = 6
+            and then OpenCV.Core.UInt8_Access.Get (Last, 1, 0) = 9
+            and then OpenCV.Core.UInt8_Access.Get (Last, 1, 1) = 12
+            and then (for all Row in 0 .. 1 =>
+                        (for all Column in 0 .. 1 =>
+                           OpenCV.Core.UInt8_Access.Get (Middle, Row, Column)
+                           = OpenCV.Core.UInt8_Access.Get
+                               (Split_Parts (1), Row, Column))),
+            "Extract_Channel must return the requested UInt8 channel with"
+            & " the source shape and depth");
+
+         OpenCV.Core.UInt8_Access.Set (Middle, 0, 0, 99);
+         OpenCV.Core.UInt8_Vec3_Access.Set (Source, 0, 1, (40, 50, 60));
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Vec3_Access.Get (Source, 0, 0) = (1, 2, 3)
+            and then OpenCV.Core.UInt8_Access.Get (Middle, 0, 1) = 5,
+            "Extract_Channel results and their source must have independent"
+            & " storage");
+      end;
+   end Extract_Channel_UInt8_Values_Split_Equivalence_And_Independence;
+
+   procedure Extract_Channel_Float32_Non_Continuous_Region
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 4, (OpenCV.Core.Float32, 3));
+   begin
+      OpenCV.Core.Float32_Vec3_Access.Set (Parent, 0, 1, (1.5, 2.5, 3.5));
+      OpenCV.Core.Float32_Vec3_Access.Set (Parent, 0, 2, (4.5, 5.5, 6.5));
+      OpenCV.Core.Float32_Vec3_Access.Set (Parent, 1, 1, (7.5, 8.5, 9.5));
+      OpenCV.Core.Float32_Vec3_Access.Set (Parent, 1, 2, (10.5, 11.5, 12.5));
+
+      declare
+         Region : constant OpenCV.Core.Mat :=
+           Parent.Region ((X => 1, Y => 0, Width => 2, Height => 2));
+         Result : constant OpenCV.Core.Mat := Region.Extract_Channel (1);
+      begin
+         AUnit.Assertions.Assert
+           (not Region.Is_Continuous
+            and then Result.Channels = 1
+            and then Result.Depth = OpenCV.Core.Float32
+            and then Result.Rows = 2
+            and then Result.Columns = 2
+            and then OpenCV.Core.Float32_Access.Get (Result, 0, 0) = 2.5
+            and then OpenCV.Core.Float32_Access.Get (Result, 0, 1) = 5.5
+            and then OpenCV.Core.Float32_Access.Get (Result, 1, 0) = 8.5
+            and then OpenCV.Core.Float32_Access.Get (Result, 1, 1) = 11.5,
+            "Extract_Channel must support Float32 non-continuous Regions");
+      end;
+   end Extract_Channel_Float32_Non_Continuous_Region;
+
+   procedure Extract_Channel_Result_Survives_Source_Finalization
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Result : OpenCV.Core.Mat;
+   begin
+      declare
+         Source : OpenCV.Core.Mat :=
+           OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 3));
+      begin
+         OpenCV.Core.UInt8_Vec3_Access.Set (Source, 0, 0, (21, 22, 23));
+         Result := Source.Extract_Channel (2);
+      end;
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Result, 0, 0) = 23,
+         "Extract_Channel result must remain valid after its source"
+         & " finalizes");
+   end Extract_Channel_Result_Survives_Source_Finalization;
+
+   procedure Extract_Channel_Single_Channel_Validation_And_Empty_Behavior
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+      Empty  : OpenCV.Core.Mat;
+
+      procedure Extract_Channel_Count is
+         Value : OpenCV.Core.Mat := Source.Extract_Channel (1);
+      begin
+         pragma Unreferenced (Value);
+      end Extract_Channel_Count;
+
+      procedure Extract_Channel_Out_Of_Range is
+         Value : OpenCV.Core.Mat := Source.Extract_Channel (100);
+      begin
+         pragma Unreferenced (Value);
+      end Extract_Channel_Out_Of_Range;
+   begin
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 0, 17);
+      declare
+         Single       : OpenCV.Core.Mat := Source.Extract_Channel (0);
+         Empty_Result : constant OpenCV.Core.Mat := Empty.Extract_Channel (0);
+      begin
+         OpenCV.Core.UInt8_Access.Set (Single, 0, 0, 99);
+         AUnit.Assertions.Assert
+           (Single.Channels = 1
+            and then OpenCV.Core.UInt8_Access.Get (Source, 0, 0) = 17
+            and then Empty_Result.Is_Empty
+            and then Empty_Result.Channels = 1
+            and then Empty_Result.Depth = OpenCV.Core.UInt8,
+            "Extract_Channel must copy a single channel and preserve OpenCV"
+            & " empty Mat semantics");
+      end;
+
+      Assert_Raises_OpenCV_Error
+        (Extract_Channel_Count'Access,
+         "Extract_Channel must reject a channel equal to Self.Channels");
+      Assert_Raises_OpenCV_Error
+        (Extract_Channel_Out_Of_Range'Access,
+         "Extract_Channel must reject clearly out-of-range channels");
+   end Extract_Channel_Single_Channel_Validation_And_Empty_Behavior;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
    Result : aliased AUnit.Test_Suites.Test_Suite;
+
+   Merge_Float32_Region_Test : constant Caller.Test_Method :=
+     Merge_Float32_Non_Continuous_Regions_And_Multi_Channel_Inputs'Access;
+   Extract_UInt8_Test        : constant Caller.Test_Method :=
+     Extract_Channel_UInt8_Values_Split_Equivalence_And_Independence'Access;
+   Extract_Finalization_Test : constant Caller.Test_Method :=
+     Extract_Channel_Result_Survives_Source_Finalization'Access;
+   Extract_Validation_Test   : constant Caller.Test_Method :=
+     Extract_Channel_Single_Channel_Validation_And_Empty_Behavior'Access;
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
@@ -330,7 +487,7 @@ package body Mat_Channel_Tests is
         (Caller.Create
            ("Merge Float32 non-continuous Regions and"
             & " multi-channel inputs",
-            Merge_Float32_Non_Continuous_Regions_And_Multi_Channel_Inputs'Access));
+            Merge_Float32_Region_Test));
       Result.Add_Test
         (Caller.Create
            ("Merge validation and single-element behavior",
@@ -339,6 +496,22 @@ package body Mat_Channel_Tests is
         (Caller.Create
            ("Split Merge round trip is independent",
             Split_Merge_Round_Trip_Is_Independent'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Extract channel UInt8 values Split equivalence and independence",
+            Extract_UInt8_Test));
+      Result.Add_Test
+        (Caller.Create
+           ("Extract channel Float32 non-continuous Region",
+            Extract_Channel_Float32_Non_Continuous_Region'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Extract channel result survives source finalization",
+            Extract_Finalization_Test));
+      Result.Add_Test
+        (Caller.Create
+           ("Extract channel single-channel validation and empty behavior",
+            Extract_Validation_Test));
       return Result'Access;
    end Suite;
 

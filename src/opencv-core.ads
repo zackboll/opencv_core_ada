@@ -118,6 +118,13 @@ package OpenCV.Core is
    --  copy.
    --  Non-contiguous Regions and all supported Mat depths are accepted.
    function Split (Self : Mat) return Mat_Array;
+   --  Returns an independent single-channel Mat containing the zero-based
+   --  Channel of Self. Channel must be in 0 .. Self.Channels - 1. The result
+   --  preserves Self's depth and dimensions, and does not share pixel storage
+   --  with Self. Non-contiguous Regions and all supported Mat depths are
+   --  accepted. An empty Mat accepts channel 0 and returns an empty,
+   --  single-channel UInt8 Mat, matching OpenCV semantics.
+   function Extract_Channel (Self : Mat; Channel : Natural) return Mat;
    --  Concatenates the channels of every non-empty input Mat, in array
    --  iteration order, into an independent Mat. Inputs may themselves be
    --  multi-channel, but must have identical dimensions and depth. The input

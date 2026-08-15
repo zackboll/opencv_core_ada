@@ -116,6 +116,16 @@ opencv_core_mat_split(const opencv_core_mat_handle *source,
                       opencv_core_mat_handle **out_mats, int32_t count);
 
 /*
+ * Extracts the zero-based channel from source into one independently owned,
+ * single-channel Mat handle. channel must be less than source's channel count.
+ * source may be empty; it then has one channel and channel must be zero.
+ */
+opencv_core_status
+opencv_core_mat_extract_channel(const opencv_core_mat_handle *source,
+                                int32_t channel,
+                                opencv_core_mat_handle **out_mat);
+
+/*
  * Merges count non-empty Mats with identical dimensions and depth. Each input
  * may have multiple channels; their channels are concatenated in input order.
  * sources is borrowed and remains owned by the caller. count must be positive

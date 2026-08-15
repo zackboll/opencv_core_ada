@@ -824,6 +824,39 @@ package body OpenCV.Core is
       end;
    end Split;
 
+   function Extract_Channel (Self : Mat; Channel : Natural) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      if Channel >= Natural (Self.Channels) then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat channel index is outside the source channel range");
+      end if;
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_Extract_Channel
+          (Source  => Self.Handle,
+           Channel => OpenCV.Internal.C_API.C_Int32 (Channel),
+           Result  => New_Handle'Access);
+      if Status /= OpenCV.Internal.C_API.Success then
+         OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+         Raise_On_Error (Status, "Mat extract channel operation");
+      end if;
+
+      if New_Handle = OpenCV.Internal.C_API.Null_Mat_Handle then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat extract channel operation returned a null result handle");
+      end if;
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Extract_Channel;
+
    function Merge (Channels : Mat_Array) return Mat is
       Maximum_Channels : constant Natural := 512;
    begin
