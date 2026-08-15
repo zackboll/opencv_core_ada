@@ -117,6 +117,21 @@ package body OpenCV.Core is
          when Counterclockwise_90 =>
            OpenCV.Internal.C_API.Rotate_90_Counterclockwise);
 
+   function To_C_Reduction_Axis
+     (Value : Reduction_Axis) return OpenCV.Internal.C_API.C_Int32
+   is (case Value is
+         when Across_Rows    => OpenCV.Internal.C_API.Reduce_Across_Rows,
+         when Across_Columns => OpenCV.Internal.C_API.Reduce_Across_Columns);
+
+   function To_C_Reduction_Kind
+     (Value : Reduction_Kind) return OpenCV.Internal.C_API.C_Int32
+   is (case Value is
+         when Sum            => OpenCV.Internal.C_API.Reduce_Sum,
+         when Average        => OpenCV.Internal.C_API.Reduce_Average,
+         when Maximum        => OpenCV.Internal.C_API.Reduce_Maximum,
+         when Minimum        => OpenCV.Internal.C_API.Reduce_Minimum,
+         when Sum_Of_Squares => OpenCV.Internal.C_API.Reduce_Sum_Of_Squares);
+
    function To_Mat_Size
      (Value : OpenCV.Internal.C_API.C_UInt64) return Mat_Size is
    begin
@@ -1853,6 +1868,66 @@ package body OpenCV.Core is
       Raise_On_Error (Result, "Mat trace operation");
       return From_C_Scalar (C_Result);
    end Trace;
+
+   procedure Validate_Reduce_Depth
+     (Self : Mat; Kind : Reduction_Kind; Output_Depth : Depth_Type) is
+   begin
+      if (Kind = Maximum or else Kind = Minimum)
+        and then Output_Depth /= Self.Depth
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Maximum and Minimum reductions require the source output depth");
+      end if;
+   end Validate_Reduce_Depth;
+
+   function Reduce
+     (Self : Mat; Axis : Reduction_Axis; Kind : Reduction_Kind) return Mat
+   is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Status :=
+        OpenCV.Internal.C_API.Mat_Reduce
+          (Source       => Self.Handle,
+           Axis         => To_C_Reduction_Axis (Axis),
+           Kind         => To_C_Reduction_Kind (Kind),
+           Output_Depth => OpenCV.Internal.C_API.Default_Output_Depth,
+           Result       => New_Handle'Access);
+      Raise_On_Error (Status, "Mat reduction");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Reduce;
+
+   function Reduce
+     (Self         : Mat;
+      Axis         : Reduction_Axis;
+      Kind         : Reduction_Kind;
+      Output_Depth : Depth_Type) return Mat
+   is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Reduce_Depth (Self, Kind, Output_Depth);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Reduce
+          (Source       => Self.Handle,
+           Axis         => To_C_Reduction_Axis (Axis),
+           Kind         => To_C_Reduction_Kind (Kind),
+           Output_Depth => To_C_Depth (Output_Depth),
+           Result       => New_Handle'Access);
+      Raise_On_Error (Status, "Mat reduction");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Reduce;
 
    function Mean (Self : Mat) return Scalar is
       C_Result : aliased OpenCV.Internal.C_API.Scalar :=

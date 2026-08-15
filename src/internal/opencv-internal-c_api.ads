@@ -90,6 +90,17 @@ package OpenCV.Internal.C_API is
    Rotate_180                 : constant C_Int32 := 1;
    Rotate_90_Counterclockwise : constant C_Int32 := 2;
 
+   Reduce_Across_Rows    : constant C_Int32 := 0;
+   Reduce_Across_Columns : constant C_Int32 := 1;
+
+   Reduce_Sum            : constant C_Int32 := 0;
+   Reduce_Average        : constant C_Int32 := 1;
+   Reduce_Maximum        : constant C_Int32 := 2;
+   Reduce_Minimum        : constant C_Int32 := 3;
+   Reduce_Sum_Of_Squares : constant C_Int32 := 4;
+
+   Default_Output_Depth : constant C_Int32 := C_Int32'Val (-1);
+
    subtype C_Boolean is Interfaces.Unsigned_8;
    C_False : constant C_Boolean := 0;
    C_True  : constant C_Boolean := 1;
@@ -135,6 +146,14 @@ package OpenCV.Internal.C_API is
       Column_Repetitions : C_Int32;
       Result             : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_repeat";
+
+   function Mat_Reduce
+     (Source       : Mat_Handle;
+      Axis         : C_Int32;
+      Kind         : C_Int32;
+      Output_Depth : C_Int32;
+      Result       : access Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_reduce";
 
    function Mat_HConcat
      (Sources : access Mat_Handle; Count : C_Int32; Result : access Mat_Handle)

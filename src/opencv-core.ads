@@ -24,6 +24,10 @@ package OpenCV.Core is
 
    type Rotation_Kind is (Clockwise_90, Half_Turn, Counterclockwise_90);
 
+   type Reduction_Axis is (Across_Rows, Across_Columns);
+
+   type Reduction_Kind is (Sum, Average, Maximum, Minimum, Sum_Of_Squares);
+
    type Channel_Count is new Interfaces.Integer_32 range 1 .. 512;
 
    type Mat_Size is
@@ -299,6 +303,18 @@ package OpenCV.Core is
    --  Scalar's complete representation. Float16 Mats are not supported by
    --  OpenCV's trace implementation. Non-contiguous views are accepted.
    function Trace (Self : Mat) return Scalar;
+   --  Reduces a two-dimensional Mat independently in every channel.
+   --  Across_Rows
+   --  produces one row; Across_Columns produces one column. The result owns
+   --  independent storage. Without Output_Depth, OpenCV uses Self's depth.
+   --  Maximum and Minimum require their output depth to equal Self.Depth.
+   function Reduce
+     (Self : Mat; Axis : Reduction_Axis; Kind : Reduction_Kind) return Mat;
+   function Reduce
+     (Self         : Mat;
+      Axis         : Reduction_Axis;
+      Kind         : Reduction_Kind;
+      Output_Depth : Depth_Type) return Mat;
    --  Both reductions operate independently on each channel.  They support
    --  one through four channels, matching Scalar's complete representation.
    --  Mean returns a zero Scalar for an empty Mat; Mean_Std_Dev rejects one.

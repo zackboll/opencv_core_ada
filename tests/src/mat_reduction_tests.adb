@@ -5,6 +5,7 @@ with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
 with OpenCV.Core.Float32_Vec3_Access;
 with OpenCV.Core.UInt8_Access;
+with OpenCV.Core.UInt8_Vec3;
 with OpenCV.Core.UInt8_Vec3_Access;
 with Mat_Test_Support;
 
@@ -15,6 +16,7 @@ package body Mat_Reduction_Tests is
    use type OpenCV.Core.Depth_Type;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Point_Coordinate;
+   use type OpenCV.Core.UInt8_Vec3.Vector;
 
    use Mat_Test_Support;
 
@@ -97,6 +99,180 @@ package body Mat_Reduction_Tests is
          and then Tall.Trace.Component_0 = 10.0,
          "Trace must sum the main diagonal through the shorter matrix axis");
    end Trace_Uses_Main_Diagonal_For_Square_And_Rectangular_Mats;
+
+   procedure Reduce_Sum_Maps_Axes_Depth_And_Independent_Storage
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.UInt8, 1));
+      Across_Rows  : OpenCV.Core.Mat;
+      Across_Cols  : OpenCV.Core.Mat;
+      Default_Avg  : OpenCV.Core.Mat;
+      Changed_Copy : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 0, 1);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 1, 2);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 2, 3);
+      OpenCV.Core.UInt8_Access.Set (Source, 1, 0, 4);
+      OpenCV.Core.UInt8_Access.Set (Source, 1, 1, 5);
+      OpenCV.Core.UInt8_Access.Set (Source, 1, 2, 6);
+      Across_Rows :=
+        Source.Reduce
+          (OpenCV.Core.Across_Rows, OpenCV.Core.Sum, OpenCV.Core.Float32);
+      Across_Cols :=
+        Source.Reduce
+          (OpenCV.Core.Across_Columns, OpenCV.Core.Sum, OpenCV.Core.Float32);
+      Default_Avg :=
+        Source.Reduce (OpenCV.Core.Across_Rows, OpenCV.Core.Average);
+
+      AUnit.Assertions.Assert
+        (Across_Rows.Rows = 1
+         and then Across_Rows.Columns = 3
+         and then Across_Rows.Depth = OpenCV.Core.Float32
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Across_Rows, 0, 0)),
+                     5.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Across_Rows, 0, 1)),
+                     7.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Across_Rows, 0, 2)),
+                     9.0)
+         and then Across_Cols.Rows = 2
+         and then Across_Cols.Columns = 1
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Across_Cols, 0, 0)),
+                     6.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Across_Cols, 1, 0)),
+                     15.0)
+         and then Default_Avg.Depth = OpenCV.Core.UInt8
+         and then OpenCV.Core.UInt8_Access.Get (Default_Avg, 0, 0) = 2,
+         "Reduce must map axes, preserve requested/default depth, and sum"
+         & " exact values");
+
+      Changed_Copy := Across_Rows;
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 0, 99);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Changed_Copy, 0, 0) = 5.0,
+         "A Reduce result must own storage independent of its source");
+   end Reduce_Sum_Maps_Axes_Depth_And_Independent_Storage;
+
+   procedure Reduce_Supports_Kinds_Float_Multi_Channel_And_Regions
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Float_Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Vec_Source   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 3));
+      Parent       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 4, (OpenCV.Core.UInt8, 1));
+      View         : OpenCV.Core.Mat;
+      Maximum      : OpenCV.Core.Mat;
+      Minimum      : OpenCV.Core.Mat;
+      Squares      : OpenCV.Core.Mat;
+      Vec_Result   : OpenCV.Core.Mat;
+      View_Result  : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set (Float_Source, 0, 0, -1.5);
+      OpenCV.Core.Float32_Access.Set (Float_Source, 0, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Float_Source, 1, 0, 3.5);
+      OpenCV.Core.Float32_Access.Set (Float_Source, 1, 1, -4.0);
+      Maximum :=
+        Float_Source.Reduce (OpenCV.Core.Across_Rows, OpenCV.Core.Maximum);
+      Minimum :=
+        Float_Source.Reduce (OpenCV.Core.Across_Columns, OpenCV.Core.Minimum);
+      Squares :=
+        Float_Source.Reduce
+          (OpenCV.Core.Across_Rows,
+           OpenCV.Core.Sum_Of_Squares,
+           OpenCV.Core.Float32);
+
+      OpenCV.Core.UInt8_Vec3_Access.Set (Vec_Source, 0, 0, (1, 10, 100));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Vec_Source, 1, 0, (4, 40, 200));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Vec_Source, 0, 1, (2, 20, 110));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Vec_Source, 1, 1, (5, 50, 210));
+      Vec_Result :=
+        Vec_Source.Reduce (OpenCV.Core.Across_Rows, OpenCV.Core.Average);
+
+      for Row in 0 .. 1 loop
+         for Column in 0 .. 3 loop
+            OpenCV.Core.UInt8_Access.Set
+              (Parent, Row, Column, Interfaces.Unsigned_8 (Row * 10 + Column));
+         end loop;
+      end loop;
+      View := Parent.Region ((X => 1, Y => 0, Width => 2, Height => 2));
+      View_Result :=
+        View.Reduce
+          (OpenCV.Core.Across_Rows, OpenCV.Core.Sum, OpenCV.Core.Float32);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Maximum, 0, 0) = 3.5
+         and then OpenCV.Core.Float32_Access.Get (Maximum, 0, 1) = 2.0
+         and then OpenCV.Core.Float32_Access.Get (Minimum, 0, 0) = -1.5
+         and then OpenCV.Core.Float32_Access.Get (Minimum, 1, 0) = -4.0
+         and then OpenCV.Core.Float32_Access.Get (Squares, 0, 0) = 14.5
+         and then OpenCV.Core.Float32_Access.Get (Squares, 0, 1) = 20.0
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Vec_Result, 0, 0)
+                  = (2, 25, 150)
+         and then not View.Is_Continuous
+         and then View_Result.Rows = 1
+         and then View_Result.Columns = 2
+         and then OpenCV.Core.Float32_Access.Get (View_Result, 0, 0) = 12.0
+         and then OpenCV.Core.Float32_Access.Get (View_Result, 0, 1) = 14.0,
+         "Reduce must support all reduction kinds, channels, Float32, and"
+         & " non-continuous Regions");
+   end Reduce_Supports_Kinds_Float_Multi_Channel_And_Regions;
+
+   procedure Reduce_Handles_Empty_And_Invalid_Depth_Combinations
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Empty        : OpenCV.Core.Mat;
+      Empty_Result : OpenCV.Core.Mat;
+      UInt8_Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+
+      procedure Default_Sum is
+         Result : constant OpenCV.Core.Mat :=
+           UInt8_Source.Reduce (OpenCV.Core.Across_Rows, OpenCV.Core.Sum);
+      begin
+         pragma Unreferenced (Result);
+      end Default_Sum;
+
+      procedure Converted_Maximum is
+         Result : constant OpenCV.Core.Mat :=
+           UInt8_Source.Reduce
+             (OpenCV.Core.Across_Rows,
+              OpenCV.Core.Maximum,
+              OpenCV.Core.Float32);
+      begin
+         pragma Unreferenced (Result);
+      end Converted_Maximum;
+   begin
+      Empty_Result :=
+        Empty.Reduce (OpenCV.Core.Across_Rows, OpenCV.Core.Average);
+      AUnit.Assertions.Assert
+        (Empty_Result.Is_Empty
+         and then Empty_Result.Rows = 1
+         and then Empty_Result.Columns = 0
+         and then Empty_Result.Depth = OpenCV.Core.UInt8,
+         "Reduce must preserve OpenCV's empty result shape and default depth");
+      Assert_Raises_OpenCV_Error
+        (Default_Sum'Access,
+         "Default UInt8 Sum must expose OpenCV's unsupported dtype"
+         & " combination");
+      Assert_Raises_OpenCV_Error
+        (Converted_Maximum'Access,
+         "Maximum must reject output-depth conversion before entering OpenCV");
+   end Reduce_Handles_Empty_And_Invalid_Depth_Combinations;
 
    procedure Trace_Supports_Float32_And_Multiple_Channels
      (Test : in out Mat_Test_Fixture)
@@ -1770,6 +1946,18 @@ package body Mat_Reduction_Tests is
         (Caller.Create
            ("Trace handles Regions, empty Mats, and invalid types",
             Trace_Handles_Regions_Empty_And_Invalid_Types'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Reduce Sum maps axes, depth, and independent storage",
+            Reduce_Sum_Maps_Axes_Depth_And_Independent_Storage'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Reduce supports kinds, Float32, channels, and Regions",
+            Reduce_Supports_Kinds_Float_Multi_Channel_And_Regions'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Reduce handles empty and invalid depth combinations",
+            Reduce_Handles_Empty_And_Invalid_Depth_Combinations'Access));
       Result.Add_Test
         (Caller.Create
            ("Float32 Norm computes L1, L2, and Infinity",

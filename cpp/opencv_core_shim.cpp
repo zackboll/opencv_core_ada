@@ -572,6 +572,74 @@ opencv_core_mat_repeat(const opencv_core_mat_handle *source,
 }
 
 opencv_core_status
+opencv_core_mat_reduce(const opencv_core_mat_handle *source, int32_t axis,
+                       int32_t reduction_kind, int32_t output_depth,
+                       opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+    *out_mat = nullptr;
+
+    if (source == nullptr) {
+        return invalid_argument("source Mat handle must not be null");
+    }
+    if (source->value.dims > 2) {
+        return invalid_argument("Mat reduce supports two-dimensional Mats only");
+    }
+
+    int opencv_axis;
+    switch (axis) {
+    case OPENCV_CORE_REDUCE_ACROSS_ROWS:
+        opencv_axis = 0;
+        break;
+    case OPENCV_CORE_REDUCE_ACROSS_COLUMNS:
+        opencv_axis = 1;
+        break;
+    default:
+        return invalid_argument("reduction axis is not supported");
+    }
+
+    int opencv_kind;
+    switch (reduction_kind) {
+    case OPENCV_CORE_REDUCE_SUM:
+        opencv_kind = cv::REDUCE_SUM;
+        break;
+    case OPENCV_CORE_REDUCE_AVERAGE:
+        opencv_kind = cv::REDUCE_AVG;
+        break;
+    case OPENCV_CORE_REDUCE_MAXIMUM:
+        opencv_kind = cv::REDUCE_MAX;
+        break;
+    case OPENCV_CORE_REDUCE_MINIMUM:
+        opencv_kind = cv::REDUCE_MIN;
+        break;
+    case OPENCV_CORE_REDUCE_SUM_OF_SQUARES:
+        opencv_kind = cv::REDUCE_SUM2;
+        break;
+    default:
+        return invalid_argument("reduction kind is not supported");
+    }
+
+    int opencv_depth = -1;
+    if (output_depth != OPENCV_CORE_DEFAULT_OUTPUT_DEPTH &&
+        !to_opencv_depth(output_depth, opencv_depth)) {
+        return invalid_argument("output depth is not a supported depth identifier");
+    }
+
+    try {
+        cv::Mat reduced;
+        cv::reduce(source->value, reduced, opencv_axis, opencv_kind,
+                   opencv_depth);
+        *out_mat = new opencv_core_mat_handle(reduced);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_hconcat(const opencv_core_mat_handle *const *sources,
                         int32_t count, opencv_core_mat_handle **out_mat) {
     clear_error();

@@ -90,6 +90,16 @@ typedef struct {
 #define OPENCV_CORE_ROTATE_180 ((int32_t)1)
 #define OPENCV_CORE_ROTATE_90_COUNTERCLOCKWISE ((int32_t)2)
 
+/* Stable reduction identifiers, translated explicitly by the shim. */
+#define OPENCV_CORE_REDUCE_ACROSS_ROWS ((int32_t)0)
+#define OPENCV_CORE_REDUCE_ACROSS_COLUMNS ((int32_t)1)
+#define OPENCV_CORE_REDUCE_SUM ((int32_t)0)
+#define OPENCV_CORE_REDUCE_AVERAGE ((int32_t)1)
+#define OPENCV_CORE_REDUCE_MAXIMUM ((int32_t)2)
+#define OPENCV_CORE_REDUCE_MINIMUM ((int32_t)3)
+#define OPENCV_CORE_REDUCE_SUM_OF_SQUARES ((int32_t)4)
+#define OPENCV_CORE_DEFAULT_OUTPUT_DEPTH ((int32_t)-1)
+
 /*
  * Returns a borrowed pointer to the diagnostic for the most recent failed shim
  * operation on the calling thread. The pointer remains valid only until a
@@ -147,6 +157,16 @@ opencv_core_mat_rotate(const opencv_core_mat_handle *source, int32_t rotation_ki
 opencv_core_status
 opencv_core_mat_repeat(const opencv_core_mat_handle *source,
                        int32_t row_repetitions, int32_t column_repetitions,
+                       opencv_core_mat_handle **out_mat);
+
+/*
+ * Reduces a two-dimensional Mat along the requested axis. output_depth is a
+ * stable depth identifier, or OPENCV_CORE_DEFAULT_OUTPUT_DEPTH to use cv::reduce
+ * default dtype behavior. The result is a newly owned Mat handle.
+ */
+opencv_core_status
+opencv_core_mat_reduce(const opencv_core_mat_handle *source, int32_t axis,
+                       int32_t reduction_kind, int32_t output_depth,
                        opencv_core_mat_handle **out_mat);
 
 /*
