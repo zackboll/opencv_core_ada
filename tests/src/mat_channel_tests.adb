@@ -3,6 +3,7 @@ with AUnit.Test_Caller;
 with Interfaces;
 with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
+with OpenCV.Core.Float32_Vec3;
 with OpenCV.Core.Float32_Vec3_Access;
 with OpenCV.Core.UInt8_Access;
 with OpenCV.Core.UInt8_Vec3;
@@ -15,6 +16,7 @@ package body Mat_Channel_Tests is
    use type Interfaces.Unsigned_8;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
+   use type OpenCV.Core.Float32_Vec3.Vector;
    use type OpenCV.Core.UInt8_Vec3.Vector;
 
    use Mat_Test_Support;
@@ -449,6 +451,205 @@ package body Mat_Channel_Tests is
          "Extract_Channel must reject clearly out-of-range channels");
    end Extract_Channel_Single_Channel_Validation_And_Empty_Behavior;
 
+   procedure Insert_Channel_UInt8_Channels_And_Shared_Destination
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Destination : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 3));
+      Alias       : constant OpenCV.Core.Mat := Destination;
+      First       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 1));
+      Middle      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 1));
+      Last        : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 1));
+   begin
+      OpenCV.Core.UInt8_Vec3_Access.Set (Destination, 0, 0, (10, 20, 30));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Destination, 0, 1, (40, 50, 60));
+      OpenCV.Core.UInt8_Access.Set (First, 0, 0, 1);
+      OpenCV.Core.UInt8_Access.Set (First, 0, 1, 4);
+      OpenCV.Core.UInt8_Access.Set (Middle, 0, 0, 2);
+      OpenCV.Core.UInt8_Access.Set (Middle, 0, 1, 5);
+      OpenCV.Core.UInt8_Access.Set (Last, 0, 0, 3);
+      OpenCV.Core.UInt8_Access.Set (Last, 0, 1, 6);
+
+      Destination.Insert_Channel (First, 0);
+      Destination.Insert_Channel (Middle, 1);
+      Destination.Insert_Channel (Last, 2);
+
+      AUnit.Assertions.Assert
+        (Destination.Rows = 1
+         and then Destination.Columns = 2
+         and then Destination.Depth = OpenCV.Core.UInt8
+         and then Destination.Channels = 3
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Destination, 0, 0)
+                  = (1, 2, 3)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Destination, 0, 1)
+                  = (4, 5, 6)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Alias, 0, 0) = (1, 2, 3)
+         and then OpenCV.Core.UInt8_Access.Get (First, 0, 0) = 1,
+         "Insert_Channel must update each destination channel in place without"
+         & " changing source, shape, or element type");
+   end Insert_Channel_UInt8_Channels_And_Shared_Destination;
+
+   procedure Insert_Channel_Float32_And_Non_Continuous_Regions
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Float_Destination  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 3));
+      Float_Source       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Source_Parent      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 4, (OpenCV.Core.UInt8, 1));
+      Destination_Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 4, (OpenCV.Core.UInt8, 3));
+   begin
+      OpenCV.Core.Float32_Vec3_Access.Set
+        (Float_Destination, 0, 0, (1.0, 2.0, 3.0));
+      OpenCV.Core.Float32_Access.Set (Float_Source, 0, 0, 9.5);
+      Float_Destination.Insert_Channel (Float_Source, 1);
+
+      Source_Parent.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      OpenCV.Core.UInt8_Access.Set (Source_Parent, 0, 1, 41);
+      OpenCV.Core.UInt8_Access.Set (Source_Parent, 0, 2, 42);
+      OpenCV.Core.UInt8_Access.Set (Source_Parent, 1, 1, 43);
+      OpenCV.Core.UInt8_Access.Set (Source_Parent, 1, 2, 44);
+      Destination_Parent.Set_To (OpenCV.Core.Make_Scalar (10.0, 20.0, 30.0));
+
+      declare
+         Source_Region      : constant OpenCV.Core.Mat :=
+           Source_Parent.Region ((X => 1, Y => 0, Width => 2, Height => 2));
+         Destination_Region : OpenCV.Core.Mat :=
+           Destination_Parent.Region
+             ((X => 1, Y => 1, Width => 2, Height => 2));
+      begin
+         Destination_Region.Insert_Channel (Source_Region, 1);
+         AUnit.Assertions.Assert
+           (not Source_Region.Is_Continuous
+            and then not Destination_Region.Is_Continuous
+            and then OpenCV.Core.Float32_Vec3_Access.Get
+                       (Float_Destination, 0, 0)
+                     = (1.0, 9.5, 3.0)
+            and then OpenCV.Core.UInt8_Vec3_Access.Get
+                       (Destination_Parent, 1, 1)
+                     = (10, 41, 30)
+            and then OpenCV.Core.UInt8_Vec3_Access.Get
+                       (Destination_Parent, 1, 2)
+                     = (10, 42, 30)
+            and then OpenCV.Core.UInt8_Vec3_Access.Get
+                       (Destination_Parent, 2, 1)
+                     = (10, 43, 30)
+            and then OpenCV.Core.UInt8_Vec3_Access.Get
+                       (Destination_Parent, 2, 2)
+                     = (10, 44, 30)
+            and then OpenCV.Core.UInt8_Vec3_Access.Get
+                       (Destination_Parent, 0, 0)
+                     = (10, 20, 30)
+            and then OpenCV.Core.UInt8_Vec3_Access.Get
+                       (Destination_Parent, 1, 0)
+                     = (10, 20, 30)
+            and then OpenCV.Core.UInt8_Access.Get (Source_Parent, 1, 2) = 44,
+            "Insert_Channel must support Float32 and non-continuous Regions"
+            & " while updating only the destination Region's shared storage");
+      end;
+   end Insert_Channel_Float32_And_Non_Continuous_Regions;
+
+   procedure Insert_Channel_Extract_Round_Trip_And_Empty_Behavior
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source            : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 3));
+      Destination       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 3));
+      Single            : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+      Empty_Source      : OpenCV.Core.Mat;
+      Empty_Destination : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.UInt8_Vec3_Access.Set (Source, 0, 0, (1, 2, 3));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Source, 0, 1, (4, 5, 6));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Destination, 0, 0, (10, 20, 30));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Destination, 0, 1, (40, 50, 60));
+      OpenCV.Core.UInt8_Access.Set (Single, 0, 0, 99);
+
+      declare
+         Extracted : constant OpenCV.Core.Mat := Source.Extract_Channel (2);
+      begin
+         Destination.Insert_Channel (Extracted, 1);
+      end;
+      Single.Insert_Channel (Single, 0);
+      Empty_Destination.Insert_Channel (Empty_Source, 0);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Vec3_Access.Get (Destination, 0, 0) = (10, 3, 30)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Destination, 0, 1)
+                  = (40, 6, 60)
+         and then OpenCV.Core.UInt8_Access.Get (Single, 0, 0) = 99
+         and then Empty_Destination.Is_Empty
+         and then Empty_Destination.Channels = 1
+         and then Empty_Destination.Depth = OpenCV.Core.UInt8,
+         "Extract_Channel output must insert into the selected destination"
+         & " channel; single-channel and empty Mats accept channel zero");
+   end Insert_Channel_Extract_Round_Trip_And_Empty_Behavior;
+
+   procedure Insert_Channel_Validation (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Destination          : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 3));
+      Multi_Channel_Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 2));
+      Different_Rows       : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 1));
+      Different_Columns    : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 1, (OpenCV.Core.UInt8, 1));
+      Different_Depth      : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+
+      procedure Insert_Multi_Channel_Source is
+      begin
+         Destination.Insert_Channel (Multi_Channel_Source, 0);
+      end Insert_Multi_Channel_Source;
+
+      procedure Insert_Different_Rows is
+      begin
+         Destination.Insert_Channel (Different_Rows, 0);
+      end Insert_Different_Rows;
+
+      procedure Insert_Different_Columns is
+      begin
+         Destination.Insert_Channel (Different_Columns, 0);
+      end Insert_Different_Columns;
+
+      procedure Insert_Different_Depth is
+      begin
+         Destination.Insert_Channel (Different_Depth, 0);
+      end Insert_Different_Depth;
+
+      procedure Insert_Channel_Count is
+      begin
+         Destination.Insert_Channel (Different_Depth, 3);
+      end Insert_Channel_Count;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Insert_Multi_Channel_Source'Access,
+         "Insert_Channel must reject a source with more than one channel");
+      Assert_Raises_OpenCV_Error
+        (Insert_Different_Rows'Access,
+         "Insert_Channel must reject mismatched row counts");
+      Assert_Raises_OpenCV_Error
+        (Insert_Different_Columns'Access,
+         "Insert_Channel must reject mismatched column counts");
+      Assert_Raises_OpenCV_Error
+        (Insert_Different_Depth'Access,
+         "Insert_Channel must reject mismatched depths");
+      Assert_Raises_OpenCV_Error
+        (Insert_Channel_Count'Access,
+         "Insert_Channel must reject a channel equal to Self.Channels");
+   end Insert_Channel_Validation;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
    Result : aliased AUnit.Test_Suites.Test_Suite;
 
@@ -460,6 +661,14 @@ package body Mat_Channel_Tests is
      Extract_Channel_Result_Survives_Source_Finalization'Access;
    Extract_Validation_Test   : constant Caller.Test_Method :=
      Extract_Channel_Single_Channel_Validation_And_Empty_Behavior'Access;
+   Insert_UInt8_Test         : constant Caller.Test_Method :=
+     Insert_Channel_UInt8_Channels_And_Shared_Destination'Access;
+   Insert_Region_Test        : constant Caller.Test_Method :=
+     Insert_Channel_Float32_And_Non_Continuous_Regions'Access;
+   Insert_Round_Trip_Test    : constant Caller.Test_Method :=
+     Insert_Channel_Extract_Round_Trip_And_Empty_Behavior'Access;
+   Insert_Validation_Test    : constant Caller.Test_Method :=
+     Insert_Channel_Validation'Access;
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
@@ -512,6 +721,20 @@ package body Mat_Channel_Tests is
         (Caller.Create
            ("Extract channel single-channel validation and empty behavior",
             Extract_Validation_Test));
+      Result.Add_Test
+        (Caller.Create
+           ("Insert channel UInt8 channels and shared destination",
+            Insert_UInt8_Test));
+      Result.Add_Test
+        (Caller.Create
+           ("Insert channel Float32 and non-continuous Regions",
+            Insert_Region_Test));
+      Result.Add_Test
+        (Caller.Create
+           ("Insert channel Extract round trip and empty behavior",
+            Insert_Round_Trip_Test));
+      Result.Add_Test
+        (Caller.Create ("Insert channel validation", Insert_Validation_Test));
       return Result'Access;
    end Suite;
 

@@ -126,6 +126,17 @@ opencv_core_mat_extract_channel(const opencv_core_mat_handle *source,
                                 opencv_core_mat_handle **out_mat);
 
 /*
+ * Copies the single channel in source into the zero-based channel of the
+ * preallocated destination. Source and destination must have identical
+ * dimensions and depth; channel must be less than destination's channel count.
+ * Destination storage is modified in place.
+ */
+opencv_core_status
+opencv_core_mat_insert_channel(const opencv_core_mat_handle *source,
+                                opencv_core_mat_handle *destination,
+                                int32_t channel);
+
+/*
  * Merges count non-empty Mats with identical dimensions and depth. Each input
  * may have multiple channels; their channels are concatenated in input order.
  * sources is borrowed and remains owned by the caller. count must be positive

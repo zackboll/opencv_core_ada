@@ -125,6 +125,14 @@ package OpenCV.Core is
    --  accepted. An empty Mat accepts channel 0 and returns an empty,
    --  single-channel UInt8 Mat, matching OpenCV semantics.
    function Extract_Channel (Self : Mat; Channel : Natural) return Mat;
+   --  Copies the single channel in Source into the zero-based Channel of Self.
+   --  Source and Self must have identical dimensions and depth; Channel must
+   --  be in 0 .. Self.Channels - 1. Self is modified in place, preserving its
+   --  dimensions and element type. Non-contiguous Regions are accepted and
+   --  retain normal shared-storage view semantics. Empty UInt8 single-channel
+   --  Mats accept channel 0 as a no-op, matching OpenCV semantics.
+   procedure Insert_Channel
+     (Self : in out Mat; Source : Mat; Channel : Natural);
    --  Concatenates the channels of every non-empty input Mat, in array
    --  iteration order, into an independent Mat. Inputs may themselves be
    --  multi-channel, but must have identical dimensions and depth. The input

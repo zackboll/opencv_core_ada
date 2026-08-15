@@ -2818,6 +2818,45 @@ opencv_core_mat_extract_channel(const opencv_core_mat_handle *source,
 }
 
 opencv_core_status
+opencv_core_mat_insert_channel(const opencv_core_mat_handle *source,
+                               opencv_core_mat_handle *destination,
+                               int32_t channel) {
+    clear_error();
+
+    if (source == nullptr || destination == nullptr) {
+        return invalid_argument(
+            "source and destination Mat handles must not be null");
+    }
+
+    try {
+        if (source->value.channels() != 1) {
+            return invalid_argument("source Mat must have exactly one channel");
+        }
+        if (source->value.rows != destination->value.rows) {
+            return invalid_argument(
+                "source and destination Mats must have identical row counts");
+        }
+        if (source->value.cols != destination->value.cols) {
+            return invalid_argument(
+                "source and destination Mats must have identical column counts");
+        }
+        if (source->value.depth() != destination->value.depth()) {
+            return invalid_argument(
+                "source and destination Mats must have identical depths");
+        }
+        if (channel < 0 || channel >= destination->value.channels()) {
+            return invalid_argument(
+                "channel index is outside the destination channel range");
+        }
+
+        cv::insertChannel(source->value, destination->value, channel);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_merge(const opencv_core_mat_handle *const *sources,
                       int32_t count, opencv_core_mat_handle **out_mat) {
     clear_error();

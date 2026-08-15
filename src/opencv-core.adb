@@ -857,6 +857,52 @@ package body OpenCV.Core is
       return Result;
    end Extract_Channel;
 
+   procedure Insert_Channel
+     (Self : in out Mat; Source : Mat; Channel : Natural)
+   is
+      Status : OpenCV.Internal.C_API.Status;
+   begin
+      if Source.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat insert channel source must have exactly one channel");
+      end if;
+
+      if Source.Rows /= Self.Rows then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat insert channel source and destination must have identical"
+            & " row counts");
+      end if;
+
+      if Source.Columns /= Self.Columns then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat insert channel source and destination must have identical"
+            & " column counts");
+      end if;
+
+      if Source.Depth /= Self.Depth then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat insert channel source and destination must have identical"
+            & " depths");
+      end if;
+
+      if Channel >= Natural (Self.Channels) then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat channel index is outside the destination channel range");
+      end if;
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_Insert_Channel
+          (Source      => Source.Handle,
+           Destination => Self.Handle,
+           Channel     => OpenCV.Internal.C_API.C_Int32 (Channel));
+      Raise_On_Error (Status, "Mat insert channel operation");
+   end Insert_Channel;
+
    function Merge (Channels : Mat_Array) return Mat is
       Maximum_Channels : constant Natural := 512;
    begin

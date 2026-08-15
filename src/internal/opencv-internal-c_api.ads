@@ -117,6 +117,13 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_extract_channel";
 
+   function Mat_Insert_Channel
+     (Source, Destination : Mat_Handle; Channel : C_Int32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_insert_channel";
+
    function Mat_Merge
      (Sources : access Mat_Handle; Count : C_Int32; Result : access Mat_Handle)
       return Status
