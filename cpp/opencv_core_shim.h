@@ -80,6 +80,11 @@ typedef struct {
 #define OPENCV_CORE_COMPARE_GREATER_THAN ((int32_t)4)
 #define OPENCV_CORE_COMPARE_GREATER_OR_EQUAL ((int32_t)5)
 
+/* Stable flip identifiers with the documented cv::flip sign semantics. */
+#define OPENCV_CORE_FLIP_VERTICAL ((int32_t)0)
+#define OPENCV_CORE_FLIP_HORIZONTAL ((int32_t)1)
+#define OPENCV_CORE_FLIP_BOTH_AXES ((int32_t)-1)
+
 /*
  * Returns a borrowed pointer to the diagnostic for the most recent failed shim
  * operation on the calling thread. The pointer remains valid only until a
@@ -111,6 +116,14 @@ opencv_core_mat_clone(const opencv_core_mat_handle *source,
 opencv_core_status
 opencv_core_mat_transpose(const opencv_core_mat_handle *source,
                           opencv_core_mat_handle **out_mat);
+
+/*
+ * Returns a newly allocated, independent Mat with source dimensions and type.
+ * flip_kind reverses rows (VERTICAL), columns (HORIZONTAL), or both axes.
+ */
+opencv_core_status
+opencv_core_mat_flip(const opencv_core_mat_handle *source, int32_t flip_kind,
+                     opencv_core_mat_handle **out_mat);
 
 /*
  * Splits a non-empty Mat into count independently owned, single-channel Mat

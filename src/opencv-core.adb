@@ -102,6 +102,13 @@ package body OpenCV.Core is
          when Greater_Or_Equal =>
            OpenCV.Internal.C_API.Compare_Greater_Or_Equal);
 
+   function To_C_Flip_Kind
+     (Value : Flip_Kind) return OpenCV.Internal.C_API.C_Int32
+   is (case Value is
+         when Vertical   => OpenCV.Internal.C_API.Flip_Vertical,
+         when Horizontal => OpenCV.Internal.C_API.Flip_Horizontal,
+         when Both_Axes  => OpenCV.Internal.C_API.Flip_Both_Axes);
+
    function To_Mat_Size
      (Value : OpenCV.Internal.C_API.C_UInt64) return Mat_Size is
    begin
@@ -798,6 +805,24 @@ package body OpenCV.Core is
       Result.Handle := New_Handle;
       return Result;
    end Transpose;
+
+   function Flip (Self : Mat; Kind : Flip_Kind) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Status :=
+        OpenCV.Internal.C_API.Mat_Flip
+          (Source => Self.Handle,
+           Kind   => To_C_Flip_Kind (Kind),
+           Result => New_Handle'Access);
+      Raise_On_Error (Status, "Mat flip");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Flip;
 
    function Split (Self : Mat) return Mat_Array is
    begin

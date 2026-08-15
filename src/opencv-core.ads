@@ -20,6 +20,8 @@ package OpenCV.Core is
       Greater_Than,
       Greater_Or_Equal);
 
+   type Flip_Kind is (Vertical, Horizontal, Both_Axes);
+
    type Channel_Count is new Interfaces.Integer_32 range 1 .. 512;
 
    type Mat_Size is
@@ -136,6 +138,11 @@ package OpenCV.Core is
    --  depth and channel count are preserved, including for multi-channel Mats.
    --  Empty Mats produce an empty result. Non-contiguous Regions are accepted.
    function Transpose (Self : Mat) return Mat;
+   --  Returns an independent Mat with the same dimensions and element type as
+   --  Self. Vertical reverses row order, Horizontal reverses column order,
+   --  and Both_Axes reverses both. Empty Mats produce an empty result.
+   --  Non-contiguous Regions are accepted.
+   function Flip (Self : Mat; Kind : Flip_Kind) return Mat;
    --  Separates Self into one independent single-channel Mat per channel.
    --  Results use channel indices 0 .. Self.Channels - 1, preserve Self's
    --  depth and dimensions, and do not share pixel storage with Self. Empty

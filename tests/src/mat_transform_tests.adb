@@ -198,6 +198,183 @@ package body Mat_Transform_Tests is
       end;
    end Transpose_Empty_Mat;
 
+   procedure Flip_Rectangular_UInt8_Maps_All_Elements
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.UInt8, 1));
+   begin
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 0, 1);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 1, 2);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 2, 3);
+      OpenCV.Core.UInt8_Access.Set (Source, 1, 0, 4);
+      OpenCV.Core.UInt8_Access.Set (Source, 1, 1, 5);
+      OpenCV.Core.UInt8_Access.Set (Source, 1, 2, 6);
+
+      declare
+         Vertical   : constant OpenCV.Core.Mat :=
+           Source.Flip (OpenCV.Core.Vertical);
+         Horizontal : constant OpenCV.Core.Mat :=
+           Source.Flip (OpenCV.Core.Horizontal);
+         Both       : constant OpenCV.Core.Mat :=
+           Source.Flip (OpenCV.Core.Both_Axes);
+      begin
+         AUnit.Assertions.Assert
+           (Vertical.Rows = Source.Rows
+            and then Vertical.Columns = Source.Columns
+            and then Vertical.Depth = Source.Depth
+            and then Vertical.Channels = Source.Channels
+            and then OpenCV.Core.UInt8_Access.Get (Vertical, 0, 0) = 4
+            and then OpenCV.Core.UInt8_Access.Get (Vertical, 0, 1) = 5
+            and then OpenCV.Core.UInt8_Access.Get (Vertical, 0, 2) = 6
+            and then OpenCV.Core.UInt8_Access.Get (Vertical, 1, 0) = 1
+            and then OpenCV.Core.UInt8_Access.Get (Vertical, 1, 1) = 2
+            and then OpenCV.Core.UInt8_Access.Get (Vertical, 1, 2) = 3
+            and then OpenCV.Core.UInt8_Access.Get (Horizontal, 0, 0) = 3
+            and then OpenCV.Core.UInt8_Access.Get (Horizontal, 0, 1) = 2
+            and then OpenCV.Core.UInt8_Access.Get (Horizontal, 0, 2) = 1
+            and then OpenCV.Core.UInt8_Access.Get (Horizontal, 1, 0) = 6
+            and then OpenCV.Core.UInt8_Access.Get (Horizontal, 1, 1) = 5
+            and then OpenCV.Core.UInt8_Access.Get (Horizontal, 1, 2) = 4
+            and then OpenCV.Core.UInt8_Access.Get (Both, 0, 0) = 6
+            and then OpenCV.Core.UInt8_Access.Get (Both, 0, 1) = 5
+            and then OpenCV.Core.UInt8_Access.Get (Both, 0, 2) = 4
+            and then OpenCV.Core.UInt8_Access.Get (Both, 1, 0) = 3
+            and then OpenCV.Core.UInt8_Access.Get (Both, 1, 1) = 2
+            and then OpenCV.Core.UInt8_Access.Get (Both, 1, 2) = 1,
+            "Flip kinds must have the documented exact 2 by 3 mappings");
+      end;
+   end Flip_Rectangular_UInt8_Maps_All_Elements;
+
+   procedure Flip_Shape_And_Involution (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Square : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      Row    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 3, (OpenCV.Core.UInt8, 1));
+      Column : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 1, (OpenCV.Core.UInt8, 1));
+   begin
+      OpenCV.Core.UInt8_Access.Set (Square, 0, 0, 1);
+      OpenCV.Core.UInt8_Access.Set (Square, 0, 1, 2);
+      OpenCV.Core.UInt8_Access.Set (Square, 1, 0, 3);
+      OpenCV.Core.UInt8_Access.Set (Square, 1, 1, 4);
+      OpenCV.Core.UInt8_Access.Set (Row, 0, 0, 7);
+      OpenCV.Core.UInt8_Access.Set (Row, 0, 1, 8);
+      OpenCV.Core.UInt8_Access.Set (Row, 0, 2, 9);
+      OpenCV.Core.UInt8_Access.Set (Column, 0, 0, 10);
+      OpenCV.Core.UInt8_Access.Set (Column, 1, 0, 11);
+      OpenCV.Core.UInt8_Access.Set (Column, 2, 0, 12);
+
+      declare
+         Square_Result : constant OpenCV.Core.Mat :=
+           Square.Flip (OpenCV.Core.Vertical);
+         Row_Result    : constant OpenCV.Core.Mat :=
+           Row.Flip (OpenCV.Core.Horizontal);
+         Column_Result : constant OpenCV.Core.Mat :=
+           Column.Flip (OpenCV.Core.Vertical);
+         Vertical      : constant OpenCV.Core.Mat :=
+           Square.Flip (OpenCV.Core.Vertical).Flip (OpenCV.Core.Vertical);
+         Horizontal    : constant OpenCV.Core.Mat :=
+           Square.Flip (OpenCV.Core.Horizontal).Flip (OpenCV.Core.Horizontal);
+         Both          : constant OpenCV.Core.Mat :=
+           Square.Flip (OpenCV.Core.Both_Axes).Flip (OpenCV.Core.Both_Axes);
+      begin
+         AUnit.Assertions.Assert
+           (Square_Result.Rows = 2
+            and then Square_Result.Columns = 2
+            and then OpenCV.Core.UInt8_Access.Get (Square_Result, 0, 0) = 3
+            and then Row_Result.Rows = 1
+            and then Row_Result.Columns = 3
+            and then OpenCV.Core.UInt8_Access.Get (Row_Result, 0, 0) = 9
+            and then Column_Result.Rows = 3
+            and then Column_Result.Columns = 1
+            and then OpenCV.Core.UInt8_Access.Get (Column_Result, 0, 0) = 12
+            and then OpenCV.Core.UInt8_Access.Get (Vertical, 1, 1) = 4
+            and then OpenCV.Core.UInt8_Access.Get (Horizontal, 0, 1) = 2
+            and then OpenCV.Core.UInt8_Access.Get (Both, 1, 0) = 3,
+            "Flip must preserve shapes and each kind must be an involution");
+      end;
+   end Flip_Shape_And_Involution;
+
+   procedure Flip_Float32_And_UInt8_Vec3 (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Floats  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Vectors : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 3));
+   begin
+      OpenCV.Core.Float32_Access.Set (Floats, 0, 0, 1.5);
+      OpenCV.Core.Float32_Access.Set (Floats, 1, 1, 2.5);
+      OpenCV.Core.UInt8_Vec3_Access.Set (Vectors, 0, 0, (1, 2, 3));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Vectors, 0, 1, (4, 5, 6));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Vectors, 1, 0, (7, 8, 9));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Vectors, 1, 1, (10, 11, 12));
+      declare
+         Float_Result : constant OpenCV.Core.Mat :=
+           Floats.Flip (OpenCV.Core.Both_Axes);
+         Vec_Result   : constant OpenCV.Core.Mat :=
+           Vectors.Flip (OpenCV.Core.Horizontal);
+      begin
+         AUnit.Assertions.Assert
+           (Float_Result.Depth = OpenCV.Core.Float32
+            and then Float_Result.Channels = 1
+            and then OpenCV.Core.Float32_Access.Get (Float_Result, 0, 0) = 2.5
+            and then Vec_Result.Depth = OpenCV.Core.UInt8
+            and then Vec_Result.Channels = 3
+            and then OpenCV.Core.UInt8_Vec3_Access.Get (Vec_Result, 0, 0)
+                     = (4, 5, 6)
+            and then OpenCV.Core.UInt8_Vec3_Access.Get (Vec_Result, 1, 0)
+                     = (10, 11, 12),
+            "Flip must preserve Float32 and move complete UInt8 Vec3 elements");
+      end;
+   end Flip_Float32_And_UInt8_Vec3;
+
+   procedure Flip_Region_Independence_And_Lifetime
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Result : OpenCV.Core.Mat;
+   begin
+      declare
+         Parent : OpenCV.Core.Mat :=
+           OpenCV.Core.Create (2, 4, (OpenCV.Core.UInt8, 1));
+      begin
+         OpenCV.Core.UInt8_Access.Set (Parent, 0, 1, 1);
+         OpenCV.Core.UInt8_Access.Set (Parent, 0, 2, 2);
+         OpenCV.Core.UInt8_Access.Set (Parent, 1, 1, 3);
+         OpenCV.Core.UInt8_Access.Set (Parent, 1, 2, 4);
+         declare
+            Region : constant OpenCV.Core.Mat :=
+              Parent.Region ((X => 1, Y => 0, Width => 2, Height => 2));
+         begin
+            Result := Region.Flip (OpenCV.Core.Horizontal);
+            OpenCV.Core.UInt8_Access.Set (Result, 0, 0, 20);
+            AUnit.Assertions.Assert
+              (not Region.Is_Continuous
+               and then OpenCV.Core.UInt8_Access.Get (Region, 0, 1) = 2,
+               "Flip must accept non-continuous Regions and use independent storage");
+         end;
+      end;
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Result, 0, 0) = 20,
+         "A flip result must survive source finalization");
+   end Flip_Region_Independence_And_Lifetime;
+
+   procedure Flip_Empty_Mat (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat;
+   begin
+      declare
+         Result : constant OpenCV.Core.Mat :=
+           Source.Flip (OpenCV.Core.Vertical);
+      begin
+         AUnit.Assertions.Assert
+           (Result.Is_Empty, "Flip of an empty Mat must be empty");
+      end;
+   end Flip_Empty_Mat;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
    Result : aliased AUnit.Test_Suites.Test_Suite;
 
@@ -225,6 +402,23 @@ package body Mat_Transform_Tests is
             Transpose_Result_Is_Independent_And_Survives_Source'Access));
       Result.Add_Test
         (Caller.Create ("Transpose empty Mat", Transpose_Empty_Mat'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Flip rectangular UInt8 exact mappings",
+            Flip_Rectangular_UInt8_Maps_All_Elements'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Flip shapes and involution", Flip_Shape_And_Involution'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Flip Float32 and UInt8 Vec3",
+            Flip_Float32_And_UInt8_Vec3'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Flip non-continuous Region, independence, and lifetime",
+            Flip_Region_Independence_And_Lifetime'Access));
+      Result.Add_Test
+        (Caller.Create ("Flip empty Mat", Flip_Empty_Mat'Access));
       return Result'Access;
    end Suite;
 

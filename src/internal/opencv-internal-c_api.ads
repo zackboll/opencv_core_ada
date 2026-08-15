@@ -82,6 +82,10 @@ package OpenCV.Internal.C_API is
    Compare_Greater_Than     : constant C_Int32 := 4;
    Compare_Greater_Or_Equal : constant C_Int32 := 5;
 
+   Flip_Vertical   : constant C_Int32 := 0;
+   Flip_Horizontal : constant C_Int32 := 1;
+   Flip_Both_Axes  : constant C_Int32 := C_Int32'Val (-1);
+
    subtype C_Boolean is Interfaces.Unsigned_8;
    C_False : constant C_Boolean := 0;
    C_True  : constant C_Boolean := 1;
@@ -110,6 +114,11 @@ package OpenCV.Internal.C_API is
    function Mat_Transpose
      (Source : Mat_Handle; Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_transpose";
+
+   function Mat_Flip
+     (Source : Mat_Handle; Kind : C_Int32; Result : access Mat_Handle)
+      return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_flip";
 
    function Mat_Split
      (Source : Mat_Handle; Results : access Mat_Handle; Count : C_Int32)
