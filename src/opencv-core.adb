@@ -109,6 +109,14 @@ package body OpenCV.Core is
          when Horizontal => OpenCV.Internal.C_API.Flip_Horizontal,
          when Both_Axes  => OpenCV.Internal.C_API.Flip_Both_Axes);
 
+   function To_C_Rotation_Kind
+     (Value : Rotation_Kind) return OpenCV.Internal.C_API.C_Int32
+   is (case Value is
+         when Clockwise_90        => OpenCV.Internal.C_API.Rotate_90_Clockwise,
+         when Half_Turn           => OpenCV.Internal.C_API.Rotate_180,
+         when Counterclockwise_90 =>
+           OpenCV.Internal.C_API.Rotate_90_Counterclockwise);
+
    function To_Mat_Size
      (Value : OpenCV.Internal.C_API.C_UInt64) return Mat_Size is
    begin
@@ -823,6 +831,24 @@ package body OpenCV.Core is
       Result.Handle := New_Handle;
       return Result;
    end Flip;
+
+   function Rotate (Self : Mat; Kind : Rotation_Kind) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Status :=
+        OpenCV.Internal.C_API.Mat_Rotate
+          (Source => Self.Handle,
+           Kind   => To_C_Rotation_Kind (Kind),
+           Result => New_Handle'Access);
+      Raise_On_Error (Status, "Mat rotate");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Rotate;
 
    function Split (Self : Mat) return Mat_Array is
    begin

@@ -498,6 +498,46 @@ opencv_core_mat_flip(const opencv_core_mat_handle *source, int32_t flip_kind,
 }
 
 opencv_core_status
+opencv_core_mat_rotate(const opencv_core_mat_handle *source, int32_t rotation_kind,
+                       opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (source == nullptr) {
+        return invalid_argument("source Mat handle must not be null");
+    }
+
+    int rotate_code;
+    switch (rotation_kind) {
+    case OPENCV_CORE_ROTATE_90_CLOCKWISE:
+        rotate_code = cv::ROTATE_90_CLOCKWISE;
+        break;
+    case OPENCV_CORE_ROTATE_180:
+        rotate_code = cv::ROTATE_180;
+        break;
+    case OPENCV_CORE_ROTATE_90_COUNTERCLOCKWISE:
+        rotate_code = cv::ROTATE_90_COUNTERCLOCKWISE;
+        break;
+    default:
+        return invalid_argument("rotation kind is not supported");
+    }
+
+    try {
+        cv::Mat rotated;
+        cv::rotate(source->value, rotated, rotate_code);
+        *out_mat = new opencv_core_mat_handle(rotated);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_copy_to(const opencv_core_mat_handle *source,
                         opencv_core_mat_handle *destination) {
     clear_error();

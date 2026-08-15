@@ -86,6 +86,10 @@ package OpenCV.Internal.C_API is
    Flip_Horizontal : constant C_Int32 := 1;
    Flip_Both_Axes  : constant C_Int32 := C_Int32'Val (-1);
 
+   Rotate_90_Clockwise        : constant C_Int32 := 0;
+   Rotate_180                 : constant C_Int32 := 1;
+   Rotate_90_Counterclockwise : constant C_Int32 := 2;
+
    subtype C_Boolean is Interfaces.Unsigned_8;
    C_False : constant C_Boolean := 0;
    C_True  : constant C_Boolean := 1;
@@ -119,6 +123,11 @@ package OpenCV.Internal.C_API is
      (Source : Mat_Handle; Kind : C_Int32; Result : access Mat_Handle)
       return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_flip";
+
+   function Mat_Rotate
+     (Source : Mat_Handle; Kind : C_Int32; Result : access Mat_Handle)
+      return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_rotate";
 
    function Mat_Split
      (Source : Mat_Handle; Results : access Mat_Handle; Count : C_Int32)

@@ -18,6 +18,34 @@ package body Mat_Transform_Tests is
 
    use Mat_Test_Support;
 
+   function UInt8_Mats_Are_Equivalent
+     (Left, Right : OpenCV.Core.Mat) return Boolean is
+   begin
+      if Left.Rows /= Right.Rows
+        or else Left.Columns /= Right.Columns
+        or else Left.Depth /= Right.Depth
+        or else Left.Channels /= Right.Channels
+      then
+         return False;
+      end if;
+
+      if Left.Is_Empty then
+         return True;
+      end if;
+
+      for Row in 0 .. Left.Rows - 1 loop
+         for Column in 0 .. Left.Columns - 1 loop
+            if OpenCV.Core.UInt8_Access.Get (Left, Row, Column)
+              /= OpenCV.Core.UInt8_Access.Get (Right, Row, Column)
+            then
+               return False;
+            end if;
+         end loop;
+      end loop;
+
+      return True;
+   end UInt8_Mats_Are_Equivalent;
+
    procedure Transpose_Rectangular_UInt8_Maps_All_Elements
      (Test : in out Mat_Test_Fixture)
    is
@@ -375,6 +403,217 @@ package body Mat_Transform_Tests is
       end;
    end Flip_Empty_Mat;
 
+   procedure Rotate_Rectangular_UInt8_Maps_All_Elements
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.UInt8, 1));
+   begin
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 0, 1);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 1, 2);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 2, 3);
+      OpenCV.Core.UInt8_Access.Set (Source, 1, 0, 4);
+      OpenCV.Core.UInt8_Access.Set (Source, 1, 1, 5);
+      OpenCV.Core.UInt8_Access.Set (Source, 1, 2, 6);
+
+      declare
+         Clockwise        : constant OpenCV.Core.Mat :=
+           Source.Rotate (OpenCV.Core.Clockwise_90);
+         Half             : constant OpenCV.Core.Mat :=
+           Source.Rotate (OpenCV.Core.Half_Turn);
+         Counterclockwise : constant OpenCV.Core.Mat :=
+           Source.Rotate (OpenCV.Core.Counterclockwise_90);
+      begin
+         AUnit.Assertions.Assert
+           (Clockwise.Rows = 3
+            and then Clockwise.Columns = 2
+            and then Clockwise.Depth = OpenCV.Core.UInt8
+            and then Clockwise.Channels = 1
+            and then OpenCV.Core.UInt8_Access.Get (Clockwise, 0, 0) = 4
+            and then OpenCV.Core.UInt8_Access.Get (Clockwise, 0, 1) = 1
+            and then OpenCV.Core.UInt8_Access.Get (Clockwise, 1, 0) = 5
+            and then OpenCV.Core.UInt8_Access.Get (Clockwise, 1, 1) = 2
+            and then OpenCV.Core.UInt8_Access.Get (Clockwise, 2, 0) = 6
+            and then OpenCV.Core.UInt8_Access.Get (Clockwise, 2, 1) = 3
+            and then Half.Rows = 2
+            and then Half.Columns = 3
+            and then OpenCV.Core.UInt8_Access.Get (Half, 0, 0) = 6
+            and then OpenCV.Core.UInt8_Access.Get (Half, 0, 1) = 5
+            and then OpenCV.Core.UInt8_Access.Get (Half, 0, 2) = 4
+            and then OpenCV.Core.UInt8_Access.Get (Half, 1, 0) = 3
+            and then OpenCV.Core.UInt8_Access.Get (Half, 1, 1) = 2
+            and then OpenCV.Core.UInt8_Access.Get (Half, 1, 2) = 1
+            and then Counterclockwise.Rows = 3
+            and then Counterclockwise.Columns = 2
+            and then OpenCV.Core.UInt8_Access.Get (Counterclockwise, 0, 0) = 3
+            and then OpenCV.Core.UInt8_Access.Get (Counterclockwise, 0, 1) = 6
+            and then OpenCV.Core.UInt8_Access.Get (Counterclockwise, 1, 0) = 2
+            and then OpenCV.Core.UInt8_Access.Get (Counterclockwise, 1, 1) = 5
+            and then OpenCV.Core.UInt8_Access.Get (Counterclockwise, 2, 0) = 1
+            and then OpenCV.Core.UInt8_Access.Get (Counterclockwise, 2, 1) = 4,
+            "Rotate kinds must have the documented exact 2 by 3 mappings");
+      end;
+   end Rotate_Rectangular_UInt8_Maps_All_Elements;
+
+   procedure Rotate_Shapes_And_Element_Types (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Square  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      Row     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 3, (OpenCV.Core.UInt8, 1));
+      Column  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 1, (OpenCV.Core.UInt8, 1));
+      Floats  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Vectors : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 3));
+   begin
+      OpenCV.Core.UInt8_Access.Set (Square, 0, 0, 1);
+      OpenCV.Core.UInt8_Access.Set (Square, 0, 1, 2);
+      OpenCV.Core.UInt8_Access.Set (Square, 1, 0, 3);
+      OpenCV.Core.UInt8_Access.Set (Row, 0, 0, 7);
+      OpenCV.Core.UInt8_Access.Set (Row, 0, 1, 8);
+      OpenCV.Core.UInt8_Access.Set (Row, 0, 2, 9);
+      OpenCV.Core.UInt8_Access.Set (Column, 0, 0, 10);
+      OpenCV.Core.UInt8_Access.Set (Column, 1, 0, 11);
+      OpenCV.Core.UInt8_Access.Set (Column, 2, 0, 12);
+      OpenCV.Core.Float32_Access.Set (Floats, 0, 0, 1.5);
+      OpenCV.Core.Float32_Access.Set (Floats, 1, 1, 2.5);
+      OpenCV.Core.UInt8_Vec3_Access.Set (Vectors, 0, 0, (1, 2, 3));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Vectors, 0, 1, (4, 5, 6));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Vectors, 1, 0, (7, 8, 9));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Vectors, 1, 1, (10, 11, 12));
+
+      declare
+         Square_Result : constant OpenCV.Core.Mat :=
+           Square.Rotate (OpenCV.Core.Clockwise_90);
+         Row_Result    : constant OpenCV.Core.Mat :=
+           Row.Rotate (OpenCV.Core.Counterclockwise_90);
+         Column_Result : constant OpenCV.Core.Mat :=
+           Column.Rotate (OpenCV.Core.Clockwise_90);
+         Float_Result  : constant OpenCV.Core.Mat :=
+           Floats.Rotate (OpenCV.Core.Half_Turn);
+         Vec_Result    : constant OpenCV.Core.Mat :=
+           Vectors.Rotate (OpenCV.Core.Clockwise_90);
+      begin
+         AUnit.Assertions.Assert
+           (Square_Result.Rows = 2
+            and then Square_Result.Columns = 2
+            and then OpenCV.Core.UInt8_Access.Get (Square_Result, 0, 0) = 3
+            and then Row_Result.Rows = 3
+            and then Row_Result.Columns = 1
+            and then OpenCV.Core.UInt8_Access.Get (Row_Result, 0, 0) = 9
+            and then Column_Result.Rows = 1
+            and then Column_Result.Columns = 3
+            and then OpenCV.Core.UInt8_Access.Get (Column_Result, 0, 2) = 10
+            and then Float_Result.Depth = OpenCV.Core.Float32
+            and then Float_Result.Channels = 1
+            and then OpenCV.Core.Float32_Access.Get (Float_Result, 1, 1) = 1.5
+            and then Vec_Result.Depth = OpenCV.Core.UInt8
+            and then Vec_Result.Channels = 3
+            and then OpenCV.Core.UInt8_Vec3_Access.Get (Vec_Result, 0, 0)
+                     = (7, 8, 9)
+            and then OpenCV.Core.UInt8_Vec3_Access.Get (Vec_Result, 1, 0)
+                     = (10, 11, 12)
+            and then OpenCV.Core.UInt8_Vec3_Access.Get (Vec_Result, 0, 1)
+                     = (1, 2, 3),
+            "Rotate must support square and vector shapes and preserve "
+            & "complete element types");
+      end;
+   end Rotate_Shapes_And_Element_Types;
+
+   procedure Rotate_Region_Independence_Lifetime_And_Empty
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Result : OpenCV.Core.Mat;
+      Empty  : OpenCV.Core.Mat;
+   begin
+      declare
+         Parent : OpenCV.Core.Mat :=
+           OpenCV.Core.Create (2, 4, (OpenCV.Core.UInt8, 1));
+      begin
+         OpenCV.Core.UInt8_Access.Set (Parent, 0, 1, 1);
+         OpenCV.Core.UInt8_Access.Set (Parent, 0, 2, 2);
+         OpenCV.Core.UInt8_Access.Set (Parent, 1, 1, 3);
+         OpenCV.Core.UInt8_Access.Set (Parent, 1, 2, 4);
+         declare
+            Region : constant OpenCV.Core.Mat :=
+              Parent.Region ((X => 1, Y => 0, Width => 2, Height => 2));
+         begin
+            Result := Region.Rotate (OpenCV.Core.Clockwise_90);
+            OpenCV.Core.UInt8_Access.Set (Result, 0, 0, 20);
+            AUnit.Assertions.Assert
+              (not Region.Is_Continuous
+               and then OpenCV.Core.UInt8_Access.Get (Region, 1, 0) = 3,
+               "Rotate must accept non-continuous Regions and use "
+               & "independent storage");
+         end;
+      end;
+      declare
+         Empty_Result : constant OpenCV.Core.Mat :=
+           Empty.Rotate (OpenCV.Core.Half_Turn);
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Access.Get (Result, 0, 0) = 20
+            and then Empty_Result.Is_Empty,
+            "A rotate result must survive source finalization and empty "
+            & "rotation must be empty");
+      end;
+   end Rotate_Region_Independence_Lifetime_And_Empty;
+
+   procedure Rotate_Algebraic_Cross_Checks_And_Cycles
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.UInt8, 1));
+   begin
+      for Row in 0 .. 1 loop
+         for Column in 0 .. 2 loop
+            OpenCV.Core.UInt8_Access.Set
+              (Source,
+               Row,
+               Column,
+               Interfaces.Unsigned_8 (Row * 3 + Column + 1));
+         end loop;
+      end loop;
+      declare
+         Clockwise              : constant OpenCV.Core.Mat :=
+           Source.Rotate (OpenCV.Core.Clockwise_90);
+         Counterclockwise       : constant OpenCV.Core.Mat :=
+           Source.Rotate (OpenCV.Core.Counterclockwise_90);
+         Half                   : constant OpenCV.Core.Mat :=
+           Source.Rotate (OpenCV.Core.Half_Turn);
+         Clockwise_Check        : constant OpenCV.Core.Mat :=
+           Source.Transpose.Flip (OpenCV.Core.Horizontal);
+         Counterclockwise_Check : constant OpenCV.Core.Mat :=
+           Source.Transpose.Flip (OpenCV.Core.Vertical);
+         Half_Check             : constant OpenCV.Core.Mat :=
+           Source.Flip (OpenCV.Core.Both_Axes);
+         Four_Clockwise         : constant OpenCV.Core.Mat :=
+           Source.Rotate (OpenCV.Core.Clockwise_90).Rotate
+             (OpenCV.Core.Clockwise_90)
+             .Rotate (OpenCV.Core.Clockwise_90)
+             .Rotate (OpenCV.Core.Clockwise_90);
+         Two_Half_Turns         : constant OpenCV.Core.Mat :=
+           Source.Rotate (OpenCV.Core.Half_Turn).Rotate
+             (OpenCV.Core.Half_Turn);
+      begin
+         AUnit.Assertions.Assert
+           (UInt8_Mats_Are_Equivalent (Clockwise, Clockwise_Check)
+            and then UInt8_Mats_Are_Equivalent
+                       (Counterclockwise, Counterclockwise_Check)
+            and then UInt8_Mats_Are_Equivalent (Half, Half_Check)
+            and then UInt8_Mats_Are_Equivalent (Four_Clockwise, Source)
+            and then UInt8_Mats_Are_Equivalent (Two_Half_Turns, Source),
+            "Rotate must agree with Transpose/Flip identities and "
+            & "rotation cycles");
+      end;
+   end Rotate_Algebraic_Cross_Checks_And_Cycles;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
    Result : aliased AUnit.Test_Suites.Test_Suite;
 
@@ -419,6 +658,22 @@ package body Mat_Transform_Tests is
             Flip_Region_Independence_And_Lifetime'Access));
       Result.Add_Test
         (Caller.Create ("Flip empty Mat", Flip_Empty_Mat'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Rotate rectangular UInt8 exact mappings",
+            Rotate_Rectangular_UInt8_Maps_All_Elements'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Rotate shapes and element types",
+            Rotate_Shapes_And_Element_Types'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Rotate Region, independence, lifetime, and empty Mat",
+            Rotate_Region_Independence_Lifetime_And_Empty'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Rotate algebraic cross-checks and cycles",
+            Rotate_Algebraic_Cross_Checks_And_Cycles'Access));
       return Result'Access;
    end Suite;
 

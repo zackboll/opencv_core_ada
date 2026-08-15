@@ -85,6 +85,11 @@ typedef struct {
 #define OPENCV_CORE_FLIP_HORIZONTAL ((int32_t)1)
 #define OPENCV_CORE_FLIP_BOTH_AXES ((int32_t)-1)
 
+/* Stable rotation identifiers, translated explicitly to cv::RotateFlags. */
+#define OPENCV_CORE_ROTATE_90_CLOCKWISE ((int32_t)0)
+#define OPENCV_CORE_ROTATE_180 ((int32_t)1)
+#define OPENCV_CORE_ROTATE_90_COUNTERCLOCKWISE ((int32_t)2)
+
 /*
  * Returns a borrowed pointer to the diagnostic for the most recent failed shim
  * operation on the calling thread. The pointer remains valid only until a
@@ -124,6 +129,15 @@ opencv_core_mat_transpose(const opencv_core_mat_handle *source,
 opencv_core_status
 opencv_core_mat_flip(const opencv_core_mat_handle *source, int32_t flip_kind,
                      opencv_core_mat_handle **out_mat);
+
+/*
+ * Returns a newly allocated, independent Mat rotated by a multiple of 90
+ * degrees. The result preserves source type; 90-degree rotations exchange
+ * rows and columns, while a 180-degree rotation preserves source dimensions.
+ */
+opencv_core_status
+opencv_core_mat_rotate(const opencv_core_mat_handle *source, int32_t rotation_kind,
+                       opencv_core_mat_handle **out_mat);
 
 /*
  * Splits a non-empty Mat into count independently owned, single-channel Mat

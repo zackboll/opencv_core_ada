@@ -22,6 +22,8 @@ package OpenCV.Core is
 
    type Flip_Kind is (Vertical, Horizontal, Both_Axes);
 
+   type Rotation_Kind is (Clockwise_90, Half_Turn, Counterclockwise_90);
+
    type Channel_Count is new Interfaces.Integer_32 range 1 .. 512;
 
    type Mat_Size is
@@ -226,6 +228,10 @@ package OpenCV.Core is
    function Bitwise_Not (Self : Mat) return Mat;
    function Bitwise_Not (Self, Mask : Mat) return Mat;
    function In_Range (Self : Mat; Lower, Upper : Scalar) return Mat;
+   --  Returns an independent Mat rotated by Kind.  90-degree rotations
+   --  exchange rows and columns; a half turn preserves dimensions and every
+   --  variant preserves element depth and channel count.
+   function Rotate (Self : Mat; Kind : Rotation_Kind) return Mat;
    --  Both operands must be single-channel with identical rows, columns, and
    --  depth.  The result is an independent UInt8 single-channel mask with 255
    --  where the comparison is true and 0 otherwise, suitable for masked ops.
