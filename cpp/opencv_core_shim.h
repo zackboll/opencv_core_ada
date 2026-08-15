@@ -100,6 +100,28 @@ opencv_core_mat_clone(const opencv_core_mat_handle *source,
                       opencv_core_mat_handle **out_mat);
 
 /*
+ * Copies source into destination. Destination is allocated or reallocated to
+ * source's shape and type when necessary. Exact self-copy is supported;
+ * partially overlapping source and destination storage is not supported.
+ */
+opencv_core_status
+opencv_core_mat_copy_to(const opencv_core_mat_handle *source,
+                        opencv_core_mat_handle *destination);
+
+/*
+ * Copies source elements selected by mask into destination. Mask must be a
+ * same-sized single-channel UInt8 Mat; any nonzero value selects the complete
+ * source element, including every channel. If destination is allocated or
+ * reallocated, unselected elements are initialized to zero; otherwise they
+ * retain their previous values. Exact self-copy is supported; partially
+ * overlapping source and destination storage is not supported.
+ */
+opencv_core_status
+opencv_core_mat_copy_to_masked(const opencv_core_mat_handle *source,
+                               opencv_core_mat_handle *destination,
+                               const opencv_core_mat_handle *mask);
+
+/*
  * Converts source data to the requested depth, preserving its channel count,
  * using OpenCV's saturating alpha * source + beta transformation.
  */

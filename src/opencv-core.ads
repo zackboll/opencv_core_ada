@@ -102,6 +102,17 @@ package OpenCV.Core is
      (Self : Mat; Channels : Channel_Count; Rows : Positive) return Mat;
 
    function Clone (Self : Mat) return Mat;
+   --  Copies Self into Destination, allocating or reallocating Destination to
+   --  Self's shape and element type when necessary. Destination may be a
+   --  compatible view. Exact self-copy is supported; partially overlapping
+   --  source and destination storage is not supported by OpenCV.
+   procedure Copy_To (Self : Mat; Destination : in out Mat);
+   --  Copies elements selected by Mask into Destination. Mask uses the common
+   --  mask contract (UInt8, one channel, same shape as Self). Any nonzero mask
+   --  value selects the complete element, including every channel. Unselected
+   --  elements retain their values in a compatible Destination; if Destination
+   --  is allocated or reallocated, they are initialized to zero.
+   procedure Copy_To (Self : Mat; Destination : in out Mat; Mask : Mat);
    function Convert_To
      (Self   : Mat;
       Depth  : Depth_Type;

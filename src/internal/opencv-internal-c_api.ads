@@ -92,6 +92,16 @@ package OpenCV.Internal.C_API is
      (Source : Mat_Handle; Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_clone";
 
+   function Mat_Copy_To (Source, Destination : Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_copy_to";
+
+   function Mat_Copy_To_Masked
+     (Source, Destination, Mask : Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_copy_to_masked";
+
    function Mat_Convert_To
      (Source : Mat_Handle;
       Depth  : C_Int32;

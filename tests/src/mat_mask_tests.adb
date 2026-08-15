@@ -731,6 +731,144 @@ package body Mat_Mask_Tests is
          "Masked Set_To must reject multi-channel UInt8 masks");
    end Masked_Set_To_Uses_Common_Mask_Contract_And_Scalar_Semantics;
 
+   procedure Copy_To_Reallocates_And_Produces_Independent_Data
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 3));
+      Destination : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+   begin
+      Source.Set_To (OpenCV.Core.Make_Scalar (1.0, 2.0, 3.0));
+      Source.Copy_To (Destination);
+      Source.Set_To (OpenCV.Core.Make_Scalar (4.0, 5.0, 6.0));
+
+      AUnit.Assertions.Assert
+        (Destination.Rows = 2
+         and then Destination.Columns = 2
+         and then Destination.Depth = OpenCV.Core.UInt8
+         and then Destination.Channels = 3
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Destination, 0, 0)
+                  = (1, 2, 3),
+         "Copy_To must reallocate an incompatible destination and copy"
+         & " independent data");
+   end Copy_To_Reallocates_And_Produces_Independent_Data;
+
+   procedure Copy_To_Supports_Non_Continuous_Source_And_Destination_Views
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source_Parent, Destination_Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 4, (OpenCV.Core.UInt8, 1));
+      Source, Destination               : OpenCV.Core.Mat;
+   begin
+      Source_Parent.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Destination_Parent.Set_To (OpenCV.Core.Make_Scalar (9.0));
+      OpenCV.Core.UInt8_Access.Set (Source_Parent, 0, 1, 1);
+      OpenCV.Core.UInt8_Access.Set (Source_Parent, 0, 2, 2);
+      OpenCV.Core.UInt8_Access.Set (Source_Parent, 1, 1, 3);
+      OpenCV.Core.UInt8_Access.Set (Source_Parent, 1, 2, 4);
+      Source :=
+        Source_Parent.Region ((X => 1, Y => 0, Width => 2, Height => 2));
+      Destination :=
+        Destination_Parent.Region ((X => 1, Y => 0, Width => 2, Height => 2));
+      Source.Copy_To (Destination);
+
+      AUnit.Assertions.Assert
+        (not Source.Is_Continuous
+         and then not Destination.Is_Continuous
+         and then OpenCV.Core.UInt8_Access.Get (Destination_Parent, 0, 0) = 9
+         and then OpenCV.Core.UInt8_Access.Get (Destination_Parent, 0, 1) = 1
+         and then OpenCV.Core.UInt8_Access.Get (Destination_Parent, 0, 2) = 2
+         and then OpenCV.Core.UInt8_Access.Get (Destination_Parent, 1, 1) = 3
+         and then OpenCV.Core.UInt8_Access.Get (Destination_Parent, 1, 2) = 4,
+         "Copy_To must copy non-continuous source and destination views"
+         & " without changing pixels outside the destination view");
+   end Copy_To_Supports_Non_Continuous_Source_And_Destination_Views;
+
+   procedure Masked_Copy_To_Distinguishes_New_And_Existing_Destinations
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source                                : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      Mask                                  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      New_Destination, Existing_Destination : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 0, 1);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 1, 2);
+      OpenCV.Core.UInt8_Access.Set (Source, 1, 0, 3);
+      OpenCV.Core.UInt8_Access.Set (Source, 1, 1, 4);
+      Mask.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.UInt8_Access.Set (Mask, 0, 1, 1);
+      OpenCV.Core.UInt8_Access.Set (Mask, 1, 0, 255);
+      Existing_Destination :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      Existing_Destination.Set_To (OpenCV.Core.Make_Scalar (9.0));
+      Source.Copy_To (New_Destination, Mask);
+      Source.Copy_To (Existing_Destination, Mask);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (New_Destination, 0, 0) = 0
+         and then OpenCV.Core.UInt8_Access.Get (New_Destination, 0, 1) = 2
+         and then OpenCV.Core.UInt8_Access.Get (New_Destination, 1, 0) = 3
+         and then OpenCV.Core.UInt8_Access.Get (New_Destination, 1, 1) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Existing_Destination, 0, 0) = 9
+         and then OpenCV.Core.UInt8_Access.Get (Existing_Destination, 0, 1) = 2
+         and then OpenCV.Core.UInt8_Access.Get (Existing_Destination, 1, 0) = 3
+         and then OpenCV.Core.UInt8_Access.Get (Existing_Destination, 1, 1)
+                  = 9,
+         "Masked Copy_To must select mask values 1 and 255, zero a newly"
+         & " allocated destination, and preserve unselected existing values");
+   end Masked_Copy_To_Distinguishes_New_And_Existing_Destinations;
+
+   procedure Masked_Copy_To_Supports_Vec3_Compare_Empty_And_Invalid_Masks
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source, Threshold                           : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 3));
+      Compare_Source, Compare_Threshold           : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 1));
+      Mask, Destination, Zero_Mask                : OpenCV.Core.Mat;
+      Invalid_Mask                                : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 3));
+      Empty_Source, Empty_Destination, Empty_Mask : OpenCV.Core.Mat;
+
+      procedure Copy_With_Invalid_Mask is
+      begin
+         Source.Copy_To (Destination, Invalid_Mask);
+      end Copy_With_Invalid_Mask;
+   begin
+      OpenCV.Core.UInt8_Vec3_Access.Set (Source, 0, 0, (1, 2, 3));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Source, 0, 1, (4, 5, 6));
+      Compare_Source.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Compare_Threshold.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.UInt8_Access.Set (Compare_Source, 0, 1, 1);
+      Mask :=
+        Compare_Source.Compare (Compare_Threshold, OpenCV.Core.Greater_Than);
+      Destination := OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 3));
+      Destination.Set_To (OpenCV.Core.Make_Scalar (9.0, 9.0, 9.0));
+      Source.Copy_To (Destination, Mask);
+      Zero_Mask := OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 1));
+      Source.Copy_To (Destination, Zero_Mask);
+      Empty_Source.Copy_To (Empty_Destination, Empty_Mask);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Vec3_Access.Get (Destination, 0, 0) = (9, 9, 9)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Destination, 0, 1)
+                  = (4, 5, 6)
+         and then Empty_Destination.Is_Empty,
+         "Masked Copy_To must accept Compare masks, select whole Vec3"
+         & " elements, preserve all-zero-mask destinations, and handle empty"
+         & " sources");
+      Assert_Raises_OpenCV_Error
+        (Copy_With_Invalid_Mask'Access,
+         "Masked Copy_To must reject multi-channel masks");
+   end Masked_Copy_To_Supports_Vec3_Compare_Empty_And_Invalid_Masks;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -809,6 +947,22 @@ package body Mat_Mask_Tests is
         (Caller.Create
            ("Masked Set_To uses common mask contract and Scalar semantics",
             Masked_Set_To_Uses_Common_Mask_Contract_And_Scalar_Semantics'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Copy_To reallocates and produces independent data",
+            Copy_To_Reallocates_And_Produces_Independent_Data'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Copy_To supports non-continuous source and destination views",
+            Copy_To_Supports_Non_Continuous_Source_And_Destination_Views'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Masked Copy_To distinguishes new and existing destinations",
+            Masked_Copy_To_Distinguishes_New_And_Existing_Destinations'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Masked Copy_To supports Vec3, Compare, empty, and invalid masks",
+            Masked_Copy_To_Supports_Vec3_Compare_Empty_And_Invalid_Masks'Access));
       return Result'Access;
    end Suite;
 

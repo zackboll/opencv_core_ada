@@ -440,6 +440,47 @@ opencv_core_mat_clone(const opencv_core_mat_handle *source,
 }
 
 opencv_core_status
+opencv_core_mat_copy_to(const opencv_core_mat_handle *source,
+                        opencv_core_mat_handle *destination) {
+    clear_error();
+
+    if (source == nullptr || destination == nullptr) {
+        return invalid_argument("source and destination Mat handles must not be null");
+    }
+
+    try {
+        source->value.copyTo(destination->value);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_copy_to_masked(const opencv_core_mat_handle *source,
+                               opencv_core_mat_handle *destination,
+                               const opencv_core_mat_handle *mask) {
+    clear_error();
+
+    if (source == nullptr || destination == nullptr || mask == nullptr) {
+        return invalid_argument(
+            "source, destination, and mask Mat handles must not be null");
+    }
+
+    try {
+        if (!is_valid_mask_for(source->value, mask->value)) {
+            return invalid_argument(
+                "mask must be a same-sized single-channel UInt8 Mat");
+        }
+
+        source->value.copyTo(destination->value, mask->value);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_convert_to(const opencv_core_mat_handle *source, int32_t depth,
                            double scale, double offset,
                            opencv_core_mat_handle **out_mat) {

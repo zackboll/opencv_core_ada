@@ -782,6 +782,25 @@ package body OpenCV.Core is
       return Result;
    end Clone;
 
+   procedure Copy_To (Self : Mat; Destination : in out Mat) is
+      Status : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Copy_To (Self.Handle, Destination.Handle);
+   begin
+      Raise_On_Error (Status, "Mat copy operation");
+   end Copy_To;
+
+   procedure Copy_To (Self : Mat; Destination : in out Mat; Mask : Mat) is
+      Status : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Mask (Self, Mask);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Copy_To_Masked
+          (Source      => Self.Handle,
+           Destination => Destination.Handle,
+           Mask        => Mask.Handle);
+      Raise_On_Error (Status, "Masked Mat copy operation");
+   end Copy_To;
+
    function Convert_To
      (Self   : Mat;
       Depth  : Depth_Type;
