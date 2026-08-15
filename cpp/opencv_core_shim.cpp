@@ -2454,7 +2454,7 @@ opencv_core_mat_has_non_zero(const opencv_core_mat_handle *mat,
             return invalid_argument("Mat must have exactly one channel");
         }
 
-        *out_result = cv::countNonZero(mat->value) > 0 ? 1 : 0;
+        *out_result = cv::hasNonZero(mat->value) ? 1 : 0;
         return OPENCV_CORE_OK;
     } catch (...) {
         return translate_current_exception();

@@ -518,11 +518,11 @@ package OpenCV.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_core_mat_count_non_zero";
-    function Mat_Has_Non_Zero
-      (Self : Mat_Handle; Result : access Interfaces.Unsigned_8) return Status
-    with
-      Import,
-      Convention    => C,
-      External_Name => "opencv_core_mat_has_non_zero";
+   function Mat_Has_Non_Zero
+     (Self : Mat_Handle; Result : access Interfaces.Unsigned_8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_has_non_zero";
 
 end OpenCV.Internal.C_API;

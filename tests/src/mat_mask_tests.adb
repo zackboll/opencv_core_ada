@@ -644,6 +644,54 @@ package body Mat_Mask_Tests is
         (Count = 2, "Count_Non_Zero must count nonzero UInt8 elements");
    end Count_Non_Zero_UInt8_Zero_And_Nonzero;
 
+   procedure Has_Non_Zero_Returns_False_For_All_Zero_Matrix
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+   begin
+      AUnit.Assertions.Assert
+        (not Image.Has_Non_Zero,
+         "Has_Non_Zero must return False for an all-zero matrix");
+   end Has_Non_Zero_Returns_False_For_All_Zero_Matrix;
+
+   procedure Has_Non_Zero_Returns_True_For_Nonzero_Value
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+   begin
+      OpenCV.Core.UInt8_Access.Set (Image, 0, 1, 42);
+      AUnit.Assertions.Assert
+        (Image.Has_Non_Zero,
+         "Has_Non_Zero must return True when matrix contains a nonzero value");
+   end Has_Non_Zero_Returns_True_For_Nonzero_Value;
+
+   procedure Has_Non_Zero_Rejects_Multi_Channel_Mat
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.UInt8, 3));
+
+      procedure Check is
+         Result : constant Boolean := Image.Has_Non_Zero;
+      begin
+         pragma Unreferenced (Result);
+      end Check;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Check'Access, "Has_Non_Zero must reject multi-channel Mats");
+   end Has_Non_Zero_Rejects_Multi_Channel_Mat;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -706,6 +754,18 @@ package body Mat_Mask_Tests is
         (Caller.Create
            ("Count_Non_Zero UInt8 zero and nonzero",
             Count_Non_Zero_UInt8_Zero_And_Nonzero'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Has_Non_Zero returns False for all-zero matrix",
+            Has_Non_Zero_Returns_False_For_All_Zero_Matrix'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Has_Non_Zero returns True for nonzero value",
+            Has_Non_Zero_Returns_True_For_Nonzero_Value'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Has_Non_Zero rejects multi-channel Mat",
+            Has_Non_Zero_Rejects_Multi_Channel_Mat'Access));
       return Result'Access;
    end Suite;
 

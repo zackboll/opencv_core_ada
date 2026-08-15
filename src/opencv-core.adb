@@ -1240,7 +1240,7 @@ package body OpenCV.Core is
         OpenCV.Internal.C_API.Mat_Count_Non_Zero (Self.Handle, Count'Access);
       Raise_On_Error (Status, "Mat count non-zero operation");
 
-      if Count < 0 or else Count > Interfaces.Integer_64 (Mat_Size'Last) then
+      if Count < 0 then
          Ada.Exceptions.Raise_Exception
            (OpenCV_Error'Identity,
             "Count_Non_Zero result exceeds Mat_Size range");
@@ -1250,8 +1250,8 @@ package body OpenCV.Core is
    end Count_Non_Zero;
 
    function Has_Non_Zero (Self : Mat) return Boolean is
-      Result  : aliased Interfaces.Unsigned_8 := 0;
-      Status  : OpenCV.Internal.C_API.Status;
+      Result : aliased Interfaces.Unsigned_8 := 0;
+      Status : OpenCV.Internal.C_API.Status;
    begin
       if Self.Channels /= 1 then
          Ada.Exceptions.Raise_Exception
@@ -1259,7 +1259,8 @@ package body OpenCV.Core is
             "Has_Non_Zero requires a single-channel Mat");
       end if;
 
-      Status := OpenCV.Internal.C_API.Mat_Has_Non_Zero (Self.Handle, Result'Access);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Has_Non_Zero (Self.Handle, Result'Access);
       Raise_On_Error (Status, "Mat has non-zero operation");
 
       return Result = 1;

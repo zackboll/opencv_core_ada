@@ -1096,37 +1096,6 @@ package body Mat_Reduction_Tests is
          "A Float32 Mat sum should preserve fractional values");
    end Float32_Set_To_And_Sum;
 
-    procedure Has_Non_Zero_Returns_False_For_All_Zero_Matrix
-      (Test : in out Mat_Test_Fixture)
-    is
-       pragma Unreferenced (Test);
-       Image  : OpenCV.Core.Mat :=
-         OpenCV.Core.Create
-           (Rows         => 2,
-            Columns      => 3,
-            Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
-    begin
-       AUnit.Assertions.Assert
-         (not Image.Has_Non_Zero,
-          "Has_Non_Zero must return False for an all-zero matrix");
-    end Has_Non_Zero_Returns_False_For_All_Zero_Matrix;
-
-    procedure Has_Non_Zero_Returns_True_For_Nonzero_Value
-      (Test : in out Mat_Test_Fixture)
-    is
-       pragma Unreferenced (Test);
-       Image  : OpenCV.Core.Mat :=
-         OpenCV.Core.Create
-           (Rows         => 2,
-            Columns      => 3,
-            Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
-    begin
-       OpenCV.Core.UInt8_Access.Set (Image, 0, 1, 42);
-       AUnit.Assertions.Assert
-         (Image.Has_Non_Zero,
-          "Has_Non_Zero must return True when matrix contains a nonzero value");
-    end Has_Non_Zero_Returns_True_For_Nonzero_Value;
-
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -1271,14 +1240,6 @@ package body Mat_Reduction_Tests is
       Result.Add_Test
         (Caller.Create
            ("Float32 Mat set-to and sum", Float32_Set_To_And_Sum'Access));
-      Result.Add_Test
-        (Caller.Create
-           ("Has_Non_Zero returns False for all-zero matrix",
-            Has_Non_Zero_Returns_False_For_All_Zero_Matrix'Access));
-      Result.Add_Test
-        (Caller.Create
-           ("Has_Non_Zero returns True for nonzero value",
-            Has_Non_Zero_Returns_True_For_Nonzero_Value'Access));
       return Result'Access;
    end Suite;
 
