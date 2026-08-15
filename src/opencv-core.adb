@@ -1618,6 +1618,28 @@ package body OpenCV.Core is
       return Result;
    end Diagonal_View;
 
+   function Diagonal_Matrix (Diagonal : Mat) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      if Diagonal.Rows /= 1 and then Diagonal.Columns /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat diagonal matrix requires a row or column vector");
+      end if;
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_Diagonal_Matrix
+          (Diagonal => Diagonal.Handle, Result => New_Handle'Access);
+      Raise_On_Error (Status, "Mat diagonal matrix creation");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Diagonal_Matrix;
+
    function Region (Self : Mat; Area : Rect) return Mat is
       Source_Rows    : constant Size_Coordinate := Size_Coordinate (Self.Rows);
       Source_Columns : constant Size_Coordinate :=

@@ -129,6 +129,11 @@ package OpenCV.Core is
 
    function Create (Dimensions : Size; Element_Type : Mat_Type) return Mat;
 
+   --  Creates an independent square matrix with Diagonal on its main diagonal
+   --  and zero in every off-diagonal element. Diagonal must be a row or column
+   --  vector. The result preserves Diagonal's depth and channel count.
+   function Diagonal_Matrix (Diagonal : Mat) return Mat;
+
    --  Both operations create a distinct Mat header sharing Self's storage.
    --  Depth and total scalar storage are preserved; Columns is derived.
    function Reshape (Self : Mat; Channels : Channel_Count) return Mat;

@@ -358,6 +358,13 @@ package OpenCV.Internal.C_API is
       Result   : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_reshape";
 
+   function Mat_Diagonal_Matrix
+     (Diagonal : Mat_Handle; Result : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_diagonal_matrix";
+
    function Mat_Diagonal_View
      (Source : Mat_Handle; Offset : C_Int32; Result : access Mat_Handle)
       return Status

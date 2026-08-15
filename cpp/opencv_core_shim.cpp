@@ -1516,6 +1516,34 @@ opencv_core_mat_reshape(const opencv_core_mat_handle *source, int32_t channels,
 }
 
 opencv_core_status
+opencv_core_mat_diagonal_matrix(const opencv_core_mat_handle *diagonal,
+                                opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (diagonal == nullptr) {
+        return invalid_argument("diagonal Mat handle must not be null");
+    }
+
+    try {
+        if (diagonal->value.dims != 2 ||
+            (diagonal->value.rows != 1 && diagonal->value.cols != 1)) {
+            return invalid_argument("diagonal Mat must be a row or column vector");
+        }
+
+        *out_mat = new opencv_core_mat_handle(cv::Mat::diag(diagonal->value));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_diagonal_view(const opencv_core_mat_handle *source,
                               int32_t offset,
                               opencv_core_mat_handle **out_mat) {

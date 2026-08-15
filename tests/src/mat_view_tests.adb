@@ -951,6 +951,136 @@ package body Mat_View_Tests is
          & " finalizes");
    end Diagonal_View_Validates_Offsets_And_Survives_Source;
 
+   procedure Diagonal_Matrix_Creates_Independent_Matrices
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Column : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 1, (OpenCV.Core.UInt8, 1));
+      Row    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 2, (OpenCV.Core.UInt8, 1));
+      Vector : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 1, (OpenCV.Core.UInt8, 3));
+      Matrix : OpenCV.Core.Mat;
+   begin
+      for Index in 0 .. 3 loop
+         OpenCV.Core.UInt8_Access.Set
+           (Column, Index, 0, Interfaces.Unsigned_8 (Index + 1));
+      end loop;
+      Matrix := OpenCV.Core.Diagonal_Matrix (Column);
+      AUnit.Assertions.Assert
+        (Matrix.Rows = 4
+         and then Matrix.Columns = 4
+         and then Matrix.Depth = OpenCV.Core.UInt8
+         and then Matrix.Channels = 1
+         and then Matrix.Is_Continuous
+         and then not Matrix.Is_Submatrix
+         and then OpenCV.Core.UInt8_Access.Get (Matrix, 0, 0) = 1
+         and then OpenCV.Core.UInt8_Access.Get (Matrix, 1, 1) = 2
+         and then OpenCV.Core.UInt8_Access.Get (Matrix, 2, 2) = 3
+         and then OpenCV.Core.UInt8_Access.Get (Matrix, 3, 3) = 4
+         and then OpenCV.Core.UInt8_Access.Get (Matrix, 0, 1) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Matrix, 2, 1) = 0,
+         "A UInt8 column vector must create the expected zero-filled diagonal"
+         & " matrix");
+      OpenCV.Core.UInt8_Access.Set (Column, 1, 0, 88);
+      OpenCV.Core.UInt8_Access.Set (Matrix, 2, 2, 77);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Matrix, 1, 1) = 2
+         and then OpenCV.Core.UInt8_Access.Get (Column, 2, 0) = 3,
+         "A diagonal matrix and its source must have independent storage");
+
+      OpenCV.Core.Float32_Access.Set (Row, 0, 0, 1.5);
+      OpenCV.Core.Float32_Access.Set (Row, 0, 1, -2.5);
+      Matrix := OpenCV.Core.Diagonal_Matrix (Row);
+      AUnit.Assertions.Assert
+        (Matrix.Rows = 2
+         and then Matrix.Columns = 2
+         and then Matrix.Depth = OpenCV.Core.Float32
+         and then Matrix.Channels = 1
+         and then OpenCV.Core.Float32_Access.Get (Matrix, 0, 0) = 1.5
+         and then OpenCV.Core.Float32_Access.Get (Matrix, 1, 1) = -2.5
+         and then OpenCV.Core.Float32_Access.Get (Matrix, 1, 0) = 0.0,
+         "A Float32 row vector must preserve its type and values");
+
+      for Index in 0 .. 3 loop
+         OpenCV.Core.UInt8_Access.Set
+           (Parent, Index, 1, Interfaces.Unsigned_8 (Index + 1));
+      end loop;
+      Matrix := OpenCV.Core.Diagonal_Matrix (Parent.Column_View (1));
+      AUnit.Assertions.Assert
+        (not Parent.Column_View (1).Is_Continuous
+         and then OpenCV.Core.UInt8_Access.Get (Matrix, 3, 3) = 4,
+         "A non-continuous vector view must be accepted");
+
+      OpenCV.Core.UInt8_Vec3_Access.Set (Vector, 0, 0, (1, 2, 3));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Vector, 1, 0, (4, 5, 6));
+      Matrix := OpenCV.Core.Diagonal_Matrix (Vector);
+      AUnit.Assertions.Assert
+        (Matrix.Channels = 3
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Matrix, 0, 0) = (1, 2, 3)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Matrix, 1, 1) = (4, 5, 6)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Matrix, 0, 1) = (0, 0, 0),
+         "A multi-channel vector must preserve complete diagonal elements");
+   end Diagonal_Matrix_Creates_Independent_Matrices;
+
+   procedure Diagonal_Matrix_Handles_Boundaries_And_Lifetime
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      One_Element  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+      Empty_Vector : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 1, (OpenCV.Core.UInt8, 1));
+      Not_A_Vector : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      Empty_Matrix : OpenCV.Core.Mat;
+      Retained     : OpenCV.Core.Mat;
+
+      procedure Non_Vector_Diagonal is
+         Ignored : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Diagonal_Matrix (Not_A_Vector);
+      begin
+         pragma Unreferenced (Ignored);
+      end Non_Vector_Diagonal;
+   begin
+      OpenCV.Core.UInt8_Access.Set (One_Element, 0, 0, 42);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Diagonal_Matrix (One_Element).Rows = 1
+         and then OpenCV.Core.Diagonal_Matrix (One_Element).Columns = 1
+         and then OpenCV.Core.UInt8_Access.Get
+                    (OpenCV.Core.Diagonal_Matrix (One_Element), 0, 0)
+                  = 42,
+         "A one-element vector must produce a one-by-one matrix");
+
+      Empty_Matrix := OpenCV.Core.Diagonal_Matrix (Empty_Vector);
+      AUnit.Assertions.Assert
+        (Empty_Matrix.Is_Empty
+         and then Empty_Matrix.Rows = 0
+         and then Empty_Matrix.Columns = 0
+         and then Empty_Matrix.Depth = OpenCV.Core.UInt8
+         and then Empty_Matrix.Channels = 1,
+         "An empty vector must produce an empty matrix with its element type");
+      Assert_Raises_OpenCV_Error
+        (Non_Vector_Diagonal'Access,
+         "A non-vector diagonal input must raise OpenCV_Error");
+
+      declare
+         Short_Lived : OpenCV.Core.Mat :=
+           OpenCV.Core.Create (2, 1, (OpenCV.Core.UInt8, 1));
+      begin
+         OpenCV.Core.UInt8_Access.Set (Short_Lived, 0, 0, 9);
+         OpenCV.Core.UInt8_Access.Set (Short_Lived, 1, 0, 10);
+         Retained := OpenCV.Core.Diagonal_Matrix (Short_Lived);
+      end;
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Retained, 0, 0) = 9
+         and then OpenCV.Core.UInt8_Access.Get (Retained, 1, 1) = 10,
+         "A diagonal matrix must remain valid after source finalization");
+   end Diagonal_Matrix_Handles_Boundaries_And_Lifetime;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -1049,6 +1179,14 @@ package body Mat_View_Tests is
         (Caller.Create
            ("Diagonal view validates offsets and survives source",
             Diagonal_View_Validates_Offsets_And_Survives_Source'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Diagonal matrix creates independent matrices",
+            Diagonal_Matrix_Creates_Independent_Matrices'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Diagonal matrix handles boundaries and lifetime",
+            Diagonal_Matrix_Handles_Boundaries_And_Lifetime'Access));
       return Result'Access;
    end Suite;
 
