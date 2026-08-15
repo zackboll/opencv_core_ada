@@ -17,6 +17,11 @@ typedef int32_t opencv_core_status;
 
 typedef struct opencv_core_mat_handle opencv_core_mat_handle;
 
+typedef struct opencv_core_point {
+    int32_t x;
+    int32_t y;
+} opencv_core_point;
+
 typedef struct {
     double component_0;
     double component_1;
@@ -552,6 +557,18 @@ opencv_core_mat_count_non_zero(const opencv_core_mat_handle *mat,
 opencv_core_status
 opencv_core_mat_has_non_zero(const opencv_core_mat_handle *mat,
                               uint8_t *out_result);
+
+/*
+ * Writes row-major locations of nonzero elements from a two-dimensional,
+ * single-channel Mat to caller-owned storage. Points are zero-based x
+ * (column), y (row) coordinates relative to mat, including when mat is a
+ * non-contiguous view. out_count is initialized to zero. capacity must be at
+ * least the number of returned points; Float16 Mats are not supported.
+ */
+opencv_core_status
+opencv_core_mat_find_non_zero(const opencv_core_mat_handle *mat,
+                              opencv_core_point *out_points,
+                              int64_t capacity, int64_t *out_count);
 
 #ifdef __cplusplus
 }

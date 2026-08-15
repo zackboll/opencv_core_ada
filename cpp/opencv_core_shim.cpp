@@ -2671,4 +2671,65 @@ opencv_core_mat_has_non_zero(const opencv_core_mat_handle *mat,
     }
 }
 
+opencv_core_status
+opencv_core_mat_find_non_zero(const opencv_core_mat_handle *mat,
+                              opencv_core_point *out_points,
+                              int64_t capacity, int64_t *out_count) {
+    clear_error();
+
+    if (out_count == nullptr) {
+        return invalid_argument("out_count must not be null");
+    }
+
+    *out_count = 0;
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    if (capacity < 0) {
+        return invalid_argument("capacity must not be negative");
+    }
+
+    try {
+        if (mat->value.dims != 2) {
+            return invalid_argument("Mat must be two-dimensional");
+        }
+
+        if (mat->value.channels() != 1) {
+            return invalid_argument("Mat must have exactly one channel");
+        }
+
+        if (mat->value.depth() == CV_16F) {
+            return invalid_argument("Mat depth Float16 is not supported");
+        }
+
+        std::vector<cv::Point> locations;
+        cv::findNonZero(mat->value, locations);
+
+        if (locations.size() > static_cast<size_t>(INT64_MAX)) {
+            return invalid_argument("nonzero point count exceeds int64 range");
+        }
+
+        const int64_t count = static_cast<int64_t>(locations.size());
+        if (count > capacity) {
+            return invalid_argument("point buffer capacity is insufficient");
+        }
+
+        if (count > 0 && out_points == nullptr) {
+            return invalid_argument("out_points must not be null for nonempty Mat");
+        }
+
+        for (int64_t index = 0; index < count; ++index) {
+            out_points[index].x = static_cast<int32_t>(locations[index].x);
+            out_points[index].y = static_cast<int32_t>(locations[index].y);
+        }
+
+        *out_count = count;
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
 } // extern "C"

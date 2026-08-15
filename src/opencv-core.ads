@@ -46,6 +46,10 @@ package OpenCV.Core is
       Y : Point_Coordinate := 0;
    end record;
 
+   --  A zero-based, value-semantic sequence of points. An empty result has
+   --  the null range 1 .. 0.
+   type Point_Array is array (Natural range <>) of Point;
+
    --  CV_8U and CV_32F element value domains used by typed Mat accessors.
    subtype UInt8_Value is Interfaces.Unsigned_8;
    subtype Float32_Value is Interfaces.IEEE_Float_32;
@@ -219,6 +223,14 @@ package OpenCV.Core is
    --  element. Supports non-contiguous views. Rejects multi-channel Mats.
    --  Empty Mat returns false.
    function Has_Non_Zero (Self : Mat) return Boolean;
+
+   --  Returns locations of all nonzero elements in row-major order. Point.X
+   --  is the column and Point.Y is the row. Supports 2-D, single-channel Mats
+   --  with UInt8, Int8, UInt16, Int16, Int32, Float32, or Float64 depth;
+   --  Float16 and multi-channel Mats are rejected. Empty and all-zero Mats
+   --  return an empty Point_Array. Locations for a Region are relative to that
+   --  Region rather than to its parent Mat.
+   function Find_Non_Zero (Self : Mat) return Point_Array;
 private
 
    type Mat is new Ada.Finalization.Controlled with record

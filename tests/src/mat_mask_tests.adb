@@ -16,6 +16,7 @@ package body Mat_Mask_Tests is
    use type OpenCV.Core.Depth_Type;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Mat_Size;
+   use type OpenCV.Core.Point;
    use type OpenCV.Core.UInt8_Vec3.Vector;
 
    use Mat_Test_Support;
@@ -692,6 +693,151 @@ package body Mat_Mask_Tests is
         (Check'Access, "Has_Non_Zero must reject multi-channel Mats");
    end Has_Non_Zero_Rejects_Multi_Channel_Mat;
 
+   procedure Find_Non_Zero_Returns_Empty_And_Row_Major_Points
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 4, (OpenCV.Core.UInt8, 1));
+   begin
+      declare
+         Empty : constant OpenCV.Core.Point_Array := Image.Find_Non_Zero;
+      begin
+         AUnit.Assertions.Assert
+           (Empty'Length = 0,
+            "Find_Non_Zero must return an empty result for zero input");
+      end;
+
+      OpenCV.Core.UInt8_Access.Set (Image, 0, 3, 1);
+      OpenCV.Core.UInt8_Access.Set (Image, 1, 0, 2);
+      OpenCV.Core.UInt8_Access.Set (Image, 1, 2, 3);
+      OpenCV.Core.UInt8_Access.Set (Image, 2, 1, 4);
+      declare
+         Points : constant OpenCV.Core.Point_Array := Image.Find_Non_Zero;
+      begin
+         AUnit.Assertions.Assert
+           (Points'First = 0
+            and then Points'Length = 4
+            and then Points'Length = Natural (Image.Count_Non_Zero)
+            and then Points (0) = (X => 3, Y => 0)
+            and then Points (1) = (X => 0, Y => 1)
+            and then Points (2) = (X => 2, Y => 1)
+            and then Points (3) = (X => 1, Y => 2),
+            "Find_Non_Zero must return row-major Point values with X as column"
+            & " and Y as row");
+      end;
+   end Find_Non_Zero_Returns_Empty_And_Row_Major_Points;
+
+   procedure Find_Non_Zero_Interoperates_With_Compare_And_In_Range
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.UInt8, 1));
+      Threshold : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.UInt8, 1));
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Threshold.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.UInt8_Access.Set (Image, 0, 0, 1);
+      OpenCV.Core.UInt8_Access.Set (Image, 0, 1, 5);
+      OpenCV.Core.UInt8_Access.Set (Image, 1, 2, 9);
+      OpenCV.Core.UInt8_Access.Set (Threshold, 0, 0, 3);
+      OpenCV.Core.UInt8_Access.Set (Threshold, 0, 1, 5);
+      OpenCV.Core.UInt8_Access.Set (Threshold, 1, 2, 8);
+      declare
+         Compare_Points : constant OpenCV.Core.Point_Array :=
+           Image.Compare (Threshold, OpenCV.Core.Greater_Than).Find_Non_Zero;
+         Range_Points   : constant OpenCV.Core.Point_Array :=
+           Image.In_Range
+             (OpenCV.Core.Make_Scalar (5.0), OpenCV.Core.Make_Scalar (9.0))
+             .Find_Non_Zero;
+      begin
+         AUnit.Assertions.Assert
+           (Compare_Points'Length = 1
+            and then Compare_Points (0) = (X => 2, Y => 1)
+            and then Range_Points'Length = 2
+            and then Range_Points (0) = (X => 1, Y => 0)
+            and then Range_Points (1) = (X => 2, Y => 1),
+            "Find_Non_Zero must consume Compare and In_Range masks");
+      end;
+   end Find_Non_Zero_Interoperates_With_Compare_And_In_Range;
+
+   procedure Find_Non_Zero_Float32_And_Region (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Float_Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 3, (OpenCV.Core.Float32, 1));
+      Parent      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 5, (OpenCV.Core.UInt8, 1));
+      Region      : OpenCV.Core.Mat;
+   begin
+      Float_Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Parent.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.Float32_Access.Set (Float_Image, 0, 1, -1.5);
+      OpenCV.Core.UInt8_Access.Set (Parent, 0, 2, 1);
+      OpenCV.Core.UInt8_Access.Set (Parent, 1, 1, 2);
+      OpenCV.Core.UInt8_Access.Set (Parent, 2, 3, 3);
+      Region := Parent.Region ((X => 1, Y => 0, Width => 3, Height => 3));
+      declare
+         Float_Points  : constant OpenCV.Core.Point_Array :=
+           Float_Image.Find_Non_Zero;
+         Region_Points : constant OpenCV.Core.Point_Array :=
+           Region.Find_Non_Zero;
+      begin
+         AUnit.Assertions.Assert
+           (Float_Points'Length = 1
+            and then Float_Points (0) = (X => 1, Y => 0),
+            "Find_Non_Zero must support Float32");
+         AUnit.Assertions.Assert
+           (not Region.Is_Continuous
+            and then Region_Points'Length = 3
+            and then Region_Points'Length = Natural (Region.Count_Non_Zero)
+            and then Region_Points (0) = (X => 1, Y => 0)
+            and then Region_Points (1) = (X => 0, Y => 1)
+            and then Region_Points (2) = (X => 2, Y => 2),
+            "Find_Non_Zero must return view-relative points from"
+            & " non-continuous Regions");
+      end;
+   end Find_Non_Zero_Float32_And_Region;
+
+   procedure Find_Non_Zero_Rejects_Invalid_Mats
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Multi_Channel : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 3));
+      Float16_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float16, 1));
+      Empty_Image   : OpenCV.Core.Mat;
+      procedure Check_Multi_Channel is
+         Points : constant OpenCV.Core.Point_Array :=
+           Multi_Channel.Find_Non_Zero;
+      begin
+         pragma Unreferenced (Points);
+      end Check_Multi_Channel;
+      procedure Check_Float16 is
+         Points : constant OpenCV.Core.Point_Array :=
+           Float16_Image.Find_Non_Zero;
+      begin
+         pragma Unreferenced (Points);
+      end Check_Float16;
+   begin
+      declare
+         Points : constant OpenCV.Core.Point_Array :=
+           Empty_Image.Find_Non_Zero;
+      begin
+         AUnit.Assertions.Assert
+           (Points'Length = 0,
+            "Find_Non_Zero must return an empty result for an empty Mat");
+      end;
+      Assert_Raises_OpenCV_Error
+        (Check_Multi_Channel'Access,
+         "Find_Non_Zero must reject multi-channel Mats");
+      Assert_Raises_OpenCV_Error
+        (Check_Float16'Access, "Find_Non_Zero must reject Float16 Mats");
+   end Find_Non_Zero_Rejects_Invalid_Mats;
+
    procedure Masked_Set_To_Uses_Common_Mask_Contract_And_Scalar_Semantics
      (Test : in out Mat_Test_Fixture)
    is
@@ -943,6 +1089,22 @@ package body Mat_Mask_Tests is
         (Caller.Create
            ("Has_Non_Zero rejects multi-channel Mat",
             Has_Non_Zero_Rejects_Multi_Channel_Mat'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Find_Non_Zero returns empty and row-major Points",
+            Find_Non_Zero_Returns_Empty_And_Row_Major_Points'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Find_Non_Zero interoperates with Compare and In_Range",
+            Find_Non_Zero_Interoperates_With_Compare_And_In_Range'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Find_Non_Zero supports Float32 and non-continuous Regions",
+            Find_Non_Zero_Float32_And_Region'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Find_Non_Zero rejects multi-channel and Float16 Mats",
+            Find_Non_Zero_Rejects_Invalid_Mats'Access));
       Result.Add_Test
         (Caller.Create
            ("Masked Set_To uses common mask contract and Scalar semantics",

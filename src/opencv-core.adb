@@ -1398,4 +1398,67 @@ package body OpenCV.Core is
       return Result = 1;
    end Has_Non_Zero;
 
+   function Find_Non_Zero (Self : Mat) return Point_Array is
+   begin
+      if Self.Is_Empty then
+         return (1 .. 0 => (X => 0, Y => 0));
+      end if;
+
+      if Self.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Find_Non_Zero requires a single-channel Mat");
+      end if;
+
+      if Self.Depth = Float16 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Find_Non_Zero does not support Float16 Mats");
+      end if;
+
+      declare
+         Count : constant Mat_Size := Self.Count_Non_Zero;
+      begin
+         if Count = 0 then
+            return (1 .. 0 => (X => 0, Y => 0));
+         end if;
+
+         if Count > Mat_Size (Natural'Last) then
+            Ada.Exceptions.Raise_Exception
+              (OpenCV_Error'Identity,
+               "Find_Non_Zero result exceeds Point_Array range");
+         end if;
+
+         declare
+            C_Points :
+              OpenCV.Internal.C_API.Point_Array (0 .. Natural (Count) - 1);
+            Result   : Point_Array (0 .. Natural (Count) - 1);
+            Returned : aliased Interfaces.Integer_64 := 0;
+            Status   : OpenCV.Internal.C_API.Status;
+         begin
+            Status :=
+              OpenCV.Internal.C_API.Mat_Find_Non_Zero
+                (Self.Handle,
+                 C_Points (C_Points'First)'Access,
+                 Interfaces.Integer_64 (Count),
+                 Returned'Access);
+            Raise_On_Error (Status, "Mat find non-zero operation");
+
+            if Returned /= Interfaces.Integer_64 (Count) then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  "Find_Non_Zero result count changed during operation");
+            end if;
+
+            for Index in Result'Range loop
+               Result (Index) :=
+                 (X => Point_Coordinate (C_Points (Index).X),
+                  Y => Point_Coordinate (C_Points (Index).Y));
+            end loop;
+
+            return Result;
+         end;
+      end;
+   end Find_Non_Zero;
+
 end OpenCV.Core;

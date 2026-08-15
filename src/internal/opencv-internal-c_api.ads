@@ -29,6 +29,15 @@ package OpenCV.Internal.C_API is
    end record
    with Convention => C;
 
+   type Point is record
+      X : C_Int32;
+      Y : C_Int32;
+   end record
+   with Convention => C;
+
+   type Point_Array is array (Natural range <>) of aliased Point
+   with Convention => C;
+
    type UInt8_Vec3 is record
       Component_0 : C_UInt8;
       Component_1 : C_UInt8;
@@ -572,5 +581,15 @@ package OpenCV.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_core_mat_has_non_zero";
+
+   function Mat_Find_Non_Zero
+     (Self     : Mat_Handle;
+      Points   : access Point;
+      Capacity : Interfaces.Integer_64;
+      Count    : access Interfaces.Integer_64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_find_non_zero";
 
 end OpenCV.Internal.C_API;
