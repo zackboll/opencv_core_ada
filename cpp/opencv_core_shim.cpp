@@ -442,6 +442,31 @@ opencv_core_mat_clone(const opencv_core_mat_handle *source,
 }
 
 opencv_core_status
+opencv_core_mat_transpose(const opencv_core_mat_handle *source,
+                          opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (source == nullptr) {
+        return invalid_argument("source Mat handle must not be null");
+    }
+
+    try {
+        cv::Mat transposed;
+        cv::transpose(source->value, transposed);
+        *out_mat = new opencv_core_mat_handle(transposed);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_copy_to(const opencv_core_mat_handle *source,
                         opencv_core_mat_handle *destination) {
     clear_error();

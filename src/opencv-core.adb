@@ -784,6 +784,21 @@ package body OpenCV.Core is
       return Result;
    end Clone;
 
+   function Transpose (Self : Mat) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Status :=
+        OpenCV.Internal.C_API.Mat_Transpose (Self.Handle, New_Handle'Access);
+      Raise_On_Error (Status, "Mat transpose");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Transpose;
+
    function Split (Self : Mat) return Mat_Array is
    begin
       if Self.Is_Empty then

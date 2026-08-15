@@ -132,6 +132,10 @@ package OpenCV.Core is
      (Self : Mat; Channels : Channel_Count; Rows : Positive) return Mat;
 
    function Clone (Self : Mat) return Mat;
+   --  Returns an independent Mat whose rows and columns are swapped. Element
+   --  depth and channel count are preserved, including for multi-channel Mats.
+   --  Empty Mats produce an empty result. Non-contiguous Regions are accepted.
+   function Transpose (Self : Mat) return Mat;
    --  Separates Self into one independent single-channel Mat per channel.
    --  Results use channel indices 0 .. Self.Channels - 1, preserve Self's
    --  depth and dimensions, and do not share pixel storage with Self. Empty

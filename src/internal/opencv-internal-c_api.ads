@@ -107,6 +107,10 @@ package OpenCV.Internal.C_API is
      (Source : Mat_Handle; Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_clone";
 
+   function Mat_Transpose
+     (Source : Mat_Handle; Result : access Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_transpose";
+
    function Mat_Split
      (Source : Mat_Handle; Results : access Mat_Handle; Count : C_Int32)
       return Status

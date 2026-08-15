@@ -105,6 +105,14 @@ opencv_core_mat_clone(const opencv_core_mat_handle *source,
                       opencv_core_mat_handle **out_mat);
 
 /*
+ * Returns a newly allocated, independent Mat with rows and columns exchanged.
+ * The result preserves source type, including depth and channel count.
+ */
+opencv_core_status
+opencv_core_mat_transpose(const opencv_core_mat_handle *source,
+                          opencv_core_mat_handle **out_mat);
+
+/*
  * Splits a non-empty Mat into count independently owned, single-channel Mat
  * handles. count must equal source's channel count. out_mats must reference
  * count writable handle slots; all slots are initialized to null before work
