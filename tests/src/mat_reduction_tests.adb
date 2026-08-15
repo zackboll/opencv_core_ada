@@ -1205,6 +1205,175 @@ package body Mat_Reduction_Tests is
          "Min_Max_Loc must reject OpenCV's unsupported Float16 depth");
    end Min_Max_Loc_Rejects_Invalid_Mats;
 
+   procedure Masked_Min_Max_Loc_UInt8_Selects_Extrema_And_Column_Row_Points
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 4, (OpenCV.Core.UInt8, 1));
+      Mask   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 4, (OpenCV.Core.UInt8, 1));
+      Result : OpenCV.Core.Min_Max_Result;
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (50.0));
+      OpenCV.Core.UInt8_Access.Set (Image, 1, 3, 4);
+      OpenCV.Core.UInt8_Access.Set (Image, 2, 0, 220);
+      Mask.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.UInt8_Access.Set (Mask, 1, 3, 1);
+      OpenCV.Core.UInt8_Access.Set (Mask, 2, 0, 255);
+      Result := Image.Min_Max_Loc (Mask);
+
+      AUnit.Assertions.Assert
+        (Result.Minimum = 4.0 and then Result.Maximum = 220.0,
+         "Masked Min_Max_Loc must reduce only nonzero-mask UInt8 elements");
+      AUnit.Assertions.Assert
+        (Result.Minimum_Location.X = 3
+         and then Result.Minimum_Location.Y = 1
+         and then Result.Maximum_Location.X = 0
+         and then Result.Maximum_Location.Y = 2,
+         "Masked Min_Max_Loc Points must map X to column and Y to row");
+   end Masked_Min_Max_Loc_UInt8_Selects_Extrema_And_Column_Row_Points;
+
+   procedure Masked_Min_Max_Loc_Excludes_Global_Extrema_And_Uses_In_Range_Mask
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.UInt8, 1));
+      Mask   : OpenCV.Core.Mat;
+      Result : OpenCV.Core.Min_Max_Result;
+   begin
+      OpenCV.Core.UInt8_Access.Set (Image, 0, 0, 1);
+      OpenCV.Core.UInt8_Access.Set (Image, 0, 1, 20);
+      OpenCV.Core.UInt8_Access.Set (Image, 0, 2, 30);
+      OpenCV.Core.UInt8_Access.Set (Image, 1, 0, 40);
+      OpenCV.Core.UInt8_Access.Set (Image, 1, 1, 50);
+      OpenCV.Core.UInt8_Access.Set (Image, 1, 2, 250);
+      Mask :=
+        Image.In_Range
+          (OpenCV.Core.Make_Scalar (10.0), OpenCV.Core.Make_Scalar (60.0));
+      Result := Image.Min_Max_Loc (Mask);
+
+      AUnit.Assertions.Assert
+        (Result.Minimum = 20.0
+         and then Result.Maximum = 50.0
+         and then Result.Minimum_Location.X = 1
+         and then Result.Minimum_Location.Y = 0
+         and then Result.Maximum_Location.X = 1
+         and then Result.Maximum_Location.Y = 1,
+         "In_Range mask must exclude otherwise-global extrema from"
+         & " Min_Max_Loc");
+   end Masked_Min_Max_Loc_Excludes_Global_Extrema_And_Uses_In_Range_Mask;
+
+   procedure Masked_Min_Max_Loc_Operates_On_Non_Continuous_Views
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.UInt8, 1));
+      Mask_Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.UInt8, 1));
+      View, Mask  : OpenCV.Core.Mat;
+      Result      : OpenCV.Core.Min_Max_Result;
+   begin
+      Source.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.UInt8_Access.Set (Source, 1, 1, 10);
+      OpenCV.Core.UInt8_Access.Set (Source, 1, 2, 20);
+      OpenCV.Core.UInt8_Access.Set (Source, 2, 1, 30);
+      OpenCV.Core.UInt8_Access.Set (Source, 2, 2, 40);
+      Mask_Parent.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.UInt8_Access.Set (Mask_Parent, 1, 2, 1);
+      OpenCV.Core.UInt8_Access.Set (Mask_Parent, 2, 1, 255);
+      View := Source.Region ((X => 1, Y => 1, Width => 2, Height => 2));
+      Mask := Mask_Parent.Region ((X => 1, Y => 1, Width => 2, Height => 2));
+      Result := View.Min_Max_Loc (Mask);
+
+      AUnit.Assertions.Assert
+        (not View.Is_Continuous and then not Mask.Is_Continuous,
+         "Region source and mask must be non-continuous for this case");
+      AUnit.Assertions.Assert
+        (Result.Minimum = 20.0
+         and then Result.Maximum = 30.0
+         and then Result.Minimum_Location.X = 1
+         and then Result.Minimum_Location.Y = 0
+         and then Result.Maximum_Location.X = 0
+         and then Result.Maximum_Location.Y = 1,
+         "Masked Min_Max_Loc must support non-contiguous source and mask"
+         & " views");
+   end Masked_Min_Max_Loc_Operates_On_Non_Continuous_Views;
+
+   procedure Masked_Min_Max_Loc_All_Zero_Mask_Returns_OpenCV_Sentinels
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      Mask   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      Result : OpenCV.Core.Min_Max_Result;
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (42.0));
+      Mask.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Result := Image.Min_Max_Loc (Mask);
+
+      AUnit.Assertions.Assert
+        (Result.Minimum = 0.0
+         and then Result.Maximum = 0.0
+         and then Result.Minimum_Location.X = -1
+         and then Result.Minimum_Location.Y = -1
+         and then Result.Maximum_Location.X = -1
+         and then Result.Maximum_Location.Y = -1,
+         "An all-zero mask must return OpenCV's zero extrema and (-1, -1)"
+         & " locations");
+   end Masked_Min_Max_Loc_All_Zero_Mask_Returns_OpenCV_Sentinels;
+
+   procedure Masked_Min_Max_Loc_Rejects_Invalid_Input
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Empty_Source : OpenCV.Core.Mat;
+      Empty_Mask   : OpenCV.Core.Mat;
+      Source       : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      Float_Mask   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Multi_Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 3));
+      Valid_Mask   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+
+      procedure Find_Empty is
+         Result : constant OpenCV.Core.Min_Max_Result :=
+           Empty_Source.Min_Max_Loc (Empty_Mask);
+      begin
+         pragma Unreferenced (Result);
+      end Find_Empty;
+
+      procedure Find_Invalid_Mask is
+         Result : constant OpenCV.Core.Min_Max_Result :=
+           Source.Min_Max_Loc (Float_Mask);
+      begin
+         pragma Unreferenced (Result);
+      end Find_Invalid_Mask;
+
+      procedure Find_Multi_Channel is
+         Result : constant OpenCV.Core.Min_Max_Result :=
+           Multi_Source.Min_Max_Loc (Valid_Mask);
+      begin
+         pragma Unreferenced (Result);
+      end Find_Multi_Channel;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Find_Empty'Access,
+         "Masked Min_Max_Loc must reject an empty source Mat");
+      Assert_Raises_OpenCV_Error
+        (Find_Invalid_Mask'Access,
+         "Masked Min_Max_Loc must reject an invalid mask");
+      Assert_Raises_OpenCV_Error
+        (Find_Multi_Channel'Access,
+         "Masked Min_Max_Loc must reject a multi-channel source Mat");
+   end Masked_Min_Max_Loc_Rejects_Invalid_Input;
+
    procedure UInt8_Set_To_And_Sum (Test : in out Mat_Test_Fixture) is
       pragma Unreferenced (Test);
       Image : OpenCV.Core.Mat :=
@@ -1424,6 +1593,27 @@ package body Mat_Reduction_Tests is
         (Caller.Create
            ("Min_Max_Loc rejects invalid Mats",
             Min_Max_Loc_Rejects_Invalid_Mats'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Masked Min_Max_Loc UInt8 selects extrema and column-row"
+            & " Points",
+            Masked_Min_Max_Loc_UInt8_Selects_Extrema_And_Column_Row_Points'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Masked Min_Max_Loc excludes global extrema with In_Range mask",
+            Masked_Min_Max_Loc_Excludes_Global_Extrema_And_Uses_In_Range_Mask'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Masked Min_Max_Loc operates on non-continuous views",
+            Masked_Min_Max_Loc_Operates_On_Non_Continuous_Views'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Masked Min_Max_Loc all-zero mask returns OpenCV sentinels",
+            Masked_Min_Max_Loc_All_Zero_Mask_Returns_OpenCV_Sentinels'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Masked Min_Max_Loc rejects invalid input",
+            Masked_Min_Max_Loc_Rejects_Invalid_Input'Access));
       Result.Add_Test
         (Caller.Create
            ("UInt8 Mat set-to and sum", UInt8_Set_To_And_Sum'Access));

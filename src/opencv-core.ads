@@ -183,6 +183,11 @@ package OpenCV.Core is
    function Mean_Std_Dev (Self, Mask : Mat) return Mean_Std_Dev_Result;
    function Norm (Self : Mat; Kind : Norm_Kind := L2) return Long_Float;
    function Min_Max_Loc (Self : Mat) return Min_Max_Result;
+   --  Finds extrema among Self elements selected by Mask. Mask uses the
+   --  common mask contract. Any nonzero mask value selects the element. An
+   --  all-zero mask returns zero extrema and (-1, -1) locations. Point.X is
+   --  the column and Point.Y is the row.
+   function Min_Max_Loc (Self, Mask : Mat) return Min_Max_Result;
 
    --  Counts nonzero scalar elements. Supports single-channel Mats of any
    --  supported depth (including Float16). Rejects multi-channel Mats.

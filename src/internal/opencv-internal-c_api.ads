@@ -521,6 +521,19 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_min_max_loc";
 
+   function Mat_Min_Max_Loc_Masked
+     (Self, Mask : Mat_Handle;
+      Minimum    : access C_Double;
+      Maximum    : access C_Double;
+      Minimum_X  : access C_Int32;
+      Minimum_Y  : access C_Int32;
+      Maximum_X  : access C_Int32;
+      Maximum_Y  : access C_Int32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_min_max_loc_masked";
+
    function Mat_Count_Non_Zero
      (Self : Mat_Handle; Result : access Interfaces.Integer_64) return Status
    with

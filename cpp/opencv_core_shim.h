@@ -481,6 +481,19 @@ opencv_core_mat_min_max_loc(const opencv_core_mat_handle *mat,
                             int32_t *out_maximum_x, int32_t *out_maximum_y);
 
 /*
+ * Finds extrema among elements selected by mask in a non-empty,
+ * two-dimensional, single-channel Mat. Mask must be a same-sized,
+ * single-channel UInt8 Mat; any nonzero value selects the element. An all-zero
+ * mask returns zero extrema with (-1, -1) locations. Locations are reported
+ * as zero-based X (column) and Y (row) coordinates.
+ */
+opencv_core_status
+opencv_core_mat_min_max_loc_masked(
+    const opencv_core_mat_handle *mat, const opencv_core_mat_handle *mask,
+    double *out_minimum, double *out_maximum, int32_t *out_minimum_x,
+    int32_t *out_minimum_y, int32_t *out_maximum_x, int32_t *out_maximum_y);
+
+/*
  * Counts the number of nonzero scalar elements in a single-channel Mat.
  * Supports non-contiguous views. The result is returned as int64_t.
  * Defensive validation requires a valid 2D single-channel handle.
