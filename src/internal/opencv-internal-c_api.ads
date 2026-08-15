@@ -109,6 +109,11 @@ package OpenCV.Internal.C_API is
       return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_split";
 
+   function Mat_Merge
+     (Sources : access Mat_Handle; Count : C_Int32; Result : access Mat_Handle)
+      return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_merge";
+
    function Mat_Copy_To (Source, Destination : Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_copy_to";
 

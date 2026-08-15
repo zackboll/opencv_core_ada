@@ -136,6 +136,171 @@ package body Mat_Channel_Tests is
          "Split output Mats must remain valid after their source finalizes");
    end Split_Outputs_Survive_Source_Finalization;
 
+   procedure Merge_UInt8_Channels_Preserves_Shape_And_Values
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Red, Green, Blue : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+   begin
+      OpenCV.Core.UInt8_Access.Set (Red, 0, 0, 1);
+      OpenCV.Core.UInt8_Access.Set (Green, 0, 0, 2);
+      OpenCV.Core.UInt8_Access.Set (Blue, 0, 0, 3);
+      OpenCV.Core.UInt8_Access.Set (Red, 1, 1, 10);
+      OpenCV.Core.UInt8_Access.Set (Green, 1, 1, 11);
+      OpenCV.Core.UInt8_Access.Set (Blue, 1, 1, 12);
+
+      declare
+         Channels : constant OpenCV.Core.Mat_Array (1 .. 3) :=
+           (Red, Green, Blue);
+         Merged   : OpenCV.Core.Mat := OpenCV.Core.Merge (Channels);
+      begin
+         AUnit.Assertions.Assert
+           (Merged.Rows = 2
+            and then Merged.Columns = 2
+            and then Merged.Depth = OpenCV.Core.UInt8
+            and then Merged.Channels = 3
+            and then OpenCV.Core.UInt8_Vec3_Access.Get (Merged, 0, 0)
+                     = (1, 2, 3)
+            and then OpenCV.Core.UInt8_Vec3_Access.Get (Merged, 1, 1)
+                     = (10, 11, 12),
+            "Merge must concatenate UInt8 channels in array iteration order");
+
+         OpenCV.Core.UInt8_Access.Set (Green, 0, 0, 99);
+         OpenCV.Core.UInt8_Vec3_Access.Set (Merged, 1, 1, (20, 21, 22));
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Vec3_Access.Get (Merged, 0, 0) = (1, 2, 3)
+            and then OpenCV.Core.UInt8_Access.Get (Green, 1, 1) = 11,
+            "Merge output must have storage independent of all inputs");
+      end;
+   end Merge_UInt8_Channels_Preserves_Shape_And_Values;
+
+   procedure Merge_Float32_Non_Continuous_Regions_And_Multi_Channel_Inputs
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 4, (OpenCV.Core.Float32, 3));
+   begin
+      OpenCV.Core.Float32_Vec3_Access.Set (Parent, 0, 1, (1.5, 2.5, 3.5));
+      OpenCV.Core.Float32_Vec3_Access.Set (Parent, 1, 2, (4.5, 5.5, 6.5));
+
+      declare
+         Region : constant OpenCV.Core.Mat :=
+           Parent.Region ((X => 1, Y => 0, Width => 2, Height => 2));
+         Parts  : constant OpenCV.Core.Mat_Array := Region.Split;
+         Input  : constant OpenCV.Core.Mat_Array (4 .. 5) :=
+           (Parts (0), Region);
+         Merged : constant OpenCV.Core.Mat := OpenCV.Core.Merge (Input);
+         Output : constant OpenCV.Core.Mat_Array := Merged.Split;
+      begin
+         AUnit.Assertions.Assert
+           (not Region.Is_Continuous
+            and then Merged.Rows = 2
+            and then Merged.Columns = 2
+            and then Merged.Depth = OpenCV.Core.Float32
+            and then Merged.Channels = 4
+            and then OpenCV.Core.Float32_Access.Get (Output (0), 1, 1) = 4.5
+            and then OpenCV.Core.Float32_Access.Get (Output (1), 1, 1) = 4.5
+            and then OpenCV.Core.Float32_Access.Get (Output (2), 1, 1) = 5.5
+            and then OpenCV.Core.Float32_Access.Get (Output (3), 1, 1) = 6.5,
+            "Merge must support Float32 non-continuous and multi-channel"
+            & " inputs");
+      end;
+   end Merge_Float32_Non_Continuous_Regions_And_Multi_Channel_Inputs;
+
+   procedure Merge_Validation_And_Single_Element_Behavior
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      First             : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 1));
+      Different_Rows    : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      Different_Columns : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+      Different_Depth   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+
+      procedure Merge_Empty is
+         Empty : OpenCV.Core.Mat_Array (1 .. 0);
+         Value : OpenCV.Core.Mat := OpenCV.Core.Merge (Empty);
+      begin
+         pragma Unreferenced (Value);
+      end Merge_Empty;
+
+      procedure Merge_Different_Rows is
+         Value : OpenCV.Core.Mat :=
+           OpenCV.Core.Merge ((0 => First, 1 => Different_Rows));
+      begin
+         pragma Unreferenced (Value);
+      end Merge_Different_Rows;
+
+      procedure Merge_Different_Columns is
+         Value : OpenCV.Core.Mat :=
+           OpenCV.Core.Merge ((0 => First, 1 => Different_Columns));
+      begin
+         pragma Unreferenced (Value);
+      end Merge_Different_Columns;
+
+      procedure Merge_Different_Depth is
+         Value : OpenCV.Core.Mat :=
+           OpenCV.Core.Merge ((0 => First, 1 => Different_Depth));
+      begin
+         pragma Unreferenced (Value);
+      end Merge_Different_Depth;
+   begin
+      OpenCV.Core.UInt8_Access.Set (First, 0, 0, 7);
+      OpenCV.Core.UInt8_Access.Set (First, 0, 1, 8);
+      declare
+         Merged : constant OpenCV.Core.Mat := OpenCV.Core.Merge ((5 => First));
+      begin
+         AUnit.Assertions.Assert
+           (Merged.Channels = 1
+            and then OpenCV.Core.UInt8_Access.Get (Merged, 0, 0) = 7
+            and then OpenCV.Core.UInt8_Access.Get (Merged, 0, 1) = 8,
+            "Merge must copy a single input Mat");
+      end;
+
+      Assert_Raises_OpenCV_Error
+        (Merge_Empty'Access, "Merge must reject an empty Mat_Array");
+      Assert_Raises_OpenCV_Error
+        (Merge_Different_Rows'Access, "Merge must reject mismatched rows");
+      Assert_Raises_OpenCV_Error
+        (Merge_Different_Columns'Access,
+         "Merge must reject mismatched columns");
+      Assert_Raises_OpenCV_Error
+        (Merge_Different_Depth'Access, "Merge must reject mismatched depths");
+   end Merge_Validation_And_Single_Element_Behavior;
+
+   procedure Split_Merge_Round_Trip_Is_Independent
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Merged : OpenCV.Core.Mat;
+   begin
+      declare
+         Source : OpenCV.Core.Mat :=
+           OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 3));
+      begin
+         OpenCV.Core.UInt8_Vec3_Access.Set (Source, 0, 0, (30, 31, 32));
+         OpenCV.Core.UInt8_Vec3_Access.Set (Source, 0, 1, (40, 41, 42));
+         Merged := OpenCV.Core.Merge (Source.Split);
+         OpenCV.Core.UInt8_Vec3_Access.Set (Source, 0, 0, (1, 2, 3));
+      end;
+
+      AUnit.Assertions.Assert
+        (Merged.Rows = 1
+         and then Merged.Columns = 2
+         and then Merged.Depth = OpenCV.Core.UInt8
+         and then Merged.Channels = 3
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Merged, 0, 0)
+                  = (30, 31, 32)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Merged, 0, 1)
+                  = (40, 41, 42),
+         "Split then Merge must reproduce an independent multi-channel Mat");
+   end Split_Merge_Round_Trip_Is_Independent;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
    Result : aliased AUnit.Test_Suites.Test_Suite;
 
@@ -157,6 +322,23 @@ package body Mat_Channel_Tests is
         (Caller.Create
            ("Split outputs survive source finalization",
             Split_Outputs_Survive_Source_Finalization'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Merge UInt8 channels preserves shape and values",
+            Merge_UInt8_Channels_Preserves_Shape_And_Values'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Merge Float32 non-continuous Regions and"
+            & " multi-channel inputs",
+            Merge_Float32_Non_Continuous_Regions_And_Multi_Channel_Inputs'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Merge validation and single-element behavior",
+            Merge_Validation_And_Single_Element_Behavior'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Split Merge round trip is independent",
+            Split_Merge_Round_Trip_Is_Independent'Access));
       return Result'Access;
    end Suite;
 

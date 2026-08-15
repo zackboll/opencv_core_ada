@@ -824,6 +824,93 @@ package body OpenCV.Core is
       end;
    end Split;
 
+   function Merge (Channels : Mat_Array) return Mat is
+      Maximum_Channels : constant Natural := 512;
+   begin
+      if Channels'Length = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat merge requires at least one input Mat");
+      end if;
+
+      declare
+         First          : constant Mat := Channels (Channels'First);
+         Expected_Rows  : constant Natural := First.Rows;
+         Expected_Cols  : constant Natural := First.Columns;
+         Expected_Depth : constant Depth_Type := First.Depth;
+         Total_Channels : Natural := 0;
+      begin
+         for Channel of Channels loop
+            if Channel.Is_Empty then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  "Mat merge does not accept empty input Mats");
+            end if;
+
+            if Channel.Rows /= Expected_Rows then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  "Mat merge requires inputs with identical row counts");
+            end if;
+
+            if Channel.Columns /= Expected_Cols then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  "Mat merge requires inputs with identical column counts");
+            end if;
+
+            if Channel.Depth /= Expected_Depth then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  "Mat merge requires inputs with identical depths");
+            end if;
+
+            Total_Channels := Total_Channels + Natural (Channel.Channels);
+            if Total_Channels > Maximum_Channels then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  "Mat merge result exceeds the maximum channel count");
+            end if;
+         end loop;
+
+         declare
+            Handles    :
+              OpenCV.Internal.C_API.Mat_Handle_Array
+                (0 .. Channels'Length - 1);
+            Result     : Mat;
+            New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+              OpenCV.Internal.C_API.Null_Mat_Handle;
+            Status     : OpenCV.Internal.C_API.Status;
+            Position   : Natural := Handles'First;
+         begin
+            for Channel of Channels loop
+               Handles (Position) := Channel.Handle;
+               Position := Position + 1;
+            end loop;
+
+            Status :=
+              OpenCV.Internal.C_API.Mat_Merge
+                (Sources => Handles (Handles'First)'Access,
+                 Count   => OpenCV.Internal.C_API.C_Int32 (Channels'Length),
+                 Result  => New_Handle'Access);
+            if Status /= OpenCV.Internal.C_API.Success then
+               OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+               Raise_On_Error (Status, "Mat merge operation");
+            end if;
+
+            if New_Handle = OpenCV.Internal.C_API.Null_Mat_Handle then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  "Mat merge operation returned a null result handle");
+            end if;
+
+            OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+            Result.Handle := New_Handle;
+            return Result;
+         end;
+      end;
+   end Merge;
+
    procedure Copy_To (Self : Mat; Destination : in out Mat) is
       Status : constant OpenCV.Internal.C_API.Status :=
         OpenCV.Internal.C_API.Mat_Copy_To (Self.Handle, Destination.Handle);

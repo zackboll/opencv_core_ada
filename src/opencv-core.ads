@@ -118,6 +118,11 @@ package OpenCV.Core is
    --  copy.
    --  Non-contiguous Regions and all supported Mat depths are accepted.
    function Split (Self : Mat) return Mat_Array;
+   --  Concatenates the channels of every non-empty input Mat, in array
+   --  iteration order, into an independent Mat. Inputs may themselves be
+   --  multi-channel, but must have identical dimensions and depth. The input
+   --  array must not be empty and the total channel count must not exceed 512.
+   function Merge (Channels : Mat_Array) return Mat;
    --  Copies Self into Destination, allocating or reallocating Destination to
    --  Self's shape and element type when necessary. Destination may be a
    --  compatible view. Exact self-copy is supported; partially overlapping

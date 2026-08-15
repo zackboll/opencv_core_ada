@@ -2789,4 +2789,40 @@ opencv_core_mat_split(const opencv_core_mat_handle *source,
     }
 }
 
+opencv_core_status
+opencv_core_mat_merge(const opencv_core_mat_handle *const *sources,
+                      int32_t count, opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+    *out_mat = nullptr;
+
+    if (sources == nullptr) {
+        return invalid_argument("sources must not be null");
+    }
+    if (count <= 0) {
+        return invalid_argument("input count must be positive");
+    }
+
+    try {
+        std::vector<cv::Mat> inputs;
+        inputs.reserve(static_cast<size_t>(count));
+        for (int32_t index = 0; index < count; ++index) {
+            if (sources[index] == nullptr) {
+                return invalid_argument("source Mat handle must not be null");
+            }
+            inputs.push_back(sources[index]->value);
+        }
+
+        cv::Mat merged;
+        cv::merge(inputs, merged);
+        *out_mat = new opencv_core_mat_handle(merged);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
 } // extern "C"

@@ -116,6 +116,17 @@ opencv_core_mat_split(const opencv_core_mat_handle *source,
                       opencv_core_mat_handle **out_mats, int32_t count);
 
 /*
+ * Merges count non-empty Mats with identical dimensions and depth. Each input
+ * may have multiple channels; their channels are concatenated in input order.
+ * sources is borrowed and remains owned by the caller. count must be positive
+ * and the total channel count must not exceed OPENCV_CORE_MAX_CHANNELS. On
+ * success out_mat receives one independently owned Mat handle.
+ */
+opencv_core_status
+opencv_core_mat_merge(const opencv_core_mat_handle *const *sources,
+                      int32_t count, opencv_core_mat_handle **out_mat);
+
+/*
  * Copies source into destination. Destination is allocated or reallocated to
  * source's shape and type when necessary. Exact self-copy is supported;
  * partially overlapping source and destination storage is not supported.
