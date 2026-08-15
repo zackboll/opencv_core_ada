@@ -2,115 +2,141 @@
 
 ## Build Cleanliness
 
-The agent must keep the repository buildable throughout development.
+Keep the repository buildable throughout development.
 
-Before considering a coding task complete, run the relevant Alire build for the crate being modified.
+Do not continue stacking implementation changes on top of a known broken
+build unless the current task is specifically to investigate that failure.
 
-For the top-level library crate, use the configured Alire/GNAT toolchain rather than invoking an unrelated system compiler directly.
+Before considering a coding task complete, verify the affected crate with the
+project's configured Alire/GNAT toolchain.
 
 New code should not introduce compiler warnings.
 
-Treat warnings from the project's normal development build as issues to fix unless there is a documented reason to suppress a specific warning.
+Treat warnings from the normal development build as issues to fix unless
+there is a specific documented reason to suppress one.
 
-Do not broadly disable warning classes merely to make a build appear clean.
+Prefer fixing the underlying problem over broadly disabling warning classes.
 
-Prefer fixing the underlying code or adding a narrow, documented suppression when necessary.
-
-The agent must not finish a task while knowingly leaving:
+Do not consider a task complete while knowingly leaving:
 
 - compilation errors
 - unresolved linker errors
 - broken Alire dependencies
 - new compiler warnings
-- failing tests caused by the change
+- tests broken by the change
+
+
+## Development Tool Environment
+
+The public `opencvcore_ada` crate must not acquire testing, proof, coverage,
+or other development-only dependencies merely to make development tools
+available.
+
+GNATprove and GNATcov are dependencies of the `tests` Alire crate.
+
+When these tools are used to analyze library code, invoke them through the
+Alire environment provided by the `tests` crate and explicitly target the
+appropriate project when necessary.
+
+Do not bypass the project's Alire environment with an unrelated system GNAT
+toolchain unless there is a specific reason to do so.
+
+This repository-specific tool-environment policy takes precedence over generic
+skill guidance about selecting an Alire environment.
+
 
 ## SPARK and GNATprove
 
-GNATprove is a development dependency of the `tests` crate, not the public `opencvcore_ada` crate.
+Use SPARK where it provides meaningful assurance in the Ada portion of the
+binding.
 
-When GNATprove is needed for library code, invoke it through the Alire environment provided by the `tests` crate and explicitly target the appropriate library project when necessary.
-
-Do not add GNATprove to the public library crate merely to make the tool executable available.
-
-Use SPARK where it provides meaningful value in the Ada layer.
-
-Good candidates for SPARK analysis include:
+Good candidates include:
 
 - range and bounds validation
-- matrix dimension checks
-- type and channel validation
+- matrix dimension validation
+- matrix type and channel validation
+- index calculations
 - conversion helpers
 - value-type operations
-- ownership-state logic that can be modeled safely
 - pure Ada utility code
-- contracts on public operations
+- contracts on public Ada operations
 
-Do not force C/C++ interoperability code into SPARK when the foreign interface prevents useful proof.
+Do not force the C or C++ interoperability layer into SPARK when the foreign
+boundary prevents meaningful proof.
 
-Treat calls into the C++ shim as trusted external boundaries unless a stronger model is explicitly provided.
+Treat calls across the C/C++ boundary as trusted external operations unless a
+stronger formal model has deliberately been provided.
 
-Use preconditions, postconditions, type invariants, and assertions where they improve correctness and make assumptions explicit.
+Use preconditions, postconditions, invariants, assertions, and strong types
+when they express meaningful requirements.
 
-Do not add contracts merely to increase proof statistics.
+Do not add contracts solely to improve proof statistics.
 
-When modifying SPARK-compatible code, run GNATprove when practical and address newly introduced proof failures before considering the task complete.
+When SPARK-compatible code is materially changed, run an appropriately scoped
+GNATprove analysis when practical.
 
-Clearly distinguish between:
+Clearly distinguish among:
 
 - properties proven by GNATprove
 - properties enforced by Ada runtime checks
-- properties assumed at the C/C++ boundary
-- behavior validated only through testing
+- properties assumed across the C/C++ boundary
+- behavior established only through testing
+
+Detailed GNATprove invocation, proof-campaign strategy, and output
+interpretation belong to the GNATprove skill rather than this file.
+
 
 ## Source Formatting
 
 Use GNATformat for Ada source formatting.
 
-The repository's preferred formatter is the standalone Alire-installed GNATformat tool.
+Format newly created or substantially modified Ada source before considering
+a task complete.
 
-When formatting a file, use the standalone formatter directly.
+Do not perform repository-wide formatting as an unrelated side effect.
 
-For example:
-
-```bash
-~/.alire/bin/gnatformat SOURCE_FILE
-```
-
-Format newly created or substantially modified Ada source files before considering a task complete.
-
-Do not perform repository-wide formatting as a side effect of an unrelated change.
-
-Do not reformat unrelated source files merely because the formatter would produce different output.
+Do not reformat unrelated source merely because the formatter would change
+it.
 
 Keep formatting-only changes separate from functional changes when practical.
 
-If GNATformat and an explicit project coding convention disagree, follow the documented project convention and update formatter configuration where possible rather than repeatedly fighting the formatter manually.
+If the formatter and an explicit repository coding convention disagree,
+follow the repository convention and adjust formatter configuration where
+appropriate rather than repeatedly hand-correcting generated formatting.
 
-Formatting must not be used to conceal or combine unrelated code changes.
+Detailed tool-location and invocation discovery should be handled through the
+appropriate Alire/tool skill rather than hard-coded here unless the repository
+requires a specific invocation.
 
-## Task Completion Checks
 
-Before considering a coding task complete, the agent should perform the relevant checks in this order:
+## Verification
 
-1. Format modified Ada source files with GNATformat.
-2. Build the affected Alire crate.
-3. Run the relevant AUnit tests.
-4. Run GNATprove for affected SPARK-compatible code when practical.
-5. Run GNATcov through the `tests` crate when the change is significant enough to justify coverage verification.
-6. Review the final diff for unrelated or accidental changes.
+Perform verification appropriate to the change.
 
-GNATprove and GNATcov should be invoked through the `tests` Alire environment because they are development dependencies of that crate.
+Typical checks include:
 
-Do not add GNATprove or GNATcov to the public library crate merely to simplify tool invocation.
+1. format modified Ada source
+2. build the affected crate
+3. run focused AUnit tests
+4. run GNATprove for affected SPARK-compatible code when appropriate
+5. run GNATcov when the size or risk of the change justifies coverage analysis
+6. inspect the final diff for unrelated changes
 
-Do not claim a task is complete if a required check was skipped because of a known failure.
+Not every task requires every possible verification tool.
 
-If a check cannot be run, explicitly state:
+Choose checks according to what changed and what risks need to be validated.
 
-- which check was not run
-- why it could not be run
-- what remains to be verified
+A successful verification remains evidence for the repository state on which
+it was run. Do not repeat an expensive verification solely because the task
+has reached a later checklist step when no relevant files have changed.
 
-Prefer targeted checks during development, followed by broader verification before completing a substantial feature.
+After relevant code, configuration, or test changes, previous verification for
+the affected area becomes stale and should be rerun as necessary.
 
-Do not rebuild or retest unrelated crates unnecessarily.
+If an important check cannot be performed, state:
+
+- which check was not performed
+- why
+- what remains unverified
+
+Do not claim verification that was not actually performed.

@@ -7,343 +7,166 @@ Work in small, reviewable steps.
 Before modifying code:
 
 - inspect the relevant existing source files
-- inspect the applicable Alire manifest and GPR project files
+- inspect applicable Alire manifests and GPR project files
 - understand the existing package hierarchy
-- identify the smallest change needed
+- identify the smallest coherent change required by the task
 
 Do not make large speculative rewrites.
 
-Do not create multiple architectural layers, packages, or abstractions in advance unless they are required by the current task.
+Do not create packages, abstractions, compatibility layers, or infrastructure
+in advance unless they are required by the current feature.
 
-Prefer implementing and validating one coherent piece of functionality at a time.
+Prefer implementing and validating one coherent piece of functionality at a
+time.
 
-After each meaningful code or build-configuration change:
+Do not continue stacking implementation changes on top of a known broken
+build unless investigation of that failure is the current task.
 
-- build the affected crate if the current state has not already been successfully built
-- fix errors before continuing
-- run focused tests when the relevant implementation or tests have changed
 
-Do not rerun a successful build or test when no relevant files have changed.
+## Tool Results and Failure Handling
 
-Do not continue stacking changes on top of a known broken build.
+Consume the result of each tool call before choosing the next action.
 
-## Loop Prevention, Failure Handling, and Progress Rules
+A failed command is diagnostic information.
 
-Every tool call must make progress toward the current task.
+When a command fails:
 
-### Never Repeat Identical Commands Without a State Change
+1. interpret the actual error
+2. identify a plausible cause
+3. choose a diagnostic or corrective action based on that evidence
+4. retry only when doing so has a meaningful reason
 
-Never execute the exact same command with the same arguments twice in a row.
+Do not blindly repeat commands or make cosmetic command variations merely to
+continue working.
 
-This applies whether the previous command:
+Successful build, test, proof, formatting, coverage, and diagnostic results
+remain useful evidence until repository state relevant to those results
+changes.
 
-- succeeded
-- failed
-- returned no output
-- returned unexpected output
-- exited with a nonzero status
-
-A failed command is diagnostic information, not a reason to immediately retry the same command.
-
-An identical retry is permitted only if something relevant has changed
-independently of the previous command, such as:
-
-- a source file was modified
-- a configuration file was modified
-- a dependency was installed or changed
-- the working directory was deliberately changed
-- the environment or toolchain configuration was deliberately changed
-
-Changes caused solely by the previous command do not count as a relevant
-state change for retrying that same command.
-
-In particular:
-
-- build artifacts produced by a build do not justify immediately rebuilding
-- test output produced by a test does not justify immediately rerunning the test
-- generated logs or reports do not justify rerunning the command that created them
-- merely changing command arguments to cosmetically retry the same operation
-  does not count as progress
-
-If none of those conditions occurred, do not retry the command.
-
-### Required Behavior After Command Failure
-
-Whenever a command fails:
-
-1. Read and interpret the error output.
-2. State internally what the failure indicates.
-3. Identify at least one plausible cause.
-4. Choose a next action that is meaningfully different from the failed command.
-5. Do not retry the failed command until something relevant has changed.
-
-For example, if a tool reports that an imported GPR project cannot be found, do not repeatedly invoke the same tool.
-
-Instead, investigate or correct the project environment, dependency path, working directory, or invocation method.
-
-### Retry Limit
-
-Do not perform more than one retry for the same failure condition unless a relevant state change has occurred.
-
-If two attempts produce the same or substantially equivalent error:
-
-- stop retrying
-- do not try cosmetic variations of the same command
-- choose a different diagnostic approach
-
-If no distinct productive next action is apparent, stop and ask the user for direction.
-
-### Command Result Consumption
-
-After every `execute_command` result, the next action must not be the same
+The project `PreToolUse` hook may reject an immediately repeated identical
 command.
 
-Before issuing another tool call, explicitly determine:
+Treat such a rejection as duplicate-command protection, not as a new command
+failure. Use the previous command result and continue with a different
+productive action.
 
-1. What new fact did the previous command establish?
-2. Did repository, filesystem, dependency, build, or environment state change?
-3. What different action follows from the result?
 
-If the previous command succeeded, consume the result and advance to the next
-implementation, inspection, test, or verification step.
+## Terminal Commands
 
-If the previous command failed, diagnose the error and change something or run
-a meaningfully different diagnostic before retrying.
+Use normal shell syntax when useful.
 
-Never use a repeated command as a way to "continue thinking."
+Do not HTML-encode shell operators or other shell characters.
 
-A build that completed successfully is complete evidence that the build passed
-at that point. Do not immediately build again.
+Prefer commands that are clear, reproducible, and appropriate to the current
+project environment.
 
-A test command that completed successfully is complete evidence that those
-tests passed at that point. Do not immediately run the same tests again.
+Prefer Alire-aware execution for Ada development tools when the project or
+tool requires the Alire environment.
 
-### Verification Result Freshness
+Repository-specific rules about which Alire crate owns a development tool take
+precedence over generic tool defaults.
 
-Treat successful build, test, formatting, proof, and coverage results as cached
-verification of the current repository state.
-
-Do not repeat a verification command if:
-
-- the command already succeeded, and
-- no file relevant to that verification has changed since it succeeded.
-
-This applies to:
-
-- `alr build`
-- test executables
-- AUnit test runs
-- GNATprove
-- GNATcov
-- GNATformat verification
-- other compile, link, test, or static-analysis commands
-
-A successful verification remains valid until relevant state changes.
-
-Task-completion checks must reuse successful verification results obtained
-earlier in the task when no relevant files have changed.
-
-Do not rerun a successful build merely because the workflow has reached a
-later "completion checks" step.
-
-Do not rerun successful tests merely because the workflow has reached the end
-of the task.
-
-Only invalidate a previous verification result after a relevant change.
-
-Examples:
-
-source edit
--> build
--> build succeeds
--> inspect unrelated file
--> do NOT build again
-
-source edit
--> build
--> build succeeds
--> source edit
--> previous build result is stale
--> build again
-
-tests run
--> tests succeed
--> no source or test changes
--> do NOT run tests again
-
-tests run
--> tests succeed
--> test or implementation changes
--> previous test result is stale
--> run tests again
-
-### Tool Hook Rejections
-
-A command rejected by a project hook must not be retried unchanged.
-
-If the duplicate-command guard blocks a command, this means the previous
-execution result is already available and should be reused.
-
-Do not interpret a duplicate-command hook rejection as a command failure that
-needs to be retried.
-
-After a duplicate command is blocked:
-
-1. use the result from the previous successful or failed invocation
-2. continue to a different implementation or diagnostic step
-3. do not submit the blocked command again
-
-### Diagnostic Commands
-
-A successful read-only or diagnostic command result is authoritative for the current state unless something relevant changes.
-
-Examples include:
-
-- `grep`
-- `find`
-- `cat`
-- `ls`
-- `git status`
-- `git diff`
-- compiler or tool version queries
-- searches for project files
-- searches through installed dependency sources
-
-After a successful diagnostic command:
-
-1. consume and reason about its output
-2. retain the discovered fact
-3. choose the next distinct action
-
-Do not repeatedly search for information that has already been found.
-
-### Error-Driven Debugging
-
-When investigating a build, formatting, or test failure, use the actual error message to choose the next diagnostic step.
-
-Do not respond to an error by blindly repeating the failing command.
-
-Prefer:
-
-failure
--> interpret error
--> inspect relevant configuration or environment
--> make a corrective change
--> retry once
-
-over:
-
-failure
--> retry
--> retry
--> retry
-
-If a tool invocation fails because it is outside the correct Alire environment, investigate running the tool through the appropriate Alire crate rather than repeatedly invoking the standalone command.
-
-### Loop Detection
-
-Treat any of the following as a loop:
-
-- the same command is issued twice consecutively
-- the same failure appears twice without a relevant intervening state change
-- the same file or symbol is repeatedly searched for after it has already been found
-- multiple diagnostic commands are producing the same known fact without advancing implementation
-
-When a loop is detected:
-
-1. stop issuing tool calls
-2. summarize what is already known
-3. choose a genuinely different approach
-4. ask the user if no productive alternative is clear
-
-## Terminal Command Rules
-
-When using terminal tools:
-
-- Execute exactly one shell command per tool call.
-- Never combine commands using `&&`, `||`, `;`, or pipes.
-- Never use shell redirection such as `>`, `>>`, `<`, `2>&1`, or command substitution.
-- Change directories and run commands as separate terminal tool calls.
-- Do not HTML-encode shell characters.
-- Before requesting execution, verify that the command contains no strings such as `&amp;`, `&gt;`, or `&lt;`.
-
-Prefer Alire-aware commands when operating on Ada projects.
-
-Example:
-
-```bash
-alr build
-```
-
-GNATprove and GNATcov are provided by the `tests` Alire crate.
-
-Run these tools from the `tests` crate, explicitly targeting the appropriate project when required.
-
-Do not add verification tools to the public library crate merely to make them available from its Alire environment.
-
-Do not bypass the Alire environment with a system GNAT toolchain unless there is a specific documented reason.
 
 ## Inspect Before Creating Bindings
 
-Before adding a new OpenCV binding operation, inspect the actual OpenCV declaration being wrapped.
+Before adding or changing an OpenCV binding operation, inspect the
+authoritative OpenCV declaration being wrapped.
 
-Do not invent function signatures, overload behavior, ownership rules, default arguments, template behavior, or exception semantics from memory.
+When the declaration alone does not establish required behavior, inspect the
+relevant authoritative OpenCV implementation or documentation.
 
-Before implementing a binding:
+Do not invent from memory:
 
-- locate the relevant OpenCV Core header or official declaration
-- identify the exact C++ type, method, overload, or template being wrapped
-- inspect existing shim functions for related functionality
-- inspect the existing public Ada API for naming and design consistency
-- check whether the functionality already exists elsewhere in the binding
+- function signatures
+- overload behavior
+- ownership rules
+- lifetime behavior
+- default arguments
+- template semantics
+- continuity or storage assumptions
+- exception semantics
 
-The agent should understand the OpenCV semantics before designing the Ada abstraction.
+Before designing the Ada API:
+
+- understand the relevant OpenCV overload or template family
+- inspect related existing shim functions
+- inspect the existing public Ada abstraction
+- check whether related functionality already exists
+- determine which semantics must be preserved
 
 Do not mechanically expose every C++ overload.
 
-Instead:
+Design the Ada abstraction first, then expose only the C ABI necessary to
+support it.
 
-1. understand the complete OpenCV overload family
-2. decide what public Ada abstraction best represents it
-3. design the minimal C ABI needed to support that abstraction
-4. implement the thin Ada binding
-5. implement the thick Ada API
-6. add focused tests
+When OpenCV behavior is uncertain and materially affects the public API or
+safety of the binding, inspect the authoritative source rather than guessing.
 
-Prefer extending an existing abstraction over creating a parallel or duplicate API.
-
-When unsure about OpenCV behavior, stop and inspect the authoritative OpenCV source or documentation rather than guessing.
 
 ## Vertical Feature Development
 
 Implement bindings vertically, one coherent feature at a time.
 
-For each new OpenCV Core feature, prefer this sequence:
+Prefer this sequence:
 
-1. inspect the authoritative OpenCV declaration
+1. inspect authoritative OpenCV semantics
 2. design the public Ada abstraction
 3. add only the C++ shim surface required by that abstraction
-4. add or update the thin Ada interop binding
+4. add or update the thin Ada interoperability binding
 5. implement the thick Ada API
 6. add focused AUnit tests
-7. build and run the affected tests
-8. run GNATprove or GNATcov when relevant
+7. format and build affected code
+8. run the affected tests
+9. run GNATprove or coverage when appropriate
 
-Do not batch large groups of unrelated shim functions before the Ada API that uses them exists.
+Do not batch large numbers of unrelated C++ wrapper functions before the Ada
+API that requires them exists.
 
-Do not generate broad C++ wrapper coverage speculatively.
+Do not generate broad wrapper coverage speculatively.
 
-A feature is not considered complete merely because the C++ shim compiles.
+A feature is not complete merely because the C++ shim compiles.
 
-Prefer one fully integrated and tested binding over many partially implemented declarations.
+Prefer one integrated, tested binding over many partially implemented
+declarations.
 
-Keep each change small enough that ownership, error handling, ABI behavior, and public API design can be reviewed together.
+Keep each feature small enough that its:
 
-## Stop for Architectural Decisions
+- public API
+- ABI behavior
+- ownership
+- validation
+- exception handling
+- tests
 
-Do not silently make significant public API or architecture decisions when multiple reasonable designs exist.
+can be reviewed together.
 
-Stop and ask for direction before making choices that materially affect:
+
+## Use Project Skills
+
+Use the repository's Cline skills when their subject is relevant.
+
+Available Ada development skills include:
+
+- Alire
+- GNATprove
+- GNATdoc
+- GNATtest
+- GNATfuzz
+
+Use skills for detailed tool behavior rather than duplicating their generic
+instructions in project rules.
+
+Project-specific architecture, dependency ownership, test layout, and ABI
+rules in `.clinerules` take precedence over generic examples in a skill.
+
+
+## Architectural Decisions
+
+Do not silently make significant public API or architecture decisions when
+multiple reasonable designs exist.
+
+Ask for direction before choosing among materially different designs that
+would affect:
 
 - public package hierarchy
 - public type names
@@ -353,17 +176,16 @@ Stop and ask for direction before making choices that materially affect:
 - generic package structure
 - exception model
 - ABI compatibility
-- whether functionality belongs in Ada or the C++ shim
-- whether a dependency belongs in the main crate or test crate
-- compatibility aliases that may become part of the public API
+- Ada versus C++ responsibility
+- dependency placement
+- compatibility aliases that may become public API
 
-Small implementation details may be resolved independently when they clearly follow established project rules.
+When asking for such a decision:
 
-When asking for direction:
-
-- present the specific decision
-- briefly describe the main options
-- recommend one option
+- identify the exact decision
+- present the main reasonable options
+- recommend one
 - explain the important tradeoff
 
-Do not block on trivial stylistic choices already covered by the repository rules.
+Do not block on ordinary implementation details that already follow clearly
+from established repository rules.
