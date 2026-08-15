@@ -599,6 +599,9 @@ package OpenCV.Internal.C_API is
    function Mat_Sum (Self : Mat_Handle; Result : access Scalar) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_sum";
 
+   function Mat_Trace (Self : Mat_Handle; Result : access Scalar) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_trace";
+
    function Mat_Mean (Self : Mat_Handle; Result : access Scalar) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_mean";
 

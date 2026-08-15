@@ -294,6 +294,11 @@ package OpenCV.Core is
    --  value selects the complete element, including every channel.
    procedure Set_To (Self : in out Mat; Value : Scalar; Mask : Mat);
    function Sum (Self : Mat) return Scalar;
+   --  Returns the per-channel sum of Self's main diagonal. Rectangular and
+   --  empty Mats are accepted. Self must have at most four channels, matching
+   --  Scalar's complete representation. Float16 Mats are not supported by
+   --  OpenCV's trace implementation. Non-contiguous views are accepted.
+   function Trace (Self : Mat) return Scalar;
    --  Both reductions operate independently on each channel.  They support
    --  one through four channels, matching Scalar's complete representation.
    --  Mean returns a zero Scalar for an empty Mat; Mean_Std_Dev rejects one.

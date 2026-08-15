@@ -2548,6 +2548,41 @@ opencv_core_mat_sum(const opencv_core_mat_handle *mat,
 }
 
 opencv_core_status
+opencv_core_mat_trace(const opencv_core_mat_handle *mat,
+                      opencv_core_scalar *out_trace) {
+    clear_error();
+
+    if (out_trace == nullptr) {
+        return invalid_argument("out_trace must not be null");
+    }
+
+    *out_trace = {0.0, 0.0, 0.0, 0.0};
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        if (mat->value.dims > 2) {
+            return invalid_argument("Trace requires a Mat with at most two dimensions");
+        }
+
+        if (mat->value.channels() > 4) {
+            return invalid_argument("Trace supports Mats with at most four channels");
+        }
+
+        if (mat->value.depth() == CV_16F) {
+            return invalid_argument("Trace does not support Float16 Mats");
+        }
+
+        *out_trace = from_opencv_scalar(cv::trace(mat->value));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_mean(const opencv_core_mat_handle *mat,
                      opencv_core_scalar *out_mean) {
     clear_error();

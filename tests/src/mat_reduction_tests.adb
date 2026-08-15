@@ -64,6 +64,125 @@ package body Mat_Reduction_Tests is
          "Mean must support UInt8 data");
    end UInt8_Mean_Is_Not_Float32_Specific;
 
+   procedure Trace_Uses_Main_Diagonal_For_Square_And_Rectangular_Mats
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Square : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.UInt8, 1));
+      Wide   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.UInt8, 1));
+      Tall   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.UInt8, 1));
+   begin
+      for Row in 0 .. 2 loop
+         for Column in 0 .. 2 loop
+            OpenCV.Core.UInt8_Access.Set
+              (Square,
+               Row,
+               Column,
+               Interfaces.Unsigned_8 (Row * 3 + Column + 1));
+         end loop;
+      end loop;
+      OpenCV.Core.UInt8_Access.Set (Wide, 0, 0, 2);
+      OpenCV.Core.UInt8_Access.Set (Wide, 1, 1, 5);
+      OpenCV.Core.UInt8_Access.Set (Wide, 0, 2, 99);
+      OpenCV.Core.UInt8_Access.Set (Tall, 0, 0, 3);
+      OpenCV.Core.UInt8_Access.Set (Tall, 1, 1, 7);
+      OpenCV.Core.UInt8_Access.Set (Tall, 2, 0, 99);
+
+      AUnit.Assertions.Assert
+        (Square.Trace.Component_0 = 15.0
+         and then Wide.Trace.Component_0 = 7.0
+         and then Tall.Trace.Component_0 = 10.0,
+         "Trace must sum the main diagonal through the shorter matrix axis");
+   end Trace_Uses_Main_Diagonal_For_Square_And_Rectangular_Mats;
+
+   procedure Trace_Supports_Float32_And_Multiple_Channels
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Float_Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Vec_Image   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 3));
+      Result      : OpenCV.Core.Scalar;
+   begin
+      OpenCV.Core.Float32_Access.Set (Float_Image, 0, 0, 1.25);
+      OpenCV.Core.Float32_Access.Set (Float_Image, 1, 1, -2.5);
+      OpenCV.Core.UInt8_Vec3_Access.Set (Vec_Image, 0, 0, (1, 10, 100));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Vec_Image, 1, 1, (3, 14, 104));
+      Result := Vec_Image.Trace;
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Float_Image.Trace.Component_0, -1.25)
+         and then Approximately_Equal (Result.Component_0, 4.0)
+         and then Approximately_Equal (Result.Component_1, 24.0)
+         and then Approximately_Equal (Result.Component_2, 204.0)
+         and then Result.Component_3 = 0.0,
+         "Trace must preserve Float32 precision and sum each used channel");
+   end Trace_Supports_Float32_And_Multiple_Channels;
+
+   procedure Trace_Handles_Regions_Empty_And_Invalid_Types
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent             : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 4, (OpenCV.Core.UInt8, 1));
+      Region             : OpenCV.Core.Mat;
+      Empty              : OpenCV.Core.Mat;
+      Five_Channel_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 5));
+      Float16_Image      : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float16, 1));
+
+      procedure Trace_Five_Channel_Image is
+         Result : constant OpenCV.Core.Scalar := Five_Channel_Image.Trace;
+      begin
+         pragma Unreferenced (Result);
+      end Trace_Five_Channel_Image;
+
+      procedure Trace_Float16_Image is
+         Result : constant OpenCV.Core.Scalar := Float16_Image.Trace;
+      begin
+         pragma Unreferenced (Result);
+      end Trace_Float16_Image;
+   begin
+      for Row in 0 .. 2 loop
+         for Column in 0 .. 3 loop
+            OpenCV.Core.UInt8_Access.Set
+              (Parent,
+               Row,
+               Column,
+               Interfaces.Unsigned_8 (Row * 4 + Column + 1));
+         end loop;
+      end loop;
+      Region := Parent.Region ((X => 1, Y => 0, Width => 2, Height => 3));
+
+      AUnit.Assertions.Assert
+        (not Region.Is_Continuous
+         and then Region.Trace.Component_0 = 9.0
+         and then Region.Trace.Component_0
+                  = Region.Diagonal_View.Sum.Component_0
+         and then Region.Trace.Component_1
+                  = Region.Diagonal_View.Sum.Component_1
+         and then Region.Trace.Component_2
+                  = Region.Diagonal_View.Sum.Component_2
+         and then Region.Trace.Component_3
+                  = Region.Diagonal_View.Sum.Component_3
+         and then Empty.Trace.Component_0 = 0.0
+         and then Empty.Trace.Component_1 = 0.0
+         and then Empty.Trace.Component_2 = 0.0
+         and then Empty.Trace.Component_3 = 0.0,
+         "Trace must accept non-continuous Regions and empty Mats");
+      Assert_Raises_OpenCV_Error
+        (Trace_Five_Channel_Image'Access,
+         "Trace must reject channel results that do not fit Scalar");
+      Assert_Raises_OpenCV_Error
+        (Trace_Float16_Image'Access,
+         "Trace must reject unsupported Float16 Mats");
+   end Trace_Handles_Regions_Empty_And_Invalid_Types;
+
    procedure Vec3_Mean_Returns_Independent_Channel_Values
      (Test : in out Mat_Test_Fixture)
    is
@@ -1639,6 +1758,18 @@ package body Mat_Reduction_Tests is
         (Caller.Create
            ("Masked Mean_Std_Dev handles empty and invalid input",
             Masked_Mean_Std_Dev_Handles_Empty_And_Invalid_Input'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Trace uses main diagonal for square and rectangular Mats",
+            Trace_Uses_Main_Diagonal_For_Square_And_Rectangular_Mats'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Trace supports Float32 and multiple channels",
+            Trace_Supports_Float32_And_Multiple_Channels'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Trace handles Regions, empty Mats, and invalid types",
+            Trace_Handles_Regions_Empty_And_Invalid_Types'Access));
       Result.Add_Test
         (Caller.Create
            ("Float32 Norm computes L1, L2, and Infinity",

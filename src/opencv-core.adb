@@ -1830,6 +1830,30 @@ package body OpenCV.Core is
       return From_C_Scalar (C_Result);
    end Sum;
 
+   function Trace (Self : Mat) return Scalar is
+      C_Result : aliased OpenCV.Internal.C_API.Scalar :=
+        (Component_0 => 0.0,
+         Component_1 => 0.0,
+         Component_2 => 0.0,
+         Component_3 => 0.0);
+      Result   : OpenCV.Internal.C_API.Status;
+   begin
+      if Self.Channels > 4 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Trace supports Mats with at most four channels");
+      end if;
+
+      if Self.Depth = Float16 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Trace does not support Float16 Mats");
+      end if;
+
+      Result := OpenCV.Internal.C_API.Mat_Trace (Self.Handle, C_Result'Access);
+      Raise_On_Error (Result, "Mat trace operation");
+      return From_C_Scalar (C_Result);
+   end Trace;
+
    function Mean (Self : Mat) return Scalar is
       C_Result : aliased OpenCV.Internal.C_API.Scalar :=
         (Component_0 => 0.0,

@@ -603,6 +603,15 @@ opencv_core_mat_sum(const opencv_core_mat_handle *mat,
                     opencv_core_scalar *out_sum);
 
 /*
+ * Computes the per-channel sum of the main diagonal. Source must have at
+ * most four channels so its complete result fits opencv_core_scalar. Empty
+ * and rectangular Mats are accepted.
+ */
+opencv_core_status
+opencv_core_mat_trace(const opencv_core_mat_handle *mat,
+                      opencv_core_scalar *out_trace);
+
+/*
  * Computes unmasked per-channel mean values. Both operations support one to
  * four channels so each complete result fits opencv_core_scalar. Mean accepts
  * empty Mats and returns all zeroes; mean/stddev requires a non-empty Mat.
