@@ -115,6 +115,15 @@ package OpenCV.Core is
       Angle     : Mat;
    end record;
 
+   --  Independent Cartesian outputs of Polar_To_Cart. X is
+   --  Magnitude * cos (Angle) and Y is Magnitude * sin (Angle).
+   --  Each component has normal Mat controlled ownership and
+   --  is independent of the source Mats and of the other component.
+   type Cartesian_Coordinates is record
+      X : Mat;
+      Y : Mat;
+   end record;
+
    --  A zero-based, owning sequence of Mats. An empty result has the null
    --  range 1 .. 0. Each element has normal Mat controlled ownership and
    --  shallow-copy assignment semantics.
@@ -331,6 +340,23 @@ package OpenCV.Core is
    --  including Float16 are rejected.
    function Cart_To_Polar
      (X, Y : Mat; Units : Angle_Unit := Radians) return Polar_Coordinates;
+   --  Returns independently owned X and Y Mats with Angle's shape, depth,
+   --  and channel count. Angle is the authoritative operand and must be
+   --  Float32 or Float64. When Magnitude is non-empty, it must have the
+   --  same dimensions, depth, and channel count as Angle. An empty
+   --  Magnitude, or the one-argument overload, means unit magnitude for
+   --  every Angle element. Each channel is processed independently by a
+   --  single cv::polarToCart call. X is Magnitude * cos (Angle) and Y is
+   --  Magnitude * sin (Angle). Units selects radians by default or
+   --  degrees. OpenCV documents relative coordinate accuracy of about
+   --  1e-6. There is no required Angle range. A typed 0x0 Angle stays
+   --  empty. A default empty Angle is rejected. Float16 and other
+   --  non-floating Angle depths are rejected.
+   function Polar_To_Cart
+     (Magnitude, Angle : Mat; Units : Angle_Unit := Radians)
+      return Cartesian_Coordinates;
+   function Polar_To_Cart
+     (Angle : Mat; Units : Angle_Unit := Radians) return Cartesian_Coordinates;
 
    --  Returns an independent Mat with Self's shape and element type.  For L1,
    --  L2, and Infinity, Alpha is the target norm and Beta is ignored.  For

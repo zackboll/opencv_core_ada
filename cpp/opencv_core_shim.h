@@ -397,6 +397,24 @@ opencv_core_mat_cart_to_polar(const opencv_core_mat_handle *x,
                               opencv_core_mat_handle **out_angle);
 
 /*
+ * Returns two newly allocated, independent Mats containing the per-element
+ * Cartesian coordinates of matching (magnitude, angle) pairs via
+ * cv::polarToCart. Angle must have CV_32F or CV_64F depth and determines
+ * both output sizes and types. An empty Magnitude is treated as unit
+ * magnitude; a non-empty Magnitude must have the same size and type as
+ * Angle. angle_in_degrees is uint8_t false (0) or true (1). Both output
+ * pointer arguments must be non-null and distinct. On success both
+ * returned handles are independently owned. On any failure both outputs
+ * remain null.
+ */
+opencv_core_status
+opencv_core_mat_polar_to_cart(const opencv_core_mat_handle *magnitude,
+                              const opencv_core_mat_handle *angle,
+                              uint8_t angle_in_degrees,
+                              opencv_core_mat_handle **out_x,
+                              opencv_core_mat_handle **out_y);
+
+/*
  * Returns a newly allocated, independent Mat normalized with no mask and the
  * same depth as source. For norm modes beta is ignored by OpenCV; for min/max
  * mode alpha and beta define the destination range.

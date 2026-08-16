@@ -1942,6 +1942,101 @@ package body OpenCV.Core is
       return Result;
    end Cart_To_Polar;
 
+   procedure Validate_Polar_To_Cart_Operands (Magnitude, Angle : Mat) is
+   begin
+      if Angle.Depth /= Float32 and then Angle.Depth /= Float64 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Polar_To_Cart requires a Float32 or Float64 Angle operand");
+      end if;
+
+      if Magnitude.Is_Empty then
+         return;
+      end if;
+
+      if Magnitude.Depth /= Angle.Depth then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Polar_To_Cart requires Magnitude and Angle with identical"
+            & " depths");
+      end if;
+
+      if Magnitude.Channels /= Angle.Channels then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Polar_To_Cart requires Magnitude and Angle with identical"
+            & " channel counts");
+      end if;
+
+      if Magnitude.Rows /= Angle.Rows then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Polar_To_Cart requires Magnitude and Angle with identical"
+            & " row counts");
+      end if;
+
+      if Magnitude.Columns /= Angle.Columns then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Polar_To_Cart requires Magnitude and Angle with identical"
+            & " column counts");
+      end if;
+   end Validate_Polar_To_Cart_Operands;
+
+   function Polar_To_Cart
+     (Magnitude, Angle : Mat; Units : Angle_Unit := Radians)
+      return Cartesian_Coordinates
+   is
+      Result           : Cartesian_Coordinates;
+      X_Handle         : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Y_Handle         : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Angle_In_Degrees : constant OpenCV.Internal.C_API.C_Boolean :=
+        (if Units = Degrees
+         then OpenCV.Internal.C_API.C_True
+         else OpenCV.Internal.C_API.C_False);
+      Status           : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Polar_To_Cart_Operands (Magnitude, Angle);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Polar_To_Cart
+          (Magnitude        => Magnitude.Handle,
+           Angle            => Angle.Handle,
+           Angle_In_Degrees => Angle_In_Degrees,
+           X                => X_Handle'Access,
+           Y                => Y_Handle'Access);
+      if Status /= OpenCV.Internal.C_API.Success then
+         OpenCV.Internal.C_API.Mat_Destroy (X_Handle);
+         OpenCV.Internal.C_API.Mat_Destroy (Y_Handle);
+         Raise_On_Error (Status, "Mat polar-to-cart operation");
+      end if;
+
+      if X_Handle = OpenCV.Internal.C_API.Null_Mat_Handle
+        or else Y_Handle = OpenCV.Internal.C_API.Null_Mat_Handle
+      then
+         OpenCV.Internal.C_API.Mat_Destroy (X_Handle);
+         OpenCV.Internal.C_API.Mat_Destroy (Y_Handle);
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat polar-to-cart operation returned a null result handle");
+      end if;
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.X.Handle);
+      Result.X.Handle := X_Handle;
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Y.Handle);
+      Result.Y.Handle := Y_Handle;
+      return Result;
+   end Polar_To_Cart;
+
+   function Polar_To_Cart
+     (Angle : Mat; Units : Angle_Unit := Radians) return Cartesian_Coordinates
+   is
+      Empty_Magnitude : Mat;
+   begin
+      return Polar_To_Cart (Empty_Magnitude, Angle, Units);
+   end Polar_To_Cart;
+
    function Is_Empty (Self : Mat) return Boolean is
       Empty  : aliased OpenCV.Internal.C_API.C_Boolean :=
         OpenCV.Internal.C_API.C_False;

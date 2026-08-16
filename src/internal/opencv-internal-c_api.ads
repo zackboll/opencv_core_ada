@@ -291,6 +291,16 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_cart_to_polar";
 
+   function Mat_Polar_To_Cart
+     (Magnitude, Angle : Mat_Handle;
+      Angle_In_Degrees : C_Boolean;
+      X                : access Mat_Handle;
+      Y                : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_polar_to_cart";
+
    function Mat_Normalize
      (Source : Mat_Handle;
       Kind   : C_Int32;
