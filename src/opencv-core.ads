@@ -248,6 +248,13 @@ package OpenCV.Core is
    --  16-bit sources are not supported. A 0x0 8-bit source produces a 0x0
    --  result; a default empty Mat is rejected by OpenCV.
    function Apply_LUT (Self : Mat; Table : Mat) return Mat;
+   --  Returns an independent Mat with Self's shape, depth, and channel count.
+   --  Self must be Float32 or Float64. Each channel is processed independently
+   --  by cv::sqrt. On OpenCV 4.10 the 0.5-power HAL path uses std::sqrt, so
+   --  negative finite values and -Infinity become NaN, +Infinity stays
+   --  +Infinity, and a typed 0x0 source stays empty. A default empty Mat and
+   --  non-floating depths are rejected.
+   function Sqrt (Self : Mat) return Mat;
 
    --  Returns an independent Mat with Self's shape and element type.  For L1,
    --  L2, and Infinity, Alpha is the target norm and Beta is ignored.  For

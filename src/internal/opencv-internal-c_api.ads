@@ -255,6 +255,10 @@ package OpenCV.Internal.C_API is
      (Source, Table : Mat_Handle; Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_apply_lut";
 
+   function Mat_Sqrt
+     (Source : Mat_Handle; Result : access Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_sqrt";
+
    function Mat_Normalize
      (Source : Mat_Handle;
       Kind   : C_Int32;

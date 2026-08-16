@@ -5,6 +5,7 @@ with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
 with OpenCV.Core.Float32_Matx3x3;
 with OpenCV.Core.Float32_Matx3x3_Conversions;
+with OpenCV.Core.Float32_Vec3;
 with OpenCV.Core.Float32_Vec3_Access;
 with OpenCV.Core.UInt8_Access;
 with OpenCV.Core.UInt8_Vec3;
@@ -18,6 +19,7 @@ package body Mat_Conversion_Tests is
    use type OpenCV.Core.Depth_Type;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Mat_Size;
+   use type OpenCV.Core.Float32_Access.Float32_Classification;
 
    use type OpenCV.Core.UInt8_Vec3.Vector;
 
@@ -638,6 +640,291 @@ package body Mat_Conversion_Tests is
          "Apply_LUT must reject a Float16 lookup table");
    end Apply_LUT_Rejects_Invalid_Table_And_Source;
 
+   procedure Sqrt_Float32_Perfect_Squares_And_Zero
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 4,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, 0.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 2, 4.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 3, 9.0);
+      Result := Source.Sqrt;
+
+      AUnit.Assertions.Assert
+        (Result.Rows = 1
+         and then Result.Columns = 4
+         and then Result.Depth = OpenCV.Core.Float32
+         and then Result.Channels = 1
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 0, 0)),
+                     0.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 0, 1)),
+                     1.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 0, 2)),
+                     2.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 0, 3)),
+                     3.0),
+         "Sqrt must map Float32 0, 1, 4, 9 to 0, 1, 2, 3 and keep metadata");
+   end Sqrt_Float32_Perfect_Squares_And_Zero;
+
+   procedure Sqrt_Float64_Non_Perfect_Square (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Float32_Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Source         : OpenCV.Core.Mat;
+      Result         : OpenCV.Core.Mat;
+      Readable       : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set (Float32_Source, 0, 0, 2.0);
+      Source := Float32_Source.Convert_To (Depth => OpenCV.Core.Float64);
+      Result := Source.Sqrt;
+      Readable := Result.Convert_To (Depth => OpenCV.Core.Float32);
+
+      AUnit.Assertions.Assert
+        (Result.Rows = 1
+         and then Result.Columns = 1
+         and then Result.Depth = OpenCV.Core.Float64
+         and then Result.Channels = 1
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Readable, 0, 0)),
+                     1.414_213_562,
+                     Tolerance => 0.000_001),
+         "Sqrt must preserve Float64 depth and compute a non-perfect square");
+   end Sqrt_Float64_Non_Perfect_Square;
+
+   procedure Sqrt_Negative_And_Nonfinite_Follow_OpenCV
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Negative    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Numerator   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Denominator : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Special     : OpenCV.Core.Mat;
+      Neg_Result  : OpenCV.Core.Mat;
+      Special_Out : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set (Negative, 0, 0, -4.0);
+      Neg_Result := Negative.Sqrt;
+      OpenCV.Core.Float32_Access.Set (Numerator, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Numerator, 0, 1, -1.0);
+      OpenCV.Core.Float32_Access.Set (Numerator, 0, 2, 0.0);
+      Denominator.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Special := Numerator.Divide (Denominator);
+      Special_Out := Special.Sqrt;
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Classify (Neg_Result, 0, 0)
+         = OpenCV.Core.Float32_Access.Not_A_Number,
+         "OpenCV 4.10 Sqrt of a negative finite value must be NaN");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Classify (Special, 0, 0)
+         = OpenCV.Core.Float32_Access.Positive_Infinity
+         and then OpenCV.Core.Float32_Access.Classify (Special, 0, 1)
+                  = OpenCV.Core.Float32_Access.Negative_Infinity
+         and then OpenCV.Core.Float32_Access.Classify (Special, 0, 2)
+                  = OpenCV.Core.Float32_Access.Not_A_Number
+         and then OpenCV.Core.Float32_Access.Classify (Special_Out, 0, 0)
+                  = OpenCV.Core.Float32_Access.Positive_Infinity
+         and then OpenCV.Core.Float32_Access.Classify (Special_Out, 0, 1)
+                  = OpenCV.Core.Float32_Access.Not_A_Number
+         and then OpenCV.Core.Float32_Access.Classify (Special_Out, 0, 2)
+                  = OpenCV.Core.Float32_Access.Not_A_Number,
+         "OpenCV 4.10 Sqrt must map +Inf to +Inf and -Inf/NaN to NaN");
+   end Sqrt_Negative_And_Nonfinite_Follow_OpenCV;
+
+   procedure Sqrt_Multi_Channel_Vec3 (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 3));
+      Result : OpenCV.Core.Mat;
+      Pixel  : OpenCV.Core.Float32_Vec3.Vector;
+   begin
+      OpenCV.Core.Float32_Vec3_Access.Set
+        (Source, Row => 0, Column => 0, Value => (4.0, 9.0, 0.0));
+      Result := Source.Sqrt;
+      Pixel :=
+        OpenCV.Core.Float32_Vec3_Access.Get (Result, Row => 0, Column => 0);
+
+      AUnit.Assertions.Assert
+        (Result.Channels = 3
+         and then Result.Depth = OpenCV.Core.Float32
+         and then Approximately_Equal (Long_Float (Pixel (0)), 2.0)
+         and then Approximately_Equal (Long_Float (Pixel (1)), 3.0)
+         and then Approximately_Equal (Long_Float (Pixel (2)), 0.0),
+         "Sqrt must process each Float32 Vec3 channel independently");
+   end Sqrt_Multi_Channel_Vec3;
+
+   procedure Sqrt_Noncontiguous_Region_And_Independent_Storage
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Result : OpenCV.Core.Mat;
+   begin
+      declare
+         Source : OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 3,
+              Columns      => 3,
+              Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+         View   : constant OpenCV.Core.Mat :=
+           Source.Region ((X => 1, Y => 0, Width => 2, Height => 3));
+      begin
+         Source.Set_To (OpenCV.Core.Make_Scalar (4.0));
+         OpenCV.Core.Float32_Access.Set (Source, 0, 1, 9.0);
+         AUnit.Assertions.Assert
+           (not View.Is_Continuous, "Sqrt test Region must be non-continuous");
+         Result := View.Sqrt;
+         OpenCV.Core.Float32_Access.Set (Source, 0, 1, 100.0);
+      end;
+
+      AUnit.Assertions.Assert
+        (not Result.Is_Empty
+         and then Result.Is_Continuous
+         and then Result.Rows = 3
+         and then Result.Columns = 2
+         and then Result.Depth = OpenCV.Core.Float32
+         and then Result.Channels = 1
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 0, 0)),
+                     3.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 0, 1)),
+                     2.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 1, 0)),
+                     2.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 1, 1)),
+                     2.0),
+         "Sqrt must accept a non-contiguous Region and keep independent"
+         & " result storage after source finalization");
+   end Sqrt_Noncontiguous_Region_And_Independent_Storage;
+
+   procedure Sqrt_Typed_Empty_And_Default_Empty
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Empty32  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 0,
+           Columns      => 0,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Empty64  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 0,
+           Columns      => 0,
+           Element_Type => (Depth => OpenCV.Core.Float64, Channels => 2));
+      Result32 : constant OpenCV.Core.Mat := Empty32.Sqrt;
+      Result64 : constant OpenCV.Core.Mat := Empty64.Sqrt;
+      Default  : OpenCV.Core.Mat;
+
+      procedure Sqrt_Default_Empty is
+         Ignored : constant OpenCV.Core.Mat := Default.Sqrt;
+      begin
+         pragma Unreferenced (Ignored);
+      end Sqrt_Default_Empty;
+   begin
+      AUnit.Assertions.Assert
+        (Result32.Is_Empty
+         and then Result32.Rows = 0
+         and then Result32.Columns = 0
+         and then Result32.Depth = OpenCV.Core.Float32
+         and then Result32.Channels = 1,
+         "Sqrt must preserve a typed 0x0 Float32 source as an empty result");
+      AUnit.Assertions.Assert
+        (Result64.Is_Empty
+         and then Result64.Rows = 0
+         and then Result64.Columns = 0
+         and then Result64.Depth = OpenCV.Core.Float64
+         and then Result64.Channels = 2,
+         "Sqrt must preserve a typed 0x0 Float64 source as an empty result");
+      Assert_Raises_OpenCV_Error
+        (Sqrt_Default_Empty'Access, "Sqrt must reject a default empty Mat");
+   end Sqrt_Typed_Empty_And_Default_Empty;
+
+   procedure Sqrt_Rejects_Unsupported_Depths (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+
+      procedure Sqrt_UInt8 is
+         Source  : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+         Ignored : constant OpenCV.Core.Mat := Source.Sqrt;
+      begin
+         pragma Unreferenced (Ignored);
+      end Sqrt_UInt8;
+
+      procedure Sqrt_Int32 is
+         Source  : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.Int32, Channels => 1));
+         Ignored : constant OpenCV.Core.Mat := Source.Sqrt;
+      begin
+         pragma Unreferenced (Ignored);
+      end Sqrt_Int32;
+
+      procedure Sqrt_Float16 is
+         Source  : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.Float16, Channels => 1));
+         Ignored : constant OpenCV.Core.Mat := Source.Sqrt;
+      begin
+         pragma Unreferenced (Ignored);
+      end Sqrt_Float16;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Sqrt_UInt8'Access, "Sqrt must reject a UInt8 source");
+      Assert_Raises_OpenCV_Error
+        (Sqrt_Int32'Access, "Sqrt must reject an Int32 source");
+      Assert_Raises_OpenCV_Error
+        (Sqrt_Float16'Access, "Sqrt must reject a Float16 source");
+   end Sqrt_Rejects_Unsupported_Depths;
+
    procedure Float32_Matx3x3_Has_Value_And_Zero_Based_Index_Semantics
      (Test : in out Mat_Test_Fixture)
    is
@@ -912,6 +1199,33 @@ package body Mat_Conversion_Tests is
         (Caller.Create
            ("Apply_LUT rejects invalid table and source",
             Apply_LUT_Rejects_Invalid_Table_And_Source'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sqrt Float32 perfect squares and zero",
+            Sqrt_Float32_Perfect_Squares_And_Zero'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sqrt Float64 non-perfect square",
+            Sqrt_Float64_Non_Perfect_Square'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sqrt negative and nonfinite follow OpenCV",
+            Sqrt_Negative_And_Nonfinite_Follow_OpenCV'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sqrt multi-channel Vec3", Sqrt_Multi_Channel_Vec3'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sqrt noncontiguous Region and independent storage",
+            Sqrt_Noncontiguous_Region_And_Independent_Storage'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sqrt typed empty and default empty",
+            Sqrt_Typed_Empty_And_Default_Empty'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sqrt rejects unsupported depths",
+            Sqrt_Rejects_Unsupported_Depths'Access));
       Result.Add_Test
         (Caller.Create
            ("Float32 Matx3x3 has value and zero-based index semantics",

@@ -319,6 +319,15 @@ opencv_core_mat_apply_lut(const opencv_core_mat_handle *source,
                           opencv_core_mat_handle **out_mat);
 
 /*
+ * Returns a newly allocated, independent Mat containing the per-element
+ * square root of source via cv::sqrt. Source must have CV_32F or CV_64F
+ * depth. The result has source's shape, depth, and channel count.
+ */
+opencv_core_status
+opencv_core_mat_sqrt(const opencv_core_mat_handle *source,
+                     opencv_core_mat_handle **out_mat);
+
+/*
  * Returns a newly allocated, independent Mat normalized with no mask and the
  * same depth as source. For norm modes beta is ignored by OpenCV; for min/max
  * mode alpha and beta define the destination range.

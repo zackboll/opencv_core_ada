@@ -1682,6 +1682,32 @@ package body OpenCV.Core is
       return Result;
    end Apply_LUT;
 
+   procedure Validate_Sqrt (Source : Mat) is
+   begin
+      if Source.Depth /= Float32 and then Source.Depth /= Float64 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Sqrt requires a Float32 or Float64 source");
+      end if;
+   end Validate_Sqrt;
+
+   function Sqrt (Self : Mat) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Sqrt (Self);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Sqrt
+          (Source => Self.Handle, Result => New_Handle'Access);
+      Raise_On_Error (Status, "Mat square-root operation");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Sqrt;
+
    function Is_Empty (Self : Mat) return Boolean is
       Empty  : aliased OpenCV.Internal.C_API.C_Boolean :=
         OpenCV.Internal.C_API.C_False;
