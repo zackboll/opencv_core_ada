@@ -381,6 +381,21 @@ opencv_core_mat_phase(const opencv_core_mat_handle *x,
                       opencv_core_mat_handle **out_mat);
 
 /*
+ * Returns two newly allocated, independent Mats containing the per-element
+ * magnitude and phase of matching (x, y) pairs via cv::cartToPolar. X and Y
+ * must have CV_32F or CV_64F depth and identical size and type.
+ * angle_in_degrees is uint8_t false (0) or true (1). Both results have X's
+ * shape, depth, and channel count. On success both output handles are
+ * independently owned. On any failure both remain null.
+ */
+opencv_core_status
+opencv_core_mat_cart_to_polar(const opencv_core_mat_handle *x,
+                              const opencv_core_mat_handle *y,
+                              uint8_t angle_in_degrees,
+                              opencv_core_mat_handle **out_magnitude,
+                              opencv_core_mat_handle **out_angle);
+
+/*
  * Returns a newly allocated, independent Mat normalized with no mask and the
  * same depth as source. For norm modes beta is ignored by OpenCV; for min/max
  * mode alpha and beta define the destination range.

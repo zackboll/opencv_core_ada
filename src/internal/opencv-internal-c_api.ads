@@ -281,6 +281,15 @@ package OpenCV.Internal.C_API is
       Angle_In_Degrees : C_Boolean;
       Result           : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_phase";
+   function Mat_Cart_To_Polar
+     (X, Y             : Mat_Handle;
+      Angle_In_Degrees : C_Boolean;
+      Magnitude        : access Mat_Handle;
+      Angle            : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_cart_to_polar";
 
    function Mat_Normalize
      (Source : Mat_Handle;

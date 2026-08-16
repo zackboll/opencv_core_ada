@@ -1066,6 +1066,52 @@ opencv_core_mat_phase(const opencv_core_mat_handle *x,
 }
 
 opencv_core_status
+opencv_core_mat_cart_to_polar(const opencv_core_mat_handle *x,
+                              const opencv_core_mat_handle *y,
+                              uint8_t angle_in_degrees,
+                              opencv_core_mat_handle **out_magnitude,
+                              opencv_core_mat_handle **out_angle) {
+    clear_error();
+
+    if (out_magnitude != nullptr) {
+        *out_magnitude = nullptr;
+    }
+    if (out_angle != nullptr) {
+        *out_angle = nullptr;
+    }
+
+    if (out_magnitude == nullptr || out_angle == nullptr) {
+        return invalid_argument("output Mat handles must not be null");
+    }
+
+    if (x == nullptr || y == nullptr) {
+        return invalid_argument("Mat operand handles must not be null");
+    }
+
+    if (angle_in_degrees != 0 && angle_in_degrees != 1) {
+        return invalid_argument("angle_in_degrees must be 0 or 1");
+    }
+
+    try {
+        cv::Mat magnitude;
+        cv::Mat angle;
+        cv::cartToPolar(x->value, y->value, magnitude, angle,
+                        angle_in_degrees != 0);
+
+        std::unique_ptr<opencv_core_mat_handle> magnitude_handle(
+            new opencv_core_mat_handle(magnitude));
+        std::unique_ptr<opencv_core_mat_handle> angle_handle(
+            new opencv_core_mat_handle(angle));
+
+        *out_magnitude = magnitude_handle.release();
+        *out_angle = angle_handle.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_normalize(const opencv_core_mat_handle *source,
                           int32_t normalize_kind, double alpha, double beta,
                           opencv_core_mat_handle **out_mat) {

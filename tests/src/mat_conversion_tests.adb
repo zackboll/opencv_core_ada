@@ -2787,6 +2787,638 @@ package body Mat_Conversion_Tests is
          "Phase must reject mismatched channel counts");
    end Phase_Rejects_Unsupported_Depths_And_Mismatches;
 
+   procedure Cart_To_Polar_Float32_Known_Scalar_Values
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      X      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Y      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Result : OpenCV.Core.Polar_Coordinates;
+   begin
+      OpenCV.Core.Float32_Access.Set (X, 0, 0, 3.0);
+      OpenCV.Core.Float32_Access.Set (X, 0, 1, 5.0);
+      OpenCV.Core.Float32_Access.Set (X, 0, 2, -3.0);
+      OpenCV.Core.Float32_Access.Set (Y, 0, 0, 4.0);
+      OpenCV.Core.Float32_Access.Set (Y, 0, 1, 12.0);
+      OpenCV.Core.Float32_Access.Set (Y, 0, 2, 4.0);
+      Result := OpenCV.Core.Cart_To_Polar (X, Y);
+
+      AUnit.Assertions.Assert
+        (Result.Magnitude.Rows = 1
+         and then Result.Magnitude.Columns = 3
+         and then Result.Magnitude.Depth = OpenCV.Core.Float32
+         and then Result.Magnitude.Channels = 1
+         and then Result.Angle.Rows = 1
+         and then Result.Angle.Columns = 3
+         and then Result.Angle.Depth = OpenCV.Core.Float32
+         and then Result.Angle.Channels = 1
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get
+                          (Result.Magnitude, 0, 0)),
+                     5.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get
+                          (Result.Magnitude, 0, 1)),
+                     13.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get
+                          (Result.Magnitude, 0, 2)),
+                     5.0),
+         "Cart_To_Polar must map Float32 (3,4), (5,12), and (-3,4) to"
+         & " magnitudes 5, 13, 5");
+   end Cart_To_Polar_Float32_Known_Scalar_Values;
+
+   procedure Cart_To_Polar_Float32_Radians_Axis_Directions
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      X      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 4,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Y      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 4,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Result : OpenCV.Core.Polar_Coordinates;
+   begin
+      OpenCV.Core.Float32_Access.Set (X, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (X, 0, 1, 0.0);
+      OpenCV.Core.Float32_Access.Set (X, 0, 2, -1.0);
+      OpenCV.Core.Float32_Access.Set (X, 0, 3, 0.0);
+      OpenCV.Core.Float32_Access.Set (Y, 0, 0, 0.0);
+      OpenCV.Core.Float32_Access.Set (Y, 0, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Y, 0, 2, 0.0);
+      OpenCV.Core.Float32_Access.Set (Y, 0, 3, -1.0);
+      Result := OpenCV.Core.Cart_To_Polar (X, Y);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float (OpenCV.Core.Float32_Access.Get (Result.Angle, 0, 0)),
+            0.0,
+            Phase_Radian_Tolerance)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result.Angle, 0, 1)),
+                     Half_Pi,
+                     Phase_Radian_Tolerance)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result.Angle, 0, 2)),
+                     Ada.Numerics.Pi,
+                     Phase_Radian_Tolerance)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result.Angle, 0, 3)),
+                     Three_Halves_Pi,
+                     Phase_Radian_Tolerance),
+         "Cart_To_Polar radians must map (1,0), (0,1), (-1,0), (0,-1) to"
+         & " 0, pi/2, pi, 3*pi/2");
+   end Cart_To_Polar_Float32_Radians_Axis_Directions;
+
+   procedure Cart_To_Polar_Float32_Degrees_And_Default_Radians
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      X           : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 4,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Y           : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 4,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Degrees     : OpenCV.Core.Polar_Coordinates;
+      Default_Rad : OpenCV.Core.Polar_Coordinates;
+   begin
+      OpenCV.Core.Float32_Access.Set (X, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (X, 0, 1, 0.0);
+      OpenCV.Core.Float32_Access.Set (X, 0, 2, -1.0);
+      OpenCV.Core.Float32_Access.Set (X, 0, 3, 0.0);
+      OpenCV.Core.Float32_Access.Set (Y, 0, 0, 0.0);
+      OpenCV.Core.Float32_Access.Set (Y, 0, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Y, 0, 2, 0.0);
+      OpenCV.Core.Float32_Access.Set (Y, 0, 3, -1.0);
+      Degrees :=
+        OpenCV.Core.Cart_To_Polar (X, Y, Units => OpenCV.Core.Degrees);
+      Default_Rad := OpenCV.Core.Cart_To_Polar (X, Y);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float (OpenCV.Core.Float32_Access.Get (Degrees.Angle, 0, 0)),
+            0.0,
+            Phase_Degree_Tolerance)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Degrees.Angle, 0, 1)),
+                     90.0,
+                     Phase_Degree_Tolerance)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Degrees.Angle, 0, 2)),
+                     180.0,
+                     Phase_Degree_Tolerance)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Degrees.Angle, 0, 3)),
+                     270.0,
+                     Phase_Degree_Tolerance),
+         "Cart_To_Polar degrees must map (1,0), (0,1), (-1,0), (0,-1) to"
+         & " 0, 90, 180, 270");
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float
+              (OpenCV.Core.Float32_Access.Get (Default_Rad.Angle, 0, 1)),
+            Half_Pi,
+            Phase_Radian_Tolerance),
+         "Cart_To_Polar default Units must produce radians");
+   end Cart_To_Polar_Float32_Degrees_And_Default_Radians;
+
+   procedure Cart_To_Polar_Zero_Vector (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      X      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Y      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Result : OpenCV.Core.Polar_Coordinates;
+   begin
+      OpenCV.Core.Float32_Access.Set (X, 0, 0, 0.0);
+      OpenCV.Core.Float32_Access.Set (Y, 0, 0, 0.0);
+      Result := OpenCV.Core.Cart_To_Polar (X, Y);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float
+              (OpenCV.Core.Float32_Access.Get (Result.Magnitude, 0, 0)),
+            0.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result.Angle, 0, 0)),
+                     0.0),
+         "Cart_To_Polar must return magnitude 0 and angle 0 for (0, 0)");
+   end Cart_To_Polar_Zero_Vector;
+
+   procedure Cart_To_Polar_Matches_Magnitude_And_Phase
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      X          : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Y          : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Polar      : OpenCV.Core.Polar_Coordinates;
+      Expected_M : OpenCV.Core.Mat;
+      Expected_A : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set (X, 0, 0, 3.0);
+      OpenCV.Core.Float32_Access.Set (X, 0, 1, 0.0);
+      OpenCV.Core.Float32_Access.Set (X, 0, 2, -1.0);
+      OpenCV.Core.Float32_Access.Set (Y, 0, 0, 4.0);
+      OpenCV.Core.Float32_Access.Set (Y, 0, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Y, 0, 2, 1.0);
+      Polar := OpenCV.Core.Cart_To_Polar (X, Y, Units => OpenCV.Core.Degrees);
+      Expected_M := OpenCV.Core.Magnitude (X, Y);
+      Expected_A := OpenCV.Core.Phase (X, Y, Units => OpenCV.Core.Degrees);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float
+              (OpenCV.Core.Float32_Access.Get (Polar.Magnitude, 0, 0)),
+            Long_Float (OpenCV.Core.Float32_Access.Get (Expected_M, 0, 0)))
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get
+                          (Polar.Magnitude, 0, 1)),
+                     Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Expected_M, 0, 1)))
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get
+                          (Polar.Magnitude, 0, 2)),
+                     Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Expected_M, 0, 2))),
+         "Cart_To_Polar.Magnitude must match Magnitude (X, Y)");
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float (OpenCV.Core.Float32_Access.Get (Polar.Angle, 0, 0)),
+            Long_Float (OpenCV.Core.Float32_Access.Get (Expected_A, 0, 0)),
+            Phase_Degree_Tolerance)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Polar.Angle, 0, 1)),
+                     Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Expected_A, 0, 1)),
+                     Phase_Degree_Tolerance)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Polar.Angle, 0, 2)),
+                     Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Expected_A, 0, 2)),
+                     Phase_Degree_Tolerance),
+         "Cart_To_Polar.Angle must match Phase (X, Y, Units)");
+   end Cart_To_Polar_Matches_Magnitude_And_Phase;
+
+   procedure Cart_To_Polar_Float64_Preserves_Depth
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Float32_X : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Float32_Y : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      X         : OpenCV.Core.Mat;
+      Y         : OpenCV.Core.Mat;
+      Result    : OpenCV.Core.Polar_Coordinates;
+   begin
+      OpenCV.Core.Float32_Access.Set (Float32_X, 0, 0, 3.0);
+      OpenCV.Core.Float32_Access.Set (Float32_Y, 0, 0, 4.0);
+      X := Float32_X.Convert_To (Depth => OpenCV.Core.Float64);
+      Y := Float32_Y.Convert_To (Depth => OpenCV.Core.Float64);
+      Result := OpenCV.Core.Cart_To_Polar (X, Y);
+
+      AUnit.Assertions.Assert
+        (Result.Magnitude.Rows = 1
+         and then Result.Magnitude.Columns = 1
+         and then Result.Magnitude.Depth = OpenCV.Core.Float64
+         and then Result.Magnitude.Channels = 1
+         and then Result.Angle.Rows = 1
+         and then Result.Angle.Columns = 1
+         and then Result.Angle.Depth = OpenCV.Core.Float64
+         and then Result.Angle.Channels = 1,
+         "Cart_To_Polar must preserve Float64 depth on both outputs");
+   end Cart_To_Polar_Float64_Preserves_Depth;
+
+   procedure Cart_To_Polar_Multi_Channel_Vec3 (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      X           : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 3));
+      Y           : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 3));
+      Result      : OpenCV.Core.Polar_Coordinates;
+      Magnitude_P : OpenCV.Core.Float32_Vec3.Vector;
+      Angle_P     : OpenCV.Core.Float32_Vec3.Vector;
+   begin
+      OpenCV.Core.Float32_Vec3_Access.Set
+        (X, Row => 0, Column => 0, Value => (3.0, 0.0, -1.0));
+      OpenCV.Core.Float32_Vec3_Access.Set
+        (Y, Row => 0, Column => 0, Value => (4.0, 1.0, 0.0));
+      Result := OpenCV.Core.Cart_To_Polar (X, Y, Units => OpenCV.Core.Degrees);
+      Magnitude_P :=
+        OpenCV.Core.Float32_Vec3_Access.Get
+          (Result.Magnitude, Row => 0, Column => 0);
+      Angle_P :=
+        OpenCV.Core.Float32_Vec3_Access.Get
+          (Result.Angle, Row => 0, Column => 0);
+
+      AUnit.Assertions.Assert
+        (Result.Magnitude.Channels = 3
+         and then Result.Angle.Channels = 3
+         and then Approximately_Equal (Long_Float (Magnitude_P (0)), 5.0)
+         and then Approximately_Equal (Long_Float (Magnitude_P (1)), 1.0)
+         and then Approximately_Equal (Long_Float (Magnitude_P (2)), 1.0)
+         and then Approximately_Equal
+                    (Long_Float (Angle_P (1)), 90.0, Phase_Degree_Tolerance)
+         and then Approximately_Equal
+                    (Long_Float (Angle_P (2)), 180.0, Phase_Degree_Tolerance),
+         "Cart_To_Polar must process each Float32 Vec3 channel independently");
+   end Cart_To_Polar_Multi_Channel_Vec3;
+
+   procedure Cart_To_Polar_Noncontiguous_Region_And_Independent_Storage
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Result : OpenCV.Core.Polar_Coordinates;
+   begin
+      declare
+         Source_X : OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 3,
+              Columns      => 3,
+              Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+         Source_Y : OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 3,
+              Columns      => 3,
+              Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+         View_X   : constant OpenCV.Core.Mat :=
+           Source_X.Region ((X => 1, Y => 0, Width => 2, Height => 3));
+         View_Y   : constant OpenCV.Core.Mat :=
+           Source_Y.Region ((X => 1, Y => 0, Width => 2, Height => 3));
+      begin
+         Source_X.Set_To (OpenCV.Core.Make_Scalar (3.0));
+         Source_Y.Set_To (OpenCV.Core.Make_Scalar (4.0));
+         OpenCV.Core.Float32_Access.Set (Source_X, 0, 1, 5.0);
+         OpenCV.Core.Float32_Access.Set (Source_Y, 0, 1, 12.0);
+         AUnit.Assertions.Assert
+           (not View_X.Is_Continuous and then not View_Y.Is_Continuous,
+            "Cart_To_Polar test Regions must be non-continuous");
+         Result := OpenCV.Core.Cart_To_Polar (View_X, View_Y);
+         OpenCV.Core.Float32_Access.Set (Source_X, 0, 1, 100.0);
+         OpenCV.Core.Float32_Access.Set (Source_Y, 0, 1, 200.0);
+      end;
+
+      AUnit.Assertions.Assert
+        (not Result.Magnitude.Is_Empty
+         and then Result.Magnitude.Is_Continuous
+         and then Result.Angle.Is_Continuous
+         and then Result.Magnitude.Rows = 3
+         and then Result.Magnitude.Columns = 2
+         and then Result.Angle.Rows = 3
+         and then Result.Angle.Columns = 2
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get
+                          (Result.Magnitude, 0, 0)),
+                     13.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get
+                          (Result.Magnitude, 0, 1)),
+                     5.0),
+         "Cart_To_Polar must accept matching non-contiguous Regions and keep"
+         & " independent result storage after source finalization");
+   end Cart_To_Polar_Noncontiguous_Region_And_Independent_Storage;
+
+   procedure Cart_To_Polar_Outputs_Do_Not_Share_Storage
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      X          : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Y          : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Result     : OpenCV.Core.Polar_Coordinates;
+      Angle_Copy : OpenCV.Core.Float32_Value;
+   begin
+      OpenCV.Core.Float32_Access.Set (X, 0, 0, 0.0);
+      OpenCV.Core.Float32_Access.Set (Y, 0, 0, 1.0);
+      Result := OpenCV.Core.Cart_To_Polar (X, Y, Units => OpenCV.Core.Degrees);
+      Angle_Copy := OpenCV.Core.Float32_Access.Get (Result.Angle, 0, 0);
+      OpenCV.Core.Float32_Access.Set (Result.Magnitude, 0, 0, 42.0);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float (OpenCV.Core.Float32_Access.Get (Result.Angle, 0, 0)),
+            Long_Float (Angle_Copy),
+            Phase_Degree_Tolerance)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get
+                          (Result.Magnitude, 0, 0)),
+                     42.0),
+         "Cart_To_Polar Magnitude and Angle must not share pixel storage");
+   end Cart_To_Polar_Outputs_Do_Not_Share_Storage;
+
+   procedure Cart_To_Polar_Typed_Empty_And_Default_Empty
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Empty32_X : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 0,
+           Columns      => 0,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Empty32_Y : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 0,
+           Columns      => 0,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Empty64_X : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 0,
+           Columns      => 0,
+           Element_Type => (Depth => OpenCV.Core.Float64, Channels => 2));
+      Empty64_Y : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 0,
+           Columns      => 0,
+           Element_Type => (Depth => OpenCV.Core.Float64, Channels => 2));
+      Result32  : constant OpenCV.Core.Polar_Coordinates :=
+        OpenCV.Core.Cart_To_Polar (Empty32_X, Empty32_Y);
+      Result64  : constant OpenCV.Core.Polar_Coordinates :=
+        OpenCV.Core.Cart_To_Polar (Empty64_X, Empty64_Y);
+      Default   : OpenCV.Core.Mat;
+
+      procedure Cart_To_Polar_Default_Empty is
+         Ignored : constant OpenCV.Core.Polar_Coordinates :=
+           OpenCV.Core.Cart_To_Polar (Default, Default);
+      begin
+         pragma Unreferenced (Ignored);
+      end Cart_To_Polar_Default_Empty;
+   begin
+      AUnit.Assertions.Assert
+        (Result32.Magnitude.Is_Empty
+         and then Result32.Angle.Is_Empty
+         and then Result32.Magnitude.Rows = 0
+         and then Result32.Magnitude.Columns = 0
+         and then Result32.Magnitude.Depth = OpenCV.Core.Float32
+         and then Result32.Magnitude.Channels = 1
+         and then Result32.Angle.Depth = OpenCV.Core.Float32
+         and then Result32.Angle.Channels = 1,
+         "Cart_To_Polar must preserve typed 0x0 Float32 operands as empty");
+      AUnit.Assertions.Assert
+        (Result64.Magnitude.Is_Empty
+         and then Result64.Angle.Is_Empty
+         and then Result64.Magnitude.Depth = OpenCV.Core.Float64
+         and then Result64.Magnitude.Channels = 2
+         and then Result64.Angle.Depth = OpenCV.Core.Float64
+         and then Result64.Angle.Channels = 2,
+         "Cart_To_Polar must preserve typed 0x0 Float64 operands as empty");
+      Assert_Raises_OpenCV_Error
+        (Cart_To_Polar_Default_Empty'Access,
+         "Cart_To_Polar must reject a default empty Mat");
+   end Cart_To_Polar_Typed_Empty_And_Default_Empty;
+
+   procedure Cart_To_Polar_Rejects_Unsupported_Depths_And_Mismatches
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+
+      procedure Cart_To_Polar_UInt8 is
+         X       : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+         Y       : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+         Ignored : constant OpenCV.Core.Polar_Coordinates :=
+           OpenCV.Core.Cart_To_Polar (X, Y);
+      begin
+         pragma Unreferenced (Ignored);
+      end Cart_To_Polar_UInt8;
+
+      procedure Cart_To_Polar_Int32 is
+         X       : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.Int32, Channels => 1));
+         Y       : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.Int32, Channels => 1));
+         Ignored : constant OpenCV.Core.Polar_Coordinates :=
+           OpenCV.Core.Cart_To_Polar (X, Y);
+      begin
+         pragma Unreferenced (Ignored);
+      end Cart_To_Polar_Int32;
+
+      procedure Cart_To_Polar_Float16 is
+         X       : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.Float16, Channels => 1));
+         Y       : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.Float16, Channels => 1));
+         Ignored : constant OpenCV.Core.Polar_Coordinates :=
+           OpenCV.Core.Cart_To_Polar (X, Y);
+      begin
+         pragma Unreferenced (Ignored);
+      end Cart_To_Polar_Float16;
+
+      procedure Cart_To_Polar_Mismatched_Rows is
+         X       : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+         Y       : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 2,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+         Ignored : constant OpenCV.Core.Polar_Coordinates :=
+           OpenCV.Core.Cart_To_Polar (X, Y);
+      begin
+         pragma Unreferenced (Ignored);
+      end Cart_To_Polar_Mismatched_Rows;
+
+      procedure Cart_To_Polar_Mismatched_Columns is
+         X       : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+         Y       : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 2,
+              Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+         Ignored : constant OpenCV.Core.Polar_Coordinates :=
+           OpenCV.Core.Cart_To_Polar (X, Y);
+      begin
+         pragma Unreferenced (Ignored);
+      end Cart_To_Polar_Mismatched_Columns;
+
+      procedure Cart_To_Polar_Mismatched_Depth is
+         X       : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+         Y       : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.Float64, Channels => 1));
+         Ignored : constant OpenCV.Core.Polar_Coordinates :=
+           OpenCV.Core.Cart_To_Polar (X, Y);
+      begin
+         pragma Unreferenced (Ignored);
+      end Cart_To_Polar_Mismatched_Depth;
+
+      procedure Cart_To_Polar_Mismatched_Channels is
+         X       : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+         Y       : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.Float32, Channels => 3));
+         Ignored : constant OpenCV.Core.Polar_Coordinates :=
+           OpenCV.Core.Cart_To_Polar (X, Y);
+      begin
+         pragma Unreferenced (Ignored);
+      end Cart_To_Polar_Mismatched_Channels;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Cart_To_Polar_UInt8'Access, "Cart_To_Polar must reject UInt8");
+      Assert_Raises_OpenCV_Error
+        (Cart_To_Polar_Int32'Access, "Cart_To_Polar must reject Int32");
+      Assert_Raises_OpenCV_Error
+        (Cart_To_Polar_Float16'Access, "Cart_To_Polar must reject Float16");
+      Assert_Raises_OpenCV_Error
+        (Cart_To_Polar_Mismatched_Rows'Access,
+         "Cart_To_Polar must reject mismatched rows");
+      Assert_Raises_OpenCV_Error
+        (Cart_To_Polar_Mismatched_Columns'Access,
+         "Cart_To_Polar must reject mismatched columns");
+      Assert_Raises_OpenCV_Error
+        (Cart_To_Polar_Mismatched_Depth'Access,
+         "Cart_To_Polar must reject mismatched depths");
+      Assert_Raises_OpenCV_Error
+        (Cart_To_Polar_Mismatched_Channels'Access,
+         "Cart_To_Polar must reject mismatched channel counts");
+   end Cart_To_Polar_Rejects_Unsupported_Depths_And_Mismatches;
+
    procedure Float32_Matx3x3_Has_Value_And_Zero_Based_Index_Semantics
      (Test : in out Mat_Test_Fixture)
    is
@@ -3245,6 +3877,50 @@ package body Mat_Conversion_Tests is
         (Caller.Create
            ("Phase rejects unsupported depths and mismatches",
             Phase_Rejects_Unsupported_Depths_And_Mismatches'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Cart_To_Polar Float32 known scalar values",
+            Cart_To_Polar_Float32_Known_Scalar_Values'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Cart_To_Polar Float32 radians axis directions",
+            Cart_To_Polar_Float32_Radians_Axis_Directions'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Cart_To_Polar Float32 degrees and default radians",
+            Cart_To_Polar_Float32_Degrees_And_Default_Radians'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Cart_To_Polar zero vector", Cart_To_Polar_Zero_Vector'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Cart_To_Polar matches Magnitude and Phase",
+            Cart_To_Polar_Matches_Magnitude_And_Phase'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Cart_To_Polar Float64 preserves depth",
+            Cart_To_Polar_Float64_Preserves_Depth'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Cart_To_Polar multi-channel Vec3",
+            Cart_To_Polar_Multi_Channel_Vec3'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Cart_To_Polar noncontiguous Region and independent storage",
+            Cart_To_Polar_Noncontiguous_Region_And_Independent_Storage
+              'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Cart_To_Polar outputs do not share storage",
+            Cart_To_Polar_Outputs_Do_Not_Share_Storage'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Cart_To_Polar typed empty and default empty",
+            Cart_To_Polar_Typed_Empty_And_Default_Empty'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Cart_To_Polar rejects unsupported depths and mismatches",
+            Cart_To_Polar_Rejects_Unsupported_Depths_And_Mismatches'Access));
 
       Result.Add_Test
         (Caller.Create

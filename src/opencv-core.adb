@@ -1817,44 +1817,45 @@ package body OpenCV.Core is
       return Result;
    end Pow;
 
-   procedure Validate_Magnitude (X, Y : Mat) is
+   procedure Validate_Matching_Float_Operands (X, Y : Mat; Operation : String)
+   is
    begin
       if X.Depth /= Float32 and then X.Depth /= Float64 then
          Ada.Exceptions.Raise_Exception
            (OpenCV_Error'Identity,
-            "Magnitude requires a Float32 or Float64 X operand");
+            Operation & " requires a Float32 or Float64 X operand");
       end if;
 
       if Y.Depth /= Float32 and then Y.Depth /= Float64 then
          Ada.Exceptions.Raise_Exception
            (OpenCV_Error'Identity,
-            "Magnitude requires a Float32 or Float64 Y operand");
+            Operation & " requires a Float32 or Float64 Y operand");
       end if;
 
       if X.Rows /= Y.Rows then
          Ada.Exceptions.Raise_Exception
            (OpenCV_Error'Identity,
-            "Magnitude requires operands with identical row counts");
+            Operation & " requires operands with identical row counts");
       end if;
 
       if X.Columns /= Y.Columns then
          Ada.Exceptions.Raise_Exception
            (OpenCV_Error'Identity,
-            "Magnitude requires operands with identical column counts");
+            Operation & " requires operands with identical column counts");
       end if;
 
       if X.Depth /= Y.Depth then
          Ada.Exceptions.Raise_Exception
            (OpenCV_Error'Identity,
-            "Magnitude requires operands with identical depths");
+            Operation & " requires operands with identical depths");
       end if;
 
       if X.Channels /= Y.Channels then
          Ada.Exceptions.Raise_Exception
            (OpenCV_Error'Identity,
-            "Magnitude requires operands with identical channel counts");
+            Operation & " requires operands with identical channel counts");
       end if;
-   end Validate_Magnitude;
+   end Validate_Matching_Float_Operands;
 
    function Magnitude (X, Y : Mat) return Mat is
       Result     : Mat;
@@ -1862,7 +1863,7 @@ package body OpenCV.Core is
         OpenCV.Internal.C_API.Null_Mat_Handle;
       Status     : OpenCV.Internal.C_API.Status;
    begin
-      Validate_Magnitude (X, Y);
+      Validate_Matching_Float_Operands (X, Y, "Magnitude");
       Status :=
         OpenCV.Internal.C_API.Mat_Magnitude
           (X => X.Handle, Y => Y.Handle, Result => New_Handle'Access);
@@ -1872,45 +1873,6 @@ package body OpenCV.Core is
       Result.Handle := New_Handle;
       return Result;
    end Magnitude;
-
-   procedure Validate_Phase (X, Y : Mat) is
-   begin
-      if X.Depth /= Float32 and then X.Depth /= Float64 then
-         Ada.Exceptions.Raise_Exception
-           (OpenCV_Error'Identity,
-            "Phase requires a Float32 or Float64 X operand");
-      end if;
-
-      if Y.Depth /= Float32 and then Y.Depth /= Float64 then
-         Ada.Exceptions.Raise_Exception
-           (OpenCV_Error'Identity,
-            "Phase requires a Float32 or Float64 Y operand");
-      end if;
-
-      if X.Rows /= Y.Rows then
-         Ada.Exceptions.Raise_Exception
-           (OpenCV_Error'Identity,
-            "Phase requires operands with identical row counts");
-      end if;
-
-      if X.Columns /= Y.Columns then
-         Ada.Exceptions.Raise_Exception
-           (OpenCV_Error'Identity,
-            "Phase requires operands with identical column counts");
-      end if;
-
-      if X.Depth /= Y.Depth then
-         Ada.Exceptions.Raise_Exception
-           (OpenCV_Error'Identity,
-            "Phase requires operands with identical depths");
-      end if;
-
-      if X.Channels /= Y.Channels then
-         Ada.Exceptions.Raise_Exception
-           (OpenCV_Error'Identity,
-            "Phase requires operands with identical channel counts");
-      end if;
-   end Validate_Phase;
 
    function Phase (X, Y : Mat; Units : Angle_Unit := Radians) return Mat is
       Result           : Mat;
@@ -1922,7 +1884,7 @@ package body OpenCV.Core is
          else OpenCV.Internal.C_API.C_False);
       Status           : OpenCV.Internal.C_API.Status;
    begin
-      Validate_Phase (X, Y);
+      Validate_Matching_Float_Operands (X, Y, "Phase");
       Status :=
         OpenCV.Internal.C_API.Mat_Phase
           (X                => X.Handle,
@@ -1935,6 +1897,50 @@ package body OpenCV.Core is
       Result.Handle := New_Handle;
       return Result;
    end Phase;
+   function Cart_To_Polar
+     (X, Y : Mat; Units : Angle_Unit := Radians) return Polar_Coordinates
+   is
+      Result           : Polar_Coordinates;
+      Magnitude_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Angle_Handle     : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Angle_In_Degrees : constant OpenCV.Internal.C_API.C_Boolean :=
+        (if Units = Degrees
+         then OpenCV.Internal.C_API.C_True
+         else OpenCV.Internal.C_API.C_False);
+      Status           : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Matching_Float_Operands (X, Y, "Cart_To_Polar");
+      Status :=
+        OpenCV.Internal.C_API.Mat_Cart_To_Polar
+          (X                => X.Handle,
+           Y                => Y.Handle,
+           Angle_In_Degrees => Angle_In_Degrees,
+           Magnitude        => Magnitude_Handle'Access,
+           Angle            => Angle_Handle'Access);
+      if Status /= OpenCV.Internal.C_API.Success then
+         OpenCV.Internal.C_API.Mat_Destroy (Magnitude_Handle);
+         OpenCV.Internal.C_API.Mat_Destroy (Angle_Handle);
+         Raise_On_Error (Status, "Mat cart-to-polar operation");
+      end if;
+
+      if Magnitude_Handle = OpenCV.Internal.C_API.Null_Mat_Handle
+        or else Angle_Handle = OpenCV.Internal.C_API.Null_Mat_Handle
+      then
+         OpenCV.Internal.C_API.Mat_Destroy (Magnitude_Handle);
+         OpenCV.Internal.C_API.Mat_Destroy (Angle_Handle);
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat cart-to-polar operation returned a null result handle");
+      end if;
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Magnitude.Handle);
+      Result.Magnitude.Handle := Magnitude_Handle;
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Angle.Handle);
+      Result.Angle.Handle := Angle_Handle;
+      return Result;
+   end Cart_To_Polar;
 
    function Is_Empty (Self : Mat) return Boolean is
       Empty  : aliased OpenCV.Internal.C_API.C_Boolean :=
