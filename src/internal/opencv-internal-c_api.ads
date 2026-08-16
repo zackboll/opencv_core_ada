@@ -807,4 +807,17 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_find_non_zero";
 
+   function Mat_Check_Range
+     (Source     : Mat_Handle;
+      Use_Bounds : C_Boolean;
+      Minimum    : C_Double;
+      Maximum    : C_Double;
+      Valid      : access C_Boolean;
+      X          : access C_Int32;
+      Y          : access C_Int32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_check_range";
+
 end OpenCV.Internal.C_API;

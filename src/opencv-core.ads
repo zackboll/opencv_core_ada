@@ -91,6 +91,18 @@ package OpenCV.Core is
       Standard_Deviation : Scalar;
    end record;
 
+   --  Discriminated result of Check_Range. First_Invalid is present only
+   --  when Valid is False. Point.X is the column and Point.Y is the row.
+   type Range_Check_Result (Valid : Boolean := True) is record
+      case Valid is
+         when True =>
+            null;
+
+         when False =>
+            First_Invalid : Point;
+      end case;
+   end record;
+
    type Rect is record
       X      : Size_Coordinate := 0;
       Y      : Size_Coordinate := 0;
@@ -514,6 +526,23 @@ package OpenCV.Core is
    --  return an empty Point_Array. Locations for a Region are relative to that
    --  Region rather than to its parent Mat.
    function Find_Non_Zero (Self : Mat) return Point_Array;
+
+   --  Checks every scalar channel value of Self. The no-bound overload
+   --  rejects NaN and +/- Infinity and otherwise accepts finite values.
+   --  The bounded overload additionally requires every value to lie in the
+   --  half-open interval [Minimum, Maximum). First_Invalid.X is the column
+   --  and First_Invalid.Y is the row of the first invalid element in
+   --  row-major order. Multi-channel Mats are checked channel-by-channel;
+   --  the reported Point identifies the element, not a channel. Supports
+   --  UInt8, Int8, UInt16, Int16, Int32, Float32, and Float64. Float16 is
+   --  not supported by OpenCV 4.10. Empty Mats, including a default empty
+   --  Mat and typed 0x0 Mats, are valid when they contain no elements.
+   --  Non-contiguous Regions are accepted; First_Invalid is relative to
+   --  Self. Does not modify Self.
+   function Check_Range (Self : Mat) return Range_Check_Result;
+   function Check_Range
+     (Self : Mat; Minimum : Long_Float; Maximum : Long_Float)
+      return Range_Check_Result;
 private
 
    type Mat is new Ada.Finalization.Controlled with record

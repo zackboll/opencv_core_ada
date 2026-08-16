@@ -2810,4 +2810,58 @@ package body OpenCV.Core is
       end;
    end Find_Non_Zero;
 
+   function Check_Range_With_Mode
+     (Self    : Mat;
+      Minimum : Long_Float;
+      Maximum : Long_Float;
+      Bounded : Boolean) return Range_Check_Result
+   is
+      Valid  : aliased OpenCV.Internal.C_API.C_Boolean :=
+        OpenCV.Internal.C_API.C_False;
+      X      : aliased OpenCV.Internal.C_API.C_Int32 := -1;
+      Y      : aliased OpenCV.Internal.C_API.C_Int32 := -1;
+      Status : OpenCV.Internal.C_API.Status;
+   begin
+      if Self.Depth = Float16 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Check_Range does not support Float16 Mats");
+      end if;
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_Check_Range
+          (Source     => Self.Handle,
+           Use_Bounds =>
+             (if Bounded
+              then OpenCV.Internal.C_API.C_True
+              else OpenCV.Internal.C_API.C_False),
+           Minimum    => OpenCV.Internal.C_API.C_Double (Minimum),
+           Maximum    => OpenCV.Internal.C_API.C_Double (Maximum),
+           Valid      => Valid'Access,
+           X          => X'Access,
+           Y          => Y'Access);
+      Raise_On_Error (Status, "Mat check range operation");
+
+      if From_C_Boolean (Valid, "Check_Range") then
+         return (Valid => True);
+      end if;
+
+      return
+        (Valid         => False,
+         First_Invalid =>
+           (X => Point_Coordinate (X), Y => Point_Coordinate (Y)));
+   end Check_Range_With_Mode;
+
+   function Check_Range (Self : Mat) return Range_Check_Result is
+   begin
+      return Check_Range_With_Mode (Self, 0.0, 0.0, Bounded => False);
+   end Check_Range;
+
+   function Check_Range
+     (Self : Mat; Minimum : Long_Float; Maximum : Long_Float)
+      return Range_Check_Result is
+   begin
+      return Check_Range_With_Mode (Self, Minimum, Maximum, Bounded => True);
+   end Check_Range;
+
 end OpenCV.Core;

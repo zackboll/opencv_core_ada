@@ -3778,4 +3778,59 @@ opencv_core_mat_merge(const opencv_core_mat_handle *const *sources,
     }
 }
 
+opencv_core_status
+opencv_core_mat_check_range(const opencv_core_mat_handle *source,
+                            uint8_t use_bounds, double minimum, double maximum,
+                            uint8_t *out_valid, int32_t *out_x, int32_t *out_y) {
+    clear_error();
+
+    if (out_valid == nullptr || out_x == nullptr || out_y == nullptr) {
+        return invalid_argument("Check_Range output pointers must not be null");
+    }
+
+    *out_valid = UINT8_C(0);
+    *out_x = -1;
+    *out_y = -1;
+
+    if (source == nullptr) {
+        return invalid_argument("source Mat handle must not be null");
+    }
+
+    if (use_bounds != 0 && use_bounds != 1) {
+        return invalid_argument("use_bounds must be 0 or 1");
+    }
+
+    try {
+        if (source->value.dims > 2) {
+            return invalid_argument("Mat must be two-dimensional");
+        }
+
+        if (source->value.depth() == CV_16F) {
+            return invalid_argument("Mat depth Float16 is not supported");
+        }
+
+        const double effective_minimum =
+            use_bounds != 0 ? minimum : -std::numeric_limits<double>::max();
+        const double effective_maximum =
+            use_bounds != 0 ? maximum : std::numeric_limits<double>::max();
+
+        cv::Point first_invalid(-1, -1);
+        const bool valid =
+            cv::checkRange(source->value, true, &first_invalid,
+                           effective_minimum, effective_maximum);
+
+        *out_valid = valid ? UINT8_C(1) : UINT8_C(0);
+        if (valid) {
+            *out_x = -1;
+            *out_y = -1;
+        } else {
+            *out_x = static_cast<int32_t>(first_invalid.x);
+            *out_y = static_cast<int32_t>(first_invalid.y);
+        }
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
 } // extern "C"
