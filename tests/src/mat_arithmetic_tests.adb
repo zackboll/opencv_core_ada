@@ -717,6 +717,211 @@ package body Mat_Arithmetic_Tests is
         (Bad_Channels'Access, "Add_Weighted must reject mismatched channels");
    end Mat_Add_Weighted_Rejects_Incompatible_Operands;
 
+   procedure Mat_Scale_Add_Maps_UInt8_Exactly (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      Right  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.UInt8_Access.Set (Left, 0, 0, 1);
+      OpenCV.Core.UInt8_Access.Set (Left, 0, 1, 2);
+      OpenCV.Core.UInt8_Access.Set (Left, 1, 0, 3);
+      OpenCV.Core.UInt8_Access.Set (Left, 1, 1, 4);
+      OpenCV.Core.UInt8_Access.Set (Right, 0, 0, 10);
+      OpenCV.Core.UInt8_Access.Set (Right, 0, 1, 20);
+      OpenCV.Core.UInt8_Access.Set (Right, 1, 0, 30);
+      OpenCV.Core.UInt8_Access.Set (Right, 1, 1, 40);
+      Result := Left.Scale_Add (Scale => 2.0, Right => Right);
+
+      AUnit.Assertions.Assert
+        (Result.Rows = 2
+         and then Result.Columns = 2
+         and then Result.Depth = OpenCV.Core.UInt8
+         and then Result.Channels = 1
+         and then OpenCV.Core.UInt8_Access.Get (Result, 0, 0) = 12
+         and then OpenCV.Core.UInt8_Access.Get (Result, 0, 1) = 24
+         and then OpenCV.Core.UInt8_Access.Get (Result, 1, 0) = 36
+         and then OpenCV.Core.UInt8_Access.Get (Result, 1, 1) = 48,
+         "Scale_Add must map UInt8 values as Scale * Left + Right");
+   end Mat_Scale_Add_Maps_UInt8_Exactly;
+
+   procedure Mat_Scale_Add_Saturates_UInt8_And_Int16
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      UInt8_Left, UInt8_Right, Saturated, Underflow, Rounded :
+        OpenCV.Core.Mat := OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+      Int16_Left, Int16_Right, Int16_High, Int16_Low         :
+        OpenCV.Core.Mat := OpenCV.Core.Create (1, 1, (OpenCV.Core.Int16, 1));
+   begin
+      OpenCV.Core.UInt8_Access.Set (UInt8_Left, 0, 0, 200);
+      OpenCV.Core.UInt8_Access.Set (UInt8_Right, 0, 0, 100);
+      Saturated := UInt8_Left.Scale_Add (Scale => 2.0, Right => UInt8_Right);
+      OpenCV.Core.UInt8_Access.Set (UInt8_Left, 0, 0, 10);
+      OpenCV.Core.UInt8_Access.Set (UInt8_Right, 0, 0, 1);
+      Underflow := UInt8_Left.Scale_Add (Scale => -2.0, Right => UInt8_Right);
+      OpenCV.Core.UInt8_Access.Set (UInt8_Left, 0, 0, 10);
+      OpenCV.Core.UInt8_Access.Set (UInt8_Right, 0, 0, 3);
+      Rounded := UInt8_Left.Scale_Add (Scale => 0.5, Right => UInt8_Right);
+      Int16_Left.Set_To (OpenCV.Core.Make_Scalar (20_000.0));
+      Int16_Right.Set_To (OpenCV.Core.Make_Scalar (20_000.0));
+      Int16_High := Int16_Left.Scale_Add (Scale => 2.0, Right => Int16_Right);
+      Int16_Left.Set_To (OpenCV.Core.Make_Scalar (-20_000.0));
+      Int16_Right.Set_To (OpenCV.Core.Make_Scalar (-20_000.0));
+      Int16_Low := Int16_Left.Scale_Add (Scale => 2.0, Right => Int16_Right);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Saturated, 0, 0) = 255
+         and then OpenCV.Core.UInt8_Access.Get (Underflow, 0, 0) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Rounded, 0, 0) = 8
+         and then Int16_High.Sum.Component_0 = 32_767.0
+         and then Int16_Low.Sum.Component_0 = -32_768.0,
+         "Scale_Add must apply OpenCV integer saturation and rounding");
+   end Mat_Scale_Add_Saturates_UInt8_And_Int16;
+
+   procedure Mat_Scale_Add_Handles_Float32_Negative_And_Nonfinite
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left, Right, Result                  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+      Numerator, Zeroes, Finite, Nonfinite : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+      Scaled_Nonfinite                     : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set (Left, 0, 0, 1.5);
+      OpenCV.Core.Float32_Access.Set (Left, 0, 1, -2.0);
+      OpenCV.Core.Float32_Access.Set (Right, 0, 0, 2.5);
+      OpenCV.Core.Float32_Access.Set (Right, 0, 1, 3.0);
+      Result := Left.Scale_Add (Scale => 2.0, Right => Right);
+      Numerator.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.Float32_Access.Set (Numerator, 0, 1, 1.0);
+      Zeroes.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Finite.Set_To (OpenCV.Core.Make_Scalar (2.0));
+      Nonfinite := Numerator.Divide (Zeroes);
+      Scaled_Nonfinite := Nonfinite.Scale_Add (Scale => 2.0, Right => Finite);
+
+      AUnit.Assertions.Assert
+        (Result.Rows = Left.Rows
+         and then Result.Columns = Left.Columns
+         and then Result.Depth = OpenCV.Core.Float32
+         and then Result.Channels = Left.Channels
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 0, 0)),
+                     5.5)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 0, 1)),
+                     -1.0)
+         and then OpenCV.Core.Float32_Access.Classify (Scaled_Nonfinite, 0, 0)
+                  = OpenCV.Core.Float32_Access.Not_A_Number
+         and then OpenCV.Core.Float32_Access.Classify (Scaled_Nonfinite, 0, 1)
+                  = OpenCV.Core.Float32_Access.Positive_Infinity,
+         "Scale_Add must map Float32 values, negatives, NaN, and infinity");
+   end Mat_Scale_Add_Handles_Float32_Negative_And_Nonfinite;
+
+   procedure Mat_Scale_Add_Handles_Vec3_Regions_And_Lifetime
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Result : OpenCV.Core.Mat;
+   begin
+      declare
+         Left  : OpenCV.Core.Mat :=
+           OpenCV.Core.Create (3, 3, (OpenCV.Core.UInt8, 3));
+         Right : OpenCV.Core.Mat :=
+           OpenCV.Core.Create (3, 3, (OpenCV.Core.UInt8, 3));
+         View  : constant OpenCV.Core.Mat :=
+           Left.Region ((X => 1, Y => 0, Width => 2, Height => 3));
+      begin
+         OpenCV.Core.UInt8_Vec3_Access.Set (Left, 0, 0, (9, 9, 9));
+         OpenCV.Core.UInt8_Vec3_Access.Set (Left, 0, 1, (1, 2, 3));
+         OpenCV.Core.UInt8_Vec3_Access.Set (Left, 0, 2, (4, 5, 6));
+         OpenCV.Core.UInt8_Vec3_Access.Set (Right, 0, 1, (10, 20, 30));
+         OpenCV.Core.UInt8_Vec3_Access.Set (Right, 0, 2, (40, 50, 60));
+         AUnit.Assertions.Assert
+           (not View.Is_Continuous,
+            "Scale_Add test Region must be non-continuous");
+         Result :=
+           View.Scale_Add (Scale => 2.0, Right => Right.Region ((1, 0, 2, 3)));
+         OpenCV.Core.UInt8_Vec3_Access.Set (Left, 0, 1, (99, 99, 99));
+         OpenCV.Core.UInt8_Vec3_Access.Set (Result, 1, 0, (7, 8, 9));
+      end;
+
+      AUnit.Assertions.Assert
+        (not Result.Is_Empty
+         and then Result.Is_Continuous
+         and then Result.Rows = 3
+         and then Result.Columns = 2
+         and then Result.Depth = OpenCV.Core.UInt8
+         and then Result.Channels = 3
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Result, 0, 0)
+                  = (12, 24, 36)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Result, 0, 1)
+                  = (48, 60, 72)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Result, 1, 0) = (7, 8, 9),
+         "Scale_Add must process Vec3 Regions independently of source lifetime");
+   end Mat_Scale_Add_Handles_Vec3_Regions_And_Lifetime;
+
+   procedure Mat_Scale_Add_Handles_Empty_And_Compatibility
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Empty_Left, Empty_Right, Empty_Result : OpenCV.Core.Mat;
+      Base                                  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+      Rows                                  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 1, (OpenCV.Core.UInt8, 1));
+      Columns                               : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 1));
+      Depth                                 : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Channels                              : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 3));
+      procedure Bad_Rows is
+         X : constant OpenCV.Core.Mat :=
+           Base.Scale_Add (Scale => 1.0, Right => Rows);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Rows;
+      procedure Bad_Columns is
+         X : constant OpenCV.Core.Mat :=
+           Base.Scale_Add (Scale => 1.0, Right => Columns);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Columns;
+      procedure Bad_Depth is
+         X : constant OpenCV.Core.Mat :=
+           Base.Scale_Add (Scale => 1.0, Right => Depth);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Depth;
+      procedure Bad_Channels is
+         X : constant OpenCV.Core.Mat :=
+           Base.Scale_Add (Scale => 1.0, Right => Channels);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Channels;
+   begin
+      Empty_Result :=
+        Empty_Left.Scale_Add (Scale => 2.0, Right => Empty_Right);
+      AUnit.Assertions.Assert
+        (Empty_Result.Is_Empty,
+         "Scale_Add of two empty Mats must produce an empty Mat");
+      Assert_Raises_OpenCV_Error
+        (Bad_Rows'Access, "Scale_Add must reject mismatched rows");
+      Assert_Raises_OpenCV_Error
+        (Bad_Columns'Access, "Scale_Add must reject mismatched columns");
+      Assert_Raises_OpenCV_Error
+        (Bad_Depth'Access, "Scale_Add must reject mismatched depths");
+      Assert_Raises_OpenCV_Error
+        (Bad_Channels'Access, "Scale_Add must reject mismatched channels");
+   end Mat_Scale_Add_Handles_Empty_And_Compatibility;
+
    procedure Mat_Minimum_And_Maximum_Map_UInt8_And_Float32
      (Test : in out Mat_Test_Fixture)
    is
@@ -998,6 +1203,26 @@ package body Mat_Arithmetic_Tests is
         (Caller.Create
            ("Mat Add_Weighted rejects incompatible operands",
             Mat_Add_Weighted_Rejects_Incompatible_Operands'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Scale_Add maps UInt8 exactly",
+            Mat_Scale_Add_Maps_UInt8_Exactly'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Scale_Add saturates UInt8 and Int16",
+            Mat_Scale_Add_Saturates_UInt8_And_Int16'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Scale_Add handles Float32, negatives, and nonfinite",
+            Mat_Scale_Add_Handles_Float32_Negative_And_Nonfinite'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Scale_Add handles Vec3 Regions and lifetime",
+            Mat_Scale_Add_Handles_Vec3_Regions_And_Lifetime'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Scale_Add handles empty and compatibility",
+            Mat_Scale_Add_Handles_Empty_And_Compatibility'Access));
       Result.Add_Test
         (Caller.Create
            ("Mat Minimum and Maximum map UInt8 and Float32",

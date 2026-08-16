@@ -462,6 +462,15 @@ Blended : Mat :=
      Gamma => 2.0);
 ```
 
+## Scaled addition
+
+```ada
+Scaled : Mat := A.Scale_Add (Scale => 2.0, Right => B);
+```
+
+The result is `Scale * A + B` with independent storage. Integer depths follow
+OpenCV saturation; Float32 and Float64 use OpenCV's dedicated scaleAdd kernels.
+
 ## Convert depth, scale, and offset
 
 ```ada
@@ -938,6 +947,7 @@ The C++ `cv::Matx` object itself is not passed through the ABI.
 - `Divide`
 - `Abs_Diff`
 - `Add_Weighted`
+- `Scale_Add`
 
 ## Bitwise / masks / selection
 
@@ -1114,7 +1124,7 @@ Remaining candidates:
 - [ ] explicit result depth where OpenCV supports it
 - [ ] deliberate mixed-depth arithmetic policy
 - [ ] configurable multiply/divide scale
-- [ ] `Scale_Add`
+- [x] `Scale_Add`
 - [ ] element-wise `Min`
 - [ ] element-wise `Max`
 - [ ] `Convert_Scale_Abs`

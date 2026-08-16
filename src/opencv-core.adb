@@ -486,6 +486,27 @@ package body OpenCV.Core is
       return Result;
    end Add_Weighted;
 
+   function Scale_Add (Self : Mat; Scale : Long_Float; Right : Mat) return Mat
+   is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Arithmetic_Compatibility (Self, Right);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Scale_Add
+          (Left   => Self.Handle,
+           Scale  => OpenCV.Internal.C_API.C_Double (Scale),
+           Right  => Right.Handle,
+           Result => New_Handle'Access);
+      Raise_On_Error (Status, "Mat scale-add operation");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Scale_Add;
+
    function Bitwise_And (Left, Right : Mat) return Mat is
       Result     : Mat;
       New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=

@@ -299,6 +299,13 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_add_weighted";
 
+   function Mat_Scale_Add
+     (Left   : Mat_Handle;
+      Scale  : C_Double;
+      Right  : Mat_Handle;
+      Result : access Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_scale_add";
+
    function Mat_Bitwise_And
      (Left, Right : Mat_Handle; Result : access Mat_Handle) return Status
    with

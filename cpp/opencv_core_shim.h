@@ -376,6 +376,16 @@ opencv_core_mat_add_weighted(const opencv_core_mat_handle *left, double alpha,
                              const opencv_core_mat_handle *right, double beta,
                              double gamma, opencv_core_mat_handle **out_mat);
 
+/*
+ * Returns scale * left + right for two Mats with identical dimensions and
+ * type, using cv::scaleAdd. The result has the same type and independent
+ * storage. Integer depths follow OpenCV's saturating addWeighted path.
+ */
+opencv_core_status
+opencv_core_mat_scale_add(const opencv_core_mat_handle *left, double scale,
+                          const opencv_core_mat_handle *right,
+                          opencv_core_mat_handle **out_mat);
+
 /* Unmasked bitwise operations preserve the complete stored bit pattern. */
 opencv_core_status
 opencv_core_mat_bitwise_and(const opencv_core_mat_handle *left,
