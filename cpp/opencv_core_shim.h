@@ -307,6 +307,18 @@ opencv_core_mat_convert_scale_abs(const opencv_core_mat_handle *source,
                                   opencv_core_mat_handle **out_mat);
 
 /*
+ * Applies a 256-entry lookup table with cv::LUT. Source must have CV_8U
+ * or CV_8S depth. The table must contain exactly 256 continuous elements
+ * and either one channel or the same channel count as source. The result
+ * has source's shape and channel count, the table's depth, and newly
+ * owned independent storage. CV_16F tables are not supported.
+ */
+opencv_core_status
+opencv_core_mat_apply_lut(const opencv_core_mat_handle *source,
+                          const opencv_core_mat_handle *lut,
+                          opencv_core_mat_handle **out_mat);
+
+/*
  * Returns a newly allocated, independent Mat normalized with no mask and the
  * same depth as source. For norm modes beta is ignored by OpenCV; for min/max
  * mode alpha and beta define the destination range.

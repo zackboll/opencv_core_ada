@@ -1629,6 +1629,59 @@ package body OpenCV.Core is
       return Result;
    end Convert_Scale_Abs;
 
+   procedure Validate_LUT (Source, Table : Mat) is
+   begin
+      if Source.Depth /= UInt8 and then Source.Depth /= Int8 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Apply_LUT requires a UInt8 or Int8 source");
+      end if;
+
+      if Table.Depth = Float16 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Apply_LUT does not support a Float16 lookup table");
+      end if;
+
+      if Table.Total /= 256 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Apply_LUT requires a lookup table with exactly 256 elements");
+      end if;
+
+      if not Table.Is_Continuous then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Apply_LUT requires a continuous lookup table");
+      end if;
+
+      if Table.Channels /= 1 and then Table.Channels /= Source.Channels then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Apply_LUT requires the lookup table to have one channel"
+            & " or the same channel count as the source");
+      end if;
+   end Validate_LUT;
+
+   function Apply_LUT (Self : Mat; Table : Mat) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_LUT (Self, Table);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Apply_LUT
+          (Source => Self.Handle,
+           Table  => Table.Handle,
+           Result => New_Handle'Access);
+      Raise_On_Error (Status, "Mat lookup-table operation");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Apply_LUT;
+
    function Is_Empty (Self : Mat) return Boolean is
       Empty  : aliased OpenCV.Internal.C_API.C_Boolean :=
         OpenCV.Internal.C_API.C_False;

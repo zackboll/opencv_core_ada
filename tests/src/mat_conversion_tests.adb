@@ -17,6 +17,8 @@ package body Mat_Conversion_Tests is
    use type Interfaces.Unsigned_8;
    use type OpenCV.Core.Depth_Type;
    use type OpenCV.Core.Channel_Count;
+   use type OpenCV.Core.Mat_Size;
+
    use type OpenCV.Core.UInt8_Vec3.Vector;
 
    use Mat_Test_Support;
@@ -274,6 +276,368 @@ package body Mat_Conversion_Tests is
          "Convert_Scale_Abs must leave an empty Mat empty");
    end Convert_Scale_Abs_Empty_Mat_Remains_Empty;
 
+   function Inversion_Table return OpenCV.Core.Mat is
+      Table : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 256,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+   begin
+      for Index in 0 .. 255 loop
+         OpenCV.Core.UInt8_Access.Set
+           (Table,
+            Row    => 0,
+            Column => Index,
+            Value  => Interfaces.Unsigned_8 (255 - Index));
+      end loop;
+      return Table;
+   end Inversion_Table;
+
+   procedure Apply_LUT_UInt8_Inversion_Mapping (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 4,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Table  : constant OpenCV.Core.Mat := Inversion_Table;
+      Result : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 0, 0);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 1, 1);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 2, 127);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 3, 255);
+      Result := Source.Apply_LUT (Table);
+
+      AUnit.Assertions.Assert
+        (Result.Rows = 1
+         and then Result.Columns = 4
+         and then Result.Depth = OpenCV.Core.UInt8
+         and then Result.Channels = 1
+         and then OpenCV.Core.UInt8_Access.Get (Result, 0, 0) = 255
+         and then OpenCV.Core.UInt8_Access.Get (Result, 0, 1) = 254
+         and then OpenCV.Core.UInt8_Access.Get (Result, 0, 2) = 128
+         and then OpenCV.Core.UInt8_Access.Get (Result, 0, 3) = 0,
+         "Apply_LUT must invert UInt8 values through a 256-entry table");
+   end Apply_LUT_UInt8_Inversion_Mapping;
+
+   procedure Apply_LUT_Float32_Table_Changes_Output_Depth
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 4,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Table  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 256,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      for Index in 0 .. 255 loop
+         OpenCV.Core.Float32_Access.Set
+           (Table,
+            Row    => 0,
+            Column => Index,
+            Value  => Interfaces.IEEE_Float_32 (Index) * 0.5);
+      end loop;
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 0, 0);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 1, 1);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 2, 127);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 3, 255);
+      Result := Source.Apply_LUT (Table);
+
+      AUnit.Assertions.Assert
+        (Result.Rows = 1
+         and then Result.Columns = 4
+         and then Result.Depth = OpenCV.Core.Float32
+         and then Result.Channels = 1
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 0, 0)),
+                     0.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 0, 1)),
+                     0.5)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 0, 2)),
+                     63.5)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 0, 3)),
+                     127.5),
+         "Apply_LUT output depth must follow the table depth");
+   end Apply_LUT_Float32_Table_Changes_Output_Depth;
+
+   procedure Apply_LUT_Single_Channel_Table_On_Vec3
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      Result : OpenCV.Core.Mat;
+      Pixel  : OpenCV.Core.UInt8_Vec3.Vector;
+   begin
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Source, Row => 0, Column => 0, Value => (0, 1, 255));
+      Result := Source.Apply_LUT (Inversion_Table);
+      Pixel :=
+        OpenCV.Core.UInt8_Vec3_Access.Get (Result, Row => 0, Column => 0);
+
+      AUnit.Assertions.Assert
+        (Result.Channels = 3
+         and then Result.Depth = OpenCV.Core.UInt8
+         and then Pixel (0) = 255
+         and then Pixel (1) = 254
+         and then Pixel (2) = 0,
+         "A one-channel LUT must be applied independently to each Vec3"
+         & " channel");
+   end Apply_LUT_Single_Channel_Table_On_Vec3;
+
+   procedure Apply_LUT_Per_Channel_Table (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      Table  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 256,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      Result : OpenCV.Core.Mat;
+      Pixel  : OpenCV.Core.UInt8_Vec3.Vector;
+   begin
+      for Index in 0 .. 255 loop
+         OpenCV.Core.UInt8_Vec3_Access.Set
+           (Table,
+            Row    => 0,
+            Column => Index,
+            Value  =>
+              (Interfaces.Unsigned_8 (Index),
+               Interfaces.Unsigned_8 (255 - Index),
+               Interfaces.Unsigned_8
+                 (if Index + 10 > 255 then 255 else Index + 10)));
+      end loop;
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Source, Row => 0, Column => 0, Value => (0, 1, 255));
+      Result := Source.Apply_LUT (Table);
+      Pixel :=
+        OpenCV.Core.UInt8_Vec3_Access.Get (Result, Row => 0, Column => 0);
+
+      AUnit.Assertions.Assert
+        (Result.Channels = 3
+         and then Pixel (0) = 0
+         and then Pixel (1) = 254
+         and then Pixel (2) = 255,
+         "A matching multi-channel LUT must be applied per source channel");
+   end Apply_LUT_Per_Channel_Table;
+
+   procedure Apply_LUT_Noncontiguous_Region_And_Independent_Storage
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Result : OpenCV.Core.Mat;
+   begin
+      declare
+         Source : OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 3,
+              Columns      => 3,
+              Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+         View   : constant OpenCV.Core.Mat :=
+           Source.Region ((X => 1, Y => 0, Width => 2, Height => 3));
+      begin
+         Source.Set_To (OpenCV.Core.Make_Scalar (1.0));
+         OpenCV.Core.UInt8_Access.Set (Source, 0, 1, 0);
+         OpenCV.Core.UInt8_Access.Set (Source, 0, 2, 255);
+         AUnit.Assertions.Assert
+           (not View.Is_Continuous,
+            "Apply_LUT test Region must be non-continuous");
+         Result := View.Apply_LUT (Inversion_Table);
+         OpenCV.Core.UInt8_Access.Set (Source, 0, 1, 99);
+      end;
+
+      AUnit.Assertions.Assert
+        (not Result.Is_Empty
+         and then Result.Is_Continuous
+         and then Result.Rows = 3
+         and then Result.Columns = 2
+         and then Result.Depth = OpenCV.Core.UInt8
+         and then Result.Channels = 1
+         and then OpenCV.Core.UInt8_Access.Get (Result, 0, 0) = 255
+         and then OpenCV.Core.UInt8_Access.Get (Result, 0, 1) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Result, 1, 0) = 254
+         and then OpenCV.Core.UInt8_Access.Get (Result, 1, 1) = 254,
+         "Apply_LUT must accept a non-contiguous Region and keep independent"
+         & " result storage after source finalization");
+   end Apply_LUT_Noncontiguous_Region_And_Independent_Storage;
+
+   procedure Apply_LUT_Int8_Indexes_Stored_Byte_Pattern
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Float_Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 4,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Source       : OpenCV.Core.Mat;
+      Result       : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set (Float_Source, 0, 0, -128.0);
+      OpenCV.Core.Float32_Access.Set (Float_Source, 0, 1, -1.0);
+      OpenCV.Core.Float32_Access.Set (Float_Source, 0, 2, 0.0);
+      OpenCV.Core.Float32_Access.Set (Float_Source, 0, 3, 127.0);
+      Source := Float_Source.Convert_To (Depth => OpenCV.Core.Int8);
+      Result := Source.Apply_LUT (Inversion_Table);
+
+      AUnit.Assertions.Assert
+        (Source.Depth = OpenCV.Core.Int8
+         and then Result.Depth = OpenCV.Core.UInt8
+         and then OpenCV.Core.UInt8_Access.Get (Result, 0, 0) = 127
+         and then OpenCV.Core.UInt8_Access.Get (Result, 0, 1) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Result, 0, 2) = 255
+         and then OpenCV.Core.UInt8_Access.Get (Result, 0, 3) = 128,
+         "Int8 Apply_LUT must index the table by the stored 8-bit pattern");
+   end Apply_LUT_Int8_Indexes_Stored_Byte_Pattern;
+
+   procedure Apply_LUT_Empty_Zero_By_Zero_Remains_Empty
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 0,
+           Columns      => 0,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Result : constant OpenCV.Core.Mat := Source.Apply_LUT (Inversion_Table);
+   begin
+      AUnit.Assertions.Assert
+        (Result.Is_Empty
+         and then Result.Rows = 0
+         and then Result.Columns = 0
+         and then Result.Depth = OpenCV.Core.UInt8
+         and then Result.Channels = 1,
+         "Apply_LUT must preserve a 0x0 UInt8 source as an empty result");
+   end Apply_LUT_Empty_Zero_By_Zero_Remains_Empty;
+
+   procedure Apply_LUT_Rejects_Default_Empty_Source
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat;
+      Table  : constant OpenCV.Core.Mat := Inversion_Table;
+
+      procedure Apply_Default_Empty is
+         Ignored : constant OpenCV.Core.Mat := Source.Apply_LUT (Table);
+      begin
+         pragma Unreferenced (Ignored);
+      end Apply_Default_Empty;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Apply_Default_Empty'Access,
+         "Apply_LUT must reject a default empty Mat");
+   end Apply_LUT_Rejects_Default_Empty_Source;
+   procedure Apply_LUT_Rejects_Invalid_Table_And_Source
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      Valid  : constant OpenCV.Core.Mat := Inversion_Table;
+
+      procedure Apply_Wrong_Size is
+         Table   : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 255,
+              Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+         Ignored : constant OpenCV.Core.Mat := Source.Apply_LUT (Table);
+      begin
+         pragma Unreferenced (Ignored);
+      end Apply_Wrong_Size;
+
+      procedure Apply_Wrong_Channels is
+         Table   : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 256,
+              Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 2));
+         Ignored : constant OpenCV.Core.Mat := Source.Apply_LUT (Table);
+      begin
+         pragma Unreferenced (Ignored);
+      end Apply_Wrong_Channels;
+
+      procedure Apply_Unsupported_Source is
+         Bad     : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.UInt16, Channels => 1));
+         Ignored : constant OpenCV.Core.Mat := Bad.Apply_LUT (Valid);
+      begin
+         pragma Unreferenced (Ignored);
+      end Apply_Unsupported_Source;
+
+      procedure Apply_Noncontinuous_Table is
+         Wide    : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 256,
+              Columns      => 2,
+              Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+         Table   : constant OpenCV.Core.Mat := Wide.Column_View (0);
+         Ignored : OpenCV.Core.Mat;
+      begin
+         AUnit.Assertions.Assert
+           (not Table.Is_Continuous and then Table.Total = 256,
+            "Apply_LUT rejection test needs a 256-entry non-continuous table");
+         Ignored := Source.Apply_LUT (Table);
+         pragma Unreferenced (Ignored);
+      end Apply_Noncontinuous_Table;
+
+      procedure Apply_Float16_Table is
+         Table   : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 256,
+              Element_Type => (Depth => OpenCV.Core.Float16, Channels => 1));
+         Ignored : constant OpenCV.Core.Mat := Source.Apply_LUT (Table);
+      begin
+         pragma Unreferenced (Ignored);
+      end Apply_Float16_Table;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Apply_Wrong_Size'Access,
+         "Apply_LUT must reject a lookup table that is not 256 elements");
+      Assert_Raises_OpenCV_Error
+        (Apply_Wrong_Channels'Access,
+         "Apply_LUT must reject a table channel count that matches neither"
+         & " one nor the source");
+      Assert_Raises_OpenCV_Error
+        (Apply_Unsupported_Source'Access,
+         "Apply_LUT must reject a non-8-bit source");
+      Assert_Raises_OpenCV_Error
+        (Apply_Noncontinuous_Table'Access,
+         "Apply_LUT must reject a non-continuous lookup table");
+      Assert_Raises_OpenCV_Error
+        (Apply_Float16_Table'Access,
+         "Apply_LUT must reject a Float16 lookup table");
+   end Apply_LUT_Rejects_Invalid_Table_And_Source;
+
    procedure Float32_Matx3x3_Has_Value_And_Zero_Based_Index_Semantics
      (Test : in out Mat_Test_Fixture)
    is
@@ -512,6 +876,42 @@ package body Mat_Conversion_Tests is
         (Caller.Create
            ("Convert_Scale_Abs empty Mat remains empty",
             Convert_Scale_Abs_Empty_Mat_Remains_Empty'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Apply_LUT UInt8 inversion mapping",
+            Apply_LUT_UInt8_Inversion_Mapping'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Apply_LUT Float32 table changes output depth",
+            Apply_LUT_Float32_Table_Changes_Output_Depth'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Apply_LUT single-channel table on Vec3",
+            Apply_LUT_Single_Channel_Table_On_Vec3'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Apply_LUT per-channel table",
+            Apply_LUT_Per_Channel_Table'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Apply_LUT noncontiguous Region and independent storage",
+            Apply_LUT_Noncontiguous_Region_And_Independent_Storage'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Apply_LUT Int8 indexes stored byte pattern",
+            Apply_LUT_Int8_Indexes_Stored_Byte_Pattern'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Apply_LUT empty 0x0 remains empty",
+            Apply_LUT_Empty_Zero_By_Zero_Remains_Empty'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Apply_LUT rejects default empty source",
+            Apply_LUT_Rejects_Default_Empty_Source'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Apply_LUT rejects invalid table and source",
+            Apply_LUT_Rejects_Invalid_Table_And_Source'Access));
       Result.Add_Test
         (Caller.Create
            ("Float32 Matx3x3 has value and zero-based index semantics",

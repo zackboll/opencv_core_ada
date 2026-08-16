@@ -239,6 +239,16 @@ package OpenCV.Core is
    function Convert_Scale_Abs
      (Self : Mat; Scale : Long_Float := 1.0; Offset : Long_Float := 0.0)
       return Mat;
+   --  Applies a 256-entry lookup table to an 8-bit source. Self must have
+   --  UInt8 or Int8 depth. Table must contain exactly 256 continuous
+   --  elements and either one channel or the same channel count as Self.
+   --  The result has Self's shape and channel count and Table's depth, and
+   --  owns independent storage. Int8 sources are indexed by their stored
+   --  8-bit pattern (0 .. 255), matching OpenCV 4.10.0. Float16 tables and
+   --  16-bit sources are not supported. A 0x0 8-bit source produces a 0x0
+   --  result; a default empty Mat is rejected by OpenCV.
+   function Apply_LUT (Self : Mat; Table : Mat) return Mat;
+
    --  Returns an independent Mat with Self's shape and element type.  For L1,
    --  L2, and Infinity, Alpha is the target norm and Beta is ignored.  For
    --  Min_Max, Alpha and Beta specify the destination range bounds.

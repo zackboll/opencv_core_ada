@@ -251,6 +251,10 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_convert_scale_abs";
 
+   function Mat_Apply_LUT
+     (Source, Table : Mat_Handle; Result : access Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_apply_lut";
+
    function Mat_Normalize
      (Source : Mat_Handle;
       Kind   : C_Int32;

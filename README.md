@@ -6,7 +6,7 @@ A thick, idiomatic Ada binding for the **OpenCV Core** module.
 
 > **Project status:** active development, `0.1.0-dev`.
 >
-> **Current baseline:** **235 AUnit tests** in the current development suite as of August 2026.
+> **Current baseline:** **244 AUnit tests** in the current development suite as of August 2026.
 >
 > **Current milestone status:** the mask/selection and channel-manipulation milestones are complete; the core 2-D matrix layout/rearrangement milestone is largely complete; reductions now include `Trace` and axis-based `Reduce`.
 
@@ -196,7 +196,7 @@ The test suite is organized into:
 Current development baseline:
 
 ```text
-235 AUnit tests
+244 AUnit tests
 ```
 
 ---
@@ -483,6 +483,19 @@ Converted : Mat :=
 ```
 
 The channel count is preserved.
+
+## Lookup table
+
+```ada
+Mapped : Mat := Image.Apply_LUT (Table);
+```
+
+`Apply_LUT` wraps `cv::LUT` on OpenCV 4.10.0. The source must be UInt8 or
+Int8. The table must contain exactly 256 continuous elements and either one
+channel or the same channel count as the source. The result has the source
+shape and channel count, the table depth, and independent storage. Int8
+sources are indexed by their stored 8-bit pattern. Float16 tables and 16-bit
+sources are not supported.
 
 ## Normalize
 
@@ -941,6 +954,8 @@ The C++ `cv::Matx` object itself is not passed through the ABI.
 ## Arithmetic / conversion
 
 - `Convert_To`
+- `Convert_Scale_Abs`
+- `Apply_LUT`
 - `Normalize`
 - `Add`
 - `Subtract`
@@ -1129,7 +1144,7 @@ Remaining candidates:
 - [x] element-wise `Min`
 - [x] element-wise `Max`
 - [x] `Convert_Scale_Abs`
-- [ ] lookup-table (`LUT`) operations
+- [x] lookup-table (`LUT`) operations
 
 Mixed-depth and Scalar overload proliferation should be added deliberately rather than by mechanically mirroring every C++ overload.
 
