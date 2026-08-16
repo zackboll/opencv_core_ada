@@ -31,6 +31,8 @@ package OpenCV.Core is
 
    type Reduction_Kind is (Sum, Average, Maximum, Minimum, Sum_Of_Squares);
 
+   type Angle_Unit is (Radians, Degrees);
+
    type Channel_Count is new Interfaces.Integer_32 range 1 .. 512;
 
    type Mat_Size is
@@ -294,6 +296,17 @@ package OpenCV.Core is
    --  including Float16 are rejected.
 
    function Magnitude (X, Y : Mat) return Mat;
+   --  Returns an independent Mat with X's shape, depth, and channel count.
+   --  X and Y are the Cartesian components of 2D vectors. They must be
+   --  Float32 or Float64 with identical dimensions, depth, and channel
+   --  count. Each channel is processed independently by cv::phase as
+   --  atan2 (Y, X). Units selects radians in [0, 2*Pi) by default or
+   --  degrees in [0, 360). OpenCV documents about 0.3 degrees of angle
+   --  estimation accuracy. When both X and Y are zero, the angle is 0.
+   --  A typed 0x0 pair stays empty. A default empty Mat, mismatched
+   --  shape or type, and non-floating depths including Float16 are
+   --  rejected.
+   function Phase (X, Y : Mat; Units : Angle_Unit := Radians) return Mat;
 
    --  Returns an independent Mat with Self's shape and element type.  For L1,
    --  L2, and Infinity, Alpha is the target norm and Beta is ignored.  For

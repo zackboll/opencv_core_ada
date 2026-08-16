@@ -272,10 +272,15 @@ package OpenCV.Internal.C_API is
       return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_pow";
 
-
    function Mat_Magnitude
      (X, Y : Mat_Handle; Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_magnitude";
+
+   function Mat_Phase
+     (X, Y             : Mat_Handle;
+      Angle_In_Degrees : C_Boolean;
+      Result           : access Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_phase";
 
    function Mat_Normalize
      (Source : Mat_Handle;

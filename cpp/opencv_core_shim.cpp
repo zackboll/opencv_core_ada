@@ -1035,6 +1035,37 @@ opencv_core_mat_magnitude(const opencv_core_mat_handle *x,
 }
 
 opencv_core_status
+opencv_core_mat_phase(const opencv_core_mat_handle *x,
+                      const opencv_core_mat_handle *y,
+                      uint8_t angle_in_degrees,
+                      opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (x == nullptr || y == nullptr) {
+        return invalid_argument("Mat operand handles must not be null");
+    }
+
+    if (angle_in_degrees != 0 && angle_in_degrees != 1) {
+        return invalid_argument("angle_in_degrees must be 0 or 1");
+    }
+
+    try {
+        cv::Mat angle;
+        cv::phase(x->value, y->value, angle, angle_in_degrees != 0);
+        *out_mat = new opencv_core_mat_handle(angle);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_normalize(const opencv_core_mat_handle *source,
                           int32_t normalize_kind, double alpha, double beta,
                           opencv_core_mat_handle **out_mat) {
