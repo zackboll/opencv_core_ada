@@ -263,6 +263,13 @@ package OpenCV.Core is
    --  and Infinity are not handled. A typed 0x0 source stays empty. A default
    --  empty Mat and non-floating depths are rejected.
    function Exp (Self : Mat) return Mat;
+   --  Returns an independent Mat with Self's shape, depth, and channel count.
+   --  Self must be Float32 or Float64. Each channel is processed independently
+   --  by cv::log (natural logarithm). On OpenCV 4.10 the implementation is
+   --  approximate. Output on zero, negative, and special values such as NaN
+   --  and Infinity is undefined. A typed 0x0 source stays empty. A default
+   --  empty Mat and non-floating depths are rejected.
+   function Log (Self : Mat) return Mat;
 
    --  Returns an independent Mat with Self's shape and element type.  For L1,
    --  L2, and Infinity, Alpha is the target norm and Beta is ignored.  For

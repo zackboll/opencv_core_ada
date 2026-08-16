@@ -1179,6 +1179,282 @@ package body Mat_Conversion_Tests is
         (Exp_Float16'Access, "Exp must reject a Float16 source");
    end Exp_Rejects_Unsupported_Depths;
 
+   procedure Log_Float32_Positive_Known_Values (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 1, 2.718_281_828);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 2, 7.389_056_099);
+      Result := Source.Log;
+
+      AUnit.Assertions.Assert
+        (Result.Rows = 1
+         and then Result.Columns = 3
+         and then Result.Depth = OpenCV.Core.Float32
+         and then Result.Channels = 1
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 0, 0)),
+                     0.0,
+                     Tolerance => 0.000_010)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 0, 1)),
+                     1.0,
+                     Tolerance => 0.000_010)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 0, 2)),
+                     2.0,
+                     Tolerance => 0.000_020),
+         "Log must map Float32 1, e, e^2 to 0, 1, 2 and keep metadata");
+   end Log_Float32_Positive_Known_Values;
+
+   procedure Log_Float64_Representative_Finite_Values
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Float32_Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Source         : OpenCV.Core.Mat;
+      Result         : OpenCV.Core.Mat;
+      Readable       : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set (Float32_Source, 0, 0, 0.5);
+      OpenCV.Core.Float32_Access.Set (Float32_Source, 0, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Float32_Source, 0, 2, 2.718_281_828);
+      Source := Float32_Source.Convert_To (Depth => OpenCV.Core.Float64);
+      Result := Source.Log;
+      Readable := Result.Convert_To (Depth => OpenCV.Core.Float32);
+
+      AUnit.Assertions.Assert
+        (Result.Rows = 1
+         and then Result.Columns = 3
+         and then Result.Depth = OpenCV.Core.Float64
+         and then Result.Channels = 1
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Readable, 0, 0)),
+                     -0.693_147_181,
+                     Tolerance => 0.000_001)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Readable, 0, 1)),
+                     0.693_147_181,
+                     Tolerance => 0.000_001)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Readable, 0, 2)),
+                     1.0,
+                     Tolerance => 0.000_001),
+         "Log must preserve Float64 depth and compute representative"
+         & " finite values");
+   end Log_Float64_Representative_Finite_Values;
+
+   procedure Log_Negative_And_Zero_Are_Undefined_But_Accepted
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, -1.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 1, 0.0);
+      Result := Source.Log;
+
+      AUnit.Assertions.Assert
+        (Result.Rows = 1
+         and then Result.Columns = 2
+         and then Result.Depth = OpenCV.Core.Float32
+         and then Result.Channels = 1
+         and then not Result.Is_Empty,
+         "OpenCV 4.10 Log accepts zero and negative finite inputs; the"
+         & " numeric output is undefined");
+   end Log_Negative_And_Zero_Are_Undefined_But_Accepted;
+
+   procedure Log_Multi_Channel_Vec3 (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 3));
+      Result : OpenCV.Core.Mat;
+      Pixel  : OpenCV.Core.Float32_Vec3.Vector;
+   begin
+      OpenCV.Core.Float32_Vec3_Access.Set
+        (Source, Row => 0, Column => 0, Value => (1.0, 2.718_281_828, 0.5));
+      Result := Source.Log;
+      Pixel :=
+        OpenCV.Core.Float32_Vec3_Access.Get (Result, Row => 0, Column => 0);
+
+      AUnit.Assertions.Assert
+        (Result.Channels = 3
+         and then Result.Depth = OpenCV.Core.Float32
+         and then Approximately_Equal
+                    (Long_Float (Pixel (0)), 0.0, Tolerance => 0.000_010)
+         and then Approximately_Equal
+                    (Long_Float (Pixel (1)), 1.0, Tolerance => 0.000_010)
+         and then Approximately_Equal
+                    (Long_Float (Pixel (2)),
+                     -0.693_147_181,
+                     Tolerance => 0.000_010),
+         "Log must process each Float32 Vec3 channel independently");
+   end Log_Multi_Channel_Vec3;
+
+   procedure Log_Noncontiguous_Region_And_Independent_Storage
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Result : OpenCV.Core.Mat;
+   begin
+      declare
+         Source : OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 3,
+              Columns      => 3,
+              Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+         View   : constant OpenCV.Core.Mat :=
+           Source.Region ((X => 1, Y => 0, Width => 2, Height => 3));
+      begin
+         Source.Set_To (OpenCV.Core.Make_Scalar (1.0));
+         OpenCV.Core.Float32_Access.Set (Source, 0, 1, 2.718_281_828);
+         AUnit.Assertions.Assert
+           (not View.Is_Continuous, "Log test Region must be non-continuous");
+         Result := View.Log;
+         OpenCV.Core.Float32_Access.Set (Source, 0, 1, 100.0);
+      end;
+
+      AUnit.Assertions.Assert
+        (not Result.Is_Empty
+         and then Result.Is_Continuous
+         and then Result.Rows = 3
+         and then Result.Columns = 2
+         and then Result.Depth = OpenCV.Core.Float32
+         and then Result.Channels = 1
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 0, 0)),
+                     1.0,
+                     Tolerance => 0.000_010)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 0, 1)),
+                     0.0,
+                     Tolerance => 0.000_010)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 1, 0)),
+                     0.0,
+                     Tolerance => 0.000_010)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 1, 1)),
+                     0.0,
+                     Tolerance => 0.000_010),
+         "Log must accept a non-contiguous Region and keep independent"
+         & " result storage after source finalization");
+   end Log_Noncontiguous_Region_And_Independent_Storage;
+
+   procedure Log_Typed_Empty_And_Default_Empty (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Empty32  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 0,
+           Columns      => 0,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Empty64  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 0,
+           Columns      => 0,
+           Element_Type => (Depth => OpenCV.Core.Float64, Channels => 2));
+      Result32 : constant OpenCV.Core.Mat := Empty32.Log;
+      Result64 : constant OpenCV.Core.Mat := Empty64.Log;
+      Default  : OpenCV.Core.Mat;
+
+      procedure Log_Default_Empty is
+         Ignored : constant OpenCV.Core.Mat := Default.Log;
+      begin
+         pragma Unreferenced (Ignored);
+      end Log_Default_Empty;
+   begin
+      AUnit.Assertions.Assert
+        (Result32.Is_Empty
+         and then Result32.Rows = 0
+         and then Result32.Columns = 0
+         and then Result32.Depth = OpenCV.Core.Float32
+         and then Result32.Channels = 1,
+         "Log must preserve a typed 0x0 Float32 source as an empty result");
+      AUnit.Assertions.Assert
+        (Result64.Is_Empty
+         and then Result64.Rows = 0
+         and then Result64.Columns = 0
+         and then Result64.Depth = OpenCV.Core.Float64
+         and then Result64.Channels = 2,
+         "Log must preserve a typed 0x0 Float64 source as an empty result");
+      Assert_Raises_OpenCV_Error
+        (Log_Default_Empty'Access, "Log must reject a default empty Mat");
+   end Log_Typed_Empty_And_Default_Empty;
+
+   procedure Log_Rejects_Unsupported_Depths (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+
+      procedure Log_UInt8 is
+         Source  : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+         Ignored : constant OpenCV.Core.Mat := Source.Log;
+      begin
+         pragma Unreferenced (Ignored);
+      end Log_UInt8;
+
+      procedure Log_Int32 is
+         Source  : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.Int32, Channels => 1));
+         Ignored : constant OpenCV.Core.Mat := Source.Log;
+      begin
+         pragma Unreferenced (Ignored);
+      end Log_Int32;
+
+      procedure Log_Float16 is
+         Source  : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.Float16, Channels => 1));
+         Ignored : constant OpenCV.Core.Mat := Source.Log;
+      begin
+         pragma Unreferenced (Ignored);
+      end Log_Float16;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Log_UInt8'Access, "Log must reject a UInt8 source");
+      Assert_Raises_OpenCV_Error
+        (Log_Int32'Access, "Log must reject an Int32 source");
+      Assert_Raises_OpenCV_Error
+        (Log_Float16'Access, "Log must reject a Float16 source");
+   end Log_Rejects_Unsupported_Depths;
+
    procedure Float32_Matx3x3_Has_Value_And_Zero_Based_Index_Semantics
      (Test : in out Mat_Test_Fixture)
    is
@@ -1503,6 +1779,33 @@ package body Mat_Conversion_Tests is
         (Caller.Create
            ("Exp rejects unsupported depths",
             Exp_Rejects_Unsupported_Depths'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Log Float32 positive known values",
+            Log_Float32_Positive_Known_Values'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Log Float64 representative finite values",
+            Log_Float64_Representative_Finite_Values'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Log negative and zero are undefined but accepted",
+            Log_Negative_And_Zero_Are_Undefined_But_Accepted'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Log multi-channel Vec3", Log_Multi_Channel_Vec3'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Log noncontiguous Region and independent storage",
+            Log_Noncontiguous_Region_And_Independent_Storage'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Log typed empty and default empty",
+            Log_Typed_Empty_And_Default_Empty'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Log rejects unsupported depths",
+            Log_Rejects_Unsupported_Depths'Access));
       Result.Add_Test
         (Caller.Create
            ("Float32 Matx3x3 has value and zero-based index semantics",

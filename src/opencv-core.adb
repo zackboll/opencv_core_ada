@@ -1733,6 +1733,31 @@ package body OpenCV.Core is
       return Result;
    end Exp;
 
+   procedure Validate_Log (Source : Mat) is
+   begin
+      if Source.Depth /= Float32 and then Source.Depth /= Float64 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Log requires a Float32 or Float64 source");
+      end if;
+   end Validate_Log;
+
+   function Log (Self : Mat) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Log (Self);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Log
+          (Source => Self.Handle, Result => New_Handle'Access);
+      Raise_On_Error (Status, "Mat logarithm operation");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Log;
+
    function Is_Empty (Self : Mat) return Boolean is
       Empty  : aliased OpenCV.Internal.C_API.C_Boolean :=
         OpenCV.Internal.C_API.C_False;
