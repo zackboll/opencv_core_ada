@@ -1084,6 +1084,10 @@ opencv_core_mat_cart_to_polar(const opencv_core_mat_handle *x,
         return invalid_argument("output Mat handles must not be null");
     }
 
+    if (out_magnitude == out_angle) {
+        return invalid_argument("output Mat handle pointers must be distinct");
+    }
+
     if (x == nullptr || y == nullptr) {
         return invalid_argument("Mat operand handles must not be null");
     }

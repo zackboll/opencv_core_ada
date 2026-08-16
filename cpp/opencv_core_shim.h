@@ -385,8 +385,9 @@ opencv_core_mat_phase(const opencv_core_mat_handle *x,
  * magnitude and phase of matching (x, y) pairs via cv::cartToPolar. X and Y
  * must have CV_32F or CV_64F depth and identical size and type.
  * angle_in_degrees is uint8_t false (0) or true (1). Both results have X's
- * shape, depth, and channel count. On success both output handles are
- * independently owned. On any failure both remain null.
+ * shape, depth, and channel count. Both output pointer arguments must be
+ * non-null and distinct. On success both returned handles are independently
+ * owned. On any failure both outputs remain null.
  */
 opencv_core_status
 opencv_core_mat_cart_to_polar(const opencv_core_mat_handle *x,
