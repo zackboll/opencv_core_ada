@@ -40,6 +40,12 @@ package OpenCV.Core is
 
    type Sort_Order is (Ascending, Descending);
 
+   --  Identifies which triangle of a square Mat is authoritative when
+   --  completing symmetry in place. Upper_Triangle copies the upper
+   --  triangle onto the lower triangle. Lower_Triangle copies the lower
+   --  triangle onto the upper triangle.
+   type Symmetry_Source is (Upper_Triangle, Lower_Triangle);
+
    type Channel_Count is new Interfaces.Integer_32 range 1 .. 512;
 
    type Mat_Size is
@@ -676,6 +682,26 @@ package OpenCV.Core is
    --  that preserves its depth and channel count. A default empty Mat
    --  is rejected because its depth is not Float32.
    procedure Patch_NaNs (Self : in out Mat; Value : Float32_Value := 0.0);
+
+   --  Completes Self into a symmetric square Mat in place. Source names
+   --  the authoritative triangle. Upper_Triangle, the default, preserves
+   --  the diagonal and upper triangle and copies each upper-triangle
+   --  element onto its reflected lower-triangle location. That mapping
+   --  is OpenCV 4.10 lowerToUpper=false. Lower_Triangle preserves the
+   --  diagonal and lower triangle and copies each lower-triangle element
+   --  onto its reflected upper-triangle location. Self must be square
+   --  and Float32 or Float64. Any valid channel count is accepted
+   --  because OpenCV copies each complete element with elemSize().
+   --  Dimensions, depth, and channel count are unchanged. Continuity is
+   --  not required. Non-contiguous Regions are supported and mutate the
+   --  corresponding parent pixels around the Region's own diagonal. A
+   --  normal shallow Mat alias observes the same mutation. Clone remains
+   --  independent. A typed 0x0 Float32 or Float64 Mat is a no-op that
+   --  preserves its depth and channel count. A default empty Mat is
+   --  rejected because its depth is not Float32 or Float64. This
+   --  procedure does not allocate a replacement Mat.
+   procedure Complete_Symmetry
+     (Self : in out Mat; Source : Symmetry_Source := Upper_Triangle);
 private
 
    type Mat is new Ada.Finalization.Controlled with record

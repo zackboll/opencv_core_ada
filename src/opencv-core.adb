@@ -3146,4 +3146,27 @@ package body OpenCV.Core is
       Raise_On_Error (Result, "Mat patch NaNs operation");
    end Patch_NaNs;
 
+   procedure Complete_Symmetry
+     (Self : in out Mat; Source : Symmetry_Source := Upper_Triangle)
+   is
+      Result : OpenCV.Internal.C_API.Status;
+   begin
+      if Self.Rows /= Self.Columns then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Complete_Symmetry requires a square Mat");
+      end if;
+
+      if Self.Depth /= Float32 and then Self.Depth /= Float64 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Complete_Symmetry requires a Float32 or Float64 Mat");
+      end if;
+
+      Result :=
+        OpenCV.Internal.C_API.Mat_Complete_Symmetry
+          (Self            => Self.Handle,
+           Source_Triangle => (if Source = Upper_Triangle then 0 else 1));
+      Raise_On_Error (Result, "Mat complete symmetry operation");
+   end Complete_Symmetry;
+
 end OpenCV.Core;

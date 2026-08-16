@@ -4,6 +4,8 @@ with Interfaces;
 with Mat_Test_Support;
 with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
+with OpenCV.Core.Float32_Vec3;
+with OpenCV.Core.Float32_Vec3_Access;
 with OpenCV.Core.UInt8_Access;
 with OpenCV.Core.UInt8_Vec3;
 with OpenCV.Core.UInt8_Vec3_Access;
@@ -15,6 +17,7 @@ package body Mat_Transform_Tests is
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
    use type OpenCV.Core.UInt8_Vec3.Vector;
+   use type OpenCV.Core.Float32_Vec3.Vector;
 
    use Mat_Test_Support;
 
@@ -2324,6 +2327,355 @@ package body Mat_Transform_Tests is
          "Sort_Indices must reject a typed empty Float16 Mat");
    end Sort_Indices_Empty_Mats;
 
+   function Asymmetric_3x3 return OpenCV.Core.Mat is
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Image, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Image, 0, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Image, 0, 2, 3.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 0, 4.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 1, 5.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 2, 6.0);
+      OpenCV.Core.Float32_Access.Set (Image, 2, 0, 7.0);
+      OpenCV.Core.Float32_Access.Set (Image, 2, 1, 8.0);
+      OpenCV.Core.Float32_Access.Set (Image, 2, 2, 9.0);
+      return Image;
+   end Asymmetric_3x3;
+
+   function Matches_3x3
+     (Image                     : OpenCV.Core.Mat;
+      A, B, C, D, E, F, G, H, I : Interfaces.IEEE_Float_32) return Boolean
+   is (Image.Rows = 3
+       and then Image.Columns = 3
+       and then Image.Depth = OpenCV.Core.Float32
+       and then Image.Channels = 1
+       and then OpenCV.Core.Float32_Access.Get (Image, 0, 0) = A
+       and then OpenCV.Core.Float32_Access.Get (Image, 0, 1) = B
+       and then OpenCV.Core.Float32_Access.Get (Image, 0, 2) = C
+       and then OpenCV.Core.Float32_Access.Get (Image, 1, 0) = D
+       and then OpenCV.Core.Float32_Access.Get (Image, 1, 1) = E
+       and then OpenCV.Core.Float32_Access.Get (Image, 1, 2) = F
+       and then OpenCV.Core.Float32_Access.Get (Image, 2, 0) = G
+       and then OpenCV.Core.Float32_Access.Get (Image, 2, 1) = H
+       and then OpenCV.Core.Float32_Access.Get (Image, 2, 2) = I);
+
+   procedure Complete_Symmetry_Default_Copies_Upper_To_Lower
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat := Asymmetric_3x3;
+   begin
+      Image.Complete_Symmetry;
+
+      AUnit.Assertions.Assert
+        (Matches_3x3 (Image, 1.0, 2.0, 3.0, 2.0, 5.0, 6.0, 3.0, 6.0, 9.0),
+         "Default Complete_Symmetry must copy the upper triangle onto the"
+         & " lower triangle and leave the diagonal unchanged");
+   end Complete_Symmetry_Default_Copies_Upper_To_Lower;
+
+   procedure Complete_Symmetry_Explicit_Upper_Triangle
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat := Asymmetric_3x3;
+   begin
+      Image.Complete_Symmetry (OpenCV.Core.Upper_Triangle);
+
+      AUnit.Assertions.Assert
+        (Matches_3x3 (Image, 1.0, 2.0, 3.0, 2.0, 5.0, 6.0, 3.0, 6.0, 9.0),
+         "Explicit Upper_Triangle must match the default upper-to-lower"
+         & " copy");
+   end Complete_Symmetry_Explicit_Upper_Triangle;
+
+   procedure Complete_Symmetry_Lower_Triangle (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat := Asymmetric_3x3;
+   begin
+      Image.Complete_Symmetry (OpenCV.Core.Lower_Triangle);
+
+      AUnit.Assertions.Assert
+        (Matches_3x3 (Image, 1.0, 4.0, 7.0, 4.0, 5.0, 8.0, 7.0, 8.0, 9.0),
+         "Lower_Triangle must copy the lower triangle onto the upper"
+         & " triangle and leave the diagonal unchanged");
+   end Complete_Symmetry_Lower_Triangle;
+
+   procedure Complete_Symmetry_Already_Symmetric
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Upper : OpenCV.Core.Mat := Asymmetric_3x3;
+      Lower : OpenCV.Core.Mat := Asymmetric_3x3;
+   begin
+      Upper.Complete_Symmetry (OpenCV.Core.Upper_Triangle);
+      Lower.Complete_Symmetry (OpenCV.Core.Lower_Triangle);
+      Upper.Complete_Symmetry (OpenCV.Core.Upper_Triangle);
+      Lower.Complete_Symmetry (OpenCV.Core.Lower_Triangle);
+
+      AUnit.Assertions.Assert
+        (Matches_3x3 (Upper, 1.0, 2.0, 3.0, 2.0, 5.0, 6.0, 3.0, 6.0, 9.0),
+         "Completing an already upper-symmetric Mat must leave it unchanged");
+      AUnit.Assertions.Assert
+        (Matches_3x3 (Lower, 1.0, 4.0, 7.0, 4.0, 5.0, 8.0, 7.0, 8.0, 9.0),
+         "Completing an already lower-symmetric Mat must leave it unchanged");
+   end Complete_Symmetry_Already_Symmetric;
+
+   procedure Complete_Symmetry_One_By_One (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Upper : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Lower : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Upper, 0, 0, 7.0);
+      OpenCV.Core.Float32_Access.Set (Lower, 0, 0, 7.0);
+      Upper.Complete_Symmetry (OpenCV.Core.Upper_Triangle);
+      Lower.Complete_Symmetry (OpenCV.Core.Lower_Triangle);
+
+      AUnit.Assertions.Assert
+        (Upper.Rows = 1
+         and then Upper.Columns = 1
+         and then OpenCV.Core.Float32_Access.Get (Upper, 0, 0) = 7.0
+         and then OpenCV.Core.Float32_Access.Get (Lower, 0, 0) = 7.0,
+         "1x1 Complete_Symmetry must leave the single diagonal value"
+         & " unchanged from either triangle");
+   end Complete_Symmetry_One_By_One;
+
+   procedure Complete_Symmetry_Supports_Float64
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image     : OpenCV.Core.Mat :=
+        Asymmetric_3x3.Convert_To (OpenCV.Core.Float64);
+      Inspected : OpenCV.Core.Mat;
+   begin
+      Image.Complete_Symmetry;
+
+      AUnit.Assertions.Assert
+        (Image.Rows = 3
+         and then Image.Columns = 3
+         and then Image.Depth = OpenCV.Core.Float64
+         and then Image.Channels = 1,
+         "Complete_Symmetry must preserve Float64 depth and 3x3 shape");
+
+      Inspected := Image.Clone.Convert_To (OpenCV.Core.Float32);
+      AUnit.Assertions.Assert
+        (Matches_3x3 (Inspected, 1.0, 2.0, 3.0, 2.0, 5.0, 6.0, 3.0, 6.0, 9.0)
+         and then Image.Depth = OpenCV.Core.Float64,
+         "A Float64 Complete_Symmetry result must copy the upper triangle"
+         & " without changing Self's public depth");
+   end Complete_Symmetry_Supports_Float64;
+
+   procedure Complete_Symmetry_Copies_Entire_Vec3
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 3));
+      Upper : OpenCV.Core.Float32_Vec3.Vector;
+      Lower : OpenCV.Core.Float32_Vec3.Vector;
+   begin
+      OpenCV.Core.Float32_Vec3_Access.Set (Image, 0, 0, (0.0, 0.0, 0.0));
+      OpenCV.Core.Float32_Vec3_Access.Set (Image, 0, 1, (1.0, 10.0, 100.0));
+      OpenCV.Core.Float32_Vec3_Access.Set (Image, 1, 0, (9.0, 90.0, 190.0));
+      OpenCV.Core.Float32_Vec3_Access.Set (Image, 1, 1, (5.0, 50.0, 150.0));
+      Image.Complete_Symmetry (OpenCV.Core.Upper_Triangle);
+      Upper := OpenCV.Core.Float32_Vec3_Access.Get (Image, 0, 1);
+      Lower := OpenCV.Core.Float32_Vec3_Access.Get (Image, 1, 0);
+
+      AUnit.Assertions.Assert
+        (Upper = (1.0, 10.0, 100.0) and then Lower = (1.0, 10.0, 100.0),
+         "Complete_Symmetry must copy the entire Vec3 element, not only"
+         & " channel 0");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Vec3_Access.Get (Image, 0, 0) = (0.0, 0.0, 0.0)
+         and then OpenCV.Core.Float32_Vec3_Access.Get (Image, 1, 1)
+                  = (5.0, 50.0, 150.0),
+         "Multi-channel Complete_Symmetry must leave the diagonal vectors"
+         & " unchanged");
+   end Complete_Symmetry_Copies_Entire_Vec3;
+
+   procedure Complete_Symmetry_Noncontiguous_Region
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 5, (OpenCV.Core.Float32, 1));
+      Region : OpenCV.Core.Mat;
+   begin
+      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Region := Parent.Region ((X => 1, Y => 1, Width => 3, Height => 3));
+      OpenCV.Core.Float32_Access.Set (Region, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Region, 0, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Region, 0, 2, 3.0);
+      OpenCV.Core.Float32_Access.Set (Region, 1, 0, 4.0);
+      OpenCV.Core.Float32_Access.Set (Region, 1, 1, 5.0);
+      OpenCV.Core.Float32_Access.Set (Region, 1, 2, 6.0);
+      OpenCV.Core.Float32_Access.Set (Region, 2, 0, 7.0);
+      OpenCV.Core.Float32_Access.Set (Region, 2, 1, 8.0);
+      OpenCV.Core.Float32_Access.Set (Region, 2, 2, 9.0);
+
+      AUnit.Assertions.Assert
+        (not Region.Is_Continuous and then Region.Is_Submatrix,
+         "The Region used for Complete_Symmetry must be non-contiguous");
+
+      Region.Complete_Symmetry;
+
+      AUnit.Assertions.Assert
+        (Matches_3x3 (Region, 1.0, 2.0, 3.0, 2.0, 5.0, 6.0, 3.0, 6.0, 9.0),
+         "Complete_Symmetry must reflect around the Region's own diagonal");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Parent, 1, 2) = 2.0
+         and then OpenCV.Core.Float32_Access.Get (Parent, 2, 1) = 2.0
+         and then OpenCV.Core.Float32_Access.Get (Parent, 1, 3) = 3.0
+         and then OpenCV.Core.Float32_Access.Get (Parent, 3, 1) = 3.0,
+         "Region Complete_Symmetry must mutate the corresponding parent"
+         & " pixels");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Parent, 0, 0) = 99.0
+         and then OpenCV.Core.Float32_Access.Get (Parent, 0, 4) = 99.0
+         and then OpenCV.Core.Float32_Access.Get (Parent, 3, 4) = 99.0
+         and then OpenCV.Core.Float32_Access.Get (Parent, 1, 0) = 99.0
+         and then OpenCV.Core.Float32_Access.Get (Parent, 1, 4) = 99.0,
+         "Pixels outside the Region must remain unchanged");
+      AUnit.Assertions.Assert
+        (Region.Is_Submatrix and then not Region.Is_Continuous,
+         "Complete_Symmetry must not detach a Region into an independent"
+         & " copy");
+   end Complete_Symmetry_Noncontiguous_Region;
+
+   procedure Complete_Symmetry_Shallow_Alias (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Original : constant OpenCV.Core.Mat := Asymmetric_3x3;
+      Alias    : OpenCV.Core.Mat := Original;
+   begin
+      Alias.Complete_Symmetry;
+
+      AUnit.Assertions.Assert
+        (Matches_3x3 (Original, 1.0, 2.0, 3.0, 2.0, 5.0, 6.0, 3.0, 6.0, 9.0)
+         and then Matches_3x3
+                    (Alias, 1.0, 2.0, 3.0, 2.0, 5.0, 6.0, 3.0, 6.0, 9.0),
+         "A shallow Mat alias must observe Complete_Symmetry mutation");
+   end Complete_Symmetry_Shallow_Alias;
+
+   procedure Complete_Symmetry_Clone_Remains_Independent
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Original : constant OpenCV.Core.Mat := Asymmetric_3x3;
+      Copy     : OpenCV.Core.Mat := Original.Clone;
+   begin
+      Copy.Complete_Symmetry;
+
+      AUnit.Assertions.Assert
+        (Matches_3x3 (Copy, 1.0, 2.0, 3.0, 2.0, 5.0, 6.0, 3.0, 6.0, 9.0),
+         "Clone.Complete_Symmetry must modify the independent copy");
+      AUnit.Assertions.Assert
+        (Matches_3x3 (Original, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0),
+         "Complete_Symmetry on a Clone must leave the original unchanged");
+   end Complete_Symmetry_Clone_Remains_Independent;
+
+   procedure Complete_Symmetry_Empty_Behavior (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Default_Image : OpenCV.Core.Mat;
+      Empty32       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 3));
+      Empty64       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float64, 1));
+      Empty8        : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.UInt8, 1));
+
+      procedure Complete_Default is
+      begin
+         Default_Image.Complete_Symmetry;
+      end Complete_Default;
+
+      procedure Complete_Empty8 is
+      begin
+         Empty8.Complete_Symmetry;
+      end Complete_Empty8;
+   begin
+      Empty32.Complete_Symmetry;
+      Empty64.Complete_Symmetry;
+
+      AUnit.Assertions.Assert
+        (Empty32.Is_Empty
+         and then Empty32.Depth = OpenCV.Core.Float32
+         and then Empty32.Channels = 3,
+         "A typed 0x0 Float32 Mat must remain empty Float32");
+      AUnit.Assertions.Assert
+        (Empty64.Is_Empty
+         and then Empty64.Depth = OpenCV.Core.Float64
+         and then Empty64.Channels = 1,
+         "A typed 0x0 Float64 Mat must remain empty Float64");
+      AUnit.Assertions.Assert
+        (Default_Image.Is_Empty
+         and then Default_Image.Depth /= OpenCV.Core.Float32
+         and then Default_Image.Depth /= OpenCV.Core.Float64,
+         "A default empty Mat must not be Float32 or Float64");
+      Assert_Raises_OpenCV_Error
+        (Complete_Default'Access,
+         "Complete_Symmetry must reject a default empty Mat");
+      Assert_Raises_OpenCV_Error
+        (Complete_Empty8'Access,
+         "Complete_Symmetry must reject a typed 0x0 unsupported depth");
+   end Complete_Symmetry_Empty_Behavior;
+
+   procedure Complete_Symmetry_Rejects_Rectangular
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+
+      procedure Complete_Rectangular is
+      begin
+         Image.Complete_Symmetry;
+      end Complete_Rectangular;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Complete_Rectangular'Access,
+         "Complete_Symmetry must reject a non-square Mat");
+   end Complete_Symmetry_Rejects_Rectangular;
+
+   procedure Complete_Symmetry_Rejects_Unsupported_Depths
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      UInt8_Image   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      Int32_Image   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Int32, 1));
+      Float16_Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float16, 1));
+
+      procedure Complete_UInt8 is
+      begin
+         UInt8_Image.Complete_Symmetry;
+      end Complete_UInt8;
+
+      procedure Complete_Int32 is
+      begin
+         Int32_Image.Complete_Symmetry;
+      end Complete_Int32;
+
+      procedure Complete_Float16 is
+      begin
+         Float16_Image.Complete_Symmetry;
+      end Complete_Float16;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Complete_UInt8'Access, "Complete_Symmetry must reject UInt8 Mats");
+      Assert_Raises_OpenCV_Error
+        (Complete_Int32'Access, "Complete_Symmetry must reject Int32 Mats");
+      Assert_Raises_OpenCV_Error
+        (Complete_Float16'Access,
+         "Complete_Symmetry must reject Float16 Mats");
+   end Complete_Symmetry_Rejects_Unsupported_Depths;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
    Result : aliased AUnit.Test_Suites.Test_Suite;
 
@@ -2537,6 +2889,58 @@ package body Mat_Transform_Tests is
       Result.Add_Test
         (Caller.Create
            ("Sort_Indices empty Mats", Sort_Indices_Empty_Mats'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Complete_Symmetry default copies upper to lower",
+            Complete_Symmetry_Default_Copies_Upper_To_Lower'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Complete_Symmetry explicit Upper_Triangle",
+            Complete_Symmetry_Explicit_Upper_Triangle'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Complete_Symmetry Lower_Triangle",
+            Complete_Symmetry_Lower_Triangle'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Complete_Symmetry already symmetric matrix",
+            Complete_Symmetry_Already_Symmetric'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Complete_Symmetry 1x1", Complete_Symmetry_One_By_One'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Complete_Symmetry supports Float64",
+            Complete_Symmetry_Supports_Float64'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Complete_Symmetry copies entire Vec3",
+            Complete_Symmetry_Copies_Entire_Vec3'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Complete_Symmetry non-contiguous Region",
+            Complete_Symmetry_Noncontiguous_Region'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Complete_Symmetry shallow alias observes mutation",
+            Complete_Symmetry_Shallow_Alias'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Complete_Symmetry leaves a Clone independent",
+            Complete_Symmetry_Clone_Remains_Independent'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Complete_Symmetry empty behavior",
+            Complete_Symmetry_Empty_Behavior'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Complete_Symmetry rejects rectangular Mat",
+            Complete_Symmetry_Rejects_Rectangular'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Complete_Symmetry rejects unsupported depths",
+            Complete_Symmetry_Rejects_Unsupported_Depths'Access));
+
       return Result'Access;
 
    end Suite;

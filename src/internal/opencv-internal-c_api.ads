@@ -860,4 +860,11 @@ package OpenCV.Internal.C_API is
    function Mat_Patch_NaNs (Self : Mat_Handle; Value : C_Double) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_patch_nans";
 
+   function Mat_Complete_Symmetry
+     (Self : Mat_Handle; Source_Triangle : C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_complete_symmetry";
+
 end OpenCV.Internal.C_API;

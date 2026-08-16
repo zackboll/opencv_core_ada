@@ -991,6 +991,19 @@ opencv_core_mat_check_range(const opencv_core_mat_handle *source,
 opencv_core_status
 opencv_core_mat_patch_nans(opencv_core_mat_handle *mat, double value);
 
+/*
+ * Completes a square floating-point Mat in place by copying one triangle
+ * onto the other. The handle is borrowed and not consumed; no result Mat
+ * is allocated. source_triangle is 0 (Upper_Triangle: copy upper -> lower)
+ * or 1 (Lower_Triangle: copy lower -> upper). The diagonal is unchanged.
+ * Supported depths are CV_32F and CV_64F. Any channel count is accepted
+ * because each complete element is copied with elemSize(). Continuity is
+ * not required. A typed 0x0 Float32 or Float64 Mat is a no-op.
+ */
+opencv_core_status
+opencv_core_mat_complete_symmetry(opencv_core_mat_handle *mat,
+                                  uint8_t source_triangle);
+
 #ifdef __cplusplus
 }
 #endif

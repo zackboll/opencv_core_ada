@@ -4055,4 +4055,40 @@ opencv_core_mat_patch_nans(opencv_core_mat_handle *mat, double value) {
     }
 }
 
+opencv_core_status
+opencv_core_mat_complete_symmetry(opencv_core_mat_handle *mat,
+                                  uint8_t source_triangle) {
+    clear_error();
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    if (source_triangle != 0 && source_triangle != 1) {
+        return invalid_argument("source_triangle must be 0 or 1");
+    }
+
+    try {
+        if (mat->value.dims > 2) {
+            return invalid_argument("Mat must be two-dimensional");
+        }
+
+        if (mat->value.rows != mat->value.cols) {
+            return invalid_argument("complete symmetry requires a square Mat");
+        }
+
+        const int depth = mat->value.depth();
+        if (depth != CV_32F && depth != CV_64F) {
+            return invalid_argument(
+                "complete symmetry requires a Float32 or Float64 Mat");
+        }
+
+        const bool lower_to_upper = source_triangle != 0;
+        cv::completeSymm(mat->value, lower_to_upper);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
 } // extern "C"
