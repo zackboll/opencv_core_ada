@@ -67,6 +67,68 @@ Repository-specific rules about which Alire crate owns a development tool take
 precedence over generic tool defaults.
 
 
+## File Modification
+
+Modify repository source files using Cline's native file editing tools.
+
+Use the native Read/Edit/Replace/Write tools for source and project-file
+changes whenever those tools can perform the required modification.
+
+Do not use shell commands or scripting languages merely to edit repository
+files.
+
+In particular, do not use these as source-file editing mechanisms:
+
+- inline Python scripts
+- Python heredocs
+- shell heredocs
+- `sed`
+- `awk`
+- `perl`
+- `echo`-based rewriting
+- `cat`-based rewriting
+- shell redirection used to create or replace source files
+- temporary scripts whose only purpose is to rewrite repository files
+
+Do not call `python3`, Python, or another scripting language merely to perform
+an edit that can be made with Cline's native Edit tools.
+
+Avoid read-modify-write scripts that:
+
+1. load an entire source file
+2. locate marker strings
+3. construct replacement text
+4. rewrite the entire file
+
+Use a targeted native edit instead.
+
+Shell commands are appropriate for:
+
+- inspecting repository state
+- searching source
+- querying installed tools or libraries
+- builds
+- tests
+- formatting
+- static analysis
+- coverage
+- version-control inspection
+- other commands whose primary purpose is not rewriting repository source
+
+If a native edit fails because the expected context no longer matches:
+
+1. read the relevant portion of the file again
+2. inspect its current contents
+3. make a new targeted edit based on the current text
+
+Do not fall back to a Python, shell, or text-processing rewrite merely because
+a native edit failed once.
+
+If a source modification is unusually large and cannot reasonably be made
+with the available native editing tools, explain why before using a scripted
+rewrite.
+
+
 ## Inspect Before Creating Bindings
 
 Before adding or changing an OpenCV binding operation, inspect the
