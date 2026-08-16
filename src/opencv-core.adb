@@ -919,6 +919,39 @@ package body OpenCV.Core is
       return Result;
    end Flip;
 
+   function Sort
+     (Self  : Mat;
+      Axis  : Sort_Axis := Each_Row;
+      Order : Sort_Order := Ascending) return Mat
+   is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      if Self.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Sort requires a single-channel Mat");
+      end if;
+
+      if Self.Depth = Float16 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Sort does not support Float16 Mats");
+      end if;
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_Sort
+          (Source     => Self.Handle,
+           Axis       => (if Axis = Each_Row then 0 else 1),
+           Descending => (if Order = Descending then 1 else 0),
+           Result     => New_Handle'Access);
+      Raise_On_Error (Status, "Mat sort");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Sort;
+
    function Copy_Make_Border
      (Self     : Mat;
       Top      : Natural;

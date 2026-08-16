@@ -1438,6 +1438,394 @@ package body Mat_Transform_Tests is
          "VConcat must reject inputs with mismatched channel counts");
    end VConcat_Region_Lifetime_Empty_And_Validation;
 
+   function Sample_Float32_Source return OpenCV.Core.Mat is
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, 3.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 2, 2.0);
+      OpenCV.Core.Float32_Access.Set (Source, 1, 0, -1.0);
+      OpenCV.Core.Float32_Access.Set (Source, 1, 1, 5.0);
+      OpenCV.Core.Float32_Access.Set (Source, 1, 2, 0.0);
+      return Source;
+   end Sample_Float32_Source;
+
+   procedure Sort_Every_Row_Ascending (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat := Sample_Float32_Source;
+      Result : constant OpenCV.Core.Mat :=
+        Source.Sort
+          (Axis => OpenCV.Core.Each_Row, Order => OpenCV.Core.Ascending);
+   begin
+      AUnit.Assertions.Assert
+        (Result.Rows = 2
+         and then Result.Columns = 3
+         and then Result.Depth = OpenCV.Core.Float32
+         and then Result.Channels = 1
+         and then OpenCV.Core.Float32_Access.Get (Result, 0, 0) = 1.0
+         and then OpenCV.Core.Float32_Access.Get (Result, 0, 1) = 2.0
+         and then OpenCV.Core.Float32_Access.Get (Result, 0, 2) = 3.0
+         and then OpenCV.Core.Float32_Access.Get (Result, 1, 0) = -1.0
+         and then OpenCV.Core.Float32_Access.Get (Result, 1, 1) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Result, 1, 2) = 5.0,
+         "Each_Row ascending must sort values across the columns of each row");
+   end Sort_Every_Row_Ascending;
+
+   procedure Sort_Every_Row_Descending (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat := Sample_Float32_Source;
+      Result : constant OpenCV.Core.Mat :=
+        Source.Sort
+          (Axis => OpenCV.Core.Each_Row, Order => OpenCV.Core.Descending);
+   begin
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Result, 0, 0) = 3.0
+         and then OpenCV.Core.Float32_Access.Get (Result, 0, 1) = 2.0
+         and then OpenCV.Core.Float32_Access.Get (Result, 0, 2) = 1.0
+         and then OpenCV.Core.Float32_Access.Get (Result, 1, 0) = 5.0
+         and then OpenCV.Core.Float32_Access.Get (Result, 1, 1) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Result, 1, 2) = -1.0,
+         "Each_Row descending must reverse the values of each row");
+   end Sort_Every_Row_Descending;
+
+   procedure Sort_Every_Column_Ascending (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat := Sample_Float32_Source;
+      Result : constant OpenCV.Core.Mat :=
+        Source.Sort
+          (Axis => OpenCV.Core.Each_Column, Order => OpenCV.Core.Ascending);
+   begin
+      AUnit.Assertions.Assert
+        (Result.Rows = 2
+         and then Result.Columns = 3
+         and then OpenCV.Core.Float32_Access.Get (Result, 0, 0) = -1.0
+         and then OpenCV.Core.Float32_Access.Get (Result, 0, 1) = 1.0
+         and then OpenCV.Core.Float32_Access.Get (Result, 0, 2) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Result, 1, 0) = 3.0
+         and then OpenCV.Core.Float32_Access.Get (Result, 1, 1) = 5.0
+         and then OpenCV.Core.Float32_Access.Get (Result, 1, 2) = 2.0,
+         "Each_Column ascending must sort values down each column");
+   end Sort_Every_Column_Ascending;
+
+   procedure Sort_Every_Column_Descending (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat := Sample_Float32_Source;
+      Result : constant OpenCV.Core.Mat :=
+        Source.Sort
+          (Axis => OpenCV.Core.Each_Column, Order => OpenCV.Core.Descending);
+   begin
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Result, 0, 0) = 3.0
+         and then OpenCV.Core.Float32_Access.Get (Result, 0, 1) = 5.0
+         and then OpenCV.Core.Float32_Access.Get (Result, 0, 2) = 2.0
+         and then OpenCV.Core.Float32_Access.Get (Result, 1, 0) = -1.0
+         and then OpenCV.Core.Float32_Access.Get (Result, 1, 1) = 1.0
+         and then OpenCV.Core.Float32_Access.Get (Result, 1, 2) = 0.0,
+         "Each_Column descending must reverse the values of each column");
+   end Sort_Every_Column_Descending;
+
+   procedure Sort_Defaults_Are_Each_Row_Ascending
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source  : constant OpenCV.Core.Mat := Sample_Float32_Source;
+      Default : constant OpenCV.Core.Mat := Source.Sort;
+   begin
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Default, 0, 0) = 1.0
+         and then OpenCV.Core.Float32_Access.Get (Default, 0, 1) = 2.0
+         and then OpenCV.Core.Float32_Access.Get (Default, 0, 2) = 3.0
+         and then OpenCV.Core.Float32_Access.Get (Default, 1, 0) = -1.0
+         and then OpenCV.Core.Float32_Access.Get (Default, 1, 1) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Default, 1, 2) = 5.0,
+         "Source.Sort must mean Each_Row ascending");
+   end Sort_Defaults_Are_Each_Row_Ascending;
+
+   procedure Sort_Integer_Depths (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      UInt8_Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 4, (OpenCV.Core.UInt8, 1));
+   begin
+      OpenCV.Core.UInt8_Access.Set (UInt8_Source, 0, 0, 30);
+      OpenCV.Core.UInt8_Access.Set (UInt8_Source, 0, 1, 10);
+      OpenCV.Core.UInt8_Access.Set (UInt8_Source, 0, 2, 40);
+      OpenCV.Core.UInt8_Access.Set (UInt8_Source, 0, 3, 20);
+
+      declare
+         UInt8_Result    : constant OpenCV.Core.Mat := UInt8_Source.Sort;
+         Int8_Result     : constant OpenCV.Core.Mat :=
+           UInt8_Source.Convert_To (OpenCV.Core.Int8).Sort;
+         UInt16_Result   : constant OpenCV.Core.Mat :=
+           UInt8_Source.Convert_To (OpenCV.Core.UInt16).Sort;
+         Int16_Result    : constant OpenCV.Core.Mat :=
+           UInt8_Source.Convert_To (OpenCV.Core.Int16).Sort;
+         Int32_Result    : constant OpenCV.Core.Mat :=
+           UInt8_Source.Convert_To (OpenCV.Core.Int32).Sort;
+         Int8_As_UInt8   : constant OpenCV.Core.Mat :=
+           Int8_Result.Convert_To (OpenCV.Core.UInt8);
+         UInt16_As_UInt8 : constant OpenCV.Core.Mat :=
+           UInt16_Result.Convert_To (OpenCV.Core.UInt8);
+         Int16_As_UInt8  : constant OpenCV.Core.Mat :=
+           Int16_Result.Convert_To (OpenCV.Core.UInt8);
+         Int32_As_UInt8  : constant OpenCV.Core.Mat :=
+           Int32_Result.Convert_To (OpenCV.Core.UInt8);
+      begin
+         AUnit.Assertions.Assert
+           (UInt8_Result.Depth = OpenCV.Core.UInt8
+            and then OpenCV.Core.UInt8_Access.Get (UInt8_Result, 0, 0) = 10
+            and then OpenCV.Core.UInt8_Access.Get (UInt8_Result, 0, 1) = 20
+            and then OpenCV.Core.UInt8_Access.Get (UInt8_Result, 0, 2) = 30
+            and then OpenCV.Core.UInt8_Access.Get (UInt8_Result, 0, 3) = 40,
+            "Sort must accept UInt8 and order known values");
+         AUnit.Assertions.Assert
+           (Int8_Result.Depth = OpenCV.Core.Int8
+            and then UInt16_Result.Depth = OpenCV.Core.UInt16
+            and then Int16_Result.Depth = OpenCV.Core.Int16
+            and then Int32_Result.Depth = OpenCV.Core.Int32
+            and then OpenCV.Core.UInt8_Access.Get (Int8_As_UInt8, 0, 0) = 10
+            and then OpenCV.Core.UInt8_Access.Get (Int8_As_UInt8, 0, 3) = 40
+            and then OpenCV.Core.UInt8_Access.Get (UInt16_As_UInt8, 0, 0) = 10
+            and then OpenCV.Core.UInt8_Access.Get (UInt16_As_UInt8, 0, 3) = 40
+            and then OpenCV.Core.UInt8_Access.Get (Int16_As_UInt8, 0, 0) = 10
+            and then OpenCV.Core.UInt8_Access.Get (Int16_As_UInt8, 0, 3) = 40
+            and then OpenCV.Core.UInt8_Access.Get (Int32_As_UInt8, 0, 0) = 10
+            and then OpenCV.Core.UInt8_Access.Get (Int32_As_UInt8, 0, 3) = 40,
+            "Sort must accept Int8, UInt16, Int16, and Int32");
+      end;
+   end Sort_Integer_Depths;
+
+   procedure Sort_Float64_Preserves_Metadata (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat :=
+        Sample_Float32_Source.Convert_To (OpenCV.Core.Float64);
+      Result : constant OpenCV.Core.Mat := Source.Sort;
+   begin
+      AUnit.Assertions.Assert
+        (Result.Rows = Source.Rows
+         and then Result.Columns = Source.Columns
+         and then Result.Channels = 1
+         and then Result.Depth = OpenCV.Core.Float64
+         and then not Result.Is_Empty,
+         "Sort must succeed for Float64 and preserve metadata");
+   end Sort_Float64_Preserves_Metadata;
+
+   procedure Sort_Single_Row_And_Column (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Row    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 4, (OpenCV.Core.Float32, 1));
+      Column : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 1, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Row, 0, 0, 4.0);
+      OpenCV.Core.Float32_Access.Set (Row, 0, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Row, 0, 2, 3.0);
+      OpenCV.Core.Float32_Access.Set (Row, 0, 3, 2.0);
+      OpenCV.Core.Float32_Access.Set (Column, 0, 0, 4.0);
+      OpenCV.Core.Float32_Access.Set (Column, 1, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Column, 2, 0, 3.0);
+      OpenCV.Core.Float32_Access.Set (Column, 3, 0, 2.0);
+
+      declare
+         Row_Result        : constant OpenCV.Core.Mat :=
+           Row.Sort (Axis => OpenCV.Core.Each_Row);
+         Row_Column_Result : constant OpenCV.Core.Mat :=
+           Row.Sort (Axis => OpenCV.Core.Each_Column);
+         Column_Result     : constant OpenCV.Core.Mat :=
+           Column.Sort (Axis => OpenCV.Core.Each_Column);
+      begin
+         AUnit.Assertions.Assert
+           (Row_Result.Rows = 1
+            and then Row_Result.Columns = 4
+            and then OpenCV.Core.Float32_Access.Get (Row_Result, 0, 0) = 1.0
+            and then OpenCV.Core.Float32_Access.Get (Row_Result, 0, 1) = 2.0
+            and then OpenCV.Core.Float32_Access.Get (Row_Result, 0, 2) = 3.0
+            and then OpenCV.Core.Float32_Access.Get (Row_Result, 0, 3) = 4.0,
+            "A 1xN Mat must sort correctly with Each_Row");
+         AUnit.Assertions.Assert
+           (Row_Column_Result.Rows = 1
+            and then Row_Column_Result.Columns = 4
+            and then OpenCV.Core.Float32_Access.Get (Row_Column_Result, 0, 0)
+                     = 4.0
+            and then OpenCV.Core.Float32_Access.Get (Row_Column_Result, 0, 1)
+                     = 1.0
+            and then OpenCV.Core.Float32_Access.Get (Row_Column_Result, 0, 2)
+                     = 3.0
+            and then OpenCV.Core.Float32_Access.Get (Row_Column_Result, 0, 3)
+                     = 2.0,
+            "Each_Column on a 1xN Mat must leave single-element columns");
+         AUnit.Assertions.Assert
+           (Column_Result.Rows = 4
+            and then Column_Result.Columns = 1
+            and then OpenCV.Core.Float32_Access.Get (Column_Result, 0, 0) = 1.0
+            and then OpenCV.Core.Float32_Access.Get (Column_Result, 1, 0) = 2.0
+            and then OpenCV.Core.Float32_Access.Get (Column_Result, 2, 0) = 3.0
+            and then OpenCV.Core.Float32_Access.Get (Column_Result, 3, 0)
+                     = 4.0,
+            "An Nx1 Mat must sort correctly with Each_Column");
+      end;
+   end Sort_Single_Row_And_Column;
+
+   procedure Sort_Duplicate_Values (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 5, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, 2.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 2, 2.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 3, 1.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 4, 2.0);
+
+      declare
+         Result : constant OpenCV.Core.Mat := Source.Sort;
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float32_Access.Get (Result, 0, 0) = 1.0
+            and then OpenCV.Core.Float32_Access.Get (Result, 0, 1) = 1.0
+            and then OpenCV.Core.Float32_Access.Get (Result, 0, 2) = 2.0
+            and then OpenCV.Core.Float32_Access.Get (Result, 0, 3) = 2.0
+            and then OpenCV.Core.Float32_Access.Get (Result, 0, 4) = 2.0,
+            "Sort must order repeated finite values without promising"
+            & " stability");
+      end;
+   end Sort_Duplicate_Values;
+
+   procedure Sort_Noncontiguous_Region_Is_Independent
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Result : OpenCV.Core.Mat;
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 4, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Parent, 0, 0, 9.0);
+      OpenCV.Core.Float32_Access.Set (Parent, 0, 1, 3.0);
+      OpenCV.Core.Float32_Access.Set (Parent, 0, 2, 1.0);
+      OpenCV.Core.Float32_Access.Set (Parent, 0, 3, 8.0);
+      OpenCV.Core.Float32_Access.Set (Parent, 1, 0, 7.0);
+      OpenCV.Core.Float32_Access.Set (Parent, 1, 1, -1.0);
+      OpenCV.Core.Float32_Access.Set (Parent, 1, 2, 5.0);
+      OpenCV.Core.Float32_Access.Set (Parent, 1, 3, 0.0);
+
+      declare
+         Region : constant OpenCV.Core.Mat :=
+           Parent.Region ((X => 1, Y => 0, Width => 2, Height => 2));
+      begin
+         AUnit.Assertions.Assert
+           (not Region.Is_Continuous,
+            "The Region test must exercise a non-contiguous view");
+         Result := Region.Sort (Axis => OpenCV.Core.Each_Row);
+         OpenCV.Core.Float32_Access.Set (Result, 0, 0, 99.0);
+         AUnit.Assertions.Assert
+           (Result.Rows = 2
+            and then Result.Columns = 2
+            and then OpenCV.Core.Float32_Access.Get (Result, 0, 1) = 3.0
+            and then OpenCV.Core.Float32_Access.Get (Result, 1, 0) = -1.0
+            and then OpenCV.Core.Float32_Access.Get (Result, 1, 1) = 5.0
+            and then OpenCV.Core.Float32_Access.Get (Region, 0, 0) = 3.0
+            and then OpenCV.Core.Float32_Access.Get (Region, 0, 1) = 1.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 0, 1) = 3.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 0, 2) = 1.0,
+            "Sort must accept a non-contiguous Region without mutating it");
+      end;
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Result, 0, 1) = 3.0
+         and then OpenCV.Core.Float32_Access.Get (Result, 1, 1) = 5.0,
+         "A Sort result must remain valid after source Region finalization");
+   end Sort_Noncontiguous_Region_Is_Independent;
+
+   procedure Sort_Result_Is_Independent (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat := Sample_Float32_Source;
+      Result : OpenCV.Core.Mat := Source.Sort;
+   begin
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, 99.0);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Result, 0, 0) = 1.0,
+         "Mutating Source after Sort must not change Result");
+      OpenCV.Core.Float32_Access.Set (Result, 0, 2, -7.0);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Source, 0, 2) = 2.0,
+         "Mutating Result after Sort must not change Source");
+   end Sort_Result_Is_Independent;
+
+   procedure Sort_Rejects_Multi_Channel (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 3));
+
+      procedure Sort_Vec3 is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Source.Sort;
+      end Sort_Vec3;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Sort_Vec3'Access, "Sort must reject a multi-channel Mat");
+   end Sort_Rejects_Multi_Channel;
+
+   procedure Sort_Rejects_Float16 (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float16, 1));
+
+      procedure Sort_Float16 is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Source.Sort;
+      end Sort_Float16;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Sort_Float16'Access, "Sort must reject Float16 Mats");
+   end Sort_Rejects_Float16;
+
+   procedure Sort_Empty_Mats (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Default     : OpenCV.Core.Mat;
+      Empty8      : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.UInt8, 1));
+      Empty32     : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 1));
+      Empty64     : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float64, 1));
+      Empty16     : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float16, 1));
+      Default_Out : constant OpenCV.Core.Mat := Default.Sort;
+      Out8        : constant OpenCV.Core.Mat := Empty8.Sort;
+      Out32       : constant OpenCV.Core.Mat := Empty32.Sort;
+      Out64       : constant OpenCV.Core.Mat := Empty64.Sort;
+
+      procedure Sort_Empty_Float16 is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Empty16.Sort;
+      end Sort_Empty_Float16;
+   begin
+      AUnit.Assertions.Assert
+        (Default_Out.Is_Empty
+         and then Default_Out.Rows = 0
+         and then Default_Out.Columns = 0
+         and then Default_Out.Depth = Default.Depth
+         and then Default_Out.Channels = Default.Channels,
+         "Sort of a default empty Mat must stay empty and preserve metadata");
+      AUnit.Assertions.Assert
+        (Out8.Is_Empty
+         and then Out8.Depth = OpenCV.Core.UInt8
+         and then Out8.Channels = 1
+         and then Out32.Is_Empty
+         and then Out32.Depth = OpenCV.Core.Float32
+         and then Out64.Is_Empty
+         and then Out64.Depth = OpenCV.Core.Float64,
+         "Typed 0x0 supported-depth Mats must sort to empty same-type"
+         & " results");
+      Assert_Raises_OpenCV_Error
+        (Sort_Empty_Float16'Access,
+         "Sort must reject a typed empty Float16 Mat");
+   end Sort_Empty_Mats;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
    Result : aliased AUnit.Test_Suites.Test_Suite;
 
@@ -1551,6 +1939,51 @@ package body Mat_Transform_Tests is
         (Caller.Create
            ("VConcat Region, lifetime, empty input, and validation",
             VConcat_Region_Lifetime_Empty_And_Validation'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sort every row ascending", Sort_Every_Row_Ascending'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sort every row descending", Sort_Every_Row_Descending'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sort every column ascending",
+            Sort_Every_Column_Ascending'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sort every column descending",
+            Sort_Every_Column_Descending'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sort defaults are Each_Row ascending",
+            Sort_Defaults_Are_Each_Row_Ascending'Access));
+      Result.Add_Test
+        (Caller.Create ("Sort integer depths", Sort_Integer_Depths'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sort Float64 preserves metadata",
+            Sort_Float64_Preserves_Metadata'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sort single row and column", Sort_Single_Row_And_Column'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sort duplicate values", Sort_Duplicate_Values'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sort non-contiguous Region independence",
+            Sort_Noncontiguous_Region_Is_Independent'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sort result is independent of source",
+            Sort_Result_Is_Independent'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sort rejects multi-channel", Sort_Rejects_Multi_Channel'Access));
+      Result.Add_Test
+        (Caller.Create ("Sort rejects Float16", Sort_Rejects_Float16'Access));
+      Result.Add_Test
+        (Caller.Create ("Sort empty Mats", Sort_Empty_Mats'Access));
       return Result'Access;
    end Suite;
 

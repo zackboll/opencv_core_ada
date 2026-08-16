@@ -33,6 +33,13 @@ package OpenCV.Core is
 
    type Angle_Unit is (Radians, Degrees);
 
+   --  Sort axis names describe the values being ordered, not a reduction.
+   --  Each_Row sorts the columns of every row independently, left to right.
+   --  Each_Column sorts the rows of every column independently, top to bottom.
+   type Sort_Axis is (Each_Row, Each_Column);
+
+   type Sort_Order is (Ascending, Descending);
+
    type Channel_Count is new Interfaces.Integer_32 range 1 .. 512;
 
    type Mat_Size is
@@ -197,6 +204,25 @@ package OpenCV.Core is
    --  and Both_Axes reverses both. Empty Mats produce an empty result.
    --  Non-contiguous Regions are accepted.
    function Flip (Self : Mat; Kind : Flip_Kind) return Mat;
+
+   --  Returns an independent Mat with Self's rows, columns, depth, and
+   --  channel count. Each_Row independently sorts the values across the
+   --  columns of every row, left to right. Each_Column independently sorts
+   --  the values down the rows of every column, top to bottom. Ascending is
+   --  the default order and Each_Row is the default axis. Self must be
+   --  single-channel. Supported depths are UInt8, Int8, UInt16, Int16,
+   --  Int32, Float32, and Float64. Float16 is rejected because OpenCV 4.10
+   --  has no sort implementation for it. Self is not modified. The result
+   --  owns independent storage, including when Self is a non-contiguous
+   --  Region. Continuity is not required. A default empty Mat and typed 0x0
+   --  Mats of a supported depth produce an empty result that preserves the
+   --  source shape, depth, and channel count. Typed empty Float16 is
+   --  rejected. Equal values are sorted correctly, but their relative order
+   --  is not guaranteed. NaN ordering is not part of the public contract.
+   function Sort
+     (Self  : Mat;
+      Axis  : Sort_Axis := Each_Row;
+      Order : Sort_Order := Ascending) return Mat;
    --  Returns an independent Mat with a border of the requested thickness.
    --  Constant uses Value; other border kinds extrapolate source pixels.
    --  When Self is a Region, Isolated is false by default so OpenCV may use

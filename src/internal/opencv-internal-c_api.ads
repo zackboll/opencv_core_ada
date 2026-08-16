@@ -141,6 +141,13 @@ package OpenCV.Internal.C_API is
       return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_flip";
 
+   function Mat_Sort
+     (Source     : Mat_Handle;
+      Axis       : C_UInt8;
+      Descending : C_UInt8;
+      Result     : access Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_sort";
+
    function Mat_Copy_Make_Border
      (Source   : Mat_Handle;
       Top      : C_Int32;

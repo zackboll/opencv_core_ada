@@ -520,6 +520,41 @@ opencv_core_mat_flip(const opencv_core_mat_handle *source, int32_t flip_kind,
 }
 
 opencv_core_status
+opencv_core_mat_sort(const opencv_core_mat_handle *source, uint8_t axis,
+                     uint8_t descending, opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (source == nullptr) {
+        return invalid_argument("source Mat handle must not be null");
+    }
+
+    if (axis != 0 && axis != 1) {
+        return invalid_argument("sort axis must be 0 or 1");
+    }
+
+    if (descending != 0 && descending != 1) {
+        return invalid_argument("descending must be 0 or 1");
+    }
+
+    try {
+        int flags = (axis == 0 ? cv::SORT_EVERY_ROW : cv::SORT_EVERY_COLUMN) |
+                    (descending == 0 ? cv::SORT_ASCENDING : cv::SORT_DESCENDING);
+        cv::Mat sorted;
+        cv::sort(source->value, sorted, flags);
+        *out_mat = new opencv_core_mat_handle(sorted);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_copy_make_border(const opencv_core_mat_handle *source,
                                  int32_t top, int32_t bottom, int32_t left,
                                  int32_t right, int32_t border_kind,
