@@ -344,6 +344,20 @@ opencv_core_mat_abs_diff(const opencv_core_mat_handle *left,
                          opencv_core_mat_handle **out_mat);
 
 /*
+ * Calculates the OpenCV per-element minimum or maximum of two Mats with
+ * identical dimensions and type, returning an independently allocated result.
+ */
+opencv_core_status
+opencv_core_mat_minimum(const opencv_core_mat_handle *left,
+                        const opencv_core_mat_handle *right,
+                        opencv_core_mat_handle **out_mat);
+
+opencv_core_status
+opencv_core_mat_maximum(const opencv_core_mat_handle *left,
+                        const opencv_core_mat_handle *right,
+                        opencv_core_mat_handle **out_mat);
+
+/*
  * Returns alpha * left + beta * right + gamma for two Mats with identical
  * dimensions and type, using the same output type and independent storage.
  */

@@ -1066,6 +1066,66 @@ opencv_core_mat_add_weighted(const opencv_core_mat_handle *left, double alpha,
 }
 
 opencv_core_status
+opencv_core_mat_minimum(const opencv_core_mat_handle *left,
+                        const opencv_core_mat_handle *right,
+                        opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (left == nullptr || right == nullptr) {
+        return invalid_argument("Mat operand handles must not be null");
+    }
+
+    if (!mats_have_same_shape_and_type(left->value, right->value)) {
+        return invalid_argument("Mat operands must have identical shape and type");
+    }
+
+    try {
+        cv::Mat result;
+        cv::min(left->value, right->value, result);
+        *out_mat = new opencv_core_mat_handle(result);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_maximum(const opencv_core_mat_handle *left,
+                        const opencv_core_mat_handle *right,
+                        opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (left == nullptr || right == nullptr) {
+        return invalid_argument("Mat operand handles must not be null");
+    }
+
+    if (!mats_have_same_shape_and_type(left->value, right->value)) {
+        return invalid_argument("Mat operands must have identical shape and type");
+    }
+
+    try {
+        cv::Mat result;
+        cv::max(left->value, right->value, result);
+        *out_mat = new opencv_core_mat_handle(result);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_bitwise_and(const opencv_core_mat_handle *left,
                             const opencv_core_mat_handle *right,
                             opencv_core_mat_handle **out_mat) {

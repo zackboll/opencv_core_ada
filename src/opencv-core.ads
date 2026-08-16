@@ -248,6 +248,8 @@ package OpenCV.Core is
    function Multiply (Left, Right : Mat) return Mat;
    function Divide (Left, Right : Mat) return Mat;
    function Abs_Diff (Left, Right : Mat) return Mat;
+   function Minimum (Left, Right : Mat) return Mat;
+   function Maximum (Left, Right : Mat) return Mat;
    function Add_Weighted
      (Left  : Mat;
       Alpha : Long_Float;

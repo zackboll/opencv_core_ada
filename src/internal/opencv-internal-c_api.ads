@@ -269,6 +269,14 @@ package OpenCV.Internal.C_API is
      (Left, Right : Mat_Handle; Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_abs_diff";
 
+   function Mat_Minimum
+     (Left, Right : Mat_Handle; Result : access Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_minimum";
+
+   function Mat_Maximum
+     (Left, Right : Mat_Handle; Result : access Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_maximum";
+
    function Mat_Add_Weighted
      (Left   : Mat_Handle;
       Alpha  : C_Double;

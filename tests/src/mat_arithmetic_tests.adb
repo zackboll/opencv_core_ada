@@ -717,6 +717,205 @@ package body Mat_Arithmetic_Tests is
         (Bad_Channels'Access, "Add_Weighted must reject mismatched channels");
    end Mat_Add_Weighted_Rejects_Incompatible_Operands;
 
+   procedure Mat_Minimum_And_Maximum_Map_UInt8_And_Float32
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      UInt8_Left       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.UInt8, 1));
+      UInt8_Right      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.UInt8, 1));
+      Float_Left       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 3, (OpenCV.Core.Float32, 1));
+      Float_Right      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 3, (OpenCV.Core.Float32, 1));
+      Minimum, Maximum : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.UInt8_Access.Set (UInt8_Left, 0, 0, 1);
+      OpenCV.Core.UInt8_Access.Set (UInt8_Left, 0, 1, 8);
+      OpenCV.Core.UInt8_Access.Set (UInt8_Left, 0, 2, 3);
+      OpenCV.Core.UInt8_Access.Set (UInt8_Left, 1, 0, 9);
+      OpenCV.Core.UInt8_Access.Set (UInt8_Left, 1, 1, 2);
+      OpenCV.Core.UInt8_Access.Set (UInt8_Left, 1, 2, 7);
+      OpenCV.Core.UInt8_Access.Set (UInt8_Right, 0, 0, 4);
+      OpenCV.Core.UInt8_Access.Set (UInt8_Right, 0, 1, 5);
+      OpenCV.Core.UInt8_Access.Set (UInt8_Right, 0, 2, 6);
+      OpenCV.Core.UInt8_Access.Set (UInt8_Right, 1, 0, 3);
+      OpenCV.Core.UInt8_Access.Set (UInt8_Right, 1, 1, 8);
+      OpenCV.Core.UInt8_Access.Set (UInt8_Right, 1, 2, 1);
+      Minimum := UInt8_Left.Minimum (UInt8_Right);
+      Maximum := UInt8_Left.Maximum (UInt8_Right);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Minimum, 0, 0) = 1
+         and then OpenCV.Core.UInt8_Access.Get (Minimum, 0, 1) = 5
+         and then OpenCV.Core.UInt8_Access.Get (Minimum, 0, 2) = 3
+         and then OpenCV.Core.UInt8_Access.Get (Minimum, 1, 0) = 3
+         and then OpenCV.Core.UInt8_Access.Get (Minimum, 1, 1) = 2
+         and then OpenCV.Core.UInt8_Access.Get (Minimum, 1, 2) = 1
+         and then OpenCV.Core.UInt8_Access.Get (Maximum, 0, 0) = 4
+         and then OpenCV.Core.UInt8_Access.Get (Maximum, 0, 1) = 8
+         and then OpenCV.Core.UInt8_Access.Get (Maximum, 0, 2) = 6
+         and then OpenCV.Core.UInt8_Access.Get (Maximum, 1, 0) = 9
+         and then OpenCV.Core.UInt8_Access.Get (Maximum, 1, 1) = 8
+         and then OpenCV.Core.UInt8_Access.Get (Maximum, 1, 2) = 7
+         and then Minimum.Rows = 2
+         and then Minimum.Columns = 3
+         and then Minimum.Depth = OpenCV.Core.UInt8
+         and then Minimum.Channels = 1,
+         "Minimum and Maximum must map every UInt8 element and preserve metadata");
+
+      OpenCV.Core.Float32_Access.Set (Float_Left, 0, 0, -3.5);
+      OpenCV.Core.Float32_Access.Set (Float_Left, 0, 1, 4.0);
+      OpenCV.Core.Float32_Access.Set (Float_Left, 0, 2, -1.0);
+      OpenCV.Core.Float32_Access.Set (Float_Right, 0, 0, -2.0);
+      OpenCV.Core.Float32_Access.Set (Float_Right, 0, 1, -5.0);
+      OpenCV.Core.Float32_Access.Set (Float_Right, 0, 2, 2.0);
+      Minimum := Float_Left.Minimum (Float_Right);
+      Maximum := Float_Left.Maximum (Float_Right);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float (OpenCV.Core.Float32_Access.Get (Minimum, 0, 0)), -3.5)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Minimum, 0, 1)),
+                     -5.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Maximum, 0, 0)),
+                     -2.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Maximum, 0, 2)),
+                     2.0),
+         "Minimum and Maximum must compare positive and negative Float32 values");
+   end Mat_Minimum_And_Maximum_Map_UInt8_And_Float32;
+
+   procedure Mat_Minimum_And_Maximum_Handle_Vec3_Regions_And_Lifetime
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Minimum, Maximum : OpenCV.Core.Mat;
+   begin
+      declare
+         Left, Right : OpenCV.Core.Mat :=
+           OpenCV.Core.Create (3, 3, (OpenCV.Core.UInt8, 3));
+      begin
+         Left.Set_To (OpenCV.Core.Make_Scalar (9.0, 8.0, 7.0));
+         Right.Set_To (OpenCV.Core.Make_Scalar (4.0, 5.0, 6.0));
+         OpenCV.Core.UInt8_Vec3_Access.Set (Left, 0, 1, (1, 9, 3));
+         OpenCV.Core.UInt8_Vec3_Access.Set (Right, 0, 1, (4, 2, 6));
+         Minimum :=
+           Left.Region ((1, 0, 2, 3)).Minimum (Right.Region ((1, 0, 2, 3)));
+         Maximum :=
+           Left.Region ((1, 0, 2, 3)).Maximum (Right.Region ((1, 0, 2, 3)));
+         OpenCV.Core.UInt8_Vec3_Access.Set (Left, 0, 1, (99, 99, 99));
+      end;
+
+      AUnit.Assertions.Assert
+        (Minimum.Is_Continuous
+         and then Maximum.Is_Continuous
+         and then Minimum.Rows = 3
+         and then Minimum.Columns = 2
+         and then Minimum.Depth = OpenCV.Core.UInt8
+         and then Minimum.Channels = 3
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Minimum, 0, 0) = (1, 2, 3)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Minimum, 0, 1) = (4, 5, 6)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Maximum, 0, 0) = (4, 9, 6)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Maximum, 0, 1)
+                  = (9, 8, 7),
+         "Minimum and Maximum must process Vec3 Region channels independently"
+         & " with owned result storage surviving source finalization");
+   end Mat_Minimum_And_Maximum_Handle_Vec3_Regions_And_Lifetime;
+
+   procedure Mat_Minimum_And_Maximum_Preserve_Float32_Nonfinite_Behavior
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Numerator, Zeroes, Finite   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+      Nonfinite, Minimum, Maximum : OpenCV.Core.Mat;
+   begin
+      Numerator.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.Float32_Access.Set (Numerator, 0, 1, 1.0);
+      Zeroes.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Finite.Set_To (OpenCV.Core.Make_Scalar (2.0));
+      Nonfinite := Numerator.Divide (Zeroes);
+      Minimum := Nonfinite.Minimum (Finite);
+      Maximum := Nonfinite.Maximum (Finite);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Classify (Minimum, 0, 0)
+         = OpenCV.Core.Float32_Access.Not_A_Number
+         and then OpenCV.Core.Float32_Access.Classify (Maximum, 0, 0)
+                  = OpenCV.Core.Float32_Access.Not_A_Number
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Minimum, 0, 1)),
+                     2.0)
+         and then OpenCV.Core.Float32_Access.Classify (Maximum, 0, 1)
+                  = OpenCV.Core.Float32_Access.Positive_Infinity,
+         "Minimum and Maximum must preserve OpenCV Float32 NaN and infinity"
+         & " behavior");
+   end Mat_Minimum_And_Maximum_Preserve_Float32_Nonfinite_Behavior;
+
+   procedure Mat_Minimum_And_Maximum_Handle_Empty_And_Compatibility
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Base                                                  :
+        constant OpenCV.Core.Mat :=
+          OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+      Rows                                                  :
+        constant OpenCV.Core.Mat :=
+          OpenCV.Core.Create (2, 1, (OpenCV.Core.UInt8, 1));
+      Columns                                               :
+        constant OpenCV.Core.Mat :=
+          OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 1));
+      Depth                                                 :
+        constant OpenCV.Core.Mat :=
+          OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Channels                                              :
+        constant OpenCV.Core.Mat :=
+          OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 3));
+      Empty_Left, Empty_Right, Empty_Minimum, Empty_Maximum : OpenCV.Core.Mat;
+      procedure Bad_Rows is
+         Ignored : constant OpenCV.Core.Mat := Base.Minimum (Rows);
+      begin
+         pragma Unreferenced (Ignored);
+      end Bad_Rows;
+      procedure Bad_Columns is
+         Ignored : constant OpenCV.Core.Mat := Base.Maximum (Columns);
+      begin
+         pragma Unreferenced (Ignored);
+      end Bad_Columns;
+      procedure Bad_Depth is
+         Ignored : constant OpenCV.Core.Mat := Base.Minimum (Depth);
+      begin
+         pragma Unreferenced (Ignored);
+      end Bad_Depth;
+      procedure Bad_Channels is
+         Ignored : constant OpenCV.Core.Mat := Base.Maximum (Channels);
+      begin
+         pragma Unreferenced (Ignored);
+      end Bad_Channels;
+   begin
+      Empty_Minimum := Empty_Left.Minimum (Empty_Right);
+      Empty_Maximum := Empty_Left.Maximum (Empty_Right);
+      AUnit.Assertions.Assert
+        (Empty_Minimum.Is_Empty and then Empty_Maximum.Is_Empty,
+         "Minimum and Maximum of empty Mats must be empty");
+      Assert_Raises_OpenCV_Error
+        (Bad_Rows'Access, "Minimum must reject mismatched rows");
+      Assert_Raises_OpenCV_Error
+        (Bad_Columns'Access, "Maximum must reject mismatched columns");
+      Assert_Raises_OpenCV_Error
+        (Bad_Depth'Access, "Minimum must reject mismatched depths");
+      Assert_Raises_OpenCV_Error
+        (Bad_Channels'Access, "Maximum must reject mismatched channel counts");
+   end Mat_Minimum_And_Maximum_Handle_Empty_And_Compatibility;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -799,6 +998,22 @@ package body Mat_Arithmetic_Tests is
         (Caller.Create
            ("Mat Add_Weighted rejects incompatible operands",
             Mat_Add_Weighted_Rejects_Incompatible_Operands'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Minimum and Maximum map UInt8 and Float32",
+            Mat_Minimum_And_Maximum_Map_UInt8_And_Float32'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Minimum and Maximum handle Vec3 Regions and lifetime",
+            Mat_Minimum_And_Maximum_Handle_Vec3_Regions_And_Lifetime'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Minimum and Maximum preserve Float32 nonfinite behavior",
+            Mat_Minimum_And_Maximum_Preserve_Float32_Nonfinite_Behavior'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Minimum and Maximum handle empty and compatibility",
+            Mat_Minimum_And_Maximum_Handle_Empty_And_Compatibility'Access));
       return Result'Access;
    end Suite;
 
