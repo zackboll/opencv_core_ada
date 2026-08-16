@@ -255,6 +255,14 @@ package OpenCV.Core is
    --  +Infinity, and a typed 0x0 source stays empty. A default empty Mat and
    --  non-floating depths are rejected.
    function Sqrt (Self : Mat) return Mat;
+   --  Returns an independent Mat with Self's shape, depth, and channel count.
+   --  Self must be Float32 or Float64. Each channel is processed independently
+   --  by cv::exp. On OpenCV 4.10 the implementation is approximate (about
+   --  7e-6 relative error for Float32 and less than 1e-10 for Float64) and
+   --  may convert denormalized outputs to zero. Special values such as NaN
+   --  and Infinity are not handled. A typed 0x0 source stays empty. A default
+   --  empty Mat and non-floating depths are rejected.
+   function Exp (Self : Mat) return Mat;
 
    --  Returns an independent Mat with Self's shape and element type.  For L1,
    --  L2, and Infinity, Alpha is the target norm and Beta is ignored.  For

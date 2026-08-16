@@ -1708,6 +1708,31 @@ package body OpenCV.Core is
       return Result;
    end Sqrt;
 
+   procedure Validate_Exp (Source : Mat) is
+   begin
+      if Source.Depth /= Float32 and then Source.Depth /= Float64 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Exp requires a Float32 or Float64 source");
+      end if;
+   end Validate_Exp;
+
+   function Exp (Self : Mat) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Exp (Self);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Exp
+          (Source => Self.Handle, Result => New_Handle'Access);
+      Raise_On_Error (Status, "Mat exponential operation");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Exp;
+
    function Is_Empty (Self : Mat) return Boolean is
       Empty  : aliased OpenCV.Internal.C_API.C_Boolean :=
         OpenCV.Internal.C_API.C_False;

@@ -6,7 +6,7 @@ A thick, idiomatic Ada binding for the **OpenCV Core** module.
 
 > **Project status:** active development, `0.1.0-dev`.
 >
-> **Current baseline:** **244 AUnit tests** in the current development suite as of August 2026.
+> **Current baseline:** **257 AUnit tests** in the current development suite as of August 2026.
 >
 > **Current milestone status:** the mask/selection and channel-manipulation milestones are complete; the core 2-D matrix layout/rearrangement milestone is largely complete; reductions now include `Trace` and axis-based `Reduce`.
 
@@ -196,7 +196,7 @@ The test suite is organized into:
 Current development baseline:
 
 ```text
-244 AUnit tests
+257 AUnit tests
 ```
 
 ---
@@ -496,6 +496,35 @@ channel or the same channel count as the source. The result has the source
 shape and channel count, the table depth, and independent storage. Int8
 sources are indexed by their stored 8-bit pattern. Float16 tables and 16-bit
 sources are not supported.
+
+## Square root
+
+```ada
+Roots : Mat := Values.Sqrt;
+```
+
+`Sqrt` wraps `cv::sqrt` on OpenCV 4.10.0. The source must be Float32 or
+Float64. Each channel is processed independently. The result has the source
+shape, depth, and channel count, and independent storage. On OpenCV 4.10
+the 0.5-power HAL path uses `std::sqrt`, so negative finite values and
+`-Infinity` become NaN and `+Infinity` stays `+Infinity`. A typed 0x0
+source stays empty; a default empty Mat and non-floating depths are
+rejected.
+
+## Exponential
+
+```ada
+Mapped : Mat := Values.Exp;
+```
+
+`Exp` wraps `cv::exp` on OpenCV 4.10.0. The source must be Float32 or
+Float64. Each channel is processed independently as `e ** source`. The
+result has the source shape, depth, and channel count, and independent
+storage. The implementation is approximate (about 7e-6 relative error for
+Float32 and less than 1e-10 for Float64) and may convert denormalized
+outputs to zero. Special values such as NaN and Infinity are not handled.
+A typed 0x0 source stays empty; a default empty Mat and non-floating
+depths are rejected.
 
 ## Normalize
 
@@ -956,6 +985,8 @@ The C++ `cv::Matx` object itself is not passed through the ABI.
 - `Convert_To`
 - `Convert_Scale_Abs`
 - `Apply_LUT`
+- `Sqrt`
+- `Exp`
 - `Normalize`
 - `Add`
 - `Subtract`
@@ -1152,9 +1183,9 @@ Mixed-depth and Scalar overload proliferation should be added deliberately rathe
 
 ## Milestone 5 — element-wise mathematical functions
 
-- [ ] `Sqrt`
+- [x] `Sqrt`
 - [ ] `Pow`
-- [ ] `Exp`
+- [x] `Exp`
 - [ ] `Log`
 - [ ] `Magnitude`
 - [ ] `Phase`
