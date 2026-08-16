@@ -241,6 +241,16 @@ package OpenCV.Internal.C_API is
       Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_convert_to";
 
+   function Mat_Convert_Scale_Abs
+     (Source : Mat_Handle;
+      Scale  : C_Double;
+      Offset : C_Double;
+      Result : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_convert_scale_abs";
+
    function Mat_Normalize
      (Source : Mat_Handle;
       Kind   : C_Int32;

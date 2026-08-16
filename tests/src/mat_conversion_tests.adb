@@ -17,6 +17,7 @@ package body Mat_Conversion_Tests is
    use type Interfaces.Unsigned_8;
    use type OpenCV.Core.Depth_Type;
    use type OpenCV.Core.Channel_Count;
+   use type OpenCV.Core.UInt8_Vec3.Vector;
 
    use Mat_Test_Support;
 
@@ -167,6 +168,111 @@ package body Mat_Conversion_Tests is
         (Converted.Is_Empty,
          "Converting a default Mat should produce an empty Mat");
    end Convert_To_Empty_Mat_Remains_Empty;
+
+   procedure Convert_Scale_Abs_UInt8_Identity_And_Float32_Mapping
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Identity_Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Identity_Result : OpenCV.Core.Mat;
+      Source          : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Converted       : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.UInt8_Access.Set (Identity_Source, 0, 0, 0);
+      OpenCV.Core.UInt8_Access.Set (Identity_Source, 0, 1, 255);
+      Identity_Result := Identity_Source.Convert_Scale_Abs;
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, -2.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Source, 1, 0, 3.5);
+      OpenCV.Core.Float32_Access.Set (Source, 1, 1, -4.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 2, 1.6);
+      OpenCV.Core.Float32_Access.Set (Source, 1, 2, 200.0);
+      Converted := Source.Convert_Scale_Abs (Scale => 2.0, Offset => 1.0);
+
+      AUnit.Assertions.Assert
+        (Identity_Result.Rows = 1
+         and then Identity_Result.Columns = 2
+         and then Identity_Result.Depth = OpenCV.Core.UInt8
+         and then Identity_Result.Channels = 1
+         and then OpenCV.Core.UInt8_Access.Get (Identity_Result, 0, 0) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Identity_Result, 0, 1) = 255
+         and then Converted.Rows = 2
+         and then Converted.Columns = 3
+         and then Converted.Depth = OpenCV.Core.UInt8
+         and then Converted.Channels = 1
+         and then OpenCV.Core.UInt8_Access.Get (Converted, 0, 0) = 3
+         and then OpenCV.Core.UInt8_Access.Get (Converted, 0, 1) = 3
+         and then OpenCV.Core.UInt8_Access.Get (Converted, 1, 0) = 8
+         and then OpenCV.Core.UInt8_Access.Get (Converted, 1, 1) = 7
+         and then OpenCV.Core.UInt8_Access.Get (Converted, 0, 2) = 4
+         and then OpenCV.Core.UInt8_Access.Get (Converted, 1, 2) = 255,
+         "Convert_Scale_Abs must apply scale, offset, absolute value,"
+         & " rounding,"
+         & " and UInt8 saturation");
+   end Convert_Scale_Abs_UInt8_Identity_And_Float32_Mapping;
+
+   procedure Convert_Scale_Abs_Preserves_Vec3_Regions_And_Ownership
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Converted : OpenCV.Core.Mat;
+   begin
+      declare
+         Source : OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 3,
+              Columns      => 3,
+              Element_Type => (Depth => OpenCV.Core.Float32, Channels => 3));
+         View   : constant OpenCV.Core.Mat :=
+           Source.Region ((X => 1, Y => 0, Width => 2, Height => 3));
+      begin
+         Source.Set_To (OpenCV.Core.Make_Scalar (-2.0, 1.0, 3.5));
+         AUnit.Assertions.Assert
+           (not View.Is_Continuous,
+            "Convert_Scale_Abs test Region must be non-continuous");
+         OpenCV.Core.Float32_Vec3_Access.Set
+           (Source, 0, 1, (2.0, -4.0, 200.0));
+         Converted := View.Convert_Scale_Abs (Scale => 2.0, Offset => 1.0);
+         OpenCV.Core.Float32_Vec3_Access.Set
+           (Source, 0, 1, (99.0, 99.0, 99.0));
+      end;
+
+      AUnit.Assertions.Assert
+        (not Converted.Is_Empty
+         and then Converted.Is_Continuous
+         and then Converted.Rows = 3
+         and then Converted.Columns = 2
+         and then Converted.Depth = OpenCV.Core.UInt8
+         and then Converted.Channels = 3
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Converted, 0, 0)
+                  = (5, 7, 255)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get (Converted, 0, 1)
+                  = (3, 3, 8),
+         "Convert_Scale_Abs must process non-continuous Vec3 Regions"
+         & " per channel"
+         & " and retain independent result storage after source finalization");
+   end Convert_Scale_Abs_Preserves_Vec3_Regions_And_Ownership;
+
+   procedure Convert_Scale_Abs_Empty_Mat_Remains_Empty
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Empty_Source : OpenCV.Core.Mat;
+      Empty_Result : constant OpenCV.Core.Mat :=
+        Empty_Source.Convert_Scale_Abs;
+   begin
+      AUnit.Assertions.Assert
+        (Empty_Result.Is_Empty,
+         "Convert_Scale_Abs must leave an empty Mat empty");
+   end Convert_Scale_Abs_Empty_Mat_Remains_Empty;
 
    procedure Float32_Matx3x3_Has_Value_And_Zero_Based_Index_Semantics
      (Test : in out Mat_Test_Fixture)
@@ -394,6 +500,18 @@ package body Mat_Conversion_Tests is
         (Caller.Create
            ("Convert_To empty Mat remains empty",
             Convert_To_Empty_Mat_Remains_Empty'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Convert_Scale_Abs UInt8 identity and Float32 mapping",
+            Convert_Scale_Abs_UInt8_Identity_And_Float32_Mapping'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Convert_Scale_Abs preserves Vec3 Regions and ownership",
+            Convert_Scale_Abs_Preserves_Vec3_Regions_And_Ownership'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Convert_Scale_Abs empty Mat remains empty",
+            Convert_Scale_Abs_Empty_Mat_Remains_Empty'Access));
       Result.Add_Test
         (Caller.Create
            ("Float32 Matx3x3 has value and zero-based index semantics",

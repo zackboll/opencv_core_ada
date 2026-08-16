@@ -233,6 +233,12 @@ package OpenCV.Core is
       Depth  : Depth_Type;
       Scale  : Long_Float := 1.0;
       Offset : Long_Float := 0.0) return Mat;
+   --  Returns an independent UInt8 Mat with Self's shape and channel count.
+   --  Each channel is converted as saturate_cast<UInt8>
+   --  (abs (Self * Scale + Offset)).
+   function Convert_Scale_Abs
+     (Self : Mat; Scale : Long_Float := 1.0; Offset : Long_Float := 0.0)
+      return Mat;
    --  Returns an independent Mat with Self's shape and element type.  For L1,
    --  L2, and Infinity, Alpha is the target norm and Beta is ignored.  For
    --  Min_Max, Alpha and Beta specify the destination range bounds.

@@ -297,6 +297,16 @@ opencv_core_mat_convert_to(const opencv_core_mat_handle *source,
                            opencv_core_mat_handle **out_mat);
 
 /*
+ * Returns a newly allocated UInt8 Mat with source's shape and channel count.
+ * Each component is converted by OpenCV as saturate_cast<uchar>(abs(source *
+ * scale + offset)).
+ */
+opencv_core_status
+opencv_core_mat_convert_scale_abs(const opencv_core_mat_handle *source,
+                                  double scale, double offset,
+                                  opencv_core_mat_handle **out_mat);
+
+/*
  * Returns a newly allocated, independent Mat normalized with no mask and the
  * same depth as source. For norm modes beta is ignored by OpenCV; for min/max
  * mode alpha and beta define the destination range.
