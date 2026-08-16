@@ -1455,6 +1455,427 @@ package body Mat_Conversion_Tests is
         (Log_Float16'Access, "Log must reject a Float16 source");
    end Log_Rejects_Unsupported_Depths;
 
+   procedure Pow_Float32_Positive_Integer_Power
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, 2.0);
+      Result := Source.Pow (3.0);
+
+      AUnit.Assertions.Assert
+        (Result.Rows = 1
+         and then Result.Columns = 1
+         and then Result.Depth = OpenCV.Core.Float32
+         and then Result.Channels = 1
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 0, 0)),
+                     8.0),
+         "Pow must map Float32 2 ** 3 to 8 and keep metadata");
+   end Pow_Float32_Positive_Integer_Power;
+
+   procedure Pow_Float32_Negative_Base_Integer_Powers
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Even   : OpenCV.Core.Mat;
+      Odd    : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, -2.0);
+      Even := Source.Pow (2.0);
+      Odd := Source.Pow (3.0);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float (OpenCV.Core.Float32_Access.Get (Even, 0, 0)), 4.0)
+         and then Approximately_Equal
+                    (Long_Float (OpenCV.Core.Float32_Access.Get (Odd, 0, 0)),
+                     -8.0),
+         "Pow must preserve the sign of a Float32 negative base for"
+         & " integer powers");
+   end Pow_Float32_Negative_Base_Integer_Powers;
+
+   procedure Pow_Float32_Noninteger_Uses_Absolute_Value
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, -4.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 1, 4.0);
+      Result := Source.Pow (1.5);
+
+      AUnit.Assertions.Assert
+        (Result.Depth = OpenCV.Core.Float32
+         and then OpenCV.Core.Float32_Access.Classify (Result, 0, 0)
+                  = OpenCV.Core.Float32_Access.Not_A_Number
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 0, 1)),
+                     8.0),
+         "OpenCV 4.10 non-integer Pow of a negative finite value is NaN;"
+         & " 4 ** 1.5 is 8");
+   end Pow_Float32_Noninteger_Uses_Absolute_Value;
+
+   procedure Pow_Float64_Preserves_Depth (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Float32_Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Source         : OpenCV.Core.Mat;
+      Result         : OpenCV.Core.Mat;
+      Readable       : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set (Float32_Source, 0, 0, 2.0);
+      Source := Float32_Source.Convert_To (Depth => OpenCV.Core.Float64);
+      Result := Source.Pow (3.0);
+      Readable := Result.Convert_To (Depth => OpenCV.Core.Float32);
+
+      AUnit.Assertions.Assert
+        (Result.Rows = 1
+         and then Result.Columns = 1
+         and then Result.Depth = OpenCV.Core.Float64
+         and then Result.Channels = 1
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Readable, 0, 0)),
+                     8.0),
+         "Pow must preserve Float64 depth for a representative integer"
+         & " power");
+   end Pow_Float64_Preserves_Depth;
+
+   procedure Pow_Special_Powers_Zero_One_Two_And_Half
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Zero   : OpenCV.Core.Mat;
+      One    : OpenCV.Core.Mat;
+      Two    : OpenCV.Core.Mat;
+      Half   : OpenCV.Core.Mat;
+      Inv    : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, 4.0);
+      Zero := Source.Pow (0.0);
+      One := Source.Pow (1.0);
+      Two := Source.Pow (2.0);
+      Half := Source.Pow (0.5);
+      Inv := Source.Pow (-0.5);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float (OpenCV.Core.Float32_Access.Get (Zero, 0, 0)), 1.0)
+         and then Approximately_Equal
+                    (Long_Float (OpenCV.Core.Float32_Access.Get (One, 0, 0)),
+                     4.0)
+         and then Approximately_Equal
+                    (Long_Float (OpenCV.Core.Float32_Access.Get (Two, 0, 0)),
+                     16.0)
+         and then Approximately_Equal
+                    (Long_Float (OpenCV.Core.Float32_Access.Get (Half, 0, 0)),
+                     2.0)
+         and then Approximately_Equal
+                    (Long_Float (OpenCV.Core.Float32_Access.Get (Inv, 0, 0)),
+                     0.5),
+         "Pow must use OpenCV special paths for 0, 1, 2, 0.5, and -0.5");
+   end Pow_Special_Powers_Zero_One_Two_And_Half;
+
+   procedure Pow_Half_Negative_Follows_Sqrt_Path
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, -4.0);
+      Result := Source.Pow (0.5);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Classify (Result, 0, 0)
+         = OpenCV.Core.Float32_Access.Not_A_Number,
+         "Pow 0.5 of a negative finite value must follow the specialized"
+         & " sqrt path and yield NaN");
+   end Pow_Half_Negative_Follows_Sqrt_Path;
+
+   procedure Pow_UInt8_Integer_Power_Saturates (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 0, 2);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 1, 3);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 2, 16);
+      Result := Source.Pow (2.0);
+
+      AUnit.Assertions.Assert
+        (Result.Depth = OpenCV.Core.UInt8
+         and then Result.Channels = 1
+         and then OpenCV.Core.UInt8_Access.Get (Result, 0, 0) = 4
+         and then OpenCV.Core.UInt8_Access.Get (Result, 0, 1) = 9
+         and then OpenCV.Core.UInt8_Access.Get (Result, 0, 2) = 255,
+         "Pow must support UInt8 integer powers and saturate overflow");
+   end Pow_UInt8_Integer_Power_Saturates;
+
+   procedure Pow_Int16_Integer_Power_Preserves_Sign
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Float32_Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Source         : OpenCV.Core.Mat;
+      Result         : OpenCV.Core.Mat;
+      Readable       : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set (Float32_Source, 0, 0, -2.0);
+      OpenCV.Core.Float32_Access.Set (Float32_Source, 0, 1, 3.0);
+      Source := Float32_Source.Convert_To (Depth => OpenCV.Core.Int16);
+      Result := Source.Pow (3.0);
+      Readable := Result.Convert_To (Depth => OpenCV.Core.Float32);
+
+      AUnit.Assertions.Assert
+        (Result.Depth = OpenCV.Core.Int16
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Readable, 0, 0)),
+                     -8.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Readable, 0, 1)),
+                     27.0),
+         "Pow must support Int16 integer powers and preserve sign");
+   end Pow_Int16_Integer_Power_Preserves_Sign;
+
+   procedure Pow_Multi_Channel_Vec3 (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 3));
+      Result : OpenCV.Core.Mat;
+      Pixel  : OpenCV.Core.Float32_Vec3.Vector;
+   begin
+      OpenCV.Core.Float32_Vec3_Access.Set
+        (Source, Row => 0, Column => 0, Value => (2.0, 3.0, 4.0));
+      Result := Source.Pow (2.0);
+      Pixel :=
+        OpenCV.Core.Float32_Vec3_Access.Get (Result, Row => 0, Column => 0);
+
+      AUnit.Assertions.Assert
+        (Result.Channels = 3
+         and then Result.Depth = OpenCV.Core.Float32
+         and then Approximately_Equal (Long_Float (Pixel (0)), 4.0)
+         and then Approximately_Equal (Long_Float (Pixel (1)), 9.0)
+         and then Approximately_Equal (Long_Float (Pixel (2)), 16.0),
+         "Pow must process each Float32 Vec3 channel independently");
+   end Pow_Multi_Channel_Vec3;
+
+   procedure Pow_Noncontiguous_Region_And_Independent_Storage
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Result : OpenCV.Core.Mat;
+   begin
+      declare
+         Source : OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 3,
+              Columns      => 3,
+              Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+         View   : constant OpenCV.Core.Mat :=
+           Source.Region ((X => 1, Y => 0, Width => 2, Height => 3));
+      begin
+         Source.Set_To (OpenCV.Core.Make_Scalar (2.0));
+         OpenCV.Core.Float32_Access.Set (Source, 0, 1, 3.0);
+         AUnit.Assertions.Assert
+           (not View.Is_Continuous, "Pow test Region must be non-continuous");
+         Result := View.Pow (2.0);
+         OpenCV.Core.Float32_Access.Set (Source, 0, 1, 100.0);
+      end;
+
+      AUnit.Assertions.Assert
+        (not Result.Is_Empty
+         and then Result.Is_Continuous
+         and then Result.Rows = 3
+         and then Result.Columns = 2
+         and then Result.Depth = OpenCV.Core.Float32
+         and then Result.Channels = 1
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 0, 0)),
+                     9.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 0, 1)),
+                     4.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 1, 0)),
+                     4.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 1, 1)),
+                     4.0),
+         "Pow must accept a non-contiguous Region and keep independent"
+         & " result storage after source finalization");
+   end Pow_Noncontiguous_Region_And_Independent_Storage;
+
+   procedure Pow_Typed_Empty_And_Default_Empty (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Empty32         : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 0,
+           Columns      => 0,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Empty64         : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 0,
+           Columns      => 0,
+           Element_Type => (Depth => OpenCV.Core.Float64, Channels => 2));
+      Empty8          : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 0,
+           Columns      => 0,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Result32        : constant OpenCV.Core.Mat := Empty32.Pow (1.5);
+      Result64        : constant OpenCV.Core.Mat := Empty64.Pow (3.0);
+      Result8         : constant OpenCV.Core.Mat := Empty8.Pow (2.0);
+      Default         : OpenCV.Core.Mat;
+      Default_Integer : constant OpenCV.Core.Mat := Default.Pow (2.0);
+
+      procedure Pow_Default_Empty_Noninteger is
+         Ignored : constant OpenCV.Core.Mat := Default.Pow (1.5);
+      begin
+         pragma Unreferenced (Ignored);
+      end Pow_Default_Empty_Noninteger;
+   begin
+      AUnit.Assertions.Assert
+        (Result32.Is_Empty
+         and then Result32.Rows = 0
+         and then Result32.Columns = 0
+         and then Result32.Depth = OpenCV.Core.Float32
+         and then Result32.Channels = 1,
+         "Pow must preserve a typed 0x0 Float32 source as an empty result");
+      AUnit.Assertions.Assert
+        (Result64.Is_Empty
+         and then Result64.Rows = 0
+         and then Result64.Columns = 0
+         and then Result64.Depth = OpenCV.Core.Float64
+         and then Result64.Channels = 2,
+         "Pow must preserve a typed 0x0 Float64 source as an empty result");
+      AUnit.Assertions.Assert
+        (Result8.Is_Empty
+         and then Result8.Depth = OpenCV.Core.UInt8
+         and then Result8.Channels = 1,
+         "Pow must preserve a typed 0x0 UInt8 source for an integer power");
+      AUnit.Assertions.Assert
+        (Default_Integer.Is_Empty
+         and then Default_Integer.Depth = OpenCV.Core.UInt8,
+         "Pow must accept a default empty Mat for an integer power");
+      Assert_Raises_OpenCV_Error
+        (Pow_Default_Empty_Noninteger'Access,
+         "Pow must reject a default empty Mat for a non-integer power");
+   end Pow_Typed_Empty_And_Default_Empty;
+
+   procedure Pow_Rejects_Unsupported_Depth_And_Exponent
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+
+      procedure Pow_UInt8_Noninteger is
+         Source  : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+         Ignored : constant OpenCV.Core.Mat := Source.Pow (1.5);
+      begin
+         pragma Unreferenced (Ignored);
+      end Pow_UInt8_Noninteger;
+
+      procedure Pow_Int32_Half is
+         Source  : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.Int32, Channels => 1));
+         Ignored : constant OpenCV.Core.Mat := Source.Pow (0.5);
+      begin
+         pragma Unreferenced (Ignored);
+      end Pow_Int32_Half;
+
+      procedure Pow_Float16_Integer is
+         Source  : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.Float16, Channels => 1));
+         Ignored : constant OpenCV.Core.Mat := Source.Pow (2.0);
+      begin
+         pragma Unreferenced (Ignored);
+      end Pow_Float16_Integer;
+
+      procedure Pow_Float16_Noninteger is
+         Source  : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.Float16, Channels => 1));
+         Ignored : constant OpenCV.Core.Mat := Source.Pow (1.5);
+      begin
+         pragma Unreferenced (Ignored);
+      end Pow_Float16_Noninteger;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Pow_UInt8_Noninteger'Access,
+         "Pow must reject a UInt8 source for a non-integer power");
+      Assert_Raises_OpenCV_Error
+        (Pow_Int32_Half'Access,
+         "Pow must reject an Int32 source for power 0.5");
+      Assert_Raises_OpenCV_Error
+        (Pow_Float16_Integer'Access,
+         "Pow must reject a Float16 source for an integer power");
+      Assert_Raises_OpenCV_Error
+        (Pow_Float16_Noninteger'Access,
+         "Pow must reject a Float16 source for a non-integer power");
+   end Pow_Rejects_Unsupported_Depth_And_Exponent;
+
    procedure Float32_Matx3x3_Has_Value_And_Zero_Based_Index_Semantics
      (Test : in out Mat_Test_Fixture)
    is
@@ -1806,6 +2227,53 @@ package body Mat_Conversion_Tests is
         (Caller.Create
            ("Log rejects unsupported depths",
             Log_Rejects_Unsupported_Depths'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Pow Float32 positive integer power",
+            Pow_Float32_Positive_Integer_Power'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Pow Float32 negative base integer powers",
+            Pow_Float32_Negative_Base_Integer_Powers'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Pow Float32 noninteger negative base follows OpenCV 4.10",
+            Pow_Float32_Noninteger_Uses_Absolute_Value'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Pow Float64 preserves depth",
+            Pow_Float64_Preserves_Depth'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Pow special powers zero one two and half",
+            Pow_Special_Powers_Zero_One_Two_And_Half'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Pow half negative follows sqrt path",
+            Pow_Half_Negative_Follows_Sqrt_Path'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Pow UInt8 integer power saturates",
+            Pow_UInt8_Integer_Power_Saturates'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Pow Int16 integer power preserves sign",
+            Pow_Int16_Integer_Power_Preserves_Sign'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Pow multi-channel Vec3", Pow_Multi_Channel_Vec3'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Pow noncontiguous Region and independent storage",
+            Pow_Noncontiguous_Region_And_Independent_Storage'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Pow typed empty and default empty",
+            Pow_Typed_Empty_And_Default_Empty'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Pow rejects unsupported depth and exponent",
+            Pow_Rejects_Unsupported_Depth_And_Exponent'Access));
       Result.Add_Test
         (Caller.Create
            ("Float32 Matx3x3 has value and zero-based index semantics",

@@ -1758,6 +1758,56 @@ package body OpenCV.Core is
       return Result;
    end Log;
 
+   function Is_Integer_Power (Power : Long_Float) return Boolean is
+      Rounded : constant Long_Float := Long_Float'Rounding (Power);
+   begin
+      if Rounded < Long_Float (Integer'First)
+        or else Rounded > Long_Float (Integer'Last)
+      then
+         return False;
+      end if;
+
+      return abs (Rounded - Power) < Long_Float'Model_Epsilon;
+   end Is_Integer_Power;
+
+   procedure Validate_Pow (Source : Mat; Power : Long_Float) is
+   begin
+      if Source.Depth = Float16 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Pow does not support a Float16 source");
+      end if;
+
+      if Source.Depth = Float32 or else Source.Depth = Float64 then
+         return;
+      end if;
+
+      if not Is_Integer_Power (Power) then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Pow requires a Float32 or Float64 source for a non-integer"
+            & " power");
+      end if;
+   end Validate_Pow;
+
+   function Pow (Self : Mat; Power : Long_Float) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Pow (Self, Power);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Pow
+          (Source => Self.Handle,
+           Power  => OpenCV.Internal.C_API.C_Double (Power),
+           Result => New_Handle'Access);
+      Raise_On_Error (Status, "Mat power operation");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Pow;
+
    function Is_Empty (Self : Mat) return Boolean is
       Empty  : aliased OpenCV.Internal.C_API.C_Boolean :=
         OpenCV.Internal.C_API.C_False;

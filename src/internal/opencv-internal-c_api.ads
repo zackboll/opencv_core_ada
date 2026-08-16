@@ -267,6 +267,11 @@ package OpenCV.Internal.C_API is
      (Source : Mat_Handle; Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_log";
 
+   function Mat_Pow
+     (Source : Mat_Handle; Power : C_Double; Result : access Mat_Handle)
+      return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_pow";
+
    function Mat_Normalize
      (Source : Mat_Handle;
       Kind   : C_Int32;

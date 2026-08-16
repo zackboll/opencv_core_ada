@@ -270,6 +270,19 @@ package OpenCV.Core is
    --  and Infinity is undefined. A typed 0x0 source stays empty. A default
    --  empty Mat and non-floating depths are rejected.
    function Log (Self : Mat) return Mat;
+   --  Returns an independent Mat with Self's shape, depth, and channel count.
+   --  Each channel is processed independently by cv::pow. When Power is an
+   --  integer, source signs are preserved (src(I) ** Power). When Power is
+   --  not an integer, OpenCV documents abs (src(I)) ** Power and Self must
+   --  be Float32 or Float64; on OpenCV 4.10 the general non-integer CPU path
+   --  yields NaN for negative finite values. Integer Power also supports
+   --  UInt8, Int8, UInt16, Int16, and Int32; integer results saturate.
+   --  Powers 0, 1, and 2 use specialized integer paths. Powers 0.5 and -0.5
+   --  use specialized square-root and inverse-square-root paths and require
+   --  Float32 or Float64. Float16 is not supported. Special values such as
+   --  NaN and Infinity are not handled. A typed 0x0 source stays empty. A
+   --  default empty Mat is accepted for integer Power and rejected otherwise.
+   function Pow (Self : Mat; Power : Long_Float) return Mat;
 
    --  Returns an independent Mat with Self's shape and element type.  For L1,
    --  L2, and Infinity, Alpha is the target norm and Beta is ignored.  For
