@@ -2471,6 +2471,39 @@ package body OpenCV.Core is
       return From_C_Scalar (C_Result);
    end Trace;
 
+   function Determinant (Self : Mat) return Long_Float is
+      C_Result : aliased OpenCV.Internal.C_API.C_Double := 0.0;
+      Status   : OpenCV.Internal.C_API.Status;
+   begin
+      if Self.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Determinant requires a non-empty Mat");
+      end if;
+
+      if Self.Rows /= Self.Columns then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Determinant requires a square Mat");
+      end if;
+
+      if Self.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Determinant requires a single-channel Mat");
+      end if;
+
+      if Self.Depth /= Float32 and then Self.Depth /= Float64 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Determinant requires a Float32 or Float64 Mat");
+      end if;
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_Determinant
+          (Source => Self.Handle, Result => C_Result'Access);
+      Raise_On_Error (Status, "Mat determinant operation");
+      return Long_Float (C_Result);
+   end Determinant;
+
    procedure Validate_Reduce_Depth
      (Self : Mat; Kind : Reduction_Kind; Output_Depth : Depth_Type) is
    begin

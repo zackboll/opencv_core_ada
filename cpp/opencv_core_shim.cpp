@@ -3194,6 +3194,29 @@ opencv_core_mat_trace(const opencv_core_mat_handle *mat,
 }
 
 opencv_core_status
+opencv_core_mat_determinant(const opencv_core_mat_handle *source,
+                            double *out_determinant) {
+    clear_error();
+
+    if (out_determinant == nullptr) {
+        return invalid_argument("out_determinant must not be null");
+    }
+
+    *out_determinant = 0.0;
+
+    if (source == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        *out_determinant = cv::determinant(source->value);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_mean(const opencv_core_mat_handle *mat,
                      opencv_core_scalar *out_mean) {
     clear_error();

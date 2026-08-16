@@ -734,6 +734,13 @@ package OpenCV.Internal.C_API is
    function Mat_Trace (Self : Mat_Handle; Result : access Scalar) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_trace";
 
+   function Mat_Determinant
+     (Source : Mat_Handle; Result : access C_Double) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_determinant";
+
    function Mat_Mean (Self : Mat_Handle; Result : access Scalar) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_mean";
 

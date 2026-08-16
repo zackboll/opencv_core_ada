@@ -817,6 +817,15 @@ opencv_core_mat_trace(const opencv_core_mat_handle *mat,
                       opencv_core_scalar *out_trace);
 
 /*
+ * Computes the determinant of a borrowed non-empty square single-channel
+ * floating Mat. Supported types are CV_32FC1 and CV_64FC1. A value of 0.0
+ * is a successful singular-matrix result, not an ABI failure.
+ */
+opencv_core_status
+opencv_core_mat_determinant(const opencv_core_mat_handle *source,
+                            double *out_determinant);
+
+/*
  * Computes unmasked per-channel mean values. Both operations support one to
  * four channels so each complete result fits opencv_core_scalar. Mean accepts
  * empty Mats and returns all zeroes; mean/stddev requires a non-empty Mat.

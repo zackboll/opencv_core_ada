@@ -359,6 +359,290 @@ package body Mat_Reduction_Tests is
          "Trace must reject unsupported Float16 Mats");
    end Trace_Handles_Regions_Empty_And_Invalid_Types;
 
+   procedure Fill_2x2
+     (Image : in out OpenCV.Core.Mat; A, B, C, D : OpenCV.Core.Float32_Value)
+   is
+   begin
+      OpenCV.Core.Float32_Access.Set (Image, 0, 0, A);
+      OpenCV.Core.Float32_Access.Set (Image, 0, 1, B);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 0, C);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 1, D);
+   end Fill_2x2;
+
+   function Unchanged_2x2
+     (Image : OpenCV.Core.Mat; A, B, C, D : OpenCV.Core.Float32_Value)
+      return Boolean
+   is (OpenCV.Core.Float32_Access.Get (Image, 0, 0) = A
+       and then OpenCV.Core.Float32_Access.Get (Image, 0, 1) = B
+       and then OpenCV.Core.Float32_Access.Get (Image, 1, 0) = C
+       and then OpenCV.Core.Float32_Access.Get (Image, 1, 1) = D);
+
+   procedure Determinant_1x1_Uses_Sole_Float32_Value
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Image, 0, 0, 7.0);
+
+      AUnit.Assertions.Assert
+        (Image.Determinant = 7.0,
+         "A 1x1 Determinant must return the sole matrix value");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Image, 0, 0) = 7.0,
+         "Determinant must not modify a 1x1 source");
+   end Determinant_1x1_Uses_Sole_Float32_Value;
+
+   procedure Determinant_2x2_Uses_Direct_Path (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+   begin
+      Fill_2x2 (Image, 4.0, 7.0, 2.0, 6.0);
+
+      AUnit.Assertions.Assert
+        (Image.Determinant = 10.0,
+         "A 2x2 Determinant must use OpenCV's direct formula");
+      AUnit.Assertions.Assert
+        (Unchanged_2x2 (Image, 4.0, 7.0, 2.0, 6.0),
+         "Determinant must not modify a 2x2 source");
+   end Determinant_2x2_Uses_Direct_Path;
+
+   procedure Determinant_2x2_Preserves_Sign (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+   begin
+      Fill_2x2 (Image, 1.0, 2.0, 3.0, 4.0);
+
+      AUnit.Assertions.Assert
+        (Image.Determinant = -2.0,
+         "Determinant must preserve a negative sign");
+   end Determinant_2x2_Preserves_Sign;
+
+   procedure Determinant_3x3_Uses_Direct_Path (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Image, 0, 0, 6.0);
+      OpenCV.Core.Float32_Access.Set (Image, 0, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Image, 0, 2, 1.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 0, 4.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 1, -2.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 2, 5.0);
+      OpenCV.Core.Float32_Access.Set (Image, 2, 0, 2.0);
+      OpenCV.Core.Float32_Access.Set (Image, 2, 1, 8.0);
+      OpenCV.Core.Float32_Access.Set (Image, 2, 2, 7.0);
+
+      AUnit.Assertions.Assert
+        (Image.Determinant = -306.0,
+         "A 3x3 Determinant must use OpenCV's dedicated direct path");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Image, 0, 0) = 6.0
+         and then OpenCV.Core.Float32_Access.Get (Image, 1, 1) = -2.0
+         and then OpenCV.Core.Float32_Access.Get (Image, 2, 2) = 7.0,
+         "Determinant must not modify a 3x3 source");
+   end Determinant_3x3_Uses_Direct_Path;
+
+   procedure Determinant_4x4_Uses_LU_Path (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 4, (OpenCV.Core.Float32, 1));
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.Float32_Access.Set (Image, 0, 0, 2.0);
+      OpenCV.Core.Float32_Access.Set (Image, 0, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 1, 3.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 2, 1.0);
+      OpenCV.Core.Float32_Access.Set (Image, 2, 2, 4.0);
+      OpenCV.Core.Float32_Access.Set (Image, 2, 3, 1.0);
+      OpenCV.Core.Float32_Access.Set (Image, 3, 3, 5.0);
+
+      AUnit.Assertions.Assert
+        (Image.Determinant = 120.0,
+         "A 4x4 upper-triangular Determinant must follow OpenCV's LU path");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Image, 0, 0) = 2.0
+         and then OpenCV.Core.Float32_Access.Get (Image, 1, 1) = 3.0
+         and then OpenCV.Core.Float32_Access.Get (Image, 2, 2) = 4.0
+         and then OpenCV.Core.Float32_Access.Get (Image, 3, 3) = 5.0,
+         "Determinant must not modify a 4x4 source");
+   end Determinant_4x4_Uses_LU_Path;
+
+   procedure Determinant_Singular_4x4_Returns_Zero
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 4, (OpenCV.Core.Float32, 1));
+      Value : Long_Float;
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.Float32_Access.Set (Image, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Image, 0, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Image, 0, 2, 3.0);
+      OpenCV.Core.Float32_Access.Set (Image, 0, 3, 4.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 2, 3.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 3, 4.0);
+      OpenCV.Core.Float32_Access.Set (Image, 2, 0, 5.0);
+      OpenCV.Core.Float32_Access.Set (Image, 2, 2, 6.0);
+      OpenCV.Core.Float32_Access.Set (Image, 3, 1, 7.0);
+      OpenCV.Core.Float32_Access.Set (Image, 3, 3, 8.0);
+      Value := Image.Determinant;
+
+      AUnit.Assertions.Assert
+        (Value = 0.0,
+         "A singular 4x4 matrix must return determinant 0 without error");
+   end Determinant_Singular_4x4_Returns_Zero;
+
+   procedure Determinant_Supports_Float64 (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Float32_Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Image         : OpenCV.Core.Mat;
+   begin
+      Fill_2x2 (Float32_Image, 4.0, 7.0, 2.0, 6.0);
+      Image := Float32_Image.Convert_To (OpenCV.Core.Float64);
+
+      AUnit.Assertions.Assert
+        (Image.Depth = OpenCV.Core.Float64 and then Image.Determinant = 10.0,
+         "Determinant must succeed on an actual Float64 matrix");
+   end Determinant_Supports_Float64;
+
+   procedure Determinant_Supports_Noncontiguous_Region
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 4, (OpenCV.Core.Float32, 1));
+      Region : OpenCV.Core.Mat;
+   begin
+      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Region := Parent.Region ((X => 1, Y => 0, Width => 2, Height => 2));
+      Fill_2x2 (Region, 4.0, 7.0, 2.0, 6.0);
+
+      AUnit.Assertions.Assert
+        (not Region.Is_Continuous,
+         "The Region used for Determinant must be non-contiguous");
+      AUnit.Assertions.Assert
+        (Region.Determinant = 10.0,
+         "Determinant must support a non-contiguous square Region");
+      AUnit.Assertions.Assert
+        (Unchanged_2x2 (Region, 4.0, 7.0, 2.0, 6.0)
+         and then OpenCV.Core.Float32_Access.Get (Parent, 0, 0) = 99.0
+         and then OpenCV.Core.Float32_Access.Get (Parent, 0, 3) = 99.0,
+         "Determinant must not modify the Region or its parent");
+   end Determinant_Supports_Noncontiguous_Region;
+
+   procedure Determinant_Equals_Transpose_Determinant
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+   begin
+      Fill_2x2 (Image, 1.0, 2.0, 3.0, 4.0);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Image.Determinant, Image.Transpose.Determinant),
+         "det(A) must equal det(A.Transpose) for an ordinary finite matrix");
+   end Determinant_Equals_Transpose_Determinant;
+
+   procedure Determinant_Rejects_Empty_And_Invalid_Types
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Default_Empty : OpenCV.Core.Mat;
+      Empty32       : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 1));
+      Empty64       : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float64, 1));
+      Rectangular   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Multi         : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 3));
+      UInt8_Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+      Int32_Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Int32, 1));
+      Float16_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float16, 1));
+
+      procedure Check_Default is
+         Value : constant Long_Float := Default_Empty.Determinant;
+      begin
+         pragma Unreferenced (Value);
+      end Check_Default;
+
+      procedure Check_Empty32 is
+         Value : constant Long_Float := Empty32.Determinant;
+      begin
+         pragma Unreferenced (Value);
+      end Check_Empty32;
+
+      procedure Check_Empty64 is
+         Value : constant Long_Float := Empty64.Determinant;
+      begin
+         pragma Unreferenced (Value);
+      end Check_Empty64;
+
+      procedure Check_Rectangular is
+         Value : constant Long_Float := Rectangular.Determinant;
+      begin
+         pragma Unreferenced (Value);
+      end Check_Rectangular;
+
+      procedure Check_Multi is
+         Value : constant Long_Float := Multi.Determinant;
+      begin
+         pragma Unreferenced (Value);
+      end Check_Multi;
+
+      procedure Check_UInt8 is
+         Value : constant Long_Float := UInt8_Image.Determinant;
+      begin
+         pragma Unreferenced (Value);
+      end Check_UInt8;
+
+      procedure Check_Int32 is
+         Value : constant Long_Float := Int32_Image.Determinant;
+      begin
+         pragma Unreferenced (Value);
+      end Check_Int32;
+
+      procedure Check_Float16 is
+         Value : constant Long_Float := Float16_Image.Determinant;
+      begin
+         pragma Unreferenced (Value);
+      end Check_Float16;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Check_Default'Access, "Determinant must reject a default empty Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_Empty32'Access,
+         "Determinant must reject a typed empty Float32 Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_Empty64'Access,
+         "Determinant must reject a typed empty Float64 Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_Rectangular'Access,
+         "Determinant must reject a rectangular Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_Multi'Access, "Determinant must reject a multi-channel Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_UInt8'Access, "Determinant must reject UInt8 Mats");
+      Assert_Raises_OpenCV_Error
+        (Check_Int32'Access, "Determinant must reject Int32 Mats");
+      Assert_Raises_OpenCV_Error
+        (Check_Float16'Access, "Determinant must reject Float16 Mats");
+   end Determinant_Rejects_Empty_And_Invalid_Types;
+
    procedure Vec3_Mean_Returns_Independent_Channel_Values
      (Test : in out Mat_Test_Fixture)
    is
@@ -1946,6 +2230,47 @@ package body Mat_Reduction_Tests is
         (Caller.Create
            ("Trace handles Regions, empty Mats, and invalid types",
             Trace_Handles_Regions_Empty_And_Invalid_Types'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Determinant 1x1 uses the sole Float32 value",
+            Determinant_1x1_Uses_Sole_Float32_Value'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Determinant 2x2 uses the direct path",
+            Determinant_2x2_Uses_Direct_Path'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Determinant 2x2 preserves sign",
+            Determinant_2x2_Preserves_Sign'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Determinant 3x3 uses the direct path",
+            Determinant_3x3_Uses_Direct_Path'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Determinant 4x4 uses the LU path",
+            Determinant_4x4_Uses_LU_Path'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Determinant of a singular 4x4 returns zero",
+            Determinant_Singular_4x4_Returns_Zero'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Determinant supports Float64",
+            Determinant_Supports_Float64'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Determinant supports a non-contiguous Region",
+            Determinant_Supports_Noncontiguous_Region'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Determinant equals the transpose determinant",
+            Determinant_Equals_Transpose_Determinant'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Determinant rejects empty and invalid types",
+            Determinant_Rejects_Empty_And_Invalid_Types'Access));
+
       Result.Add_Test
         (Caller.Create
            ("Reduce Sum maps axes, depth, and independent storage",

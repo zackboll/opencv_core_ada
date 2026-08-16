@@ -517,6 +517,15 @@ package OpenCV.Core is
    --  Scalar's complete representation. Float16 Mats are not supported by
    --  OpenCV's trace implementation. Non-contiguous views are accepted.
    function Trace (Self : Mat) return Scalar;
+   --  Returns the determinant of a non-empty square single-channel Mat as
+   --  Long_Float. Self must be Float32 or Float64. 1x1 through 3x3 use
+   --  OpenCV's direct formulas; larger matrices use OpenCV LU factorization
+   --  with partial pivoting. Singular matrices return 0. Self is not
+   --  modified. Non-contiguous Regions are supported. Empty Mats are
+   --  rejected, including typed 0x0 matrices. Exact floating-point
+   --  arithmetic is not promised for arbitrary matrices.
+   function Determinant (Self : Mat) return Long_Float;
+
    --  Reduces a two-dimensional Mat independently in every channel.
    --  Across_Rows
    --  produces one row; Across_Columns produces one column. The result owns
