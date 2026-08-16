@@ -826,6 +826,18 @@ opencv_core_mat_determinant(const opencv_core_mat_handle *source,
                             double *out_determinant);
 
 /*
+ * Inverts a borrowed square single-channel floating Mat with OpenCV
+ * DECOMP_LU. Supported types are CV_32FC1 and CV_64FC1. Source is not
+ * modified. A singular matrix is a successful result: out_invertible is
+ * 0 and out_mat remains null. A non-singular matrix sets out_invertible
+ * to 1 and publishes an independently owned result handle.
+ */
+opencv_core_status
+opencv_core_mat_invert(const opencv_core_mat_handle *source,
+                       uint8_t *out_invertible,
+                       opencv_core_mat_handle **out_mat);
+
+/*
  * Computes unmasked per-channel mean values. Both operations support one to
  * four channels so each complete result fits opencv_core_scalar. Mean accepts
  * empty Mats and returns all zeroes; mean/stddev requires a non-empty Mat.

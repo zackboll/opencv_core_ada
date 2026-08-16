@@ -143,6 +143,20 @@ package OpenCV.Core is
       Y : Mat;
    end record;
 
+   --  Discriminated result of Invert. Inverse is present only when
+   --  Invertible is True. Inverse has normal Mat controlled ownership
+   --  and independent storage. A singular matrix yields Invertible
+   --  False rather than a zero-filled placeholder inverse.
+   type Inversion_Result (Invertible : Boolean := False) is record
+      case Invertible is
+         when True =>
+            Inverse : Mat;
+
+         when False =>
+            null;
+      end case;
+   end record;
+
    --  A zero-based, owning sequence of Mats. An empty result has the null
    --  range 1 .. 0. Each element has normal Mat controlled ownership and
    --  shallow-copy assignment semantics.
@@ -525,6 +539,18 @@ package OpenCV.Core is
    --  rejected, including typed 0x0 matrices. Exact floating-point
    --  arithmetic is not promised for arbitrary matrices.
    function Determinant (Self : Mat) return Long_Float;
+   --  Performs ordinary matrix inversion using OpenCV 4.10 DECOMP_LU.
+   --  Self must be a non-empty square single-channel Float32 or Float64
+   --  Mat. 1x1 through 3x3 use OpenCV's direct paths; larger matrices
+   --  use OpenCV LU factorization. A non-singular matrix returns
+   --  Invertible True and an Inverse with Self's depth and dimensions
+   --  and independently owned storage. A singular matrix returns
+   --  Invertible False and does not raise OpenCV_Error. Self is never
+   --  modified. Non-contiguous Regions are supported. Empty Mats,
+   --  including typed 0x0 matrices, rectangular Mats, multi-channel
+   --  Mats, and unsupported depths are rejected. Numerical rounding is
+   --  inherent in floating-point inversion.
+   function Invert (Self : Mat) return Inversion_Result;
 
    --  Reduces a two-dimensional Mat independently in every channel.
    --  Across_Rows

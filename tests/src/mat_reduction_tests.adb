@@ -643,6 +643,430 @@ package body Mat_Reduction_Tests is
         (Check_Float16'Access, "Determinant must reject Float16 Mats");
    end Determinant_Rejects_Empty_And_Invalid_Types;
 
+   function Invertible_2x2
+     (Image : OpenCV.Core.Mat; A, B, C, D : Long_Float) return Boolean
+   is (Image.Rows = 2
+       and then Image.Columns = 2
+       and then Image.Channels = 1
+       and then Approximately_Equal
+                  (Long_Float (OpenCV.Core.Float32_Access.Get (Image, 0, 0)),
+                   A)
+       and then Approximately_Equal
+                  (Long_Float (OpenCV.Core.Float32_Access.Get (Image, 0, 1)),
+                   B)
+       and then Approximately_Equal
+                  (Long_Float (OpenCV.Core.Float32_Access.Get (Image, 1, 0)),
+                   C)
+       and then Approximately_Equal
+                  (Long_Float (OpenCV.Core.Float32_Access.Get (Image, 1, 1)),
+                   D));
+
+   procedure Invert_1x1_Uses_Direct_Path (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Image  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Inversion_Result;
+   begin
+      OpenCV.Core.Float32_Access.Set (Image, 0, 0, 4.0);
+      Result := Image.Invert;
+
+      AUnit.Assertions.Assert
+        (Result.Invertible
+         and then Result.Inverse.Rows = 1
+         and then Result.Inverse.Columns = 1
+         and then Result.Inverse.Depth = OpenCV.Core.Float32
+         and then Result.Inverse.Channels = 1
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result.Inverse, 0, 0)),
+                     0.25),
+         "A 1x1 Invert must use OpenCV's direct reciprocal path");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Image, 0, 0) = 4.0,
+         "Invert must not modify a 1x1 source");
+   end Invert_1x1_Uses_Direct_Path;
+
+   procedure Invert_2x2_Uses_Known_Inverse (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Image  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Inversion_Result;
+   begin
+      Fill_2x2 (Image, 4.0, 7.0, 2.0, 6.0);
+      Result := Image.Invert;
+
+      AUnit.Assertions.Assert
+        (Result.Invertible
+         and then Result.Inverse.Rows = 2
+         and then Result.Inverse.Columns = 2
+         and then Result.Inverse.Depth = OpenCV.Core.Float32
+         and then Result.Inverse.Channels = 1
+         and then Invertible_2x2 (Result.Inverse, 0.6, -0.7, -0.2, 0.4),
+         "A 2x2 Invert must return the known inverse");
+      AUnit.Assertions.Assert
+        (Unchanged_2x2 (Image, 4.0, 7.0, 2.0, 6.0),
+         "Invert must not modify a 2x2 source");
+   end Invert_2x2_Uses_Known_Inverse;
+
+   procedure Invert_3x3_Uses_Direct_Path (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Image  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Inversion_Result;
+   begin
+      OpenCV.Core.Float32_Access.Set (Image, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Image, 0, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Image, 0, 2, 3.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 0, 0.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 2, 4.0);
+      OpenCV.Core.Float32_Access.Set (Image, 2, 0, 5.0);
+      OpenCV.Core.Float32_Access.Set (Image, 2, 1, 6.0);
+      OpenCV.Core.Float32_Access.Set (Image, 2, 2, 0.0);
+      Result := Image.Invert;
+
+      AUnit.Assertions.Assert
+        (Result.Invertible
+         and then Result.Inverse.Rows = 3
+         and then Result.Inverse.Columns = 3
+         and then Result.Inverse.Depth = OpenCV.Core.Float32
+         and then Result.Inverse.Channels = 1
+         and then OpenCV.Core.Float32_Access.Get (Result.Inverse, 0, 0) = -24.0
+         and then OpenCV.Core.Float32_Access.Get (Result.Inverse, 0, 1) = 18.0
+         and then OpenCV.Core.Float32_Access.Get (Result.Inverse, 0, 2) = 5.0
+         and then OpenCV.Core.Float32_Access.Get (Result.Inverse, 1, 0) = 20.0
+         and then OpenCV.Core.Float32_Access.Get (Result.Inverse, 1, 1) = -15.0
+         and then OpenCV.Core.Float32_Access.Get (Result.Inverse, 1, 2) = -4.0
+         and then OpenCV.Core.Float32_Access.Get (Result.Inverse, 2, 0) = -5.0
+         and then OpenCV.Core.Float32_Access.Get (Result.Inverse, 2, 1) = 4.0
+         and then OpenCV.Core.Float32_Access.Get (Result.Inverse, 2, 2) = 1.0,
+         "A 3x3 Invert must use OpenCV's dedicated direct path");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Image, 0, 0) = 1.0
+         and then OpenCV.Core.Float32_Access.Get (Image, 1, 1) = 1.0
+         and then OpenCV.Core.Float32_Access.Get (Image, 2, 0) = 5.0,
+         "Invert must not modify a 3x3 source");
+   end Invert_3x3_Uses_Direct_Path;
+
+   procedure Invert_4x4_Uses_LU_Path (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Image  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 4, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Inversion_Result;
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.Float32_Access.Set (Image, 0, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Image, 2, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Image, 2, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Image, 2, 2, 1.0);
+      OpenCV.Core.Float32_Access.Set (Image, 3, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Image, 3, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Image, 3, 2, 1.0);
+      OpenCV.Core.Float32_Access.Set (Image, 3, 3, 1.0);
+      Result := Image.Invert;
+
+      AUnit.Assertions.Assert
+        (Result.Invertible
+         and then Result.Inverse.Rows = 4
+         and then Result.Inverse.Columns = 4
+         and then Result.Inverse.Depth = OpenCV.Core.Float32
+         and then Result.Inverse.Channels = 1
+         and then OpenCV.Core.Float32_Access.Get (Result.Inverse, 0, 0) = -1.0
+         and then OpenCV.Core.Float32_Access.Get (Result.Inverse, 0, 1) = 1.0
+         and then OpenCV.Core.Float32_Access.Get (Result.Inverse, 0, 2) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Result.Inverse, 0, 3) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Result.Inverse, 1, 0) = 1.0
+         and then OpenCV.Core.Float32_Access.Get (Result.Inverse, 1, 1) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Result.Inverse, 1, 2) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Result.Inverse, 1, 3) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Result.Inverse, 2, 0) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Result.Inverse, 2, 1) = -1.0
+         and then OpenCV.Core.Float32_Access.Get (Result.Inverse, 2, 2) = 1.0
+         and then OpenCV.Core.Float32_Access.Get (Result.Inverse, 2, 3) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Result.Inverse, 3, 0) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Result.Inverse, 3, 1) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Result.Inverse, 3, 2) = -1.0
+         and then OpenCV.Core.Float32_Access.Get (Result.Inverse, 3, 3) = 1.0,
+         "A 4x4 Invert must follow OpenCV's LU path, including a row pivot");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Image, 0, 0) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Image, 0, 1) = 1.0
+         and then OpenCV.Core.Float32_Access.Get (Image, 3, 3) = 1.0,
+         "Invert must not modify a 4x4 source");
+   end Invert_4x4_Uses_LU_Path;
+
+   procedure Invert_Singular_2x2_Is_Not_An_Error
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Inversion_Result;
+   begin
+      Fill_2x2 (Image, 1.0, 2.0, 2.0, 4.0);
+      Result := Image.Invert;
+
+      AUnit.Assertions.Assert
+        (not Result.Invertible,
+         "A singular 2x2 matrix must return Invertible False without error");
+      AUnit.Assertions.Assert
+        (Unchanged_2x2 (Image, 1.0, 2.0, 2.0, 4.0),
+         "Invert must not modify a singular 2x2 source");
+   end Invert_Singular_2x2_Is_Not_An_Error;
+
+   procedure Invert_Singular_4x4_Is_Not_An_Error
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 4, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Inversion_Result;
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.Float32_Access.Set (Image, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Image, 0, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Image, 0, 2, 3.0);
+      OpenCV.Core.Float32_Access.Set (Image, 0, 3, 4.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 2, 3.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 3, 4.0);
+      OpenCV.Core.Float32_Access.Set (Image, 2, 0, 5.0);
+      OpenCV.Core.Float32_Access.Set (Image, 2, 2, 6.0);
+      OpenCV.Core.Float32_Access.Set (Image, 3, 1, 7.0);
+      OpenCV.Core.Float32_Access.Set (Image, 3, 3, 8.0);
+      Result := Image.Invert;
+
+      AUnit.Assertions.Assert
+        (not Result.Invertible,
+         "A singular 4x4 matrix must return Invertible False without error");
+   end Invert_Singular_4x4_Is_Not_An_Error;
+
+   procedure Invert_Determinant_Matches_Reciprocal
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Inversion_Result;
+   begin
+      Fill_2x2 (Image, 4.0, 7.0, 2.0, 6.0);
+      Result := Image.Invert;
+
+      AUnit.Assertions.Assert
+        (Result.Invertible
+         and then Approximately_Equal
+                    (Result.Inverse.Determinant, 1.0 / Image.Determinant),
+         "det(A.Invert.Inverse) must equal 1 / det(A) for a well-conditioned"
+         & " matrix");
+   end Invert_Determinant_Matches_Reciprocal;
+
+   procedure Invert_Supports_Float64 (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Float32_Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Image         : OpenCV.Core.Mat;
+      Result        : OpenCV.Core.Inversion_Result;
+   begin
+      Fill_2x2 (Float32_Image, 4.0, 7.0, 2.0, 6.0);
+      Image := Float32_Image.Convert_To (OpenCV.Core.Float64);
+      Result := Image.Invert;
+
+      AUnit.Assertions.Assert
+        (Result.Invertible
+         and then Result.Inverse.Depth = OpenCV.Core.Float64
+         and then Result.Inverse.Rows = 2
+         and then Result.Inverse.Columns = 2
+         and then Result.Inverse.Channels = 1
+         and then Approximately_Equal
+                    (Result.Inverse.Determinant, 1.0 / Image.Determinant),
+         "Invert must preserve Float64 depth, dimensions, and invertibility");
+   end Invert_Supports_Float64;
+
+   procedure Invert_Supports_Noncontiguous_Region
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 4, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Inversion_Result;
+   begin
+      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+
+      declare
+         Region : OpenCV.Core.Mat :=
+           Parent.Region ((X => 1, Y => 0, Width => 2, Height => 2));
+      begin
+         Fill_2x2 (Region, 4.0, 7.0, 2.0, 6.0);
+         AUnit.Assertions.Assert
+           (not Region.Is_Continuous,
+            "The Region used for Invert must be non-contiguous");
+         Result := Region.Invert;
+         AUnit.Assertions.Assert
+           (Result.Invertible
+            and then Invertible_2x2 (Result.Inverse, 0.6, -0.7, -0.2, 0.4),
+            "Invert must support a non-contiguous square Region");
+         AUnit.Assertions.Assert
+           (Unchanged_2x2 (Region, 4.0, 7.0, 2.0, 6.0)
+            and then OpenCV.Core.Float32_Access.Get (Parent, 0, 0) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 0, 3) = 99.0,
+            "Invert must not modify the Region or its parent");
+         OpenCV.Core.Float32_Access.Set (Region, 0, 0, 50.0);
+         AUnit.Assertions.Assert
+           (Invertible_2x2 (Result.Inverse, 0.6, -0.7, -0.2, 0.4),
+            "Mutating a Region must not change its inverse");
+         OpenCV.Core.Float32_Access.Set (Result.Inverse, 0, 0, 8.0);
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float32_Access.Get (Region, 0, 0) = 50.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 0, 1) = 50.0,
+            "Mutating an inverse must not change the Region or parent");
+      end;
+
+      AUnit.Assertions.Assert
+        (Result.Invertible
+         and then OpenCV.Core.Float32_Access.Get (Result.Inverse, 0, 0) = 8.0
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result.Inverse, 1, 1)),
+                     0.4),
+         "An inverse must remain valid after Region finalization");
+   end Invert_Supports_Noncontiguous_Region;
+
+   procedure Invert_Result_Owns_Independent_Storage
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Inversion_Result;
+   begin
+      Fill_2x2 (Source, 4.0, 7.0, 2.0, 6.0);
+      Result := Source.Invert;
+      AUnit.Assertions.Assert
+        (Result.Invertible, "The independence source must be invertible");
+
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, 99.0);
+      AUnit.Assertions.Assert
+        (Invertible_2x2 (Result.Inverse, 0.6, -0.7, -0.2, 0.4),
+         "Mutating the source must not change its inverse");
+      OpenCV.Core.Float32_Access.Set (Result.Inverse, 1, 1, 8.0);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Source, 0, 0) = 99.0
+         and then OpenCV.Core.Float32_Access.Get (Source, 1, 1) = 6.0,
+         "Mutating the inverse must not change its source");
+   end Invert_Result_Owns_Independent_Storage;
+
+   procedure Invert_Transpose_Relationship (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Image                : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Inverse_Of_Transpose : OpenCV.Core.Inversion_Result;
+      Transpose_Of_Inverse : OpenCV.Core.Mat;
+   begin
+      Fill_2x2 (Image, 4.0, 7.0, 2.0, 6.0);
+      Inverse_Of_Transpose := Image.Transpose.Invert;
+      Transpose_Of_Inverse := Image.Invert.Inverse.Transpose;
+
+      AUnit.Assertions.Assert
+        (Inverse_Of_Transpose.Invertible
+         and then Invertible_2x2
+                    (Inverse_Of_Transpose.Inverse, 0.6, -0.2, -0.7, 0.4)
+         and then Invertible_2x2 (Transpose_Of_Inverse, 0.6, -0.2, -0.7, 0.4),
+         "The inverse of a transpose must match the transpose of the inverse");
+   end Invert_Transpose_Relationship;
+
+   procedure Invert_Rejects_Empty_And_Invalid_Types
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Default_Empty : OpenCV.Core.Mat;
+      Empty32       : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 1));
+      Empty64       : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float64, 1));
+      Rectangular   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Multi         : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 3));
+      UInt8_Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+      Int32_Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Int32, 1));
+      Float16_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float16, 1));
+
+      procedure Check_Default is
+         Result : constant OpenCV.Core.Inversion_Result :=
+           Default_Empty.Invert;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Default;
+
+      procedure Check_Empty32 is
+         Result : constant OpenCV.Core.Inversion_Result := Empty32.Invert;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Empty32;
+
+      procedure Check_Empty64 is
+         Result : constant OpenCV.Core.Inversion_Result := Empty64.Invert;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Empty64;
+
+      procedure Check_Rectangular is
+         Result : constant OpenCV.Core.Inversion_Result := Rectangular.Invert;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Rectangular;
+
+      procedure Check_Multi is
+         Result : constant OpenCV.Core.Inversion_Result := Multi.Invert;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Multi;
+
+      procedure Check_UInt8 is
+         Result : constant OpenCV.Core.Inversion_Result := UInt8_Image.Invert;
+      begin
+         pragma Unreferenced (Result);
+      end Check_UInt8;
+
+      procedure Check_Int32 is
+         Result : constant OpenCV.Core.Inversion_Result := Int32_Image.Invert;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Int32;
+
+      procedure Check_Float16 is
+         Result : constant OpenCV.Core.Inversion_Result :=
+           Float16_Image.Invert;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Float16;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Check_Default'Access, "Invert must reject a default empty Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_Empty32'Access, "Invert must reject a typed empty Float32 Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_Empty64'Access, "Invert must reject a typed empty Float64 Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_Rectangular'Access,
+         "Invert must reject a rectangular Mat; LU inversion is not a"
+         & " pseudo-inverse");
+      Assert_Raises_OpenCV_Error
+        (Check_Multi'Access, "Invert must reject a multi-channel Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_UInt8'Access, "Invert must reject UInt8 Mats");
+      Assert_Raises_OpenCV_Error
+        (Check_Int32'Access, "Invert must reject Int32 Mats");
+      Assert_Raises_OpenCV_Error
+        (Check_Float16'Access, "Invert must reject Float16 Mats");
+   end Invert_Rejects_Empty_And_Invalid_Types;
+
    procedure Vec3_Mean_Returns_Independent_Channel_Values
      (Test : in out Mat_Test_Fixture)
    is
@@ -2270,6 +2694,52 @@ package body Mat_Reduction_Tests is
         (Caller.Create
            ("Determinant rejects empty and invalid types",
             Determinant_Rejects_Empty_And_Invalid_Types'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Invert 1x1 uses the direct path",
+            Invert_1x1_Uses_Direct_Path'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Invert 2x2 uses a known inverse",
+            Invert_2x2_Uses_Known_Inverse'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Invert 3x3 uses the direct path",
+            Invert_3x3_Uses_Direct_Path'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Invert 4x4 uses the LU path", Invert_4x4_Uses_LU_Path'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Invert of a singular 2x2 is not an error",
+            Invert_Singular_2x2_Is_Not_An_Error'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Invert of a singular 4x4 is not an error",
+            Invert_Singular_4x4_Is_Not_An_Error'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Invert determinant matches the reciprocal",
+            Invert_Determinant_Matches_Reciprocal'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Invert supports Float64", Invert_Supports_Float64'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Invert supports a non-contiguous Region",
+            Invert_Supports_Noncontiguous_Region'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Invert result owns independent storage",
+            Invert_Result_Owns_Independent_Storage'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Invert transpose relationship",
+            Invert_Transpose_Relationship'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Invert rejects empty and invalid types",
+            Invert_Rejects_Empty_And_Invalid_Types'Access));
 
       Result.Add_Test
         (Caller.Create

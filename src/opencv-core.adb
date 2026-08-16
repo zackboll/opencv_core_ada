@@ -2504,6 +2504,77 @@ package body OpenCV.Core is
       return Long_Float (C_Result);
    end Determinant;
 
+   function Invert (Self : Mat) return Inversion_Result is
+      Invertible : aliased OpenCV.Internal.C_API.C_Boolean :=
+        OpenCV.Internal.C_API.C_False;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      if Self.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Invert requires a non-empty Mat");
+      end if;
+
+      if Self.Rows /= Self.Columns then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Invert requires a square Mat");
+      end if;
+
+      if Self.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Invert requires a single-channel Mat");
+      end if;
+
+      if Self.Depth /= Float32 and then Self.Depth /= Float64 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Invert requires a Float32 or Float64 Mat");
+      end if;
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_Invert
+          (Source     => Self.Handle,
+           Invertible => Invertible'Access,
+           Result     => New_Handle'Access);
+      if Status /= OpenCV.Internal.C_API.Success then
+         OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+         Raise_On_Error (Status, "Mat invert operation");
+      end if;
+
+      if Invertible = OpenCV.Internal.C_API.C_False then
+         if New_Handle /= OpenCV.Internal.C_API.Null_Mat_Handle then
+            OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+            Ada.Exceptions.Raise_Exception
+              (OpenCV_Error'Identity,
+               "Mat invert operation reported a singular matrix with a result"
+               & " handle");
+         end if;
+
+         return (Invertible => False);
+      end if;
+
+      if Invertible /= OpenCV.Internal.C_API.C_True then
+         OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat invert operation returned an invalid Boolean value");
+      end if;
+
+      if New_Handle = OpenCV.Internal.C_API.Null_Mat_Handle then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat invert operation returned a null result handle");
+      end if;
+
+      declare
+         Result : Inversion_Result (Invertible => True);
+      begin
+         OpenCV.Internal.C_API.Mat_Destroy (Result.Inverse.Handle);
+         Result.Inverse.Handle := New_Handle;
+         return Result;
+      end;
+   end Invert;
+
    procedure Validate_Reduce_Depth
      (Self : Mat; Kind : Reduction_Kind; Output_Depth : Depth_Type) is
    begin

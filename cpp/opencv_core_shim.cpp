@@ -3217,6 +3217,48 @@ opencv_core_mat_determinant(const opencv_core_mat_handle *source,
 }
 
 opencv_core_status
+opencv_core_mat_invert(const opencv_core_mat_handle *source,
+                       uint8_t *out_invertible,
+                       opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_invertible != nullptr) {
+        *out_invertible = UINT8_C(0);
+    }
+
+    if (out_mat != nullptr) {
+        *out_mat = nullptr;
+    }
+
+    if (out_invertible == nullptr || out_mat == nullptr) {
+        return invalid_argument("invert output pointers must not be null");
+    }
+
+    if (source == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        cv::Mat inverse;
+        const double result =
+            cv::invert(source->value, inverse, cv::DECOMP_LU);
+
+        if (result == 0.0) {
+            return OPENCV_CORE_OK;
+        }
+
+        std::unique_ptr<opencv_core_mat_handle> inverse_handle(
+            new opencv_core_mat_handle(inverse));
+        *out_mat = inverse_handle.release();
+        *out_invertible = UINT8_C(1);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+
+opencv_core_status
 opencv_core_mat_mean(const opencv_core_mat_handle *mat,
                      opencv_core_scalar *out_mean) {
     clear_error();
