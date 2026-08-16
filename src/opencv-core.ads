@@ -263,9 +263,10 @@ package OpenCV.Core is
       Beta  : Long_Float;
       Gamma : Long_Float := 0.0) return Mat;
    --  Returns an independent Mat with Self's shape and element type.
-   --  Each element is saturate (Self * Scale + Right). Integer depths use
-   --  OpenCV's saturating addWeighted path; Float32 and Float64 use the
-   --  dedicated scaleAdd kernels. Float16 is not supported by OpenCV.
+   --  Each element is Self * Scale + Right. Depths below Float32 use
+   --  OpenCV's addWeighted path: UInt8, Int8, UInt16, and Int16 saturate;
+   --  Int32 does not. Float32 and Float64 use the dedicated scaleAdd
+   --  kernels. Float16 is not supported by OpenCV.
    --  Both operands must have identical 2D shape and element type.
    function Scale_Add (Self : Mat; Scale : Long_Float; Right : Mat) return Mat;
 

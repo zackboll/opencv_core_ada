@@ -922,6 +922,42 @@ package body Mat_Arithmetic_Tests is
         (Bad_Channels'Access, "Scale_Add must reject mismatched channels");
    end Mat_Scale_Add_Handles_Empty_And_Compatibility;
 
+   procedure Mat_Scale_Add_Supports_Int32 (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Left   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Int32, 1));
+      Right  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Int32, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      Left.Set_To (OpenCV.Core.Make_Scalar (1_000.0));
+      Right.Set_To (OpenCV.Core.Make_Scalar (250.0));
+      Result := Left.Scale_Add (Scale => 2.0, Right => Right);
+
+      AUnit.Assertions.Assert
+        (Result.Depth = OpenCV.Core.Int32
+         and then Result.Sum.Component_0 = 2_250.0,
+         "Scale_Add must support in-range Int32 values as Scale * Left + Right");
+   end Mat_Scale_Add_Supports_Int32;
+
+   procedure Mat_Scale_Add_Supports_Float64 (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Left   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float64, 1));
+      Right  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float64, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      Left.Set_To (OpenCV.Core.Make_Scalar (1.5));
+      Right.Set_To (OpenCV.Core.Make_Scalar (0.25));
+      Result := Left.Scale_Add (Scale => 2.5, Right => Right);
+
+      AUnit.Assertions.Assert
+        (Result.Depth = OpenCV.Core.Float64
+         and then Approximately_Equal (Result.Sum.Component_0, 4.0),
+         "Scale_Add must support Float64 values as Scale * Left + Right");
+   end Mat_Scale_Add_Supports_Float64;
+
    procedure Mat_Minimum_And_Maximum_Map_UInt8_And_Float32
      (Test : in out Mat_Test_Fixture)
    is
@@ -1223,6 +1259,14 @@ package body Mat_Arithmetic_Tests is
         (Caller.Create
            ("Mat Scale_Add handles empty and compatibility",
             Mat_Scale_Add_Handles_Empty_And_Compatibility'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Scale_Add supports Int32",
+            Mat_Scale_Add_Supports_Int32'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Scale_Add supports Float64",
+            Mat_Scale_Add_Supports_Float64'Access));
       Result.Add_Test
         (Caller.Create
            ("Mat Minimum and Maximum map UInt8 and Float32",

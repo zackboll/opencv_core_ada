@@ -6,7 +6,7 @@ A thick, idiomatic Ada binding for the **OpenCV Core** module.
 
 > **Project status:** active development, `0.1.0-dev`.
 >
-> **Current baseline:** **218 AUnit tests** in the current development suite as of August 2026.
+> **Current baseline:** **235 AUnit tests** in the current development suite as of August 2026.
 >
 > **Current milestone status:** the mask/selection and channel-manipulation milestones are complete; the core 2-D matrix layout/rearrangement milestone is largely complete; reductions now include `Trace` and axis-based `Reduce`.
 
@@ -196,7 +196,7 @@ The test suite is organized into:
 Current development baseline:
 
 ```text
-218 AUnit tests
+235 AUnit tests
 ```
 
 ---
@@ -468,8 +468,9 @@ Blended : Mat :=
 Scaled : Mat := A.Scale_Add (Scale => 2.0, Right => B);
 ```
 
-The result is `Scale * A + B` with independent storage. Integer depths follow
-OpenCV saturation; Float32 and Float64 use OpenCV's dedicated scaleAdd kernels.
+The result is `Scale * A + B` with independent storage. UInt8, Int8, UInt16,
+and Int16 follow OpenCV saturation; Int32 does not saturate. Float32 and
+Float64 use OpenCV's dedicated scaleAdd kernels.
 
 ## Convert depth, scale, and offset
 
@@ -1125,9 +1126,9 @@ Remaining candidates:
 - [ ] deliberate mixed-depth arithmetic policy
 - [ ] configurable multiply/divide scale
 - [x] `Scale_Add`
-- [ ] element-wise `Min`
-- [ ] element-wise `Max`
-- [ ] `Convert_Scale_Abs`
+- [x] element-wise `Min`
+- [x] element-wise `Max`
+- [x] `Convert_Scale_Abs`
 - [ ] lookup-table (`LUT`) operations
 
 Mixed-depth and Scalar overload proliferation should be added deliberately rather than by mechanically mirroring every C++ overload.
