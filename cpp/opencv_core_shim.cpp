@@ -3839,4 +3839,20 @@ opencv_core_mat_check_range(const opencv_core_mat_handle *source,
     }
 }
 
+opencv_core_status
+opencv_core_mat_patch_nans(opencv_core_mat_handle *mat, double value) {
+    clear_error();
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        cv::patchNaNs(mat->value, value);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
 } // extern "C"

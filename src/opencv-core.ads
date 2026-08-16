@@ -550,6 +550,21 @@ package OpenCV.Core is
    function Check_Range
      (Self : Mat; Minimum : Long_Float; Maximum : Long_Float)
       return Range_Check_Result;
+
+   --  Replaces every NaN scalar channel value of Self in place. Only
+   --  Float32 Mats are accepted; UInt8, Int8, UInt16, Int16, Int32,
+   --  Float16, and Float64 are rejected. Multi-channel values are
+   --  processed channel-by-channel. The default replacement is 0.0.
+   --  Finite values and +/- Infinity are left unchanged, so a Mat that
+   --  still contains Infinity is not necessarily valid according to
+   --  Check_Range. The replacement is converted to Float32 before it
+   --  is stored; NaN and infinite replacements are stored as that
+   --  Float32 representation. Non-contiguous Regions are accepted and
+   --  mutate their parent/shared storage. A normal shallow Mat alias
+   --  observes the same mutation. A typed 0x0 Float32 Mat is a no-op
+   --  that preserves its depth and channel count. A default empty Mat
+   --  is rejected because its depth is not Float32.
+   procedure Patch_NaNs (Self : in out Mat; Value : Float32_Value := 0.0);
 private
 
    type Mat is new Ada.Finalization.Controlled with record

@@ -2864,4 +2864,19 @@ package body OpenCV.Core is
       return Check_Range_With_Mode (Self, Minimum, Maximum, Bounded => True);
    end Check_Range;
 
+   procedure Patch_NaNs (Self : in out Mat; Value : Float32_Value := 0.0) is
+      Result : OpenCV.Internal.C_API.Status;
+   begin
+      if Self.Depth /= Float32 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Patch_NaNs requires a Float32 Mat");
+      end if;
+
+      Result :=
+        OpenCV.Internal.C_API.Mat_Patch_NaNs
+          (Self  => Self.Handle,
+           Value => OpenCV.Internal.C_API.C_Double (Value));
+      Raise_On_Error (Result, "Mat patch NaNs operation");
+   end Patch_NaNs;
+
 end OpenCV.Core;

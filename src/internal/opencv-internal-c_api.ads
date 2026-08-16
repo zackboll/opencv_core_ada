@@ -820,4 +820,7 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_check_range";
 
+   function Mat_Patch_NaNs (Self : Mat_Handle; Value : C_Double) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_patch_nans";
+
 end OpenCV.Internal.C_API;

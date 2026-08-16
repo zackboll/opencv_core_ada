@@ -920,6 +920,17 @@ opencv_core_mat_check_range(const opencv_core_mat_handle *source,
                             uint8_t use_bounds, double minimum, double maximum,
                             uint8_t *out_valid, int32_t *out_x, int32_t *out_y);
 
+/*
+ * Replaces every NaN scalar in an existing Float32 Mat with value.
+ * Mutates the Mat represented by the borrowed handle; the handle is
+ * not consumed and no result Mat is allocated. OpenCV 4.10 accepts
+ * only CV_32F depth and converts value to float before storing it.
+ * Finite values and +/- Infinity are left unchanged. Multi-channel
+ * and non-contiguous Mats are supported.
+ */
+opencv_core_status
+opencv_core_mat_patch_nans(opencv_core_mat_handle *mat, double value);
+
 #ifdef __cplusplus
 }
 #endif
