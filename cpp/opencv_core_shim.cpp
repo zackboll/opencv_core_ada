@@ -3784,13 +3784,19 @@ opencv_core_mat_check_range(const opencv_core_mat_handle *source,
                             uint8_t *out_valid, int32_t *out_x, int32_t *out_y) {
     clear_error();
 
+    if (out_valid != nullptr) {
+        *out_valid = UINT8_C(0);
+    }
+    if (out_x != nullptr) {
+        *out_x = -1;
+    }
+    if (out_y != nullptr) {
+        *out_y = -1;
+    }
+
     if (out_valid == nullptr || out_x == nullptr || out_y == nullptr) {
         return invalid_argument("Check_Range output pointers must not be null");
     }
-
-    *out_valid = UINT8_C(0);
-    *out_x = -1;
-    *out_y = -1;
 
     if (source == nullptr) {
         return invalid_argument("source Mat handle must not be null");

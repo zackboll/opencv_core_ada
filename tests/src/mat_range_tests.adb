@@ -100,10 +100,13 @@ package body Mat_Range_Tests is
         OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
       Inclusive : OpenCV.Core.Range_Check_Result;
       Exclusive : OpenCV.Core.Range_Check_Result;
+      Lower     : OpenCV.Core.Range_Check_Result;
    begin
       OpenCV.Core.UInt8_Access.Set (Image, 0, 0, 2);
       Inclusive := Image.Check_Range (Minimum => 1.0, Maximum => 2.1);
       Exclusive := Image.Check_Range (Minimum => 1.0, Maximum => 2.0);
+      OpenCV.Core.UInt8_Access.Set (Image, 0, 0, 1);
+      Lower := Image.Check_Range (Minimum => 1.1, Maximum => 2.0);
 
       AUnit.Assertions.Assert
         (Inclusive.Valid,
@@ -113,6 +116,9 @@ package body Mat_Range_Tests is
          and then Exclusive.First_Invalid.X = 0
          and then Exclusive.First_Invalid.Y = 0,
          "OpenCV integer conversion must reject 2 for Maximum 2.0");
+      AUnit.Assertions.Assert
+        (Lower.Valid,
+         "OpenCV 4.10 floors Minimum 1.1 so UInt8 1 is accepted");
    end Integer_Bounds_Use_OpenCV_Conversion;
 
    procedure Multi_Channel_Reports_Element_Location
@@ -188,6 +194,29 @@ package body Mat_Range_Tests is
          and then Result.First_Invalid.Y = 0,
          "Unbounded Check_Range must report the first +Infinity location");
    end Unbounded_Rejects_Positive_Infinity;
+
+   procedure Unbounded_Rejects_Maximum_Finite_Float32
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Range_Check_Result;
+   begin
+      OpenCV.Core.Float32_Access.Set
+        (Image, 0, 0, OpenCV.Core.Float32_Value'Last);
+      Result := Image.Check_Range;
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Classify (Image, 0, 0)
+         = OpenCV.Core.Float32_Access.Finite,
+         "The test must place the maximum finite Float32 value");
+      AUnit.Assertions.Assert
+        (not Result.Valid
+         and then Result.First_Invalid.X = 0
+         and then Result.First_Invalid.Y = 0,
+         "OpenCV 4.10 excludes the positive maximum finite endpoint");
+   end Unbounded_Rejects_Maximum_Finite_Float32;
 
    procedure Float64_Finite_And_Converted_Invalid
      (Test : in out Mat_Test_Fixture)
@@ -346,6 +375,10 @@ package body Mat_Range_Tests is
         (Caller.Create
            ("Check_Range unbounded rejects +Infinity",
             Unbounded_Rejects_Positive_Infinity'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Check_Range unbounded rejects maximum finite Float32",
+            Unbounded_Rejects_Maximum_Finite_Float32'Access));
       Result.Add_Test
         (Caller.Create
            ("Check_Range supports Float64 finite and invalid values",

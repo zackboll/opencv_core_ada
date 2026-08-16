@@ -905,13 +905,15 @@ opencv_core_mat_find_non_zero(const opencv_core_mat_handle *mat,
 
 /*
  * Checks every scalar channel value of source in quiet mode. When
- * use_bounds is 0, OpenCV's default +/- DBL_MAX bounds are used so only
- * NaN and +/- Infinity are rejected. When use_bounds is 1, minimum and
- * maximum are passed through as the [minimum, maximum) range. out_valid
- * is 1 when every value is accepted and 0 otherwise. On an invalid Mat,
- * out_x and out_y are the first-invalid column and row. On a valid Mat
- * they are the sentinel (-1, -1). use_bounds must be 0 or 1. Float16 is
- * not supported by OpenCV 4.10 checkRange.
+ * use_bounds is 0, OpenCV's default +/- DBL_MAX bounds are used. NaN
+ * and +/- Infinity are invalid, and floating-point values are subject
+ * to those default finite extrema; the positive maximum finite
+ * endpoint is excluded by the half-open upper bound. When use_bounds
+ * is 1, minimum and maximum are passed through to cv::checkRange.
+ * out_valid is 1 when every value is accepted and 0 otherwise. On an
+ * invalid Mat, out_x and out_y are the first-invalid column and row.
+ * On a valid Mat they are the sentinel (-1, -1). use_bounds must be
+ * 0 or 1. Float16 is not supported by OpenCV 4.10 checkRange.
  */
 opencv_core_status
 opencv_core_mat_check_range(const opencv_core_mat_handle *source,

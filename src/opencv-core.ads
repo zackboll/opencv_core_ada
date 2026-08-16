@@ -528,10 +528,17 @@ package OpenCV.Core is
    function Find_Non_Zero (Self : Mat) return Point_Array;
 
    --  Checks every scalar channel value of Self. The no-bound overload
-   --  rejects NaN and +/- Infinity and otherwise accepts finite values.
-   --  The bounded overload additionally requires every value to lie in the
-   --  half-open interval [Minimum, Maximum). First_Invalid.X is the column
-   --  and First_Invalid.Y is the row of the first invalid element in
+   --  uses OpenCV 4.10's default range check: NaN and +/- Infinity are
+   --  invalid, and floating-point values are subject to OpenCV's default
+   --  finite extrema. The positive maximum finite endpoint is excluded
+   --  by the half-open upper bound. The bounded overload passes Minimum
+   --  and Maximum through to OpenCV. Float32 and Float64 use the
+   --  requested half-open [Minimum, Maximum) interval. Integer depths
+   --  convert those floating bounds to effective integer limits with
+   --  OpenCV's floor/ceil behavior before checking, so a value may be
+   --  accepted even when it is not mathematically inside
+   --  [Minimum, Maximum). First_Invalid.X is the column and
+   --  First_Invalid.Y is the row of the first invalid element in
    --  row-major order. Multi-channel Mats are checked channel-by-channel;
    --  the reported Point identifies the element, not a channel. Supports
    --  UInt8, Int8, UInt16, Int16, Int32, Float32, and Float64. Float16 is
