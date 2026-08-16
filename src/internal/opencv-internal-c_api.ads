@@ -747,6 +747,13 @@ package OpenCV.Internal.C_API is
       Result     : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_invert";
 
+   function Mat_Solve
+     (Coefficients    : Mat_Handle;
+      Right_Hand_Side : Mat_Handle;
+      Solved          : access C_Boolean;
+      Result          : access Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_solve";
+
    function Mat_Mean (Self : Mat_Handle; Result : access Scalar) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_mean";
 

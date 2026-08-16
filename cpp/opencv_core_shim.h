@@ -838,6 +838,23 @@ opencv_core_mat_invert(const opencv_core_mat_handle *source,
                        opencv_core_mat_handle **out_mat);
 
 /*
+ * Solves A * X = B for a borrowed square single-channel floating
+ * coefficient matrix with OpenCV DECOMP_LU. Supported types are
+ * CV_32FC1 and CV_64FC1. The right-hand side must be non-empty, have
+ * the same type as the coefficients, and have the same number of rows.
+ * Multiple right-hand-side columns are accepted. Both inputs are
+ * borrowed and unmodified. A singular coefficient matrix is a
+ * successful result: out_solved is 0 and out_solution remains null. A
+ * unique solution sets out_solved to 1 and publishes an independently
+ * owned result handle of shape coefficients.cols x right_hand_side.cols.
+ */
+opencv_core_status
+opencv_core_mat_solve(const opencv_core_mat_handle *coefficients,
+                      const opencv_core_mat_handle *right_hand_side,
+                      uint8_t *out_solved,
+                      opencv_core_mat_handle **out_solution);
+
+/*
  * Computes unmasked per-channel mean values. Both operations support one to
  * four channels so each complete result fits opencv_core_scalar. Mean accepts
  * empty Mats and returns all zeroes; mean/stddev requires a non-empty Mat.

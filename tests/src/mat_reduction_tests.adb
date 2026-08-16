@@ -1067,6 +1067,508 @@ package body Mat_Reduction_Tests is
         (Check_Float16'Access, "Invert must reject Float16 Mats");
    end Invert_Rejects_Empty_And_Invalid_Types;
 
+   procedure Fill_Column_2
+     (Image : in out OpenCV.Core.Mat; A, B : OpenCV.Core.Float32_Value) is
+   begin
+      OpenCV.Core.Float32_Access.Set (Image, 0, 0, A);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 0, B);
+   end Fill_Column_2;
+
+   function Unchanged_Column_2
+     (Image : OpenCV.Core.Mat; A, B : OpenCV.Core.Float32_Value) return Boolean
+   is (OpenCV.Core.Float32_Access.Get (Image, 0, 0) = A
+       and then OpenCV.Core.Float32_Access.Get (Image, 1, 0) = B);
+
+   function Solved_2x1
+     (Image : OpenCV.Core.Mat; A, B : Long_Float) return Boolean
+   is (Image.Rows = 2
+       and then Image.Columns = 1
+       and then Image.Channels = 1
+       and then Approximately_Equal
+                  (Long_Float (OpenCV.Core.Float32_Access.Get (Image, 0, 0)),
+                   A)
+       and then Approximately_Equal
+                  (Long_Float (OpenCV.Core.Float32_Access.Get (Image, 1, 0)),
+                   B));
+
+   procedure Solve_1x1_Uses_Direct_Path (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Coefficients : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      RHS          : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Result       : OpenCV.Core.Solve_Result;
+   begin
+      OpenCV.Core.Float32_Access.Set (Coefficients, 0, 0, 4.0);
+      OpenCV.Core.Float32_Access.Set (RHS, 0, 0, 2.0);
+      Result := Coefficients.Solve (RHS);
+
+      AUnit.Assertions.Assert
+        (Result.Solved
+         and then Result.Solution.Rows = 1
+         and then Result.Solution.Columns = 1
+         and then Result.Solution.Depth = OpenCV.Core.Float32
+         and then Result.Solution.Channels = 1
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get
+                          (Result.Solution, 0, 0)),
+                     0.5),
+         "A 1x1 Solve must return the reciprocal-scaled right-hand side");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Coefficients, 0, 0) = 4.0
+         and then OpenCV.Core.Float32_Access.Get (RHS, 0, 0) = 2.0,
+         "Solve must not modify a 1x1 source or right-hand side");
+   end Solve_1x1_Uses_Direct_Path;
+
+   procedure Solve_2x2_Uses_Known_Solution (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Coefficients : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      RHS          : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 1, (OpenCV.Core.Float32, 1));
+      Result       : OpenCV.Core.Solve_Result;
+   begin
+      Fill_2x2 (Coefficients, 4.0, 7.0, 2.0, 6.0);
+      Fill_Column_2 (RHS, 15.0, 10.0);
+      Result := Coefficients.Solve (RHS);
+
+      AUnit.Assertions.Assert
+        (Result.Solved
+         and then Result.Solution.Depth = OpenCV.Core.Float32
+         and then Solved_2x1 (Result.Solution, 2.0, 1.0),
+         "A 2x2 Solve must return the known unique solution");
+      AUnit.Assertions.Assert
+        (Unchanged_2x2 (Coefficients, 4.0, 7.0, 2.0, 6.0)
+         and then Unchanged_Column_2 (RHS, 15.0, 10.0),
+         "Solve must not modify a 2x2 source or right-hand side");
+   end Solve_2x2_Uses_Known_Solution;
+
+   procedure Solve_3x3_Uses_Direct_Path (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Coefficients : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.Float32, 1));
+      RHS          : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 1, (OpenCV.Core.Float32, 1));
+      Result       : OpenCV.Core.Solve_Result;
+   begin
+      OpenCV.Core.Float32_Access.Set (Coefficients, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 0, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 0, 2, 3.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 1, 0, 0.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 1, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 1, 2, 4.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 2, 0, 5.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 2, 1, 6.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 2, 2, 0.0);
+      RHS.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.Float32_Access.Set (RHS, 0, 0, 1.0);
+      Result := Coefficients.Solve (RHS);
+
+      AUnit.Assertions.Assert
+        (Result.Solved
+         and then Result.Solution.Rows = 3
+         and then Result.Solution.Columns = 1
+         and then Result.Solution.Depth = OpenCV.Core.Float32
+         and then Result.Solution.Channels = 1
+         and then OpenCV.Core.Float32_Access.Get (Result.Solution, 0, 0)
+                  = -24.0
+         and then OpenCV.Core.Float32_Access.Get (Result.Solution, 1, 0) = 20.0
+         and then OpenCV.Core.Float32_Access.Get (Result.Solution, 2, 0)
+                  = -5.0,
+         "A 3x3 Solve must use OpenCV's dedicated direct path");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Coefficients, 0, 0) = 1.0
+         and then OpenCV.Core.Float32_Access.Get (Coefficients, 1, 1) = 1.0
+         and then OpenCV.Core.Float32_Access.Get (Coefficients, 2, 0) = 5.0
+         and then OpenCV.Core.Float32_Access.Get (RHS, 0, 0) = 1.0
+         and then OpenCV.Core.Float32_Access.Get (RHS, 1, 0) = 0.0,
+         "Solve must not modify a 3x3 source or right-hand side");
+   end Solve_3x3_Uses_Direct_Path;
+
+   procedure Solve_4x4_Uses_LU_Path (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Coefficients : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 4, (OpenCV.Core.Float32, 1));
+      RHS          : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 1, (OpenCV.Core.Float32, 1));
+      Result       : OpenCV.Core.Solve_Result;
+   begin
+      Coefficients.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.Float32_Access.Set (Coefficients, 0, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 1, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 1, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 2, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 2, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 2, 2, 1.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 3, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 3, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 3, 2, 1.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 3, 3, 1.0);
+      RHS.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.Float32_Access.Set (RHS, 0, 0, 1.0);
+      Result := Coefficients.Solve (RHS);
+
+      AUnit.Assertions.Assert
+        (Result.Solved
+         and then Result.Solution.Rows = 4
+         and then Result.Solution.Columns = 1
+         and then Result.Solution.Depth = OpenCV.Core.Float32
+         and then Result.Solution.Channels = 1
+         and then OpenCV.Core.Float32_Access.Get (Result.Solution, 0, 0) = -1.0
+         and then OpenCV.Core.Float32_Access.Get (Result.Solution, 1, 0) = 1.0
+         and then OpenCV.Core.Float32_Access.Get (Result.Solution, 2, 0) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Result.Solution, 3, 0) = 0.0,
+         "A 4x4 Solve must follow OpenCV's LU path, including a row pivot");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Coefficients, 0, 0) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Coefficients, 0, 1) = 1.0
+         and then OpenCV.Core.Float32_Access.Get (Coefficients, 3, 3) = 1.0
+         and then OpenCV.Core.Float32_Access.Get (RHS, 0, 0) = 1.0,
+         "Solve must not modify a 4x4 source or right-hand side");
+   end Solve_4x4_Uses_LU_Path;
+
+   procedure Solve_Multiple_RHS_Columns (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Coefficients : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      RHS          : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Result       : OpenCV.Core.Solve_Result;
+   begin
+      Fill_2x2 (Coefficients, 4.0, 7.0, 2.0, 6.0);
+      Fill_2x2 (RHS, 1.0, 0.0, 0.0, 1.0);
+      Result := Coefficients.Solve (RHS);
+
+      AUnit.Assertions.Assert
+        (Result.Solved
+         and then Result.Solution.Rows = 2
+         and then Result.Solution.Columns = 2
+         and then Result.Solution.Depth = OpenCV.Core.Float32
+         and then Result.Solution.Channels = 1
+         and then Invertible_2x2 (Result.Solution, 0.6, -0.7, -0.2, 0.4),
+         "Solve must accept multiple right-hand-side columns");
+      AUnit.Assertions.Assert
+        (Unchanged_2x2 (Coefficients, 4.0, 7.0, 2.0, 6.0)
+         and then Unchanged_2x2 (RHS, 1.0, 0.0, 0.0, 1.0),
+         "Solve must not modify a multi-column right-hand side");
+   end Solve_Multiple_RHS_Columns;
+
+   procedure Solve_Singular_2x2_Is_Not_An_Error
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Coefficients : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      RHS          : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 1, (OpenCV.Core.Float32, 1));
+      Result       : OpenCV.Core.Solve_Result;
+   begin
+      Fill_2x2 (Coefficients, 1.0, 2.0, 2.0, 4.0);
+      Fill_Column_2 (RHS, 1.0, 0.0);
+      Result := Coefficients.Solve (RHS);
+
+      AUnit.Assertions.Assert
+        (not Result.Solved,
+         "A singular 2x2 system must return Solved False without error");
+      AUnit.Assertions.Assert
+        (Unchanged_2x2 (Coefficients, 1.0, 2.0, 2.0, 4.0)
+         and then Unchanged_Column_2 (RHS, 1.0, 0.0),
+         "Solve must not modify a singular 2x2 source or right-hand side");
+   end Solve_Singular_2x2_Is_Not_An_Error;
+
+   procedure Solve_Singular_4x4_Is_Not_An_Error
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Coefficients : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 4, (OpenCV.Core.Float32, 1));
+      RHS          : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 1, (OpenCV.Core.Float32, 1));
+      Result       : OpenCV.Core.Solve_Result;
+   begin
+      Coefficients.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.Float32_Access.Set (Coefficients, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 0, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 0, 2, 3.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 0, 3, 4.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 1, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 1, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 1, 2, 3.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 1, 3, 4.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 2, 0, 5.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 2, 2, 6.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 3, 1, 7.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 3, 3, 8.0);
+      RHS.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      Result := Coefficients.Solve (RHS);
+
+      AUnit.Assertions.Assert
+        (not Result.Solved,
+         "A singular 4x4 system must return Solved False without error");
+   end Solve_Singular_4x4_Is_Not_An_Error;
+
+   procedure Solve_Supports_Float64 (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Float32_A : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Float32_B : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 1, (OpenCV.Core.Float32, 1));
+      A         : OpenCV.Core.Mat;
+      B         : OpenCV.Core.Mat;
+      Result    : OpenCV.Core.Solve_Result;
+      Converted : OpenCV.Core.Mat;
+   begin
+      Fill_2x2 (Float32_A, 4.0, 7.0, 2.0, 6.0);
+      Fill_Column_2 (Float32_B, 15.0, 10.0);
+      A := Float32_A.Convert_To (OpenCV.Core.Float64);
+      B := Float32_B.Convert_To (OpenCV.Core.Float64);
+      Result := A.Solve (B);
+
+      AUnit.Assertions.Assert (Result.Solved, "Float64 Solve must succeed");
+      Converted := Result.Solution.Convert_To (OpenCV.Core.Float32);
+      AUnit.Assertions.Assert
+        (Result.Solution.Depth = OpenCV.Core.Float64
+         and then Result.Solution.Rows = 2
+         and then Result.Solution.Columns = 1
+         and then Result.Solution.Channels = 1
+         and then Solved_2x1 (Converted, 2.0, 1.0),
+         "Solve must preserve Float64 depth and the known unique solution");
+   end Solve_Supports_Float64;
+
+   procedure Solve_Supports_Noncontiguous_Regions
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent_A : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 4, (OpenCV.Core.Float32, 1));
+      Parent_B : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.Float32, 1));
+      Result   : OpenCV.Core.Solve_Result;
+   begin
+      Parent_A.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Parent_B.Set_To (OpenCV.Core.Make_Scalar (88.0));
+
+      declare
+         Region_A : OpenCV.Core.Mat :=
+           Parent_A.Region ((X => 1, Y => 0, Width => 2, Height => 2));
+         Region_B : OpenCV.Core.Mat :=
+           Parent_B.Region ((X => 1, Y => 0, Width => 1, Height => 2));
+      begin
+         Fill_2x2 (Region_A, 4.0, 7.0, 2.0, 6.0);
+         Fill_Column_2 (Region_B, 15.0, 10.0);
+         AUnit.Assertions.Assert
+           (not Region_A.Is_Continuous and then not Region_B.Is_Continuous,
+            "The Regions used for Solve must be non-contiguous");
+         Result := Region_A.Solve (Region_B);
+         AUnit.Assertions.Assert
+           (Result.Solved and then Solved_2x1 (Result.Solution, 2.0, 1.0),
+            "Solve must support non-contiguous coefficient and RHS Regions");
+         AUnit.Assertions.Assert
+           (Unchanged_2x2 (Region_A, 4.0, 7.0, 2.0, 6.0)
+            and then Unchanged_Column_2 (Region_B, 15.0, 10.0)
+            and then OpenCV.Core.Float32_Access.Get (Parent_A, 0, 0) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent_A, 0, 3) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent_B, 0, 0) = 88.0,
+            "Solve must not modify the Regions or their parents");
+         OpenCV.Core.Float32_Access.Set (Region_A, 0, 0, 50.0);
+         OpenCV.Core.Float32_Access.Set (Region_B, 0, 0, 40.0);
+         AUnit.Assertions.Assert
+           (Solved_2x1 (Result.Solution, 2.0, 1.0),
+            "Mutating the Regions must not change the solution");
+         OpenCV.Core.Float32_Access.Set (Result.Solution, 0, 0, 8.0);
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float32_Access.Get (Region_A, 0, 0) = 50.0
+            and then OpenCV.Core.Float32_Access.Get (Region_B, 0, 0) = 40.0
+            and then OpenCV.Core.Float32_Access.Get (Parent_A, 0, 1) = 50.0
+            and then OpenCV.Core.Float32_Access.Get (Parent_B, 0, 1) = 40.0,
+            "Mutating a solution must not change the Regions or parents");
+      end;
+
+      AUnit.Assertions.Assert
+        (Result.Solved
+         and then OpenCV.Core.Float32_Access.Get (Result.Solution, 0, 0) = 8.0
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get
+                          (Result.Solution, 1, 0)),
+                     1.0),
+         "A solution must remain valid after Region finalization");
+   end Solve_Supports_Noncontiguous_Regions;
+
+   procedure Solve_Result_Owns_Independent_Storage
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Coefficients : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      RHS          : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 1, (OpenCV.Core.Float32, 1));
+      Result       : OpenCV.Core.Solve_Result;
+   begin
+      Fill_2x2 (Coefficients, 4.0, 7.0, 2.0, 6.0);
+      Fill_Column_2 (RHS, 15.0, 10.0);
+      Result := Coefficients.Solve (RHS);
+      AUnit.Assertions.Assert
+        (Result.Solved, "The independence source must be solved");
+
+      OpenCV.Core.Float32_Access.Set (Coefficients, 0, 0, 99.0);
+      OpenCV.Core.Float32_Access.Set (RHS, 0, 0, 88.0);
+      AUnit.Assertions.Assert
+        (Solved_2x1 (Result.Solution, 2.0, 1.0),
+         "Mutating the inputs must not change the solution");
+      OpenCV.Core.Float32_Access.Set (Result.Solution, 1, 0, 8.0);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Coefficients, 0, 0) = 99.0
+         and then OpenCV.Core.Float32_Access.Get (Coefficients, 1, 1) = 6.0
+         and then OpenCV.Core.Float32_Access.Get (RHS, 0, 0) = 88.0
+         and then OpenCV.Core.Float32_Access.Get (RHS, 1, 0) = 10.0,
+         "Mutating the solution must not change its inputs");
+   end Solve_Result_Owns_Independent_Storage;
+
+   procedure Solve_Rejects_Empty_And_Invalid_Types
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Valid_A       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Valid_B       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 1, (OpenCV.Core.Float32, 1));
+      Default_Empty : OpenCV.Core.Mat;
+      Empty32       : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 1));
+      Empty64       : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float64, 1));
+      Rectangular   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Multi         : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 3));
+      Multi_B       : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 1, (OpenCV.Core.Float32, 3));
+      UInt8_Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+      Int32_Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Int32, 1));
+      Float16_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float16, 1));
+      Float64_B     : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 1, (OpenCV.Core.Float64, 1));
+      Wrong_Rows    : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 1, (OpenCV.Core.Float32, 1));
+
+      procedure Check_Default is
+         Result : constant OpenCV.Core.Solve_Result :=
+           Default_Empty.Solve (Valid_B);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Default;
+
+      procedure Check_Empty32 is
+         Result : constant OpenCV.Core.Solve_Result := Empty32.Solve (Valid_B);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Empty32;
+
+      procedure Check_Empty64 is
+         Result : constant OpenCV.Core.Solve_Result := Empty64.Solve (Valid_B);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Empty64;
+
+      procedure Check_Empty_RHS is
+         Result : constant OpenCV.Core.Solve_Result :=
+           Valid_A.Solve (Default_Empty);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Empty_RHS;
+
+      procedure Check_Rectangular is
+         Result : constant OpenCV.Core.Solve_Result :=
+           Rectangular.Solve (Valid_B);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Rectangular;
+
+      procedure Check_Multi is
+         Result : constant OpenCV.Core.Solve_Result := Multi.Solve (Valid_B);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Multi;
+
+      procedure Check_Multi_B is
+         Result : constant OpenCV.Core.Solve_Result := Valid_A.Solve (Multi_B);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Multi_B;
+
+      procedure Check_UInt8 is
+         Result : constant OpenCV.Core.Solve_Result :=
+           UInt8_Image.Solve (UInt8_Image);
+      begin
+         pragma Unreferenced (Result);
+      end Check_UInt8;
+
+      procedure Check_Int32 is
+         Result : constant OpenCV.Core.Solve_Result :=
+           Int32_Image.Solve (Int32_Image);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Int32;
+
+      procedure Check_Float16 is
+         Result : constant OpenCV.Core.Solve_Result :=
+           Float16_Image.Solve (Float16_Image);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Float16;
+
+      procedure Check_Depth_Mismatch is
+         Result : constant OpenCV.Core.Solve_Result :=
+           Valid_A.Solve (Float64_B);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Depth_Mismatch;
+
+      procedure Check_Row_Mismatch is
+         Result : constant OpenCV.Core.Solve_Result :=
+           Valid_A.Solve (Wrong_Rows);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Row_Mismatch;
+   begin
+      Fill_2x2 (Valid_A, 4.0, 7.0, 2.0, 6.0);
+      Fill_Column_2 (Valid_B, 15.0, 10.0);
+      Assert_Raises_OpenCV_Error
+        (Check_Default'Access, "Solve must reject a default empty Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_Empty32'Access, "Solve must reject a typed empty Float32 Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_Empty64'Access, "Solve must reject a typed empty Float64 Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_Empty_RHS'Access, "Solve must reject an empty right-hand side");
+      Assert_Raises_OpenCV_Error
+        (Check_Rectangular'Access,
+         "Solve must reject a rectangular Mat; LU solution is not a"
+         & " least-squares API");
+      Assert_Raises_OpenCV_Error
+        (Check_Multi'Access, "Solve must reject a multi-channel Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_Multi_B'Access,
+         "Solve must reject a multi-channel right-hand side");
+      Assert_Raises_OpenCV_Error
+        (Check_UInt8'Access, "Solve must reject UInt8 Mats");
+      Assert_Raises_OpenCV_Error
+        (Check_Int32'Access, "Solve must reject Int32 Mats");
+      Assert_Raises_OpenCV_Error
+        (Check_Float16'Access, "Solve must reject Float16 Mats");
+      Assert_Raises_OpenCV_Error
+        (Check_Depth_Mismatch'Access,
+         "Solve must reject a right-hand side with a different depth");
+      Assert_Raises_OpenCV_Error
+        (Check_Row_Mismatch'Access,
+         "Solve must reject a right-hand side with a different row count");
+   end Solve_Rejects_Empty_And_Invalid_Types;
+
    procedure Vec3_Mean_Returns_Independent_Channel_Values
      (Test : in out Mat_Test_Fixture)
    is
@@ -2740,6 +3242,48 @@ package body Mat_Reduction_Tests is
         (Caller.Create
            ("Invert rejects empty and invalid types",
             Invert_Rejects_Empty_And_Invalid_Types'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Solve 1x1 uses the direct path",
+            Solve_1x1_Uses_Direct_Path'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Solve 2x2 uses a known solution",
+            Solve_2x2_Uses_Known_Solution'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Solve 3x3 uses the direct path",
+            Solve_3x3_Uses_Direct_Path'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Solve 4x4 uses the LU path", Solve_4x4_Uses_LU_Path'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Solve accepts multiple right-hand-side columns",
+            Solve_Multiple_RHS_Columns'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Solve of a singular 2x2 is not an error",
+            Solve_Singular_2x2_Is_Not_An_Error'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Solve of a singular 4x4 is not an error",
+            Solve_Singular_4x4_Is_Not_An_Error'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Solve supports Float64", Solve_Supports_Float64'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Solve supports non-contiguous Regions",
+            Solve_Supports_Noncontiguous_Regions'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Solve result owns independent storage",
+            Solve_Result_Owns_Independent_Storage'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Solve rejects empty and invalid types",
+            Solve_Rejects_Empty_And_Invalid_Types'Access));
 
       Result.Add_Test
         (Caller.Create

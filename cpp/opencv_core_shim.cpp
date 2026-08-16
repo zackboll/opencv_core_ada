@@ -3257,6 +3257,70 @@ opencv_core_mat_invert(const opencv_core_mat_handle *source,
     }
 }
 
+opencv_core_status
+opencv_core_mat_solve(const opencv_core_mat_handle *coefficients,
+                      const opencv_core_mat_handle *right_hand_side,
+                      uint8_t *out_solved,
+                      opencv_core_mat_handle **out_solution) {
+    clear_error();
+
+    if (out_solved != nullptr) {
+        *out_solved = UINT8_C(0);
+    }
+
+    if (out_solution != nullptr) {
+        *out_solution = nullptr;
+    }
+
+    if (out_solved == nullptr || out_solution == nullptr) {
+        return invalid_argument("solve output pointers must not be null");
+    }
+
+    if (coefficients == nullptr || right_hand_side == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        const cv::Mat &A = coefficients->value;
+        const cv::Mat &B = right_hand_side->value;
+
+        if (A.empty() || B.empty()) {
+            return invalid_argument("solve requires non-empty coefficient and right-hand-side Mats");
+        }
+
+        if (A.rows != A.cols) {
+            return invalid_argument("solve requires a square coefficient matrix");
+        }
+
+        if (A.type() != CV_32FC1 && A.type() != CV_64FC1) {
+            return invalid_argument("solve requires a single-channel Float32 or Float64 coefficient matrix");
+        }
+
+        if (B.type() != A.type()) {
+            return invalid_argument("solve requires a right-hand side with the same type as the coefficients");
+        }
+
+        if (B.rows != A.rows) {
+            return invalid_argument("solve requires a right-hand side with the same number of rows as the coefficients");
+        }
+
+        cv::Mat solution;
+        const bool solved =
+            cv::solve(A, B, solution, cv::DECOMP_LU);
+
+        if (!solved) {
+            return OPENCV_CORE_OK;
+        }
+
+        std::unique_ptr<opencv_core_mat_handle> solution_handle(
+            new opencv_core_mat_handle(solution));
+        *out_solution = solution_handle.release();
+        *out_solved = UINT8_C(1);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
 
 opencv_core_status
 opencv_core_mat_mean(const opencv_core_mat_handle *mat,

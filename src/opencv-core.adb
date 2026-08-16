@@ -2575,6 +2575,103 @@ package body OpenCV.Core is
       end;
    end Invert;
 
+   function Solve (Self : Mat; Right_Hand_Side : Mat) return Solve_Result is
+      Solved     : aliased OpenCV.Internal.C_API.C_Boolean :=
+        OpenCV.Internal.C_API.C_False;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      if Self.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Solve requires a non-empty Mat");
+      end if;
+
+      if Self.Rows /= Self.Columns then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Solve requires a square Mat");
+      end if;
+
+      if Self.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Solve requires a single-channel Mat");
+      end if;
+
+      if Self.Depth /= Float32 and then Self.Depth /= Float64 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Solve requires a Float32 or Float64 Mat");
+      end if;
+
+      if Right_Hand_Side.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve requires a non-empty right-hand side");
+      end if;
+
+      if Right_Hand_Side.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve requires a single-channel right-hand side");
+      end if;
+
+      if Right_Hand_Side.Depth /= Self.Depth then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve requires a right-hand side with the same depth as Self");
+      end if;
+
+      if Right_Hand_Side.Rows /= Self.Rows then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve requires a right-hand side with the same number of rows"
+            & " as Self");
+      end if;
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_Solve
+          (Coefficients    => Self.Handle,
+           Right_Hand_Side => Right_Hand_Side.Handle,
+           Solved          => Solved'Access,
+           Result          => New_Handle'Access);
+      if Status /= OpenCV.Internal.C_API.Success then
+         OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+         Raise_On_Error (Status, "Mat solve operation");
+      end if;
+
+      if Solved = OpenCV.Internal.C_API.C_False then
+         if New_Handle /= OpenCV.Internal.C_API.Null_Mat_Handle then
+            OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+            Ada.Exceptions.Raise_Exception
+              (OpenCV_Error'Identity,
+               "Mat solve operation reported a singular matrix with a result"
+               & " handle");
+         end if;
+
+         return (Solved => False);
+      end if;
+
+      if Solved /= OpenCV.Internal.C_API.C_True then
+         OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat solve operation returned an invalid Boolean value");
+      end if;
+
+      if New_Handle = OpenCV.Internal.C_API.Null_Mat_Handle then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat solve operation returned a null result handle");
+      end if;
+
+      declare
+         Result : Solve_Result (Solved => True);
+      begin
+         OpenCV.Internal.C_API.Mat_Destroy (Result.Solution.Handle);
+         Result.Solution.Handle := New_Handle;
+         return Result;
+      end;
+   end Solve;
+
    procedure Validate_Reduce_Depth
      (Self : Mat; Kind : Reduction_Kind; Output_Depth : Depth_Type) is
    begin

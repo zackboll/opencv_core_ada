@@ -157,6 +157,20 @@ package OpenCV.Core is
       end case;
    end record;
 
+   --  Discriminated result of Solve. Solution is present only when
+   --  Solved is True. Solution has normal Mat controlled ownership
+   --  and independent storage. A singular coefficient matrix yields
+   --  Solved False rather than a zero-filled placeholder solution.
+   type Solve_Result (Solved : Boolean := False) is record
+      case Solved is
+         when True =>
+            Solution : Mat;
+
+         when False =>
+            null;
+      end case;
+   end record;
+
    --  A zero-based, owning sequence of Mats. An empty result has the null
    --  range 1 .. 0. Each element has normal Mat controlled ownership and
    --  shallow-copy assignment semantics.
@@ -551,6 +565,19 @@ package OpenCV.Core is
    --  Mats, and unsupported depths are rejected. Numerical rounding is
    --  inherent in floating-point inversion.
    function Invert (Self : Mat) return Inversion_Result;
+   --  Solves A * X = B using OpenCV 4.10 DECOMP_LU only. Self is the
+   --  coefficient matrix A and must be a non-empty square single-channel
+   --  Float32 or Float64 Mat. Right_Hand_Side is B and must be a
+   --  non-empty single-channel Mat with Self's depth and row count.
+   --  B may contain one or more columns. A unique solution returns
+   --  Solved True and a Solution of shape Self.Columns x
+   --  Right_Hand_Side.Columns with the same floating depth and
+   --  independently owned storage. A singular A returns Solved False
+   --  and does not raise OpenCV_Error; no Solution Mat is exposed.
+   --  Both inputs remain unchanged. Non-contiguous Regions are
+   --  accepted. This is not a least-squares or pseudo-solution API.
+   --  Numerical rounding is inherent in floating-point solution.
+   function Solve (Self : Mat; Right_Hand_Side : Mat) return Solve_Result;
 
    --  Reduces a two-dimensional Mat independently in every channel.
    --  Across_Rows
