@@ -1009,6 +1009,32 @@ opencv_core_mat_pow(const opencv_core_mat_handle *source, double power,
 }
 
 opencv_core_status
+opencv_core_mat_magnitude(const opencv_core_mat_handle *x,
+                          const opencv_core_mat_handle *y,
+                          opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (x == nullptr || y == nullptr) {
+        return invalid_argument("Mat operand handles must not be null");
+    }
+
+    try {
+        cv::Mat magnitude;
+        cv::magnitude(x->value, y->value, magnitude);
+        *out_mat = new opencv_core_mat_handle(magnitude);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_normalize(const opencv_core_mat_handle *source,
                           int32_t normalize_kind, double alpha, double beta,
                           opencv_core_mat_handle **out_mat) {

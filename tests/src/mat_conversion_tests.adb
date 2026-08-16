@@ -1927,6 +1927,373 @@ package body Mat_Conversion_Tests is
          "Pow must reject an Int16 source for a negative integer power");
    end Pow_Rejects_Unsupported_Depth_And_Exponent;
 
+   procedure Magnitude_Float32_Known_Scalar_Values
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      X      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Y      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set (X, 0, 0, 3.0);
+      OpenCV.Core.Float32_Access.Set (X, 0, 1, 5.0);
+      OpenCV.Core.Float32_Access.Set (X, 0, 2, -3.0);
+      OpenCV.Core.Float32_Access.Set (Y, 0, 0, 4.0);
+      OpenCV.Core.Float32_Access.Set (Y, 0, 1, 12.0);
+      OpenCV.Core.Float32_Access.Set (Y, 0, 2, 4.0);
+      Result := OpenCV.Core.Magnitude (X, Y);
+
+      AUnit.Assertions.Assert
+        (Result.Rows = 1
+         and then Result.Columns = 3
+         and then Result.Depth = OpenCV.Core.Float32
+         and then Result.Channels = 1
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 0, 0)),
+                     5.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 0, 1)),
+                     13.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 0, 2)),
+                     5.0),
+         "Magnitude must map Float32 (3,4), (5,12), and (-3,4) to 5, 13, 5");
+   end Magnitude_Float32_Known_Scalar_Values;
+
+   procedure Magnitude_Float64_Preserves_Depth (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Float32_X : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Float32_Y : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      X         : OpenCV.Core.Mat;
+      Y         : OpenCV.Core.Mat;
+      Result    : OpenCV.Core.Mat;
+      Readable  : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set (Float32_X, 0, 0, 3.0);
+      OpenCV.Core.Float32_Access.Set (Float32_Y, 0, 0, 4.0);
+      X := Float32_X.Convert_To (Depth => OpenCV.Core.Float64);
+      Y := Float32_Y.Convert_To (Depth => OpenCV.Core.Float64);
+      Result := OpenCV.Core.Magnitude (X, Y);
+      Readable := Result.Convert_To (Depth => OpenCV.Core.Float32);
+
+      AUnit.Assertions.Assert
+        (Result.Rows = 1
+         and then Result.Columns = 1
+         and then Result.Depth = OpenCV.Core.Float64
+         and then Result.Channels = 1
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Readable, 0, 0)),
+                     5.0),
+         "Magnitude must preserve Float64 depth for a representative pair");
+   end Magnitude_Float64_Preserves_Depth;
+
+   procedure Magnitude_Multi_Channel_Vec3 (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      X      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 3));
+      Y      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 3));
+      Result : OpenCV.Core.Mat;
+      Pixel  : OpenCV.Core.Float32_Vec3.Vector;
+   begin
+      OpenCV.Core.Float32_Vec3_Access.Set
+        (X, Row => 0, Column => 0, Value => (3.0, 5.0, 8.0));
+      OpenCV.Core.Float32_Vec3_Access.Set
+        (Y, Row => 0, Column => 0, Value => (4.0, 12.0, 15.0));
+      Result := OpenCV.Core.Magnitude (X, Y);
+      Pixel :=
+        OpenCV.Core.Float32_Vec3_Access.Get (Result, Row => 0, Column => 0);
+
+      AUnit.Assertions.Assert
+        (Result.Channels = 3
+         and then Result.Depth = OpenCV.Core.Float32
+         and then Approximately_Equal (Long_Float (Pixel (0)), 5.0)
+         and then Approximately_Equal (Long_Float (Pixel (1)), 13.0)
+         and then Approximately_Equal (Long_Float (Pixel (2)), 17.0),
+         "Magnitude must process each Float32 Vec3 channel independently");
+   end Magnitude_Multi_Channel_Vec3;
+
+   procedure Magnitude_Noncontiguous_Region_And_Independent_Storage
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Result : OpenCV.Core.Mat;
+   begin
+      declare
+         Source_X : OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 3,
+              Columns      => 3,
+              Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+         Source_Y : OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 3,
+              Columns      => 3,
+              Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+         View_X   : constant OpenCV.Core.Mat :=
+           Source_X.Region ((X => 1, Y => 0, Width => 2, Height => 3));
+         View_Y   : constant OpenCV.Core.Mat :=
+           Source_Y.Region ((X => 1, Y => 0, Width => 2, Height => 3));
+      begin
+         Source_X.Set_To (OpenCV.Core.Make_Scalar (3.0));
+         Source_Y.Set_To (OpenCV.Core.Make_Scalar (4.0));
+         OpenCV.Core.Float32_Access.Set (Source_X, 0, 1, 5.0);
+         OpenCV.Core.Float32_Access.Set (Source_Y, 0, 1, 12.0);
+         AUnit.Assertions.Assert
+           (not View_X.Is_Continuous and then not View_Y.Is_Continuous,
+            "Magnitude test Regions must be non-continuous");
+         Result := OpenCV.Core.Magnitude (View_X, View_Y);
+         OpenCV.Core.Float32_Access.Set (Source_X, 0, 1, 100.0);
+         OpenCV.Core.Float32_Access.Set (Source_Y, 0, 1, 200.0);
+      end;
+
+      AUnit.Assertions.Assert
+        (not Result.Is_Empty
+         and then Result.Is_Continuous
+         and then Result.Rows = 3
+         and then Result.Columns = 2
+         and then Result.Depth = OpenCV.Core.Float32
+         and then Result.Channels = 1
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 0, 0)),
+                     13.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 0, 1)),
+                     5.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 1, 0)),
+                     5.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 1, 1)),
+                     5.0),
+         "Magnitude must accept matching non-contiguous Regions and keep"
+         & " independent result storage after source finalization");
+   end Magnitude_Noncontiguous_Region_And_Independent_Storage;
+
+   procedure Magnitude_Typed_Empty_And_Default_Empty
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Empty32_X : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 0,
+           Columns      => 0,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Empty32_Y : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 0,
+           Columns      => 0,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Empty64_X : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 0,
+           Columns      => 0,
+           Element_Type => (Depth => OpenCV.Core.Float64, Channels => 2));
+      Empty64_Y : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 0,
+           Columns      => 0,
+           Element_Type => (Depth => OpenCV.Core.Float64, Channels => 2));
+      Result32  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Magnitude (Empty32_X, Empty32_Y);
+      Result64  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Magnitude (Empty64_X, Empty64_Y);
+      Default   : OpenCV.Core.Mat;
+
+      procedure Magnitude_Default_Empty is
+         Ignored : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Magnitude (Default, Default);
+      begin
+         pragma Unreferenced (Ignored);
+      end Magnitude_Default_Empty;
+   begin
+      AUnit.Assertions.Assert
+        (Result32.Is_Empty
+         and then Result32.Rows = 0
+         and then Result32.Columns = 0
+         and then Result32.Depth = OpenCV.Core.Float32
+         and then Result32.Channels = 1,
+         "Magnitude must preserve typed 0x0 Float32 operands as empty");
+      AUnit.Assertions.Assert
+        (Result64.Is_Empty
+         and then Result64.Rows = 0
+         and then Result64.Columns = 0
+         and then Result64.Depth = OpenCV.Core.Float64
+         and then Result64.Channels = 2,
+         "Magnitude must preserve typed 0x0 Float64 operands as empty");
+      Assert_Raises_OpenCV_Error
+        (Magnitude_Default_Empty'Access,
+         "Magnitude must reject a default empty Mat");
+   end Magnitude_Typed_Empty_And_Default_Empty;
+
+   procedure Magnitude_Rejects_Unsupported_Depths_And_Mismatches
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+
+      procedure Magnitude_UInt8 is
+         X       : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+         Y       : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+         Ignored : constant OpenCV.Core.Mat := OpenCV.Core.Magnitude (X, Y);
+      begin
+         pragma Unreferenced (Ignored);
+      end Magnitude_UInt8;
+
+      procedure Magnitude_Int32 is
+         X       : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.Int32, Channels => 1));
+         Y       : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.Int32, Channels => 1));
+         Ignored : constant OpenCV.Core.Mat := OpenCV.Core.Magnitude (X, Y);
+      begin
+         pragma Unreferenced (Ignored);
+      end Magnitude_Int32;
+
+      procedure Magnitude_Float16 is
+         X       : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.Float16, Channels => 1));
+         Y       : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.Float16, Channels => 1));
+         Ignored : constant OpenCV.Core.Mat := OpenCV.Core.Magnitude (X, Y);
+      begin
+         pragma Unreferenced (Ignored);
+      end Magnitude_Float16;
+
+      procedure Magnitude_Mismatched_Rows is
+         X       : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+         Y       : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 2,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+         Ignored : constant OpenCV.Core.Mat := OpenCV.Core.Magnitude (X, Y);
+      begin
+         pragma Unreferenced (Ignored);
+      end Magnitude_Mismatched_Rows;
+
+      procedure Magnitude_Mismatched_Columns is
+         X       : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+         Y       : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 2,
+              Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+         Ignored : constant OpenCV.Core.Mat := OpenCV.Core.Magnitude (X, Y);
+      begin
+         pragma Unreferenced (Ignored);
+      end Magnitude_Mismatched_Columns;
+
+      procedure Magnitude_Mismatched_Depth is
+         X       : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+         Y       : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.Float64, Channels => 1));
+         Ignored : constant OpenCV.Core.Mat := OpenCV.Core.Magnitude (X, Y);
+      begin
+         pragma Unreferenced (Ignored);
+      end Magnitude_Mismatched_Depth;
+
+      procedure Magnitude_Mismatched_Channels is
+         X       : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+         Y       : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.Float32, Channels => 3));
+         Ignored : constant OpenCV.Core.Mat := OpenCV.Core.Magnitude (X, Y);
+      begin
+         pragma Unreferenced (Ignored);
+      end Magnitude_Mismatched_Channels;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Magnitude_UInt8'Access, "Magnitude must reject UInt8 operands");
+      Assert_Raises_OpenCV_Error
+        (Magnitude_Int32'Access, "Magnitude must reject Int32 operands");
+      Assert_Raises_OpenCV_Error
+        (Magnitude_Float16'Access, "Magnitude must reject Float16 operands");
+      Assert_Raises_OpenCV_Error
+        (Magnitude_Mismatched_Rows'Access,
+         "Magnitude must reject mismatched rows");
+      Assert_Raises_OpenCV_Error
+        (Magnitude_Mismatched_Columns'Access,
+         "Magnitude must reject mismatched columns");
+      Assert_Raises_OpenCV_Error
+        (Magnitude_Mismatched_Depth'Access,
+         "Magnitude must reject mismatched depths");
+      Assert_Raises_OpenCV_Error
+        (Magnitude_Mismatched_Channels'Access,
+         "Magnitude must reject mismatched channel counts");
+   end Magnitude_Rejects_Unsupported_Depths_And_Mismatches;
+
    procedure Float32_Matx3x3_Has_Value_And_Zero_Based_Index_Semantics
      (Test : in out Mat_Test_Fixture)
    is
@@ -2258,6 +2625,7 @@ package body Mat_Conversion_Tests is
       Result.Add_Test
         (Caller.Create
            ("Log Float64 representative finite values",
+
             Log_Float64_Representative_Finite_Values'Access));
       Result.Add_Test
         (Caller.Create
@@ -2329,6 +2697,31 @@ package body Mat_Conversion_Tests is
         (Caller.Create
            ("Pow rejects unsupported depth and exponent",
             Pow_Rejects_Unsupported_Depth_And_Exponent'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Magnitude Float32 known scalar values",
+            Magnitude_Float32_Known_Scalar_Values'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Magnitude Float64 preserves depth",
+            Magnitude_Float64_Preserves_Depth'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Magnitude multi-channel Vec3",
+            Magnitude_Multi_Channel_Vec3'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Magnitude noncontiguous Region and independent storage",
+            Magnitude_Noncontiguous_Region_And_Independent_Storage'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Magnitude typed empty and default empty",
+            Magnitude_Typed_Empty_And_Default_Empty'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Magnitude rejects unsupported depths and mismatches",
+            Magnitude_Rejects_Unsupported_Depths_And_Mismatches'Access));
+
       Result.Add_Test
         (Caller.Create
            ("Float32 Matx3x3 has value and zero-based index semantics",

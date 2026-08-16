@@ -286,6 +286,14 @@ package OpenCV.Core is
    --  empty Mat is accepted for a nonnegative integer Power and rejected
    --  otherwise.
    function Pow (Self : Mat; Power : Long_Float) return Mat;
+   --  Returns an independent Mat with X's shape, depth, and channel count.
+   --  X and Y must be Float32 or Float64 with identical dimensions, depth,
+   --  and channel count. Each channel is processed independently by
+   --  cv::magnitude as sqrt (X**2 + Y**2). A typed 0x0 pair stays empty. A
+   --  default empty Mat, mismatched shape or type, and non-floating depths
+   --  including Float16 are rejected.
+
+   function Magnitude (X, Y : Mat) return Mat;
 
    --  Returns an independent Mat with Self's shape and element type.  For L1,
    --  L2, and Infinity, Alpha is the target norm and Beta is ignored.  For

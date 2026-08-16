@@ -1817,6 +1817,63 @@ package body OpenCV.Core is
       return Result;
    end Pow;
 
+
+   procedure Validate_Magnitude (X, Y : Mat) is
+   begin
+      if X.Depth /= Float32 and then X.Depth /= Float64 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Magnitude requires a Float32 or Float64 X operand");
+      end if;
+
+      if Y.Depth /= Float32 and then Y.Depth /= Float64 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Magnitude requires a Float32 or Float64 Y operand");
+      end if;
+
+      if X.Rows /= Y.Rows then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Magnitude requires operands with identical row counts");
+      end if;
+
+      if X.Columns /= Y.Columns then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Magnitude requires operands with identical column counts");
+      end if;
+
+      if X.Depth /= Y.Depth then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Magnitude requires operands with identical depths");
+      end if;
+
+      if X.Channels /= Y.Channels then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Magnitude requires operands with identical channel counts");
+      end if;
+   end Validate_Magnitude;
+
+   function Magnitude (X, Y : Mat) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Magnitude (X, Y);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Magnitude
+          (X => X.Handle, Y => Y.Handle, Result => New_Handle'Access);
+      Raise_On_Error (Status, "Mat magnitude operation");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Magnitude;
+
    function Is_Empty (Self : Mat) return Boolean is
       Empty  : aliased OpenCV.Internal.C_API.C_Boolean :=
         OpenCV.Internal.C_API.C_False;
