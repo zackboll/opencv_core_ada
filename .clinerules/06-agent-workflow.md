@@ -67,6 +67,51 @@ Repository-specific rules about which Alire crate owns a development tool take
 precedence over generic tool defaults.
 
 
+## Command Simplicity
+
+Prefer simple, single-purpose terminal commands.
+
+Avoid multiline shell commands and heredocs when the same task can be
+performed with a native Cline tool or a simple command.
+
+Do not use:
+
+- Python heredocs
+- shell heredocs
+- nested shells
+- temporary scripts
+
+merely to inspect, search, fetch, or transform information.
+
+Multiline heredoc commands are especially discouraged because terminal shell
+integration may fail to detect their completion reliably.
+
+Use native Cline tools for structured operations whenever available.
+
+Use terminal commands primarily for tools that genuinely need to run in the
+project environment, such as:
+
+- Alire
+- GNAT
+- GPRbuild
+- GNATformat
+- GNATprove
+- GNATcov
+- AUnit test executables
+- Git
+- pkg-config
+- compiler and toolchain inspection
+
+If a terminal command is required, prefer the simplest command that produces
+the necessary evidence.
+
+Do not combine unrelated operations into one large shell command merely to
+reduce the number of tool calls.
+
+Prefer commands whose completion and output can be reliably observed by the
+terminal integration.
+
+
 ## File Modification
 
 Modify repository source files using Cline's native file editing tools.
@@ -91,7 +136,8 @@ In particular, do not use these as source-file editing mechanisms:
 - temporary scripts whose only purpose is to rewrite repository files
 
 Do not call `python3`, Python, or another scripting language merely to perform
-an edit that can be made with Cline's native Edit tools.
+an edit, fetch public source, search text, or inspect information that can be
+handled by Cline's native tools.
 
 Avoid read-modify-write scripts that:
 
@@ -105,7 +151,7 @@ Use a targeted native edit instead.
 Shell commands are appropriate for:
 
 - inspecting repository state
-- searching source
+- searching local source with ordinary command-line tools when appropriate
 - querying installed tools or libraries
 - builds
 - tests
@@ -163,6 +209,50 @@ support it.
 
 When OpenCV behavior is uncertain and materially affects the public API or
 safety of the binding, inspect the authoritative source rather than guessing.
+
+
+## Authoritative External Source Inspection
+
+When inspecting authoritative upstream source or documentation, prefer native
+Cline Web Fetch, MCP, repository browsing, or other available retrieval tools.
+
+Do not launch Python or another scripting language merely to:
+
+- download a web page
+- fetch a raw GitHub file
+- search downloaded source text
+- extract a few relevant lines from remote source
+- query public documentation
+
+For OpenCV research, prefer this order when practical:
+
+1. inspect the OpenCV headers and source installed in the current development
+   environment when the exact installed behavior matters
+2. use native repository, Web Fetch, or MCP tools to inspect authoritative
+   OpenCV source for the exact version or tag being targeted
+3. use ordinary terminal commands only when the required information is not
+   reasonably accessible through native tools
+
+When inspecting upstream OpenCV online, use an exact version or tag when the
+feature depends on version-specific behavior.
+
+Do not use a Python `urllib`, `requests`, or similar script merely as a
+substitute for native Web Fetch or repository inspection.
+
+Do not download an entire upstream source file into a Python process merely to
+search for a declaration or implementation that native search/retrieval tools
+can inspect directly.
+
+If a native retrieval tool fails:
+
+1. inspect the failure
+2. determine whether another native retrieval/search tool is appropriate
+3. retry only when there is a meaningful reason
+4. use a scripted network request only when native retrieval genuinely cannot
+   accomplish the task
+
+Do not treat a native retrieval failure as automatic permission to fall back
+to a heredoc or temporary script.
 
 
 ## Vertical Feature Development
