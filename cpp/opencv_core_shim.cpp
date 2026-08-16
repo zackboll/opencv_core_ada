@@ -93,6 +93,28 @@ bool to_opencv_normalize_kind(int32_t normalize_kind,
     }
 }
 
+bool to_opencv_border_kind(int32_t border_kind, int &opencv_border_kind) noexcept {
+    switch (border_kind) {
+    case OPENCV_CORE_BORDER_CONSTANT:
+        opencv_border_kind = cv::BORDER_CONSTANT;
+        return true;
+    case OPENCV_CORE_BORDER_REPLICATE:
+        opencv_border_kind = cv::BORDER_REPLICATE;
+        return true;
+    case OPENCV_CORE_BORDER_REFLECT:
+        opencv_border_kind = cv::BORDER_REFLECT;
+        return true;
+    case OPENCV_CORE_BORDER_REFLECT_101:
+        opencv_border_kind = cv::BORDER_REFLECT_101;
+        return true;
+    case OPENCV_CORE_BORDER_WRAP:
+        opencv_border_kind = cv::BORDER_WRAP;
+        return true;
+    default:
+        return false;
+    }
+}
+
 bool to_opencv_compare_kind(int32_t comparison_kind,
                             int &opencv_compare_kind) noexcept {
     switch (comparison_kind) {
@@ -491,6 +513,53 @@ opencv_core_mat_flip(const opencv_core_mat_handle *source, int32_t flip_kind,
         cv::Mat flipped;
         cv::flip(source->value, flipped, flip_kind);
         *out_mat = new opencv_core_mat_handle(flipped);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_copy_make_border(const opencv_core_mat_handle *source,
+                                 int32_t top, int32_t bottom, int32_t left,
+                                 int32_t right, int32_t border_kind,
+                                 const opencv_core_scalar *value,
+                                 uint8_t isolated,
+                                 opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (source == nullptr || value == nullptr) {
+        return invalid_argument("source Mat handle and border value must not be null");
+    }
+
+    if (top < 0 || bottom < 0 || left < 0 || right < 0) {
+        return invalid_argument("border sizes must not be negative");
+    }
+
+    if (isolated != 0 && isolated != 1) {
+        return invalid_argument("isolated must be 0 or 1");
+    }
+
+    int opencv_border_kind = 0;
+    if (!to_opencv_border_kind(border_kind, opencv_border_kind)) {
+        return invalid_argument("border kind is not supported");
+    }
+
+    if (isolated != 0) {
+        opencv_border_kind |= cv::BORDER_ISOLATED;
+    }
+
+    try {
+        cv::Mat bordered;
+        cv::copyMakeBorder(source->value, bordered, top, bottom, left, right,
+                           opencv_border_kind, to_opencv_scalar(*value));
+        *out_mat = new opencv_core_mat_handle(bordered);
         return OPENCV_CORE_OK;
     } catch (...) {
         return translate_current_exception();

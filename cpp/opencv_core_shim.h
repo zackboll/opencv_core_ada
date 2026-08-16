@@ -85,6 +85,13 @@ typedef struct {
 #define OPENCV_CORE_FLIP_HORIZONTAL ((int32_t)1)
 #define OPENCV_CORE_FLIP_BOTH_AXES ((int32_t)-1)
 
+/* Stable border identifiers, translated explicitly to cv::BorderTypes. */
+#define OPENCV_CORE_BORDER_CONSTANT ((int32_t)0)
+#define OPENCV_CORE_BORDER_REPLICATE ((int32_t)1)
+#define OPENCV_CORE_BORDER_REFLECT ((int32_t)2)
+#define OPENCV_CORE_BORDER_REFLECT_101 ((int32_t)3)
+#define OPENCV_CORE_BORDER_WRAP ((int32_t)4)
+
 /* Stable rotation identifiers, translated explicitly to cv::RotateFlags. */
 #define OPENCV_CORE_ROTATE_90_CLOCKWISE ((int32_t)0)
 #define OPENCV_CORE_ROTATE_180 ((int32_t)1)
@@ -139,6 +146,19 @@ opencv_core_mat_transpose(const opencv_core_mat_handle *source,
 opencv_core_status
 opencv_core_mat_flip(const opencv_core_mat_handle *source, int32_t flip_kind,
                      opencv_core_mat_handle **out_mat);
+
+/*
+ * Returns a newly allocated, independent Mat with the requested border. The
+ * border kind is a stable ABI identifier. isolated is uint8_t false (0) or
+ * true (1); true restricts Region extrapolation to Region boundaries.
+ */
+opencv_core_status
+opencv_core_mat_copy_make_border(const opencv_core_mat_handle *source,
+                                 int32_t top, int32_t bottom, int32_t left,
+                                 int32_t right, int32_t border_kind,
+                                 const opencv_core_scalar *value,
+                                 uint8_t isolated,
+                                 opencv_core_mat_handle **out_mat);
 
 /*
  * Returns a newly allocated, independent Mat rotated by a multiple of 90

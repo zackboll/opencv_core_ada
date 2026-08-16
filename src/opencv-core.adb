@@ -83,6 +83,19 @@ package body OpenCV.Core is
          when L2       => OpenCV.Internal.C_API.Norm_L2,
          when Infinity => OpenCV.Internal.C_API.Norm_Inf);
 
+   function To_C_Border_Kind
+     (Value : Border_Kind) return OpenCV.Internal.C_API.C_Int32
+   is (case Value is
+         when Constant_Border => OpenCV.Internal.C_API.Border_Constant,
+         when Replicate       => OpenCV.Internal.C_API.Border_Replicate,
+         when Reflect         => OpenCV.Internal.C_API.Border_Reflect,
+         when Reflect_101     => OpenCV.Internal.C_API.Border_Reflect_101,
+         when Wrap            => OpenCV.Internal.C_API.Border_Wrap);
+
+   function To_C_Border_Size
+     (Value : Natural) return OpenCV.Internal.C_API.C_Int32
+   is (OpenCV.Internal.C_API.C_Int32 (Value));
+
    function To_C_Normalize_Kind
      (Value : Normalize_Kind) return OpenCV.Internal.C_API.C_Int32
    is (case Value is
@@ -846,6 +859,40 @@ package body OpenCV.Core is
       Result.Handle := New_Handle;
       return Result;
    end Flip;
+
+   function Copy_Make_Border
+     (Self     : Mat;
+      Top      : Natural;
+      Bottom   : Natural;
+      Left     : Natural;
+      Right    : Natural;
+      Kind     : Border_Kind;
+      Value    : Scalar := (others => 0.0);
+      Isolated : Boolean := False) return Mat
+   is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      C_Value    : aliased OpenCV.Internal.C_API.Scalar := To_C_Scalar (Value);
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Status :=
+        OpenCV.Internal.C_API.Mat_Copy_Make_Border
+          (Source   => Self.Handle,
+           Top      => To_C_Border_Size (Top),
+           Bottom   => To_C_Border_Size (Bottom),
+           Left     => To_C_Border_Size (Left),
+           Right    => To_C_Border_Size (Right),
+           Kind     => To_C_Border_Kind (Kind),
+           Value    => C_Value'Access,
+           Isolated => (if Isolated then 1 else 0),
+           Result   => New_Handle'Access);
+      Raise_On_Error (Status, "Mat copy make border");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Copy_Make_Border;
 
    function Rotate (Self : Mat; Kind : Rotation_Kind) return Mat is
       Result     : Mat;

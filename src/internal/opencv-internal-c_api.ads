@@ -86,6 +86,12 @@ package OpenCV.Internal.C_API is
    Flip_Horizontal : constant C_Int32 := 1;
    Flip_Both_Axes  : constant C_Int32 := C_Int32'Val (-1);
 
+   Border_Constant    : constant C_Int32 := 0;
+   Border_Replicate   : constant C_Int32 := 1;
+   Border_Reflect     : constant C_Int32 := 2;
+   Border_Reflect_101 : constant C_Int32 := 3;
+   Border_Wrap        : constant C_Int32 := 4;
+
    Rotate_90_Clockwise        : constant C_Int32 := 0;
    Rotate_180                 : constant C_Int32 := 1;
    Rotate_90_Counterclockwise : constant C_Int32 := 2;
@@ -134,6 +140,21 @@ package OpenCV.Internal.C_API is
      (Source : Mat_Handle; Kind : C_Int32; Result : access Mat_Handle)
       return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_flip";
+
+   function Mat_Copy_Make_Border
+     (Source   : Mat_Handle;
+      Top      : C_Int32;
+      Bottom   : C_Int32;
+      Left     : C_Int32;
+      Right    : C_Int32;
+      Kind     : C_Int32;
+      Value    : access Scalar;
+      Isolated : C_Boolean;
+      Result   : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_copy_make_border";
 
    function Mat_Rotate
      (Source : Mat_Handle; Kind : C_Int32; Result : access Mat_Handle)

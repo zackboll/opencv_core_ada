@@ -830,6 +830,184 @@ package body Mat_Transform_Tests is
          "Repeat must reject output dimensions beyond the supported range");
    end Repeat_Region_Lifetime_Empty_And_Size_Validation;
 
+   procedure Copy_Make_Border_UInt8_Modes_And_Constant_Value
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 3, (OpenCV.Core.UInt8, 1));
+   begin
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 0, 1);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 1, 2);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 2, 3);
+
+      declare
+         Constant_Result    : constant OpenCV.Core.Mat :=
+           Source.Copy_Make_Border
+             (Top    => 0,
+              Bottom => 0,
+              Left   => 2,
+              Right  => 2,
+              Kind   => OpenCV.Core.Constant_Border,
+              Value  => OpenCV.Core.Make_Scalar (9.0));
+         Replicate_Result   : constant OpenCV.Core.Mat :=
+           Source.Copy_Make_Border (0, 0, 2, 2, OpenCV.Core.Replicate);
+         Reflect_Result     : constant OpenCV.Core.Mat :=
+           Source.Copy_Make_Border (0, 0, 2, 2, OpenCV.Core.Reflect);
+         Reflect_101_Result : constant OpenCV.Core.Mat :=
+           Source.Copy_Make_Border (0, 0, 2, 2, OpenCV.Core.Reflect_101);
+         Wrap_Result        : constant OpenCV.Core.Mat :=
+           Source.Copy_Make_Border (0, 0, 2, 2, OpenCV.Core.Wrap);
+      begin
+         AUnit.Assertions.Assert
+           (Constant_Result.Rows = 1
+            and then Constant_Result.Columns = 7
+            and then Constant_Result.Depth = OpenCV.Core.UInt8
+            and then Constant_Result.Channels = 1
+            and then OpenCV.Core.UInt8_Access.Get (Constant_Result, 0, 0) = 9
+            and then OpenCV.Core.UInt8_Access.Get (Constant_Result, 0, 6) = 9
+            and then OpenCV.Core.UInt8_Access.Get (Replicate_Result, 0, 0) = 1
+            and then OpenCV.Core.UInt8_Access.Get (Replicate_Result, 0, 1) = 1
+            and then OpenCV.Core.UInt8_Access.Get (Replicate_Result, 0, 5) = 3
+            and then OpenCV.Core.UInt8_Access.Get (Replicate_Result, 0, 6) = 3
+            and then OpenCV.Core.UInt8_Access.Get (Reflect_Result, 0, 0) = 2
+            and then OpenCV.Core.UInt8_Access.Get (Reflect_Result, 0, 1) = 1
+            and then OpenCV.Core.UInt8_Access.Get (Reflect_Result, 0, 5) = 3
+            and then OpenCV.Core.UInt8_Access.Get (Reflect_Result, 0, 6) = 2
+            and then OpenCV.Core.UInt8_Access.Get (Reflect_101_Result, 0, 0)
+                     = 3
+            and then OpenCV.Core.UInt8_Access.Get (Reflect_101_Result, 0, 1)
+                     = 2
+            and then OpenCV.Core.UInt8_Access.Get (Reflect_101_Result, 0, 5)
+                     = 2
+            and then OpenCV.Core.UInt8_Access.Get (Reflect_101_Result, 0, 6)
+                     = 1
+            and then OpenCV.Core.UInt8_Access.Get (Wrap_Result, 0, 0) = 2
+            and then OpenCV.Core.UInt8_Access.Get (Wrap_Result, 0, 1) = 3
+            and then OpenCV.Core.UInt8_Access.Get (Wrap_Result, 0, 5) = 1
+            and then OpenCV.Core.UInt8_Access.Get (Wrap_Result, 0, 6) = 2,
+            "Copy_Make_Border must map every supported border kind exactly");
+      end;
+   end Copy_Make_Border_UInt8_Modes_And_Constant_Value;
+
+   procedure Copy_Make_Border_Constant_Preserves_Complete_Element_Type
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 3));
+   begin
+      OpenCV.Core.UInt8_Vec3_Access.Set (Source, 0, 0, (1, 2, 3));
+
+      declare
+         Result : constant OpenCV.Core.Mat :=
+           Source.Copy_Make_Border
+             (Top    => 1,
+              Bottom => 1,
+              Left   => 1,
+              Right  => 1,
+              Kind   => OpenCV.Core.Constant_Border,
+              Value  => OpenCV.Core.Make_Scalar (10.0, 20.0, 30.0));
+      begin
+         AUnit.Assertions.Assert
+           (Result.Rows = 3
+            and then Result.Columns = 3
+            and then Result.Depth = OpenCV.Core.UInt8
+            and then Result.Channels = 3
+            and then OpenCV.Core.UInt8_Vec3_Access.Get (Result, 0, 0)
+                     = (10, 20, 30)
+            and then OpenCV.Core.UInt8_Vec3_Access.Get (Result, 1, 1)
+                     = (1, 2, 3)
+            and then OpenCV.Core.UInt8_Vec3_Access.Get (Result, 2, 2)
+                     = (10, 20, 30),
+            "Constant borders must preserve type and apply every Scalar"
+            & " component");
+      end;
+   end Copy_Make_Border_Constant_Preserves_Complete_Element_Type;
+
+   procedure Copy_Make_Border_Region_Isolation_Lifetime_Empty_And_Validation
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Result : OpenCV.Core.Mat;
+      Empty  : OpenCV.Core.Mat;
+
+      procedure Border_Too_Large is
+         Source  : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored :=
+           Source.Copy_Make_Border
+             (Top    => Natural'Last,
+              Bottom => 0,
+              Left   => 0,
+              Right  => 0,
+              Kind   => OpenCV.Core.Replicate);
+      end Border_Too_Large;
+   begin
+      declare
+         Parent : OpenCV.Core.Mat :=
+           OpenCV.Core.Create (1, 5, (OpenCV.Core.UInt8, 1));
+      begin
+         for Column in 0 .. 4 loop
+            OpenCV.Core.UInt8_Access.Set
+              (Parent, 0, Column, Interfaces.Unsigned_8 ((Column + 1) * 10));
+         end loop;
+
+         declare
+            Region          : constant OpenCV.Core.Mat :=
+              Parent.Region ((X => 1, Y => 0, Width => 3, Height => 1));
+            Default_Result  : constant OpenCV.Core.Mat :=
+              Region.Copy_Make_Border
+                (Top    => 0,
+                 Bottom => 0,
+                 Left   => 1,
+                 Right  => 1,
+                 Kind   => OpenCV.Core.Replicate);
+            Isolated_Result : constant OpenCV.Core.Mat :=
+              Region.Copy_Make_Border
+                (Top      => 0,
+                 Bottom   => 0,
+                 Left     => 1,
+                 Right    => 1,
+                 Kind     => OpenCV.Core.Replicate,
+                 Isolated => True);
+         begin
+            Result := Isolated_Result;
+            AUnit.Assertions.Assert
+              (OpenCV.Core.UInt8_Access.Get (Default_Result, 0, 0) = 10
+               and then OpenCV.Core.UInt8_Access.Get (Default_Result, 0, 4)
+                        = 50
+               and then OpenCV.Core.UInt8_Access.Get (Isolated_Result, 0, 0)
+                        = 20
+               and then OpenCV.Core.UInt8_Access.Get (Isolated_Result, 0, 4)
+                        = 40
+               and then OpenCV.Core.UInt8_Access.Get (Region, 0, 0) = 20,
+               "Isolated must independently restrict Replicate borders"
+               & " to Region boundaries while the default may use parent"
+               & " pixels");
+            OpenCV.Core.UInt8_Access.Set (Result, 0, 0, 99);
+         end;
+      end;
+
+      declare
+         Empty_Result : constant OpenCV.Core.Mat :=
+           Empty.Copy_Make_Border (0, 0, 0, 0, OpenCV.Core.Constant_Border);
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Access.Get (Result, 0, 0) = 99
+            and then Empty_Result.Is_Empty,
+            "Border results must survive source finalization and preserve"
+            & " empty input with zero borders");
+      end;
+
+      Assert_Raises_OpenCV_Error
+        (Border_Too_Large'Access,
+         "Copy_Make_Border must reject border sizes beyond the supported"
+         & " range");
+   end Copy_Make_Border_Region_Isolation_Lifetime_Empty_And_Validation;
+
    procedure HConcat_UInt8_Mapping_And_Array_Order
      (Test : in out Mat_Test_Fixture)
    is
@@ -1336,6 +1514,19 @@ package body Mat_Transform_Tests is
         (Caller.Create
            ("Repeat Region, lifetime, empty Mat, and size validation",
             Repeat_Region_Lifetime_Empty_And_Size_Validation'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Copy_Make_Border UInt8 modes and constant value",
+            Copy_Make_Border_UInt8_Modes_And_Constant_Value'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Copy_Make_Border constant complete element type",
+            Copy_Make_Border_Constant_Preserves_Complete_Element_Type'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Copy_Make_Border Region isolation, lifetime, empty Mat,"
+            & " and validation",
+            Copy_Make_Border_Region_Isolation_Lifetime_Empty_And_Validation'Access));
       Result.Add_Test
         (Caller.Create
            ("HConcat UInt8 mapping and arbitrary array order",

@@ -22,6 +22,9 @@ package OpenCV.Core is
 
    type Flip_Kind is (Vertical, Horizontal, Both_Axes);
 
+   type Border_Kind is
+     (Constant_Border, Replicate, Reflect, Reflect_101, Wrap);
+
    type Rotation_Kind is (Clockwise_90, Half_Turn, Counterclockwise_90);
 
    type Reduction_Axis is (Across_Rows, Across_Columns);
@@ -162,6 +165,21 @@ package OpenCV.Core is
    --  and Both_Axes reverses both. Empty Mats produce an empty result.
    --  Non-contiguous Regions are accepted.
    function Flip (Self : Mat; Kind : Flip_Kind) return Mat;
+   --  Returns an independent Mat with a border of the requested thickness.
+   --  Constant uses Value; other border kinds extrapolate source pixels.
+   --  When Self is a Region, Isolated is false by default so OpenCV may use
+   --  pixels from its parent Mat. Isolated true restricts extrapolation to the
+   --  Region boundaries. Empty Mats produce an empty result when every border
+   --  is zero.
+   function Copy_Make_Border
+     (Self     : Mat;
+      Top      : Natural;
+      Bottom   : Natural;
+      Left     : Natural;
+      Right    : Natural;
+      Kind     : Border_Kind;
+      Value    : Scalar := (others => 0.0);
+      Isolated : Boolean := False) return Mat;
    --  Separates Self into one independent single-channel Mat per channel.
    --  Results use channel indices 0 .. Self.Channels - 1, preserve Self's
    --  depth and dimensions, and do not share pixel storage with Self. Empty
