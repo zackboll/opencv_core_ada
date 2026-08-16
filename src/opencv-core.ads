@@ -223,6 +223,29 @@ package OpenCV.Core is
      (Self  : Mat;
       Axis  : Sort_Axis := Each_Row;
       Order : Sort_Order := Ascending) return Mat;
+   --  Returns an independent Int32 single-channel Mat of Self's rows and
+   --  columns containing zero-based indices, not the sorted values. Each_Row
+   --  independently orders the columns of every row and stores the original
+   --  column indices. Each_Column independently orders the rows of every
+   --  column and stores the original row indices. Ascending is the default
+   --  order and Each_Row is the default axis. Self is not modified. Self must
+   --  be single-channel. Supported source depths are UInt8, Int8, UInt16,
+   --  Int16, Int32, Float32, and Float64. Float16 is rejected because
+   --  OpenCV 4.10 has no sortIdx implementation for it. Continuity is not
+   --  required. The result owns independent storage, including when Self is a
+   --  non-contiguous Region; Region indices are relative to that Region
+   --  rather than to its parent. Equal values produce a valid permutation
+   --  that would sort those values, but their relative order is not stable
+   --  or otherwise guaranteed. NaN ordering is not part of the public
+   --  contract. A default empty Mat and typed 0x0 Mats of a supported depth
+   --  raise OpenCV_Error because OpenCV 4.10's sortIdx implementation asserts
+   --  that source and destination data pointers differ, and empty Mats share
+   --  a null data pointer. Typed empty Float16 is rejected before the ABI.
+   function Sort_Indices
+     (Self  : Mat;
+      Axis  : Sort_Axis := Each_Row;
+      Order : Sort_Order := Ascending) return Mat;
+
    --  Returns an independent Mat with a border of the requested thickness.
    --  Constant uses Value; other border kinds extrapolate source pixels.
    --  When Self is a Region, Isolated is false by default so OpenCV may use

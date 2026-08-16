@@ -158,6 +158,18 @@ opencv_core_mat_sort(const opencv_core_mat_handle *source, uint8_t axis,
                      uint8_t descending, opencv_core_mat_handle **out_mat);
 
 /*
+ * Returns a newly allocated, independent Int32 single-channel Mat of source
+ * size. axis is 0 (each row) or 1 (each column). descending is 0 (ascending)
+ * or 1 (descending). source is borrowed. The result stores zero-based original
+ * column indices when axis is 0 and original row indices when axis is 1.
+ * OpenCV 4.10 requires a single-channel source of a supported depth.
+ */
+opencv_core_status
+opencv_core_mat_sort_indices(const opencv_core_mat_handle *source, uint8_t axis,
+                             uint8_t descending,
+                             opencv_core_mat_handle **out_mat);
+
+/*
  * Returns a newly allocated, independent Mat with the requested border. The
  * border kind is a stable ABI identifier. isolated is uint8_t false (0) or
  * true (1); true restricts Region extrapolation to Region boundaries.

@@ -1825,6 +1825,504 @@ package body Mat_Transform_Tests is
         (Sort_Empty_Float16'Access,
          "Sort must reject a typed empty Float16 Mat");
    end Sort_Empty_Mats;
+   function Inspect_Sort_Indices
+     (Indices : OpenCV.Core.Mat) return OpenCV.Core.Mat is
+   begin
+      AUnit.Assertions.Assert
+        (Indices.Depth = OpenCV.Core.Int32 and then Indices.Channels = 1,
+         "Sort_Indices must return Int32 single-channel metadata");
+      return Indices.Convert_To (OpenCV.Core.UInt8);
+   end Inspect_Sort_Indices;
+
+   function Index_At
+     (Inspected : OpenCV.Core.Mat; Row, Column : Integer)
+      return Interfaces.Unsigned_8
+   is (OpenCV.Core.UInt8_Access.Get (Inspected, Row, Column));
+
+   procedure Sort_Indices_Every_Row_Ascending (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source    : constant OpenCV.Core.Mat := Sample_Float32_Source;
+      Indices   : constant OpenCV.Core.Mat :=
+        Source.Sort_Indices
+          (Axis => OpenCV.Core.Each_Row, Order => OpenCV.Core.Ascending);
+      Inspected : constant OpenCV.Core.Mat := Inspect_Sort_Indices (Indices);
+   begin
+      AUnit.Assertions.Assert
+        (Indices.Rows = 2
+         and then Indices.Columns = 3
+         and then Indices.Depth = OpenCV.Core.Int32
+         and then Indices.Channels = 1
+         and then Index_At (Inspected, 0, 0) = 1
+         and then Index_At (Inspected, 0, 1) = 2
+         and then Index_At (Inspected, 0, 2) = 0
+         and then Index_At (Inspected, 1, 0) = 0
+         and then Index_At (Inspected, 1, 1) = 2
+         and then Index_At (Inspected, 1, 2) = 1,
+         "Each_Row ascending must return original column indices");
+   end Sort_Indices_Every_Row_Ascending;
+
+   procedure Sort_Indices_Every_Row_Descending (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source    : constant OpenCV.Core.Mat := Sample_Float32_Source;
+      Indices   : constant OpenCV.Core.Mat :=
+        Source.Sort_Indices
+          (Axis => OpenCV.Core.Each_Row, Order => OpenCV.Core.Descending);
+      Inspected : constant OpenCV.Core.Mat := Inspect_Sort_Indices (Indices);
+   begin
+      AUnit.Assertions.Assert
+        (Index_At (Inspected, 0, 0) = 0
+         and then Index_At (Inspected, 0, 1) = 2
+         and then Index_At (Inspected, 0, 2) = 1
+         and then Index_At (Inspected, 1, 0) = 1
+         and then Index_At (Inspected, 1, 1) = 2
+         and then Index_At (Inspected, 1, 2) = 0,
+         "Each_Row descending must reverse the original column indices");
+   end Sort_Indices_Every_Row_Descending;
+
+   procedure Sort_Indices_Every_Column_Ascending
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source    : constant OpenCV.Core.Mat := Sample_Float32_Source;
+      Indices   : constant OpenCV.Core.Mat :=
+        Source.Sort_Indices
+          (Axis => OpenCV.Core.Each_Column, Order => OpenCV.Core.Ascending);
+      Inspected : constant OpenCV.Core.Mat := Inspect_Sort_Indices (Indices);
+   begin
+      AUnit.Assertions.Assert
+        (Indices.Rows = 2
+         and then Indices.Columns = 3
+         and then Index_At (Inspected, 0, 0) = 1
+         and then Index_At (Inspected, 0, 1) = 0
+         and then Index_At (Inspected, 0, 2) = 1
+         and then Index_At (Inspected, 1, 0) = 0
+         and then Index_At (Inspected, 1, 1) = 1
+         and then Index_At (Inspected, 1, 2) = 0,
+         "Each_Column ascending must return original row indices");
+   end Sort_Indices_Every_Column_Ascending;
+
+   procedure Sort_Indices_Every_Column_Descending
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source    : constant OpenCV.Core.Mat := Sample_Float32_Source;
+      Indices   : constant OpenCV.Core.Mat :=
+        Source.Sort_Indices
+          (Axis => OpenCV.Core.Each_Column, Order => OpenCV.Core.Descending);
+      Inspected : constant OpenCV.Core.Mat := Inspect_Sort_Indices (Indices);
+   begin
+      AUnit.Assertions.Assert
+        (Index_At (Inspected, 0, 0) = 0
+         and then Index_At (Inspected, 0, 1) = 1
+         and then Index_At (Inspected, 0, 2) = 0
+         and then Index_At (Inspected, 1, 0) = 1
+         and then Index_At (Inspected, 1, 1) = 0
+         and then Index_At (Inspected, 1, 2) = 1,
+         "Each_Column descending must reverse the original row indices");
+   end Sort_Indices_Every_Column_Descending;
+
+   procedure Sort_Indices_Defaults_Are_Each_Row_Ascending
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source    : constant OpenCV.Core.Mat := Sample_Float32_Source;
+      Default   : constant OpenCV.Core.Mat := Source.Sort_Indices;
+      Inspected : constant OpenCV.Core.Mat := Inspect_Sort_Indices (Default);
+   begin
+      AUnit.Assertions.Assert
+        (Index_At (Inspected, 0, 0) = 1
+         and then Index_At (Inspected, 0, 1) = 2
+         and then Index_At (Inspected, 0, 2) = 0
+         and then Index_At (Inspected, 1, 0) = 0
+         and then Index_At (Inspected, 1, 1) = 2
+         and then Index_At (Inspected, 1, 2) = 1,
+         "Source.Sort_Indices must mean Each_Row ascending");
+   end Sort_Indices_Defaults_Are_Each_Row_Ascending;
+
+   procedure Sort_Indices_Cross_Check_Against_Sort
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source    : constant OpenCV.Core.Mat := Sample_Float32_Source;
+      Sorted    : constant OpenCV.Core.Mat :=
+        Source.Sort
+          (Axis => OpenCV.Core.Each_Row, Order => OpenCV.Core.Ascending);
+      Indices   : constant OpenCV.Core.Mat :=
+        Source.Sort_Indices
+          (Axis => OpenCV.Core.Each_Row, Order => OpenCV.Core.Ascending);
+      Inspected : constant OpenCV.Core.Mat := Inspect_Sort_Indices (Indices);
+   begin
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get
+           (Source, 0, Integer (Index_At (Inspected, 0, 0)))
+         = OpenCV.Core.Float32_Access.Get (Sorted, 0, 0)
+         and then OpenCV.Core.Float32_Access.Get
+                    (Source, 0, Integer (Index_At (Inspected, 0, 1)))
+                  = OpenCV.Core.Float32_Access.Get (Sorted, 0, 1)
+         and then OpenCV.Core.Float32_Access.Get
+                    (Source, 0, Integer (Index_At (Inspected, 0, 2)))
+                  = OpenCV.Core.Float32_Access.Get (Sorted, 0, 2)
+         and then OpenCV.Core.Float32_Access.Get
+                    (Source, 1, Integer (Index_At (Inspected, 1, 0)))
+                  = OpenCV.Core.Float32_Access.Get (Sorted, 1, 0)
+         and then OpenCV.Core.Float32_Access.Get
+                    (Source, 1, Integer (Index_At (Inspected, 1, 1)))
+                  = OpenCV.Core.Float32_Access.Get (Sorted, 1, 1)
+         and then OpenCV.Core.Float32_Access.Get
+                    (Source, 1, Integer (Index_At (Inspected, 1, 2)))
+                  = OpenCV.Core.Float32_Access.Get (Sorted, 1, 2),
+         "Sort_Indices must recover Source.Sort values for unique elements");
+   end Sort_Indices_Cross_Check_Against_Sort;
+
+   procedure Sort_Indices_Supported_Depths (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      UInt8_Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 4, (OpenCV.Core.UInt8, 1));
+   begin
+      OpenCV.Core.UInt8_Access.Set (UInt8_Source, 0, 0, 30);
+      OpenCV.Core.UInt8_Access.Set (UInt8_Source, 0, 1, 10);
+      OpenCV.Core.UInt8_Access.Set (UInt8_Source, 0, 2, 40);
+      OpenCV.Core.UInt8_Access.Set (UInt8_Source, 0, 3, 20);
+
+      declare
+         UInt8_Indices    : constant OpenCV.Core.Mat :=
+           UInt8_Source.Sort_Indices;
+         Int8_Indices     : constant OpenCV.Core.Mat :=
+           UInt8_Source.Convert_To (OpenCV.Core.Int8).Sort_Indices;
+         UInt16_Indices   : constant OpenCV.Core.Mat :=
+           UInt8_Source.Convert_To (OpenCV.Core.UInt16).Sort_Indices;
+         Int16_Indices    : constant OpenCV.Core.Mat :=
+           UInt8_Source.Convert_To (OpenCV.Core.Int16).Sort_Indices;
+         Int32_Indices    : constant OpenCV.Core.Mat :=
+           UInt8_Source.Convert_To (OpenCV.Core.Int32).Sort_Indices;
+         Float32_Indices  : constant OpenCV.Core.Mat :=
+           UInt8_Source.Convert_To (OpenCV.Core.Float32).Sort_Indices;
+         Float64_Indices  : constant OpenCV.Core.Mat :=
+           UInt8_Source.Convert_To (OpenCV.Core.Float64).Sort_Indices;
+         UInt8_Inspected  : constant OpenCV.Core.Mat :=
+           Inspect_Sort_Indices (UInt8_Indices);
+         Int8_Inspected   : constant OpenCV.Core.Mat :=
+           Inspect_Sort_Indices (Int8_Indices);
+         UInt16_Inspected : constant OpenCV.Core.Mat :=
+           Inspect_Sort_Indices (UInt16_Indices);
+         Int16_Inspected  : constant OpenCV.Core.Mat :=
+           Inspect_Sort_Indices (Int16_Indices);
+         Int32_Inspected  : constant OpenCV.Core.Mat :=
+           Inspect_Sort_Indices (Int32_Indices);
+      begin
+         AUnit.Assertions.Assert
+           (UInt8_Indices.Depth = OpenCV.Core.Int32
+            and then Int8_Indices.Depth = OpenCV.Core.Int32
+            and then UInt16_Indices.Depth = OpenCV.Core.Int32
+            and then Int16_Indices.Depth = OpenCV.Core.Int32
+            and then Int32_Indices.Depth = OpenCV.Core.Int32
+            and then Float32_Indices.Depth = OpenCV.Core.Int32
+            and then Float64_Indices.Depth = OpenCV.Core.Int32
+            and then UInt8_Indices.Channels = 1
+            and then Float32_Indices.Channels = 1
+            and then Float64_Indices.Channels = 1,
+            "Sort_Indices must succeed for all seven supported depths");
+         AUnit.Assertions.Assert
+           (Index_At (UInt8_Inspected, 0, 0) = 1
+            and then Index_At (UInt8_Inspected, 0, 1) = 3
+            and then Index_At (UInt8_Inspected, 0, 2) = 0
+            and then Index_At (UInt8_Inspected, 0, 3) = 2
+            and then Index_At (Int8_Inspected, 0, 0) = 1
+            and then Index_At (Int8_Inspected, 0, 3) = 2
+            and then Index_At (UInt16_Inspected, 0, 0) = 1
+            and then Index_At (UInt16_Inspected, 0, 3) = 2
+            and then Index_At (Int16_Inspected, 0, 0) = 1
+            and then Index_At (Int16_Inspected, 0, 3) = 2
+            and then Index_At (Int32_Inspected, 0, 0) = 1
+            and then Index_At (Int32_Inspected, 0, 3) = 2,
+            "Sort_Indices must return the same unique-value order for"
+            & " representative integer depths");
+      end;
+   end Sort_Indices_Supported_Depths;
+
+   procedure Sort_Indices_Duplicate_Values (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 5, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, 2.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 2, 2.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 3, 1.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 4, 2.0);
+
+      declare
+         Indices   : constant OpenCV.Core.Mat := Source.Sort_Indices;
+         Inspected : constant OpenCV.Core.Mat :=
+           Inspect_Sort_Indices (Indices);
+         Seen      : array (0 .. 4) of Boolean := (others => False);
+         Previous  : Interfaces.IEEE_Float_32;
+         Current   : Interfaces.IEEE_Float_32;
+         Index     : Integer;
+      begin
+         for Column in 0 .. 4 loop
+            Index := Integer (Index_At (Inspected, 0, Column));
+            AUnit.Assertions.Assert
+              (Index in 0 .. 4 and then not Seen (Index),
+               "Sort_Indices must return a permutation of original columns");
+            Seen (Index) := True;
+         end loop;
+
+         Previous :=
+           OpenCV.Core.Float32_Access.Get
+             (Source, 0, Integer (Index_At (Inspected, 0, 0)));
+         for Column in 1 .. 4 loop
+            Current :=
+              OpenCV.Core.Float32_Access.Get
+                (Source, 0, Integer (Index_At (Inspected, 0, Column)));
+            AUnit.Assertions.Assert
+              (Previous <= Current,
+               "Dereferencing Sort_Indices must put duplicate values in"
+               & " sorted order");
+            Previous := Current;
+         end loop;
+      end;
+   end Sort_Indices_Duplicate_Values;
+
+   procedure Sort_Indices_Single_Row_And_Column
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Row    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 4, (OpenCV.Core.Float32, 1));
+      Column : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 1, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Row, 0, 0, 4.0);
+      OpenCV.Core.Float32_Access.Set (Row, 0, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Row, 0, 2, 3.0);
+      OpenCV.Core.Float32_Access.Set (Row, 0, 3, 2.0);
+      OpenCV.Core.Float32_Access.Set (Column, 0, 0, 4.0);
+      OpenCV.Core.Float32_Access.Set (Column, 1, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Column, 2, 0, 3.0);
+      OpenCV.Core.Float32_Access.Set (Column, 3, 0, 2.0);
+
+      declare
+         Row_Result           : constant OpenCV.Core.Mat :=
+           Row.Sort_Indices (Axis => OpenCV.Core.Each_Row);
+         Row_Column_Result    : constant OpenCV.Core.Mat :=
+           Row.Sort_Indices (Axis => OpenCV.Core.Each_Column);
+         Column_Result        : constant OpenCV.Core.Mat :=
+           Column.Sort_Indices (Axis => OpenCV.Core.Each_Column);
+         Column_Row_Result    : constant OpenCV.Core.Mat :=
+           Column.Sort_Indices (Axis => OpenCV.Core.Each_Row);
+         Row_Inspected        : constant OpenCV.Core.Mat :=
+           Inspect_Sort_Indices (Row_Result);
+         Row_Column_Inspected : constant OpenCV.Core.Mat :=
+           Inspect_Sort_Indices (Row_Column_Result);
+         Column_Inspected     : constant OpenCV.Core.Mat :=
+           Inspect_Sort_Indices (Column_Result);
+         Column_Row_Inspected : constant OpenCV.Core.Mat :=
+           Inspect_Sort_Indices (Column_Row_Result);
+      begin
+         AUnit.Assertions.Assert
+           (Row_Result.Rows = 1
+            and then Row_Result.Columns = 4
+            and then Index_At (Row_Inspected, 0, 0) = 1
+            and then Index_At (Row_Inspected, 0, 1) = 3
+            and then Index_At (Row_Inspected, 0, 2) = 2
+            and then Index_At (Row_Inspected, 0, 3) = 0,
+            "A 1xN Mat must return sorted column indices with Each_Row");
+         AUnit.Assertions.Assert
+           (Index_At (Row_Column_Inspected, 0, 0) = 0
+            and then Index_At (Row_Column_Inspected, 0, 1) = 0
+            and then Index_At (Row_Column_Inspected, 0, 2) = 0
+            and then Index_At (Row_Column_Inspected, 0, 3) = 0,
+            "Each_Column on a 1xN Mat must contain only row index 0");
+         AUnit.Assertions.Assert
+           (Column_Result.Rows = 4
+            and then Column_Result.Columns = 1
+            and then Index_At (Column_Inspected, 0, 0) = 1
+            and then Index_At (Column_Inspected, 1, 0) = 3
+            and then Index_At (Column_Inspected, 2, 0) = 2
+            and then Index_At (Column_Inspected, 3, 0) = 0,
+            "An Nx1 Mat must return sorted row indices with Each_Column");
+         AUnit.Assertions.Assert
+           (Index_At (Column_Row_Inspected, 0, 0) = 0
+            and then Index_At (Column_Row_Inspected, 1, 0) = 0
+            and then Index_At (Column_Row_Inspected, 2, 0) = 0
+            and then Index_At (Column_Row_Inspected, 3, 0) = 0,
+            "Each_Row on an Nx1 Mat must contain only column index 0");
+      end;
+   end Sort_Indices_Single_Row_And_Column;
+
+   procedure Sort_Indices_Noncontiguous_Region_Is_Independent
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Result : OpenCV.Core.Mat;
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 4, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Parent, 0, 0, 9.0);
+      OpenCV.Core.Float32_Access.Set (Parent, 0, 1, 3.0);
+      OpenCV.Core.Float32_Access.Set (Parent, 0, 2, 1.0);
+      OpenCV.Core.Float32_Access.Set (Parent, 0, 3, 8.0);
+      OpenCV.Core.Float32_Access.Set (Parent, 1, 0, 7.0);
+      OpenCV.Core.Float32_Access.Set (Parent, 1, 1, -1.0);
+      OpenCV.Core.Float32_Access.Set (Parent, 1, 2, 5.0);
+      OpenCV.Core.Float32_Access.Set (Parent, 1, 3, 0.0);
+
+      declare
+         Region : constant OpenCV.Core.Mat :=
+           Parent.Region ((X => 1, Y => 0, Width => 2, Height => 2));
+      begin
+         AUnit.Assertions.Assert
+           (not Region.Is_Continuous,
+            "The Region test must exercise a non-contiguous view");
+         Result := Region.Sort_Indices (Axis => OpenCV.Core.Each_Row);
+         declare
+            Inspected : constant OpenCV.Core.Mat :=
+              Inspect_Sort_Indices (Result);
+         begin
+            AUnit.Assertions.Assert
+              (Result.Rows = 2
+               and then Result.Columns = 2
+               and then Result.Depth = OpenCV.Core.Int32
+               and then Index_At (Inspected, 0, 0) = 1
+               and then Index_At (Inspected, 0, 1) = 0
+               and then Index_At (Inspected, 1, 0) = 0
+               and then Index_At (Inspected, 1, 1) = 1
+               and then OpenCV.Core.Float32_Access.Get (Region, 0, 0) = 3.0
+               and then OpenCV.Core.Float32_Access.Get (Region, 0, 1) = 1.0
+               and then OpenCV.Core.Float32_Access.Get (Parent, 0, 1) = 3.0
+               and then OpenCV.Core.Float32_Access.Get (Parent, 0, 2) = 1.0,
+               "Sort_Indices must use Region-local indices and leave the"
+               & " source unchanged");
+         end;
+      end;
+
+      declare
+         Surviving : constant OpenCV.Core.Mat := Inspect_Sort_Indices (Result);
+      begin
+         AUnit.Assertions.Assert
+           (Index_At (Surviving, 0, 0) = 1
+            and then Index_At (Surviving, 0, 1) = 0
+            and then Index_At (Surviving, 1, 1) = 1,
+            "A Sort_Indices result must remain valid after Region"
+            & " finalization");
+      end;
+   end Sort_Indices_Noncontiguous_Region_Is_Independent;
+
+   procedure Sort_Indices_Result_Is_Independent
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source    : OpenCV.Core.Mat := Sample_Float32_Source;
+      Indices   : OpenCV.Core.Mat := Source.Sort_Indices;
+      Inspected : constant OpenCV.Core.Mat := Inspect_Sort_Indices (Indices);
+   begin
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, 99.0);
+      AUnit.Assertions.Assert
+        (Index_At (Inspected, 0, 0) = 1
+         and then Index_At (Inspect_Sort_Indices (Indices), 0, 0) = 1,
+         "Mutating Source after Sort_Indices must not change the result");
+      Indices.Set_To (OpenCV.Core.Make_Scalar (9.0));
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Source, 0, 1) = 1.0
+         and then OpenCV.Core.Float32_Access.Get (Source, 0, 2) = 2.0,
+         "Mutating Indices after Sort_Indices must not change Source");
+
+   end Sort_Indices_Result_Is_Independent;
+
+   procedure Sort_Indices_Rejects_Multi_Channel
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 3));
+
+      procedure Sort_Indices_Vec3 is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Source.Sort_Indices;
+      end Sort_Indices_Vec3;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Sort_Indices_Vec3'Access,
+         "Sort_Indices must reject a multi-channel Mat");
+   end Sort_Indices_Rejects_Multi_Channel;
+
+   procedure Sort_Indices_Rejects_Float16 (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float16, 1));
+
+      procedure Sort_Indices_Float16 is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Source.Sort_Indices;
+      end Sort_Indices_Float16;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Sort_Indices_Float16'Access, "Sort_Indices must reject Float16 Mats");
+   end Sort_Indices_Rejects_Float16;
+
+   procedure Sort_Indices_Empty_Mats (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Default : OpenCV.Core.Mat;
+      Empty8  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.UInt8, 1));
+      Empty32 : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 1));
+      Empty64 : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float64, 1));
+      Empty16 : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float16, 1));
+
+      procedure Sort_Indices_Default is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Default.Sort_Indices;
+      end Sort_Indices_Default;
+
+      procedure Sort_Indices_Empty8 is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Empty8.Sort_Indices;
+      end Sort_Indices_Empty8;
+
+      procedure Sort_Indices_Empty32 is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Empty32.Sort_Indices;
+      end Sort_Indices_Empty32;
+
+      procedure Sort_Indices_Empty64 is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Empty64.Sort_Indices;
+      end Sort_Indices_Empty64;
+
+      procedure Sort_Indices_Empty16 is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Empty16.Sort_Indices;
+      end Sort_Indices_Empty16;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Sort_Indices_Default'Access,
+         "Sort_Indices must reject a default empty Mat");
+      Assert_Raises_OpenCV_Error
+        (Sort_Indices_Empty8'Access,
+         "Sort_Indices must reject a typed empty UInt8 Mat");
+      Assert_Raises_OpenCV_Error
+        (Sort_Indices_Empty32'Access,
+         "Sort_Indices must reject a typed empty Float32 Mat");
+      Assert_Raises_OpenCV_Error
+        (Sort_Indices_Empty64'Access,
+         "Sort_Indices must reject a typed empty Float64 Mat");
+      Assert_Raises_OpenCV_Error
+        (Sort_Indices_Empty16'Access,
+         "Sort_Indices must reject a typed empty Float16 Mat");
+   end Sort_Indices_Empty_Mats;
 
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -1984,7 +2482,63 @@ package body Mat_Transform_Tests is
         (Caller.Create ("Sort rejects Float16", Sort_Rejects_Float16'Access));
       Result.Add_Test
         (Caller.Create ("Sort empty Mats", Sort_Empty_Mats'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sort_Indices every row ascending",
+            Sort_Indices_Every_Row_Ascending'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sort_Indices every row descending",
+            Sort_Indices_Every_Row_Descending'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sort_Indices every column ascending",
+            Sort_Indices_Every_Column_Ascending'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sort_Indices every column descending",
+            Sort_Indices_Every_Column_Descending'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sort_Indices defaults are Each_Row ascending",
+            Sort_Indices_Defaults_Are_Each_Row_Ascending'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sort_Indices cross-check against Sort",
+            Sort_Indices_Cross_Check_Against_Sort'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sort_Indices supported depths",
+            Sort_Indices_Supported_Depths'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sort_Indices duplicate values",
+            Sort_Indices_Duplicate_Values'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sort_Indices single row and column",
+            Sort_Indices_Single_Row_And_Column'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sort_Indices non-contiguous Region independence",
+            Sort_Indices_Noncontiguous_Region_Is_Independent'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sort_Indices result is independent of source",
+            Sort_Indices_Result_Is_Independent'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sort_Indices rejects multi-channel",
+            Sort_Indices_Rejects_Multi_Channel'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sort_Indices rejects Float16",
+            Sort_Indices_Rejects_Float16'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sort_Indices empty Mats", Sort_Indices_Empty_Mats'Access));
       return Result'Access;
+
    end Suite;
 
 end Mat_Transform_Tests;
