@@ -1760,10 +1760,12 @@ package body OpenCV.Core is
 
    function Is_Integer_Power (Power : Long_Float) return Boolean is
       Rounded : constant Long_Float := Long_Float'Rounding (Power);
+      Min_Int : constant Long_Float :=
+        Long_Float (OpenCV.Internal.C_API.C_Int32'First);
+      Max_Int : constant Long_Float :=
+        Long_Float (OpenCV.Internal.C_API.C_Int32'Last);
    begin
-      if Rounded < Long_Float (Integer'First)
-        or else Rounded > Long_Float (Integer'Last)
-      then
+      if Rounded < Min_Int or else Rounded > Max_Int then
          return False;
       end if;
 
@@ -1786,6 +1788,13 @@ package body OpenCV.Core is
            (OpenCV_Error'Identity,
             "Pow requires a Float32 or Float64 source for a non-integer"
             & " power");
+      end if;
+
+      if Power < 0.0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Pow does not support a negative power for an integer-depth"
+            & " source");
       end if;
    end Validate_Pow;
 

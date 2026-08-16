@@ -1507,7 +1507,7 @@ package body Mat_Conversion_Tests is
          & " integer powers");
    end Pow_Float32_Negative_Base_Integer_Powers;
 
-   procedure Pow_Float32_Noninteger_Uses_Absolute_Value
+   procedure Pow_Float32_Noninteger_Negative_Base_Is_NaN
      (Test : in out Mat_Test_Fixture)
    is
       pragma Unreferenced (Test);
@@ -1532,7 +1532,30 @@ package body Mat_Conversion_Tests is
                      8.0),
          "OpenCV 4.10 non-integer Pow of a negative finite value is NaN;"
          & " 4 ** 1.5 is 8");
-   end Pow_Float32_Noninteger_Uses_Absolute_Value;
+   end Pow_Float32_Noninteger_Negative_Base_Is_NaN;
+
+   procedure Pow_Float32_Negative_Integer_Power
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 1,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, 2.0);
+      Result := Source.Pow (-2.0);
+
+      AUnit.Assertions.Assert
+        (Result.Depth = OpenCV.Core.Float32
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 0, 0)),
+                     0.25),
+         "Pow must accept a Float32 negative integer power: 2 ** -2 = 0.25");
+   end Pow_Float32_Negative_Integer_Power;
 
    procedure Pow_Float64_Preserves_Depth (Test : in out Mat_Test_Fixture) is
       pragma Unreferenced (Test);
@@ -1861,6 +1884,28 @@ package body Mat_Conversion_Tests is
       begin
          pragma Unreferenced (Ignored);
       end Pow_Float16_Noninteger;
+
+      procedure Pow_UInt8_Negative is
+         Source  : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+         Ignored : constant OpenCV.Core.Mat := Source.Pow (-1.0);
+      begin
+         pragma Unreferenced (Ignored);
+      end Pow_UInt8_Negative;
+
+      procedure Pow_Int16_Negative is
+         Source  : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.Int16, Channels => 1));
+         Ignored : constant OpenCV.Core.Mat := Source.Pow (-2.0);
+      begin
+         pragma Unreferenced (Ignored);
+      end Pow_Int16_Negative;
    begin
       Assert_Raises_OpenCV_Error
         (Pow_UInt8_Noninteger'Access,
@@ -1874,6 +1919,12 @@ package body Mat_Conversion_Tests is
       Assert_Raises_OpenCV_Error
         (Pow_Float16_Noninteger'Access,
          "Pow must reject a Float16 source for a non-integer power");
+      Assert_Raises_OpenCV_Error
+        (Pow_UInt8_Negative'Access,
+         "Pow must reject a UInt8 source for a negative integer power");
+      Assert_Raises_OpenCV_Error
+        (Pow_Int16_Negative'Access,
+         "Pow must reject an Int16 source for a negative integer power");
    end Pow_Rejects_Unsupported_Depth_And_Exponent;
 
    procedure Float32_Matx3x3_Has_Value_And_Zero_Based_Index_Semantics
@@ -2237,8 +2288,12 @@ package body Mat_Conversion_Tests is
             Pow_Float32_Negative_Base_Integer_Powers'Access));
       Result.Add_Test
         (Caller.Create
-           ("Pow Float32 noninteger negative base follows OpenCV 4.10",
-            Pow_Float32_Noninteger_Uses_Absolute_Value'Access));
+           ("Pow Float32 noninteger negative base is NaN",
+            Pow_Float32_Noninteger_Negative_Base_Is_NaN'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Pow Float32 negative integer power",
+            Pow_Float32_Negative_Integer_Power'Access));
       Result.Add_Test
         (Caller.Create
            ("Pow Float64 preserves depth",
