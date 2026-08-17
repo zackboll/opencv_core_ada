@@ -2672,6 +2672,60 @@ package body OpenCV.Core is
       end;
    end Solve;
 
+   function Supports_Dot_Product_Depth (Self : Mat) return Boolean
+   is (Self.Depth = UInt8
+       or else Self.Depth = Int8
+       or else Self.Depth = UInt16
+       or else Self.Depth = Int16
+       or else Self.Depth = Int32
+       or else Self.Depth = Float32
+       or else Self.Depth = Float64);
+
+   function Dot_Product (Self : Mat; Other : Mat) return Long_Float is
+      C_Result : aliased OpenCV.Internal.C_API.C_Double := 0.0;
+      Status   : OpenCV.Internal.C_API.Status;
+   begin
+      if Self.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Dot_Product requires a non-empty Self Mat");
+      end if;
+
+      if Other.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Dot_Product requires a non-empty Other Mat");
+      end if;
+
+      if Self.Rows /= Other.Rows or else Self.Columns /= Other.Columns then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Dot_Product requires operands with identical rows and columns");
+      end if;
+
+      if Self.Depth /= Other.Depth or else Self.Channels /= Other.Channels then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Dot_Product requires operands with identical complete"
+            & " element types");
+      end if;
+
+      if not Supports_Dot_Product_Depth (Self) then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Dot_Product requires a UInt8, Int8, UInt16, Int16, Int32,"
+            & " Float32, or Float64 Mat");
+      end if;
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_Dot_Product
+          (Left   => Self.Handle,
+           Right  => Other.Handle,
+           Result => C_Result'Access);
+      Raise_On_Error (Status, "Mat dot product operation");
+      return Long_Float (C_Result);
+   end Dot_Product;
+
    function Matrix_Multiply (Left, Right : Mat) return Mat is
       Result     : Mat;
       New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=

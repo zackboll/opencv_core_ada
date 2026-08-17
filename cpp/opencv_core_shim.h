@@ -829,6 +829,22 @@ opencv_core_mat_determinant(const opencv_core_mat_handle *source,
                             double *out_determinant);
 
 /*
+ * Computes the scalar dot product of two borrowed Mats using
+ * cv::Mat::dot. Both operands must be non-empty, at most
+ * two-dimensional, and share identical rows, columns, and complete
+ * type. Supported depths are CV_8U, CV_8S, CV_16U, CV_16S, CV_32S,
+ * CV_32F, and CV_64F. CV_16F is rejected. Multi-channel Mats are
+ * accepted; every corresponding channel component is multiplied and
+ * summed. Two-channel values are ordinary scalar channels, not
+ * complex/Hermitian arithmetic. Continuity is not required. Inputs
+ * are borrowed and unmodified. The result is one double.
+ */
+opencv_core_status
+opencv_core_mat_dot_product(const opencv_core_mat_handle *left,
+                            const opencv_core_mat_handle *right,
+                            double *out_value);
+
+/*
  * Inverts a borrowed square single-channel floating Mat with OpenCV
  * DECOMP_LU. Supported types are CV_32FC1 and CV_64FC1. Source is not
  * modified. A singular matrix is a successful result: out_invertible is

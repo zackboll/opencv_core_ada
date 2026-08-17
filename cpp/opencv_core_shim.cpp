@@ -3217,6 +3217,61 @@ opencv_core_mat_determinant(const opencv_core_mat_handle *source,
 }
 
 opencv_core_status
+opencv_core_mat_dot_product(const opencv_core_mat_handle *left,
+                            const opencv_core_mat_handle *right,
+                            double *out_value) {
+    clear_error();
+
+    if (out_value != nullptr) {
+        *out_value = 0.0;
+    }
+
+    if (left == nullptr || right == nullptr || out_value == nullptr) {
+        return invalid_argument("dot product requires non-null handles and output");
+    }
+
+    try {
+        const cv::Mat &A = left->value;
+        const cv::Mat &B = right->value;
+
+        if (A.empty() || B.empty()) {
+            return invalid_argument(
+                "dot product requires non-empty Left and Right Mats");
+        }
+
+        if (A.dims > 2 || B.dims > 2) {
+            return invalid_argument(
+                "dot product requires Mats with at most two dimensions");
+        }
+
+        if (A.rows != B.rows || A.cols != B.cols) {
+            return invalid_argument(
+                "dot product requires operands with identical rows and columns");
+        }
+
+        if (A.type() != B.type()) {
+            return invalid_argument(
+                "dot product requires operands with identical complete types");
+        }
+
+        const int depth = A.depth();
+        if (depth != CV_8U && depth != CV_8S && depth != CV_16U &&
+            depth != CV_16S && depth != CV_32S && depth != CV_32F &&
+            depth != CV_64F) {
+            return invalid_argument(
+                "dot product requires UInt8, Int8, UInt16, Int16, Int32, "
+                "Float32, or Float64 Mats");
+        }
+
+        const double result = A.dot(B);
+        *out_value = result;
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_invert(const opencv_core_mat_handle *source,
                        uint8_t *out_invertible,
                        opencv_core_mat_handle **out_mat) {

@@ -3,6 +3,7 @@ with AUnit.Test_Caller;
 with Interfaces;
 with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
+with OpenCV.Core.Float32_Vec3;
 with OpenCV.Core.Float32_Vec3_Access;
 with OpenCV.Core.UInt8_Access;
 with OpenCV.Core.UInt8_Vec3;
@@ -17,6 +18,7 @@ package body Mat_Reduction_Tests is
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Point_Coordinate;
    use type OpenCV.Core.UInt8_Vec3.Vector;
+   use type OpenCV.Core.Float32_Vec3.Vector;
 
    use Mat_Test_Support;
 
@@ -2060,6 +2062,324 @@ package body Mat_Reduction_Tests is
         (Check_Three_Channel'Access,
          "Matrix_Multiply must reject Float32 Mats with three channels");
    end Matrix_Multiply_Rejects_Invalid_Inputs;
+
+   procedure Dot_Product_Basic_Float32 (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Left   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Right  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Result : Long_Float;
+   begin
+      Fill_2x3 (Left, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+      Fill_2x3 (Right, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0);
+      Result := Left.Dot_Product (Right);
+
+      AUnit.Assertions.Assert
+        (Result = 56.0, "Float32 Dot_Product must sum every element product");
+      AUnit.Assertions.Assert
+        (Unchanged_2x3 (Left, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0)
+         and then Unchanged_2x3 (Right, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0),
+         "Dot_Product must not modify its operands");
+   end Dot_Product_Basic_Float32;
+
+   procedure Dot_Product_Supports_Float64 (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Float32_Left  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Float32_Right : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Left          : OpenCV.Core.Mat;
+      Right         : OpenCV.Core.Mat;
+      Result        : Long_Float;
+   begin
+      Fill_2x3 (Float32_Left, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+      Fill_2x3 (Float32_Right, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0);
+      Left := Float32_Left.Convert_To (OpenCV.Core.Float64);
+      Right := Float32_Right.Convert_To (OpenCV.Core.Float64);
+      Result := Left.Dot_Product (Right);
+
+      AUnit.Assertions.Assert
+        (Left.Depth = OpenCV.Core.Float64
+         and then Right.Depth = OpenCV.Core.Float64
+         and then Result = 56.0,
+         "Float64 Dot_Product must return Long_Float 56.0 and keep Float64");
+   end Dot_Product_Supports_Float64;
+
+   procedure Dot_Product_Supports_Integer_Depths
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Float32_Left  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Float32_Right : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+
+      function Product_Of (Depth : OpenCV.Core.Depth_Type) return Long_Float
+      is (Float32_Left.Convert_To (Depth).Dot_Product
+            (Float32_Right.Convert_To (Depth)));
+   begin
+      OpenCV.Core.Float32_Access.Set (Float32_Left, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Float32_Left, 0, 1, -2.0);
+      OpenCV.Core.Float32_Access.Set (Float32_Left, 1, 0, 3.0);
+      OpenCV.Core.Float32_Access.Set (Float32_Left, 1, 1, 4.0);
+      OpenCV.Core.Float32_Access.Set (Float32_Right, 0, 0, 5.0);
+      OpenCV.Core.Float32_Access.Set (Float32_Right, 0, 1, 6.0);
+      OpenCV.Core.Float32_Access.Set (Float32_Right, 1, 0, -1.0);
+      OpenCV.Core.Float32_Access.Set (Float32_Right, 1, 1, 2.0);
+
+      AUnit.Assertions.Assert
+        (Product_Of (OpenCV.Core.UInt8) = 13.0,
+         "UInt8 Dot_Product must use the supported OpenCV kernel");
+      AUnit.Assertions.Assert
+        (Product_Of (OpenCV.Core.Int8) = -2.0,
+         "Int8 Dot_Product must include negative signed values");
+      AUnit.Assertions.Assert
+        (Product_Of (OpenCV.Core.UInt16) = 13.0,
+         "UInt16 Dot_Product must use the supported OpenCV kernel");
+      AUnit.Assertions.Assert
+        (Product_Of (OpenCV.Core.Int16) = -2.0,
+         "Int16 Dot_Product must include negative signed values");
+      AUnit.Assertions.Assert
+        (Product_Of (OpenCV.Core.Int32) = -2.0,
+         "Int32 Dot_Product must use the supported OpenCV kernel");
+   end Dot_Product_Supports_Integer_Depths;
+
+   procedure Dot_Product_Rejects_Float16 (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Left  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float16, 1));
+      Right : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float16, 1));
+
+      procedure Check_Float16 is
+         Value : constant Long_Float := Left.Dot_Product (Right);
+      begin
+         pragma Unreferenced (Value);
+      end Check_Float16;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Check_Float16'Access, "Dot_Product must reject Float16 Mats");
+   end Dot_Product_Rejects_Float16;
+
+   procedure Dot_Product_C3_Sums_Every_Channel (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 3));
+      Right  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 3));
+      Result : Long_Float;
+   begin
+      OpenCV.Core.Float32_Vec3_Access.Set (Left, 0, 0, (1.0, 2.0, 3.0));
+      OpenCV.Core.Float32_Vec3_Access.Set (Right, 0, 0, (4.0, 5.0, 6.0));
+      Result := Left.Dot_Product (Right);
+
+      AUnit.Assertions.Assert
+        (Result = 32.0,
+         "C3 Dot_Product must sum every corresponding channel product");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Vec3_Access.Get (Left, 0, 0) = (1.0, 2.0, 3.0)
+         and then OpenCV.Core.Float32_Vec3_Access.Get (Right, 0, 0)
+                  = (4.0, 5.0, 6.0),
+         "C3 Dot_Product must not modify either operand");
+   end Dot_Product_C3_Sums_Every_Channel;
+
+   procedure Dot_Product_C2_Is_Not_Complex (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Left_0  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Left_1  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Right_0 : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Right_1 : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Left    : OpenCV.Core.Mat;
+      Right   : OpenCV.Core.Mat;
+      Result  : Long_Float;
+   begin
+      OpenCV.Core.Float32_Access.Set (Left_0, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Left_1, 0, 0, 2.0);
+      OpenCV.Core.Float32_Access.Set (Right_0, 0, 0, 3.0);
+      OpenCV.Core.Float32_Access.Set (Right_1, 0, 0, 4.0);
+      Left := OpenCV.Core.Merge ((Left_0, Left_1));
+      Right := OpenCV.Core.Merge ((Right_0, Right_1));
+      Result := Left.Dot_Product (Right);
+
+      AUnit.Assertions.Assert
+        (Result = 11.0,
+         "C2 Dot_Product must sum channel products 1*3 + 2*4, not GEMM"
+         & " complex arithmetic");
+   end Dot_Product_C2_Is_Not_Complex;
+
+   procedure Dot_Product_Supports_Five_Channels
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left_Channels  : OpenCV.Core.Mat_Array (0 .. 4);
+      Right_Channels : OpenCV.Core.Mat_Array (0 .. 4);
+      Left           : OpenCV.Core.Mat;
+      Right          : OpenCV.Core.Mat;
+      Result         : Long_Float;
+   begin
+      for Index in Left_Channels'Range loop
+         Left_Channels (Index) :=
+           OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+         Right_Channels (Index) :=
+           OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+         OpenCV.Core.Float32_Access.Set
+           (Left_Channels (Index), 0, 0, Interfaces.IEEE_Float_32 (Index + 1));
+         OpenCV.Core.Float32_Access.Set
+           (Right_Channels (Index),
+            0,
+            0,
+            Interfaces.IEEE_Float_32 (5 - Index));
+      end loop;
+
+      Left := OpenCV.Core.Merge (Left_Channels);
+      Right := OpenCV.Core.Merge (Right_Channels);
+      Result := Left.Dot_Product (Right);
+
+      AUnit.Assertions.Assert
+        (Left.Channels = 5 and then Right.Channels = 5 and then Result = 35.0,
+         "C5 Dot_Product must include every channel, not only Scalar's four");
+   end Dot_Product_Supports_Five_Channels;
+
+   procedure Dot_Product_Sums_Multiple_Elements_And_Channels
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 1, (OpenCV.Core.Float32, 3));
+      Right  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 1, (OpenCV.Core.Float32, 3));
+      Result : Long_Float;
+   begin
+      OpenCV.Core.Float32_Vec3_Access.Set (Left, 0, 0, (1.0, 2.0, 3.0));
+      OpenCV.Core.Float32_Vec3_Access.Set (Left, 1, 0, (1.0, 0.0, 2.0));
+      OpenCV.Core.Float32_Vec3_Access.Set (Right, 0, 0, (4.0, 5.0, 6.0));
+      OpenCV.Core.Float32_Vec3_Access.Set (Right, 1, 0, (2.0, 3.0, 4.0));
+      Result := Left.Dot_Product (Right);
+
+      AUnit.Assertions.Assert
+        (Result = 42.0,
+         "Dot_Product must sum over every spatial element and every channel");
+   end Dot_Product_Sums_Multiple_Elements_And_Channels;
+
+   procedure Dot_Product_Supports_Noncontiguous_Regions
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent_Left  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 5, (OpenCV.Core.Float32, 1));
+      Parent_Right : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 4, (OpenCV.Core.Float32, 1));
+      Result       : Long_Float;
+   begin
+      Parent_Left.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Parent_Right.Set_To (OpenCV.Core.Make_Scalar (88.0));
+
+      declare
+         Left  : OpenCV.Core.Mat :=
+           Parent_Left.Region ((X => 1, Y => 0, Width => 3, Height => 2));
+         Right : OpenCV.Core.Mat :=
+           Parent_Right.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+      begin
+         Fill_2x3 (Left, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+         Fill_2x3 (Right, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0);
+         AUnit.Assertions.Assert
+           (not Left.Is_Continuous and then not Right.Is_Continuous,
+            "The Regions used for Dot_Product must be non-contiguous");
+         Result := Left.Dot_Product (Right);
+         AUnit.Assertions.Assert
+           (Result = 56.0,
+            "Dot_Product must support non-contiguous Left and Right Regions");
+         AUnit.Assertions.Assert
+           (Unchanged_2x3 (Left, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0)
+            and then Unchanged_2x3 (Right, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0)
+            and then OpenCV.Core.Float32_Access.Get (Parent_Left, 0, 0) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent_Left, 0, 4) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent_Right, 0, 0) = 88.0
+            and then OpenCV.Core.Float32_Access.Get (Parent_Right, 1, 0)
+                     = 88.0,
+            "Dot_Product must not modify the Regions or their parents");
+      end;
+   end Dot_Product_Supports_Noncontiguous_Regions;
+
+   procedure Dot_Product_Rejects_Mismatched_Shape_And_Type
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Row           : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 3, (OpenCV.Core.Float32, 1));
+      Column        : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 1, (OpenCV.Core.Float32, 1));
+      Float32_C1    : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Float64_C1    : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float64, 1));
+      Float32_C3    : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 3));
+      Default_Empty : OpenCV.Core.Mat;
+      Empty32       : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 1));
+
+      procedure Check_Shape is
+         Value : constant Long_Float := Row.Dot_Product (Column);
+      begin
+         pragma Unreferenced (Value);
+      end Check_Shape;
+
+      procedure Check_Depth is
+         Value : constant Long_Float := Float32_C1.Dot_Product (Float64_C1);
+      begin
+         pragma Unreferenced (Value);
+      end Check_Depth;
+
+      procedure Check_Channels is
+         Value : constant Long_Float := Float32_C1.Dot_Product (Float32_C3);
+      begin
+         pragma Unreferenced (Value);
+      end Check_Channels;
+
+      procedure Check_Default_Self is
+         Value : constant Long_Float := Default_Empty.Dot_Product (Float32_C1);
+      begin
+         pragma Unreferenced (Value);
+      end Check_Default_Self;
+
+      procedure Check_Default_Other is
+         Value : constant Long_Float := Float32_C1.Dot_Product (Default_Empty);
+      begin
+         pragma Unreferenced (Value);
+      end Check_Default_Other;
+
+      procedure Check_Empty32 is
+         Value : constant Long_Float := Empty32.Dot_Product (Empty32);
+      begin
+         pragma Unreferenced (Value);
+      end Check_Empty32;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Check_Shape'Access,
+         "Dot_Product must reject a 1x3 C1 Mat against a 3x1 C1 Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_Depth'Access,
+         "Dot_Product must reject mixed Float32 and Float64 operands");
+      Assert_Raises_OpenCV_Error
+        (Check_Channels'Access,
+         "Dot_Product must reject mixed C1 and C3 operands");
+      Assert_Raises_OpenCV_Error
+        (Check_Default_Self'Access,
+         "Dot_Product must reject a default empty Self");
+      Assert_Raises_OpenCV_Error
+        (Check_Default_Other'Access,
+         "Dot_Product must reject a default empty Other");
+      Assert_Raises_OpenCV_Error
+        (Check_Empty32'Access,
+         "Dot_Product must reject typed 0x0 Float32 operands");
+   end Dot_Product_Rejects_Mismatched_Shape_And_Type;
 
    procedure Matrix_Multiply_Add_Weighted_Float32
      (Test : in out Mat_Test_Fixture)
@@ -5570,6 +5890,45 @@ package body Mat_Reduction_Tests is
         (Caller.Create
            ("Matrix_Multiply rejects invalid inputs",
             Matrix_Multiply_Rejects_Invalid_Inputs'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Dot_Product basic Float32", Dot_Product_Basic_Float32'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Dot_Product supports Float64",
+            Dot_Product_Supports_Float64'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Dot_Product supports integer depths",
+            Dot_Product_Supports_Integer_Depths'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Dot_Product rejects Float16",
+            Dot_Product_Rejects_Float16'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Dot_Product C3 sums every channel",
+            Dot_Product_C3_Sums_Every_Channel'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Dot_Product C2 is not complex",
+            Dot_Product_C2_Is_Not_Complex'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Dot_Product supports five channels",
+            Dot_Product_Supports_Five_Channels'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Dot_Product sums multiple elements and channels",
+            Dot_Product_Sums_Multiple_Elements_And_Channels'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Dot_Product supports non-contiguous Regions",
+            Dot_Product_Supports_Noncontiguous_Regions'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Dot_Product rejects mismatched shape and type",
+            Dot_Product_Rejects_Mismatched_Shape_And_Type'Access));
 
       Result.Add_Test
         (Caller.Create

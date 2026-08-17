@@ -590,6 +590,25 @@ package OpenCV.Core is
    --  accepted. This is not a least-squares or pseudo-solution API.
    --  Numerical rounding is inherent in floating-point solution.
    function Solve (Self : Mat; Right_Hand_Side : Mat) return Solve_Result;
+   --  Returns the scalar dot product of Self and Other as Long_Float,
+   --  corresponding to OpenCV 4.10 cv::Mat::dot's double. This is the
+   --  sum of every corresponding spatial-element and channel product.
+   --  It is not algebraic Matrix_Multiply, not element-wise Multiply,
+   --  and not a complex or Hermitian inner product. Self and Other
+   --  must both be non-empty and must share identical Rows, Columns,
+   --  Depth, and channel count. A 1x3 C1 Mat and a 3x1 C1 Mat are
+   --  incompatible; shapes are not flattened. Supported depths are
+   --  UInt8, Int8, UInt16, Int16, Int32, Float32, and Float64.
+   --  Float16 is rejected. Multi-channel Mats are supported; every
+   --  corresponding channel component is included. Two-channel values
+   --  are ordinary scalar channels, unlike Matrix_Multiply which
+   --  treats Float32/Float64 C2 as OpenCV complex matrices. Empty
+   --  Mats, including typed 0x0 operands, are rejected. Continuity
+   --  is not required; non-contiguous Regions are supported. Inputs
+   --  are unchanged. Exact SIMD accumulation order and
+   --  architecture-identical floating results are not promised.
+   function Dot_Product (Self : Mat; Other : Mat) return Long_Float;
+
    --  Performs algebraic matrix multiplication Result = Left * Right
    --  using OpenCV 4.10 cv::gemm. This is not the existing element-wise
    --  Multiply. Left.Columns must equal Right.Rows; the independently
