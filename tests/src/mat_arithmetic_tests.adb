@@ -864,7 +864,8 @@ package body Mat_Arithmetic_Tests is
          and then OpenCV.Core.UInt8_Vec3_Access.Get (Result, 0, 1)
                   = (48, 60, 72)
          and then OpenCV.Core.UInt8_Vec3_Access.Get (Result, 1, 0) = (7, 8, 9),
-         "Scale_Add must process Vec3 Regions independently of source lifetime");
+         "Scale_Add must process Vec3 Regions independently of source"
+         & " lifetime");
    end Mat_Scale_Add_Handles_Vec3_Regions_And_Lifetime;
 
    procedure Mat_Scale_Add_Handles_Empty_And_Compatibility
@@ -937,7 +938,8 @@ package body Mat_Arithmetic_Tests is
       AUnit.Assertions.Assert
         (Result.Depth = OpenCV.Core.Int32
          and then Result.Sum.Component_0 = 2_250.0,
-         "Scale_Add must support in-range Int32 values as Scale * Left + Right");
+         "Scale_Add must support in-range Int32 values as Scale * Left +"
+         & " Right");
    end Mat_Scale_Add_Supports_Int32;
 
    procedure Mat_Scale_Add_Supports_Float64 (Test : in out Mat_Test_Fixture) is
@@ -1004,7 +1006,8 @@ package body Mat_Arithmetic_Tests is
          and then Minimum.Columns = 3
          and then Minimum.Depth = OpenCV.Core.UInt8
          and then Minimum.Channels = 1,
-         "Minimum and Maximum must map every UInt8 element and preserve metadata");
+         "Minimum and Maximum must map every UInt8 element and preserve"
+         & " metadata");
 
       OpenCV.Core.Float32_Access.Set (Float_Left, 0, 0, -3.5);
       OpenCV.Core.Float32_Access.Set (Float_Left, 0, 1, 4.0);
@@ -1030,7 +1033,8 @@ package body Mat_Arithmetic_Tests is
                     (Long_Float
                        (OpenCV.Core.Float32_Access.Get (Maximum, 0, 2)),
                      2.0),
-         "Minimum and Maximum must compare positive and negative Float32 values");
+         "Minimum and Maximum must compare positive and negative Float32"
+         & " values");
    end Mat_Minimum_And_Maximum_Map_UInt8_And_Float32;
 
    procedure Mat_Minimum_And_Maximum_Handle_Vec3_Regions_And_Lifetime
@@ -1162,6 +1166,8 @@ package body Mat_Arithmetic_Tests is
    Result : aliased AUnit.Test_Suites.Test_Suite;
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
+      Min_Max_Nonfinite : constant Caller.Test_Method :=
+        Mat_Minimum_And_Maximum_Preserve_Float32_Nonfinite_Behavior'Access;
    begin
       Result.Add_Test
         (Caller.Create
@@ -1278,7 +1284,7 @@ package body Mat_Arithmetic_Tests is
       Result.Add_Test
         (Caller.Create
            ("Mat Minimum and Maximum preserve Float32 nonfinite behavior",
-            Mat_Minimum_And_Maximum_Preserve_Float32_Nonfinite_Behavior'Access));
+            Min_Max_Nonfinite));
       Result.Add_Test
         (Caller.Create
            ("Mat Minimum and Maximum handle empty and compatibility",

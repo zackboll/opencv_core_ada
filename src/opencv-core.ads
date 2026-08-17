@@ -608,6 +608,23 @@ package OpenCV.Core is
    --  are unchanged. Exact SIMD accumulation order and
    --  architecture-identical floating results are not promised.
    function Dot_Product (Self : Mat; Other : Mat) return Long_Float;
+   --  Returns the scalar Mahalanobis distance of Self and Other as
+   --  Long_Float, corresponding to OpenCV 4.10 cv::Mahalanobis's
+   --  double. This is the weighted distance
+   --  sqrt ((Self - Other)' * Inverse_Covariance * (Self - Other)).
+   --  Self and Other are mathematical one-dimensional vectors: non-empty
+   --  single-channel Float32 or Float64 row (1 x N) or column (N x 1)
+   --  Mats with identical shape and complete type. A 1xN row and an Nx1
+   --  column of the same length are incompatible; shapes are not
+   --  flattened. An arbitrary M x N matrix is rejected even when
+   --  OpenCV's implementation would treat width*height*channels as a
+   --  vector. Inverse_Covariance must be a non-empty single-channel Mat
+   --  with the same depth as the vectors and exactly N x N. Empty Mats,
+   --  including typed empty vectors, integer depths, Float16, and
+   --  multi-channel operands are rejected. Continuity is not required;
+   --  non-contiguous Regions are supported. Inputs are unchanged.
+   function Mahalanobis_Distance
+     (Self : Mat; Other : Mat; Inverse_Covariance : Mat) return Long_Float;
 
    --  Performs algebraic matrix multiplication Result = Left * Right
    --  using OpenCV 4.10 cv::gemm. This is not the existing element-wise

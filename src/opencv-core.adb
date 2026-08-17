@@ -2726,6 +2726,103 @@ package body OpenCV.Core is
       return Long_Float (C_Result);
    end Dot_Product;
 
+   function Is_Row_Or_Column_Vector (Self : Mat) return Boolean
+   is (Self.Rows = 1 or else Self.Columns = 1);
+
+   function Vector_Length (Self : Mat) return Natural
+   is (if Self.Rows = 1 then Self.Columns else Self.Rows);
+
+   function Mahalanobis_Distance
+     (Self : Mat; Other : Mat; Inverse_Covariance : Mat) return Long_Float
+   is
+      C_Result : aliased OpenCV.Internal.C_API.C_Double := 0.0;
+      Status   : OpenCV.Internal.C_API.Status;
+   begin
+      if Self.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mahalanobis_Distance requires a non-empty Self Mat");
+      end if;
+
+      if Other.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mahalanobis_Distance requires a non-empty Other Mat");
+      end if;
+
+      if Self.Rows /= Other.Rows or else Self.Columns /= Other.Columns then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mahalanobis_Distance requires Self and Other with identical"
+            & " rows and columns");
+      end if;
+
+      if Self.Depth /= Other.Depth or else Self.Channels /= Other.Channels then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mahalanobis_Distance requires Self and Other with identical"
+            & " complete element types");
+      end if;
+
+      if Self.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mahalanobis_Distance requires single-channel vectors");
+      end if;
+
+      if Self.Depth /= Float32 and then Self.Depth /= Float64 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mahalanobis_Distance requires Float32 or Float64 vectors");
+      end if;
+
+      if not Is_Row_Or_Column_Vector (Self) then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mahalanobis_Distance requires Self and Other to be row or"
+            & " column vectors");
+      end if;
+
+      if Inverse_Covariance.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mahalanobis_Distance requires a non-empty Inverse_Covariance"
+            & " Mat");
+      end if;
+
+      if Inverse_Covariance.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mahalanobis_Distance requires a single-channel"
+            & " Inverse_Covariance");
+      end if;
+
+      if Inverse_Covariance.Depth /= Self.Depth then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mahalanobis_Distance requires Inverse_Covariance to have the"
+            & " same depth as the vectors");
+      end if;
+
+      if Inverse_Covariance.Rows /= Vector_Length (Self)
+        or else Inverse_Covariance.Columns /= Vector_Length (Self)
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mahalanobis_Distance requires Inverse_Covariance to be N x N"
+            & " for an N-element vector");
+      end if;
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_Mahalanobis_Distance
+          (Left               => Self.Handle,
+           Right              => Other.Handle,
+           Inverse_Covariance => Inverse_Covariance.Handle,
+           Result             => C_Result'Access);
+      Raise_On_Error (Status, "Mat Mahalanobis distance operation");
+      return Long_Float (C_Result);
+   end Mahalanobis_Distance;
+
    function Matrix_Multiply (Left, Right : Mat) return Mat is
       Result     : Mat;
       New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=

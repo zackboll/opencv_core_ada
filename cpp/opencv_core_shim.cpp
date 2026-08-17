@@ -3272,6 +3272,100 @@ opencv_core_mat_dot_product(const opencv_core_mat_handle *left,
 }
 
 opencv_core_status
+opencv_core_mat_mahalanobis_distance(
+    const opencv_core_mat_handle *left,
+    const opencv_core_mat_handle *right,
+    const opencv_core_mat_handle *inverse_covariance,
+    double *out_value) {
+    clear_error();
+
+    if (out_value != nullptr) {
+        *out_value = 0.0;
+    }
+
+    if (left == nullptr || right == nullptr ||
+        inverse_covariance == nullptr || out_value == nullptr) {
+        return invalid_argument(
+            "Mahalanobis distance requires non-null handles and output");
+    }
+
+    try {
+        const cv::Mat &v1 = left->value;
+        const cv::Mat &v2 = right->value;
+        const cv::Mat &icovar = inverse_covariance->value;
+
+        if (v1.empty() || v2.empty()) {
+            return invalid_argument(
+                "Mahalanobis distance requires non-empty Self and Other Mats");
+        }
+
+        if (v1.dims > 2 || v2.dims > 2 || icovar.dims > 2) {
+            return invalid_argument(
+                "Mahalanobis distance requires Mats with at most two "
+                "dimensions");
+        }
+
+        if (v1.rows != v2.rows || v1.cols != v2.cols) {
+            return invalid_argument(
+                "Mahalanobis distance requires Self and Other with identical "
+                "rows and columns");
+        }
+
+        if (v1.type() != v2.type()) {
+            return invalid_argument(
+                "Mahalanobis distance requires Self and Other with identical "
+                "complete types");
+        }
+
+        if (v1.channels() != 1) {
+            return invalid_argument(
+                "Mahalanobis distance requires single-channel vectors");
+        }
+
+        if (v1.depth() != CV_32F && v1.depth() != CV_64F) {
+            return invalid_argument(
+                "Mahalanobis distance requires Float32 or Float64 vectors");
+        }
+
+        if (v1.rows != 1 && v1.cols != 1) {
+            return invalid_argument(
+                "Mahalanobis distance requires Self and Other to be row or "
+                "column vectors");
+        }
+
+        if (icovar.empty()) {
+            return invalid_argument(
+                "Mahalanobis distance requires a non-empty Inverse_Covariance "
+                "Mat");
+        }
+
+        if (icovar.channels() != 1) {
+            return invalid_argument(
+                "Mahalanobis distance requires a single-channel "
+                "Inverse_Covariance");
+        }
+
+        if (icovar.depth() != v1.depth()) {
+            return invalid_argument(
+                "Mahalanobis distance requires Inverse_Covariance to have the "
+                "same depth as the vectors");
+        }
+
+        const int length = v1.rows == 1 ? v1.cols : v1.rows;
+        if (icovar.rows != length || icovar.cols != length) {
+            return invalid_argument(
+                "Mahalanobis distance requires Inverse_Covariance to be N x N "
+                "for an N-element vector");
+        }
+
+        *out_value = cv::Mahalanobis(v1, v2, icovar);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_invert(const opencv_core_mat_handle *source,
                        uint8_t *out_invertible,
                        opencv_core_mat_handle **out_mat) {

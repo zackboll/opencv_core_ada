@@ -1337,7 +1337,8 @@ package body Mat_Transform_Tests is
       Result        : OpenCV.Core.Mat;
       Empty         : OpenCV.Core.Mat;
       Empty_Sources : OpenCV.Core.Mat_Array (1 .. 0);
-      Empty_Inputs  : OpenCV.Core.Mat_Array (0 .. 1) := (others => Empty);
+      Empty_Inputs  : constant OpenCV.Core.Mat_Array (0 .. 1) :=
+        (others => Empty);
 
       procedure Mismatched_Columns is
          Left    : constant OpenCV.Core.Mat :=
@@ -1427,7 +1428,8 @@ package body Mat_Transform_Tests is
            (OpenCV.Core.UInt8_Access.Get (Result, 0, 0) = 20
             and then Empty_Result.Is_Empty
             and then Empty_Inputs_Result.Is_Empty,
-            "VConcat must survive source finalization and accept empty inputs");
+            "VConcat must survive source finalization and accept empty"
+            & " inputs");
       end;
 
       Assert_Raises_OpenCV_Error
@@ -4448,6 +4450,8 @@ package body Mat_Transform_Tests is
    Result : aliased AUnit.Test_Suites.Test_Suite;
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
+      Copy_Make_Border_Region : constant Caller.Test_Method :=
+        Copy_Make_Border_Region_Isolation_Lifetime_Empty_And_Validation'Access;
    begin
       Result.Add_Test
         (Caller.Create
@@ -4532,7 +4536,7 @@ package body Mat_Transform_Tests is
         (Caller.Create
            ("Copy_Make_Border Region isolation, lifetime, empty Mat,"
             & " and validation",
-            Copy_Make_Border_Region_Isolation_Lifetime_Empty_And_Validation'Access));
+            Copy_Make_Border_Region));
       Result.Add_Test
         (Caller.Create
            ("HConcat UInt8 mapping and arbitrary array order",

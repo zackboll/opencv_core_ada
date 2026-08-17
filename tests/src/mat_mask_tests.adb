@@ -974,12 +974,12 @@ package body Mat_Mask_Tests is
      (Test : in out Mat_Test_Fixture)
    is
       pragma Unreferenced (Test);
-      Source, Threshold                           : OpenCV.Core.Mat :=
+      Source                                      : OpenCV.Core.Mat :=
         OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 3));
       Compare_Source, Compare_Threshold           : OpenCV.Core.Mat :=
         OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 1));
       Mask, Destination, Zero_Mask                : OpenCV.Core.Mat;
-      Invalid_Mask                                : OpenCV.Core.Mat :=
+      Invalid_Mask                                : constant OpenCV.Core.Mat :=
         OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 3));
       Empty_Source, Empty_Destination, Empty_Mask : OpenCV.Core.Mat;
 
@@ -1020,6 +1020,14 @@ package body Mat_Mask_Tests is
    Result : aliased AUnit.Test_Suites.Test_Suite;
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
+      Masked_Set_To               : constant Caller.Test_Method :=
+        Masked_Set_To_Uses_Common_Mask_Contract_And_Scalar_Semantics'Access;
+      Copy_To_Views               : constant Caller.Test_Method :=
+        Copy_To_Supports_Non_Continuous_Source_And_Destination_Views'Access;
+      Masked_Copy_To_Destinations : constant Caller.Test_Method :=
+        Masked_Copy_To_Distinguishes_New_And_Existing_Destinations'Access;
+      Masked_Copy_To_Vec3         : constant Caller.Test_Method :=
+        Masked_Copy_To_Supports_Vec3_Compare_Empty_And_Invalid_Masks'Access;
    begin
       Result.Add_Test
         (Caller.Create
@@ -1108,7 +1116,7 @@ package body Mat_Mask_Tests is
       Result.Add_Test
         (Caller.Create
            ("Masked Set_To uses common mask contract and Scalar semantics",
-            Masked_Set_To_Uses_Common_Mask_Contract_And_Scalar_Semantics'Access));
+            Masked_Set_To));
       Result.Add_Test
         (Caller.Create
            ("Copy_To reallocates and produces independent data",
@@ -1116,15 +1124,15 @@ package body Mat_Mask_Tests is
       Result.Add_Test
         (Caller.Create
            ("Copy_To supports non-continuous source and destination views",
-            Copy_To_Supports_Non_Continuous_Source_And_Destination_Views'Access));
+            Copy_To_Views));
       Result.Add_Test
         (Caller.Create
            ("Masked Copy_To distinguishes new and existing destinations",
-            Masked_Copy_To_Distinguishes_New_And_Existing_Destinations'Access));
+            Masked_Copy_To_Destinations));
       Result.Add_Test
         (Caller.Create
            ("Masked Copy_To supports Vec3, Compare, empty, and invalid masks",
-            Masked_Copy_To_Supports_Vec3_Compare_Empty_And_Invalid_Masks'Access));
+            Masked_Copy_To_Vec3));
       return Result'Access;
    end Suite;
 

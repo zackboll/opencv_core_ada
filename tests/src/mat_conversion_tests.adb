@@ -4382,6 +4382,10 @@ package body Mat_Conversion_Tests is
    Result : aliased AUnit.Test_Suites.Test_Suite;
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
+      Cart_To_Polar_Region : constant Caller.Test_Method :=
+        Cart_To_Polar_Noncontiguous_Region_And_Independent_Storage'Access;
+      Polar_To_Cart_Region : constant Caller.Test_Method :=
+        Polar_To_Cart_Noncontiguous_Region_And_Independent_Storage'Access;
    begin
       Result.Add_Test
         (Caller.Create
@@ -4665,7 +4669,7 @@ package body Mat_Conversion_Tests is
       Result.Add_Test
         (Caller.Create
            ("Cart_To_Polar noncontiguous Region and independent storage",
-            Cart_To_Polar_Noncontiguous_Region_And_Independent_Storage'Access));
+            Cart_To_Polar_Region));
       Result.Add_Test
         (Caller.Create
            ("Cart_To_Polar outputs do not share storage",
@@ -4712,8 +4716,7 @@ package body Mat_Conversion_Tests is
       Result.Add_Test
         (Caller.Create
            ("Polar_To_Cart noncontiguous Region and independent storage",
-            Polar_To_Cart_Noncontiguous_Region_And_Independent_Storage
-              'Access));
+            Polar_To_Cart_Region));
       Result.Add_Test
         (Caller.Create
            ("Polar_To_Cart outputs do not share storage",

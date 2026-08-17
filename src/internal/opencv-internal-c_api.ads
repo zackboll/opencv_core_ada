@@ -751,6 +751,15 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_dot_product";
 
+   function Mat_Mahalanobis_Distance
+     (Left               : Mat_Handle;
+      Right              : Mat_Handle;
+      Inverse_Covariance : Mat_Handle;
+      Result             : access C_Double) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_mahalanobis_distance";
    function Mat_Invert
      (Source     : Mat_Handle;
       Invertible : access C_Boolean;

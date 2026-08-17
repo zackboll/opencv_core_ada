@@ -845,6 +845,23 @@ opencv_core_mat_dot_product(const opencv_core_mat_handle *left,
                             double *out_value);
 
 /*
+ * Computes the scalar Mahalanobis distance of two borrowed 1D vectors
+ * using cv::Mahalanobis. Self and Other must be non-empty, at most
+ * two-dimensional, single-channel Float32 or Float64 row (1 x N) or
+ * column (N x 1) vectors with identical shape and complete type.
+ * Inverse_Covariance must be a non-empty single-channel Mat of the
+ * same depth and exactly N x N. Arbitrary M x N matrices are not
+ * flattened into vectors. Continuity is not required. Inputs are
+ * borrowed and unmodified. The result is one double.
+ */
+opencv_core_status
+opencv_core_mat_mahalanobis_distance(
+    const opencv_core_mat_handle *left,
+    const opencv_core_mat_handle *right,
+    const opencv_core_mat_handle *inverse_covariance,
+    double *out_value);
+
+/*
  * Inverts a borrowed square single-channel floating Mat with OpenCV
  * DECOMP_LU. Supported types are CV_32FC1 and CV_64FC1. Source is not
  * modified. A singular matrix is a successful result: out_invertible is

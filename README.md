@@ -1233,7 +1233,7 @@ Remaining candidates:
 - [ ] `Check_Range`
 - [ ] `Patch_NaNs`
 - [ ] covariance matrix
-- [ ] Mahalanobis distance
+- [x] Mahalanobis distance
 
 Result types should remain idiomatic Ada values rather than C++ output-parameter translations where practical.
 
@@ -1257,7 +1257,7 @@ Result types should remain idiomatic Ada values rather than C++ output-parameter
 - [ ] PCA
 - [ ] LDA
 - [ ] covariance
-- [ ] Mahalanobis distance
+- [x] Mahalanobis distance
 - [ ] cubic solving
 - [ ] polynomial solving
 

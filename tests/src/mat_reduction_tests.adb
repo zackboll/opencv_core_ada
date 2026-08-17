@@ -2381,6 +2381,476 @@ package body Mat_Reduction_Tests is
          "Dot_Product must reject typed 0x0 Float32 operands");
    end Dot_Product_Rejects_Mismatched_Shape_And_Type;
 
+   procedure Fill_1x2
+     (Image : in out OpenCV.Core.Mat; A, B : OpenCV.Core.Float32_Value) is
+   begin
+      OpenCV.Core.Float32_Access.Set (Image, 0, 0, A);
+      OpenCV.Core.Float32_Access.Set (Image, 0, 1, B);
+   end Fill_1x2;
+
+   function Unchanged_1x2
+     (Image : OpenCV.Core.Mat; A, B : OpenCV.Core.Float32_Value) return Boolean
+   is (OpenCV.Core.Float32_Access.Get (Image, 0, 0) = A
+       and then OpenCV.Core.Float32_Access.Get (Image, 0, 1) = B);
+
+   procedure Fill_2x1
+     (Image : in out OpenCV.Core.Mat; A, B : OpenCV.Core.Float32_Value) is
+   begin
+      OpenCV.Core.Float32_Access.Set (Image, 0, 0, A);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 0, B);
+   end Fill_2x1;
+
+   function Unchanged_2x1
+     (Image : OpenCV.Core.Mat; A, B : OpenCV.Core.Float32_Value) return Boolean
+   is (OpenCV.Core.Float32_Access.Get (Image, 0, 0) = A
+       and then OpenCV.Core.Float32_Access.Get (Image, 1, 0) = B);
+
+   function Identity_2x2
+     (Depth : OpenCV.Core.Depth_Type) return OpenCV.Core.Mat
+   is
+      Image : OpenCV.Core.Mat := OpenCV.Core.Create (2, 2, (Depth, 1));
+   begin
+      Image.Set_Identity;
+      return Image;
+   end Identity_2x2;
+
+   procedure Mahalanobis_Distance_Basic_Float32_Identity
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Self               : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+      Other              : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+      Inverse_Covariance : constant OpenCV.Core.Mat :=
+        Identity_2x2 (OpenCV.Core.Float32);
+      Result             : Long_Float;
+   begin
+      Fill_1x2 (Self, 1.0, 2.0);
+      Fill_1x2 (Other, 4.0, 6.0);
+      Result := Self.Mahalanobis_Distance (Other, Inverse_Covariance);
+
+      AUnit.Assertions.Assert
+        (Result = 5.0,
+         "Float32 identity Mahalanobis_Distance of (1,2) and (4,6) must be 5");
+      AUnit.Assertions.Assert
+        (Unchanged_1x2 (Self, 1.0, 2.0)
+         and then Unchanged_1x2 (Other, 4.0, 6.0)
+         and then Unchanged_2x2 (Inverse_Covariance, 1.0, 0.0, 0.0, 1.0),
+         "Mahalanobis_Distance must not modify its operands");
+   end Mahalanobis_Distance_Basic_Float32_Identity;
+
+   procedure Mahalanobis_Distance_Nonidentity_Diagonal
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Self               : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+      Other              : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+      Inverse_Covariance : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Result             : Long_Float;
+   begin
+      Fill_1x2 (Self, 1.0, 2.0);
+      Fill_1x2 (Other, 4.0, 6.0);
+      Fill_2x2 (Inverse_Covariance, 4.0, 0.0, 0.0, 1.0);
+      Result := Self.Mahalanobis_Distance (Other, Inverse_Covariance);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Result, 7.211_102_550_927_978),
+         "Diagonal Inverse_Covariance must weight the quadratic form");
+      AUnit.Assertions.Assert
+        (Unchanged_1x2 (Self, 1.0, 2.0)
+         and then Unchanged_1x2 (Other, 4.0, 6.0)
+         and then Unchanged_2x2 (Inverse_Covariance, 4.0, 0.0, 0.0, 1.0),
+         "Weighted Mahalanobis_Distance must not modify its operands");
+   end Mahalanobis_Distance_Nonidentity_Diagonal;
+
+   procedure Mahalanobis_Distance_Uses_Off_Diagonal_Terms
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Self               : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+      Other              : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+      Inverse_Covariance : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Result             : Long_Float;
+   begin
+      Fill_1x2 (Self, 1.0, 2.0);
+      Fill_1x2 (Other, 4.0, 6.0);
+      Fill_2x2 (Inverse_Covariance, 1.0, 0.5, 0.5, 1.0);
+      Result := Self.Mahalanobis_Distance (Other, Inverse_Covariance);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Result, 6.082_762_530_298_219)
+         and then not Approximately_Equal (Result, 5.0),
+         "Off-diagonal Inverse_Covariance must contribute to the quadratic"
+         & " form");
+      AUnit.Assertions.Assert
+        (Unchanged_2x2 (Inverse_Covariance, 1.0, 0.5, 0.5, 1.0),
+         "Off-diagonal Mahalanobis_Distance must not modify"
+         & " Inverse_Covariance");
+   end Mahalanobis_Distance_Uses_Off_Diagonal_Terms;
+
+   procedure Mahalanobis_Distance_Equal_Vectors_Are_Zero
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Self               : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+      Other              : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+      Inverse_Covariance : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Result             : Long_Float;
+   begin
+      Fill_1x2 (Self, 1.0, 2.0);
+      Fill_1x2 (Other, 1.0, 2.0);
+      Fill_2x2 (Inverse_Covariance, 4.0, 1.0, 1.0, 9.0);
+      Result := Self.Mahalanobis_Distance (Other, Inverse_Covariance);
+
+      AUnit.Assertions.Assert
+        (Result = 0.0,
+         "Equal vectors must have Mahalanobis_Distance exactly 0");
+   end Mahalanobis_Distance_Equal_Vectors_Are_Zero;
+
+   procedure Mahalanobis_Distance_Supports_Float64
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Base_32            : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+      Unit_32            : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+      Other              : OpenCV.Core.Mat;
+      Unit               : OpenCV.Core.Mat;
+      Self               : OpenCV.Core.Mat;
+      Inverse_Covariance : OpenCV.Core.Mat;
+      Result             : Long_Float;
+   begin
+      --  2**24 is exact in both Float32 and Float64. 2**24+1 is exact
+      --  only in Float64; a Float32-only path would collapse both
+      --  vectors and return 0.
+      Fill_1x2 (Base_32, 16_777_216.0, 0.0);
+      Fill_1x2 (Unit_32, 1.0, 0.0);
+      Other := Base_32.Convert_To (OpenCV.Core.Float64);
+      Unit := Unit_32.Convert_To (OpenCV.Core.Float64);
+      Self := Other.Add (Unit);
+      Inverse_Covariance :=
+        Identity_2x2 (OpenCV.Core.Float32).Convert_To (OpenCV.Core.Float64);
+      Result := Self.Mahalanobis_Distance (Other, Inverse_Covariance);
+
+      AUnit.Assertions.Assert
+        (Self.Depth = OpenCV.Core.Float64
+         and then Other.Depth = OpenCV.Core.Float64
+         and then Inverse_Covariance.Depth = OpenCV.Core.Float64
+         and then Result = 1.0,
+         "Float64 Mahalanobis_Distance must preserve 2**24+1 versus 2**24");
+   end Mahalanobis_Distance_Supports_Float64;
+
+   procedure Mahalanobis_Distance_Supports_Column_Vectors
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Self               : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 1, (OpenCV.Core.Float32, 1));
+      Other              : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 1, (OpenCV.Core.Float32, 1));
+      Inverse_Covariance : constant OpenCV.Core.Mat :=
+        Identity_2x2 (OpenCV.Core.Float32);
+      Result             : Long_Float;
+   begin
+      Fill_2x1 (Self, 1.0, 2.0);
+      Fill_2x1 (Other, 4.0, 6.0);
+      Result := Self.Mahalanobis_Distance (Other, Inverse_Covariance);
+
+      AUnit.Assertions.Assert
+        (Result = 5.0,
+         "Column-vector Mahalanobis_Distance must match the row-vector case");
+      AUnit.Assertions.Assert
+        (Unchanged_2x1 (Self, 1.0, 2.0)
+         and then Unchanged_2x1 (Other, 4.0, 6.0),
+         "Column-vector Mahalanobis_Distance must not modify its operands");
+   end Mahalanobis_Distance_Supports_Column_Vectors;
+
+   procedure Mahalanobis_Distance_Noncontiguous_Regions
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent_Self   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 4, (OpenCV.Core.Float32, 1));
+      Parent_Other  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 5, (OpenCV.Core.Float32, 1));
+      Parent_Icovar : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 5, (OpenCV.Core.Float32, 1));
+      Result        : Long_Float;
+   begin
+      Parent_Self.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Parent_Other.Set_To (OpenCV.Core.Make_Scalar (88.0));
+      Parent_Icovar.Set_To (OpenCV.Core.Make_Scalar (77.0));
+
+      declare
+         Self               : OpenCV.Core.Mat :=
+           Parent_Self.Region ((X => 1, Y => 0, Width => 1, Height => 2));
+         Other              : OpenCV.Core.Mat :=
+           Parent_Other.Region ((X => 2, Y => 1, Width => 1, Height => 2));
+         Inverse_Covariance : OpenCV.Core.Mat :=
+           Parent_Icovar.Region ((X => 1, Y => 1, Width => 2, Height => 2));
+      begin
+         Fill_2x1 (Self, 1.0, 2.0);
+         Fill_2x1 (Other, 4.0, 6.0);
+         Fill_2x2 (Inverse_Covariance, 1.0, 0.0, 0.0, 1.0);
+
+         AUnit.Assertions.Assert
+           (not Self.Is_Continuous
+            and then not Other.Is_Continuous
+            and then not Inverse_Covariance.Is_Continuous,
+            "Mahalanobis_Distance Region operands must be non-contiguous");
+         Result := Self.Mahalanobis_Distance (Other, Inverse_Covariance);
+         AUnit.Assertions.Assert
+           (Result = 5.0,
+            "Mahalanobis_Distance must support non-contiguous column and"
+            & " Inverse_Covariance Regions");
+         AUnit.Assertions.Assert
+           (Unchanged_2x1 (Self, 1.0, 2.0)
+            and then Unchanged_2x1 (Other, 4.0, 6.0)
+            and then Unchanged_2x2 (Inverse_Covariance, 1.0, 0.0, 0.0, 1.0)
+            and then OpenCV.Core.Float32_Access.Get (Parent_Self, 0, 0) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent_Self, 0, 2) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent_Other, 1, 1) = 88.0
+            and then OpenCV.Core.Float32_Access.Get (Parent_Other, 0, 2) = 88.0
+            and then OpenCV.Core.Float32_Access.Get (Parent_Icovar, 0, 0)
+                     = 77.0
+            and then OpenCV.Core.Float32_Access.Get (Parent_Icovar, 1, 0)
+                     = 77.0
+            and then OpenCV.Core.Float32_Access.Get (Parent_Icovar, 1, 3)
+                     = 77.0,
+            "Mahalanobis_Distance must not modify the Regions or their"
+            & " parents");
+      end;
+   end Mahalanobis_Distance_Noncontiguous_Regions;
+
+   procedure Mahalanobis_Distance_Rejects_Invalid_Inputs
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Row           : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+      Other_Row     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+      Long_Row      : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 3, (OpenCV.Core.Float32, 1));
+      Column        : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 1, (OpenCV.Core.Float32, 1));
+      Matrix        : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Float64_Row   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float64, 1));
+      UInt8_Row     : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 1));
+      Int32_Row     : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Int32, 1));
+      Float16_Row   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float16, 1));
+      Multi_Row     : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 3));
+      Identity      : constant OpenCV.Core.Mat :=
+        Identity_2x2 (OpenCV.Core.Float32);
+      Identity64    : constant OpenCV.Core.Mat :=
+        Identity_2x2 (OpenCV.Core.Float64);
+      Multi_Icovar  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 3));
+      Wide_Icovar   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Large_Icovar  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.Float32, 1));
+      Default_Empty : OpenCV.Core.Mat;
+      Empty_Vector  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 2, (OpenCV.Core.Float32, 1));
+      Empty_Icovar  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 1));
+
+      procedure Check_Default_Self is
+         Value : constant Long_Float :=
+           Default_Empty.Mahalanobis_Distance (Other_Row, Identity);
+      begin
+         pragma Unreferenced (Value);
+      end Check_Default_Self;
+
+      procedure Check_Default_Other is
+         Value : constant Long_Float :=
+           Row.Mahalanobis_Distance (Default_Empty, Identity);
+      begin
+         pragma Unreferenced (Value);
+      end Check_Default_Other;
+
+      procedure Check_Empty_Vector is
+         Value : constant Long_Float :=
+           Empty_Vector.Mahalanobis_Distance (Empty_Vector, Identity);
+      begin
+         pragma Unreferenced (Value);
+      end Check_Empty_Vector;
+
+      procedure Check_Length is
+         Value : constant Long_Float :=
+           Row.Mahalanobis_Distance (Long_Row, Identity);
+      begin
+         pragma Unreferenced (Value);
+      end Check_Length;
+
+      procedure Check_Row_Versus_Column is
+         Value : constant Long_Float :=
+           Row.Mahalanobis_Distance (Column, Identity);
+      begin
+         pragma Unreferenced (Value);
+      end Check_Row_Versus_Column;
+
+      procedure Check_Depth is
+         Value : constant Long_Float :=
+           Row.Mahalanobis_Distance (Float64_Row, Identity);
+      begin
+         pragma Unreferenced (Value);
+      end Check_Depth;
+
+      procedure Check_UInt8 is
+         Value : constant Long_Float :=
+           UInt8_Row.Mahalanobis_Distance (UInt8_Row, Identity);
+      begin
+         pragma Unreferenced (Value);
+      end Check_UInt8;
+
+      procedure Check_Int32 is
+         Value : constant Long_Float :=
+           Int32_Row.Mahalanobis_Distance (Int32_Row, Identity);
+      begin
+         pragma Unreferenced (Value);
+      end Check_Int32;
+
+      procedure Check_Float16 is
+         Value : constant Long_Float :=
+           Float16_Row.Mahalanobis_Distance (Float16_Row, Identity);
+      begin
+         pragma Unreferenced (Value);
+      end Check_Float16;
+
+      procedure Check_Channels is
+         Value : constant Long_Float :=
+           Multi_Row.Mahalanobis_Distance (Multi_Row, Identity);
+      begin
+         pragma Unreferenced (Value);
+      end Check_Channels;
+
+      procedure Check_Matrix_As_Vector is
+         Value : constant Long_Float :=
+           Matrix.Mahalanobis_Distance (Matrix, Identity);
+      begin
+         pragma Unreferenced (Value);
+      end Check_Matrix_As_Vector;
+
+      procedure Check_Empty_Icovar is
+         Value : constant Long_Float :=
+           Row.Mahalanobis_Distance (Other_Row, Empty_Icovar);
+      begin
+         pragma Unreferenced (Value);
+      end Check_Empty_Icovar;
+
+      procedure Check_Default_Icovar is
+         Value : constant Long_Float :=
+           Row.Mahalanobis_Distance (Other_Row, Default_Empty);
+      begin
+         pragma Unreferenced (Value);
+      end Check_Default_Icovar;
+
+      procedure Check_Icovar_Depth is
+         Value : constant Long_Float :=
+           Row.Mahalanobis_Distance (Other_Row, Identity64);
+      begin
+         pragma Unreferenced (Value);
+      end Check_Icovar_Depth;
+
+      procedure Check_Icovar_Channels is
+         Value : constant Long_Float :=
+           Row.Mahalanobis_Distance (Other_Row, Multi_Icovar);
+      begin
+         pragma Unreferenced (Value);
+      end Check_Icovar_Channels;
+
+      procedure Check_Icovar_Shape is
+         Value : constant Long_Float :=
+           Row.Mahalanobis_Distance (Other_Row, Wide_Icovar);
+      begin
+         pragma Unreferenced (Value);
+      end Check_Icovar_Shape;
+
+      procedure Check_Icovar_Dimension is
+         Value : constant Long_Float :=
+           Row.Mahalanobis_Distance (Other_Row, Large_Icovar);
+      begin
+         pragma Unreferenced (Value);
+      end Check_Icovar_Dimension;
+   begin
+      Fill_1x2 (Row, 1.0, 2.0);
+      Fill_1x2 (Other_Row, 4.0, 6.0);
+
+      Assert_Raises_OpenCV_Error
+        (Check_Default_Self'Access,
+         "Mahalanobis_Distance must reject a default empty Self");
+      Assert_Raises_OpenCV_Error
+        (Check_Default_Other'Access,
+         "Mahalanobis_Distance must reject a default empty Other");
+      Assert_Raises_OpenCV_Error
+        (Check_Empty_Vector'Access,
+         "Mahalanobis_Distance must reject a typed empty vector");
+      Assert_Raises_OpenCV_Error
+        (Check_Length'Access,
+         "Mahalanobis_Distance must reject mismatched vector lengths");
+      Assert_Raises_OpenCV_Error
+        (Check_Row_Versus_Column'Access,
+         "Mahalanobis_Distance must reject a row vector against a column");
+      Assert_Raises_OpenCV_Error
+        (Check_Depth'Access,
+         "Mahalanobis_Distance must reject mixed Float32 and Float64 vectors");
+      Assert_Raises_OpenCV_Error
+        (Check_UInt8'Access, "Mahalanobis_Distance must reject UInt8 vectors");
+      Assert_Raises_OpenCV_Error
+        (Check_Int32'Access, "Mahalanobis_Distance must reject Int32 vectors");
+      Assert_Raises_OpenCV_Error
+        (Check_Float16'Access,
+         "Mahalanobis_Distance must reject Float16 vectors");
+      Assert_Raises_OpenCV_Error
+        (Check_Channels'Access,
+         "Mahalanobis_Distance must reject multi-channel vectors");
+      Assert_Raises_OpenCV_Error
+        (Check_Matrix_As_Vector'Access,
+         "Mahalanobis_Distance must reject an arbitrary 2x2 matrix as a"
+         & " vector");
+      Assert_Raises_OpenCV_Error
+        (Check_Empty_Icovar'Access,
+         "Mahalanobis_Distance must reject an empty Inverse_Covariance");
+      Assert_Raises_OpenCV_Error
+        (Check_Default_Icovar'Access,
+         "Mahalanobis_Distance must reject a default empty"
+         & " Inverse_Covariance");
+      Assert_Raises_OpenCV_Error
+        (Check_Icovar_Depth'Access,
+         "Mahalanobis_Distance must reject Inverse_Covariance of the wrong"
+         & " depth");
+      Assert_Raises_OpenCV_Error
+        (Check_Icovar_Channels'Access,
+         "Mahalanobis_Distance must reject a multi-channel"
+         & " Inverse_Covariance");
+      Assert_Raises_OpenCV_Error
+        (Check_Icovar_Shape'Access,
+         "Mahalanobis_Distance must reject a non-square Inverse_Covariance");
+      Assert_Raises_OpenCV_Error
+        (Check_Icovar_Dimension'Access,
+         "Mahalanobis_Distance must reject a square Inverse_Covariance of the"
+         & " wrong dimension");
+   end Mahalanobis_Distance_Rejects_Invalid_Inputs;
+
    procedure Matrix_Multiply_Add_Weighted_Float32
      (Test : in out Mat_Test_Fixture)
    is
@@ -4878,7 +5348,7 @@ package body Mat_Reduction_Tests is
         OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
       Zero_Mask         : OpenCV.Core.Mat :=
         OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
-      Invalid_Mask      : OpenCV.Core.Mat :=
+      Invalid_Mask      : constant OpenCV.Core.Mat :=
         OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 3));
       Empty_Image, Mask : OpenCV.Core.Mat;
 
@@ -5633,6 +6103,13 @@ package body Mat_Reduction_Tests is
    Result : aliased AUnit.Test_Suites.Test_Suite;
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
+      Masked_Mean_Std_Dev_Views   : constant Caller.Test_Method :=
+        Masked_Mean_Std_Dev_Non_Continuous_Views_And_All_Zero_Mask'Access;
+      Masked_Min_Max_Loc_UInt8    : constant Caller.Test_Method :=
+        Masked_Min_Max_Loc_UInt8_Selects_Extrema_And_Column_Row_Points'Access;
+      Masked_Min_Max_Loc_In_Range : constant Caller.Test_Method :=
+        Masked_Min_Max_Loc_Excludes_Global_Extrema_And_Uses_In_Range_Mask
+          'Access;
    begin
       Result.Add_Test
         (Caller.Create
@@ -5701,7 +6178,7 @@ package body Mat_Reduction_Tests is
       Result.Add_Test
         (Caller.Create
            ("Masked Mean_Std_Dev non-continuous views and all-zero mask",
-            Masked_Mean_Std_Dev_Non_Continuous_Views_And_All_Zero_Mask'Access));
+            Masked_Mean_Std_Dev_Views));
       Result.Add_Test
         (Caller.Create
            ("Masked Mean_Std_Dev handles empty and invalid input",
@@ -5929,6 +6406,39 @@ package body Mat_Reduction_Tests is
         (Caller.Create
            ("Dot_Product rejects mismatched shape and type",
             Dot_Product_Rejects_Mismatched_Shape_And_Type'Access));
+
+      Result.Add_Test
+        (Caller.Create
+           ("Mahalanobis_Distance basic Float32 identity",
+            Mahalanobis_Distance_Basic_Float32_Identity'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mahalanobis_Distance non-identity diagonal",
+            Mahalanobis_Distance_Nonidentity_Diagonal'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mahalanobis_Distance uses off-diagonal terms",
+            Mahalanobis_Distance_Uses_Off_Diagonal_Terms'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mahalanobis_Distance equal vectors are zero",
+            Mahalanobis_Distance_Equal_Vectors_Are_Zero'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mahalanobis_Distance supports Float64",
+            Mahalanobis_Distance_Supports_Float64'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mahalanobis_Distance supports column vectors",
+            Mahalanobis_Distance_Supports_Column_Vectors'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mahalanobis_Distance supports non-contiguous Regions",
+            Mahalanobis_Distance_Noncontiguous_Regions'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mahalanobis_Distance rejects invalid inputs",
+            Mahalanobis_Distance_Rejects_Invalid_Inputs'Access));
 
       Result.Add_Test
         (Caller.Create
@@ -6209,11 +6719,11 @@ package body Mat_Reduction_Tests is
         (Caller.Create
            ("Masked Min_Max_Loc UInt8 selects extrema and column-row"
             & " Points",
-            Masked_Min_Max_Loc_UInt8_Selects_Extrema_And_Column_Row_Points'Access));
+            Masked_Min_Max_Loc_UInt8));
       Result.Add_Test
         (Caller.Create
            ("Masked Min_Max_Loc excludes global extrema with In_Range mask",
-            Masked_Min_Max_Loc_Excludes_Global_Extrema_And_Uses_In_Range_Mask'Access));
+            Masked_Min_Max_Loc_In_Range));
       Result.Add_Test
         (Caller.Create
            ("Masked Min_Max_Loc operates on non-continuous views",
