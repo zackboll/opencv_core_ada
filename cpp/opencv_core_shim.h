@@ -862,6 +862,22 @@ opencv_core_mat_mahalanobis_distance(
     double *out_value);
 
 /*
+ * Computes the 3D vector cross product of two borrowed Mats using
+ * cv::Mat::cross: result = left x right. Both operands must be
+ * non-empty, at most two-dimensional, and share identical rows,
+ * columns, and complete type. Supported public representations of one
+ * three-component vector are 3x1 C1, 1x3 C1, and 1x1 C3. Supported
+ * depths are CV_32F and CV_64F. Unusual shapes that happen to contain
+ * three scalars, including 3x1 C3, are rejected. Continuity is not
+ * required. Inputs are borrowed and unmodified. The independently
+ * owned result has the same rows, columns, and complete type as left.
+ */
+opencv_core_status
+opencv_core_mat_cross_product(const opencv_core_mat_handle *left,
+                              const opencv_core_mat_handle *right,
+                              opencv_core_mat_handle **out_mat);
+
+/*
  * Inverts a borrowed square single-channel floating Mat with OpenCV
  * DECOMP_LU. Supported types are CV_32FC1 and CV_64FC1. Source is not
  * modified. A singular matrix is a successful result: out_invertible is

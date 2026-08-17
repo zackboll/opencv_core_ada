@@ -626,6 +626,24 @@ package OpenCV.Core is
    function Mahalanobis_Distance
      (Self : Mat; Other : Mat; Inverse_Covariance : Mat) return Long_Float;
 
+   --  Returns the three-dimensional vector cross product Self x Other
+   --  using OpenCV 4.10 cv::Mat::cross. This is not element-wise
+   --  Multiply and not algebraic Matrix_Multiply. Operand order
+   --  matters: reversing the operands negates the result. Self and
+   --  Other must both be non-empty and must share identical Rows,
+   --  Columns, Depth, and channel count. Each operand must be one
+   --  three-component vector in exactly one of these representations:
+   --  3x1 C1, 1x3 C1, or 1x1 C3. A 3x1 C1 Mat and a 1x3 C1 Mat are
+   --  incompatible; shapes are not flattened. Unusual combinations
+   --  that happen to contain three scalars, including 3x1 C3, are
+   --  rejected. Supported depths are Float32 and Float64. Integer
+   --  depths and Float16 are rejected. Empty Mats, including typed
+   --  empty vectors, are rejected. Continuity is not required;
+   --  non-contiguous Regions are supported. Inputs are unchanged.
+   --  The independently owned result has Self's Rows, Columns, Depth,
+   --  and channel count.
+   function Cross_Product (Self : Mat; Other : Mat) return Mat;
+
    --  Performs algebraic matrix multiplication Result = Left * Right
    --  using OpenCV 4.10 cv::gemm. This is not the existing element-wise
    --  Multiply. Left.Columns must equal Right.Rows; the independently

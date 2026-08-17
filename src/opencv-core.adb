@@ -2823,6 +2823,80 @@ package body OpenCV.Core is
       return Long_Float (C_Result);
    end Mahalanobis_Distance;
 
+   function Is_Supported_Cross_Product_Vector (Self : Mat) return Boolean
+   is ((Self.Rows = 3 and then Self.Columns = 1 and then Self.Channels = 1)
+       or else (Self.Rows = 1
+                and then Self.Columns = 3
+                and then Self.Channels = 1)
+       or else (Self.Rows = 1
+                and then Self.Columns = 1
+                and then Self.Channels = 3));
+
+   function Cross_Product (Self : Mat; Other : Mat) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      if Self.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Cross_Product requires a non-empty Self Mat");
+      end if;
+
+      if Other.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Cross_Product requires a non-empty Other Mat");
+      end if;
+
+      if Self.Rows /= Other.Rows or else Self.Columns /= Other.Columns then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Cross_Product requires operands with identical rows"
+            & " and columns");
+      end if;
+
+      if Self.Depth /= Other.Depth or else Self.Channels /= Other.Channels then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Cross_Product requires operands with identical complete"
+            & " element types");
+      end if;
+
+      if Self.Depth /= Float32 and then Self.Depth /= Float64 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Cross_Product requires Float32 or Float64 vectors");
+      end if;
+
+      if not Is_Supported_Cross_Product_Vector (Self) then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Cross_Product requires a 3x1 C1, 1x3 C1, or 1x1 C3 vector");
+      end if;
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_Cross_Product
+          (Left   => Self.Handle,
+           Right  => Other.Handle,
+           Result => New_Handle'Access);
+      if Status /= OpenCV.Internal.C_API.Success then
+         OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+         Raise_On_Error (Status, "Mat cross product operation");
+      end if;
+
+      if New_Handle = OpenCV.Internal.C_API.Null_Mat_Handle then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat cross product operation returned a null result handle");
+      end if;
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Cross_Product;
+
    function Matrix_Multiply (Left, Right : Mat) return Mat is
       Result     : Mat;
       New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=

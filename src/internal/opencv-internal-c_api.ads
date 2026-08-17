@@ -760,6 +760,14 @@ package OpenCV.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_core_mat_mahalanobis_distance";
+
+   function Mat_Cross_Product
+     (Left, Right : Mat_Handle; Result : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_cross_product";
+
    function Mat_Invert
      (Source     : Mat_Handle;
       Invertible : access C_Boolean;

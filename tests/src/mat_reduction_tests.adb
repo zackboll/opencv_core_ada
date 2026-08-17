@@ -2851,6 +2851,444 @@ package body Mat_Reduction_Tests is
          & " wrong dimension");
    end Mahalanobis_Distance_Rejects_Invalid_Inputs;
 
+   procedure Fill_3x1
+     (Image : in out OpenCV.Core.Mat; A, B, C : OpenCV.Core.Float32_Value) is
+   begin
+      OpenCV.Core.Float32_Access.Set (Image, 0, 0, A);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 0, B);
+      OpenCV.Core.Float32_Access.Set (Image, 2, 0, C);
+   end Fill_3x1;
+
+   function Unchanged_3x1
+     (Image : OpenCV.Core.Mat; A, B, C : OpenCV.Core.Float32_Value)
+      return Boolean
+   is (OpenCV.Core.Float32_Access.Get (Image, 0, 0) = A
+       and then OpenCV.Core.Float32_Access.Get (Image, 1, 0) = B
+       and then OpenCV.Core.Float32_Access.Get (Image, 2, 0) = C);
+
+   procedure Fill_1x3
+     (Image : in out OpenCV.Core.Mat; A, B, C : OpenCV.Core.Float32_Value) is
+   begin
+      OpenCV.Core.Float32_Access.Set (Image, 0, 0, A);
+      OpenCV.Core.Float32_Access.Set (Image, 0, 1, B);
+      OpenCV.Core.Float32_Access.Set (Image, 0, 2, C);
+   end Fill_1x3;
+
+   function Unchanged_1x3
+     (Image : OpenCV.Core.Mat; A, B, C : OpenCV.Core.Float32_Value)
+      return Boolean
+   is (OpenCV.Core.Float32_Access.Get (Image, 0, 0) = A
+       and then OpenCV.Core.Float32_Access.Get (Image, 0, 1) = B
+       and then OpenCV.Core.Float32_Access.Get (Image, 0, 2) = C);
+
+   procedure Cross_Product_Basic_Float32_3x1 (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Self   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 1, (OpenCV.Core.Float32, 1));
+      Other  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 1, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      Fill_3x1 (Self, 1.0, 0.0, 0.0);
+      Fill_3x1 (Other, 0.0, 1.0, 0.0);
+      Result := Self.Cross_Product (Other);
+
+      AUnit.Assertions.Assert
+        (Result.Rows = 3
+         and then Result.Columns = 1
+         and then Result.Depth = OpenCV.Core.Float32
+         and then Result.Channels = 1
+         and then Unchanged_3x1 (Result, 0.0, 0.0, 1.0),
+         "Float32 3x1 Cross_Product of (1,0,0) and (0,1,0) must be (0,0,1)");
+      AUnit.Assertions.Assert
+        (Unchanged_3x1 (Self, 1.0, 0.0, 0.0)
+         and then Unchanged_3x1 (Other, 0.0, 1.0, 0.0),
+         "Cross_Product must not modify its operands");
+   end Cross_Product_Basic_Float32_3x1;
+
+   procedure Cross_Product_Operand_Order (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Self   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 1, (OpenCV.Core.Float32, 1));
+      Other  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 1, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      Fill_3x1 (Self, 1.0, 0.0, 0.0);
+      Fill_3x1 (Other, 0.0, 1.0, 0.0);
+      Result := Other.Cross_Product (Self);
+
+      AUnit.Assertions.Assert
+        (Unchanged_3x1 (Result, 0.0, 0.0, -1.0),
+         "Reversing Cross_Product operands must negate the result");
+   end Cross_Product_Operand_Order;
+
+   procedure Cross_Product_General_Values (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Self   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 1, (OpenCV.Core.Float32, 1));
+      Other  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 1, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      Fill_3x1 (Self, 1.0, 2.0, 3.0);
+      Fill_3x1 (Other, 4.0, 5.0, 6.0);
+      Result := Self.Cross_Product (Other);
+
+      AUnit.Assertions.Assert
+        (Unchanged_3x1 (Result, -3.0, 6.0, -3.0),
+         "Cross_Product of (1,2,3) and (4,5,6) must be (-3,6,-3)");
+   end Cross_Product_General_Values;
+
+   procedure Cross_Product_Float32_1x3 (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Self   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 3, (OpenCV.Core.Float32, 1));
+      Other  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 3, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      Fill_1x3 (Self, 1.0, 2.0, 3.0);
+      Fill_1x3 (Other, 4.0, 5.0, 6.0);
+      Result := Self.Cross_Product (Other);
+
+      AUnit.Assertions.Assert
+        (Result.Rows = 1
+         and then Result.Columns = 3
+         and then Result.Depth = OpenCV.Core.Float32
+         and then Result.Channels = 1
+         and then Unchanged_1x3 (Result, -3.0, 6.0, -3.0),
+         "Float32 1x3 Cross_Product must preserve shape and compute"
+         & " (-3,6,-3)");
+   end Cross_Product_Float32_1x3;
+
+   procedure Cross_Product_Float32_1x1_C3 (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Self   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 3));
+      Other  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 3));
+      Result : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Vec3_Access.Set (Self, 0, 0, (1.0, 2.0, 3.0));
+      OpenCV.Core.Float32_Vec3_Access.Set (Other, 0, 0, (4.0, 5.0, 6.0));
+      Result := Self.Cross_Product (Other);
+
+      AUnit.Assertions.Assert
+        (Result.Rows = 1
+         and then Result.Columns = 1
+         and then Result.Depth = OpenCV.Core.Float32
+         and then Result.Channels = 3
+         and then OpenCV.Core.Float32_Vec3_Access.Get (Result, 0, 0)
+                  = (-3.0, 6.0, -3.0),
+         "Float32 1x1 C3 Cross_Product must preserve shape and compute"
+         & " (-3,6,-3)");
+   end Cross_Product_Float32_1x1_C3;
+
+   procedure Cross_Product_Supports_Float64 (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Base_32 : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 1, (OpenCV.Core.Float32, 1));
+      Unit_32 : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 1, (OpenCV.Core.Float32, 1));
+      Other   : OpenCV.Core.Mat;
+      Self    : OpenCV.Core.Mat;
+      Result  : OpenCV.Core.Mat;
+   begin
+      --  2**24 is exact in both Float32 and Float64. 2**24+1 is exact
+      --  only in Float64; a Float32-only path would collapse
+      --  (2**24+1, 0, 0) x (0, 1, 0) to (0, 0, 2**24).
+      Fill_3x1 (Base_32, 16_777_216.0, 0.0, 0.0);
+      Fill_3x1 (Unit_32, 1.0, 0.0, 0.0);
+      Self :=
+        Base_32.Convert_To (OpenCV.Core.Float64).Add
+          (Unit_32.Convert_To (OpenCV.Core.Float64));
+      Fill_3x1 (Unit_32, 0.0, 1.0, 0.0);
+      Other := Unit_32.Convert_To (OpenCV.Core.Float64);
+      Result := Self.Cross_Product (Other);
+
+      AUnit.Assertions.Assert
+        (Result.Depth = OpenCV.Core.Float64
+         and then Result.Rows = 3
+         and then Result.Columns = 1
+         and then Result.Channels = 1
+         and then Result.Sum.Component_0 = 16_777_217.0,
+         "Float64 Cross_Product must preserve 2**24+1 versus 2**24");
+   end Cross_Product_Supports_Float64;
+
+   procedure Cross_Product_Noncontiguous_Region
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent_Self  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.Float32, 1));
+      Parent_Other : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.Float32, 1));
+      Result       : OpenCV.Core.Mat;
+   begin
+      Parent_Self.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Parent_Other.Set_To (OpenCV.Core.Make_Scalar (88.0));
+
+      declare
+         Self  : OpenCV.Core.Mat :=
+           Parent_Self.Region ((X => 1, Y => 0, Width => 1, Height => 3));
+         Other : OpenCV.Core.Mat :=
+           Parent_Other.Region ((X => 1, Y => 0, Width => 1, Height => 3));
+      begin
+         Fill_3x1 (Self, 1.0, 2.0, 3.0);
+         Fill_3x1 (Other, 4.0, 5.0, 6.0);
+         AUnit.Assertions.Assert
+           (not Self.Is_Continuous and then not Other.Is_Continuous,
+            "The Regions used for Cross_Product must be non-contiguous");
+         Result := Self.Cross_Product (Other);
+         AUnit.Assertions.Assert
+           (Result.Rows = 3
+            and then Result.Columns = 1
+            and then Unchanged_3x1 (Result, -3.0, 6.0, -3.0),
+            "Cross_Product must honor non-contiguous 3x1 Regions");
+         AUnit.Assertions.Assert
+           (Unchanged_3x1 (Self, 1.0, 2.0, 3.0)
+            and then Unchanged_3x1 (Other, 4.0, 5.0, 6.0)
+            and then OpenCV.Core.Float32_Access.Get (Parent_Self, 0, 0) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent_Self, 0, 2) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent_Other, 0, 0) = 88.0
+            and then OpenCV.Core.Float32_Access.Get (Parent_Other, 2, 2)
+                     = 88.0,
+            "Cross_Product must not modify the Regions or their parents");
+      end;
+   end Cross_Product_Noncontiguous_Region;
+
+   procedure Cross_Product_Result_Owns_Independent_Storage
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Self   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 1, (OpenCV.Core.Float32, 1));
+      Other  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 1, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      Fill_3x1 (Self, 1.0, 2.0, 3.0);
+      Fill_3x1 (Other, 4.0, 5.0, 6.0);
+      Result := Self.Cross_Product (Other);
+
+      OpenCV.Core.Float32_Access.Set (Result, 0, 0, 50.0);
+      OpenCV.Core.Float32_Access.Set (Result, 1, 0, 40.0);
+      OpenCV.Core.Float32_Access.Set (Result, 2, 0, 30.0);
+      AUnit.Assertions.Assert
+        (Unchanged_3x1 (Self, 1.0, 2.0, 3.0)
+         and then Unchanged_3x1 (Other, 4.0, 5.0, 6.0),
+         "Mutating the Cross_Product result must not change either source");
+   end Cross_Product_Result_Owns_Independent_Storage;
+
+   procedure Cross_Product_Result_Outlives_Inputs
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Result : OpenCV.Core.Mat;
+   begin
+      declare
+         Self  : OpenCV.Core.Mat :=
+           OpenCV.Core.Create (3, 1, (OpenCV.Core.Float32, 1));
+         Other : OpenCV.Core.Mat :=
+           OpenCV.Core.Create (3, 1, (OpenCV.Core.Float32, 1));
+      begin
+         Fill_3x1 (Self, 1.0, 2.0, 3.0);
+         Fill_3x1 (Other, 4.0, 5.0, 6.0);
+         Result := Self.Cross_Product (Other);
+      end;
+
+      AUnit.Assertions.Assert
+        (Unchanged_3x1 (Result, -3.0, 6.0, -3.0),
+         "Cross_Product result must remain valid after its sources finalize");
+   end Cross_Product_Result_Outlives_Inputs;
+
+   procedure Cross_Product_Rejects_Invalid_Inputs
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Valid          : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 1, (OpenCV.Core.Float32, 1));
+      Default_Empty  : OpenCV.Core.Mat;
+      Empty32        : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 1));
+      Row            : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 3, (OpenCV.Core.Float32, 1));
+      Float64_Column : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 1, (OpenCV.Core.Float64, 1));
+      C3_Column      : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 1, (OpenCV.Core.Float32, 3));
+      UInt8_Image    : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 1, (OpenCV.Core.UInt8, 1));
+      Int32_Image    : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 1, (OpenCV.Core.Int32, 1));
+      Float16_Image  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 1, (OpenCV.Core.Float16, 1));
+      One_By_Two     : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+      One_By_Four    : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 4, (OpenCV.Core.Float32, 1));
+      Two_By_Two     : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      One_By_One     : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      One_By_Two_C2  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 2));
+
+      procedure Check_Default_Self is
+         Result : constant OpenCV.Core.Mat :=
+           Default_Empty.Cross_Product (Valid);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Default_Self;
+
+      procedure Check_Default_Other is
+         Result : constant OpenCV.Core.Mat :=
+           Valid.Cross_Product (Default_Empty);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Default_Other;
+
+      procedure Check_Empty32 is
+         Result : constant OpenCV.Core.Mat := Empty32.Cross_Product (Empty32);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Empty32;
+
+      procedure Check_Shape is
+         Result : constant OpenCV.Core.Mat :=
+           Valid.Cross_Product
+             (OpenCV.Core.Create (2, 1, (OpenCV.Core.Float32, 1)));
+      begin
+         pragma Unreferenced (Result);
+      end Check_Shape;
+
+      procedure Check_Depth is
+         Result : constant OpenCV.Core.Mat :=
+           Valid.Cross_Product (Float64_Column);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Depth;
+
+      procedure Check_Channels is
+         Result : constant OpenCV.Core.Mat := Valid.Cross_Product (C3_Column);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Channels;
+
+      procedure Check_UInt8 is
+         Result : constant OpenCV.Core.Mat :=
+           UInt8_Image.Cross_Product (UInt8_Image);
+      begin
+         pragma Unreferenced (Result);
+      end Check_UInt8;
+
+      procedure Check_Int32 is
+         Result : constant OpenCV.Core.Mat :=
+           Int32_Image.Cross_Product (Int32_Image);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Int32;
+
+      procedure Check_Float16 is
+         Result : constant OpenCV.Core.Mat :=
+           Float16_Image.Cross_Product (Float16_Image);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Float16;
+
+      procedure Check_1x2 is
+         Result : constant OpenCV.Core.Mat :=
+           One_By_Two.Cross_Product (One_By_Two);
+      begin
+         pragma Unreferenced (Result);
+      end Check_1x2;
+
+      procedure Check_1x4 is
+         Result : constant OpenCV.Core.Mat :=
+           One_By_Four.Cross_Product (One_By_Four);
+      begin
+         pragma Unreferenced (Result);
+      end Check_1x4;
+
+      procedure Check_2x2 is
+         Result : constant OpenCV.Core.Mat :=
+           Two_By_Two.Cross_Product (Two_By_Two);
+      begin
+         pragma Unreferenced (Result);
+      end Check_2x2;
+
+      procedure Check_1x1 is
+         Result : constant OpenCV.Core.Mat :=
+           One_By_One.Cross_Product (One_By_One);
+      begin
+         pragma Unreferenced (Result);
+      end Check_1x1;
+
+      procedure Check_1x2_C2 is
+         Result : constant OpenCV.Core.Mat :=
+           One_By_Two_C2.Cross_Product (One_By_Two_C2);
+      begin
+         pragma Unreferenced (Result);
+      end Check_1x2_C2;
+
+      procedure Check_3x1_C3 is
+         Result : constant OpenCV.Core.Mat :=
+           C3_Column.Cross_Product (C3_Column);
+      begin
+         pragma Unreferenced (Result);
+      end Check_3x1_C3;
+
+      procedure Check_Column_Versus_Row is
+         Result : constant OpenCV.Core.Mat := Valid.Cross_Product (Row);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Column_Versus_Row;
+   begin
+      Fill_3x1 (Valid, 1.0, 0.0, 0.0);
+
+      Assert_Raises_OpenCV_Error
+        (Check_Default_Self'Access,
+         "Cross_Product must reject a default empty Self");
+      Assert_Raises_OpenCV_Error
+        (Check_Default_Other'Access,
+         "Cross_Product must reject a default empty Other");
+      Assert_Raises_OpenCV_Error
+        (Check_Empty32'Access,
+         "Cross_Product must reject a typed empty Float32 Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_Shape'Access,
+         "Cross_Product must reject mismatched Rows and Columns");
+      Assert_Raises_OpenCV_Error
+        (Check_Depth'Access,
+         "Cross_Product must reject mixed Float32 and Float64 operands");
+      Assert_Raises_OpenCV_Error
+        (Check_Channels'Access,
+         "Cross_Product must reject mixed channel counts");
+      Assert_Raises_OpenCV_Error
+        (Check_UInt8'Access, "Cross_Product must reject UInt8 Mats");
+      Assert_Raises_OpenCV_Error
+        (Check_Int32'Access, "Cross_Product must reject Int32 Mats");
+      Assert_Raises_OpenCV_Error
+        (Check_Float16'Access, "Cross_Product must reject Float16 Mats");
+      Assert_Raises_OpenCV_Error
+        (Check_1x2'Access, "Cross_Product must reject a 1x2 C1 Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_1x4'Access, "Cross_Product must reject a 1x4 C1 Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_2x2'Access, "Cross_Product must reject a 2x2 C1 Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_1x1'Access, "Cross_Product must reject a 1x1 C1 Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_1x2_C2'Access, "Cross_Product must reject a 1x2 C2 Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_3x1_C3'Access, "Cross_Product must reject a 3x1 C3 Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_Column_Versus_Row'Access,
+         "Cross_Product must reject a 3x1 C1 Mat against a 1x3 C1 Mat");
+   end Cross_Product_Rejects_Invalid_Inputs;
+
    procedure Matrix_Multiply_Add_Weighted_Float32
      (Test : in out Mat_Test_Fixture)
    is
@@ -6439,6 +6877,46 @@ package body Mat_Reduction_Tests is
         (Caller.Create
            ("Mahalanobis_Distance rejects invalid inputs",
             Mahalanobis_Distance_Rejects_Invalid_Inputs'Access));
+
+      Result.Add_Test
+        (Caller.Create
+           ("Cross_Product basic Float32 3x1",
+            Cross_Product_Basic_Float32_3x1'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Cross_Product operand order",
+            Cross_Product_Operand_Order'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Cross_Product general values",
+            Cross_Product_General_Values'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Cross_Product Float32 1x3", Cross_Product_Float32_1x3'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Cross_Product Float32 1x1 C3",
+            Cross_Product_Float32_1x1_C3'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Cross_Product supports Float64",
+            Cross_Product_Supports_Float64'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Cross_Product supports non-contiguous Regions",
+            Cross_Product_Noncontiguous_Region'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Cross_Product result owns independent storage",
+            Cross_Product_Result_Owns_Independent_Storage'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Cross_Product result outlives inputs",
+            Cross_Product_Result_Outlives_Inputs'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Cross_Product rejects invalid inputs",
+            Cross_Product_Rejects_Invalid_Inputs'Access));
 
       Result.Add_Test
         (Caller.Create

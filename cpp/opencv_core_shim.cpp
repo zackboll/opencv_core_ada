@@ -3366,6 +3366,78 @@ opencv_core_mat_mahalanobis_distance(
 }
 
 opencv_core_status
+opencv_core_mat_cross_product(const opencv_core_mat_handle *left,
+                              const opencv_core_mat_handle *right,
+                              opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat != nullptr) {
+        *out_mat = nullptr;
+    }
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    if (left == nullptr || right == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        const cv::Mat &A = left->value;
+        const cv::Mat &B = right->value;
+
+        if (A.empty() || B.empty()) {
+            return invalid_argument(
+                "cross product requires non-empty Self and Other Mats");
+        }
+
+        if (A.dims > 2 || B.dims > 2) {
+            return invalid_argument(
+                "cross product requires Mats with at most two dimensions");
+        }
+
+        if (A.rows != B.rows || A.cols != B.cols) {
+            return invalid_argument(
+                "cross product requires operands with identical rows and columns");
+        }
+
+        if (A.type() != B.type()) {
+            return invalid_argument(
+                "cross product requires operands with identical complete types");
+        }
+
+        if (A.depth() != CV_32F && A.depth() != CV_64F) {
+            return invalid_argument(
+                "cross product requires Float32 or Float64 vectors");
+        }
+
+        const bool is_column = A.rows == 3 && A.cols == 1 && A.channels() == 1;
+        const bool is_row = A.rows == 1 && A.cols == 3 && A.channels() == 1;
+        const bool is_vec3 = A.rows == 1 && A.cols == 1 && A.channels() == 3;
+        if (!is_column && !is_row && !is_vec3) {
+            return invalid_argument(
+                "cross product requires a 3x1 C1, 1x3 C1, or 1x1 C3 vector");
+        }
+
+        cv::Mat product = A.cross(B);
+
+        if (product.rows != A.rows || product.cols != A.cols ||
+            product.type() != A.type()) {
+            return invalid_argument(
+                "cross product produced a result with inconsistent shape or type");
+        }
+
+        std::unique_ptr<opencv_core_mat_handle> result_handle(
+            new opencv_core_mat_handle(product));
+        *out_mat = result_handle.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_invert(const opencv_core_mat_handle *source,
                        uint8_t *out_invertible,
                        opencv_core_mat_handle **out_mat) {
