@@ -3791,6 +3791,659 @@ package body Mat_Transform_Tests is
          "Transform must reject typed 0x0 Float32 coefficients");
    end Transform_Rejects_Empty_Inputs;
 
+   function Merge_Float32_C2 (Xs, Ys : OpenCV.Core.Mat) return OpenCV.Core.Mat
+   is (OpenCV.Core.Merge ((0 => Xs, 1 => Ys)));
+
+   function C2_Component
+     (Image : OpenCV.Core.Mat; Channel, Row, Column : Natural)
+      return Interfaces.IEEE_Float_32
+   is
+      Channels : constant OpenCV.Core.Mat_Array := Image.Split;
+   begin
+      return OpenCV.Core.Float32_Access.Get (Channels (Channel), Row, Column);
+   end C2_Component;
+
+   function Genuine_C2_Matrix return OpenCV.Core.Mat is
+      Matrix : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Matrix, 0, 0, 2.0);
+      OpenCV.Core.Float32_Access.Set (Matrix, 0, 1, 0.0);
+      OpenCV.Core.Float32_Access.Set (Matrix, 0, 2, 10.0);
+      OpenCV.Core.Float32_Access.Set (Matrix, 1, 0, 0.0);
+      OpenCV.Core.Float32_Access.Set (Matrix, 1, 1, 3.0);
+      OpenCV.Core.Float32_Access.Set (Matrix, 1, 2, 20.0);
+      OpenCV.Core.Float32_Access.Set (Matrix, 2, 0, 0.5);
+      OpenCV.Core.Float32_Access.Set (Matrix, 2, 1, 0.0);
+      OpenCV.Core.Float32_Access.Set (Matrix, 2, 2, 1.0);
+      return Matrix;
+   end Genuine_C2_Matrix;
+
+   function Identity_3x3 return OpenCV.Core.Mat is
+      Matrix : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.Float32, 1));
+   begin
+      Matrix.Set_Identity;
+      return Matrix;
+   end Identity_3x3;
+
+   function Two_Point_C2_Source return OpenCV.Core.Mat is
+      Xs : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+      Ys : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Xs, 0, 0, 2.0);
+      OpenCV.Core.Float32_Access.Set (Ys, 0, 0, 4.0);
+      OpenCV.Core.Float32_Access.Set (Xs, 0, 1, 0.0);
+      OpenCV.Core.Float32_Access.Set (Ys, 0, 1, 0.0);
+      return Merge_Float32_C2 (Xs, Ys);
+   end Two_Point_C2_Source;
+
+   procedure Perspective_Transform_Float32_C2_Genuine
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat := Two_Point_C2_Source;
+      Matrix : constant OpenCV.Core.Mat := Genuine_C2_Matrix;
+   begin
+      declare
+         Result   : constant OpenCV.Core.Mat :=
+           Source.Perspective_Transform (Matrix);
+         Channels : constant OpenCV.Core.Mat_Array := Result.Split;
+      begin
+         AUnit.Assertions.Assert
+           (Source.Depth = OpenCV.Core.Float32
+            and then Source.Channels = 2
+            and then Result.Rows = Source.Rows
+            and then Result.Columns = Source.Columns
+            and then Result.Depth = OpenCV.Core.Float32
+            and then Result.Channels = 2
+            and then OpenCV.Core.Float32_Access.Get (Channels (0), 0, 0) = 7.0
+            and then OpenCV.Core.Float32_Access.Get (Channels (1), 0, 0) = 16.0
+            and then OpenCV.Core.Float32_Access.Get (Channels (0), 0, 1) = 10.0
+            and then OpenCV.Core.Float32_Access.Get (Channels (1), 0, 1)
+                     = 20.0,
+            "Perspective_Transform must apply a genuine Float32 C2 3x3"
+            & " perspective mapping");
+         AUnit.Assertions.Assert
+           (C2_Component (Source, 0, 0, 0) = 2.0
+            and then C2_Component (Source, 1, 0, 0) = 4.0
+            and then C2_Component (Source, 0, 0, 1) = 0.0
+            and then C2_Component (Source, 1, 0, 1) = 0.0
+            and then OpenCV.Core.Float32_Access.Get (Matrix, 0, 0) = 2.0
+            and then OpenCV.Core.Float32_Access.Get (Matrix, 2, 2) = 1.0,
+            "Perspective_Transform must leave the C2 source and 3x3 matrix"
+            & " unchanged");
+      end;
+   end Perspective_Transform_Float32_C2_Genuine;
+
+   procedure Perspective_Transform_C2_Identity (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat := Two_Point_C2_Source;
+      Matrix : constant OpenCV.Core.Mat := Identity_3x3;
+      Result : constant OpenCV.Core.Mat :=
+        Source.Perspective_Transform (Matrix);
+   begin
+      AUnit.Assertions.Assert
+        (Result.Depth = OpenCV.Core.Float32
+         and then Result.Channels = 2
+         and then C2_Component (Result, 0, 0, 0) = 2.0
+         and then C2_Component (Result, 1, 0, 0) = 4.0
+         and then C2_Component (Result, 0, 0, 1) = 0.0
+         and then C2_Component (Result, 1, 0, 1) = 0.0,
+         "A 3x3 identity matrix must leave representative C2 points"
+         & " unchanged");
+   end Perspective_Transform_C2_Identity;
+
+   procedure Perspective_Transform_Float32_C3_4x4
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 3));
+      Matrix : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 4, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Vec3_Access.Set (Source, 0, 0, (2.0, 4.0, 1.0));
+      Matrix.Set_Identity;
+      OpenCV.Core.Float32_Access.Set (Matrix, 3, 2, 1.0);
+      OpenCV.Core.Float32_Access.Set (Matrix, 3, 3, 1.0);
+
+      declare
+         Result : constant OpenCV.Core.Mat :=
+           Source.Perspective_Transform (Matrix);
+      begin
+         AUnit.Assertions.Assert
+           (Result.Rows = 1
+            and then Result.Columns = 1
+            and then Result.Depth = OpenCV.Core.Float32
+            and then Result.Channels = 3
+            and then OpenCV.Core.Float32_Vec3_Access.Get (Result, 0, 0)
+                     = (1.0, 2.0, 0.5),
+            "Perspective_Transform must apply a Float32 C3 4x4 perspective"
+            & " division");
+      end;
+   end Perspective_Transform_Float32_C3_4x4;
+
+   procedure Perspective_Transform_Float64_Source
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source     : constant OpenCV.Core.Mat :=
+        Two_Point_C2_Source.Convert_To (OpenCV.Core.Float64);
+      Matrix     : constant OpenCV.Core.Mat := Genuine_C2_Matrix;
+      Result     : constant OpenCV.Core.Mat :=
+        Source.Perspective_Transform (Matrix);
+      Inspection : constant OpenCV.Core.Mat :=
+        Result.Convert_To (OpenCV.Core.Float32);
+   begin
+      AUnit.Assertions.Assert
+        (Source.Depth = OpenCV.Core.Float64
+         and then Result.Depth = OpenCV.Core.Float64
+         and then Result.Channels = 2
+         and then Result.Rows = Source.Rows
+         and then Result.Columns = Source.Columns
+         and then C2_Component (Inspection, 0, 0, 0) = 7.0
+         and then C2_Component (Inspection, 1, 0, 0) = 16.0
+         and then C2_Component (Inspection, 0, 0, 1) = 10.0
+         and then C2_Component (Inspection, 1, 0, 1) = 20.0,
+         "Perspective_Transform of Float64 C2 must keep Float64 and the"
+         & " expected values");
+   end Perspective_Transform_Float64_Source;
+
+   procedure Perspective_Transform_Float32_Matrix_With_Float64_Source
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source     : constant OpenCV.Core.Mat :=
+        Two_Point_C2_Source.Convert_To (OpenCV.Core.Float64);
+      Matrix     : constant OpenCV.Core.Mat := Genuine_C2_Matrix;
+      Result     : constant OpenCV.Core.Mat :=
+        Source.Perspective_Transform (Matrix);
+      Inspection : constant OpenCV.Core.Mat :=
+        Result.Convert_To (OpenCV.Core.Float32);
+   begin
+      AUnit.Assertions.Assert
+        (Matrix.Depth = OpenCV.Core.Float32
+         and then Result.Depth = OpenCV.Core.Float64
+         and then C2_Component (Inspection, 0, 0, 0) = 7.0
+         and then C2_Component (Inspection, 1, 0, 0) = 16.0,
+         "A Float32 matrix with Float64 Self must stay Float32 and yield"
+         & " a Float64 result");
+   end Perspective_Transform_Float32_Matrix_With_Float64_Source;
+
+   procedure Perspective_Transform_Float64_Matrix_With_Float32_Source
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat := Two_Point_C2_Source;
+      Matrix : constant OpenCV.Core.Mat :=
+        Genuine_C2_Matrix.Convert_To (OpenCV.Core.Float64);
+      Result : constant OpenCV.Core.Mat :=
+        Source.Perspective_Transform (Matrix);
+   begin
+      AUnit.Assertions.Assert
+        (Matrix.Depth = OpenCV.Core.Float64
+         and then Result.Depth = OpenCV.Core.Float32
+         and then Result.Channels = 2
+         and then C2_Component (Result, 0, 0, 0) = 7.0
+         and then C2_Component (Result, 1, 0, 0) = 16.0
+         and then C2_Component (Result, 0, 0, 1) = 10.0
+         and then C2_Component (Result, 1, 0, 1) = 20.0,
+         "A Float64 matrix with Float32 Self must stay Float64 and yield"
+         & " a Float32 result");
+   end Perspective_Transform_Float64_Matrix_With_Float32_Source;
+
+   procedure Perspective_Transform_Zero_Denominator
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat := Two_Point_C2_Source;
+      Matrix : OpenCV.Core.Mat := Identity_3x3;
+   begin
+      OpenCV.Core.Float32_Access.Set (Matrix, 2, 0, 0.0);
+      OpenCV.Core.Float32_Access.Set (Matrix, 2, 1, 0.0);
+      OpenCV.Core.Float32_Access.Set (Matrix, 2, 2, 0.0);
+
+      declare
+         Result : constant OpenCV.Core.Mat :=
+           Source.Perspective_Transform (Matrix);
+      begin
+         AUnit.Assertions.Assert
+           (C2_Component (Result, 0, 0, 0) = 0.0
+            and then C2_Component (Result, 1, 0, 0) = 0.0
+            and then C2_Component (Result, 0, 0, 1) = 0.0
+            and then C2_Component (Result, 1, 0, 1) = 0.0,
+            "A zero homogeneous denominator must write a zero C2 vector,"
+            & " not Inf or NaN");
+      end;
+   end Perspective_Transform_Zero_Denominator;
+
+   procedure Perspective_Transform_Near_Zero_Denominator
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Xs     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Ys     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Matrix : OpenCV.Core.Mat := Identity_3x3;
+   begin
+      OpenCV.Core.Float32_Access.Set (Xs, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Ys, 0, 0, 0.0);
+      OpenCV.Core.Float32_Access.Set
+        (Matrix, 2, 0, Interfaces.IEEE_Float_32'Model_Epsilon);
+      OpenCV.Core.Float32_Access.Set (Matrix, 2, 1, 0.0);
+      OpenCV.Core.Float32_Access.Set (Matrix, 2, 2, 0.0);
+
+      declare
+         Source     : constant OpenCV.Core.Mat :=
+           Merge_Float32_C2 (Xs, Ys).Convert_To (OpenCV.Core.Float64);
+         Result     : constant OpenCV.Core.Mat :=
+           Source.Perspective_Transform (Matrix);
+         Inspection : constant OpenCV.Core.Mat :=
+           Result.Convert_To (OpenCV.Core.Float32);
+      begin
+         AUnit.Assertions.Assert
+           (Source.Depth = OpenCV.Core.Float64
+            and then Result.Depth = OpenCV.Core.Float64
+            and then C2_Component (Inspection, 0, 0, 0) = 0.0
+            and then C2_Component (Inspection, 1, 0, 0) = 0.0,
+            "abs(w) = FLT_EPSILON must write a zero vector even for a"
+            & " Float64 source");
+      end;
+   end Perspective_Transform_Near_Zero_Denominator;
+
+   procedure Perspective_Transform_Negative_Denominator
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Xs     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Ys     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Matrix : OpenCV.Core.Mat := Identity_3x3;
+   begin
+      OpenCV.Core.Float32_Access.Set (Xs, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Ys, 0, 0, 2.0);
+      OpenCV.Core.Float32_Access.Set (Matrix, 2, 0, -1.0);
+      OpenCV.Core.Float32_Access.Set (Matrix, 2, 1, 0.0);
+      OpenCV.Core.Float32_Access.Set (Matrix, 2, 2, 0.0);
+
+      declare
+         Result : constant OpenCV.Core.Mat :=
+           Merge_Float32_C2 (Xs, Ys).Perspective_Transform (Matrix);
+      begin
+         AUnit.Assertions.Assert
+           (C2_Component (Result, 0, 0, 0) = -1.0
+            and then C2_Component (Result, 1, 0, 0) = -2.0,
+            "A negative homogeneous denominator above FLT_EPSILON must"
+            & " still divide and keep the sign");
+      end;
+   end Perspective_Transform_Negative_Denominator;
+
+   procedure Perspective_Transform_Noncontiguous_Source_Region
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Xs     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 4, (OpenCV.Core.Float32, 1));
+      Ys     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 4, (OpenCV.Core.Float32, 1));
+      Matrix : constant OpenCV.Core.Mat := Genuine_C2_Matrix;
+   begin
+      Xs.Set_To (OpenCV.Core.Make_Scalar (9.0));
+      Ys.Set_To (OpenCV.Core.Make_Scalar (8.0));
+      OpenCV.Core.Float32_Access.Set (Xs, 0, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Ys, 0, 1, 4.0);
+      OpenCV.Core.Float32_Access.Set (Xs, 0, 2, 0.0);
+      OpenCV.Core.Float32_Access.Set (Ys, 0, 2, 0.0);
+      OpenCV.Core.Float32_Access.Set (Xs, 1, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Ys, 1, 1, 4.0);
+      OpenCV.Core.Float32_Access.Set (Xs, 1, 2, 0.0);
+      OpenCV.Core.Float32_Access.Set (Ys, 1, 2, 0.0);
+
+      declare
+         Parent : constant OpenCV.Core.Mat := Merge_Float32_C2 (Xs, Ys);
+         Region : constant OpenCV.Core.Mat :=
+           Parent.Region ((X => 1, Y => 0, Width => 2, Height => 2));
+         Result : constant OpenCV.Core.Mat :=
+           Region.Perspective_Transform (Matrix);
+      begin
+         AUnit.Assertions.Assert
+           (not Region.Is_Continuous
+            and then Result.Rows = 2
+            and then Result.Columns = 2
+            and then Result.Channels = 2
+            and then C2_Component (Result, 0, 0, 0) = 7.0
+            and then C2_Component (Result, 1, 0, 0) = 16.0
+            and then C2_Component (Result, 0, 0, 1) = 10.0
+            and then C2_Component (Result, 1, 0, 1) = 20.0
+            and then C2_Component (Result, 0, 1, 0) = 7.0
+            and then C2_Component (Result, 1, 1, 0) = 16.0,
+            "Perspective_Transform must accept a non-contiguous C2 Region");
+         AUnit.Assertions.Assert
+           (C2_Component (Parent, 0, 0, 0) = 9.0
+            and then C2_Component (Parent, 1, 0, 0) = 8.0
+            and then C2_Component (Parent, 0, 0, 3) = 9.0
+            and then C2_Component (Region, 0, 0, 0) = 2.0
+            and then C2_Component (Region, 1, 0, 0) = 4.0,
+            "Perspective_Transform must leave the Region and parent pixels"
+            & " unchanged");
+      end;
+   end Perspective_Transform_Noncontiguous_Source_Region;
+
+   procedure Perspective_Transform_Noncontiguous_Matrix_Region
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat := Two_Point_C2_Source;
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 5, (OpenCV.Core.Float32, 1));
+   begin
+      Parent.Set_To (OpenCV.Core.Make_Scalar (9.0));
+      OpenCV.Core.Float32_Access.Set (Parent, 0, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Parent, 0, 2, 0.0);
+      OpenCV.Core.Float32_Access.Set (Parent, 0, 3, 10.0);
+      OpenCV.Core.Float32_Access.Set (Parent, 1, 1, 0.0);
+      OpenCV.Core.Float32_Access.Set (Parent, 1, 2, 3.0);
+      OpenCV.Core.Float32_Access.Set (Parent, 1, 3, 20.0);
+      OpenCV.Core.Float32_Access.Set (Parent, 2, 1, 0.5);
+      OpenCV.Core.Float32_Access.Set (Parent, 2, 2, 0.0);
+      OpenCV.Core.Float32_Access.Set (Parent, 2, 3, 1.0);
+
+      declare
+         Matrix : constant OpenCV.Core.Mat :=
+           Parent.Region ((X => 1, Y => 0, Width => 3, Height => 3));
+         Result : constant OpenCV.Core.Mat :=
+           Source.Perspective_Transform (Matrix);
+      begin
+         AUnit.Assertions.Assert
+           (not Matrix.Is_Continuous
+            and then Matrix.Rows = 3
+            and then Matrix.Columns = 3
+            and then C2_Component (Result, 0, 0, 0) = 7.0
+            and then C2_Component (Result, 1, 0, 0) = 16.0
+            and then C2_Component (Result, 0, 0, 1) = 10.0
+            and then C2_Component (Result, 1, 0, 1) = 20.0,
+            "Perspective_Transform must accept a non-contiguous 3x3 matrix"
+            & " Region");
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float32_Access.Get (Parent, 0, 0) = 9.0
+            and then OpenCV.Core.Float32_Access.Get (Matrix, 0, 0) = 2.0
+            and then OpenCV.Core.Float32_Access.Get (Matrix, 2, 2) = 1.0,
+            "Perspective_Transform must leave the matrix Region and parent"
+            & " unchanged");
+      end;
+   end Perspective_Transform_Noncontiguous_Matrix_Region;
+
+   procedure Perspective_Transform_Result_Is_Independent
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat := Two_Point_C2_Source;
+      Matrix : OpenCV.Core.Mat := Genuine_C2_Matrix;
+      Result : OpenCV.Core.Mat := Source.Perspective_Transform (Matrix);
+   begin
+      Source.Set_To (OpenCV.Core.Make_Scalar (9.0, 8.0));
+      OpenCV.Core.Float32_Access.Set (Matrix, 0, 0, 0.0);
+      AUnit.Assertions.Assert
+        (C2_Component (Result, 0, 0, 0) = 7.0
+         and then C2_Component (Result, 1, 0, 0) = 16.0
+         and then C2_Component (Result, 0, 0, 1) = 10.0,
+         "Mutating Self or Transform_Matrix must not change Result");
+
+      Result.Set_To (OpenCV.Core.Make_Scalar (-1.0, -2.0));
+      AUnit.Assertions.Assert
+        (C2_Component (Source, 0, 0, 0) = 9.0
+         and then C2_Component (Source, 1, 0, 0) = 8.0
+         and then OpenCV.Core.Float32_Access.Get (Matrix, 0, 2) = 10.0,
+         "Mutating Result must not change Self or Transform_Matrix");
+   end Perspective_Transform_Result_Is_Independent;
+
+   procedure Perspective_Transform_Rejects_Invalid_Source_Depth
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Matrix : constant OpenCV.Core.Mat := Identity_3x3;
+
+      procedure Transform_UInt8 is
+         Source  : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 2));
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Source.Perspective_Transform (Matrix);
+      end Transform_UInt8;
+
+      procedure Transform_Int32 is
+         Source  : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create (1, 1, (OpenCV.Core.Int32, 2));
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Source.Perspective_Transform (Matrix);
+      end Transform_Int32;
+
+      procedure Transform_Float16 is
+         Source  : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create (1, 1, (OpenCV.Core.Float16, 2));
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Source.Perspective_Transform (Matrix);
+      end Transform_Float16;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Transform_UInt8'Access,
+         "Perspective_Transform must reject a UInt8 source");
+      Assert_Raises_OpenCV_Error
+        (Transform_Int32'Access,
+         "Perspective_Transform must reject an Int32 source");
+      Assert_Raises_OpenCV_Error
+        (Transform_Float16'Access,
+         "Perspective_Transform must reject a Float16 source");
+   end Perspective_Transform_Rejects_Invalid_Source_Depth;
+
+   procedure Perspective_Transform_Rejects_Invalid_Source_Channels
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Matrix : constant OpenCV.Core.Mat := Identity_3x3;
+
+      procedure Transform_C1 is
+         Source  : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Source.Perspective_Transform (Matrix);
+      end Transform_C1;
+
+      procedure Transform_C4 is
+         Source  : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 4));
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Source.Perspective_Transform (Matrix);
+      end Transform_C4;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Transform_C1'Access,
+         "Perspective_Transform must reject a Float32 C1 source");
+      Assert_Raises_OpenCV_Error
+        (Transform_C4'Access,
+         "Perspective_Transform must reject a Float32 C4 source");
+   end Perspective_Transform_Rejects_Invalid_Source_Channels;
+
+   procedure Perspective_Transform_Rejects_Invalid_Matrix_Depth
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat := Two_Point_C2_Source;
+      Matrix : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.Int32, 1));
+
+      procedure Transform_Int32_Matrix is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Source.Perspective_Transform (Matrix);
+      end Transform_Int32_Matrix;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Transform_Int32_Matrix'Access,
+         "Perspective_Transform must reject an Int32 matrix");
+   end Perspective_Transform_Rejects_Invalid_Matrix_Depth;
+
+   procedure Perspective_Transform_Rejects_Invalid_Matrix_Channels
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat := Two_Point_C2_Source;
+      Matrix : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.Float32, 2));
+
+      procedure Transform_C2_Matrix is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Source.Perspective_Transform (Matrix);
+      end Transform_C2_Matrix;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Transform_C2_Matrix'Access,
+         "Perspective_Transform must reject a multi-channel matrix");
+   end Perspective_Transform_Rejects_Invalid_Matrix_Channels;
+
+   procedure Perspective_Transform_Rejects_Wrong_C2_Matrix_Dimensions
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat := Two_Point_C2_Source;
+
+      procedure Transform_With (Rows, Columns : Natural) is
+         Matrix  : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create (Rows, Columns, (OpenCV.Core.Float32, 1));
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Source.Perspective_Transform (Matrix);
+      end Transform_With;
+
+      procedure Transform_2x3 is
+      begin
+         Transform_With (2, 3);
+      end Transform_2x3;
+
+      procedure Transform_3x2 is
+      begin
+         Transform_With (3, 2);
+      end Transform_3x2;
+
+      procedure Transform_4x4 is
+      begin
+         Transform_With (4, 4);
+      end Transform_4x4;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Transform_2x3'Access,
+         "Perspective_Transform of C2 must reject a 2x3 matrix");
+      Assert_Raises_OpenCV_Error
+        (Transform_3x2'Access,
+         "Perspective_Transform of C2 must reject a 3x2 matrix");
+      Assert_Raises_OpenCV_Error
+        (Transform_4x4'Access,
+         "Perspective_Transform of C2 must reject a 4x4 matrix");
+   end Perspective_Transform_Rejects_Wrong_C2_Matrix_Dimensions;
+
+   procedure Perspective_Transform_Rejects_Wrong_C3_Matrix_Dimensions
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 3));
+
+      procedure Transform_With (Rows, Columns : Natural) is
+         Matrix  : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create (Rows, Columns, (OpenCV.Core.Float32, 1));
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Source.Perspective_Transform (Matrix);
+      end Transform_With;
+
+      procedure Transform_3x3 is
+      begin
+         Transform_With (3, 3);
+      end Transform_3x3;
+
+      procedure Transform_3x4 is
+      begin
+         Transform_With (3, 4);
+      end Transform_3x4;
+
+      procedure Transform_4x3 is
+      begin
+         Transform_With (4, 3);
+      end Transform_4x3;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Transform_3x3'Access,
+         "Perspective_Transform of C3 must reject a 3x3 matrix");
+      Assert_Raises_OpenCV_Error
+        (Transform_3x4'Access,
+         "Perspective_Transform of C3 must reject a 3x4 matrix");
+      Assert_Raises_OpenCV_Error
+        (Transform_4x3'Access,
+         "Perspective_Transform of C3 must reject a 4x3 matrix");
+   end Perspective_Transform_Rejects_Wrong_C3_Matrix_Dimensions;
+
+   procedure Perspective_Transform_Rejects_Empty_Inputs
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Default_Source : OpenCV.Core.Mat;
+      Empty_Source   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 2));
+      Valid_Source   : constant OpenCV.Core.Mat := Two_Point_C2_Source;
+      Default_Matrix : OpenCV.Core.Mat;
+      Empty_Matrix   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 1));
+      Valid_Matrix   : constant OpenCV.Core.Mat := Identity_3x3;
+
+      procedure Transform_Default_Source is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Default_Source.Perspective_Transform (Valid_Matrix);
+      end Transform_Default_Source;
+
+      procedure Transform_Empty_Source is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Empty_Source.Perspective_Transform (Valid_Matrix);
+      end Transform_Empty_Source;
+
+      procedure Transform_Default_Matrix is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Valid_Source.Perspective_Transform (Default_Matrix);
+      end Transform_Default_Matrix;
+
+      procedure Transform_Empty_Matrix is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Valid_Source.Perspective_Transform (Empty_Matrix);
+      end Transform_Empty_Matrix;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Transform_Default_Source'Access,
+         "Perspective_Transform must reject a default empty source");
+      Assert_Raises_OpenCV_Error
+        (Transform_Empty_Source'Access,
+         "Perspective_Transform must reject a typed 0x0 Float32 C2 source");
+      Assert_Raises_OpenCV_Error
+        (Transform_Default_Matrix'Access,
+         "Perspective_Transform must reject a default empty matrix");
+      Assert_Raises_OpenCV_Error
+        (Transform_Empty_Matrix'Access,
+         "Perspective_Transform must reject a typed 0x0 Float32 matrix");
+   end Perspective_Transform_Rejects_Empty_Inputs;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
    Result : aliased AUnit.Test_Suites.Test_Suite;
 
@@ -4200,6 +4853,82 @@ package body Mat_Transform_Tests is
         (Caller.Create
            ("Transform rejects empty inputs",
             Transform_Rejects_Empty_Inputs'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Perspective_Transform Float32 C2 genuine mapping",
+            Perspective_Transform_Float32_C2_Genuine'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Perspective_Transform C2 identity",
+            Perspective_Transform_C2_Identity'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Perspective_Transform Float32 C3 4x4",
+            Perspective_Transform_Float32_C3_4x4'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Perspective_Transform Float64 source",
+            Perspective_Transform_Float64_Source'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Perspective_Transform Float32 matrix with Float64 source",
+            Perspective_Transform_Float32_Matrix_With_Float64_Source'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Perspective_Transform Float64 matrix with Float32 source",
+            Perspective_Transform_Float64_Matrix_With_Float32_Source'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Perspective_Transform zero denominator",
+            Perspective_Transform_Zero_Denominator'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Perspective_Transform near-zero denominator",
+            Perspective_Transform_Near_Zero_Denominator'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Perspective_Transform negative denominator",
+            Perspective_Transform_Negative_Denominator'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Perspective_Transform non-contiguous source Region",
+            Perspective_Transform_Noncontiguous_Source_Region'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Perspective_Transform non-contiguous matrix Region",
+            Perspective_Transform_Noncontiguous_Matrix_Region'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Perspective_Transform result is independent",
+            Perspective_Transform_Result_Is_Independent'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Perspective_Transform rejects invalid source depth",
+            Perspective_Transform_Rejects_Invalid_Source_Depth'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Perspective_Transform rejects invalid source channels",
+            Perspective_Transform_Rejects_Invalid_Source_Channels'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Perspective_Transform rejects invalid matrix depth",
+            Perspective_Transform_Rejects_Invalid_Matrix_Depth'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Perspective_Transform rejects invalid matrix channels",
+            Perspective_Transform_Rejects_Invalid_Matrix_Channels'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Perspective_Transform rejects wrong C2 matrix dimensions",
+            Perspective_Transform_Rejects_Wrong_C2_Matrix_Dimensions'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Perspective_Transform rejects wrong C3 matrix dimensions",
+            Perspective_Transform_Rejects_Wrong_C3_Matrix_Dimensions'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Perspective_Transform rejects empty inputs",
+            Perspective_Transform_Rejects_Empty_Inputs'Access));
 
       return Result'Access;
 

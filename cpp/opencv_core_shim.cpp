@@ -3795,6 +3795,107 @@ opencv_core_mat_transform(const opencv_core_mat_handle *source,
 }
 
 opencv_core_status
+opencv_core_mat_perspective_transform(
+    const opencv_core_mat_handle *source,
+    const opencv_core_mat_handle *transform_matrix,
+    opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat != nullptr) {
+        *out_mat = nullptr;
+    }
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    if (source == nullptr || transform_matrix == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        const cv::Mat &src = source->value;
+        const cv::Mat &mtx = transform_matrix->value;
+
+        if (src.empty()) {
+            return invalid_argument(
+                "perspective transform requires a non-empty source Mat");
+        }
+
+        if (src.dims > 2) {
+            return invalid_argument(
+                "perspective transform requires a source with at most two "
+                "dimensions");
+        }
+
+        if (src.channels() != 2 && src.channels() != 3) {
+            return invalid_argument(
+                "perspective transform requires a source with 2 or 3 "
+                "channels");
+        }
+
+        if (src.depth() != CV_32F && src.depth() != CV_64F) {
+            return invalid_argument(
+                "perspective transform requires a Float32 or Float64 source");
+        }
+
+        if (mtx.empty()) {
+            return invalid_argument(
+                "perspective transform requires a non-empty transformation "
+                "matrix");
+        }
+
+        if (mtx.dims > 2) {
+            return invalid_argument(
+                "perspective transform requires a transformation matrix "
+                "with at most two dimensions");
+        }
+
+        if (mtx.channels() != 1) {
+            return invalid_argument(
+                "perspective transform requires a single-channel "
+                "transformation matrix");
+        }
+
+        if (mtx.depth() != CV_32F && mtx.depth() != CV_64F) {
+            return invalid_argument(
+                "perspective transform requires a Float32 or Float64 "
+                "transformation matrix");
+        }
+
+        if (src.channels() == 2) {
+            if (mtx.rows != 3 || mtx.cols != 3) {
+                return invalid_argument(
+                    "perspective transform of a 2-channel source requires "
+                    "a 3x3 transformation matrix");
+            }
+        } else if (mtx.rows != 4 || mtx.cols != 4) {
+            return invalid_argument(
+                "perspective transform of a 3-channel source requires a "
+                "4x4 transformation matrix");
+        }
+
+        cv::Mat result;
+        cv::perspectiveTransform(src, result, mtx);
+
+        if (result.rows != src.rows || result.cols != src.cols ||
+            result.depth() != src.depth() ||
+            result.channels() != src.channels()) {
+            return invalid_argument(
+                "perspective transform produced a result with inconsistent "
+                "shape or type");
+        }
+
+        std::unique_ptr<opencv_core_mat_handle> result_handle(
+            new opencv_core_mat_handle(result));
+        *out_mat = result_handle.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_mean(const opencv_core_mat_handle *mat,
                      opencv_core_scalar *out_mean) {
     clear_error();

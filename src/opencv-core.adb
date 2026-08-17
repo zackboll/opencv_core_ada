@@ -3172,6 +3172,100 @@ package body OpenCV.Core is
       return Result;
    end Transform;
 
+   function Supports_Perspective_Transform_Source (Self : Mat) return Boolean
+   is (Self.Depth = Float32 or else Self.Depth = Float64);
+
+   procedure Validate_Perspective_Transform (Self, Transform_Matrix : Mat) is
+   begin
+      if Self.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Perspective_Transform requires a non-empty Mat");
+      end if;
+
+      if not Supports_Perspective_Transform_Source (Self) then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Perspective_Transform requires a Float32 or Float64 Mat");
+      end if;
+
+      if Self.Channels /= 2 and then Self.Channels /= 3 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Perspective_Transform requires a source with 2 or 3 channels");
+      end if;
+
+      if Transform_Matrix.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Perspective_Transform requires a non-empty Transform_Matrix");
+      end if;
+
+      if Transform_Matrix.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Perspective_Transform requires a single-channel"
+            & " Transform_Matrix");
+      end if;
+
+      if Transform_Matrix.Depth /= Float32
+        and then Transform_Matrix.Depth /= Float64
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Perspective_Transform requires a Float32 or Float64"
+            & " Transform_Matrix");
+      end if;
+
+      if Self.Channels = 2 then
+         if Transform_Matrix.Rows /= 3 or else Transform_Matrix.Columns /= 3
+         then
+            Ada.Exceptions.Raise_Exception
+              (OpenCV_Error'Identity,
+               "Perspective_Transform of a 2-channel source requires a"
+               & " 3x3 Transform_Matrix");
+         end if;
+      elsif Transform_Matrix.Rows /= 4 or else Transform_Matrix.Columns /= 4
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Perspective_Transform of a 3-channel source requires a"
+            & " 4x4 Transform_Matrix");
+      end if;
+   end Validate_Perspective_Transform;
+
+   function Perspective_Transform
+     (Self : Mat; Transform_Matrix : Mat) return Mat
+   is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Perspective_Transform (Self, Transform_Matrix);
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_Perspective_Transform
+          (Source           => Self.Handle,
+           Transform_Matrix => Transform_Matrix.Handle,
+           Result           => New_Handle'Access);
+      if Status /= OpenCV.Internal.C_API.Success then
+         OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+         Raise_On_Error (Status, "Mat perspective transform operation");
+      end if;
+
+      if New_Handle = OpenCV.Internal.C_API.Null_Mat_Handle then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat perspective transform operation returned a null result"
+            & " handle");
+      end if;
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Perspective_Transform;
+
    procedure Validate_Reduce_Depth
      (Self : Mat; Kind : Reduction_Kind; Output_Depth : Depth_Type) is
    begin

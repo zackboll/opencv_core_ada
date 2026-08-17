@@ -805,6 +805,15 @@ package OpenCV.Internal.C_API is
       Result       : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_transform";
 
+   function Mat_Perspective_Transform
+     (Source           : Mat_Handle;
+      Transform_Matrix : Mat_Handle;
+      Result           : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_perspective_transform";
+
    function Mat_Mean (Self : Mat_Handle; Result : access Scalar) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_mean";
 

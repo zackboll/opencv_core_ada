@@ -721,6 +721,30 @@ package OpenCV.Core is
    --  storage.
    function Transform (Self : Mat; Coefficients : Mat) return Mat;
 
+   --  Interprets each Self element as a 2D or 3D vector and applies
+   --  OpenCV 4.10 cv::perspectiveTransform. This transforms vector
+   --  coordinates at each Mat element. It does not spatially resample,
+   --  warp, interpolate, or move pixels in an image; that operation is
+   --  imgproc warpPerspective. Self must be a non-empty Float32 or
+   --  Float64 Mat with at most two dimensions and exactly 2 or 3
+   --  channels. C1, C4 and larger, and every non-floating depth
+   --  including Float16, are rejected. Transform_Matrix must be a
+   --  non-empty single-channel Float32 or Float64 Mat with at most two
+   --  dimensions. A C2 source requires a 3x3 matrix. A C3 source
+   --  requires a 4x4 matrix. Other matrix sizes, including the internal
+   --  OpenCV C3-to-C2 3x4 path, are not part of this API. The result
+   --  preserves Self's rows, columns, depth, and channels. OpenCV
+   --  performs the homogeneous division. When abs(w) <= FLT_EPSILON,
+   --  OpenCV 4.10 writes a zero vector; the same FLT_EPSILON threshold
+   --  is used for Float32 and Float64 sources. OpenCV converts a
+   --  non-continuous or non-Float64 matrix to an internal Float64
+   --  coefficient buffer; this binding does not pre-convert it.
+   --  Continuity is not required; non-contiguous Regions are supported
+   --  for both Self and Transform_Matrix. Inputs are unchanged. The
+   --  result owns independent storage.
+   function Perspective_Transform
+     (Self : Mat; Transform_Matrix : Mat) return Mat;
+
    --  Reduces a two-dimensional Mat independently in every channel.
    --  Across_Rows
    --  produces one row; Across_Columns produces one column. The result owns

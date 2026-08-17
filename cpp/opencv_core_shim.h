@@ -950,10 +950,34 @@ opencv_core_mat_transposed_product_with_delta(
  * coefficient working precision from the source depth and may convert
  * coefficients; this wrapper does not pre-convert them.
  */
+
 opencv_core_status
 opencv_core_mat_transform(const opencv_core_mat_handle *source,
                           const opencv_core_mat_handle *coefficients,
                           opencv_core_mat_handle **out_mat);
+
+/*
+ * Applies cv::perspectiveTransform to each source element interpreted as a
+ * 2D or 3D vector. This is not spatial image warping. source and
+ * transform_matrix are borrowed. The independently owned result has
+ * source.rows, source.cols, source.depth(), and source.channels().
+ *
+ * source must be non-empty, at most two-dimensional, have exactly 2 or 3
+ * channels, and depth CV_32F or CV_64F.
+ *
+ * transform_matrix must be non-empty, at most two-dimensional,
+ * single-channel CV_32F or CV_64F. A 2-channel source requires a 3x3
+ * matrix. A 3-channel source requires a 4x4 matrix. Continuity is not
+ * required. OpenCV converts a non-continuous or non-CV_64F matrix to an
+ * internal Float64 coefficient buffer; this wrapper does not pre-convert
+ * it. When abs(w) <= FLT_EPSILON, OpenCV 4.10 writes a zero vector for
+ * both Float32 and Float64 sources.
+ */
+opencv_core_status
+opencv_core_mat_perspective_transform(
+    const opencv_core_mat_handle *source,
+    const opencv_core_mat_handle *transform_matrix,
+    opencv_core_mat_handle **out_mat);
 
 /*
  * Computes unmasked per-channel mean values. Both operations support one to
