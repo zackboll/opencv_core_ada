@@ -761,6 +761,18 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_matrix_multiply";
 
+   function Mat_Matrix_Multiply_Add
+     (Left          : Mat_Handle;
+      Right         : Mat_Handle;
+      Addend        : Mat_Handle;
+      Product_Scale : C_Double;
+      Addend_Scale  : C_Double;
+      Result        : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_matrix_multiply_add";
+
    function Mat_Mean (Self : Mat_Handle; Result : access Scalar) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_mean";
 

@@ -870,6 +870,28 @@ opencv_core_mat_matrix_multiply(const opencv_core_mat_handle *left,
                                 opencv_core_mat_handle **out_mat);
 
 /*
+ * Performs weighted algebraic matrix multiplication with an addend using
+ * cv::gemm: result = product_scale * left * right + addend_scale * addend.
+ * No transpose flags are applied. left, right, and addend are borrowed.
+ * All three must be non-empty, at most two-dimensional, and share an
+ * identical complete type of CV_32FC1, CV_64FC1, CV_32FC2, or CV_64FC2.
+ * Two-channel inputs use OpenCV complex arithmetic. left.cols must equal
+ * right.rows, and addend must have the product shape left.rows x
+ * right.cols even when addend_scale is 0.0. The result has that shape,
+ * the same type, and independently owned storage. Continuity is not
+ * required. product_scale maps to cv::gemm alpha and addend_scale maps
+ * to cv::gemm beta; Float32 paths follow OpenCV's conversion of those
+ * weights to float.
+ */
+opencv_core_status
+opencv_core_mat_matrix_multiply_add(const opencv_core_mat_handle *left,
+                                    const opencv_core_mat_handle *right,
+                                    const opencv_core_mat_handle *addend,
+                                    double product_scale,
+                                    double addend_scale,
+                                    opencv_core_mat_handle **out_mat);
+
+/*
  * Computes unmasked per-channel mean values. Both operations support one to
  * four channels so each complete result fits opencv_core_scalar. Mean accepts
  * empty Mats and returns all zeroes; mean/stddev requires a non-empty Mat.

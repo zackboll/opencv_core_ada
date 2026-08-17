@@ -2061,6 +2061,605 @@ package body Mat_Reduction_Tests is
          "Matrix_Multiply must reject Float32 Mats with three channels");
    end Matrix_Multiply_Rejects_Invalid_Inputs;
 
+   procedure Matrix_Multiply_Add_Weighted_Float32
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Right  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Addend : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      Fill_2x2 (Left, 1.0, 2.0, 3.0, 4.0);
+      Fill_2x2 (Right, 5.0, 6.0, 7.0, 8.0);
+      Fill_2x2 (Addend, 1.0, 2.0, 3.0, 4.0);
+      Result :=
+        OpenCV.Core.Matrix_Multiply_Add
+          (Left, Right, Addend, Product_Scale => 2.0, Addend_Scale => 3.0);
+
+      AUnit.Assertions.Assert
+        (Product_2x2 (Result, 41.0, 50.0, 95.0, 112.0),
+         "Weighted Matrix_Multiply_Add must compute 2*product + 3*addend");
+      AUnit.Assertions.Assert
+        (Product_2x2 (Left, 1.0, 2.0, 3.0, 4.0)
+         and then Product_2x2 (Right, 5.0, 6.0, 7.0, 8.0)
+         and then Product_2x2 (Addend, 1.0, 2.0, 3.0, 4.0),
+         "Matrix_Multiply_Add must not modify its operands");
+   end Matrix_Multiply_Add_Weighted_Float32;
+
+   procedure Matrix_Multiply_Add_Default_Scales
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Right  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Addend : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      Fill_2x2 (Left, 1.0, 2.0, 3.0, 4.0);
+      Fill_2x2 (Right, 5.0, 6.0, 7.0, 8.0);
+      Fill_2x2 (Addend, 1.0, 2.0, 3.0, 4.0);
+      Result := OpenCV.Core.Matrix_Multiply_Add (Left, Right, Addend);
+
+      AUnit.Assertions.Assert
+        (Product_2x2 (Result, 20.0, 24.0, 46.0, 54.0),
+         "Default Matrix_Multiply_Add scales must both be 1.0");
+   end Matrix_Multiply_Add_Default_Scales;
+
+   procedure Matrix_Multiply_Add_Product_Scale_Zero
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Right  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Addend : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      Fill_2x2 (Left, 1.0, 2.0, 3.0, 4.0);
+      Fill_2x2 (Right, 5.0, 6.0, 7.0, 8.0);
+      Fill_2x2 (Addend, 1.0, 2.0, 3.0, 4.0);
+      Result :=
+        OpenCV.Core.Matrix_Multiply_Add
+          (Left, Right, Addend, Product_Scale => 0.0, Addend_Scale => 2.0);
+
+      AUnit.Assertions.Assert
+        (Product_2x2 (Result, 2.0, 4.0, 6.0, 8.0),
+         "Product_Scale 0.0 must yield only the scaled Addend");
+   end Matrix_Multiply_Add_Product_Scale_Zero;
+
+   procedure Matrix_Multiply_Add_Addend_Scale_Zero
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Right  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Addend : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      Fill_2x2 (Left, 1.0, 2.0, 3.0, 4.0);
+      Fill_2x2 (Right, 5.0, 6.0, 7.0, 8.0);
+      Fill_2x2 (Addend, 9.0, 8.0, 7.0, 6.0);
+      Result :=
+        OpenCV.Core.Matrix_Multiply_Add
+          (Left, Right, Addend, Product_Scale => 2.0, Addend_Scale => 0.0);
+
+      AUnit.Assertions.Assert
+        (Product_2x2 (Result, 38.0, 44.0, 86.0, 100.0),
+         "Addend_Scale 0.0 must yield only the scaled product");
+   end Matrix_Multiply_Add_Addend_Scale_Zero;
+
+   procedure Matrix_Multiply_Add_Negative_Scales
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Right  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Addend : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      Fill_2x2 (Left, 1.0, 2.0, 3.0, 4.0);
+      Fill_2x2 (Right, 5.0, 6.0, 7.0, 8.0);
+      Fill_2x2 (Addend, 2.0, 4.0, 6.0, 8.0);
+      Result :=
+        OpenCV.Core.Matrix_Multiply_Add
+          (Left, Right, Addend, Product_Scale => -1.0, Addend_Scale => 0.5);
+
+      AUnit.Assertions.Assert
+        (Product_2x2 (Result, -18.0, -20.0, -40.0, -46.0),
+         "Negative Product_Scale and fractional Addend_Scale must be"
+         & " passed through to OpenCV");
+   end Matrix_Multiply_Add_Negative_Scales;
+
+   procedure Matrix_Multiply_Add_Rectangular_Product
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Right  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 4, (OpenCV.Core.Float32, 1));
+      Addend : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 4, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      Fill_2x3 (Left, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+      Right.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      Addend.Set_To (OpenCV.Core.Make_Scalar (2.0));
+      Result :=
+        OpenCV.Core.Matrix_Multiply_Add
+          (Left, Right, Addend, Product_Scale => 1.0, Addend_Scale => 1.0);
+
+      AUnit.Assertions.Assert
+        (Result.Rows = 2
+         and then Result.Columns = 4
+         and then Result.Depth = OpenCV.Core.Float32
+         and then Result.Channels = 1
+         and then OpenCV.Core.Float32_Access.Get (Result, 0, 0) = 8.0
+         and then OpenCV.Core.Float32_Access.Get (Result, 0, 3) = 8.0
+         and then OpenCV.Core.Float32_Access.Get (Result, 1, 0) = 17.0
+         and then OpenCV.Core.Float32_Access.Get (Result, 1, 3) = 17.0,
+         "2x3 * 3x4 + 2x4 must produce a 2x4 weighted result");
+   end Matrix_Multiply_Add_Rectangular_Product;
+
+   procedure Matrix_Multiply_Add_Supports_Float64
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left32    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Right32   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Addend32  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Left      : OpenCV.Core.Mat;
+      Right     : OpenCV.Core.Mat;
+      Addend    : OpenCV.Core.Mat;
+      Result    : OpenCV.Core.Mat;
+      Converted : OpenCV.Core.Mat;
+   begin
+      Fill_2x2 (Left32, 1.0, 2.0, 3.0, 4.0);
+      Fill_2x2 (Right32, 5.0, 6.0, 7.0, 8.0);
+      Fill_2x2 (Addend32, 1.0, 2.0, 3.0, 4.0);
+      Left := Left32.Convert_To (OpenCV.Core.Float64);
+      Right := Right32.Convert_To (OpenCV.Core.Float64);
+      Addend := Addend32.Convert_To (OpenCV.Core.Float64);
+      Result :=
+        OpenCV.Core.Matrix_Multiply_Add
+          (Left, Right, Addend, Product_Scale => 2.0, Addend_Scale => 3.0);
+      Converted := Result.Convert_To (OpenCV.Core.Float32);
+
+      AUnit.Assertions.Assert
+        (Result.Depth = OpenCV.Core.Float64
+         and then Result.Rows = 2
+         and then Result.Columns = 2
+         and then Result.Channels = 1
+         and then Product_2x2 (Converted, 41.0, 50.0, 95.0, 112.0),
+         "Matrix_Multiply_Add must preserve Float64 depth and the known"
+         & " weighted result");
+   end Matrix_Multiply_Add_Supports_Float64;
+
+   procedure Matrix_Multiply_Add_Complex_Float32
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left_Real   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Left_Imag   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Right_Real  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Right_Imag  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Addend_Real : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Addend_Imag : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Left        : OpenCV.Core.Mat;
+      Right       : OpenCV.Core.Mat;
+      Addend      : OpenCV.Core.Mat;
+      Result      : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set (Left_Real, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Left_Imag, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Right_Real, 0, 0, 2.0);
+      OpenCV.Core.Float32_Access.Set (Right_Imag, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Addend_Real, 0, 0, 3.0);
+      OpenCV.Core.Float32_Access.Set (Addend_Imag, 0, 0, -1.0);
+      Left := OpenCV.Core.Merge ((Left_Real, Left_Imag));
+      Right := OpenCV.Core.Merge ((Right_Real, Right_Imag));
+      Addend := OpenCV.Core.Merge ((Addend_Real, Addend_Imag));
+      Result :=
+        OpenCV.Core.Matrix_Multiply_Add
+          (Left, Right, Addend, Product_Scale => 2.0, Addend_Scale => 0.5);
+
+      declare
+         Parts : constant OpenCV.Core.Mat_Array := Result.Split;
+      begin
+         AUnit.Assertions.Assert
+           (Result.Depth = OpenCV.Core.Float32
+            and then Result.Channels = 2
+            and then Result.Rows = 1
+            and then Result.Columns = 1
+            and then Parts'Length = 2
+            and then OpenCV.Core.Float32_Access.Get (Parts (0), 0, 0) = 3.5
+            and then OpenCV.Core.Float32_Access.Get (Parts (1), 0, 0) = 5.5,
+            "Two-channel Matrix_Multiply_Add must use complex arithmetic");
+      end;
+   end Matrix_Multiply_Add_Complex_Float32;
+
+   procedure Matrix_Multiply_Add_Complex_Float64
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left_Real   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Left_Imag   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Right_Real  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Right_Imag  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Addend_Real : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Addend_Imag : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Left        : OpenCV.Core.Mat;
+      Right       : OpenCV.Core.Mat;
+      Addend      : OpenCV.Core.Mat;
+      Result      : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set (Left_Real, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Left_Imag, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Right_Real, 0, 0, 2.0);
+      OpenCV.Core.Float32_Access.Set (Right_Imag, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Addend_Real, 0, 0, 3.0);
+      OpenCV.Core.Float32_Access.Set (Addend_Imag, 0, 0, -1.0);
+      Left :=
+        OpenCV.Core.Merge ((Left_Real, Left_Imag)).Convert_To
+          (OpenCV.Core.Float64);
+      Right :=
+        OpenCV.Core.Merge ((Right_Real, Right_Imag)).Convert_To
+          (OpenCV.Core.Float64);
+      Addend :=
+        OpenCV.Core.Merge ((Addend_Real, Addend_Imag)).Convert_To
+          (OpenCV.Core.Float64);
+      Result :=
+        OpenCV.Core.Matrix_Multiply_Add
+          (Left, Right, Addend, Product_Scale => 2.0, Addend_Scale => 0.5);
+
+      declare
+         Parts     : constant OpenCV.Core.Mat_Array := Result.Split;
+         Real_Copy : constant OpenCV.Core.Mat :=
+           Parts (0).Convert_To (OpenCV.Core.Float32);
+         Imag_Copy : constant OpenCV.Core.Mat :=
+           Parts (1).Convert_To (OpenCV.Core.Float32);
+      begin
+         AUnit.Assertions.Assert
+           (Result.Depth = OpenCV.Core.Float64
+            and then Result.Channels = 2
+            and then Result.Rows = 1
+            and then Result.Columns = 1
+            and then OpenCV.Core.Float32_Access.Get (Real_Copy, 0, 0) = 3.5
+            and then OpenCV.Core.Float32_Access.Get (Imag_Copy, 0, 0) = 5.5,
+            "Float64 two-channel Matrix_Multiply_Add must use complex"
+            & " arithmetic");
+      end;
+   end Matrix_Multiply_Add_Complex_Float64;
+
+   procedure Matrix_Multiply_Add_Noncontiguous_Regions
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent_Left   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 5, (OpenCV.Core.Float32, 1));
+      Parent_Right  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 4, (OpenCV.Core.Float32, 1));
+      Parent_Addend : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 4, (OpenCV.Core.Float32, 1));
+      Result        : OpenCV.Core.Mat;
+   begin
+      Parent_Left.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Parent_Right.Set_To (OpenCV.Core.Make_Scalar (88.0));
+      Parent_Addend.Set_To (OpenCV.Core.Make_Scalar (77.0));
+
+      declare
+         Left   : OpenCV.Core.Mat :=
+           Parent_Left.Region ((X => 1, Y => 0, Width => 3, Height => 2));
+         Right  : OpenCV.Core.Mat :=
+           Parent_Right.Region ((X => 1, Y => 0, Width => 2, Height => 3));
+         Addend : OpenCV.Core.Mat :=
+           Parent_Addend.Region ((X => 1, Y => 0, Width => 2, Height => 2));
+      begin
+         Fill_2x3 (Left, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+         Fill_3x2 (Right, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0);
+         Fill_2x2 (Addend, 1.0, 2.0, 3.0, 4.0);
+         AUnit.Assertions.Assert
+           (not Left.Is_Continuous
+            and then not Right.Is_Continuous
+            and then not Addend.Is_Continuous,
+            "The Regions used for Matrix_Multiply_Add must be"
+            & " non-contiguous");
+         Result :=
+           OpenCV.Core.Matrix_Multiply_Add
+             (Left, Right, Addend, Product_Scale => 1.0, Addend_Scale => 1.0);
+         AUnit.Assertions.Assert
+           (Product_2x2 (Result, 59.0, 66.0, 142.0, 158.0),
+            "Matrix_Multiply_Add must support non-contiguous Left, Right,"
+            & " and Addend Regions");
+         AUnit.Assertions.Assert
+           (Unchanged_2x3 (Left, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0)
+            and then Unchanged_3x2 (Right, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0)
+            and then Product_2x2 (Addend, 1.0, 2.0, 3.0, 4.0)
+            and then OpenCV.Core.Float32_Access.Get (Parent_Left, 0, 0) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent_Left, 0, 4) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent_Right, 0, 0) = 88.0
+            and then OpenCV.Core.Float32_Access.Get (Parent_Addend, 0, 0)
+                     = 77.0,
+            "Matrix_Multiply_Add must not modify the Regions or their"
+            & " parents");
+      end;
+   end Matrix_Multiply_Add_Noncontiguous_Regions;
+
+   procedure Matrix_Multiply_Add_Result_Owns_Independent_Storage
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Right  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Addend : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      Fill_2x2 (Left, 1.0, 2.0, 3.0, 4.0);
+      Fill_2x2 (Right, 5.0, 6.0, 7.0, 8.0);
+      Fill_2x2 (Addend, 1.0, 2.0, 3.0, 4.0);
+      Result :=
+        OpenCV.Core.Matrix_Multiply_Add
+          (Left, Right, Addend, Product_Scale => 2.0, Addend_Scale => 3.0);
+
+      OpenCV.Core.Float32_Access.Set (Left, 0, 0, 50.0);
+      OpenCV.Core.Float32_Access.Set (Right, 0, 0, 40.0);
+      OpenCV.Core.Float32_Access.Set (Addend, 0, 0, 30.0);
+      AUnit.Assertions.Assert
+        (Product_2x2 (Result, 41.0, 50.0, 95.0, 112.0),
+         "Mutating the operands must not change the Matrix_Multiply_Add"
+         & " result");
+      OpenCV.Core.Float32_Access.Set (Result, 0, 0, 8.0);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Left, 0, 0) = 50.0
+         and then OpenCV.Core.Float32_Access.Get (Left, 1, 1) = 4.0
+         and then OpenCV.Core.Float32_Access.Get (Right, 0, 0) = 40.0
+         and then OpenCV.Core.Float32_Access.Get (Right, 1, 1) = 8.0
+         and then OpenCV.Core.Float32_Access.Get (Addend, 0, 0) = 30.0
+         and then OpenCV.Core.Float32_Access.Get (Addend, 1, 1) = 4.0,
+         "Mutating the result must not change any Matrix_Multiply_Add"
+         & " source");
+   end Matrix_Multiply_Add_Result_Owns_Independent_Storage;
+
+   procedure Matrix_Multiply_Add_Rejects_Invalid_Inputs
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Valid_Left     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Valid_Right    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
+      Valid_Addend   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Default_Empty  : OpenCV.Core.Mat;
+      Empty32        : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 1));
+      Empty64        : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float64, 1));
+      Wrong_Inner    : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Wrong_Addend   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
+      Float64_Addend : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float64, 1));
+      Float64_Right  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float64, 1));
+      UInt8_Image    : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      Int32_Image    : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Int32, 1));
+      Float16_Image  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float16, 1));
+      Three_Channel  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 3));
+
+      procedure Check_Default_Left is
+         Result : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Matrix_Multiply_Add
+             (Default_Empty, Valid_Right, Valid_Addend);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Default_Left;
+
+      procedure Check_Default_Right is
+         Result : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Matrix_Multiply_Add
+             (Valid_Left, Default_Empty, Valid_Addend);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Default_Right;
+
+      procedure Check_Default_Addend is
+         Result : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Matrix_Multiply_Add
+             (Valid_Left, Valid_Right, Default_Empty);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Default_Addend;
+
+      procedure Check_Empty32 is
+         Result : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Matrix_Multiply_Add
+             (Empty32, Valid_Right, Valid_Addend);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Empty32;
+
+      procedure Check_Empty64 is
+         Result : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Matrix_Multiply_Add (Valid_Left, Empty64, Valid_Addend);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Empty64;
+
+      procedure Check_Empty_Addend is
+         Result : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Matrix_Multiply_Add (Valid_Left, Valid_Right, Empty32);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Empty_Addend;
+
+      procedure Check_Inner_Shape is
+         Result : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Matrix_Multiply_Add
+             (Valid_Left, Wrong_Inner, Valid_Addend);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Inner_Shape;
+
+      procedure Check_Addend_Shape is
+         Result : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Matrix_Multiply_Add
+             (Valid_Left, Valid_Right, Wrong_Addend);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Addend_Shape;
+
+      procedure Check_Addend_Type is
+         Result : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Matrix_Multiply_Add
+             (Valid_Left, Valid_Right, Float64_Addend);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Addend_Type;
+
+      procedure Check_Left_Right_Type is
+         Result : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Matrix_Multiply_Add
+             (Valid_Left, Float64_Right, Valid_Addend);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Left_Right_Type;
+
+      procedure Check_UInt8 is
+         Result : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Matrix_Multiply_Add
+             (UInt8_Image, UInt8_Image, UInt8_Image);
+      begin
+         pragma Unreferenced (Result);
+      end Check_UInt8;
+
+      procedure Check_Int32 is
+         Result : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Matrix_Multiply_Add
+             (Int32_Image, Int32_Image, Int32_Image);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Int32;
+
+      procedure Check_Float16 is
+         Result : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Matrix_Multiply_Add
+             (Float16_Image, Float16_Image, Float16_Image);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Float16;
+
+      procedure Check_Three_Channel is
+         Result : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Matrix_Multiply_Add
+             (Three_Channel, Three_Channel, Three_Channel);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Three_Channel;
+
+      procedure Check_Addend_Scale_Zero_Still_Validates is
+         Result : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Matrix_Multiply_Add
+             (Valid_Left,
+              Valid_Right,
+              Wrong_Addend,
+              Product_Scale => 1.0,
+              Addend_Scale  => 0.0);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Addend_Scale_Zero_Still_Validates;
+
+   begin
+      Fill_2x3 (Valid_Left, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+      Fill_3x2 (Valid_Right, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0);
+      Fill_2x2 (Valid_Addend, 1.0, 2.0, 3.0, 4.0);
+      Assert_Raises_OpenCV_Error
+        (Check_Default_Left'Access,
+         "Matrix_Multiply_Add must reject a default empty Left");
+      Assert_Raises_OpenCV_Error
+        (Check_Default_Right'Access,
+         "Matrix_Multiply_Add must reject a default empty Right");
+      Assert_Raises_OpenCV_Error
+        (Check_Default_Addend'Access,
+         "Matrix_Multiply_Add must reject a default empty Addend");
+      Assert_Raises_OpenCV_Error
+        (Check_Empty32'Access,
+         "Matrix_Multiply_Add must reject a typed empty Float32 Left");
+      Assert_Raises_OpenCV_Error
+        (Check_Empty64'Access,
+         "Matrix_Multiply_Add must reject a typed empty Float64 Right");
+      Assert_Raises_OpenCV_Error
+        (Check_Empty_Addend'Access,
+         "Matrix_Multiply_Add must reject a typed empty Float32 Addend");
+      Assert_Raises_OpenCV_Error
+        (Check_Inner_Shape'Access,
+         "Matrix_Multiply_Add must reject incompatible inner dimensions");
+      Assert_Raises_OpenCV_Error
+        (Check_Addend_Shape'Access,
+         "Matrix_Multiply_Add must reject an Addend with the wrong product"
+         & " shape");
+      Assert_Raises_OpenCV_Error
+        (Check_Addend_Type'Access,
+         "Matrix_Multiply_Add must reject a Float64 Addend with Float32"
+         & " operands");
+      Assert_Raises_OpenCV_Error
+        (Check_Left_Right_Type'Access,
+         "Matrix_Multiply_Add must reject mixed Float32 and Float64 Left"
+         & " and Right");
+      Assert_Raises_OpenCV_Error
+        (Check_UInt8'Access, "Matrix_Multiply_Add must reject UInt8 Mats");
+      Assert_Raises_OpenCV_Error
+        (Check_Int32'Access, "Matrix_Multiply_Add must reject Int32 Mats");
+      Assert_Raises_OpenCV_Error
+        (Check_Float16'Access, "Matrix_Multiply_Add must reject Float16 Mats");
+      Assert_Raises_OpenCV_Error
+        (Check_Three_Channel'Access,
+         "Matrix_Multiply_Add must reject Float32 Mats with three"
+         & " channels");
+      Assert_Raises_OpenCV_Error
+        (Check_Addend_Scale_Zero_Still_Validates'Access,
+         "Matrix_Multiply_Add must reject an invalid Addend even when"
+         & " Addend_Scale is 0.0");
+   end Matrix_Multiply_Add_Rejects_Invalid_Inputs;
+
    procedure Vec3_Mean_Returns_Independent_Channel_Values
      (Test : in out Mat_Test_Fixture)
    is
@@ -3820,6 +4419,55 @@ package body Mat_Reduction_Tests is
         (Caller.Create
            ("Matrix_Multiply rejects invalid inputs",
             Matrix_Multiply_Rejects_Invalid_Inputs'Access));
+
+      Result.Add_Test
+        (Caller.Create
+           ("Matrix_Multiply_Add weighted Float32",
+            Matrix_Multiply_Add_Weighted_Float32'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Matrix_Multiply_Add default scales",
+            Matrix_Multiply_Add_Default_Scales'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Matrix_Multiply_Add product scale zero",
+            Matrix_Multiply_Add_Product_Scale_Zero'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Matrix_Multiply_Add addend scale zero",
+            Matrix_Multiply_Add_Addend_Scale_Zero'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Matrix_Multiply_Add negative scales",
+            Matrix_Multiply_Add_Negative_Scales'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Matrix_Multiply_Add rectangular product",
+            Matrix_Multiply_Add_Rectangular_Product'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Matrix_Multiply_Add supports Float64",
+            Matrix_Multiply_Add_Supports_Float64'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Matrix_Multiply_Add complex Float32",
+            Matrix_Multiply_Add_Complex_Float32'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Matrix_Multiply_Add complex Float64",
+            Matrix_Multiply_Add_Complex_Float64'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Matrix_Multiply_Add supports non-contiguous Regions",
+            Matrix_Multiply_Add_Noncontiguous_Regions'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Matrix_Multiply_Add result owns independent storage",
+            Matrix_Multiply_Add_Result_Owns_Independent_Storage'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Matrix_Multiply_Add rejects invalid inputs",
+            Matrix_Multiply_Add_Rejects_Invalid_Inputs'Access));
 
       Result.Add_Test
         (Caller.Create

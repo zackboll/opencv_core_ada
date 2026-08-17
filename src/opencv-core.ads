@@ -598,6 +598,30 @@ package OpenCV.Core is
    --  non-contiguous Regions are supported. Inputs are unchanged.
    function Matrix_Multiply (Left, Right : Mat) return Mat;
 
+   --  Computes Result = Product_Scale * Left * Right + Addend_Scale *
+   --  Addend using OpenCV 4.10 cv::gemm. This is algebraic matrix
+   --  multiplication followed by matrix addition. It is not the
+   --  existing element-wise Multiply, Scale_Add, or Add_Weighted.
+   --  Left.Columns must equal Right.Rows; Addend must have the exact
+   --  product shape Left.Rows x Right.Columns. The independently owned
+   --  result has that shape and the same complete element type as all
+   --  three operands. Operands need not be square. All three operands
+   --  must be non-empty and must share an identical complete element
+   --  type of Float32 or Float64 with one channel (real) or two
+   --  channels (complex). Two-channel values use OpenCV complex
+   --  arithmetic, with channel 0 as the real part and channel 1 as the
+   --  imaginary part. Product_Scale and Addend_Scale are real scalar
+   --  weights. Addend is validated even when Addend_Scale is 0.0. No
+   --  transpose behavior is part of this API. Unsupported depths and
+   --  other channel counts are rejected. Continuity is not required;
+   --  non-contiguous Regions are supported. Inputs are unchanged.
+   --  Float32 scaling follows OpenCV's Float32 numerical behavior.
+   function Matrix_Multiply_Add
+     (Left, Right   : Mat;
+      Addend        : Mat;
+      Product_Scale : Long_Float := 1.0;
+      Addend_Scale  : Long_Float := 1.0) return Mat;
+
    --  Reduces a two-dimensional Mat independently in every channel.
    --  Across_Rows
    --  produces one row; Across_Columns produces one column. The result owns

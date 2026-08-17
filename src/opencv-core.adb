@@ -2733,6 +2733,97 @@ package body OpenCV.Core is
       return Result;
    end Matrix_Multiply;
 
+   function Matrix_Multiply_Add
+     (Left, Right   : Mat;
+      Addend        : Mat;
+      Product_Scale : Long_Float := 1.0;
+      Addend_Scale  : Long_Float := 1.0) return Mat
+   is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      if Left.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Matrix_Multiply_Add requires a non-empty Left Mat");
+      end if;
+
+      if Right.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Matrix_Multiply_Add requires a non-empty Right Mat");
+      end if;
+
+      if Addend.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Matrix_Multiply_Add requires a non-empty Addend Mat");
+      end if;
+
+      if Left.Depth /= Right.Depth or else Left.Channels /= Right.Channels then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Matrix_Multiply_Add requires Left and Right with identical"
+            & " complete element types");
+      end if;
+
+      if Addend.Depth /= Left.Depth or else Addend.Channels /= Left.Channels
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Matrix_Multiply_Add requires Addend to have the same complete"
+            & " element type as Left and Right");
+      end if;
+
+      if (Left.Depth /= Float32 and then Left.Depth /= Float64)
+        or else (Left.Channels /= 1 and then Left.Channels /= 2)
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Matrix_Multiply_Add requires Float32 or Float64 Mats with one"
+            & " or two channels");
+      end if;
+
+      if Left.Columns /= Right.Rows then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Matrix_Multiply_Add requires Left.Columns to equal Right.Rows");
+      end if;
+
+      if Addend.Rows /= Left.Rows or else Addend.Columns /= Right.Columns then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Matrix_Multiply_Add requires Addend to have shape Left.Rows x"
+            & " Right.Columns");
+      end if;
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_Matrix_Multiply_Add
+          (Left          => Left.Handle,
+           Right         => Right.Handle,
+           Addend        => Addend.Handle,
+           Product_Scale => OpenCV.Internal.C_API.C_Double (Product_Scale),
+           Addend_Scale  => OpenCV.Internal.C_API.C_Double (Addend_Scale),
+           Result        => New_Handle'Access);
+      if Status /= OpenCV.Internal.C_API.Success then
+         OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+         Raise_On_Error (Status, "Mat matrix multiply-add operation");
+      end if;
+
+      if New_Handle = OpenCV.Internal.C_API.Null_Mat_Handle then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat matrix multiply-add operation returned a null result"
+            & " handle");
+      end if;
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Matrix_Multiply_Add;
+
    procedure Validate_Reduce_Depth
      (Self : Mat; Kind : Reduction_Kind; Output_Depth : Depth_Type) is
    begin

@@ -3389,6 +3389,86 @@ opencv_core_mat_matrix_multiply(const opencv_core_mat_handle *left,
 }
 
 opencv_core_status
+opencv_core_mat_matrix_multiply_add(const opencv_core_mat_handle *left,
+                                    const opencv_core_mat_handle *right,
+                                    const opencv_core_mat_handle *addend,
+                                    double product_scale,
+                                    double addend_scale,
+                                    opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat != nullptr) {
+        *out_mat = nullptr;
+    }
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    if (left == nullptr || right == nullptr || addend == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        const cv::Mat &A = left->value;
+        const cv::Mat &B = right->value;
+        const cv::Mat &C = addend->value;
+
+        if (A.empty() || B.empty() || C.empty()) {
+            return invalid_argument(
+                "matrix multiply-add requires non-empty Left, Right, and Addend Mats");
+        }
+
+        if (A.dims > 2 || B.dims > 2 || C.dims > 2) {
+            return invalid_argument(
+                "matrix multiply-add requires Mats with at most two dimensions");
+        }
+
+        if (A.type() != B.type()) {
+            return invalid_argument(
+                "matrix multiply-add requires Left and Right with identical complete types");
+        }
+
+        if (C.type() != A.type()) {
+            return invalid_argument(
+                "matrix multiply-add requires Addend to have the same complete type as Left and Right");
+        }
+
+        if (A.type() != CV_32FC1 && A.type() != CV_64FC1 &&
+            A.type() != CV_32FC2 && A.type() != CV_64FC2) {
+            return invalid_argument(
+                "matrix multiply-add requires Float32 or Float64 Mats with one or two channels");
+        }
+
+        if (A.cols != B.rows) {
+            return invalid_argument(
+                "matrix multiply-add requires Left.Columns to equal Right.Rows");
+        }
+
+        if (C.rows != A.rows || C.cols != B.cols) {
+            return invalid_argument(
+                "matrix multiply-add requires Addend to have shape Left.Rows x Right.Columns");
+        }
+
+        cv::Mat result;
+        cv::gemm(A, B, product_scale, C, addend_scale, result, 0);
+
+        if (result.rows != A.rows || result.cols != B.cols ||
+            result.type() != A.type()) {
+            return invalid_argument(
+                "matrix multiply-add produced a result with inconsistent shape or type");
+        }
+
+        std::unique_ptr<opencv_core_mat_handle> result_handle(
+            new opencv_core_mat_handle(result));
+        *out_mat = result_handle.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_mean(const opencv_core_mat_handle *mat,
                      opencv_core_scalar *out_mean) {
     clear_error();
