@@ -702,6 +702,28 @@ package OpenCV.Core is
    --  procedure does not allocate a replacement Mat.
    procedure Complete_Symmetry
      (Self : in out Mat; Source : Symmetry_Source := Upper_Triangle);
+
+   --  Initializes Self in place as a scaled identity. Self is modified
+   --  directly; this procedure does not allocate a replacement Mat.
+   --  Self need not be square. Every off-diagonal element becomes zero
+   --  and each main-diagonal element becomes Value converted by
+   --  OpenCV's Scalar conversion. The diagonal length is
+   --  min (Rows, Columns). The default Value is (1.0, 0.0, 0.0, 0.0),
+   --  matching cv::Scalar (1); it does not replicate 1 to every
+   --  channel. For a multi-channel Mat the Scalar components map to
+   --  the corresponding channels. All eight public depths are
+   --  accepted, including Float16. Channel count must be 1 through 4;
+   --  more than four channels are rejected because OpenCV's Scalar
+   --  conversion path only represents four destination channels.
+   --  Dimensions, depth, and channel count are unchanged. Continuity
+   --  is not required. Non-contiguous Regions are supported and mutate
+   --  the corresponding parent pixels around the Region's own
+   --  diagonal. A normal shallow Mat alias observes the same
+   --  mutation. Clone remains independent. A default empty Mat and
+   --  typed 0x0 Mats are no-ops that preserve their metadata.
+   procedure Set_Identity
+     (Self  : in out Mat;
+      Value : Scalar := (Component_0 => 1.0, others => 0.0));
 private
 
    type Mat is new Ada.Finalization.Controlled with record

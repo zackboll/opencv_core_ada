@@ -2676,6 +2676,460 @@ package body Mat_Transform_Tests is
          "Complete_Symmetry must reject Float16 Mats");
    end Complete_Symmetry_Rejects_Unsupported_Depths;
 
+   function Nonzero_3x3 return OpenCV.Core.Mat is
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Image, 0, 0, 9.0);
+      OpenCV.Core.Float32_Access.Set (Image, 0, 1, 8.0);
+      OpenCV.Core.Float32_Access.Set (Image, 0, 2, 7.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 0, 6.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 1, 5.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 2, 4.0);
+      OpenCV.Core.Float32_Access.Set (Image, 2, 0, 3.0);
+      OpenCV.Core.Float32_Access.Set (Image, 2, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Image, 2, 2, 1.0);
+      return Image;
+   end Nonzero_3x3;
+
+   procedure Set_Identity_Default_Square_Float32
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat := Nonzero_3x3;
+   begin
+      Image.Set_Identity;
+
+      AUnit.Assertions.Assert
+        (Image.Rows = 3
+         and then Image.Columns = 3
+         and then Image.Depth = OpenCV.Core.Float32
+         and then Image.Channels = 1,
+         "Set_Identity must preserve 3x3 Float32 single-channel metadata");
+      AUnit.Assertions.Assert
+        (Matches_3x3 (Image, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0),
+         "Default Set_Identity must overwrite a nonzero square Mat with"
+         & " the unit identity");
+   end Set_Identity_Default_Square_Float32;
+
+   procedure Set_Identity_Scaled_Float32 (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat := Nonzero_3x3;
+   begin
+      Image.Set_Identity (OpenCV.Core.Make_Scalar (2.5));
+
+      AUnit.Assertions.Assert
+        (Matches_3x3 (Image, 2.5, 0.0, 0.0, 0.0, 2.5, 0.0, 0.0, 0.0, 2.5),
+         "Set_Identity must scale the diagonal from Make_Scalar (2.5)");
+   end Set_Identity_Scaled_Float32;
+
+   procedure Set_Identity_Wide_Rectangular (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 4, (OpenCV.Core.Float32, 1));
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (9.0));
+      Image.Set_Identity;
+
+      AUnit.Assertions.Assert
+        (Image.Rows = 2
+         and then Image.Columns = 4
+         and then Image.Depth = OpenCV.Core.Float32
+         and then OpenCV.Core.Float32_Access.Get (Image, 0, 0) = 1.0
+         and then OpenCV.Core.Float32_Access.Get (Image, 0, 1) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Image, 0, 2) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Image, 0, 3) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Image, 1, 0) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Image, 1, 1) = 1.0
+         and then OpenCV.Core.Float32_Access.Get (Image, 1, 2) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Image, 1, 3) = 0.0,
+         "Set_Identity must accept a wide rectangular Mat and zero every"
+         & " off-diagonal element");
+   end Set_Identity_Wide_Rectangular;
+
+   procedure Set_Identity_Tall_Rectangular (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 2, (OpenCV.Core.Float32, 1));
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (9.0));
+      Image.Set_Identity;
+
+      AUnit.Assertions.Assert
+        (Image.Rows = 4
+         and then Image.Columns = 2
+         and then OpenCV.Core.Float32_Access.Get (Image, 0, 0) = 1.0
+         and then OpenCV.Core.Float32_Access.Get (Image, 0, 1) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Image, 1, 0) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Image, 1, 1) = 1.0
+         and then OpenCV.Core.Float32_Access.Get (Image, 2, 0) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Image, 2, 1) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Image, 3, 0) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Image, 3, 1) = 0.0,
+         "Set_Identity on a tall Mat must use a diagonal of min (rows,"
+         & " columns)");
+   end Set_Identity_Tall_Rectangular;
+
+   procedure Set_Identity_One_Row_And_One_Column
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Row : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 3, (OpenCV.Core.Float32, 1));
+      Col : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 1, (OpenCV.Core.Float32, 1));
+   begin
+      Row.Set_To (OpenCV.Core.Make_Scalar (9.0));
+      Col.Set_To (OpenCV.Core.Make_Scalar (9.0));
+      Row.Set_Identity;
+      Col.Set_Identity;
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Row, 0, 0) = 1.0
+         and then OpenCV.Core.Float32_Access.Get (Row, 0, 1) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Row, 0, 2) = 0.0,
+         "A 1x3 Set_Identity must become [1 0 0]");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Col, 0, 0) = 1.0
+         and then OpenCV.Core.Float32_Access.Get (Col, 1, 0) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Col, 2, 0) = 0.0,
+         "A 3x1 Set_Identity must become a column [1 0 0]");
+   end Set_Identity_One_Row_And_One_Column;
+
+   procedure Set_Identity_Default_Multi_Channel
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 3));
+      Zero  : constant OpenCV.Core.Float32_Vec3.Vector := (0.0, 0.0, 0.0);
+   begin
+      OpenCV.Core.Float32_Vec3_Access.Set (Image, 0, 0, (9.0, 8.0, 7.0));
+      OpenCV.Core.Float32_Vec3_Access.Set (Image, 0, 1, (6.0, 5.0, 4.0));
+      OpenCV.Core.Float32_Vec3_Access.Set (Image, 1, 0, (3.0, 2.0, 1.0));
+      OpenCV.Core.Float32_Vec3_Access.Set (Image, 1, 1, (4.0, 5.0, 6.0));
+      Image.Set_Identity;
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Vec3_Access.Get (Image, 0, 0) = (1.0, 0.0, 0.0)
+         and then OpenCV.Core.Float32_Vec3_Access.Get (Image, 1, 1)
+                  = (1.0, 0.0, 0.0)
+         and then OpenCV.Core.Float32_Vec3_Access.Get (Image, 0, 1) = Zero
+         and then OpenCV.Core.Float32_Vec3_Access.Get (Image, 1, 0) = Zero,
+         "Default Set_Identity must use Scalar (1, 0, 0), not (1, 1, 1)");
+   end Set_Identity_Default_Multi_Channel;
+
+   procedure Set_Identity_Explicit_Multi_Channel
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 3));
+      Diagonal : constant OpenCV.Core.Float32_Vec3.Vector := (2.0, 3.0, 4.0);
+      Zero     : constant OpenCV.Core.Float32_Vec3.Vector := (0.0, 0.0, 0.0);
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (9.0, 8.0, 7.0));
+      Image.Set_Identity
+        (OpenCV.Core.Make_Scalar
+           (Component_0 => 2.0, Component_1 => 3.0, Component_2 => 4.0));
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Vec3_Access.Get (Image, 0, 0) = Diagonal
+         and then OpenCV.Core.Float32_Vec3_Access.Get (Image, 1, 1) = Diagonal
+         and then OpenCV.Core.Float32_Vec3_Access.Get (Image, 0, 1) = Zero
+         and then OpenCV.Core.Float32_Vec3_Access.Get (Image, 1, 0) = Zero,
+         "An explicit three-component Scalar must appear on every diagonal"
+         & " Vec3");
+   end Set_Identity_Explicit_Multi_Channel;
+
+   procedure Set_Identity_Four_Channels (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 4));
+      Ch0   : OpenCV.Core.Mat;
+      Ch1   : OpenCV.Core.Mat;
+      Ch2   : OpenCV.Core.Mat;
+      Ch3   : OpenCV.Core.Mat;
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (9.0, 8.0, 7.0, 6.0));
+      Image.Set_Identity (OpenCV.Core.Make_Scalar (2.0, 3.0, 4.0, 5.0));
+
+      AUnit.Assertions.Assert
+        (Image.Channels = 4 and then Image.Depth = OpenCV.Core.Float32,
+         "Set_Identity must accept a four-channel Mat");
+
+      Ch0 := Image.Extract_Channel (0);
+      Ch1 := Image.Extract_Channel (1);
+      Ch2 := Image.Extract_Channel (2);
+      Ch3 := Image.Extract_Channel (3);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Ch0, 0, 0) = 2.0
+         and then OpenCV.Core.Float32_Access.Get (Ch1, 0, 0) = 3.0
+         and then OpenCV.Core.Float32_Access.Get (Ch2, 0, 0) = 4.0
+         and then OpenCV.Core.Float32_Access.Get (Ch3, 0, 0) = 5.0
+         and then OpenCV.Core.Float32_Access.Get (Ch0, 1, 1) = 2.0
+         and then OpenCV.Core.Float32_Access.Get (Ch0, 0, 1) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Ch3, 1, 0) = 0.0,
+         "A four-component Scalar must map onto the four destination"
+         & " channels");
+   end Set_Identity_Four_Channels;
+
+   procedure Set_Identity_Rejects_Five_Channels
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 5));
+
+      procedure Set_Five_Channels is
+      begin
+         Image.Set_Identity;
+      end Set_Five_Channels;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Set_Five_Channels'Access,
+         "Set_Identity must reject a Mat with more than four channels");
+   end Set_Identity_Rejects_Five_Channels;
+
+   procedure Set_Identity_UInt8 (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (9.0));
+      Image.Set_Identity (OpenCV.Core.Make_Scalar (7.0));
+
+      AUnit.Assertions.Assert
+        (Image.Depth = OpenCV.Core.UInt8
+         and then Image.Rows = 2
+         and then Image.Columns = 2
+         and then OpenCV.Core.UInt8_Access.Get (Image, 0, 0) = 7
+         and then OpenCV.Core.UInt8_Access.Get (Image, 0, 1) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Image, 1, 0) = 0
+         and then OpenCV.Core.UInt8_Access.Get (Image, 1, 1) = 7,
+         "Set_Identity must support UInt8 and is not floating-point-only");
+   end Set_Identity_UInt8;
+
+   procedure Set_Identity_UInt8_Uses_OpenCV_Conversion
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (9.0));
+      Image.Set_Identity (OpenCV.Core.Make_Scalar (7.6));
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Image, 0, 0) = 8
+         and then OpenCV.Core.UInt8_Access.Get (Image, 1, 1) = 8
+         and then OpenCV.Core.UInt8_Access.Get (Image, 0, 1) = 0,
+         "Set_Identity must use OpenCV Scalar conversion (7.6 -> 8)");
+   end Set_Identity_UInt8_Uses_OpenCV_Conversion;
+
+   procedure Set_Identity_Int32 (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Image     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Int32, 1));
+      Inspected : OpenCV.Core.Mat;
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Image.Set_Identity (OpenCV.Core.Make_Scalar (7.0));
+
+      AUnit.Assertions.Assert
+        (Image.Depth = OpenCV.Core.Int32
+         and then Image.Rows = 2
+         and then Image.Columns = 2,
+         "Set_Identity must preserve Int32 depth and 2x2 shape");
+
+      Inspected := Image.Clone.Convert_To (OpenCV.Core.Float32);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Inspected, 0, 0) = 7.0
+         and then OpenCV.Core.Float32_Access.Get (Inspected, 0, 1) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Inspected, 1, 0) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Inspected, 1, 1) = 7.0
+         and then Image.Depth = OpenCV.Core.Int32,
+         "An Int32 Set_Identity result must keep Int32 storage");
+   end Set_Identity_Int32;
+
+   procedure Set_Identity_Float64 (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Image     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float64, 1));
+      Inspected : OpenCV.Core.Mat;
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (9.0));
+      Image.Set_Identity (OpenCV.Core.Make_Scalar (2.5));
+
+      AUnit.Assertions.Assert
+        (Image.Depth = OpenCV.Core.Float64
+         and then Image.Rows = 2
+         and then Image.Columns = 2,
+         "Set_Identity must preserve Float64 depth");
+
+      Inspected := Image.Clone.Convert_To (OpenCV.Core.Float32);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Inspected, 0, 0) = 2.5
+         and then OpenCV.Core.Float32_Access.Get (Inspected, 1, 1) = 2.5
+         and then OpenCV.Core.Float32_Access.Get (Inspected, 0, 1) = 0.0
+         and then Image.Depth = OpenCV.Core.Float64,
+         "A Float64 Set_Identity result must keep Float64 storage");
+   end Set_Identity_Float64;
+
+   procedure Set_Identity_Float16 (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Image     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float16, 1));
+      Inspected : OpenCV.Core.Mat;
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (9.0));
+      Image.Set_Identity (OpenCV.Core.Make_Scalar (2.0));
+
+      AUnit.Assertions.Assert
+        (Image.Depth = OpenCV.Core.Float16
+         and then Image.Rows = 2
+         and then Image.Columns = 2,
+         "Set_Identity must accept Float16 and preserve its depth");
+
+      Inspected := Image.Clone.Convert_To (OpenCV.Core.Float32);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Inspected, 0, 0) = 2.0
+         and then OpenCV.Core.Float32_Access.Get (Inspected, 1, 1) = 2.0
+         and then OpenCV.Core.Float32_Access.Get (Inspected, 0, 1) = 0.0
+         and then Image.Depth = OpenCV.Core.Float16,
+         "A Float16 Set_Identity result must keep Float16 storage");
+   end Set_Identity_Float16;
+
+   procedure Set_Identity_Noncontiguous_Region (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 5, (OpenCV.Core.Float32, 1));
+      Region : OpenCV.Core.Mat;
+   begin
+      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Region := Parent.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+
+      AUnit.Assertions.Assert
+        (not Region.Is_Continuous and then Region.Is_Submatrix,
+         "The Region used for Set_Identity must be non-contiguous");
+
+      Region.Set_Identity;
+
+      AUnit.Assertions.Assert
+        (Region.Rows = 2
+         and then Region.Columns = 3
+         and then OpenCV.Core.Float32_Access.Get (Region, 0, 0) = 1.0
+         and then OpenCV.Core.Float32_Access.Get (Region, 0, 1) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Region, 0, 2) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Region, 1, 0) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Region, 1, 1) = 1.0
+         and then OpenCV.Core.Float32_Access.Get (Region, 1, 2) = 0.0,
+         "Set_Identity must use the Region-local diagonal");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Parent, 1, 1) = 1.0
+         and then OpenCV.Core.Float32_Access.Get (Parent, 2, 2) = 1.0
+         and then OpenCV.Core.Float32_Access.Get (Parent, 1, 2) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Parent, 2, 1) = 0.0,
+         "Region Set_Identity must mutate the corresponding parent pixels");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Parent, 0, 0) = 99.0
+         and then OpenCV.Core.Float32_Access.Get (Parent, 0, 4) = 99.0
+         and then OpenCV.Core.Float32_Access.Get (Parent, 3, 4) = 99.0
+         and then OpenCV.Core.Float32_Access.Get (Parent, 1, 0) = 99.0
+         and then OpenCV.Core.Float32_Access.Get (Parent, 1, 4) = 99.0
+         and then OpenCV.Core.Float32_Access.Get (Parent, 3, 1) = 99.0,
+         "Pixels outside the Region must remain unchanged");
+      AUnit.Assertions.Assert
+        (Region.Is_Submatrix and then not Region.Is_Continuous,
+         "Set_Identity must not detach a Region into an independent copy");
+   end Set_Identity_Noncontiguous_Region;
+
+   procedure Set_Identity_Shallow_Alias (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Original : constant OpenCV.Core.Mat := Nonzero_3x3;
+      Alias    : OpenCV.Core.Mat := Original;
+   begin
+      Alias.Set_Identity;
+
+      AUnit.Assertions.Assert
+        (Matches_3x3 (Original, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0)
+         and then Matches_3x3
+                    (Alias, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0),
+         "A shallow Mat alias must observe Set_Identity mutation");
+   end Set_Identity_Shallow_Alias;
+
+   procedure Set_Identity_Clone_Remains_Independent
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Original : constant OpenCV.Core.Mat := Nonzero_3x3;
+      Copy     : OpenCV.Core.Mat := Original.Clone;
+   begin
+      Copy.Set_Identity;
+
+      AUnit.Assertions.Assert
+        (Matches_3x3 (Copy, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0),
+         "Clone.Set_Identity must modify the independent copy");
+      AUnit.Assertions.Assert
+        (Matches_3x3 (Original, 9.0, 8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0),
+         "Set_Identity on a Clone must leave the original unchanged");
+   end Set_Identity_Clone_Remains_Independent;
+
+   procedure Set_Identity_Empty_Behavior (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Default_Image : OpenCV.Core.Mat;
+      Empty8        : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.UInt8, 1));
+      Empty32       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 1));
+      Empty64       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float64, 1));
+      Empty16       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float16, 1));
+      Empty_Vec3    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 3));
+   begin
+      Default_Image.Set_Identity;
+      Empty8.Set_Identity;
+      Empty32.Set_Identity;
+      Empty64.Set_Identity;
+      Empty16.Set_Identity;
+      Empty_Vec3.Set_Identity;
+
+      AUnit.Assertions.Assert
+        (Default_Image.Is_Empty
+         and then Default_Image.Depth = OpenCV.Core.UInt8
+         and then Default_Image.Channels = 1,
+         "A default empty Mat must remain an empty UInt8 no-op");
+      AUnit.Assertions.Assert
+        (Empty8.Is_Empty
+         and then Empty8.Depth = OpenCV.Core.UInt8
+         and then Empty8.Channels = 1,
+         "A typed 0x0 UInt8 Mat must remain empty UInt8");
+      AUnit.Assertions.Assert
+        (Empty32.Is_Empty
+         and then Empty32.Depth = OpenCV.Core.Float32
+         and then Empty32.Channels = 1,
+         "A typed 0x0 Float32 Mat must remain empty Float32");
+      AUnit.Assertions.Assert
+        (Empty64.Is_Empty
+         and then Empty64.Depth = OpenCV.Core.Float64
+         and then Empty64.Channels = 1,
+         "A typed 0x0 Float64 Mat must remain empty Float64");
+      AUnit.Assertions.Assert
+        (Empty16.Is_Empty
+         and then Empty16.Depth = OpenCV.Core.Float16
+         and then Empty16.Channels = 1,
+         "A typed 0x0 Float16 Mat must remain empty Float16");
+      AUnit.Assertions.Assert
+        (Empty_Vec3.Is_Empty
+         and then Empty_Vec3.Depth = OpenCV.Core.Float32
+         and then Empty_Vec3.Channels = 3,
+         "A typed 0x0 three-channel Mat must remain empty Float32 Vec3");
+   end Set_Identity_Empty_Behavior;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
    Result : aliased AUnit.Test_Suites.Test_Suite;
 
@@ -2940,6 +3394,69 @@ package body Mat_Transform_Tests is
         (Caller.Create
            ("Complete_Symmetry rejects unsupported depths",
             Complete_Symmetry_Rejects_Unsupported_Depths'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Set_Identity default square Float32",
+            Set_Identity_Default_Square_Float32'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Set_Identity scaled Float32",
+            Set_Identity_Scaled_Float32'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Set_Identity wide rectangular Mat",
+            Set_Identity_Wide_Rectangular'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Set_Identity tall rectangular Mat",
+            Set_Identity_Tall_Rectangular'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Set_Identity one-row and one-column",
+            Set_Identity_One_Row_And_One_Column'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Set_Identity default multi-channel Scalar",
+            Set_Identity_Default_Multi_Channel'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Set_Identity explicit multi-channel Scalar",
+            Set_Identity_Explicit_Multi_Channel'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Set_Identity four channels", Set_Identity_Four_Channels'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Set_Identity rejects more than four channels",
+            Set_Identity_Rejects_Five_Channels'Access));
+      Result.Add_Test
+        (Caller.Create ("Set_Identity UInt8", Set_Identity_UInt8'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Set_Identity UInt8 uses OpenCV conversion",
+            Set_Identity_UInt8_Uses_OpenCV_Conversion'Access));
+      Result.Add_Test
+        (Caller.Create ("Set_Identity Int32", Set_Identity_Int32'Access));
+      Result.Add_Test
+        (Caller.Create ("Set_Identity Float64", Set_Identity_Float64'Access));
+      Result.Add_Test
+        (Caller.Create ("Set_Identity Float16", Set_Identity_Float16'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Set_Identity non-contiguous Region",
+            Set_Identity_Noncontiguous_Region'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Set_Identity shallow alias observes mutation",
+            Set_Identity_Shallow_Alias'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Set_Identity leaves a Clone independent",
+            Set_Identity_Clone_Remains_Independent'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Set_Identity empty behavior",
+            Set_Identity_Empty_Behavior'Access));
 
       return Result'Access;
 

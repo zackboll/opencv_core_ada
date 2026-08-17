@@ -3169,4 +3169,21 @@ package body OpenCV.Core is
       Raise_On_Error (Result, "Mat complete symmetry operation");
    end Complete_Symmetry;
 
+   procedure Set_Identity
+     (Self : in out Mat; Value : Scalar := (Component_0 => 1.0, others => 0.0))
+   is
+      C_Value : aliased OpenCV.Internal.C_API.Scalar := To_C_Scalar (Value);
+      Result  : OpenCV.Internal.C_API.Status;
+   begin
+      if Self.Channels > 4 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Set_Identity supports Mats with at most four channels");
+      end if;
+
+      Result :=
+        OpenCV.Internal.C_API.Mat_Set_Identity (Self.Handle, C_Value'Access);
+      Raise_On_Error (Result, "Mat set identity operation");
+   end Set_Identity;
+
 end OpenCV.Core;

@@ -1004,6 +1004,20 @@ opencv_core_status
 opencv_core_mat_complete_symmetry(opencv_core_mat_handle *mat,
                                   uint8_t source_triangle);
 
+/*
+ * Initializes an existing Mat in place as a scaled identity. The handle
+ * is borrowed mutable storage and is not consumed; no result Mat is
+ * allocated. value is borrowed. The matrix need not be square: every
+ * off-diagonal element becomes zero and the main diagonal of length
+ * min(rows, columns) receives value converted by OpenCV's Scalar
+ * conversion. All eight public depths are accepted, including CV_16F.
+ * Channel count must be 1 through 4. Continuity is not required.
+ * A typed empty Mat is a no-op that preserves its metadata.
+ */
+opencv_core_status
+opencv_core_mat_set_identity(opencv_core_mat_handle *mat,
+                             const opencv_core_scalar *value);
+
 #ifdef __cplusplus
 }
 #endif

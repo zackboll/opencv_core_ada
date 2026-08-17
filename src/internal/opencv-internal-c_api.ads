@@ -867,4 +867,11 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_complete_symmetry";
 
+   function Mat_Set_Identity
+     (Self : Mat_Handle; Value : access Scalar) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_identity";
+
 end OpenCV.Internal.C_API;

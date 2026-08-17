@@ -4091,4 +4091,34 @@ opencv_core_mat_complete_symmetry(opencv_core_mat_handle *mat,
     }
 }
 
+opencv_core_status
+opencv_core_mat_set_identity(opencv_core_mat_handle *mat,
+                             const opencv_core_scalar *value) {
+    clear_error();
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    if (value == nullptr) {
+        return invalid_argument("Scalar value must not be null");
+    }
+
+    try {
+        if (mat->value.dims > 2) {
+            return invalid_argument("Mat must be two-dimensional");
+        }
+
+        if (mat->value.channels() > 4) {
+            return invalid_argument(
+                "set identity supports at most four channels");
+        }
+
+        cv::setIdentity(mat->value, to_opencv_scalar(*value));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
 } // extern "C"
