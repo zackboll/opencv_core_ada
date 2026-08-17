@@ -3696,6 +3696,105 @@ opencv_core_mat_transposed_product_with_delta(
 
 
 opencv_core_status
+opencv_core_mat_transform(const opencv_core_mat_handle *source,
+                          const opencv_core_mat_handle *coefficients,
+                          opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat != nullptr) {
+        *out_mat = nullptr;
+    }
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    if (source == nullptr || coefficients == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        const cv::Mat &src = source->value;
+        const cv::Mat &mtx = coefficients->value;
+
+        if (src.empty()) {
+            return invalid_argument("transform requires a non-empty source Mat");
+        }
+
+        if (src.dims > 2) {
+            return invalid_argument(
+                "transform requires a source with at most two dimensions");
+        }
+
+        if (src.channels() < 1 || src.channels() > 4) {
+            return invalid_argument(
+                "transform requires a source with 1 to 4 channels");
+        }
+
+        const int depth = src.depth();
+        if (depth != CV_8U && depth != CV_8S && depth != CV_16U &&
+            depth != CV_16S && depth != CV_32S && depth != CV_32F &&
+            depth != CV_64F) {
+            return invalid_argument(
+                "transform requires a UInt8, Int8, UInt16, Int16, Int32, "
+                "Float32, or Float64 source");
+        }
+
+        if (mtx.empty()) {
+            return invalid_argument(
+                "transform requires a non-empty coefficient Mat");
+        }
+
+        if (mtx.dims > 2) {
+            return invalid_argument(
+                "transform requires coefficients with at most two dimensions");
+        }
+
+        if (mtx.channels() != 1) {
+            return invalid_argument(
+                "transform requires a single-channel coefficient Mat");
+        }
+
+        if (mtx.depth() != CV_32F && mtx.depth() != CV_64F) {
+            return invalid_argument(
+                "transform requires Float32 or Float64 coefficients");
+        }
+
+        if (mtx.rows < 1) {
+            return invalid_argument(
+                "transform requires at least one coefficient row");
+        }
+
+        if (mtx.rows > OPENCV_CORE_MAX_CHANNELS) {
+            return invalid_argument(
+                "transform coefficient rows must not exceed 512");
+        }
+
+        if (mtx.cols != src.channels() && mtx.cols != src.channels() + 1) {
+            return invalid_argument(
+                "transform coefficients must have source.channels or "
+                "source.channels + 1 columns");
+        }
+
+        cv::Mat result;
+        cv::transform(src, result, mtx);
+
+        if (result.rows != src.rows || result.cols != src.cols ||
+            result.depth() != src.depth() || result.channels() != mtx.rows) {
+            return invalid_argument(
+                "transform produced a result with inconsistent shape or type");
+        }
+
+        std::unique_ptr<opencv_core_mat_handle> result_handle(
+            new opencv_core_mat_handle(result));
+        *out_mat = result_handle.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_mean(const opencv_core_mat_handle *mat,
                      opencv_core_scalar *out_mean) {
     clear_error();

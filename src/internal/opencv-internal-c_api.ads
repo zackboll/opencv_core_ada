@@ -799,6 +799,12 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_transposed_product_with_delta";
 
+   function Mat_Transform
+     (Source       : Mat_Handle;
+      Coefficients : Mat_Handle;
+      Result       : access Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_transform";
+
    function Mat_Mean (Self : Mat_Handle; Result : access Scalar) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_mean";
 

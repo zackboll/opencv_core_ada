@@ -692,6 +692,35 @@ package OpenCV.Core is
       Output_Depth : Depth_Type;
       Scale        : Long_Float := 1.0) return Mat;
 
+   --  Interprets each Self element as its channel vector and applies
+   --  OpenCV 4.10 cv::transform. This is a per-element channel/vector
+   --  transform at the same spatial location; it does not geometrically
+   --  move pixels. Coefficients.Rows determines the result channel
+   --  count. An M x N coefficient Mat, where N is Self.Channels,
+   --  performs the linear transform Result(I) = Coefficients * Self(I).
+   --  An M x (N+1) coefficient Mat performs the affine transform
+   --  Result(I) = Coefficients * [Self(I); 1], so the final column is
+   --  additive bias. The result preserves Self's rows, columns, and
+   --  depth. Self must be non-empty, at most two-dimensional, and have
+   --  1 to 4 channels. Result channels may be 1 to 512. Supported
+   --  source depths are UInt8, Int8, UInt16, Int16, Int32, Float32, and
+   --  Float64. Float16 is rejected because OpenCV 4.10 has no
+   --  TransformFunc for CV_16F. Coefficients must be a non-empty
+   --  single-channel Float32 or Float64 Mat with at least one and at
+   --  most 512 rows and either Self.Channels or Self.Channels + 1
+   --  columns. Integer coefficient Mats are rejected. OpenCV internally
+   --  represents coefficients as Float32 for UInt8, Int8, UInt16,
+   --  Int16, and Float32 sources, and as Float64 for Int32 and Float64
+   --  sources; a Float64 coefficient Mat used with a Float32 source is
+   --  therefore converted internally to Float32, and a Float32
+   --  coefficient Mat used with Int32 or Float64 Self is converted
+   --  internally to Float64. Integer output conversion follows OpenCV's
+   --  native saturate_cast / rounding rules. Continuity is not
+   --  required; non-contiguous Regions are supported for both Self and
+   --  Coefficients. Inputs are unchanged. The result owns independent
+   --  storage.
+   function Transform (Self : Mat; Coefficients : Mat) return Mat;
+
    --  Reduces a two-dimensional Mat independently in every channel.
    --  Across_Rows
    --  produces one row; Across_Columns produces one column. The result owns

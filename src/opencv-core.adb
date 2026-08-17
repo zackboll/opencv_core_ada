@@ -3068,6 +3068,110 @@ package body OpenCV.Core is
           (Self, Offset, Order, Scale, To_C_Depth (Output_Depth));
    end Transposed_Product;
 
+   function Supports_Transform_Source (Self : Mat) return Boolean
+   is (Self.Depth = UInt8
+       or else Self.Depth = Int8
+       or else Self.Depth = UInt16
+       or else Self.Depth = Int16
+       or else Self.Depth = Int32
+       or else Self.Depth = Float32
+       or else Self.Depth = Float64);
+
+   procedure Validate_Transform (Self, Coefficients : Mat) is
+   begin
+      if Self.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Transform requires a non-empty Mat");
+      end if;
+
+      if Self.Depth = Float16 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Transform does not support Float16 Mats");
+      end if;
+
+      if not Supports_Transform_Source (Self) then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Transform requires a UInt8, Int8, UInt16, Int16, Int32,"
+            & " Float32, or Float64 Mat");
+      end if;
+
+      if Self.Channels > 4 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Transform requires a source with 1 to 4 channels");
+      end if;
+
+      if Coefficients.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Transform requires a non-empty Coefficients Mat");
+      end if;
+
+      if Coefficients.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Transform requires a single-channel Coefficients Mat");
+      end if;
+
+      if Coefficients.Depth /= Float32 and then Coefficients.Depth /= Float64
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Transform requires Float32 or Float64 Coefficients");
+      end if;
+
+      if Coefficients.Rows = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Transform requires Coefficients with at least one row");
+      end if;
+
+      if Coefficients.Rows > Natural (Channel_Count'Last) then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Transform Coefficients rows must not exceed 512");
+      end if;
+
+      if Coefficients.Columns /= Natural (Self.Channels)
+        and then Coefficients.Columns /= Natural (Self.Channels) + 1
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Transform Coefficients must have Self.Channels or"
+            & " Self.Channels + 1 columns");
+      end if;
+   end Validate_Transform;
+
+   function Transform (Self : Mat; Coefficients : Mat) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Transform (Self, Coefficients);
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_Transform
+          (Source       => Self.Handle,
+           Coefficients => Coefficients.Handle,
+           Result       => New_Handle'Access);
+      if Status /= OpenCV.Internal.C_API.Success then
+         OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+         Raise_On_Error (Status, "Mat transform operation");
+      end if;
+
+      if New_Handle = OpenCV.Internal.C_API.Null_Mat_Handle then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat transform operation returned a null result handle");
+      end if;
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Transform;
+
    procedure Validate_Reduce_Depth
      (Self : Mat; Kind : Reduction_Kind; Output_Depth : Depth_Type) is
    begin

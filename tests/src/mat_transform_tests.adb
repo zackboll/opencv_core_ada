@@ -3141,6 +3141,656 @@ package body Mat_Transform_Tests is
          "A typed 0x0 three-channel Mat must remain empty Float32 Vec3");
    end Set_Identity_Empty_Behavior;
 
+   function Linear_C3_Coefficients return OpenCV.Core.Mat is
+      Coefficients : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 3, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Coefficients, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 0, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 0, 2, 3.0);
+      return Coefficients;
+   end Linear_C3_Coefficients;
+
+   procedure Transform_Float32_C3_To_C1_Linear (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 3));
+      Coefficients : constant OpenCV.Core.Mat := Linear_C3_Coefficients;
+   begin
+      OpenCV.Core.Float32_Vec3_Access.Set (Source, 0, 0, (1.0, 2.0, 3.0));
+      OpenCV.Core.Float32_Vec3_Access.Set (Source, 0, 1, (4.0, 5.0, 6.0));
+
+      declare
+         Result : constant OpenCV.Core.Mat := Source.Transform (Coefficients);
+      begin
+         AUnit.Assertions.Assert
+           (Result.Rows = 1
+            and then Result.Columns = 2
+            and then Result.Depth = OpenCV.Core.Float32
+            and then Result.Channels = 1
+            and then OpenCV.Core.Float32_Access.Get (Result, 0, 0) = 14.0
+            and then OpenCV.Core.Float32_Access.Get (Result, 0, 1) = 32.0,
+            "Transform must map Float32 C3 to C1 with a 1x3 linear matrix");
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float32_Vec3_Access.Get (Source, 0, 0)
+            = (1.0, 2.0, 3.0)
+            and then OpenCV.Core.Float32_Vec3_Access.Get (Source, 0, 1)
+                     = (4.0, 5.0, 6.0),
+            "Transform must leave the C3 source unchanged");
+      end;
+   end Transform_Float32_C3_To_C1_Linear;
+
+   procedure Transform_Float32_C3_To_C2_Affine (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 3));
+      Coefficients : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 4, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Vec3_Access.Set (Source, 0, 0, (1.0, 2.0, 3.0));
+      OpenCV.Core.Float32_Access.Set (Coefficients, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 0, 1, 0.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 0, 2, 0.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 0, 3, 10.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 1, 0, 0.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 1, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 1, 2, 0.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 1, 3, 20.0);
+
+      declare
+         Result   : constant OpenCV.Core.Mat :=
+           Source.Transform (Coefficients);
+         Channels : constant OpenCV.Core.Mat_Array := Result.Split;
+      begin
+         AUnit.Assertions.Assert
+           (Result.Rows = 1
+            and then Result.Columns = 1
+            and then Result.Depth = OpenCV.Core.Float32
+            and then Result.Channels = 2
+            and then Channels'Length = 2
+            and then OpenCV.Core.Float32_Access.Get (Channels (0), 0, 0) = 11.0
+            and then OpenCV.Core.Float32_Access.Get (Channels (1), 0, 0)
+                     = 22.0,
+            "Transform must apply a C3 to C2 affine matrix including bias");
+      end;
+   end Transform_Float32_C3_To_C2_Affine;
+
+   procedure Transform_C3_Channel_Permutation (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 3));
+      Coefficients : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Vec3_Access.Set (Source, 0, 0, (1.0, 2.0, 3.0));
+      OpenCV.Core.Float32_Access.Set (Coefficients, 0, 0, 0.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 0, 1, 0.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 0, 2, 1.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 1, 0, 0.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 1, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 1, 2, 0.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 2, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 2, 1, 0.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 2, 2, 0.0);
+
+      declare
+         Result : constant OpenCV.Core.Mat := Source.Transform (Coefficients);
+      begin
+         AUnit.Assertions.Assert
+           (Result.Channels = 3
+            and then OpenCV.Core.Float32_Vec3_Access.Get (Result, 0, 0)
+                     = (3.0, 2.0, 1.0),
+            "Transform must permute C3 channels with a 3x3 linear matrix");
+      end;
+   end Transform_C3_Channel_Permutation;
+
+   procedure Transform_Single_Channel_Affine_Fast_Path
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 3, (OpenCV.Core.Float32, 1));
+      Coefficients : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 2, 3.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 0, 0, 2.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 0, 1, 3.0);
+
+      declare
+         Result : constant OpenCV.Core.Mat := Source.Transform (Coefficients);
+      begin
+         AUnit.Assertions.Assert
+           (Result.Rows = 1
+            and then Result.Columns = 3
+            and then Result.Channels = 1
+            and then OpenCV.Core.Float32_Access.Get (Result, 0, 0) = 5.0
+            and then OpenCV.Core.Float32_Access.Get (Result, 0, 1) = 7.0
+            and then OpenCV.Core.Float32_Access.Get (Result, 0, 2) = 9.0,
+            "Transform must apply a C1 affine scale-and-bias convertTo path");
+      end;
+   end Transform_Single_Channel_Affine_Fast_Path;
+
+   procedure Transform_UInt8_Saturates (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      High              : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+      Low               : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+      High_Coefficients : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+      Low_Coefficients  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.UInt8_Access.Set (High, 0, 0, 200);
+      OpenCV.Core.UInt8_Access.Set (Low, 0, 0, 10);
+      OpenCV.Core.Float32_Access.Set (High_Coefficients, 0, 0, 2.0);
+      OpenCV.Core.Float32_Access.Set (High_Coefficients, 0, 1, 100.0);
+      OpenCV.Core.Float32_Access.Set (Low_Coefficients, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Low_Coefficients, 0, 1, -20.0);
+
+      declare
+         High_Result : constant OpenCV.Core.Mat :=
+           High.Transform (High_Coefficients);
+         Low_Result  : constant OpenCV.Core.Mat :=
+           Low.Transform (Low_Coefficients);
+      begin
+         AUnit.Assertions.Assert
+           (High_Result.Depth = OpenCV.Core.UInt8
+            and then OpenCV.Core.UInt8_Access.Get (High_Result, 0, 0) = 255
+            and then OpenCV.Core.UInt8_Access.Get (Low_Result, 0, 0) = 0,
+            "Transform must use OpenCV UInt8 saturation rather than wrapping");
+      end;
+   end Transform_UInt8_Saturates;
+
+   procedure Transform_Int32_Uses_Float64_Coefficient_Path
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+      Coefficients : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 0, 6);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 0, 0, 2.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 0, 1, 1.0);
+
+      declare
+         Int32_Source : constant OpenCV.Core.Mat :=
+           Source.Convert_To (OpenCV.Core.Int32);
+         Result       : constant OpenCV.Core.Mat :=
+           Int32_Source.Transform (Coefficients);
+         As_UInt8     : constant OpenCV.Core.Mat :=
+           Result.Convert_To (OpenCV.Core.UInt8);
+      begin
+         AUnit.Assertions.Assert
+           (Result.Depth = OpenCV.Core.Int32
+            and then Result.Channels = 1
+            and then OpenCV.Core.UInt8_Access.Get (As_UInt8, 0, 0) = 13,
+            "Transform of Int32 must keep Int32 and apply Float32"
+            & " coefficients");
+      end;
+   end Transform_Int32_Uses_Float64_Coefficient_Path;
+
+   procedure Transform_Float64_Preserves_Depth (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source               : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+      Float32_Coefficients : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Float32_Coefficients, 0, 0, 2.0);
+      OpenCV.Core.Float32_Access.Set (Float32_Coefficients, 0, 1, 3.0);
+
+      declare
+         Float64_Source : constant OpenCV.Core.Mat :=
+           Source.Convert_To (OpenCV.Core.Float64);
+         Result         : constant OpenCV.Core.Mat :=
+           Float64_Source.Transform (Float32_Coefficients);
+         Inspection     : constant OpenCV.Core.Mat :=
+           Result.Convert_To (OpenCV.Core.Float32);
+      begin
+         AUnit.Assertions.Assert
+           (Result.Depth = OpenCV.Core.Float64
+            and then Result.Channels = 1
+            and then Result.Rows = 1
+            and then Result.Columns = 2
+            and then OpenCV.Core.Float32_Access.Get (Inspection, 0, 0) = 5.0
+            and then OpenCV.Core.Float32_Access.Get (Inspection, 0, 1) = 7.0,
+            "Transform of Float64 must keep Float64 and apply affine bias");
+      end;
+   end Transform_Float64_Preserves_Depth;
+
+   procedure Transform_Remaining_Supported_Depths
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+      Coefficients : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+
+      function Affine_Result (Depth : OpenCV.Core.Depth_Type) return Boolean is
+         Converted : constant OpenCV.Core.Mat := Source.Convert_To (Depth);
+         Result    : constant OpenCV.Core.Mat :=
+           Converted.Transform (Coefficients);
+         As_UInt8  : constant OpenCV.Core.Mat :=
+           Result.Convert_To (OpenCV.Core.UInt8);
+      begin
+         return
+           Result.Depth = Depth
+           and then Result.Channels = 1
+           and then OpenCV.Core.UInt8_Access.Get (As_UInt8, 0, 0) = 7;
+      end Affine_Result;
+   begin
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 0, 2);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 0, 0, 2.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 0, 1, 3.0);
+
+      AUnit.Assertions.Assert
+        (Affine_Result (OpenCV.Core.Int8)
+         and then Affine_Result (OpenCV.Core.UInt16)
+         and then Affine_Result (OpenCV.Core.Int16),
+         "Transform must reach the Int8, UInt16, and Int16 OpenCV kernels");
+   end Transform_Remaining_Supported_Depths;
+
+   procedure Transform_Rejects_Float16 (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Source       : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float16, 1));
+      Coefficients : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+
+      procedure Transform_Float16 is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         OpenCV.Core.Float32_Access.Set (Coefficients, 0, 0, 1.0);
+         Ignored := Source.Transform (Coefficients);
+      end Transform_Float16;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Transform_Float16'Access, "Transform must reject Float16 source");
+   end Transform_Rejects_Float16;
+
+   procedure Transform_Float64_Coefficients_With_Float32_Self
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Coefficients : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, 4.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 0, 0, 2.0);
+
+      declare
+         Float64_Coefficients : constant OpenCV.Core.Mat :=
+           Coefficients.Convert_To (OpenCV.Core.Float64);
+         Result               : constant OpenCV.Core.Mat :=
+           Source.Transform (Float64_Coefficients);
+      begin
+         AUnit.Assertions.Assert
+           (Float64_Coefficients.Depth = OpenCV.Core.Float64
+            and then Result.Depth = OpenCV.Core.Float32
+            and then Result.Channels = 1
+            and then OpenCV.Core.Float32_Access.Get (Result, 0, 0) = 8.0,
+            "Float64 coefficients with Float32 Self must stay Float64 and"
+            & " yield a Float32 result");
+      end;
+   end Transform_Float64_Coefficients_With_Float32_Self;
+
+   procedure Transform_Noncontiguous_Source_Region
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 4, (OpenCV.Core.Float32, 3));
+      Coefficients : constant OpenCV.Core.Mat := Linear_C3_Coefficients;
+   begin
+      OpenCV.Core.Float32_Vec3_Access.Set (Parent, 0, 0, (9.0, 9.0, 9.0));
+      OpenCV.Core.Float32_Vec3_Access.Set (Parent, 0, 1, (1.0, 2.0, 3.0));
+      OpenCV.Core.Float32_Vec3_Access.Set (Parent, 0, 2, (4.0, 5.0, 6.0));
+      OpenCV.Core.Float32_Vec3_Access.Set (Parent, 0, 3, (8.0, 8.0, 8.0));
+      OpenCV.Core.Float32_Vec3_Access.Set (Parent, 1, 0, (7.0, 7.0, 7.0));
+      OpenCV.Core.Float32_Vec3_Access.Set (Parent, 1, 1, (1.0, 0.0, 0.0));
+      OpenCV.Core.Float32_Vec3_Access.Set (Parent, 1, 2, (0.0, 1.0, 0.0));
+      OpenCV.Core.Float32_Vec3_Access.Set (Parent, 1, 3, (6.0, 6.0, 6.0));
+
+      declare
+         Region : constant OpenCV.Core.Mat :=
+           Parent.Region ((X => 1, Y => 0, Width => 2, Height => 2));
+         Result : constant OpenCV.Core.Mat := Region.Transform (Coefficients);
+      begin
+         AUnit.Assertions.Assert
+           (not Region.Is_Continuous
+            and then Result.Rows = 2
+            and then Result.Columns = 2
+            and then Result.Channels = 1
+            and then OpenCV.Core.Float32_Access.Get (Result, 0, 0) = 14.0
+            and then OpenCV.Core.Float32_Access.Get (Result, 0, 1) = 32.0
+            and then OpenCV.Core.Float32_Access.Get (Result, 1, 0) = 1.0
+            and then OpenCV.Core.Float32_Access.Get (Result, 1, 1) = 2.0,
+            "Transform must accept a non-contiguous C3 Region");
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float32_Vec3_Access.Get (Parent, 0, 0)
+            = (9.0, 9.0, 9.0)
+            and then OpenCV.Core.Float32_Vec3_Access.Get (Parent, 0, 3)
+                     = (8.0, 8.0, 8.0)
+            and then OpenCV.Core.Float32_Vec3_Access.Get (Region, 0, 0)
+                     = (1.0, 2.0, 3.0),
+            "Transform must leave the Region and parent pixels unchanged");
+      end;
+   end Transform_Noncontiguous_Source_Region;
+
+   procedure Transform_Noncontiguous_Coefficients_Region
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 3));
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 6, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Vec3_Access.Set (Source, 0, 0, (1.0, 2.0, 3.0));
+      Parent.Set_To (OpenCV.Core.Make_Scalar (9.0));
+      OpenCV.Core.Float32_Access.Set (Parent, 0, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Parent, 0, 2, 0.0);
+      OpenCV.Core.Float32_Access.Set (Parent, 0, 3, 0.0);
+      OpenCV.Core.Float32_Access.Set (Parent, 0, 4, 10.0);
+      OpenCV.Core.Float32_Access.Set (Parent, 1, 1, 0.0);
+      OpenCV.Core.Float32_Access.Set (Parent, 1, 2, 1.0);
+      OpenCV.Core.Float32_Access.Set (Parent, 1, 3, 0.0);
+      OpenCV.Core.Float32_Access.Set (Parent, 1, 4, 20.0);
+
+      declare
+         Coefficients : constant OpenCV.Core.Mat :=
+           Parent.Region ((X => 1, Y => 0, Width => 4, Height => 2));
+         Result       : constant OpenCV.Core.Mat :=
+           Source.Transform (Coefficients);
+         Channels     : constant OpenCV.Core.Mat_Array := Result.Split;
+      begin
+         AUnit.Assertions.Assert
+           (not Coefficients.Is_Continuous
+            and then Coefficients.Rows = 2
+            and then Coefficients.Columns = 4
+            and then Result.Channels = 2
+            and then OpenCV.Core.Float32_Access.Get (Channels (0), 0, 0) = 11.0
+            and then OpenCV.Core.Float32_Access.Get (Channels (1), 0, 0)
+                     = 22.0,
+            "Transform must accept a non-contiguous coefficient Region");
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float32_Access.Get (Parent, 0, 0) = 9.0
+            and then OpenCV.Core.Float32_Access.Get (Coefficients, 0, 0) = 1.0
+            and then OpenCV.Core.Float32_Access.Get (Coefficients, 1, 3)
+                     = 20.0,
+            "Transform must leave the coefficient Region and parent"
+            & " unchanged");
+      end;
+   end Transform_Noncontiguous_Coefficients_Region;
+
+   procedure Transform_Result_Is_Independent (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 3));
+      Coefficients : OpenCV.Core.Mat := Linear_C3_Coefficients;
+   begin
+      OpenCV.Core.Float32_Vec3_Access.Set (Source, 0, 0, (1.0, 2.0, 3.0));
+
+      declare
+         Result : OpenCV.Core.Mat := Source.Transform (Coefficients);
+      begin
+         OpenCV.Core.Float32_Vec3_Access.Set (Source, 0, 0, (9.0, 9.0, 9.0));
+         OpenCV.Core.Float32_Access.Set (Coefficients, 0, 0, 0.0);
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float32_Access.Get (Result, 0, 0) = 14.0,
+            "Mutating Self or Coefficients must not change Result");
+
+         OpenCV.Core.Float32_Access.Set (Result, 0, 0, -1.0);
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float32_Vec3_Access.Get (Source, 0, 0)
+            = (9.0, 9.0, 9.0)
+            and then OpenCV.Core.Float32_Access.Get (Coefficients, 0, 1) = 2.0,
+            "Mutating Result must not change Self or Coefficients");
+      end;
+   end Transform_Result_Is_Independent;
+
+   procedure Transform_Linear_Matches_Zero_Bias_Affine
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 3));
+      Linear : constant OpenCV.Core.Mat := Linear_C3_Coefficients;
+      Affine : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 4, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Vec3_Access.Set (Source, 0, 0, (1.0, 2.0, 3.0));
+      OpenCV.Core.Float32_Access.Set (Affine, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Affine, 0, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Affine, 0, 2, 3.0);
+      OpenCV.Core.Float32_Access.Set (Affine, 0, 3, 0.0);
+
+      declare
+         Linear_Result : constant OpenCV.Core.Mat := Source.Transform (Linear);
+         Affine_Result : constant OpenCV.Core.Mat := Source.Transform (Affine);
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float32_Access.Get (Linear_Result, 0, 0) = 14.0
+            and then OpenCV.Core.Float32_Access.Get (Affine_Result, 0, 0)
+                     = 14.0,
+            "Linear coefficients must match affine coefficients with"
+            & " zero bias");
+      end;
+   end Transform_Linear_Matches_Zero_Bias_Affine;
+
+   procedure Transform_More_Than_Four_Output_Channels
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Coefficients : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (5, 1, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, 2.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 1, 0, 2.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 2, 0, 3.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 3, 0, 4.0);
+      OpenCV.Core.Float32_Access.Set (Coefficients, 4, 0, 5.0);
+
+      declare
+         Result   : constant OpenCV.Core.Mat :=
+           Source.Transform (Coefficients);
+         Channels : constant OpenCV.Core.Mat_Array := Result.Split;
+      begin
+         AUnit.Assertions.Assert
+           (Result.Channels = 5
+            and then Channels'Length = 5
+            and then OpenCV.Core.Float32_Access.Get (Channels (0), 0, 0) = 2.0
+            and then OpenCV.Core.Float32_Access.Get (Channels (1), 0, 0) = 4.0
+            and then OpenCV.Core.Float32_Access.Get (Channels (2), 0, 0) = 6.0
+            and then OpenCV.Core.Float32_Access.Get (Channels (3), 0, 0) = 8.0
+            and then OpenCV.Core.Float32_Access.Get (Channels (4), 0, 0)
+                     = 10.0,
+            "Transform output channels must follow Coefficients.Rows past 4");
+      end;
+   end Transform_More_Than_Four_Output_Channels;
+
+   procedure Transform_Rejects_Five_Source_Channels
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source       : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 5));
+      Coefficients : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 5, (OpenCV.Core.Float32, 1));
+
+      procedure Transform_C5 is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         OpenCV.Core.Float32_Access.Set (Coefficients, 0, 0, 1.0);
+         Ignored := Source.Transform (Coefficients);
+      end Transform_C5;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Transform_C5'Access, "Transform must reject a five-channel source");
+   end Transform_Rejects_Five_Source_Channels;
+
+   procedure Transform_Rejects_Invalid_Coefficient_Columns
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 3));
+      Too_Few  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+      Too_Many : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 5, (OpenCV.Core.Float32, 1));
+
+      procedure Transform_Two_Columns is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Source.Transform (Too_Few);
+      end Transform_Two_Columns;
+
+      procedure Transform_Five_Columns is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Source.Transform (Too_Many);
+      end Transform_Five_Columns;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Transform_Two_Columns'Access,
+         "Transform must reject C3 coefficients with 2 columns");
+      Assert_Raises_OpenCV_Error
+        (Transform_Five_Columns'Access,
+         "Transform must reject C3 coefficients with 5 columns");
+   end Transform_Rejects_Invalid_Coefficient_Columns;
+
+   procedure Transform_Rejects_Multi_Channel_Coefficients
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source       : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Coefficients : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 2));
+
+      procedure Transform_C2_Coefficients is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Source.Transform (Coefficients);
+      end Transform_C2_Coefficients;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Transform_C2_Coefficients'Access,
+         "Transform must reject multi-channel coefficients");
+   end Transform_Rejects_Multi_Channel_Coefficients;
+
+   procedure Transform_Rejects_Integer_Coefficients
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source       : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Coefficients : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Int32, 1));
+
+      procedure Transform_Int32_Coefficients is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Source.Transform (Coefficients);
+      end Transform_Int32_Coefficients;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Transform_Int32_Coefficients'Access,
+         "Transform must reject Int32 coefficients");
+   end Transform_Rejects_Integer_Coefficients;
+
+   procedure Transform_Rejects_Excess_Output_Channels
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source       : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Coefficients : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (513, 1, (OpenCV.Core.Float32, 1));
+
+      procedure Transform_513_Rows is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Source.Transform (Coefficients);
+      end Transform_513_Rows;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Transform_513_Rows'Access,
+         "Transform must reject more than 512 coefficient rows");
+   end Transform_Rejects_Excess_Output_Channels;
+
+   procedure Transform_Rejects_Empty_Inputs (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Default_Source       : OpenCV.Core.Mat;
+      Empty_Source         : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 1));
+      Valid_Source         : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Default_Coefficients : OpenCV.Core.Mat;
+      Empty_Coefficients   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 1));
+      Valid_Coefficients   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+
+      procedure Transform_Default_Source is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Default_Source.Transform (Valid_Coefficients);
+      end Transform_Default_Source;
+
+      procedure Transform_Empty_Source is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Empty_Source.Transform (Valid_Coefficients);
+      end Transform_Empty_Source;
+
+      procedure Transform_Default_Coefficients is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Valid_Source.Transform (Default_Coefficients);
+      end Transform_Default_Coefficients;
+
+      procedure Transform_Empty_Coefficients is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Valid_Source.Transform (Empty_Coefficients);
+      end Transform_Empty_Coefficients;
+   begin
+      OpenCV.Core.Float32_Access.Set (Valid_Coefficients, 0, 0, 1.0);
+      Assert_Raises_OpenCV_Error
+        (Transform_Default_Source'Access,
+         "Transform must reject a default empty source");
+      Assert_Raises_OpenCV_Error
+        (Transform_Empty_Source'Access,
+         "Transform must reject a typed 0x0 Float32 source");
+      Assert_Raises_OpenCV_Error
+        (Transform_Default_Coefficients'Access,
+         "Transform must reject default empty coefficients");
+      Assert_Raises_OpenCV_Error
+        (Transform_Empty_Coefficients'Access,
+         "Transform must reject typed 0x0 Float32 coefficients");
+   end Transform_Rejects_Empty_Inputs;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
    Result : aliased AUnit.Test_Suites.Test_Suite;
 
@@ -3468,6 +4118,88 @@ package body Mat_Transform_Tests is
         (Caller.Create
            ("Set_Identity empty behavior",
             Set_Identity_Empty_Behavior'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transform Float32 C3 to C1 linear",
+            Transform_Float32_C3_To_C1_Linear'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transform Float32 C3 to C2 affine",
+            Transform_Float32_C3_To_C2_Affine'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transform C3 channel permutation",
+            Transform_C3_Channel_Permutation'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transform single-channel affine fast path",
+            Transform_Single_Channel_Affine_Fast_Path'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transform UInt8 saturation", Transform_UInt8_Saturates'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transform Int32 source",
+            Transform_Int32_Uses_Float64_Coefficient_Path'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transform Float64 source",
+            Transform_Float64_Preserves_Depth'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transform remaining supported depths",
+            Transform_Remaining_Supported_Depths'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transform rejects Float16", Transform_Rejects_Float16'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transform Float64 coefficients with Float32 Self",
+            Transform_Float64_Coefficients_With_Float32_Self'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transform non-contiguous source Region",
+            Transform_Noncontiguous_Source_Region'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transform non-contiguous Coefficients Region",
+            Transform_Noncontiguous_Coefficients_Region'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transform result is independent",
+            Transform_Result_Is_Independent'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transform linear matches zero-bias affine",
+            Transform_Linear_Matches_Zero_Bias_Affine'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transform more than four output channels",
+            Transform_More_Than_Four_Output_Channels'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transform rejects five source channels",
+            Transform_Rejects_Five_Source_Channels'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transform rejects invalid coefficient columns",
+            Transform_Rejects_Invalid_Coefficient_Columns'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transform rejects multi-channel coefficients",
+            Transform_Rejects_Multi_Channel_Coefficients'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transform rejects integer coefficients",
+            Transform_Rejects_Integer_Coefficients'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transform rejects excess output channels",
+            Transform_Rejects_Excess_Output_Channels'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transform rejects empty inputs",
+            Transform_Rejects_Empty_Inputs'Access));
 
       return Result'Access;
 

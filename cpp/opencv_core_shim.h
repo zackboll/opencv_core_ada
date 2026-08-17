@@ -933,6 +933,29 @@ opencv_core_mat_transposed_product_with_delta(
     opencv_core_mat_handle **out_mat);
 
 /*
+ * Applies cv::transform to each source element interpreted as its channel
+ * vector. source and coefficients are borrowed. The independently owned
+ * result has source.rows, source.cols, source.depth(), and
+ * coefficients.rows channels.
+ *
+ * source must be non-empty, at most two-dimensional, have 1 to 4
+ * channels, and depth CV_8U, CV_8S, CV_16U, CV_16S, CV_32S, CV_32F, or
+ * CV_64F. CV_16F is rejected because OpenCV 4.10 has no TransformFunc
+ * for it.
+ *
+ * coefficients must be non-empty, at most two-dimensional, single-channel
+ * CV_32F or CV_64F, have 1 to 512 rows, and have either source.channels()
+ * columns (linear) or source.channels()+1 columns (affine; last column is
+ * additive bias). Continuity is not required. OpenCV selects internal
+ * coefficient working precision from the source depth and may convert
+ * coefficients; this wrapper does not pre-convert them.
+ */
+opencv_core_status
+opencv_core_mat_transform(const opencv_core_mat_handle *source,
+                          const opencv_core_mat_handle *coefficients,
+                          opencv_core_mat_handle **out_mat);
+
+/*
  * Computes unmasked per-channel mean values. Both operations support one to
  * four channels so each complete result fits opencv_core_scalar. Mean accepts
  * empty Mats and returns all zeroes; mean/stddev requires a non-empty Mat.
