@@ -4114,6 +4114,10 @@ opencv_core_mat_set_identity(opencv_core_mat_handle *mat,
                 "set identity supports at most four channels");
         }
 
+        if (mat->value.empty()) {
+            return OPENCV_CORE_OK;
+        }
+
         cv::setIdentity(mat->value, to_opencv_scalar(*value));
         return OPENCV_CORE_OK;
     } catch (...) {

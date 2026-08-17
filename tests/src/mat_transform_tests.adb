@@ -2881,15 +2881,26 @@ package body Mat_Transform_Tests is
       pragma Unreferenced (Test);
       Image : OpenCV.Core.Mat :=
         OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 5));
+      Empty : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.UInt8, 5));
 
       procedure Set_Five_Channels is
       begin
          Image.Set_Identity;
       end Set_Five_Channels;
+
+      procedure Set_Empty_Five_Channels is
+      begin
+         Empty.Set_Identity;
+      end Set_Empty_Five_Channels;
    begin
       Assert_Raises_OpenCV_Error
         (Set_Five_Channels'Access,
          "Set_Identity must reject a Mat with more than four channels");
+      Assert_Raises_OpenCV_Error
+        (Set_Empty_Five_Channels'Access,
+         "Set_Identity must reject a typed empty Mat with more than"
+         & " four channels");
    end Set_Identity_Rejects_Five_Channels;
 
    procedure Set_Identity_UInt8 (Test : in out Mat_Test_Fixture) is
