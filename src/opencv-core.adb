@@ -2936,6 +2936,138 @@ package body OpenCV.Core is
           (Self, Order, Scale, To_C_Depth (Output_Depth));
    end Transposed_Product;
 
+   function Supports_Transposed_Product_Offset (Offset : Mat) return Boolean
+   is (Offset.Depth = UInt8
+       or else Offset.Depth = Int8
+       or else Offset.Depth = UInt16
+       or else Offset.Depth = Int16
+       or else Offset.Depth = Int32
+       or else Offset.Depth = Float32
+       or else Offset.Depth = Float64);
+
+   function Offset_Broadcasts_To (Offset, Self : Mat) return Boolean
+   is ((Offset.Rows = Self.Rows or else Offset.Rows = 1)
+       and then (Offset.Columns = Self.Columns or else Offset.Columns = 1));
+
+   procedure Validate_Transposed_Product_With_Offset
+     (Self           : Mat;
+      Offset         : Mat;
+      Output_Depth   : Depth_Type;
+      Explicit_Depth : Boolean) is
+   begin
+      Validate_Transposed_Product (Self, Output_Depth, Explicit_Depth);
+
+      if Offset.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Transposed_Product requires a non-empty Offset");
+      end if;
+
+      if Offset.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Transposed_Product requires a single-channel Offset");
+      end if;
+
+      if Offset.Depth = Float16 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Transposed_Product does not support Float16 Offset");
+      end if;
+
+      if not Supports_Transposed_Product_Offset (Offset) then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Transposed_Product requires a UInt8, Int8, UInt16, Int16,"
+            & " Int32, Float32, or Float64 Offset");
+      end if;
+
+      if not Offset_Broadcasts_To (Offset, Self) then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Transposed_Product Offset must have Self's rows or one row"
+            & " and Self's columns or one column");
+      end if;
+
+      if Explicit_Depth
+        and then Output_Depth = Float32
+        and then Offset.Depth = Float64
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Transposed_Product does not support Float64 Offset with"
+            & " Float32 output");
+      end if;
+   end Validate_Transposed_Product_With_Offset;
+
+   function Call_Transposed_Product_With_Offset
+     (Self         : Mat;
+      Offset       : Mat;
+      Order        : Transposed_Product_Order;
+      Scale        : Long_Float;
+      Output_Depth : OpenCV.Internal.C_API.C_Int32) return Mat
+   is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Status :=
+        OpenCV.Internal.C_API.Mat_Transposed_Product_With_Delta
+          (Source       => Self.Handle,
+           Offset       => Offset.Handle,
+           Order        => To_C_Transposed_Product_Order (Order),
+           Scale        => OpenCV.Internal.C_API.C_Double (Scale),
+           Output_Depth => Output_Depth,
+           Result       => New_Handle'Access);
+      if Status /= OpenCV.Internal.C_API.Success then
+         OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+         Raise_On_Error (Status, "Mat centered transposed product operation");
+      end if;
+
+      if New_Handle = OpenCV.Internal.C_API.Null_Mat_Handle then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat centered transposed product operation returned a null"
+            & " result handle");
+      end if;
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Call_Transposed_Product_With_Offset;
+
+   function Transposed_Product
+     (Self   : Mat;
+      Offset : Mat;
+      Order  : Transposed_Product_Order;
+      Scale  : Long_Float := 1.0) return Mat is
+   begin
+      Validate_Transposed_Product_With_Offset
+        (Self, Offset, Output_Depth => Float32, Explicit_Depth => False);
+      return
+        Call_Transposed_Product_With_Offset
+          (Self,
+           Offset,
+           Order,
+           Scale,
+           OpenCV.Internal.C_API.Default_Output_Depth);
+   end Transposed_Product;
+
+   function Transposed_Product
+     (Self         : Mat;
+      Offset       : Mat;
+      Order        : Transposed_Product_Order;
+      Output_Depth : Depth_Type;
+      Scale        : Long_Float := 1.0) return Mat is
+   begin
+      Validate_Transposed_Product_With_Offset
+        (Self, Offset, Output_Depth => Output_Depth, Explicit_Depth => True);
+      return
+        Call_Transposed_Product_With_Offset
+          (Self, Offset, Order, Scale, To_C_Depth (Output_Depth));
+   end Transposed_Product;
+
    procedure Validate_Reduce_Depth
      (Self : Mat; Kind : Reduction_Kind; Output_Depth : Depth_Type) is
    begin

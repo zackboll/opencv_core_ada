@@ -3164,6 +3164,652 @@ package body Mat_Reduction_Tests is
         (Check_Integer_Output'Access,
          "Transposed_Product must reject a non-floating output depth");
    end Transposed_Product_Rejects_Invalid_Inputs;
+   procedure Transposed_Product_Full_Size_Float32_Delta
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Offset : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      Fill_2x3 (Source, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+      Fill_2x3 (Offset, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
+      Result :=
+        Source.Transposed_Product
+          (Offset, Order => OpenCV.Core.Transpose_Times_Self);
+
+      AUnit.Assertions.Assert
+        (Product_3x3
+           (Result, 9.0, 12.0, 15.0, 12.0, 17.0, 22.0, 15.0, 22.0, 29.0),
+         "Full-size Delta must subtract element-by-element before the"
+         & " transposed product");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Result, 0, 1)
+         = OpenCV.Core.Float32_Access.Get (Result, 1, 0)
+         and then OpenCV.Core.Float32_Access.Get (Result, 0, 2)
+                  = OpenCV.Core.Float32_Access.Get (Result, 2, 0)
+         and then OpenCV.Core.Float32_Access.Get (Result, 1, 2)
+                  = OpenCV.Core.Float32_Access.Get (Result, 2, 1),
+         "Centered Transposed_Product must produce a symmetric result");
+      AUnit.Assertions.Assert
+        (Unchanged_2x3 (Source, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0)
+         and then Unchanged_2x3 (Offset, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0),
+         "Centered Transposed_Product must not modify Self or Delta");
+   end Transposed_Product_Full_Size_Float32_Delta;
+
+   procedure Transposed_Product_Row_Vector_Broadcast
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Offset : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 3, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      Fill_2x3 (Source, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+      OpenCV.Core.Float32_Access.Set (Offset, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Offset, 0, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Offset, 0, 2, 3.0);
+      Result :=
+        Source.Transposed_Product
+          (Offset, Order => OpenCV.Core.Transpose_Times_Self);
+
+      AUnit.Assertions.Assert
+        (Offset.Rows = 1
+         and then Offset.Columns = 3
+         and then Product_3x3
+                    (Result, 9.0, 9.0, 9.0, 9.0, 9.0, 9.0, 9.0, 9.0, 9.0),
+         "A 1xN Delta must broadcast across every source row");
+      AUnit.Assertions.Assert
+        (Unchanged_2x3 (Source, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0)
+         and then OpenCV.Core.Float32_Access.Get (Offset, 0, 0) = 1.0
+         and then OpenCV.Core.Float32_Access.Get (Offset, 0, 1) = 2.0
+         and then OpenCV.Core.Float32_Access.Get (Offset, 0, 2) = 3.0,
+         "Row-vector Delta broadcasting must leave Self and Delta unchanged");
+   end Transposed_Product_Row_Vector_Broadcast;
+
+   procedure Transposed_Product_Column_Vector_Broadcast
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Offset : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 1, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      Fill_2x3 (Source, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+      OpenCV.Core.Float32_Access.Set (Offset, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Offset, 1, 0, 4.0);
+      Result :=
+        Source.Transposed_Product
+          (Offset, Order => OpenCV.Core.Transpose_Times_Self);
+
+      AUnit.Assertions.Assert
+        (Offset.Rows = 2
+         and then Offset.Columns = 1
+         and then Product_3x3
+                    (Result, 0.0, 0.0, 0.0, 0.0, 2.0, 4.0, 0.0, 4.0, 8.0),
+         "An Mx1 Delta must broadcast across every source column");
+   end Transposed_Product_Column_Vector_Broadcast;
+
+   procedure Transposed_Product_Scalar_Broadcast
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Offset : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      Fill_2x3 (Source, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+      OpenCV.Core.Float32_Access.Set (Offset, 0, 0, 1.0);
+      Result :=
+        Source.Transposed_Product
+          (Offset, Order => OpenCV.Core.Transpose_Times_Self);
+
+      AUnit.Assertions.Assert
+        (Offset.Rows = 1
+         and then Offset.Columns = 1
+         and then Product_3x3
+                    (Result,
+                     9.0,
+                     12.0,
+                     15.0,
+                     12.0,
+                     17.0,
+                     22.0,
+                     15.0,
+                     22.0,
+                     29.0),
+         "A 1x1 Delta must broadcast across every source element");
+   end Transposed_Product_Scalar_Broadcast;
+
+   procedure Transposed_Product_Self_Times_Transpose_With_Delta
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Offset : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      Fill_2x3 (Source, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+      Fill_2x3 (Offset, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
+      Result :=
+        Source.Transposed_Product
+          (Offset, Order => OpenCV.Core.Self_Times_Transpose);
+
+      AUnit.Assertions.Assert
+        (Product_2x2 (Result, 5.0, 14.0, 14.0, 50.0),
+         "Self_Times_Transpose with Delta must compute Scale *"
+         & " (Self - Delta) * (Self - Delta)'T");
+   end Transposed_Product_Self_Times_Transpose_With_Delta;
+
+   procedure Transposed_Product_Scale_With_Delta
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Offset : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Half   : OpenCV.Core.Mat;
+      Neg    : OpenCV.Core.Mat;
+   begin
+      Fill_2x3 (Source, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+      Fill_2x3 (Offset, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
+      Half :=
+        Source.Transposed_Product
+          (Offset, Order => OpenCV.Core.Transpose_Times_Self, Scale => 0.5);
+      Neg :=
+        Source.Transposed_Product
+          (Offset, Order => OpenCV.Core.Transpose_Times_Self, Scale => -1.0);
+
+      AUnit.Assertions.Assert
+        (Product_3x3 (Half, 4.5, 6.0, 7.5, 6.0, 8.5, 11.0, 7.5, 11.0, 14.5),
+         "Centered Transposed_Product must apply a fractional Scale");
+      AUnit.Assertions.Assert
+        (Product_3x3
+           (Neg, -9.0, -12.0, -15.0, -12.0, -17.0, -22.0, -15.0, -22.0, -29.0),
+         "Centered Transposed_Product must apply a negative Scale");
+   end Transposed_Product_Scale_With_Delta;
+
+   procedure Transposed_Product_UInt8_Self_Float32_Delta
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.UInt8, 1));
+      Offset : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 0, 1);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 1, 2);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 2, 3);
+      OpenCV.Core.UInt8_Access.Set (Source, 1, 0, 4);
+      OpenCV.Core.UInt8_Access.Set (Source, 1, 1, 5);
+      OpenCV.Core.UInt8_Access.Set (Source, 1, 2, 6);
+      Fill_2x3 (Offset, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
+      Result :=
+        Source.Transposed_Product
+          (Offset, Order => OpenCV.Core.Transpose_Times_Self);
+
+      AUnit.Assertions.Assert
+        (Source.Depth = OpenCV.Core.UInt8
+         and then Offset.Depth = OpenCV.Core.Float32
+         and then Product_3x3
+                    (Result,
+                     9.0,
+                     12.0,
+                     15.0,
+                     12.0,
+                     17.0,
+                     22.0,
+                     15.0,
+                     22.0,
+                     29.0),
+         "UInt8 Self with Float32 Delta must promote automatically to"
+         & " Float32 without mutating the inputs");
+   end Transposed_Product_UInt8_Self_Float32_Delta;
+
+   procedure Transposed_Product_Automatic_Promotion_From_Float64_Delta
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Delta32   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Offset    : OpenCV.Core.Mat;
+      Result    : OpenCV.Core.Mat;
+      Converted : OpenCV.Core.Mat;
+   begin
+      Fill_2x3 (Source, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+      Fill_2x3 (Delta32, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
+      Offset := Delta32.Convert_To (OpenCV.Core.Float64);
+      Result :=
+        Source.Transposed_Product
+          (Offset, Order => OpenCV.Core.Transpose_Times_Self);
+      Converted := Result.Convert_To (OpenCV.Core.Float32);
+
+      AUnit.Assertions.Assert
+        (Result.Depth = OpenCV.Core.Float64
+         and then Source.Depth = OpenCV.Core.Float32
+         and then Offset.Depth = OpenCV.Core.Float64
+         and then Product_3x3
+                    (Converted,
+                     9.0,
+                     12.0,
+                     15.0,
+                     12.0,
+                     17.0,
+                     22.0,
+                     15.0,
+                     22.0,
+                     29.0),
+         "A Float64 Delta must promote the automatic result to Float64");
+   end Transposed_Product_Automatic_Promotion_From_Float64_Delta;
+
+   procedure Transposed_Product_Int32_Delta (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Source  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.UInt8, 1));
+      Delta32 : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Offset  : OpenCV.Core.Mat;
+      Result  : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 0, 1);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 1, 2);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 2, 3);
+      OpenCV.Core.UInt8_Access.Set (Source, 1, 0, 4);
+      OpenCV.Core.UInt8_Access.Set (Source, 1, 1, 5);
+      OpenCV.Core.UInt8_Access.Set (Source, 1, 2, 6);
+      Fill_2x3 (Delta32, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
+      Offset := Delta32.Convert_To (OpenCV.Core.Int32);
+      Result :=
+        Source.Transposed_Product
+          (Offset, Order => OpenCV.Core.Transpose_Times_Self);
+
+      AUnit.Assertions.Assert
+        (Source.Depth = OpenCV.Core.UInt8
+         and then Offset.Depth = OpenCV.Core.Int32
+         and then Product_3x3
+                    (Result,
+                     9.0,
+                     12.0,
+                     15.0,
+                     12.0,
+                     17.0,
+                     22.0,
+                     15.0,
+                     22.0,
+                     29.0),
+         "An Int32 Delta must be accepted and convert to automatic Float32");
+   end Transposed_Product_Int32_Delta;
+
+   procedure Transposed_Product_Explicit_Float64_With_Integer_Delta
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Delta32   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Offset    : OpenCV.Core.Mat;
+      Result    : OpenCV.Core.Mat;
+      Converted : OpenCV.Core.Mat;
+   begin
+      Fill_2x3 (Source, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+      OpenCV.Core.Float32_Access.Set (Delta32, 0, 0, 1.0);
+      Offset := Delta32.Convert_To (OpenCV.Core.Int16);
+      Result :=
+        Source.Transposed_Product
+          (Offset,
+           Order        => OpenCV.Core.Transpose_Times_Self,
+           Output_Depth => OpenCV.Core.Float64);
+      Converted := Result.Convert_To (OpenCV.Core.Float32);
+
+      AUnit.Assertions.Assert
+        (Result.Depth = OpenCV.Core.Float64
+         and then Offset.Depth = OpenCV.Core.Int16
+         and then Product_3x3
+                    (Converted,
+                     9.0,
+                     12.0,
+                     15.0,
+                     12.0,
+                     17.0,
+                     22.0,
+                     15.0,
+                     22.0,
+                     29.0),
+         "Explicit Float64 must accept an integer Delta and return Float64");
+   end Transposed_Product_Explicit_Float64_With_Integer_Delta;
+
+   procedure Transposed_Product_Explicit_Float32_Rejects_Float64_Delta
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Delta32 : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Offset  : OpenCV.Core.Mat;
+
+      procedure Check_Float64_Delta is
+         Result : constant OpenCV.Core.Mat :=
+           Source.Transposed_Product
+             (Offset,
+              Order        => OpenCV.Core.Transpose_Times_Self,
+              Output_Depth => OpenCV.Core.Float32);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Float64_Delta;
+   begin
+      Fill_2x3 (Source, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+      OpenCV.Core.Float32_Access.Set (Delta32, 0, 0, 1.0);
+      Offset := Delta32.Convert_To (OpenCV.Core.Float64);
+      Assert_Raises_OpenCV_Error
+        (Check_Float64_Delta'Access,
+         "Explicit Float32 must reject a Float64 Delta");
+   end Transposed_Product_Explicit_Float32_Rejects_Float64_Delta;
+
+   procedure Transposed_Product_Rejects_Float16_Delta
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Offset : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float16, 1));
+
+      procedure Check_Float16_Delta is
+         Result : constant OpenCV.Core.Mat :=
+           Source.Transposed_Product
+             (Offset, Order => OpenCV.Core.Transpose_Times_Self);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Float16_Delta;
+   begin
+      Fill_2x3 (Source, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+      Assert_Raises_OpenCV_Error
+        (Check_Float16_Delta'Access,
+         "Centered Transposed_Product must reject Float16 Delta");
+   end Transposed_Product_Rejects_Float16_Delta;
+
+   procedure Transposed_Product_Rejects_Multi_Channel_Delta
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Offset : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 2));
+
+      procedure Check_Two_Channel_Delta is
+         Result : constant OpenCV.Core.Mat :=
+           Source.Transposed_Product
+             (Offset, Order => OpenCV.Core.Transpose_Times_Self);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Two_Channel_Delta;
+   begin
+      Fill_2x3 (Source, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+      Assert_Raises_OpenCV_Error
+        (Check_Two_Channel_Delta'Access,
+         "Centered Transposed_Product must reject a multi-channel Delta");
+   end Transposed_Product_Rejects_Multi_Channel_Delta;
+
+   procedure Transposed_Product_Rejects_Invalid_Delta_Shapes
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Delta_22 : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Delta_33 : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.Float32, 1));
+      Delta_31 : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 1, (OpenCV.Core.Float32, 1));
+      Delta_12 : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+
+      procedure Check_2x2 is
+         Result : constant OpenCV.Core.Mat :=
+           Source.Transposed_Product
+             (Delta_22, Order => OpenCV.Core.Transpose_Times_Self);
+      begin
+         pragma Unreferenced (Result);
+      end Check_2x2;
+
+      procedure Check_3x3 is
+         Result : constant OpenCV.Core.Mat :=
+           Source.Transposed_Product
+             (Delta_33, Order => OpenCV.Core.Transpose_Times_Self);
+      begin
+         pragma Unreferenced (Result);
+      end Check_3x3;
+
+      procedure Check_3x1 is
+         Result : constant OpenCV.Core.Mat :=
+           Source.Transposed_Product
+             (Delta_31, Order => OpenCV.Core.Transpose_Times_Self);
+      begin
+         pragma Unreferenced (Result);
+      end Check_3x1;
+
+      procedure Check_1x2 is
+         Result : constant OpenCV.Core.Mat :=
+           Source.Transposed_Product
+             (Delta_12, Order => OpenCV.Core.Transpose_Times_Self);
+      begin
+         pragma Unreferenced (Result);
+      end Check_1x2;
+   begin
+      Fill_2x3 (Source, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+      Assert_Raises_OpenCV_Error
+        (Check_2x2'Access,
+         "Centered Transposed_Product must reject a 2x2 Delta for a 2x3"
+         & " source");
+      Assert_Raises_OpenCV_Error
+        (Check_3x3'Access,
+         "Centered Transposed_Product must reject a 3x3 Delta for a 2x3"
+         & " source");
+      Assert_Raises_OpenCV_Error
+        (Check_3x1'Access,
+         "Centered Transposed_Product must reject a 3x1 Delta for a 2x3"
+         & " source");
+      Assert_Raises_OpenCV_Error
+        (Check_1x2'Access,
+         "Centered Transposed_Product must reject a 1x2 Delta for a 2x3"
+         & " source");
+   end Transposed_Product_Rejects_Invalid_Delta_Shapes;
+
+   procedure Transposed_Product_Rejects_Empty_Delta
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source        : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Default_Empty : OpenCV.Core.Mat;
+      Empty32       : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 1));
+      Empty64       : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float64, 1));
+
+      procedure Check_Default is
+         Result : constant OpenCV.Core.Mat :=
+           Source.Transposed_Product
+             (Default_Empty, Order => OpenCV.Core.Transpose_Times_Self);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Default;
+
+      procedure Check_Empty32 is
+         Result : constant OpenCV.Core.Mat :=
+           Source.Transposed_Product
+             (Empty32, Order => OpenCV.Core.Transpose_Times_Self);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Empty32;
+
+      procedure Check_Empty64 is
+         Result : constant OpenCV.Core.Mat :=
+           Source.Transposed_Product
+             (Empty64, Order => OpenCV.Core.Transpose_Times_Self);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Empty64;
+   begin
+      Fill_2x3 (Source, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+      Assert_Raises_OpenCV_Error
+        (Check_Default'Access,
+         "Centered Transposed_Product must reject a default empty Delta");
+      Assert_Raises_OpenCV_Error
+        (Check_Empty32'Access,
+         "Centered Transposed_Product must reject a typed 0x0 Float32"
+         & " Delta");
+      Assert_Raises_OpenCV_Error
+        (Check_Empty64'Access,
+         "Centered Transposed_Product must reject a typed 0x0 Float64"
+         & " Delta");
+   end Transposed_Product_Rejects_Empty_Delta;
+
+   procedure Transposed_Product_With_Delta_Rejects_Invalid_Self
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Offset        : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Default_Empty : OpenCV.Core.Mat;
+      Int8_Image    : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Int8, 1));
+      Two_Channel   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 2));
+
+      procedure Check_Default is
+         Result : constant OpenCV.Core.Mat :=
+           Default_Empty.Transposed_Product
+             (Offset, Order => OpenCV.Core.Transpose_Times_Self);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Default;
+
+      procedure Check_Int8 is
+         Result : constant OpenCV.Core.Mat :=
+           Int8_Image.Transposed_Product
+             (Offset, Order => OpenCV.Core.Transpose_Times_Self);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Int8;
+
+      procedure Check_Two_Channel is
+         Result : constant OpenCV.Core.Mat :=
+           Two_Channel.Transposed_Product
+             (Offset, Order => OpenCV.Core.Transpose_Times_Self);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Two_Channel;
+   begin
+      OpenCV.Core.Float32_Access.Set (Offset, 0, 0, 1.0);
+      Assert_Raises_OpenCV_Error
+        (Check_Default'Access,
+         "Centered Transposed_Product must still reject a default empty"
+         & " Self");
+      Assert_Raises_OpenCV_Error
+        (Check_Int8'Access,
+         "Centered Transposed_Product must still reject an Int8 Self");
+      Assert_Raises_OpenCV_Error
+        (Check_Two_Channel'Access,
+         "Centered Transposed_Product must still reject a multi-channel"
+         & " Self");
+   end Transposed_Product_With_Delta_Rejects_Invalid_Self;
+
+   procedure Transposed_Product_Noncontiguous_Full_Delta_Region
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source_Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 5, (OpenCV.Core.Float32, 1));
+      Delta_Parent  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 6, (OpenCV.Core.Float32, 1));
+      Result        : OpenCV.Core.Mat;
+   begin
+      Source_Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Delta_Parent.Set_To (OpenCV.Core.Make_Scalar (77.0));
+
+      declare
+         Source : OpenCV.Core.Mat :=
+           Source_Parent.Region ((X => 1, Y => 0, Width => 3, Height => 2));
+         Offset : OpenCV.Core.Mat :=
+           Delta_Parent.Region ((X => 2, Y => 1, Width => 3, Height => 2));
+      begin
+         Fill_2x3 (Source, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+         Fill_2x3 (Offset, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
+         AUnit.Assertions.Assert
+           (not Source.Is_Continuous and then not Offset.Is_Continuous,
+            "Both Regions used for centered Transposed_Product must be"
+            & " non-contiguous");
+         Result :=
+           Source.Transposed_Product
+             (Offset, Order => OpenCV.Core.Transpose_Times_Self);
+         AUnit.Assertions.Assert
+           (Product_3x3
+              (Result, 9.0, 12.0, 15.0, 12.0, 17.0, 22.0, 15.0, 22.0, 29.0),
+            "Centered Transposed_Product must honor non-contiguous Self and"
+            & " Delta Regions");
+         AUnit.Assertions.Assert
+           (Unchanged_2x3 (Source, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0)
+            and then Unchanged_2x3 (Offset, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+            and then OpenCV.Core.Float32_Access.Get (Source_Parent, 0, 0)
+                     = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Source_Parent, 0, 4)
+                     = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Delta_Parent, 0, 0) = 77.0
+            and then OpenCV.Core.Float32_Access.Get (Delta_Parent, 1, 1)
+                     = 77.0,
+            "Centered Transposed_Product must not modify either Region or"
+            & " the parent pixels outside those Regions");
+      end;
+   end Transposed_Product_Noncontiguous_Full_Delta_Region;
+
+   procedure Transposed_Product_With_Delta_Result_Independence
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Offset : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      Fill_2x3 (Source, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+      Fill_2x3 (Offset, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
+      Result :=
+        Source.Transposed_Product
+          (Offset, Order => OpenCV.Core.Transpose_Times_Self);
+
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, 50.0);
+      OpenCV.Core.Float32_Access.Set (Offset, 0, 0, 40.0);
+      AUnit.Assertions.Assert
+        (Product_3x3
+           (Result, 9.0, 12.0, 15.0, 12.0, 17.0, 22.0, 15.0, 22.0, 29.0),
+         "Mutating Self or Delta must not change the centered result");
+      OpenCV.Core.Float32_Access.Set (Result, 0, 0, 8.0);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Source, 0, 0) = 50.0
+         and then OpenCV.Core.Float32_Access.Get (Offset, 0, 0) = 40.0,
+         "Mutating the centered result must not change Self or Delta");
+   end Transposed_Product_With_Delta_Result_Independence;
 
    procedure Vec3_Mean_Returns_Independent_Channel_Values
      (Test : in out Mat_Test_Fixture)
@@ -5022,6 +5668,79 @@ package body Mat_Reduction_Tests is
         (Caller.Create
            ("Transposed_Product rejects invalid inputs",
             Transposed_Product_Rejects_Invalid_Inputs'Access));
+
+      Result.Add_Test
+        (Caller.Create
+           ("Transposed_Product full-size Float32 Delta",
+            Transposed_Product_Full_Size_Float32_Delta'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transposed_Product row-vector Delta broadcast",
+            Transposed_Product_Row_Vector_Broadcast'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transposed_Product column-vector Delta broadcast",
+            Transposed_Product_Column_Vector_Broadcast'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transposed_Product 1x1 Delta broadcast",
+            Transposed_Product_Scalar_Broadcast'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transposed_Product Self_Times_Transpose with Delta",
+            Transposed_Product_Self_Times_Transpose_With_Delta'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transposed_Product Scale with Delta",
+            Transposed_Product_Scale_With_Delta'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transposed_Product UInt8 Self with Float32 Delta",
+            Transposed_Product_UInt8_Self_Float32_Delta'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transposed_Product automatic promotion from Float64 Delta",
+            Transposed_Product_Automatic_Promotion_From_Float64_Delta'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transposed_Product Int32 Delta",
+            Transposed_Product_Int32_Delta'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transposed_Product explicit Float64 with integer Delta",
+            Transposed_Product_Explicit_Float64_With_Integer_Delta'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transposed_Product explicit Float32 rejects Float64 Delta",
+            Transposed_Product_Explicit_Float32_Rejects_Float64_Delta'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transposed_Product rejects Float16 Delta",
+            Transposed_Product_Rejects_Float16_Delta'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transposed_Product rejects multi-channel Delta",
+            Transposed_Product_Rejects_Multi_Channel_Delta'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transposed_Product rejects invalid Delta shapes",
+            Transposed_Product_Rejects_Invalid_Delta_Shapes'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transposed_Product rejects empty Delta",
+            Transposed_Product_Rejects_Empty_Delta'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transposed_Product with Delta rejects invalid Self",
+            Transposed_Product_With_Delta_Rejects_Invalid_Self'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transposed_Product non-contiguous full Delta Region",
+            Transposed_Product_Noncontiguous_Full_Delta_Region'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transposed_Product with Delta result independence",
+            Transposed_Product_With_Delta_Result_Independence'Access));
 
       Result.Add_Test
         (Caller.Create

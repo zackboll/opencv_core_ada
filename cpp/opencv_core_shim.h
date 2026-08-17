@@ -914,6 +914,25 @@ opencv_core_mat_transposed_product(const opencv_core_mat_handle *source,
                                    opencv_core_mat_handle **out_mat);
 
 /*
+ * Computes the centered transposed product of a borrowed single-channel
+ * Mat using cv::mulTransposed with a required non-empty delta:
+ *   order 0: scale * (source - delta)^T * (source - delta)
+ *   order 1: scale * (source - delta) * (source - delta)^T
+ * Delta is broadcast by OpenCV when it is 1 x source.cols, source.rows x 1,
+ * or 1 x 1. Source depths remain CV_8U, CV_16U, CV_16S, CV_32F, or
+ * CV_64F. Delta may be CV_8U, CV_8S, CV_16U, CV_16S, CV_32S, CV_32F, or
+ * CV_64F; CV_16F is rejected. Automatic output is CV_64F when source or
+ * delta is CV_64F, otherwise CV_32F. Explicit Float32 rejects a CV_64F
+ * source or delta. Inputs are borrowed and unchanged. The result owns
+ * independent storage.
+ */
+opencv_core_status
+opencv_core_mat_transposed_product_with_delta(
+    const opencv_core_mat_handle *source, const opencv_core_mat_handle *delta,
+    uint8_t order, double scale, int32_t output_depth,
+    opencv_core_mat_handle **out_mat);
+
+/*
  * Computes unmasked per-channel mean values. Both operations support one to
  * four channels so each complete result fits opencv_core_scalar. Mean accepts
  * empty Mats and returns all zeroes; mean/stddev requires a non-empty Mat.

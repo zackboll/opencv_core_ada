@@ -655,6 +655,43 @@ package OpenCV.Core is
       Output_Depth : Depth_Type;
       Scale        : Long_Float := 1.0) return Mat;
 
+   --  Computes the centered transposed product of Self using
+   --  OpenCV 4.10 cv::mulTransposed with a required non-empty Offset
+   --  (OpenCV's delta). Offset is subtracted, with OpenCV
+   --  broadcasting, before the product. Transpose_Times_Self computes
+   --  Scale * (Self - Offset)'T * (Self - Offset) and yields a
+   --  Self.Columns x Self.Columns result. Self_Times_Transpose
+   --  computes Scale * (Self - Offset) * (Self - Offset)'T and yields
+   --  a Self.Rows x Self.Rows result. Order has no default. Offset
+   --  must be non-empty; a default empty Mat or typed 0x0 Mat is
+   --  rejected rather than treated as the uncentered form. Accepted
+   --  Offset shapes for Self M x N are M x N, 1 x N, M x 1, and 1 x 1.
+   --  Self and Offset must each be single-channel. Self keeps the
+   --  uncentered source-depth contract: UInt8, UInt16, Int16,
+   --  Float32, or Float64. Offset may be UInt8, Int8, UInt16, Int16,
+   --  Int32, Float32, or Float64; Float16 Offset is rejected. OpenCV
+   --  converts Offset to the effective computation depth. Automatic
+   --  output is Float64 when Self or Offset is Float64 and Float32
+   --  otherwise. Explicit Float32 rejects Float64 Self or Offset so
+   --  the returned Mat is actually Float32. Explicit Float64 accepts
+   --  every supported Self/Offset combination. Scale is applied to the
+   --  completed centered product. Continuity is not required.
+   --  Inputs remain unchanged. The result owns independent storage.
+   --  This is a general centered transposed product; covariance
+   --  construction is one use, not the only meaning. The formal is
+   --  named Offset because Ada reserves Delta.
+   function Transposed_Product
+     (Self   : Mat;
+      Offset : Mat;
+      Order  : Transposed_Product_Order;
+      Scale  : Long_Float := 1.0) return Mat;
+   function Transposed_Product
+     (Self         : Mat;
+      Offset       : Mat;
+      Order        : Transposed_Product_Order;
+      Output_Depth : Depth_Type;
+      Scale        : Long_Float := 1.0) return Mat;
+
    --  Reduces a two-dimensional Mat independently in every channel.
    --  Across_Rows
    --  produces one row; Across_Columns produces one column. The result owns
