@@ -3323,6 +3323,72 @@ opencv_core_mat_solve(const opencv_core_mat_handle *coefficients,
 }
 
 opencv_core_status
+opencv_core_mat_matrix_multiply(const opencv_core_mat_handle *left,
+                                const opencv_core_mat_handle *right,
+                                opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat != nullptr) {
+        *out_mat = nullptr;
+    }
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    if (left == nullptr || right == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        const cv::Mat &A = left->value;
+        const cv::Mat &B = right->value;
+
+        if (A.empty() || B.empty()) {
+            return invalid_argument(
+                "matrix multiply requires non-empty Left and Right Mats");
+        }
+
+        if (A.dims > 2 || B.dims > 2) {
+            return invalid_argument(
+                "matrix multiply requires Mats with at most two dimensions");
+        }
+
+        if (A.type() != B.type()) {
+            return invalid_argument(
+                "matrix multiply requires operands with identical complete types");
+        }
+
+        if (A.type() != CV_32FC1 && A.type() != CV_64FC1 &&
+            A.type() != CV_32FC2 && A.type() != CV_64FC2) {
+            return invalid_argument(
+                "matrix multiply requires Float32 or Float64 Mats with one or two channels");
+        }
+
+        if (A.cols != B.rows) {
+            return invalid_argument(
+                "matrix multiply requires Left.Columns to equal Right.Rows");
+        }
+
+        cv::Mat result;
+        cv::gemm(A, B, 1.0, cv::noArray(), 0.0, result, 0);
+
+        if (result.rows != A.rows || result.cols != B.cols ||
+            result.type() != A.type()) {
+            return invalid_argument(
+                "matrix multiply produced a result with inconsistent shape or type");
+        }
+
+        std::unique_ptr<opencv_core_mat_handle> result_handle(
+            new opencv_core_mat_handle(result));
+        *out_mat = result_handle.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_mean(const opencv_core_mat_handle *mat,
                      opencv_core_scalar *out_mean) {
     clear_error();

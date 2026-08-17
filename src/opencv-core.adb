@@ -2672,6 +2672,67 @@ package body OpenCV.Core is
       end;
    end Solve;
 
+   function Matrix_Multiply (Left, Right : Mat) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      if Left.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Matrix_Multiply requires a non-empty Left Mat");
+      end if;
+
+      if Right.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Matrix_Multiply requires a non-empty Right Mat");
+      end if;
+
+      if Left.Depth /= Right.Depth or else Left.Channels /= Right.Channels then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Matrix_Multiply requires operands with identical complete"
+            & " element types");
+      end if;
+
+      if (Left.Depth /= Float32 and then Left.Depth /= Float64)
+        or else (Left.Channels /= 1 and then Left.Channels /= 2)
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Matrix_Multiply requires Float32 or Float64 Mats with one or"
+            & " two channels");
+      end if;
+
+      if Left.Columns /= Right.Rows then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Matrix_Multiply requires Left.Columns to equal Right.Rows");
+      end if;
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_Matrix_Multiply
+          (Left   => Left.Handle,
+           Right  => Right.Handle,
+           Result => New_Handle'Access);
+      if Status /= OpenCV.Internal.C_API.Success then
+         OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+         Raise_On_Error (Status, "Mat matrix multiply operation");
+      end if;
+
+      if New_Handle = OpenCV.Internal.C_API.Null_Mat_Handle then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat matrix multiply operation returned a null result handle");
+      end if;
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Matrix_Multiply;
+
    procedure Validate_Reduce_Depth
      (Self : Mat; Kind : Reduction_Kind; Output_Depth : Depth_Type) is
    begin

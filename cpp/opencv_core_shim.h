@@ -855,6 +855,21 @@ opencv_core_mat_solve(const opencv_core_mat_handle *coefficients,
                       opencv_core_mat_handle **out_solution);
 
 /*
+ * Performs ordinary algebraic matrix multiplication of two borrowed Mats
+ * using cv::gemm with alpha=1, no addend, and no transpose flags:
+ * result = left * right. Both operands must be non-empty, at most
+ * two-dimensional, and share an identical complete type of CV_32FC1,
+ * CV_64FC1, CV_32FC2, or CV_64FC2. Two-channel inputs use OpenCV
+ * complex multiplication. left.cols must equal right.rows. The result
+ * has shape left.rows x right.cols, the same type, and independently
+ * owned storage. Continuity is not required.
+ */
+opencv_core_status
+opencv_core_mat_matrix_multiply(const opencv_core_mat_handle *left,
+                                const opencv_core_mat_handle *right,
+                                opencv_core_mat_handle **out_mat);
+
+/*
  * Computes unmasked per-channel mean values. Both operations support one to
  * four channels so each complete result fits opencv_core_scalar. Mean accepts
  * empty Mats and returns all zeroes; mean/stddev requires a non-empty Mat.

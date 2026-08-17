@@ -584,6 +584,19 @@ package OpenCV.Core is
    --  accepted. This is not a least-squares or pseudo-solution API.
    --  Numerical rounding is inherent in floating-point solution.
    function Solve (Self : Mat; Right_Hand_Side : Mat) return Solve_Result;
+   --  Performs algebraic matrix multiplication Result = Left * Right
+   --  using OpenCV 4.10 cv::gemm. This is not the existing element-wise
+   --  Multiply. Left.Columns must equal Right.Rows; the independently
+   --  owned result has shape Left.Rows x Right.Columns and the same
+   --  complete element type as both operands. Operands need not be
+   --  square. Both operands must be non-empty and must share an
+   --  identical complete element type of Float32 or Float64 with one
+   --  channel (real) or two channels (complex). Two-channel values use
+   --  OpenCV complex multiplication, with channel 0 as the real part
+   --  and channel 1 as the imaginary part. Unsupported depths and
+   --  other channel counts are rejected. Continuity is not required;
+   --  non-contiguous Regions are supported. Inputs are unchanged.
+   function Matrix_Multiply (Left, Right : Mat) return Mat;
 
    --  Reduces a two-dimensional Mat independently in every channel.
    --  Across_Rows
