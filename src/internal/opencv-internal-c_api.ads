@@ -107,6 +107,9 @@ package OpenCV.Internal.C_API is
 
    Default_Output_Depth : constant C_Int32 := C_Int32'Val (-1);
 
+   Transposed_Product_Transpose_Times_Self : constant C_UInt8 := 0;
+   Transposed_Product_Self_Times_Transpose : constant C_UInt8 := 1;
+
    subtype C_Boolean is Interfaces.Unsigned_8;
    C_False : constant C_Boolean := 0;
    C_True  : constant C_Boolean := 1;
@@ -772,6 +775,17 @@ package OpenCV.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_core_mat_matrix_multiply_add";
+
+   function Mat_Transposed_Product
+     (Source       : Mat_Handle;
+      Order        : C_UInt8;
+      Scale        : C_Double;
+      Output_Depth : C_Int32;
+      Result       : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_transposed_product";
 
    function Mat_Mean (Self : Mat_Handle; Result : access Scalar) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_mean";

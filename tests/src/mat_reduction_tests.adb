@@ -2660,6 +2660,511 @@ package body Mat_Reduction_Tests is
          & " Addend_Scale is 0.0");
    end Matrix_Multiply_Add_Rejects_Invalid_Inputs;
 
+   function Product_3x3
+     (Image                     : OpenCV.Core.Mat;
+      A, B, C, D, E, F, G, H, I : OpenCV.Core.Float32_Value) return Boolean
+   is (Image.Rows = 3
+       and then Image.Columns = 3
+       and then Image.Depth = OpenCV.Core.Float32
+       and then Image.Channels = 1
+       and then OpenCV.Core.Float32_Access.Get (Image, 0, 0) = A
+       and then OpenCV.Core.Float32_Access.Get (Image, 0, 1) = B
+       and then OpenCV.Core.Float32_Access.Get (Image, 0, 2) = C
+       and then OpenCV.Core.Float32_Access.Get (Image, 1, 0) = D
+       and then OpenCV.Core.Float32_Access.Get (Image, 1, 1) = E
+       and then OpenCV.Core.Float32_Access.Get (Image, 1, 2) = F
+       and then OpenCV.Core.Float32_Access.Get (Image, 2, 0) = G
+       and then OpenCV.Core.Float32_Access.Get (Image, 2, 1) = H
+       and then OpenCV.Core.Float32_Access.Get (Image, 2, 2) = I);
+
+   procedure Transposed_Product_Float32_Transpose_Times_Self
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      Fill_2x3 (Source, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+      Result :=
+        Source.Transposed_Product (Order => OpenCV.Core.Transpose_Times_Self);
+
+      AUnit.Assertions.Assert
+        (Product_3x3
+           (Result, 17.0, 22.0, 27.0, 22.0, 29.0, 36.0, 27.0, 36.0, 45.0),
+         "Transpose_Times_Self must compute Scale * Self'T * Self");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Result, 0, 1)
+         = OpenCV.Core.Float32_Access.Get (Result, 1, 0)
+         and then OpenCV.Core.Float32_Access.Get (Result, 0, 2)
+                  = OpenCV.Core.Float32_Access.Get (Result, 2, 0)
+         and then OpenCV.Core.Float32_Access.Get (Result, 1, 2)
+                  = OpenCV.Core.Float32_Access.Get (Result, 2, 1),
+         "Transposed_Product must produce a symmetric result");
+      AUnit.Assertions.Assert
+        (Unchanged_2x3 (Source, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0),
+         "Transposed_Product must not modify its source");
+   end Transposed_Product_Float32_Transpose_Times_Self;
+
+   procedure Transposed_Product_Float32_Self_Times_Transpose
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      Fill_2x3 (Source, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+      Result :=
+        Source.Transposed_Product (Order => OpenCV.Core.Self_Times_Transpose);
+
+      AUnit.Assertions.Assert
+        (Product_2x2 (Result, 14.0, 32.0, 32.0, 77.0),
+         "Self_Times_Transpose must compute Scale * Self * Self'T");
+   end Transposed_Product_Float32_Self_Times_Transpose;
+
+   procedure Transposed_Product_Applies_Scale (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Half   : OpenCV.Core.Mat;
+      Zero   : OpenCV.Core.Mat;
+      Neg    : OpenCV.Core.Mat;
+   begin
+      Fill_2x3 (Source, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+      Half :=
+        Source.Transposed_Product
+          (Order => OpenCV.Core.Transpose_Times_Self, Scale => 0.5);
+      Zero :=
+        Source.Transposed_Product
+          (Order => OpenCV.Core.Transpose_Times_Self, Scale => 0.0);
+      Neg :=
+        Source.Transposed_Product
+          (Order => OpenCV.Core.Transpose_Times_Self, Scale => -1.0);
+
+      AUnit.Assertions.Assert
+        (Product_3x3
+           (Half, 8.5, 11.0, 13.5, 11.0, 14.5, 18.0, 13.5, 18.0, 22.5),
+         "Transposed_Product must apply a fractional Scale");
+      AUnit.Assertions.Assert
+        (Product_3x3 (Zero, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+         "Transposed_Product must apply a zero Scale");
+      AUnit.Assertions.Assert
+        (Product_3x3
+           (Neg,
+            -17.0,
+            -22.0,
+            -27.0,
+            -22.0,
+            -29.0,
+            -36.0,
+            -27.0,
+            -36.0,
+            -45.0),
+         "Transposed_Product must apply a negative Scale");
+   end Transposed_Product_Applies_Scale;
+
+   procedure Transposed_Product_UInt8_Automatic_Output
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.UInt8, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 0, 1);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 1, 2);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 2, 3);
+      OpenCV.Core.UInt8_Access.Set (Source, 1, 0, 4);
+      OpenCV.Core.UInt8_Access.Set (Source, 1, 1, 5);
+      OpenCV.Core.UInt8_Access.Set (Source, 1, 2, 6);
+      Result :=
+        Source.Transposed_Product (Order => OpenCV.Core.Transpose_Times_Self);
+
+      AUnit.Assertions.Assert
+        (Source.Depth = OpenCV.Core.UInt8
+         and then Product_3x3
+                    (Result,
+                     17.0,
+                     22.0,
+                     27.0,
+                     22.0,
+                     29.0,
+                     36.0,
+                     27.0,
+                     36.0,
+                     45.0),
+         "UInt8 Transposed_Product must promote automatically to Float32");
+   end Transposed_Product_UInt8_Automatic_Output;
+
+   procedure Transposed_Product_UInt16_Automatic_Output
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source8 : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.UInt8, 1));
+      Source  : OpenCV.Core.Mat;
+      Result  : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.UInt8_Access.Set (Source8, 0, 0, 1);
+      OpenCV.Core.UInt8_Access.Set (Source8, 0, 1, 2);
+      OpenCV.Core.UInt8_Access.Set (Source8, 0, 2, 3);
+      OpenCV.Core.UInt8_Access.Set (Source8, 1, 0, 4);
+      OpenCV.Core.UInt8_Access.Set (Source8, 1, 1, 5);
+      OpenCV.Core.UInt8_Access.Set (Source8, 1, 2, 6);
+      Source := Source8.Convert_To (OpenCV.Core.UInt16);
+      Result :=
+        Source.Transposed_Product (Order => OpenCV.Core.Transpose_Times_Self);
+
+      AUnit.Assertions.Assert
+        (Source.Depth = OpenCV.Core.UInt16
+         and then Product_3x3
+                    (Result,
+                     17.0,
+                     22.0,
+                     27.0,
+                     22.0,
+                     29.0,
+                     36.0,
+                     27.0,
+                     36.0,
+                     45.0),
+         "UInt16 Transposed_Product must promote automatically to Float32");
+   end Transposed_Product_UInt16_Automatic_Output;
+
+   procedure Transposed_Product_Int16_Automatic_Output
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source32 : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Source   : OpenCV.Core.Mat;
+      Result   : OpenCV.Core.Mat;
+   begin
+      Fill_2x2 (Source32, 1.0, -2.0, -3.0, 4.0);
+      Source := Source32.Convert_To (OpenCV.Core.Int16);
+      Result :=
+        Source.Transposed_Product (Order => OpenCV.Core.Transpose_Times_Self);
+
+      AUnit.Assertions.Assert
+        (Source.Depth = OpenCV.Core.Int16
+         and then Product_2x2 (Result, 10.0, -14.0, -14.0, 20.0),
+         "Int16 Transposed_Product must promote automatically to Float32");
+   end Transposed_Product_Int16_Automatic_Output;
+
+   procedure Transposed_Product_Float64_Automatic_Output
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source32  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Source    : OpenCV.Core.Mat;
+      Result    : OpenCV.Core.Mat;
+      Converted : OpenCV.Core.Mat;
+   begin
+      Fill_2x3 (Source32, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+      Source := Source32.Convert_To (OpenCV.Core.Float64);
+      Result :=
+        Source.Transposed_Product (Order => OpenCV.Core.Transpose_Times_Self);
+      Converted := Result.Convert_To (OpenCV.Core.Float32);
+
+      AUnit.Assertions.Assert
+        (Result.Depth = OpenCV.Core.Float64
+         and then Result.Rows = 3
+         and then Result.Columns = 3
+         and then Result.Channels = 1
+         and then Product_3x3
+                    (Converted,
+                     17.0,
+                     22.0,
+                     27.0,
+                     22.0,
+                     29.0,
+                     36.0,
+                     27.0,
+                     36.0,
+                     45.0),
+         "Float64 Transposed_Product must keep Float64 automatic depth");
+   end Transposed_Product_Float64_Automatic_Output;
+
+   procedure Transposed_Product_Explicit_Float64_From_Float32
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Result    : OpenCV.Core.Mat;
+      Converted : OpenCV.Core.Mat;
+   begin
+      Fill_2x3 (Source, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+      Result :=
+        Source.Transposed_Product
+          (Order        => OpenCV.Core.Transpose_Times_Self,
+           Output_Depth => OpenCV.Core.Float64);
+      Converted := Result.Convert_To (OpenCV.Core.Float32);
+
+      AUnit.Assertions.Assert
+        (Result.Depth = OpenCV.Core.Float64
+         and then Source.Depth = OpenCV.Core.Float32
+         and then Product_3x3
+                    (Converted,
+                     17.0,
+                     22.0,
+                     27.0,
+                     22.0,
+                     29.0,
+                     36.0,
+                     27.0,
+                     36.0,
+                     45.0),
+         "Explicit Float64 output from Float32 must preserve values");
+   end Transposed_Product_Explicit_Float64_From_Float32;
+
+   procedure Transposed_Product_Explicit_Float64_From_UInt8
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.UInt8, 1));
+      Result    : OpenCV.Core.Mat;
+      Converted : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 0, 1);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 1, 2);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 2, 3);
+      OpenCV.Core.UInt8_Access.Set (Source, 1, 0, 4);
+      OpenCV.Core.UInt8_Access.Set (Source, 1, 1, 5);
+      OpenCV.Core.UInt8_Access.Set (Source, 1, 2, 6);
+      Result :=
+        Source.Transposed_Product
+          (Order        => OpenCV.Core.Transpose_Times_Self,
+           Output_Depth => OpenCV.Core.Float64);
+      Converted := Result.Convert_To (OpenCV.Core.Float32);
+
+      AUnit.Assertions.Assert
+        (Result.Depth = OpenCV.Core.Float64
+         and then Source.Depth = OpenCV.Core.UInt8
+         and then Product_3x3
+                    (Converted,
+                     17.0,
+                     22.0,
+                     27.0,
+                     22.0,
+                     29.0,
+                     36.0,
+                     27.0,
+                     36.0,
+                     45.0),
+         "Explicit Float64 output from UInt8 must use the 64-bit kernel");
+   end Transposed_Product_Explicit_Float64_From_UInt8;
+
+   procedure Transposed_Product_Noncontiguous_Region
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 5, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+
+      declare
+         Source : OpenCV.Core.Mat :=
+           Parent.Region ((X => 1, Y => 0, Width => 3, Height => 2));
+      begin
+         Fill_2x3 (Source, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+         AUnit.Assertions.Assert
+           (not Source.Is_Continuous,
+            "The Region used for Transposed_Product must be non-contiguous");
+         Result :=
+           Source.Transposed_Product
+             (Order => OpenCV.Core.Transpose_Times_Self);
+         AUnit.Assertions.Assert
+           (Product_3x3
+              (Result, 17.0, 22.0, 27.0, 22.0, 29.0, 36.0, 27.0, 36.0, 45.0),
+            "Transposed_Product must honor a non-contiguous Region");
+         AUnit.Assertions.Assert
+           (Unchanged_2x3 (Source, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0)
+            and then OpenCV.Core.Float32_Access.Get (Parent, 0, 0) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 0, 4) = 99.0,
+            "Transposed_Product must not modify the Region or its parent");
+      end;
+   end Transposed_Product_Noncontiguous_Region;
+
+   procedure Transposed_Product_Result_Owns_Independent_Storage
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      Fill_2x3 (Source, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+      Result :=
+        Source.Transposed_Product (Order => OpenCV.Core.Transpose_Times_Self);
+
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, 50.0);
+      AUnit.Assertions.Assert
+        (Product_3x3
+           (Result, 17.0, 22.0, 27.0, 22.0, 29.0, 36.0, 27.0, 36.0, 45.0),
+         "Mutating the source must not change the Transposed_Product result");
+      OpenCV.Core.Float32_Access.Set (Result, 0, 0, 8.0);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Source, 0, 0) = 50.0
+         and then OpenCV.Core.Float32_Access.Get (Source, 1, 2) = 6.0,
+         "Mutating the result must not change the Transposed_Product source");
+   end Transposed_Product_Result_Owns_Independent_Storage;
+
+   procedure Transposed_Product_Rejects_Invalid_Inputs
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Valid          : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Default_Empty  : OpenCV.Core.Mat;
+      Empty_UInt8    : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.UInt8, 1));
+      Empty32        : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 1));
+      Empty64        : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float64, 1));
+      Int8_Image     : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Int8, 1));
+      Int32_Image    : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Int32, 1));
+      Float16_Image  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float16, 1));
+      Two_Channel    : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 2));
+      Three_Channel  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 3));
+      Float64_Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float64, 1));
+
+      procedure Check_Default is
+         Result : constant OpenCV.Core.Mat :=
+           Default_Empty.Transposed_Product
+             (Order => OpenCV.Core.Transpose_Times_Self);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Default;
+
+      procedure Check_Empty_UInt8 is
+         Result : constant OpenCV.Core.Mat :=
+           Empty_UInt8.Transposed_Product
+             (Order => OpenCV.Core.Transpose_Times_Self);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Empty_UInt8;
+
+      procedure Check_Empty32 is
+         Result : constant OpenCV.Core.Mat :=
+           Empty32.Transposed_Product
+             (Order => OpenCV.Core.Transpose_Times_Self);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Empty32;
+
+      procedure Check_Empty64 is
+         Result : constant OpenCV.Core.Mat :=
+           Empty64.Transposed_Product
+             (Order => OpenCV.Core.Transpose_Times_Self);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Empty64;
+
+      procedure Check_Int8 is
+         Result : constant OpenCV.Core.Mat :=
+           Int8_Image.Transposed_Product
+             (Order => OpenCV.Core.Transpose_Times_Self);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Int8;
+
+      procedure Check_Int32 is
+         Result : constant OpenCV.Core.Mat :=
+           Int32_Image.Transposed_Product
+             (Order => OpenCV.Core.Transpose_Times_Self);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Int32;
+
+      procedure Check_Float16 is
+         Result : constant OpenCV.Core.Mat :=
+           Float16_Image.Transposed_Product
+             (Order => OpenCV.Core.Transpose_Times_Self);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Float16;
+
+      procedure Check_Two_Channel is
+         Result : constant OpenCV.Core.Mat :=
+           Two_Channel.Transposed_Product
+             (Order => OpenCV.Core.Transpose_Times_Self);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Two_Channel;
+
+      procedure Check_Three_Channel is
+         Result : constant OpenCV.Core.Mat :=
+           Three_Channel.Transposed_Product
+             (Order => OpenCV.Core.Transpose_Times_Self);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Three_Channel;
+
+      procedure Check_Float64_To_Float32 is
+         Result : constant OpenCV.Core.Mat :=
+           Float64_Source.Transposed_Product
+             (Order        => OpenCV.Core.Transpose_Times_Self,
+              Output_Depth => OpenCV.Core.Float32);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Float64_To_Float32;
+
+      procedure Check_Integer_Output is
+         Result : constant OpenCV.Core.Mat :=
+           Valid.Transposed_Product
+             (Order        => OpenCV.Core.Transpose_Times_Self,
+              Output_Depth => OpenCV.Core.UInt8);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Integer_Output;
+   begin
+      Fill_2x3 (Valid, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+      Assert_Raises_OpenCV_Error
+        (Check_Default'Access,
+         "Transposed_Product must reject a default empty Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_Empty_UInt8'Access,
+         "Transposed_Product must reject a typed empty UInt8 Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_Empty32'Access,
+         "Transposed_Product must reject a typed empty Float32 Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_Empty64'Access,
+         "Transposed_Product must reject a typed empty Float64 Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_Int8'Access, "Transposed_Product must reject Int8 Mats");
+      Assert_Raises_OpenCV_Error
+        (Check_Int32'Access, "Transposed_Product must reject Int32 Mats");
+      Assert_Raises_OpenCV_Error
+        (Check_Float16'Access, "Transposed_Product must reject Float16 Mats");
+      Assert_Raises_OpenCV_Error
+        (Check_Two_Channel'Access,
+         "Transposed_Product must reject Float32 C2 Mats");
+      Assert_Raises_OpenCV_Error
+        (Check_Three_Channel'Access,
+         "Transposed_Product must reject Float32 C3 Mats");
+      Assert_Raises_OpenCV_Error
+        (Check_Float64_To_Float32'Access,
+         "Transposed_Product must reject Float64 source with Float32 output");
+      Assert_Raises_OpenCV_Error
+        (Check_Integer_Output'Access,
+         "Transposed_Product must reject a non-floating output depth");
+   end Transposed_Product_Rejects_Invalid_Inputs;
+
    procedure Vec3_Mean_Returns_Independent_Channel_Values
      (Test : in out Mat_Test_Fixture)
    is
@@ -4468,6 +4973,55 @@ package body Mat_Reduction_Tests is
         (Caller.Create
            ("Matrix_Multiply_Add rejects invalid inputs",
             Matrix_Multiply_Add_Rejects_Invalid_Inputs'Access));
+
+      Result.Add_Test
+        (Caller.Create
+           ("Transposed_Product Float32 Transpose_Times_Self",
+            Transposed_Product_Float32_Transpose_Times_Self'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transposed_Product Float32 Self_Times_Transpose",
+            Transposed_Product_Float32_Self_Times_Transpose'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transposed_Product applies Scale",
+            Transposed_Product_Applies_Scale'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transposed_Product UInt8 automatic output",
+            Transposed_Product_UInt8_Automatic_Output'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transposed_Product UInt16 automatic output",
+            Transposed_Product_UInt16_Automatic_Output'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transposed_Product Int16 automatic output",
+            Transposed_Product_Int16_Automatic_Output'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transposed_Product Float64 automatic output",
+            Transposed_Product_Float64_Automatic_Output'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transposed_Product explicit Float64 from Float32",
+            Transposed_Product_Explicit_Float64_From_Float32'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transposed_Product explicit Float64 from UInt8",
+            Transposed_Product_Explicit_Float64_From_UInt8'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transposed_Product supports non-contiguous Regions",
+            Transposed_Product_Noncontiguous_Region'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transposed_Product result owns independent storage",
+            Transposed_Product_Result_Owns_Independent_Storage'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Transposed_Product rejects invalid inputs",
+            Transposed_Product_Rejects_Invalid_Inputs'Access));
 
       Result.Add_Test
         (Caller.Create

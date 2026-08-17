@@ -40,6 +40,12 @@ package OpenCV.Core is
 
    type Sort_Order is (Ascending, Descending);
 
+   --  Selects the uncentered transposed-product orientation. There is
+   --  no default; the caller must choose which square product is
+   --  intended.
+   type Transposed_Product_Order is
+     (Transpose_Times_Self, Self_Times_Transpose);
+
    --  Identifies which triangle of a square Mat is authoritative when
    --  completing symmetry in place. Upper_Triangle copies the upper
    --  triangle onto the lower triangle. Lower_Triangle copies the lower
@@ -621,6 +627,33 @@ package OpenCV.Core is
       Addend        : Mat;
       Product_Scale : Long_Float := 1.0;
       Addend_Scale  : Long_Float := 1.0) return Mat;
+
+   --  Computes the uncentered transposed product of Self using
+   --  OpenCV 4.10 cv::mulTransposed with no Delta. Transpose_Times_Self
+   --  computes Scale * Self'T * Self and yields a Self.Columns x
+   --  Self.Columns result. Self_Times_Transpose computes Scale * Self
+   --  * Self'T and yields a Self.Rows x Self.Rows result. Order has no
+   --  default. Self must be non-empty and single-channel. Supported
+   --  source depths are UInt8, UInt16, Int16, Float32, and Float64.
+   --  Int8, Int32, Float16, and multi-channel Mats are rejected.
+   --  Automatic output depth follows the OpenCV 4.10 implementation,
+   --  not the documentation's dtype=-1 claim: Float64 sources produce
+   --  Float64 and every other supported source produces Float32.
+   --  Explicit Output_Depth may be Float32 or Float64. Float64 source
+   --  with Float32 output is rejected because OpenCV 4.10 has no such
+   --  kernel. Scale is applied to the complete product and may be
+   --  positive, zero, negative, or fractional. The result is
+   --  symmetric, owns independent storage, and does not modify Self.
+   --  Continuity is not required; non-contiguous Regions are
+   --  supported. Delta/centering is not part of this API.
+   function Transposed_Product
+     (Self : Mat; Order : Transposed_Product_Order; Scale : Long_Float := 1.0)
+      return Mat;
+   function Transposed_Product
+     (Self         : Mat;
+      Order        : Transposed_Product_Order;
+      Output_Depth : Depth_Type;
+      Scale        : Long_Float := 1.0) return Mat;
 
    --  Reduces a two-dimensional Mat independently in every channel.
    --  Across_Rows

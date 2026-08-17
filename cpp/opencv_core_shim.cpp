@@ -3469,6 +3469,104 @@ opencv_core_mat_matrix_multiply_add(const opencv_core_mat_handle *left,
 }
 
 opencv_core_status
+opencv_core_mat_transposed_product(const opencv_core_mat_handle *source,
+                                   uint8_t order, double scale,
+                                   int32_t output_depth,
+                                   opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat != nullptr) {
+        *out_mat = nullptr;
+    }
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    if (source == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        const cv::Mat &A = source->value;
+
+        if (A.empty()) {
+            return invalid_argument(
+                "transposed product requires a non-empty source Mat");
+        }
+
+        if (A.dims > 2) {
+            return invalid_argument(
+                "transposed product requires a Mat with at most two dimensions");
+        }
+
+        if (A.channels() != 1) {
+            return invalid_argument(
+                "transposed product requires a single-channel source Mat");
+        }
+
+        if (A.depth() != CV_8U && A.depth() != CV_16U && A.depth() != CV_16S &&
+            A.depth() != CV_32F && A.depth() != CV_64F) {
+            return invalid_argument(
+                "transposed product requires a UInt8, UInt16, Int16, Float32, or Float64 source");
+        }
+
+        bool a_t_a;
+        switch (order) {
+        case OPENCV_CORE_TRANSPOSED_PRODUCT_TRANSPOSE_TIMES_SELF:
+            a_t_a = true;
+            break;
+        case OPENCV_CORE_TRANSPOSED_PRODUCT_SELF_TIMES_TRANSPOSE:
+            a_t_a = false;
+            break;
+        default:
+            return invalid_argument(
+                "transposed product order is not a supported identifier");
+        }
+
+        int requested_dtype = -1;
+        int expected_depth = (A.depth() == CV_64F) ? CV_64F : CV_32F;
+
+        if (output_depth != OPENCV_CORE_DEFAULT_OUTPUT_DEPTH) {
+            if (!to_opencv_depth(output_depth, requested_dtype)) {
+                return invalid_argument(
+                    "output depth is not a supported depth identifier");
+            }
+
+            if (requested_dtype != CV_32F && requested_dtype != CV_64F) {
+                return invalid_argument(
+                    "transposed product output depth must be Float32 or Float64");
+            }
+
+            if (A.depth() == CV_64F && requested_dtype == CV_32F) {
+                return invalid_argument(
+                    "transposed product does not support Float64 source with Float32 output");
+            }
+
+            expected_depth = requested_dtype;
+        }
+
+        cv::Mat result;
+        cv::mulTransposed(A, result, a_t_a, cv::noArray(), scale,
+                          requested_dtype);
+
+        const int expected_size = a_t_a ? A.cols : A.rows;
+        if (result.rows != expected_size || result.cols != expected_size ||
+            result.channels() != 1 || result.depth() != expected_depth) {
+            return invalid_argument(
+                "transposed product produced a result with inconsistent shape or type");
+        }
+
+        std::unique_ptr<opencv_core_mat_handle> result_handle(
+            new opencv_core_mat_handle(result));
+        *out_mat = result_handle.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_mean(const opencv_core_mat_handle *mat,
                      opencv_core_scalar *out_mean) {
     clear_error();

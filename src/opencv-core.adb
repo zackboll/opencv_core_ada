@@ -2824,6 +2824,118 @@ package body OpenCV.Core is
       return Result;
    end Matrix_Multiply_Add;
 
+   function To_C_Transposed_Product_Order
+     (Value : Transposed_Product_Order) return OpenCV.Internal.C_API.C_UInt8
+   is (case Value is
+         when Transpose_Times_Self =>
+           OpenCV.Internal.C_API.Transposed_Product_Transpose_Times_Self,
+         when Self_Times_Transpose =>
+           OpenCV.Internal.C_API.Transposed_Product_Self_Times_Transpose);
+
+   function Supports_Transposed_Product_Source (Self : Mat) return Boolean
+   is (Self.Depth = UInt8
+       or else Self.Depth = UInt16
+       or else Self.Depth = Int16
+       or else Self.Depth = Float32
+       or else Self.Depth = Float64);
+
+   procedure Validate_Transposed_Product
+     (Self : Mat; Output_Depth : Depth_Type; Explicit_Depth : Boolean) is
+   begin
+      if Self.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Transposed_Product requires a non-empty Mat");
+      end if;
+
+      if Self.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Transposed_Product requires a single-channel Mat");
+      end if;
+
+      if not Supports_Transposed_Product_Source (Self) then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Transposed_Product requires a UInt8, UInt16, Int16, Float32,"
+            & " or Float64 Mat");
+      end if;
+
+      if Explicit_Depth then
+         if Output_Depth /= Float32 and then Output_Depth /= Float64 then
+            Ada.Exceptions.Raise_Exception
+              (OpenCV_Error'Identity,
+               "Transposed_Product output depth must be Float32 or Float64");
+         end if;
+
+         if Self.Depth = Float64 and then Output_Depth = Float32 then
+            Ada.Exceptions.Raise_Exception
+              (OpenCV_Error'Identity,
+               "Transposed_Product does not support Float64 source with"
+               & " Float32 output");
+         end if;
+      end if;
+   end Validate_Transposed_Product;
+
+   function Call_Transposed_Product
+     (Self         : Mat;
+      Order        : Transposed_Product_Order;
+      Scale        : Long_Float;
+      Output_Depth : OpenCV.Internal.C_API.C_Int32) return Mat
+   is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Status :=
+        OpenCV.Internal.C_API.Mat_Transposed_Product
+          (Source       => Self.Handle,
+           Order        => To_C_Transposed_Product_Order (Order),
+           Scale        => OpenCV.Internal.C_API.C_Double (Scale),
+           Output_Depth => Output_Depth,
+           Result       => New_Handle'Access);
+      if Status /= OpenCV.Internal.C_API.Success then
+         OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+         Raise_On_Error (Status, "Mat transposed product operation");
+      end if;
+
+      if New_Handle = OpenCV.Internal.C_API.Null_Mat_Handle then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat transposed product operation returned a null result"
+            & " handle");
+      end if;
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Call_Transposed_Product;
+
+   function Transposed_Product
+     (Self : Mat; Order : Transposed_Product_Order; Scale : Long_Float := 1.0)
+      return Mat is
+   begin
+      Validate_Transposed_Product
+        (Self, Output_Depth => Float32, Explicit_Depth => False);
+      return
+        Call_Transposed_Product
+          (Self, Order, Scale, OpenCV.Internal.C_API.Default_Output_Depth);
+   end Transposed_Product;
+
+   function Transposed_Product
+     (Self         : Mat;
+      Order        : Transposed_Product_Order;
+      Output_Depth : Depth_Type;
+      Scale        : Long_Float := 1.0) return Mat is
+   begin
+      Validate_Transposed_Product
+        (Self, Output_Depth => Output_Depth, Explicit_Depth => True);
+      return
+        Call_Transposed_Product
+          (Self, Order, Scale, To_C_Depth (Output_Depth));
+   end Transposed_Product;
+
    procedure Validate_Reduce_Depth
      (Self : Mat; Kind : Reduction_Kind; Output_Depth : Depth_Type) is
    begin

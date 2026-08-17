@@ -107,6 +107,9 @@ typedef struct {
 #define OPENCV_CORE_REDUCE_SUM_OF_SQUARES ((int32_t)4)
 #define OPENCV_CORE_DEFAULT_OUTPUT_DEPTH ((int32_t)-1)
 
+#define OPENCV_CORE_TRANSPOSED_PRODUCT_TRANSPOSE_TIMES_SELF ((uint8_t)0)
+#define OPENCV_CORE_TRANSPOSED_PRODUCT_SELF_TIMES_TRANSPOSE ((uint8_t)1)
+
 /*
  * Returns a borrowed pointer to the diagnostic for the most recent failed shim
  * operation on the calling thread. The pointer remains valid only until a
@@ -890,6 +893,25 @@ opencv_core_mat_matrix_multiply_add(const opencv_core_mat_handle *left,
                                     double product_scale,
                                     double addend_scale,
                                     opencv_core_mat_handle **out_mat);
+
+/*
+ * Computes the uncentered transposed product of a borrowed single-channel
+ * Mat using cv::mulTransposed with an empty delta:
+ *   order 0: scale * source^T * source, result is source.cols x source.cols
+ *   order 1: scale * source * source^T, result is source.rows x source.rows
+ * Source must be non-empty, at most two-dimensional, single-channel, and
+ * one of CV_8U, CV_16U, CV_16S, CV_32F, or CV_64F. output_depth of -1
+ * selects OpenCV 4.10 automatic depth, which is CV_64F for a CV_64F
+ * source and CV_32F otherwise. Explicit output_depth must be the
+ * binding's Float32 or Float64 identifier. CV_64F source with explicit
+ * Float32 is rejected because OpenCV 4.10 has no such kernel. Continuity
+ * is not required. The result owns independent storage.
+ */
+opencv_core_status
+opencv_core_mat_transposed_product(const opencv_core_mat_handle *source,
+                                   uint8_t order, double scale,
+                                   int32_t output_depth,
+                                   opencv_core_mat_handle **out_mat);
 
 /*
  * Computes unmasked per-channel mean values. Both operations support one to
