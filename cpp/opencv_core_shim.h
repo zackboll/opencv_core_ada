@@ -1038,6 +1038,7 @@ opencv_core_mat_principal_component_analysis(
     opencv_core_mat_handle **out_eigenvectors);
 
 /*
+ * Applies cv::transform to each source element interpreted as its channel
  * vector. source and coefficients are borrowed. The independently owned
  * result has source.rows, source.cols, source.depth(), and
  * coefficients.rows channels.
