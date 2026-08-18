@@ -858,6 +858,28 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_principal_component_analysis";
 
+   function Mat_PCA_Project
+     (Source       : Mat_Handle;
+      Mean         : Mat_Handle;
+      Eigenvectors : Mat_Handle;
+      Orientation  : C_Int32;
+      Result       : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_pca_project";
+
+   function Mat_PCA_Back_Project
+     (Source       : Mat_Handle;
+      Mean         : Mat_Handle;
+      Eigenvectors : Mat_Handle;
+      Orientation  : C_Int32;
+      Result       : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_pca_back_project";
+
    function Mat_Transform
      (Source       : Mat_Handle;
       Coefficients : Mat_Handle;

@@ -1038,6 +1038,39 @@ opencv_core_mat_principal_component_analysis(
     opencv_core_mat_handle **out_eigenvectors);
 
 /*
+ * Projects borrowed samples onto a borrowed PCA basis (mean and
+ * eigenvectors). orientation is 0 (samples are rows) or 1 (samples
+ * are columns). Column orientation is adapted through OpenCV's
+ * row-oriented PCA::project path so a one-feature 1x1 mean is not
+ * treated as an ambiguous native branch. The independently owned
+ * result is published only after success. On failure *out_mat
+ * remains null. Inputs are borrowed and unchanged.
+ */
+opencv_core_status
+opencv_core_mat_pca_project(
+    const opencv_core_mat_handle *source,
+    const opencv_core_mat_handle *mean,
+    const opencv_core_mat_handle *eigenvectors, int32_t orientation,
+    opencv_core_mat_handle **out_mat);
+
+/*
+ * Reconstructs borrowed principal-component coordinates through a
+ * borrowed PCA basis (mean and eigenvectors). orientation is 0
+ * (samples are rows) or 1 (samples are columns). Column orientation
+ * is adapted through OpenCV's row-oriented PCA::backProject path so
+ * a one-feature 1x1 mean is not treated as an ambiguous native
+ * branch. The independently owned result is published only after
+ * success. On failure *out_mat remains null. Inputs are borrowed
+ * and unchanged.
+ */
+opencv_core_status
+opencv_core_mat_pca_back_project(
+    const opencv_core_mat_handle *source,
+    const opencv_core_mat_handle *mean,
+    const opencv_core_mat_handle *eigenvectors, int32_t orientation,
+    opencv_core_mat_handle **out_mat);
+
+/*
  * Applies cv::transform to each source element interpreted as its channel
  * vector. source and coefficients are borrowed. The independently owned
  * result has source.rows, source.cols, source.depth(), and

@@ -3587,6 +3587,231 @@ package body OpenCV.Core is
       return Principal_Component_Analysis_Impl (Self, Orientation, Components);
    end Principal_Component_Analysis;
 
+   function Is_PCA_Floating_Depth (Value : Depth_Type) return Boolean
+   is (Value = Float32 or else Value = Float64);
+
+   procedure Validate_PCA_Basis
+     (Basis       : Principal_Component_Analysis_Result;
+      Orientation : Sample_Orientation)
+   is
+      Feature_Count   : Natural;
+      Component_Count : Natural;
+   begin
+      if Basis.Mean.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "PCA basis Mean must be a non-empty Mat");
+      end if;
+
+      if Basis.Mean.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "PCA basis Mean must be a single-channel Mat");
+      end if;
+
+      if not Is_PCA_Floating_Depth (Basis.Mean.Depth) then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "PCA basis Mean must be a Float32 or Float64 Mat");
+      end if;
+
+      if Basis.Eigenvectors.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "PCA basis Eigenvectors must be a non-empty Mat");
+      end if;
+
+      if Basis.Eigenvectors.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "PCA basis Eigenvectors must be a single-channel Mat");
+      end if;
+
+      if Basis.Eigenvectors.Depth /= Basis.Mean.Depth then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "PCA basis Eigenvectors must have the same depth as Mean");
+      end if;
+
+      Component_Count := Basis.Eigenvectors.Rows;
+      Feature_Count := Basis.Eigenvectors.Columns;
+
+      if Component_Count = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "PCA basis Eigenvectors must have at least one row");
+      end if;
+
+      if Feature_Count = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "PCA basis Eigenvectors must have at least one column");
+      end if;
+
+      if Component_Count > Feature_Count then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "PCA basis component count must not exceed the feature count");
+      end if;
+
+      if Orientation = Samples_Are_Rows then
+         if Basis.Mean.Rows /= 1 or else Basis.Mean.Columns /= Feature_Count
+         then
+            Ada.Exceptions.Raise_Exception
+              (OpenCV_Error'Identity,
+               "PCA row orientation requires Mean to be 1 x feature count");
+         end if;
+      else
+         if Basis.Mean.Rows /= Feature_Count or else Basis.Mean.Columns /= 1
+         then
+            Ada.Exceptions.Raise_Exception
+              (OpenCV_Error'Identity,
+               "PCA column orientation requires Mean to be feature count x 1");
+         end if;
+      end if;
+   end Validate_PCA_Basis;
+
+   procedure Validate_PCA_Project_Or_Back_Project_Source
+     (Self : Mat; Operation : String) is
+   begin
+      if Self.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, Operation & " requires a non-empty Mat");
+      end if;
+
+      if Self.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            Operation & " requires a single-channel Mat");
+      end if;
+
+      if not Is_PCA_Floating_Depth (Self.Depth) then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            Operation & " requires a Float32 or Float64 Mat");
+      end if;
+   end Validate_PCA_Project_Or_Back_Project_Source;
+
+   procedure Validate_PCA_Project
+     (Self        : Mat;
+      Basis       : Principal_Component_Analysis_Result;
+      Orientation : Sample_Orientation)
+   is
+      Feature_Count : constant Natural := Basis.Eigenvectors.Columns;
+   begin
+      Validate_PCA_Project_Or_Back_Project_Source (Self, "PCA_Project");
+      Validate_PCA_Basis (Basis, Orientation);
+
+      if Orientation = Samples_Are_Rows then
+         if Self.Columns /= Feature_Count then
+            Ada.Exceptions.Raise_Exception
+              (OpenCV_Error'Identity,
+               "PCA_Project requires Self.Columns to equal the basis"
+               & " feature count");
+         end if;
+      else
+         if Self.Rows /= Feature_Count then
+            Ada.Exceptions.Raise_Exception
+              (OpenCV_Error'Identity,
+               "PCA_Project requires Self.Rows to equal the basis"
+               & " feature count");
+         end if;
+      end if;
+   end Validate_PCA_Project;
+
+   procedure Validate_PCA_Back_Project
+     (Self        : Mat;
+      Basis       : Principal_Component_Analysis_Result;
+      Orientation : Sample_Orientation)
+   is
+      Component_Count : constant Natural := Basis.Eigenvectors.Rows;
+   begin
+      Validate_PCA_Project_Or_Back_Project_Source (Self, "PCA_Back_Project");
+      Validate_PCA_Basis (Basis, Orientation);
+
+      if Orientation = Samples_Are_Rows then
+         if Self.Columns /= Component_Count then
+            Ada.Exceptions.Raise_Exception
+              (OpenCV_Error'Identity,
+               "PCA_Back_Project requires Self.Columns to equal the"
+               & " basis component count");
+         end if;
+      else
+         if Self.Rows /= Component_Count then
+            Ada.Exceptions.Raise_Exception
+              (OpenCV_Error'Identity,
+               "PCA_Back_Project requires Self.Rows to equal the"
+               & " basis component count");
+         end if;
+      end if;
+   end Validate_PCA_Back_Project;
+
+   function Call_PCA_Projection
+     (Self        : Mat;
+      Basis       : Principal_Component_Analysis_Result;
+      Orientation : Sample_Orientation;
+      Project     : Boolean) return Mat
+   is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+      Operation  : constant String :=
+        (if Project
+         then "Mat PCA project operation"
+         else "Mat PCA back-project operation");
+   begin
+      if Project then
+         Status :=
+           OpenCV.Internal.C_API.Mat_PCA_Project
+             (Source       => Self.Handle,
+              Mean         => Basis.Mean.Handle,
+              Eigenvectors => Basis.Eigenvectors.Handle,
+              Orientation  => To_C_Sample_Orientation (Orientation),
+              Result       => New_Handle'Access);
+      else
+         Status :=
+           OpenCV.Internal.C_API.Mat_PCA_Back_Project
+             (Source       => Self.Handle,
+              Mean         => Basis.Mean.Handle,
+              Eigenvectors => Basis.Eigenvectors.Handle,
+              Orientation  => To_C_Sample_Orientation (Orientation),
+              Result       => New_Handle'Access);
+      end if;
+
+      if Status /= OpenCV.Internal.C_API.Success then
+         OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+         Raise_On_Error (Status, Operation);
+      end if;
+
+      if New_Handle = OpenCV.Internal.C_API.Null_Mat_Handle then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            Operation & " returned a null result handle");
+      end if;
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Call_PCA_Projection;
+
+   function PCA_Project
+     (Self        : Mat;
+      Basis       : Principal_Component_Analysis_Result;
+      Orientation : Sample_Orientation := Samples_Are_Rows) return Mat is
+   begin
+      Validate_PCA_Project (Self, Basis, Orientation);
+      return Call_PCA_Projection (Self, Basis, Orientation, Project => True);
+   end PCA_Project;
+
+   function PCA_Back_Project
+     (Self        : Mat;
+      Basis       : Principal_Component_Analysis_Result;
+      Orientation : Sample_Orientation := Samples_Are_Rows) return Mat is
+   begin
+      Validate_PCA_Back_Project (Self, Basis, Orientation);
+      return Call_PCA_Projection (Self, Basis, Orientation, Project => False);
+   end PCA_Back_Project;
+
    function Supports_Transform_Source (Self : Mat) return Boolean
    is (Self.Depth = UInt8
        or else Self.Depth = Int8

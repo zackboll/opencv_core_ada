@@ -895,6 +895,59 @@ package OpenCV.Core is
       Orientation : Sample_Orientation := Samples_Are_Rows)
       return Principal_Component_Analysis_Result;
 
+   --  Projects Self onto an already computed PCA basis. This does
+   --  not recompute Principal_Component_Analysis. Self is a 2-D
+   --  single-channel sample matrix of new or existing observations.
+   --  Orientation must match the layout used to produce Basis and
+   --  is not inferred from Basis.Mean: a one-feature column mean is
+   --  1 x 1 and is therefore ambiguous. Samples_Are_Rows, the
+   --  default, requires Basis.Mean = 1 x F and Self = S x F, and
+   --  returns S x K. Samples_Are_Columns requires Basis.Mean =
+   --  F x 1 and Self = F x S, and returns K x S. K is
+   --  Basis.Eigenvectors.Rows and F is Basis.Eigenvectors.Columns.
+   --  Self must be non-empty and Float32 or Float64. Multi-channel
+   --  Mats, integer depths, and Float16 are rejected. Self's
+   --  floating-point depth may differ from Basis.Mean; OpenCV
+   --  converts the samples to the basis precision internally. The
+   --  independently owned result has Basis.Mean.Depth. Basis.Mean
+   --  must be non-empty, single-channel, and Float32 or Float64.
+   --  Basis.Eigenvectors must be non-empty, single-channel, the
+   --  same depth as Basis.Mean, and K x F with 1 <= K <= F.
+   --  Basis.Eigenvalues is not used. Continuity is not required;
+   --  non-contiguous Regions are supported. Self and Basis are
+   --  unchanged. Finite sample values are a caller precondition:
+   --  this binding does not replace NaN or Infinity.
+   function PCA_Project
+     (Self        : Mat;
+      Basis       : Principal_Component_Analysis_Result;
+      Orientation : Sample_Orientation := Samples_Are_Rows) return Mat;
+
+   --  Reconstructs feature-space samples from principal-component
+   --  coordinates using an already computed PCA basis. This does
+   --  not recompute Principal_Component_Analysis. Self is a 2-D
+   --  single-channel coordinate matrix. Orientation must match the
+   --  layout used to produce Basis and is not inferred from
+   --  Basis.Mean: a one-feature column mean is 1 x 1 and is
+   --  therefore ambiguous. Samples_Are_Rows, the default, requires
+   --  Basis.Mean = 1 x F and Self = S x K, and returns S x F.
+   --  Samples_Are_Columns requires Basis.Mean = F x 1 and Self =
+   --  K x S, and returns F x S. K is Basis.Eigenvectors.Rows and
+   --  F is Basis.Eigenvectors.Columns. Self must be non-empty and
+   --  Float32 or Float64. Multi-channel Mats, integer depths, and
+   --  Float16 are rejected. Self's floating-point depth may differ
+   --  from Basis.Mean; OpenCV converts the coordinates to the
+   --  basis precision internally. The independently owned result
+   --  has Basis.Mean.Depth. Basis.Mean and Basis.Eigenvectors must
+   --  satisfy the same structural contract as PCA_Project.
+   --  Basis.Eigenvalues is not used. Continuity is not required;
+   --  non-contiguous Regions are supported. Self and Basis are
+   --  unchanged. Finite coordinate values are a caller
+   --  precondition: this binding does not replace NaN or Infinity.
+   function PCA_Back_Project
+     (Self        : Mat;
+      Basis       : Principal_Component_Analysis_Result;
+      Orientation : Sample_Orientation := Samples_Are_Rows) return Mat;
+
    --  Interprets each Self element as its channel vector and applies
    --  OpenCV 4.10 cv::transform. This is a per-element channel/vector
    --  transform at the same spatial location; it does not geometrically

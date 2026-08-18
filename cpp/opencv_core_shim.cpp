@@ -3586,6 +3586,115 @@ opencv_core_mat_principal_component_analysis(
 }
 
 opencv_core_status
+opencv_core_mat_pca_project(
+    const opencv_core_mat_handle *source,
+    const opencv_core_mat_handle *mean,
+    const opencv_core_mat_handle *eigenvectors, int32_t orientation,
+    opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat != nullptr) {
+        *out_mat = nullptr;
+    }
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    if (source == nullptr || mean == nullptr || eigenvectors == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    switch (orientation) {
+    case OPENCV_CORE_SAMPLE_ORIENTATION_ROWS:
+    case OPENCV_CORE_SAMPLE_ORIENTATION_COLUMNS:
+        break;
+    default:
+        return invalid_argument(
+            "sample orientation is not a supported identifier");
+    }
+
+    try {
+        cv::PCA pca;
+        cv::Mat result;
+        if (orientation == OPENCV_CORE_SAMPLE_ORIENTATION_ROWS) {
+            pca.mean = mean->value;
+            pca.eigenvectors = eigenvectors->value;
+            result = pca.project(source->value);
+        } else {
+            // OpenCV 4.10 PCA::project chooses its multiplication
+            // branch with mean.rows == 1. A one-feature column mean
+            // is 1x1, so native inference is ambiguous. Transpose the
+            // column layout into the row-oriented path instead.
+            pca.mean = mean->value.t();
+            pca.eigenvectors = eigenvectors->value;
+            result = pca.project(source->value.t()).t();
+        }
+
+        std::unique_ptr<opencv_core_mat_handle> result_handle(
+            new opencv_core_mat_handle(result));
+        *out_mat = result_handle.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_pca_back_project(
+    const opencv_core_mat_handle *source,
+    const opencv_core_mat_handle *mean,
+    const opencv_core_mat_handle *eigenvectors, int32_t orientation,
+    opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat != nullptr) {
+        *out_mat = nullptr;
+    }
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    if (source == nullptr || mean == nullptr || eigenvectors == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    switch (orientation) {
+    case OPENCV_CORE_SAMPLE_ORIENTATION_ROWS:
+    case OPENCV_CORE_SAMPLE_ORIENTATION_COLUMNS:
+        break;
+    default:
+        return invalid_argument(
+            "sample orientation is not a supported identifier");
+    }
+
+    try {
+        cv::PCA pca;
+        cv::Mat result;
+        if (orientation == OPENCV_CORE_SAMPLE_ORIENTATION_ROWS) {
+            pca.mean = mean->value;
+            pca.eigenvectors = eigenvectors->value;
+            result = pca.backProject(source->value);
+        } else {
+            // OpenCV 4.10 PCA::backProject also branches on
+            // mean.rows == 1, so a 1x1 column mean is ambiguous.
+            // Transpose into the row-oriented path instead.
+            pca.mean = mean->value.t();
+            pca.eigenvectors = eigenvectors->value;
+            result = pca.backProject(source->value.t()).t();
+        }
+
+        std::unique_ptr<opencv_core_mat_handle> result_handle(
+            new opencv_core_mat_handle(result));
+        *out_mat = result_handle.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_transform(const opencv_core_mat_handle *source,
                           const opencv_core_mat_handle *coefficients,
                           opencv_core_mat_handle **out_mat) {
