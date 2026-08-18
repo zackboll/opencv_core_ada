@@ -815,10 +815,14 @@ package OpenCV.Core is
    --  caller-precondition violation and may produce misleading
    --  output rather than a rejection. This binding does not invent a
    --  floating-point symmetry check. Multi-channel Mats, integer
-   --  depths, and Float16 are rejected. Outputs preserve Self's
-   --  floating-point depth. For an N x N source, Eigenvalues is N x 1
-   --  with values stored from largest to smallest, and Eigenvectors
-   --  is N x N with one eigenvector per row so that row i corresponds
+   --  depths, and Float16 are rejected. The matrix dimension N must
+   --  not exceed 8_460. OpenCV 4.10's fallback symmetric eigensolver
+   --  computes an internal iteration bound using signed integer
+   --  arithmetic that is not safe for larger dimensions. Outputs
+   --  preserve Self's floating-point depth. For an N x N source,
+   --  Eigenvalues is N x 1 with values stored from largest to
+   --  smallest, and Eigenvectors is N x N with one eigenvector per
+   --  row so that row i corresponds
    --  to eigenvalue i. Eigenvector sign is mathematically arbitrary:
    --  v and -v represent the same eigenvector. Both OpenCV 4.10
    --  backends produce orthonormal eigenvectors; a repeated
@@ -826,6 +830,7 @@ package OpenCV.Core is
    --  required; non-contiguous Regions are supported. Self is
    --  unchanged. Both outputs are independently owned. The caller
    --  does not preallocate either output. A valid matrix satisfying
+
    --  this contract yields a populated result. An OpenCV numerical
    --  failure (cv::eigen returning false) raises OpenCV_Error rather
    --  than exposing a Boolean.

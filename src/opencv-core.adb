@@ -3406,6 +3406,13 @@ package body OpenCV.Core is
            (OpenCV_Error'Identity,
             "Eigen_Decomposition requires a Float32 or Float64 Mat");
       end if;
+
+      if Self.Rows > 8_460 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Eigen_Decomposition dimension must not exceed 8460");
+      end if;
+
    end Validate_Eigen_Decomposition;
 
    function Eigen_Decomposition (Self : Mat) return Eigen_Decomposition_Result
