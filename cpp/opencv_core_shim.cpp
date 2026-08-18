@@ -1860,6 +1860,18 @@ opencv_core_mat_region(const opencv_core_mat_handle *source, int32_t x,
             return invalid_argument("region origin is outside source Mat bounds");
         }
 
+        // ABI safety: OpenCV evaluates roi.x + roi.width and
+        // roi.y + roi.height as signed int during ROI validation.
+        // Reject combinations that would overflow before its assertion.
+        if (width >= 0 && int32_sum_exceeds_max(x, width)) {
+            return invalid_argument(
+                "region x + width would exceed the signed 32-bit range");
+        }
+        if (height >= 0 && int32_sum_exceeds_max(y, height)) {
+            return invalid_argument(
+                "region y + height would exceed the signed 32-bit range");
+        }
+
         *out_mat = new opencv_core_mat_handle(
             cv::Mat(source->value, cv::Rect(x, y, width, height)));
         return OPENCV_CORE_OK;
@@ -2004,9 +2016,33 @@ opencv_core_mat_reshape(const opencv_core_mat_handle *source, int32_t channels,
     }
 
     try {
+        const cv::Mat &source_mat = source->value;
+        const int32_t source_channels = source_mat.channels();
+
+        // ABI safety: OpenCV 4.10 computes cols * channels as signed int
+        // before validating the reshape. Reject values that would overflow.
+        if (int32_product_exceeds_max(source_mat.cols, source_channels)) {
+            return invalid_argument(
+                "reshape column-channel product would exceed the signed 32-bit range");
+        }
+
+        const int32_t total_width = source_mat.cols * source_channels;
+        const bool derive_rows =
+            rows == 0 && (channels > total_width || total_width % channels != 0);
+        const bool change_rows = rows != 0 && rows != source_mat.rows;
+
+        // ABI safety: OpenCV 4.10 then computes rows * total_width as signed
+        // int on the derive-rows and change-rows paths before diagnosing the
+        // request. Reject values that would overflow those intermediates.
+        if ((derive_rows || change_rows) &&
+            int32_product_exceeds_max(source_mat.rows, total_width)) {
+            return invalid_argument(
+                "reshape row-channel product would exceed the signed 32-bit range");
+        }
+
         *out_mat = new opencv_core_mat_handle(
-            source->value.reshape(static_cast<int>(channels),
-                                  static_cast<int>(rows)));
+            source_mat.reshape(static_cast<int>(channels),
+                               static_cast<int>(rows)));
         return OPENCV_CORE_OK;
     } catch (...) {
         return translate_current_exception();
@@ -2029,6 +2065,14 @@ opencv_core_mat_diagonal_matrix(const opencv_core_mat_handle *diagonal,
     }
 
     try {
+        // ABI safety: OpenCV computes rows + cols - 1 using signed int after
+        // validating that the source is a row or column vector. Protect the
+        // intermediate addition from overflow for raw ABI callers.
+        if (int32_sum_exceeds_max(diagonal->value.rows, diagonal->value.cols)) {
+            return invalid_argument(
+                "diagonal length would exceed the signed 32-bit range");
+        }
+
         *out_mat = new opencv_core_mat_handle(cv::Mat::diag(diagonal->value));
         return OPENCV_CORE_OK;
     } catch (...) {
