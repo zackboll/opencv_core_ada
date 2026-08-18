@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cmath>
 #include <cstring>
+#include <algorithm>
 #include <exception>
 #include <limits>
 #include <memory>
@@ -3489,6 +3490,93 @@ opencv_core_mat_eigen_decomposition(
         std::unique_ptr<opencv_core_mat_handle> eigenvectors_handle(
             new opencv_core_mat_handle(eigenvectors));
 
+        *out_eigenvalues = eigenvalues_handle.release();
+        *out_eigenvectors = eigenvectors_handle.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_principal_component_analysis(
+    const opencv_core_mat_handle *source, int32_t orientation,
+    int32_t max_components, opencv_core_mat_handle **out_mean,
+    opencv_core_mat_handle **out_eigenvalues,
+    opencv_core_mat_handle **out_eigenvectors) {
+    clear_error();
+
+    if (out_mean != nullptr) {
+        *out_mean = nullptr;
+    }
+    if (out_eigenvalues != nullptr) {
+        *out_eigenvalues = nullptr;
+    }
+    if (out_eigenvectors != nullptr) {
+        *out_eigenvectors = nullptr;
+    }
+
+    if (out_mean == nullptr || out_eigenvalues == nullptr ||
+        out_eigenvectors == nullptr) {
+        return invalid_argument("output Mat handles must not be null");
+    }
+
+    if (out_mean == out_eigenvalues || out_mean == out_eigenvectors ||
+        out_eigenvalues == out_eigenvectors) {
+        return invalid_argument("output Mat handle pointers must be distinct");
+    }
+
+    if (source == nullptr) {
+        return invalid_argument("source Mat handle must not be null");
+    }
+
+    int flags = 0;
+    int sample_count = 0;
+    int feature_count = 0;
+    switch (orientation) {
+    case OPENCV_CORE_SAMPLE_ORIENTATION_ROWS:
+        flags = cv::PCA::DATA_AS_ROW;
+        sample_count = source->value.rows;
+        feature_count = source->value.cols;
+        break;
+    case OPENCV_CORE_SAMPLE_ORIENTATION_COLUMNS:
+        flags = cv::PCA::DATA_AS_COL;
+        sample_count = source->value.cols;
+        feature_count = source->value.rows;
+        break;
+    default:
+        return invalid_argument(
+            "sample orientation is not a supported identifier");
+    }
+
+    if (max_components < 0) {
+        return invalid_argument("max_components must not be negative");
+    }
+
+    try {
+        // ABI safety: OpenCV 4.10 PCA calls cv::eigen on a
+        // min(sample_count, feature_count)-square covariance matrix. The
+        // non-Eigen Jacobi backend computes maxIters = n*n*30 using signed
+        // int, so reject dimensions above 8460 before that overflow occurs.
+        const int available_components =
+            std::min(sample_count, feature_count);
+        if (available_components > 8460) {
+            return invalid_argument(
+                "PCA component-space dimension would overflow OpenCV 4.10 "
+                "Jacobi maxIters");
+        }
+
+        cv::PCA pca;
+        pca(source->value, cv::Mat(), flags, max_components);
+
+        std::unique_ptr<opencv_core_mat_handle> mean_handle(
+            new opencv_core_mat_handle(pca.mean));
+        std::unique_ptr<opencv_core_mat_handle> eigenvalues_handle(
+            new opencv_core_mat_handle(pca.eigenvalues));
+        std::unique_ptr<opencv_core_mat_handle> eigenvectors_handle(
+            new opencv_core_mat_handle(pca.eigenvectors));
+
+        *out_mean = mean_handle.release();
         *out_eigenvalues = eigenvalues_handle.release();
         *out_eigenvectors = eigenvectors_handle.release();
         return OPENCV_CORE_OK;

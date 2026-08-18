@@ -187,6 +187,19 @@ package OpenCV.Core is
       Eigenvectors : Mat;
    end record;
 
+   --  Independently owned outputs of Principal_Component_Analysis.
+   --  Mean is the per-feature average. Eigenvalues is the K x 1
+   --  column of principal variances in descending order.
+   --  Eigenvectors stores one feature-space principal direction per
+   --  row so that row i corresponds to eigenvalue i. Each field has
+   --  normal Mat controlled ownership and is independent of Self and
+   --  of the other fields.
+   type Principal_Component_Analysis_Result is record
+      Mean         : Mat;
+      Eigenvalues  : Mat;
+      Eigenvectors : Mat;
+   end record;
+
    --  Discriminated result of Invert. Inverse is present only when
    --  Invertible is True. Inverse has normal Mat controlled ownership
    --  and independent storage. A singular matrix yields Invertible
@@ -835,6 +848,52 @@ package OpenCV.Core is
    --  failure (cv::eigen returning false) raises OpenCV_Error rather
    --  than exposing a Boolean.
    function Eigen_Decomposition (Self : Mat) return Eigen_Decomposition_Result;
+
+   --  Computes the PCA basis of Self using OpenCV 4.10 cv::PCA.
+   --  Self is a 2-D single-channel sample matrix. Samples_Are_Rows,
+   --  the default, treats an M x N Mat as M samples of N features:
+   --  Mean is 1 x N. Samples_Are_Columns treats an M x N Mat as N
+   --  samples of M features: Mean is M x 1. Available component
+   --  count K_all is min (sample count, feature count). The
+   --  no-Components overload retains every OpenCV PCA component, so
+   --  K = K_all. That is the number OpenCV computes, not necessarily
+   --  the numerical rank, and zero-variance components may be
+   --  present. The Components overload requests exactly that many
+   --  leading components: 1 <= Components <= K_all. Excess requests
+   --  raise OpenCV_Error rather than silently clamping. For K
+   --  retained components, Eigenvalues is K x 1 in descending order
+   --  and Eigenvectors is K x Feature_Count with one principal
+   --  direction per row. Eigenvector sign is mathematically
+   --  arbitrary: v and -v represent the same direction. OpenCV PCA
+   --  uses scaled covariance with the population-style 1/N
+   --  convention (COVAR_SCALE), not unbiased 1/(N - 1). When
+   --  feature count exceeds sample count, OpenCV may compute a
+   --  smaller sample-space covariance internally; the public result
+   --  is always expressed in feature space. Rank-deficient data and
+   --  zero eigenvalues are allowed. Self must be non-empty and
+   --  Float32 or Float64. Multi-channel Mats, integer depths, and
+   --  Float16 are rejected. Sample count and feature count must both
+   --  be nonzero. Available component count must not exceed 8_460
+   --  because OpenCV 4.10's fallback symmetric eigensolver computes
+   --  an internal iteration bound using signed integer arithmetic
+   --  that is not safe for larger covariance dimensions. This limit
+   --  applies even when Components is 1, because OpenCV computes the
+   --  full covariance eigen decomposition before truncating.
+   --  Outputs preserve Self's floating-point depth and are
+   --  independently owned. The caller does not preallocate any
+   --  output. Continuity is not required; non-contiguous Regions are
+   --  supported. Self is unchanged. Finite sample values are a
+   --  caller precondition: this binding does not replace NaN or
+   --  Infinity, and OpenCV's eigen path is not specified for
+   --  non-finite input.
+   function Principal_Component_Analysis
+     (Self : Mat; Orientation : Sample_Orientation := Samples_Are_Rows)
+      return Principal_Component_Analysis_Result;
+   function Principal_Component_Analysis
+     (Self        : Mat;
+      Components  : Positive;
+      Orientation : Sample_Orientation := Samples_Are_Rows)
+      return Principal_Component_Analysis_Result;
 
    --  Interprets each Self element as its channel vector and applies
    --  OpenCV 4.10 cv::transform. This is a per-element channel/vector

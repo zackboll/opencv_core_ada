@@ -3453,6 +3453,140 @@ package body OpenCV.Core is
       return Result;
    end Eigen_Decomposition;
 
+   procedure Validate_Principal_Component_Analysis
+     (Self        : Mat;
+      Orientation : Sample_Orientation;
+      Components  : Natural;
+      Explicit_K  : Boolean)
+   is
+      Sample_Count         : Natural;
+      Feature_Count        : Natural;
+      Available_Components : Natural;
+   begin
+      if Self.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Principal_Component_Analysis requires a non-empty Mat");
+      end if;
+
+      if Self.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Principal_Component_Analysis requires a single-channel Mat");
+      end if;
+
+      if Self.Depth /= Float32 and then Self.Depth /= Float64 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Principal_Component_Analysis requires a Float32 or Float64 Mat");
+      end if;
+
+      if Orientation = Samples_Are_Rows then
+         Sample_Count := Self.Rows;
+         Feature_Count := Self.Columns;
+      else
+         Sample_Count := Self.Columns;
+         Feature_Count := Self.Rows;
+      end if;
+
+      if Sample_Count = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Principal_Component_Analysis requires at least one sample");
+      end if;
+
+      if Feature_Count = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Principal_Component_Analysis requires at least one feature");
+      end if;
+
+      Available_Components := Natural'Min (Sample_Count, Feature_Count);
+      if Available_Components > 8_460 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Principal_Component_Analysis available component count"
+            & " must not exceed 8460");
+      end if;
+
+      if Explicit_K and then Components > Available_Components then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Principal_Component_Analysis Components must not exceed"
+            & " the available component count");
+      end if;
+   end Validate_Principal_Component_Analysis;
+
+   function Principal_Component_Analysis_Impl
+     (Self : Mat; Orientation : Sample_Orientation; Max_Components : Natural)
+      return Principal_Component_Analysis_Result
+   is
+      Result              : Principal_Component_Analysis_Result;
+      Mean_Handle         : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Eigenvalues_Handle  : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Eigenvectors_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status              : OpenCV.Internal.C_API.Status;
+   begin
+      Status :=
+        OpenCV.Internal.C_API.Mat_Principal_Component_Analysis
+          (Source         => Self.Handle,
+           Orientation    => To_C_Sample_Orientation (Orientation),
+           Max_Components => OpenCV.Internal.C_API.C_Int32 (Max_Components),
+           Mean           => Mean_Handle'Access,
+           Eigenvalues    => Eigenvalues_Handle'Access,
+           Eigenvectors   => Eigenvectors_Handle'Access);
+      if Status /= OpenCV.Internal.C_API.Success then
+         OpenCV.Internal.C_API.Mat_Destroy (Mean_Handle);
+         OpenCV.Internal.C_API.Mat_Destroy (Eigenvalues_Handle);
+         OpenCV.Internal.C_API.Mat_Destroy (Eigenvectors_Handle);
+         Raise_On_Error (Status, "Mat principal component analysis operation");
+      end if;
+
+      if Mean_Handle = OpenCV.Internal.C_API.Null_Mat_Handle
+        or else Eigenvalues_Handle = OpenCV.Internal.C_API.Null_Mat_Handle
+        or else Eigenvectors_Handle = OpenCV.Internal.C_API.Null_Mat_Handle
+      then
+         OpenCV.Internal.C_API.Mat_Destroy (Mean_Handle);
+         OpenCV.Internal.C_API.Mat_Destroy (Eigenvalues_Handle);
+         OpenCV.Internal.C_API.Mat_Destroy (Eigenvectors_Handle);
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat principal component analysis operation returned a"
+            & " null result handle");
+      end if;
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Mean.Handle);
+      Result.Mean.Handle := Mean_Handle;
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Eigenvalues.Handle);
+      Result.Eigenvalues.Handle := Eigenvalues_Handle;
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Eigenvectors.Handle);
+      Result.Eigenvectors.Handle := Eigenvectors_Handle;
+      return Result;
+   end Principal_Component_Analysis_Impl;
+
+   function Principal_Component_Analysis
+     (Self : Mat; Orientation : Sample_Orientation := Samples_Are_Rows)
+      return Principal_Component_Analysis_Result is
+   begin
+      Validate_Principal_Component_Analysis
+        (Self, Orientation, Components => 0, Explicit_K => False);
+      return Principal_Component_Analysis_Impl (Self, Orientation, 0);
+   end Principal_Component_Analysis;
+
+   function Principal_Component_Analysis
+     (Self        : Mat;
+      Components  : Positive;
+      Orientation : Sample_Orientation := Samples_Are_Rows)
+      return Principal_Component_Analysis_Result is
+   begin
+      Validate_Principal_Component_Analysis
+        (Self, Orientation, Components, Explicit_K => True);
+      return Principal_Component_Analysis_Impl (Self, Orientation, Components);
+   end Principal_Component_Analysis;
+
    function Supports_Transform_Source (Self : Mat) return Boolean
    is (Self.Depth = UInt8
        or else Self.Depth = Int8

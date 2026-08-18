@@ -1021,7 +1021,23 @@ opencv_core_mat_eigen_decomposition(
     opencv_core_mat_handle **out_eigenvectors);
 
 /*
- * Applies cv::transform to each source element interpreted as its channel
+ * Computes the PCA basis of a borrowed sample Mat using cv::PCA.
+ * orientation is 0 (samples are rows) or 1 (samples are columns).
+ * max_components is 0 to retain every available component, or a
+ * positive count passed through to OpenCV (which may clamp it).
+ * Negative max_components is rejected as invalid raw ABI input.
+ * All three output pointer arguments must be non-null and pairwise
+ * distinct. On success the three returned handles are independently
+ * owned. On any failure all three outputs remain null.
+ */
+opencv_core_status
+opencv_core_mat_principal_component_analysis(
+    const opencv_core_mat_handle *source, int32_t orientation,
+    int32_t max_components, opencv_core_mat_handle **out_mean,
+    opencv_core_mat_handle **out_eigenvalues,
+    opencv_core_mat_handle **out_eigenvectors);
+
+/*
  * vector. source and coefficients are borrowed. The independently owned
  * result has source.rows, source.cols, source.depth(), and
  * coefficients.rows channels.

@@ -1,5 +1,6 @@
 with AUnit.Assertions;
 with AUnit.Test_Caller;
+with Ada.Numerics.Long_Elementary_Functions;
 with Interfaces;
 with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
@@ -21,6 +22,7 @@ package body Mat_Reduction_Tests is
    use type OpenCV.Core.Float32_Vec3.Vector;
 
    use Mat_Test_Support;
+   use Ada.Numerics.Long_Elementary_Functions;
 
    procedure Float32_Mean_Returns_Arithmetic_Mean_And_Zeroes
      (Test : in out Mat_Test_Fixture)
@@ -5752,6 +5754,525 @@ package body Mat_Reduction_Tests is
          "Eigen_Decomposition must reject Float16 input");
    end Eigen_Decomposition_Rejects_Invalid_Input;
 
+   procedure Fill_PCA_Row_Samples (Image : in out OpenCV.Core.Mat) is
+   begin
+      OpenCV.Core.Float32_Access.Set (Image, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Image, 0, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 0, 2.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Image, 2, 0, 4.0);
+      OpenCV.Core.Float32_Access.Set (Image, 2, 1, 5.0);
+      OpenCV.Core.Float32_Access.Set (Image, 3, 0, 5.0);
+      OpenCV.Core.Float32_Access.Set (Image, 3, 1, 4.0);
+   end Fill_PCA_Row_Samples;
+
+   function Unchanged_PCA_Row_Samples (Image : OpenCV.Core.Mat) return Boolean
+   is (OpenCV.Core.Float32_Access.Get (Image, 0, 0) = 1.0
+       and then OpenCV.Core.Float32_Access.Get (Image, 0, 1) = 2.0
+       and then OpenCV.Core.Float32_Access.Get (Image, 1, 0) = 2.0
+       and then OpenCV.Core.Float32_Access.Get (Image, 1, 1) = 1.0
+       and then OpenCV.Core.Float32_Access.Get (Image, 2, 0) = 4.0
+       and then OpenCV.Core.Float32_Access.Get (Image, 2, 1) = 5.0
+       and then OpenCV.Core.Float32_Access.Get (Image, 3, 0) = 5.0
+       and then OpenCV.Core.Float32_Access.Get (Image, 3, 1) = 4.0);
+
+   function PCA_Mean_1x2
+     (Image : OpenCV.Core.Mat; A, B : OpenCV.Core.Float32_Value) return Boolean
+   is (Image.Rows = 1
+       and then Image.Columns = 2
+       and then Image.Depth = OpenCV.Core.Float32
+       and then Image.Channels = 1
+       and then Approximately_Equal
+                  (Long_Float (OpenCV.Core.Float32_Access.Get (Image, 0, 0)),
+                   Long_Float (A))
+       and then Approximately_Equal
+                  (Long_Float (OpenCV.Core.Float32_Access.Get (Image, 0, 1)),
+                   Long_Float (B)));
+
+   function PCA_Mean_2x1
+     (Image : OpenCV.Core.Mat; A, B : OpenCV.Core.Float32_Value) return Boolean
+   is (Image.Rows = 2
+       and then Image.Columns = 1
+       and then Image.Depth = OpenCV.Core.Float32
+       and then Image.Channels = 1
+       and then Approximately_Equal
+                  (Long_Float (OpenCV.Core.Float32_Access.Get (Image, 0, 0)),
+                   Long_Float (A))
+       and then Approximately_Equal
+                  (Long_Float (OpenCV.Core.Float32_Access.Get (Image, 1, 0)),
+                   Long_Float (B)));
+
+   function PCA_Direction_Aligns
+     (Vectors : OpenCV.Core.Mat; Row : Natural; X, Y : Long_Float)
+      return Boolean
+   is
+      VX   : constant Long_Float :=
+        Long_Float (OpenCV.Core.Float32_Access.Get (Vectors, Row, 0));
+      VY   : constant Long_Float :=
+        Long_Float (OpenCV.Core.Float32_Access.Get (Vectors, Row, 1));
+      Norm : constant Long_Float := Sqrt (X * X + Y * Y);
+   begin
+      return Approximately_Equal (abs (VX * X + VY * Y) / Norm, 1.0, 0.000_1);
+   end PCA_Direction_Aligns;
+
+   procedure Principal_Component_Analysis_Float32_Rows_All_Components
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 2, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Principal_Component_Analysis_Result;
+   begin
+      Fill_PCA_Row_Samples (Source);
+      Result := Source.Principal_Component_Analysis;
+
+      AUnit.Assertions.Assert
+        (Result.Mean.Rows = 1
+         and then Result.Mean.Columns = 2
+         and then Result.Eigenvalues.Rows = 2
+         and then Result.Eigenvalues.Columns = 1
+         and then Result.Eigenvectors.Rows = 2
+         and then Result.Eigenvectors.Columns = 2
+         and then Result.Mean.Depth = OpenCV.Core.Float32
+         and then Result.Eigenvalues.Depth = OpenCV.Core.Float32
+         and then Result.Eigenvectors.Depth = OpenCV.Core.Float32
+         and then Result.Mean.Channels = 1
+         and then Result.Eigenvalues.Channels = 1
+         and then Result.Eigenvectors.Channels = 1,
+         "Row-sample PCA must return Float32 C1 1x2 / 2x1 / 2x2 outputs");
+      AUnit.Assertions.Assert
+        (PCA_Mean_1x2 (Result.Mean, 3.0, 3.0),
+         "Row-sample PCA mean must be [3, 3]");
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Eigenvalue_At (Result.Eigenvalues, 0), 4.5)
+         and then Approximately_Equal
+                    (Eigenvalue_At (Result.Eigenvalues, 1), 0.5)
+         and then Eigenvalues_Are_Descending (Result.Eigenvalues),
+         "Row-sample PCA eigenvalues must be 4.5 then 0.5");
+      AUnit.Assertions.Assert
+        (PCA_Direction_Aligns (Result.Eigenvectors, 0, 1.0, 1.0)
+         and then PCA_Direction_Aligns (Result.Eigenvectors, 1, 1.0, -1.0),
+         "Row-sample PCA directions must match [1,1] and [1,-1] up to sign");
+      AUnit.Assertions.Assert
+        (Unchanged_PCA_Row_Samples (Source), "PCA must not modify its source");
+   end Principal_Component_Analysis_Float32_Rows_All_Components;
+
+   procedure Principal_Component_Analysis_Matches_Covariance_Eigen
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 2, (OpenCV.Core.Float32, 1));
+      PCA        : OpenCV.Core.Principal_Component_Analysis_Result;
+      Covariance : OpenCV.Core.Covariance_Result;
+      Eigen      : OpenCV.Core.Eigen_Decomposition_Result;
+   begin
+      Fill_PCA_Row_Samples (Source);
+      PCA := Source.Principal_Component_Analysis;
+      Covariance := Source.Covariance;
+      Eigen := Covariance.Covariance.Eigen_Decomposition;
+
+      AUnit.Assertions.Assert
+        (PCA_Mean_1x2 (PCA.Mean, 3.0, 3.0)
+         and then PCA_Mean_1x2 (Covariance.Mean, 3.0, 3.0),
+         "PCA mean must agree with Covariance mean");
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Eigenvalue_At (PCA.Eigenvalues, 0),
+            Eigenvalue_At (Eigen.Eigenvalues, 0),
+            0.000_1)
+         and then Approximately_Equal
+                    (Eigenvalue_At (PCA.Eigenvalues, 1),
+                     Eigenvalue_At (Eigen.Eigenvalues, 1),
+                     0.000_1),
+         "PCA eigenvalues must agree with Covariance eigen values");
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (abs (Eigenvector_Component (PCA.Eigenvectors, 0, 0)
+                 * Eigenvector_Component (Eigen.Eigenvectors, 0, 0)
+                 + Eigenvector_Component (PCA.Eigenvectors, 0, 1)
+                   * Eigenvector_Component (Eigen.Eigenvectors, 0, 1)),
+            1.0,
+            0.000_1)
+         and then Approximately_Equal
+                    (abs (Eigenvector_Component (PCA.Eigenvectors, 1, 0)
+                          * Eigenvector_Component (Eigen.Eigenvectors, 1, 0)
+                          + Eigenvector_Component (PCA.Eigenvectors, 1, 1)
+                            * Eigenvector_Component
+                                (Eigen.Eigenvectors, 1, 1)),
+                     1.0,
+                     0.000_1),
+         "PCA directions must align with Covariance eigen vectors up to sign");
+   end Principal_Component_Analysis_Matches_Covariance_Eigen;
+
+   procedure Principal_Component_Analysis_Truncates_To_One_Component
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 2, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Principal_Component_Analysis_Result;
+   begin
+      Fill_PCA_Row_Samples (Source);
+      Result := Source.Principal_Component_Analysis (Components => 1);
+
+      AUnit.Assertions.Assert
+        (Result.Mean.Rows = 1
+         and then Result.Mean.Columns = 2
+         and then Result.Eigenvalues.Rows = 1
+         and then Result.Eigenvalues.Columns = 1
+         and then Result.Eigenvectors.Rows = 1
+         and then Result.Eigenvectors.Columns = 2,
+         "Components => 1 must keep the full mean and one principal"
+         & " direction");
+      AUnit.Assertions.Assert
+        (PCA_Mean_1x2 (Result.Mean, 3.0, 3.0)
+         and then Approximately_Equal
+                    (Eigenvalue_At (Result.Eigenvalues, 0), 4.5)
+         and then PCA_Direction_Aligns (Result.Eigenvectors, 0, 1.0, 1.0),
+         "The retained component must be the leading 4.5 direction");
+   end Principal_Component_Analysis_Truncates_To_One_Component;
+
+   procedure Principal_Component_Analysis_Samples_As_Columns
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 4, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Principal_Component_Analysis_Result;
+   begin
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 2, 4.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 3, 5.0);
+      OpenCV.Core.Float32_Access.Set (Source, 1, 0, 2.0);
+      OpenCV.Core.Float32_Access.Set (Source, 1, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Source, 1, 2, 5.0);
+      OpenCV.Core.Float32_Access.Set (Source, 1, 3, 4.0);
+      Result :=
+        Source.Principal_Component_Analysis
+          (Orientation => OpenCV.Core.Samples_Are_Columns);
+
+      AUnit.Assertions.Assert
+        (Result.Mean.Rows = 2
+         and then Result.Mean.Columns = 1
+         and then Result.Eigenvalues.Rows = 2
+         and then Result.Eigenvalues.Columns = 1
+         and then Result.Eigenvectors.Rows = 2
+         and then Result.Eigenvectors.Columns = 2,
+         "Column-sample PCA must return 2x1 mean and 2x2 feature directions");
+      AUnit.Assertions.Assert
+        (PCA_Mean_2x1 (Result.Mean, 3.0, 3.0)
+         and then Approximately_Equal
+                    (Eigenvalue_At (Result.Eigenvalues, 0), 4.5)
+         and then Approximately_Equal
+                    (Eigenvalue_At (Result.Eigenvalues, 1), 0.5)
+         and then PCA_Direction_Aligns (Result.Eigenvectors, 0, 1.0, 1.0)
+         and then PCA_Direction_Aligns (Result.Eigenvectors, 1, 1.0, -1.0),
+         "Column-sample PCA must match the transposed row-sample basis");
+   end Principal_Component_Analysis_Samples_As_Columns;
+
+   procedure Principal_Component_Analysis_Scrambled_Feature_Space
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Principal_Component_Analysis_Result;
+      Vector : OpenCV.Core.Mat;
+   begin
+      Fill_2x3 (Source, 1.0, 2.0, 3.0, 3.0, 2.0, 1.0);
+      Result := Source.Principal_Component_Analysis (Components => 1);
+      Vector := Result.Eigenvectors.Row_View (0);
+
+      AUnit.Assertions.Assert
+        (Result.Mean.Rows = 1
+         and then Result.Mean.Columns = 3
+         and then Result.Eigenvalues.Rows = 1
+         and then Result.Eigenvalues.Columns = 1
+         and then Result.Eigenvectors.Rows = 1
+         and then Result.Eigenvectors.Columns = 3,
+         "Scrambled PCA must still return feature-space 1x3 directions");
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float (OpenCV.Core.Float32_Access.Get (Result.Mean, 0, 0)),
+            2.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result.Mean, 0, 1)),
+                     2.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result.Mean, 0, 2)),
+                     2.0),
+         "Two-sample three-feature PCA mean must be [2, 2, 2]");
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Vector.Norm, 1.0, 0.000_1)
+         and then Approximately_Equal
+                    (abs (Long_Float
+                            (OpenCV.Core.Float32_Access.Get
+                               (Result.Eigenvectors, 0, 0))
+                          * (-1.0 / Sqrt (2.0))
+                          + Long_Float
+                              (OpenCV.Core.Float32_Access.Get
+                                 (Result.Eigenvectors, 0, 2))
+                            * (1.0 / Sqrt (2.0))),
+                     1.0,
+                     0.000_1)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get
+                          (Result.Eigenvectors, 0, 1)),
+                     0.0,
+                     0.000_1),
+         "Leading scrambled-path direction must align with [-1, 0, 1]");
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Eigenvalue_At (Result.Eigenvalues, 0), 2.0, 0.000_1),
+         "Leading scrambled-path eigenvalue must be 2.0 under 1/N scaling");
+   end Principal_Component_Analysis_Scrambled_Feature_Space;
+
+   procedure Principal_Component_Analysis_Supports_Noncontiguous_Region
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (5, 4, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Principal_Component_Analysis_Result;
+   begin
+      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      declare
+         Source : OpenCV.Core.Mat :=
+           Parent.Region ((X => 1, Y => 0, Width => 2, Height => 4));
+      begin
+         Fill_PCA_Row_Samples (Source);
+         AUnit.Assertions.Assert
+           (not Source.Is_Continuous,
+            "The Region used for PCA must be non-contiguous");
+         Result := Source.Principal_Component_Analysis;
+         AUnit.Assertions.Assert
+           (PCA_Mean_1x2 (Result.Mean, 3.0, 3.0)
+            and then Approximately_Equal
+                       (Eigenvalue_At (Result.Eigenvalues, 0), 4.5)
+            and then Approximately_Equal
+                       (Eigenvalue_At (Result.Eigenvalues, 1), 0.5)
+            and then PCA_Direction_Aligns (Result.Eigenvectors, 0, 1.0, 1.0),
+            "PCA must honor a non-contiguous sample Region");
+         AUnit.Assertions.Assert
+           (Unchanged_PCA_Row_Samples (Source)
+            and then OpenCV.Core.Float32_Access.Get (Parent, 0, 0) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 0, 3) = 99.0,
+            "PCA must not modify the Region or its parent");
+      end;
+   end Principal_Component_Analysis_Supports_Noncontiguous_Region;
+
+   procedure Principal_Component_Analysis_Preserves_Float64_Depth
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source32 : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 2, (OpenCV.Core.Float32, 1));
+      Source   : OpenCV.Core.Mat;
+      Result   : OpenCV.Core.Principal_Component_Analysis_Result;
+      Values   : OpenCV.Core.Mat;
+   begin
+      Fill_PCA_Row_Samples (Source32);
+      Source := Source32.Convert_To (OpenCV.Core.Float64);
+      Result := Source.Principal_Component_Analysis;
+      Values := Result.Eigenvalues.Convert_To (OpenCV.Core.Float32);
+
+      AUnit.Assertions.Assert
+        (Source.Depth = OpenCV.Core.Float64
+         and then Result.Mean.Depth = OpenCV.Core.Float64
+         and then Result.Eigenvalues.Depth = OpenCV.Core.Float64
+         and then Result.Eigenvectors.Depth = OpenCV.Core.Float64
+         and then Result.Mean.Rows = 1
+         and then Result.Mean.Columns = 2
+         and then Result.Eigenvalues.Rows = 2
+         and then Result.Eigenvalues.Columns = 1
+         and then Result.Eigenvectors.Rows = 2
+         and then Result.Eigenvectors.Columns = 2
+         and then Approximately_Equal (Eigenvalue_At (Values, 0), 4.5)
+         and then Approximately_Equal (Eigenvalue_At (Values, 1), 0.5),
+         "Float64 PCA must keep Float64 outputs");
+   end Principal_Component_Analysis_Preserves_Float64_Depth;
+
+   procedure Principal_Component_Analysis_Outputs_Are_Independent
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 2, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Principal_Component_Analysis_Result;
+   begin
+      Fill_PCA_Row_Samples (Source);
+      Result := Source.Principal_Component_Analysis;
+
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, 50.0);
+      AUnit.Assertions.Assert
+        (PCA_Mean_1x2 (Result.Mean, 3.0, 3.0)
+         and then Approximately_Equal
+                    (Eigenvalue_At (Result.Eigenvalues, 0), 4.5)
+         and then PCA_Direction_Aligns (Result.Eigenvectors, 0, 1.0, 1.0),
+         "Mutating Self must not change PCA outputs");
+      OpenCV.Core.Float32_Access.Set (Result.Mean, 0, 0, 9.0);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Source, 0, 0) = 50.0
+         and then Approximately_Equal
+                    (Eigenvalue_At (Result.Eigenvalues, 0), 4.5)
+         and then PCA_Direction_Aligns (Result.Eigenvectors, 0, 1.0, 1.0),
+         "Mutating Mean must not change Self, eigenvalues, or eigenvectors");
+      OpenCV.Core.Float32_Access.Set (Result.Eigenvalues, 0, 0, 7.0);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Result.Mean, 0, 0) = 9.0
+         and then OpenCV.Core.Float32_Access.Get (Source, 1, 1) = 1.0
+         and then PCA_Direction_Aligns (Result.Eigenvectors, 0, 1.0, 1.0),
+         "Mutating eigenvalues must not change Self, Mean, or eigenvectors");
+      OpenCV.Core.Float32_Access.Set (Result.Eigenvectors, 0, 0, 0.0);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Result.Eigenvalues, 0, 0) = 7.0
+         and then OpenCV.Core.Float32_Access.Get (Result.Mean, 0, 1) = 3.0
+         and then OpenCV.Core.Float32_Access.Get (Source, 2, 0) = 4.0,
+         "Mutating eigenvectors must not change Self, Mean, or eigenvalues");
+   end Principal_Component_Analysis_Outputs_Are_Independent;
+
+   procedure Principal_Component_Analysis_Outputs_Outlive_Source
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Result : OpenCV.Core.Principal_Component_Analysis_Result;
+   begin
+      declare
+         Source : OpenCV.Core.Mat :=
+           OpenCV.Core.Create (4, 2, (OpenCV.Core.Float32, 1));
+      begin
+         Fill_PCA_Row_Samples (Source);
+         Result := Source.Principal_Component_Analysis;
+      end;
+
+      AUnit.Assertions.Assert
+        (PCA_Mean_1x2 (Result.Mean, 3.0, 3.0)
+         and then Approximately_Equal
+                    (Eigenvalue_At (Result.Eigenvalues, 0), 4.5)
+         and then Approximately_Equal
+                    (Eigenvalue_At (Result.Eigenvalues, 1), 0.5)
+         and then Result.Eigenvectors.Rows = 2
+         and then Result.Eigenvectors.Columns = 2,
+         "PCA outputs must remain valid after the source finalizes");
+   end Principal_Component_Analysis_Outputs_Outlive_Source;
+
+   procedure Principal_Component_Analysis_Allows_Rank_Deficiency
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Principal_Component_Analysis_Result;
+   begin
+      Fill_3x2 (Source, 1.0, 1.0, 2.0, 2.0, 3.0, 3.0);
+      Result := Source.Principal_Component_Analysis;
+
+      AUnit.Assertions.Assert
+        (Result.Eigenvalues.Rows = 2
+         and then Result.Eigenvalues.Columns = 1
+         and then Result.Eigenvectors.Rows = 2
+         and then Result.Eigenvectors.Columns = 2
+         and then Approximately_Equal
+                    (Eigenvalue_At (Result.Eigenvalues, 1), 0.0, 0.000_1),
+         "Rank-deficient PCA must succeed and allow a near-zero eigenvalue");
+   end Principal_Component_Analysis_Allows_Rank_Deficiency;
+
+   procedure Principal_Component_Analysis_Rejects_Invalid_Input
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Default_Empty : OpenCV.Core.Mat;
+      Empty32       : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 1));
+      Two_Channel   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 2, (OpenCV.Core.Float32, 2));
+      UInt8_Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 2, (OpenCV.Core.UInt8, 1));
+      Int32_Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 2, (OpenCV.Core.Int32, 1));
+      Float16_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 2, (OpenCV.Core.Float16, 1));
+      Source        : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 2, (OpenCV.Core.Float32, 1));
+
+      procedure Check_Default is
+         Result : constant OpenCV.Core.Principal_Component_Analysis_Result :=
+           Default_Empty.Principal_Component_Analysis;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Default;
+
+      procedure Check_Empty32 is
+         Result : constant OpenCV.Core.Principal_Component_Analysis_Result :=
+           Empty32.Principal_Component_Analysis;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Empty32;
+
+      procedure Check_Two_Channel is
+         Result : constant OpenCV.Core.Principal_Component_Analysis_Result :=
+           Two_Channel.Principal_Component_Analysis;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Two_Channel;
+
+      procedure Check_UInt8 is
+         Result : constant OpenCV.Core.Principal_Component_Analysis_Result :=
+           UInt8_Image.Principal_Component_Analysis;
+      begin
+         pragma Unreferenced (Result);
+      end Check_UInt8;
+
+      procedure Check_Int32 is
+         Result : constant OpenCV.Core.Principal_Component_Analysis_Result :=
+           Int32_Image.Principal_Component_Analysis;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Int32;
+
+      procedure Check_Float16 is
+         Result : constant OpenCV.Core.Principal_Component_Analysis_Result :=
+           Float16_Image.Principal_Component_Analysis;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Float16;
+
+      procedure Check_Excess is
+         Result : constant OpenCV.Core.Principal_Component_Analysis_Result :=
+           Source.Principal_Component_Analysis (Components => 3);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Excess;
+   begin
+      Fill_PCA_Row_Samples (Source);
+      Assert_Raises_OpenCV_Error
+        (Check_Default'Access,
+         "Principal_Component_Analysis must reject a default empty Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_Empty32'Access,
+         "Principal_Component_Analysis must reject a typed empty Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_Two_Channel'Access,
+         "Principal_Component_Analysis must reject C2 input");
+      Assert_Raises_OpenCV_Error
+        (Check_UInt8'Access,
+         "Principal_Component_Analysis must reject UInt8 input");
+      Assert_Raises_OpenCV_Error
+        (Check_Int32'Access,
+         "Principal_Component_Analysis must reject Int32 input");
+      Assert_Raises_OpenCV_Error
+        (Check_Float16'Access,
+         "Principal_Component_Analysis must reject Float16 input");
+      Assert_Raises_OpenCV_Error
+        (Check_Excess'Access,
+         "Principal_Component_Analysis must reject Components above K_all");
+   end Principal_Component_Analysis_Rejects_Invalid_Input;
+
    procedure Vec3_Mean_Returns_Independent_Channel_Values
      (Test : in out Mat_Test_Fixture)
    is
@@ -7870,6 +8391,52 @@ package body Mat_Reduction_Tests is
         (Caller.Create
            ("Eigen_Decomposition rejects empty, non-square, and invalid types",
             Eigen_Decomposition_Rejects_Invalid_Input'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Principal_Component_Analysis Float32 rows all components",
+            Principal_Component_Analysis_Float32_Rows_All_Components'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Principal_Component_Analysis matches Covariance eigen",
+            Principal_Component_Analysis_Matches_Covariance_Eigen'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Principal_Component_Analysis truncates to one component",
+            Principal_Component_Analysis_Truncates_To_One_Component'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Principal_Component_Analysis samples as columns",
+            Principal_Component_Analysis_Samples_As_Columns'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Principal_Component_Analysis scrambled feature space",
+            Principal_Component_Analysis_Scrambled_Feature_Space'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Principal_Component_Analysis supports a non-contiguous Region",
+            Principal_Component_Analysis_Supports_Noncontiguous_Region
+              'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Principal_Component_Analysis preserves Float64 depth",
+            Principal_Component_Analysis_Preserves_Float64_Depth'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Principal_Component_Analysis outputs are independent",
+            Principal_Component_Analysis_Outputs_Are_Independent'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Principal_Component_Analysis outputs outlive the source",
+            Principal_Component_Analysis_Outputs_Outlive_Source'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Principal_Component_Analysis allows rank deficiency",
+            Principal_Component_Analysis_Allows_Rank_Deficiency'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Principal_Component_Analysis rejects empty, C2, and invalid"
+            & " types",
+            Principal_Component_Analysis_Rejects_Invalid_Input'Access));
 
       Result.Add_Test
         (Caller.Create
