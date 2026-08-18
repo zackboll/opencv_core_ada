@@ -110,6 +110,12 @@ typedef struct {
 #define OPENCV_CORE_TRANSPOSED_PRODUCT_TRANSPOSE_TIMES_SELF ((uint8_t)0)
 #define OPENCV_CORE_TRANSPOSED_PRODUCT_SELF_TIMES_TRANSPOSE ((uint8_t)1)
 
+#define OPENCV_CORE_SAMPLE_ORIENTATION_ROWS ((int32_t)0)
+#define OPENCV_CORE_SAMPLE_ORIENTATION_COLUMNS ((int32_t)1)
+
+#define OPENCV_CORE_COVARIANCE_SCALING_UNSCALED ((int32_t)0)
+#define OPENCV_CORE_COVARIANCE_SCALING_BY_SAMPLE_COUNT ((int32_t)1)
+
 /*
  * Returns a borrowed pointer to the diagnostic for the most recent failed shim
  * operation on the calling thread. The pointer remains valid only until a
@@ -980,6 +986,24 @@ opencv_core_mat_transposed_product_with_delta(
     const opencv_core_mat_handle *source, const opencv_core_mat_handle *delta,
     uint8_t order, double scale, int32_t output_depth,
     opencv_core_mat_handle **out_mat);
+
+/*
+ * Calculates the normal feature covariance matrix and mean of a borrowed
+ * sample Mat using cv::calcCovarMatrix. orientation is 0 (samples are
+ * rows) or 1 (samples are columns). scaling is 0 (unscaled) or 1
+ * (divide by sample count N). The shim always asks OpenCV to compute
+ * the mean and always requests the normal feature covariance; scrambled
+ * covariance and a caller-supplied mean are not part of this ABI.
+ * ctype is taken from the source depth so Float32 stays Float32 and
+ * Float64 stays Float64. Both output pointer arguments must be
+ * non-null and distinct. On success both returned handles are
+ * independently owned. On any failure both outputs remain null.
+ */
+opencv_core_status
+opencv_core_mat_covariance(const opencv_core_mat_handle *source,
+                           int32_t orientation, int32_t scaling,
+                           opencv_core_mat_handle **out_covariance,
+                           opencv_core_mat_handle **out_mean);
 
 /*
  * Applies cv::transform to each source element interpreted as its channel

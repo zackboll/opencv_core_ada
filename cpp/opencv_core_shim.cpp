@@ -3371,6 +3371,75 @@ opencv_core_mat_transposed_product_with_delta(
     }
 }
 
+opencv_core_status
+opencv_core_mat_covariance(const opencv_core_mat_handle *source,
+                           int32_t orientation, int32_t scaling,
+                           opencv_core_mat_handle **out_covariance,
+                           opencv_core_mat_handle **out_mean) {
+    clear_error();
+
+    if (out_covariance != nullptr) {
+        *out_covariance = nullptr;
+    }
+    if (out_mean != nullptr) {
+        *out_mean = nullptr;
+    }
+
+    if (out_covariance == nullptr || out_mean == nullptr) {
+        return invalid_argument("output Mat handles must not be null");
+    }
+
+    if (out_covariance == out_mean) {
+        return invalid_argument("output Mat handle pointers must be distinct");
+    }
+
+    if (source == nullptr) {
+        return invalid_argument("source Mat handle must not be null");
+    }
+
+    int flags = cv::COVAR_NORMAL;
+    switch (orientation) {
+    case OPENCV_CORE_SAMPLE_ORIENTATION_ROWS:
+        flags |= cv::COVAR_ROWS;
+        break;
+    case OPENCV_CORE_SAMPLE_ORIENTATION_COLUMNS:
+        flags |= cv::COVAR_COLS;
+        break;
+    default:
+        return invalid_argument(
+            "sample orientation is not a supported identifier");
+    }
+
+    switch (scaling) {
+    case OPENCV_CORE_COVARIANCE_SCALING_UNSCALED:
+        break;
+    case OPENCV_CORE_COVARIANCE_SCALING_BY_SAMPLE_COUNT:
+        flags |= cv::COVAR_SCALE;
+        break;
+    default:
+        return invalid_argument(
+            "covariance scaling is not a supported identifier");
+    }
+
+    try {
+        cv::Mat covariance;
+        cv::Mat mean;
+        const int ctype = source->value.depth();
+        cv::calcCovarMatrix(source->value, covariance, mean, flags, ctype);
+
+        std::unique_ptr<opencv_core_mat_handle> covariance_handle(
+            new opencv_core_mat_handle(covariance));
+        std::unique_ptr<opencv_core_mat_handle> mean_handle(
+            new opencv_core_mat_handle(mean));
+
+        *out_covariance = covariance_handle.release();
+        *out_mean = mean_handle.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
 
 opencv_core_status
 opencv_core_mat_transform(const opencv_core_mat_handle *source,

@@ -5039,6 +5039,377 @@ package body Mat_Reduction_Tests is
          "Mutating the centered result must not change Self or Delta");
    end Transposed_Product_With_Delta_Result_Independence;
 
+   function Covariance_Mean_1x2
+     (Image : OpenCV.Core.Mat; A, B : OpenCV.Core.Float32_Value) return Boolean
+   is (Image.Rows = 1
+       and then Image.Columns = 2
+       and then Image.Depth = OpenCV.Core.Float32
+       and then Image.Channels = 1
+       and then Approximately_Equal
+                  (Long_Float (OpenCV.Core.Float32_Access.Get (Image, 0, 0)),
+                   Long_Float (A))
+       and then Approximately_Equal
+                  (Long_Float (OpenCV.Core.Float32_Access.Get (Image, 0, 1)),
+                   Long_Float (B)));
+
+   function Covariance_Mean_2x1
+     (Image : OpenCV.Core.Mat; A, B : OpenCV.Core.Float32_Value) return Boolean
+   is (Image.Rows = 2
+       and then Image.Columns = 1
+       and then Image.Depth = OpenCV.Core.Float32
+       and then Image.Channels = 1
+       and then Approximately_Equal
+                  (Long_Float (OpenCV.Core.Float32_Access.Get (Image, 0, 0)),
+                   Long_Float (A))
+       and then Approximately_Equal
+                  (Long_Float (OpenCV.Core.Float32_Access.Get (Image, 1, 0)),
+                   Long_Float (B)));
+
+   function Covariance_2x2
+     (Image : OpenCV.Core.Mat; A, B, C, D : Long_Float) return Boolean
+   is (Image.Rows = 2
+       and then Image.Columns = 2
+       and then Image.Channels = 1
+       and then Approximately_Equal
+                  (Long_Float (OpenCV.Core.Float32_Access.Get (Image, 0, 0)),
+                   A)
+       and then Approximately_Equal
+                  (Long_Float (OpenCV.Core.Float32_Access.Get (Image, 0, 1)),
+                   B)
+       and then Approximately_Equal
+                  (Long_Float (OpenCV.Core.Float32_Access.Get (Image, 1, 0)),
+                   C)
+       and then Approximately_Equal
+                  (Long_Float (OpenCV.Core.Float32_Access.Get (Image, 1, 1)),
+                   D));
+
+   procedure Fill_Row_Samples (Image : in out OpenCV.Core.Mat) is
+   begin
+      Fill_3x2 (Image, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+   end Fill_Row_Samples;
+
+   procedure Fill_Column_Samples (Image : in out OpenCV.Core.Mat) is
+   begin
+      Fill_2x3 (Image, 1.0, 3.0, 5.0, 2.0, 4.0, 6.0);
+   end Fill_Column_Samples;
+
+   procedure Covariance_Float32_Samples_As_Rows
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Covariance_Result;
+   begin
+      Fill_Row_Samples (Source);
+      Result := Source.Covariance;
+
+      AUnit.Assertions.Assert
+        (Result.Covariance.Depth = OpenCV.Core.Float32
+         and then Result.Mean.Depth = OpenCV.Core.Float32
+         and then Covariance_2x2
+                    (Result.Covariance,
+                     8.0 / 3.0,
+                     8.0 / 3.0,
+                     8.0 / 3.0,
+                     8.0 / 3.0)
+         and then Covariance_Mean_1x2 (Result.Mean, 3.0, 4.0),
+         "Row samples must produce a 2x2 Float32 covariance and 1x2 mean");
+      AUnit.Assertions.Assert
+        (Unchanged_3x2 (Source, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0),
+         "Covariance must not modify its source");
+   end Covariance_Float32_Samples_As_Rows;
+
+   procedure Covariance_Float32_Samples_As_Columns
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Covariance_Result;
+   begin
+      Fill_Column_Samples (Source);
+      Result :=
+        Source.Covariance (Orientation => OpenCV.Core.Samples_Are_Columns);
+
+      AUnit.Assertions.Assert
+        (Result.Covariance.Depth = OpenCV.Core.Float32
+         and then Result.Mean.Depth = OpenCV.Core.Float32
+         and then Covariance_2x2
+                    (Result.Covariance,
+                     8.0 / 3.0,
+                     8.0 / 3.0,
+                     8.0 / 3.0,
+                     8.0 / 3.0)
+         and then Covariance_Mean_2x1 (Result.Mean, 3.0, 4.0),
+         "Column samples must produce a 2x2 Float32 covariance and 2x1 mean");
+      AUnit.Assertions.Assert
+        (Unchanged_2x3 (Source, 1.0, 3.0, 5.0, 2.0, 4.0, 6.0),
+         "Column-oriented Covariance must not modify its source");
+   end Covariance_Float32_Samples_As_Columns;
+
+   procedure Covariance_Unscaled_Returns_Raw_Accumulation
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Covariance_Result;
+   begin
+      Fill_Row_Samples (Source);
+      Result := Source.Covariance (Scaling => OpenCV.Core.Unscaled);
+
+      AUnit.Assertions.Assert
+        (Covariance_2x2 (Result.Covariance, 8.0, 8.0, 8.0, 8.0)
+         and then Covariance_Mean_1x2 (Result.Mean, 3.0, 4.0),
+         "Unscaled Covariance must return the raw 1/N-free accumulation");
+   end Covariance_Unscaled_Returns_Raw_Accumulation;
+
+   procedure Covariance_Preserves_Float64_Depth
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source32   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
+      Source     : OpenCV.Core.Mat;
+      Result     : OpenCV.Core.Covariance_Result;
+      Covariance : OpenCV.Core.Mat;
+      Mean       : OpenCV.Core.Mat;
+   begin
+      Fill_Row_Samples (Source32);
+      OpenCV.Core.Float32_Access.Set (Source32, 0, 0, 1.000_000_1);
+      Source := Source32.Convert_To (OpenCV.Core.Float64);
+      Result := Source.Covariance;
+      Covariance := Result.Covariance.Convert_To (OpenCV.Core.Float32);
+      Mean := Result.Mean.Convert_To (OpenCV.Core.Float32);
+
+      AUnit.Assertions.Assert
+        (Source.Depth = OpenCV.Core.Float64
+         and then Result.Covariance.Depth = OpenCV.Core.Float64
+         and then Result.Mean.Depth = OpenCV.Core.Float64
+         and then Result.Covariance.Rows = 2
+         and then Result.Covariance.Columns = 2
+         and then Result.Mean.Rows = 1
+         and then Result.Mean.Columns = 2
+         and then Result.Covariance.Channels = 1
+         and then Result.Mean.Channels = 1
+         and then Approximately_Equal
+                    (Long_Float (OpenCV.Core.Float32_Access.Get (Mean, 0, 1)),
+                     4.0),
+         "Float64 Covariance must keep Float64 outputs and the sample mean");
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float (OpenCV.Core.Float32_Access.Get (Covariance, 0, 0)),
+            Long_Float (OpenCV.Core.Float32_Access.Get (Covariance, 1, 1))),
+         "Float64 Covariance must remain a symmetric feature matrix");
+   end Covariance_Preserves_Float64_Depth;
+
+   procedure Covariance_Supports_Noncontiguous_Region
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 4, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Covariance_Result;
+   begin
+      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      declare
+         Source : OpenCV.Core.Mat :=
+           Parent.Region ((X => 1, Y => 0, Width => 2, Height => 3));
+      begin
+         Fill_Row_Samples (Source);
+         AUnit.Assertions.Assert
+           (not Source.Is_Continuous,
+            "The Region used for Covariance must be non-contiguous");
+         Result := Source.Covariance;
+         AUnit.Assertions.Assert
+           (Covariance_2x2
+              (Result.Covariance, 8.0 / 3.0, 8.0 / 3.0, 8.0 / 3.0, 8.0 / 3.0)
+            and then Covariance_Mean_1x2 (Result.Mean, 3.0, 4.0),
+            "Covariance must honor a non-contiguous sample Region");
+         AUnit.Assertions.Assert
+           (Unchanged_3x2 (Source, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0)
+            and then OpenCV.Core.Float32_Access.Get (Parent, 0, 0) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 0, 3) = 99.0,
+            "Covariance must not modify the Region or its parent");
+      end;
+   end Covariance_Supports_Noncontiguous_Region;
+
+   procedure Covariance_Outputs_Are_Independent
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Covariance_Result;
+   begin
+      Fill_Row_Samples (Source);
+      Result := Source.Covariance;
+
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, 50.0);
+      AUnit.Assertions.Assert
+        (Covariance_2x2
+           (Result.Covariance, 8.0 / 3.0, 8.0 / 3.0, 8.0 / 3.0, 8.0 / 3.0)
+         and then Covariance_Mean_1x2 (Result.Mean, 3.0, 4.0),
+         "Mutating Self must not change Covariance or Mean");
+      OpenCV.Core.Float32_Access.Set (Result.Covariance, 0, 0, 7.0);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Source, 0, 0) = 50.0
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result.Mean, 0, 0)),
+                     3.0),
+         "Mutating Covariance must not change Self or Mean");
+      OpenCV.Core.Float32_Access.Set (Result.Mean, 0, 0, 9.0);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Result.Covariance, 0, 0) = 7.0
+         and then OpenCV.Core.Float32_Access.Get (Source, 1, 1) = 4.0,
+         "Mutating Mean must not change Covariance or Self");
+   end Covariance_Outputs_Are_Independent;
+
+   procedure Covariance_Outputs_Outlive_Source (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Result : OpenCV.Core.Covariance_Result;
+   begin
+      declare
+         Source : OpenCV.Core.Mat :=
+           OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
+      begin
+         Fill_Row_Samples (Source);
+         Result := Source.Covariance;
+      end;
+
+      AUnit.Assertions.Assert
+        (Covariance_2x2
+           (Result.Covariance, 8.0 / 3.0, 8.0 / 3.0, 8.0 / 3.0, 8.0 / 3.0)
+         and then Covariance_Mean_1x2 (Result.Mean, 3.0, 4.0),
+         "Covariance outputs must remain valid after the source finalizes");
+   end Covariance_Outputs_Outlive_Source;
+
+   procedure Covariance_Orientation_Changes_Output_Dimensions
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
+      As_Rows    : OpenCV.Core.Covariance_Result;
+      As_Columns : OpenCV.Core.Covariance_Result;
+   begin
+      Fill_Row_Samples (Source);
+      As_Rows :=
+        Source.Covariance (Orientation => OpenCV.Core.Samples_Are_Rows);
+      As_Columns :=
+        Source.Covariance (Orientation => OpenCV.Core.Samples_Are_Columns);
+
+      AUnit.Assertions.Assert
+        (As_Rows.Mean.Rows = 1
+         and then As_Rows.Mean.Columns = 2
+         and then As_Rows.Covariance.Rows = 2
+         and then As_Rows.Covariance.Columns = 2,
+         "Samples_Are_Rows must treat columns as features");
+      AUnit.Assertions.Assert
+        (As_Columns.Mean.Rows = 3
+         and then As_Columns.Mean.Columns = 1
+         and then As_Columns.Covariance.Rows = 3
+         and then As_Columns.Covariance.Columns = 3,
+         "Samples_Are_Columns must treat rows as features");
+   end Covariance_Orientation_Changes_Output_Dimensions;
+
+   procedure Covariance_Rejects_Empty_Multi_Channel_And_Invalid_Depths
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Default_Empty : OpenCV.Core.Mat;
+      Empty32       : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 1));
+      No_Samples    : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 2, (OpenCV.Core.Float32, 1));
+      Two_Channel   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 2));
+      Three_Channel : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 3));
+      UInt8_Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.UInt8, 1));
+      Int32_Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Int32, 1));
+      Float16_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float16, 1));
+
+      procedure Check_Default is
+         Result : constant OpenCV.Core.Covariance_Result :=
+           Default_Empty.Covariance;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Default;
+
+      procedure Check_Empty32 is
+         Result : constant OpenCV.Core.Covariance_Result := Empty32.Covariance;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Empty32;
+
+      procedure Check_No_Samples is
+         Result : constant OpenCV.Core.Covariance_Result :=
+           No_Samples.Covariance;
+      begin
+         pragma Unreferenced (Result);
+      end Check_No_Samples;
+
+      procedure Check_Two_Channel is
+         Result : constant OpenCV.Core.Covariance_Result :=
+           Two_Channel.Covariance;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Two_Channel;
+
+      procedure Check_Three_Channel is
+         Result : constant OpenCV.Core.Covariance_Result :=
+           Three_Channel.Covariance;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Three_Channel;
+
+      procedure Check_UInt8 is
+         Result : constant OpenCV.Core.Covariance_Result :=
+           UInt8_Image.Covariance;
+      begin
+         pragma Unreferenced (Result);
+      end Check_UInt8;
+
+      procedure Check_Int32 is
+         Result : constant OpenCV.Core.Covariance_Result :=
+           Int32_Image.Covariance;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Int32;
+
+      procedure Check_Float16 is
+         Result : constant OpenCV.Core.Covariance_Result :=
+           Float16_Image.Covariance;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Float16;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Check_Default'Access, "Covariance must reject a default empty Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_Empty32'Access, "Covariance must reject a typed empty Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_No_Samples'Access,
+         "Covariance must reject a Mat with no samples");
+      Assert_Raises_OpenCV_Error
+        (Check_Two_Channel'Access, "Covariance must reject C2 input");
+      Assert_Raises_OpenCV_Error
+        (Check_Three_Channel'Access, "Covariance must reject C3 input");
+      Assert_Raises_OpenCV_Error
+        (Check_UInt8'Access, "Covariance must reject UInt8 input");
+      Assert_Raises_OpenCV_Error
+        (Check_Int32'Access, "Covariance must reject Int32 input");
+      Assert_Raises_OpenCV_Error
+        (Check_Float16'Access, "Covariance must reject Float16 input");
+   end Covariance_Rejects_Empty_Multi_Channel_And_Invalid_Depths;
+
    procedure Vec3_Mean_Returns_Independent_Channel_Values
      (Test : in out Mat_Test_Fixture)
    is
@@ -7088,6 +7459,43 @@ package body Mat_Reduction_Tests is
         (Caller.Create
            ("Transposed_Product with Delta result independence",
             Transposed_Product_With_Delta_Result_Independence'Access));
+
+      Result.Add_Test
+        (Caller.Create
+           ("Covariance Float32 samples as rows",
+            Covariance_Float32_Samples_As_Rows'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Covariance Float32 samples as columns",
+            Covariance_Float32_Samples_As_Columns'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Covariance Unscaled returns the raw accumulation",
+            Covariance_Unscaled_Returns_Raw_Accumulation'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Covariance preserves Float64 depth",
+            Covariance_Preserves_Float64_Depth'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Covariance supports a non-contiguous Region",
+            Covariance_Supports_Noncontiguous_Region'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Covariance outputs are independent",
+            Covariance_Outputs_Are_Independent'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Covariance outputs outlive the source",
+            Covariance_Outputs_Outlive_Source'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Covariance orientation changes output dimensions",
+            Covariance_Orientation_Changes_Output_Dimensions'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Covariance rejects empty, multi-channel, and invalid depths",
+            Covariance_Rejects_Empty_Multi_Channel_And_Invalid_Depths'Access));
 
       Result.Add_Test
         (Caller.Create

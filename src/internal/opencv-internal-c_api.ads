@@ -110,6 +110,12 @@ package OpenCV.Internal.C_API is
    Transposed_Product_Transpose_Times_Self : constant C_UInt8 := 0;
    Transposed_Product_Self_Times_Transpose : constant C_UInt8 := 1;
 
+   Sample_Orientation_Rows    : constant C_Int32 := 0;
+   Sample_Orientation_Columns : constant C_Int32 := 1;
+
+   Covariance_Scaling_Unscaled        : constant C_Int32 := 0;
+   Covariance_Scaling_By_Sample_Count : constant C_Int32 := 1;
+
    subtype C_Boolean is Interfaces.Unsigned_8;
    C_False : constant C_Boolean := 0;
    C_True  : constant C_Boolean := 1;
@@ -822,6 +828,14 @@ package OpenCV.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_core_mat_transposed_product_with_delta";
+
+   function Mat_Covariance
+     (Source      : Mat_Handle;
+      Orientation : C_Int32;
+      Scaling     : C_Int32;
+      Covariance  : access Mat_Handle;
+      Mean        : access Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_covariance";
 
    function Mat_Transform
      (Source       : Mat_Handle;

@@ -52,6 +52,17 @@ package OpenCV.Core is
    --  triangle onto the upper triangle.
    type Symmetry_Source is (Upper_Triangle, Lower_Triangle);
 
+   --  Interprets a 2-D sample matrix for Covariance. Samples_Are_Rows
+   --  treats each row as one observation. Samples_Are_Columns treats
+   --  each column as one observation.
+   type Sample_Orientation is (Samples_Are_Rows, Samples_Are_Columns);
+
+   --  Selects whether Covariance divides the accumulation by the
+   --  sample count N. Unscaled leaves the raw accumulation.
+   --  By_Sample_Count applies OpenCV's COVAR_SCALE factor 1/N. This
+   --  is not unbiased covariance and is not 1/(N - 1).
+   type Covariance_Scaling is (Unscaled, By_Sample_Count);
+
    type Channel_Count is new Interfaces.Integer_32 range 1 .. 512;
 
    type Mat_Size is
@@ -141,6 +152,7 @@ package OpenCV.Core is
    --  sqrt (X**2 + Y**2). Angle is the corresponding OpenCV fast phase
    --  of (X, Y). Each component has normal Mat controlled ownership and
    --  is independent of the source Mats and of the other component.
+
    type Polar_Coordinates is record
       Magnitude : Mat;
       Angle     : Mat;
@@ -153,6 +165,16 @@ package OpenCV.Core is
    type Cartesian_Coordinates is record
       X : Mat;
       Y : Mat;
+   end record;
+
+   --  Independently owned outputs of Covariance. Covariance is the
+   --  normal feature covariance matrix. Mean is the corresponding
+   --  per-feature average computed by OpenCV. Each field has normal
+   --  Mat controlled ownership and is independent of Self and of the
+   --  other field.
+   type Covariance_Result is record
+      Covariance : Mat;
+      Mean       : Mat;
    end record;
 
    --  Discriminated result of Invert. Inverse is present only when
@@ -745,6 +767,32 @@ package OpenCV.Core is
       Order        : Transposed_Product_Order;
       Output_Depth : Depth_Type;
       Scale        : Long_Float := 1.0) return Mat;
+
+   --  Calculates the normal feature covariance matrix and mean of
+   --  Self using OpenCV 4.10 cv::calcCovarMatrix. Self is a 2-D
+   --  single-channel sample matrix. Samples_Are_Rows, the default,
+   --  treats an M x N Mat as M samples of N features: Mean is 1 x N
+   --  and Covariance is N x N. Samples_Are_Columns treats an M x N
+   --  Mat as N samples of M features: Mean is M x 1 and Covariance
+   --  is M x M. The scrambled/sample-space covariance form is not
+   --  part of this API. OpenCV always computes Mean; a caller-
+   --  supplied average is not accepted. Unscaled returns the raw
+   --  centered accumulation. By_Sample_Count, the default, divides
+   --  that accumulation by the selected sample count N. That factor
+   --  is 1/N, matching OpenCV COVAR_SCALE; it is not 1/(N - 1) and
+   --  is not unbiased sample covariance. Self must be non-empty and
+   --  Float32 or Float64. The selected orientation must contain at
+   --  least one sample. Multi-channel Mats, integer depths, and
+   --  Float16 are rejected. Output Covariance and Mean preserve
+   --  Self's floating-point depth and are independently owned. The
+   --  caller does not preallocate either output. Continuity is not
+   --  required; non-contiguous Regions are supported. Self is
+   --  unchanged.
+   function Covariance
+     (Self        : Mat;
+      Orientation : Sample_Orientation := Samples_Are_Rows;
+      Scaling     : Covariance_Scaling := By_Sample_Count)
+      return Covariance_Result;
 
    --  Interprets each Self element as its channel vector and applies
    --  OpenCV 4.10 cv::transform. This is a per-element channel/vector

@@ -145,6 +145,22 @@ package body OpenCV.Core is
          when Minimum        => OpenCV.Internal.C_API.Reduce_Minimum,
          when Sum_Of_Squares => OpenCV.Internal.C_API.Reduce_Sum_Of_Squares);
 
+   function To_C_Sample_Orientation
+     (Value : Sample_Orientation) return OpenCV.Internal.C_API.C_Int32
+   is (case Value is
+         when Samples_Are_Rows    =>
+           OpenCV.Internal.C_API.Sample_Orientation_Rows,
+         when Samples_Are_Columns =>
+           OpenCV.Internal.C_API.Sample_Orientation_Columns);
+
+   function To_C_Covariance_Scaling
+     (Value : Covariance_Scaling) return OpenCV.Internal.C_API.C_Int32
+   is (case Value is
+         when Unscaled        =>
+           OpenCV.Internal.C_API.Covariance_Scaling_Unscaled,
+         when By_Sample_Count =>
+           OpenCV.Internal.C_API.Covariance_Scaling_By_Sample_Count);
+
    function To_Mat_Size
      (Value : OpenCV.Internal.C_API.C_UInt64) return Mat_Size is
    begin
@@ -3292,6 +3308,78 @@ package body OpenCV.Core is
         Call_Transposed_Product_With_Offset
           (Self, Offset, Order, Scale, To_C_Depth (Output_Depth));
    end Transposed_Product;
+
+   procedure Validate_Covariance (Self : Mat; Orientation : Sample_Orientation)
+   is
+      Sample_Count : Natural;
+   begin
+      if Self.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Covariance requires a non-empty Mat");
+      end if;
+
+      if Self.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Covariance requires a single-channel Mat");
+      end if;
+
+      if Self.Depth /= Float32 and then Self.Depth /= Float64 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Covariance requires a Float32 or Float64 Mat");
+      end if;
+
+      Sample_Count :=
+        (if Orientation = Samples_Are_Rows then Self.Rows else Self.Columns);
+      if Sample_Count = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Covariance requires at least one sample");
+      end if;
+   end Validate_Covariance;
+
+   function Covariance
+     (Self        : Mat;
+      Orientation : Sample_Orientation := Samples_Are_Rows;
+      Scaling     : Covariance_Scaling := By_Sample_Count)
+      return Covariance_Result
+   is
+      Result            : Covariance_Result;
+      Covariance_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Mean_Handle       : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status            : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Covariance (Self, Orientation);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Covariance
+          (Source      => Self.Handle,
+           Orientation => To_C_Sample_Orientation (Orientation),
+           Scaling     => To_C_Covariance_Scaling (Scaling),
+           Covariance  => Covariance_Handle'Access,
+           Mean        => Mean_Handle'Access);
+      if Status /= OpenCV.Internal.C_API.Success then
+         OpenCV.Internal.C_API.Mat_Destroy (Covariance_Handle);
+         OpenCV.Internal.C_API.Mat_Destroy (Mean_Handle);
+         Raise_On_Error (Status, "Mat covariance operation");
+      end if;
+
+      if Covariance_Handle = OpenCV.Internal.C_API.Null_Mat_Handle
+        or else Mean_Handle = OpenCV.Internal.C_API.Null_Mat_Handle
+      then
+         OpenCV.Internal.C_API.Mat_Destroy (Covariance_Handle);
+         OpenCV.Internal.C_API.Mat_Destroy (Mean_Handle);
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat covariance operation returned a null result handle");
+      end if;
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Covariance.Handle);
+      Result.Covariance.Handle := Covariance_Handle;
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Mean.Handle);
+      Result.Mean.Handle := Mean_Handle;
+      return Result;
+   end Covariance;
 
    function Supports_Transform_Source (Self : Mat) return Boolean
    is (Self.Depth = UInt8
