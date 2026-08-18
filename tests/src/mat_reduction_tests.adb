@@ -5427,13 +5427,15 @@ package body Mat_Reduction_Tests is
         Result.Eigenvectors.Row_View (Index);
       Left   : constant OpenCV.Core.Mat :=
         Source.Matrix_Multiply (Vector.Transpose);
-      Right  : constant OpenCV.Core.Mat :=
+      Zero   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (Source.Rows, 1, (Source.Depth, Source.Channels));
+      Right  : OpenCV.Core.Mat;
+   begin
+      Zero.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Right :=
         Vector.Transpose.Scale_Add
           (Scale => Eigenvalue_At (Result.Eigenvalues, Integer (Index)),
-           Right =>
-             OpenCV.Core.Create
-               (Source.Rows, 1, (Source.Depth, Source.Channels)));
-   begin
+           Right => Zero);
       return
         Approximately_Equal
           (Left.Abs_Diff (Right).Norm (OpenCV.Core.Infinity), 0.0, 0.000_1);

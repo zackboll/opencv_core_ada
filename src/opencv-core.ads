@@ -808,11 +808,12 @@ package OpenCV.Core is
    --  Self must be a non-empty square single-channel Float32 or
    --  Float64 Mat that represents a real symmetric matrix. This is
    --  not PCA, SVD, or a non-symmetric eigen solver. OpenCV 4.10
-   --  does not validate symmetry and defines no symmetry tolerance;
-   --  Jacobi reads both triangles and the Eigen SelfAdjoint path
-   --  assumes one triangle. A non-symmetric input is therefore a
-   --  caller-precondition violation that can produce a misleading
-   --  result rather than a rejection. This binding does not invent a
+   --  does not validate symmetry and defines no symmetry
+   --  tolerance. Its symmetric eigensolver backends assume
+   --  self-adjoint input rather than comparing Self with its
+   --  transpose. A non-symmetric input is therefore a
+   --  caller-precondition violation and may produce misleading
+   --  output rather than a rejection. This binding does not invent a
    --  floating-point symmetry check. Multi-channel Mats, integer
    --  depths, and Float16 are rejected. Outputs preserve Self's
    --  floating-point depth. For an N x N source, Eigenvalues is N x 1

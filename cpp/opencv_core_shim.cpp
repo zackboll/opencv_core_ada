@@ -3467,6 +3467,15 @@ opencv_core_mat_eigen_decomposition(
     }
 
     try {
+        // ABI safety: OpenCV 4.10's non-Eigen Jacobi backend computes
+        // maxIters = n*n*30 using signed int. Reject dimensions that would
+        // overflow before the backend can safely complete or fail.
+        // 8460 is the largest n such that n*n*30 still fits in INT_MAX.
+        if (source->value.rows > 8460) {
+            return invalid_argument(
+                "eigen source dimension would overflow OpenCV 4.10 Jacobi maxIters");
+        }
+
         cv::Mat eigenvalues;
         cv::Mat eigenvectors;
         const bool ok = cv::eigen(source->value, eigenvalues, eigenvectors);
