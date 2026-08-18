@@ -5410,6 +5410,346 @@ package body Mat_Reduction_Tests is
         (Check_Float16'Access, "Covariance must reject Float16 input");
    end Covariance_Rejects_Empty_Multi_Channel_And_Invalid_Depths;
 
+   function Eigenvalue_At
+     (Values : OpenCV.Core.Mat; Row : Natural) return Long_Float
+   is (Long_Float (OpenCV.Core.Float32_Access.Get (Values, Row, 0)));
+
+   function Eigenvector_Component
+     (Vectors : OpenCV.Core.Mat; Row, Column : Natural) return Long_Float
+   is (Long_Float (OpenCV.Core.Float32_Access.Get (Vectors, Row, Column)));
+
+   function Satisfies_Eigen_Equation
+     (Source : OpenCV.Core.Mat;
+      Result : OpenCV.Core.Eigen_Decomposition_Result;
+      Index  : OpenCV.Core.Size_Coordinate) return Boolean
+   is
+      Vector : constant OpenCV.Core.Mat :=
+        Result.Eigenvectors.Row_View (Index);
+      Left   : constant OpenCV.Core.Mat :=
+        Source.Matrix_Multiply (Vector.Transpose);
+      Right  : constant OpenCV.Core.Mat :=
+        Vector.Transpose.Scale_Add
+          (Scale => Eigenvalue_At (Result.Eigenvalues, Integer (Index)),
+           Right =>
+             OpenCV.Core.Create
+               (Source.Rows, 1, (Source.Depth, Source.Channels)));
+   begin
+      return
+        Approximately_Equal
+          (Left.Abs_Diff (Right).Norm (OpenCV.Core.Infinity), 0.0, 0.000_1);
+   end Satisfies_Eigen_Equation;
+
+   function Eigenvectors_Are_Orthonormal
+     (Result : OpenCV.Core.Eigen_Decomposition_Result) return Boolean
+   is
+      First  : constant OpenCV.Core.Mat := Result.Eigenvectors.Row_View (0);
+      Second : constant OpenCV.Core.Mat := Result.Eigenvectors.Row_View (1);
+   begin
+      return
+        Approximately_Equal (First.Norm, 1.0, 0.000_1)
+        and then Approximately_Equal (Second.Norm, 1.0, 0.000_1)
+        and then Approximately_Equal
+                   (First.Dot_Product (Second), 0.0, 0.000_1);
+   end Eigenvectors_Are_Orthonormal;
+
+   function Eigenvalues_Are_Descending
+     (Values : OpenCV.Core.Mat) return Boolean
+   is (Eigenvalue_At (Values, 0) >= Eigenvalue_At (Values, 1) - 0.000_001);
+
+   procedure Eigen_Decomposition_Diagonal_Float32
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Eigen_Decomposition_Result;
+   begin
+      Fill_2x2 (Source, 5.0, 0.0, 0.0, 2.0);
+      Result := Source.Eigen_Decomposition;
+
+      AUnit.Assertions.Assert
+        (Result.Eigenvalues.Rows = 2
+         and then Result.Eigenvalues.Columns = 1
+         and then Result.Eigenvectors.Rows = 2
+         and then Result.Eigenvectors.Columns = 2
+         and then Result.Eigenvalues.Depth = OpenCV.Core.Float32
+         and then Result.Eigenvectors.Depth = OpenCV.Core.Float32
+         and then Result.Eigenvalues.Channels = 1
+         and then Result.Eigenvectors.Channels = 1,
+         "Diagonal eigen output must be N x 1 and N x N Float32 C1");
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Eigenvalue_At (Result.Eigenvalues, 0), 5.0)
+         and then Approximately_Equal
+                    (Eigenvalue_At (Result.Eigenvalues, 1), 2.0)
+         and then Eigenvalues_Are_Descending (Result.Eigenvalues),
+         "Diagonal eigenvalues must be 5 then 2 in descending order");
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (abs Eigenvector_Component (Result.Eigenvectors, 0, 0), 1.0)
+         and then Approximately_Equal
+                    (Eigenvector_Component (Result.Eigenvectors, 0, 1), 0.0)
+         and then Approximately_Equal
+                    (Eigenvector_Component (Result.Eigenvectors, 1, 0), 0.0)
+         and then Approximately_Equal
+                    (abs Eigenvector_Component (Result.Eigenvectors, 1, 1),
+                     1.0),
+         "Diagonal eigenvectors must be signed coordinate axes");
+      AUnit.Assertions.Assert
+        (Unchanged_2x2 (Source, 5.0, 0.0, 0.0, 2.0),
+         "Eigen_Decomposition must not modify its source");
+   end Eigen_Decomposition_Diagonal_Float32;
+
+   procedure Eigen_Decomposition_Satisfies_Equation_And_Orthogonality
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Eigen_Decomposition_Result;
+   begin
+      Fill_2x2 (Source, 2.0, 1.0, 1.0, 2.0);
+      Result := Source.Eigen_Decomposition;
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Eigenvalue_At (Result.Eigenvalues, 0), 3.0)
+         and then Approximately_Equal
+                    (Eigenvalue_At (Result.Eigenvalues, 1), 1.0),
+         "The nontrivial symmetric matrix must have eigenvalues 3 and 1");
+      AUnit.Assertions.Assert
+        (Satisfies_Eigen_Equation (Source, Result, 0)
+         and then Satisfies_Eigen_Equation (Source, Result, 1),
+         "Each returned pair must satisfy A * v = lambda * v");
+      AUnit.Assertions.Assert
+        (Eigenvectors_Are_Orthonormal (Result),
+         "Distinct eigenvectors must be orthonormal");
+   end Eigen_Decomposition_Satisfies_Equation_And_Orthogonality;
+
+   procedure Eigen_Decomposition_Preserves_Float64_Depth
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source32 : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Source   : OpenCV.Core.Mat;
+      Result   : OpenCV.Core.Eigen_Decomposition_Result;
+      Values   : OpenCV.Core.Mat;
+   begin
+      Fill_2x2 (Source32, 2.0, 1.0, 1.0, 2.0);
+      Source := Source32.Convert_To (OpenCV.Core.Float64);
+      Result := Source.Eigen_Decomposition;
+      Values := Result.Eigenvalues.Convert_To (OpenCV.Core.Float32);
+
+      AUnit.Assertions.Assert
+        (Source.Depth = OpenCV.Core.Float64
+         and then Result.Eigenvalues.Depth = OpenCV.Core.Float64
+         and then Result.Eigenvectors.Depth = OpenCV.Core.Float64
+         and then Result.Eigenvalues.Rows = 2
+         and then Result.Eigenvalues.Columns = 1
+         and then Result.Eigenvectors.Rows = 2
+         and then Result.Eigenvectors.Columns = 2
+         and then Result.Eigenvalues.Channels = 1
+         and then Result.Eigenvectors.Channels = 1
+         and then Approximately_Equal (Eigenvalue_At (Values, 0), 3.0)
+         and then Approximately_Equal (Eigenvalue_At (Values, 1), 1.0),
+         "Float64 Eigen_Decomposition must keep Float64 outputs");
+   end Eigen_Decomposition_Preserves_Float64_Depth;
+
+   procedure Eigen_Decomposition_Supports_Noncontiguous_Region
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 4, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Eigen_Decomposition_Result;
+   begin
+      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      declare
+         Source : OpenCV.Core.Mat :=
+           Parent.Region ((X => 1, Y => 1, Width => 2, Height => 2));
+      begin
+         Fill_2x2 (Source, 2.0, 1.0, 1.0, 2.0);
+         AUnit.Assertions.Assert
+           (not Source.Is_Continuous,
+            "The Region used for Eigen_Decomposition must be non-contiguous");
+         Result := Source.Eigen_Decomposition;
+         AUnit.Assertions.Assert
+           (Approximately_Equal (Eigenvalue_At (Result.Eigenvalues, 0), 3.0)
+            and then Approximately_Equal
+                       (Eigenvalue_At (Result.Eigenvalues, 1), 1.0)
+            and then Satisfies_Eigen_Equation (Source, Result, 0)
+            and then Satisfies_Eigen_Equation (Source, Result, 1),
+            "Eigen_Decomposition must honor a non-contiguous square Region");
+         AUnit.Assertions.Assert
+           (Unchanged_2x2 (Source, 2.0, 1.0, 1.0, 2.0)
+            and then OpenCV.Core.Float32_Access.Get (Parent, 0, 0) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 3, 3) = 99.0,
+            "Eigen_Decomposition must not modify the Region or its parent");
+      end;
+   end Eigen_Decomposition_Supports_Noncontiguous_Region;
+
+   procedure Eigen_Decomposition_Outputs_Are_Independent
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Eigen_Decomposition_Result;
+   begin
+      Fill_2x2 (Source, 5.0, 0.0, 0.0, 2.0);
+      Result := Source.Eigen_Decomposition;
+
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, 50.0);
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Eigenvalue_At (Result.Eigenvalues, 0), 5.0)
+         and then Approximately_Equal
+                    (abs Eigenvector_Component (Result.Eigenvectors, 0, 0),
+                     1.0),
+         "Mutating Self must not change eigenvalues or eigenvectors");
+      OpenCV.Core.Float32_Access.Set (Result.Eigenvalues, 0, 0, 7.0);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Source, 0, 0) = 50.0
+         and then Approximately_Equal
+                    (abs Eigenvector_Component (Result.Eigenvectors, 0, 0),
+                     1.0),
+         "Mutating eigenvalues must not change Self or eigenvectors");
+      OpenCV.Core.Float32_Access.Set (Result.Eigenvectors, 0, 0, 9.0);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Result.Eigenvalues, 0, 0) = 7.0
+         and then OpenCV.Core.Float32_Access.Get (Source, 1, 1) = 2.0,
+         "Mutating eigenvectors must not change eigenvalues or Self");
+   end Eigen_Decomposition_Outputs_Are_Independent;
+
+   procedure Eigen_Decomposition_Outputs_Outlive_Source
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Result : OpenCV.Core.Eigen_Decomposition_Result;
+   begin
+      declare
+         Source : OpenCV.Core.Mat :=
+           OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      begin
+         Fill_2x2 (Source, 5.0, 0.0, 0.0, 2.0);
+         Result := Source.Eigen_Decomposition;
+      end;
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Eigenvalue_At (Result.Eigenvalues, 0), 5.0)
+         and then Approximately_Equal
+                    (Eigenvalue_At (Result.Eigenvalues, 1), 2.0)
+         and then Result.Eigenvectors.Rows = 2
+         and then Result.Eigenvectors.Columns = 2,
+         "Eigen outputs must remain valid after the source finalizes");
+   end Eigen_Decomposition_Outputs_Outlive_Source;
+
+   procedure Eigen_Decomposition_Repeated_Eigenvalues_Remain_Valid
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Eigen_Decomposition_Result;
+   begin
+      Fill_2x2 (Source, 1.0, 0.0, 0.0, 1.0);
+      Result := Source.Eigen_Decomposition;
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Eigenvalue_At (Result.Eigenvalues, 0), 1.0)
+         and then Approximately_Equal
+                    (Eigenvalue_At (Result.Eigenvalues, 1), 1.0)
+         and then Satisfies_Eigen_Equation (Source, Result, 0)
+         and then Satisfies_Eigen_Equation (Source, Result, 1)
+         and then Eigenvectors_Are_Orthonormal (Result),
+         "Repeated eigenvalues must still yield a valid orthonormal basis");
+   end Eigen_Decomposition_Repeated_Eigenvalues_Remain_Valid;
+
+   procedure Eigen_Decomposition_Rejects_Invalid_Input
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Default_Empty : OpenCV.Core.Mat;
+      Empty32       : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 1));
+      Non_Square    : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Two_Channel   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 2));
+      UInt8_Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      Int32_Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Int32, 1));
+      Float16_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float16, 1));
+
+      procedure Check_Default is
+         Result : constant OpenCV.Core.Eigen_Decomposition_Result :=
+           Default_Empty.Eigen_Decomposition;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Default;
+
+      procedure Check_Empty32 is
+         Result : constant OpenCV.Core.Eigen_Decomposition_Result :=
+           Empty32.Eigen_Decomposition;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Empty32;
+
+      procedure Check_Non_Square is
+         Result : constant OpenCV.Core.Eigen_Decomposition_Result :=
+           Non_Square.Eigen_Decomposition;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Non_Square;
+
+      procedure Check_Two_Channel is
+         Result : constant OpenCV.Core.Eigen_Decomposition_Result :=
+           Two_Channel.Eigen_Decomposition;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Two_Channel;
+
+      procedure Check_UInt8 is
+         Result : constant OpenCV.Core.Eigen_Decomposition_Result :=
+           UInt8_Image.Eigen_Decomposition;
+      begin
+         pragma Unreferenced (Result);
+      end Check_UInt8;
+
+      procedure Check_Int32 is
+         Result : constant OpenCV.Core.Eigen_Decomposition_Result :=
+           Int32_Image.Eigen_Decomposition;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Int32;
+
+      procedure Check_Float16 is
+         Result : constant OpenCV.Core.Eigen_Decomposition_Result :=
+           Float16_Image.Eigen_Decomposition;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Float16;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Check_Default'Access,
+         "Eigen_Decomposition must reject a default empty Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_Empty32'Access,
+         "Eigen_Decomposition must reject a typed empty Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_Non_Square'Access,
+         "Eigen_Decomposition must reject a non-square Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_Two_Channel'Access, "Eigen_Decomposition must reject C2 input");
+      Assert_Raises_OpenCV_Error
+        (Check_UInt8'Access, "Eigen_Decomposition must reject UInt8 input");
+      Assert_Raises_OpenCV_Error
+        (Check_Int32'Access, "Eigen_Decomposition must reject Int32 input");
+      Assert_Raises_OpenCV_Error
+        (Check_Float16'Access,
+         "Eigen_Decomposition must reject Float16 input");
+   end Eigen_Decomposition_Rejects_Invalid_Input;
+
    procedure Vec3_Mean_Returns_Independent_Channel_Values
      (Test : in out Mat_Test_Fixture)
    is
@@ -7496,6 +7836,38 @@ package body Mat_Reduction_Tests is
         (Caller.Create
            ("Covariance rejects empty, multi-channel, and invalid depths",
             Covariance_Rejects_Empty_Multi_Channel_And_Invalid_Depths'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Eigen_Decomposition diagonal Float32 layout and order",
+            Eigen_Decomposition_Diagonal_Float32'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Eigen_Decomposition satisfies equation and orthogonality",
+            Eigen_Decomposition_Satisfies_Equation_And_Orthogonality'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Eigen_Decomposition preserves Float64 depth",
+            Eigen_Decomposition_Preserves_Float64_Depth'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Eigen_Decomposition supports a non-contiguous Region",
+            Eigen_Decomposition_Supports_Noncontiguous_Region'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Eigen_Decomposition outputs are independent",
+            Eigen_Decomposition_Outputs_Are_Independent'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Eigen_Decomposition outputs outlive the source",
+            Eigen_Decomposition_Outputs_Outlive_Source'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Eigen_Decomposition repeated eigenvalues remain valid",
+            Eigen_Decomposition_Repeated_Eigenvalues_Remain_Valid'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Eigen_Decomposition rejects empty, non-square, and invalid types",
+            Eigen_Decomposition_Rejects_Invalid_Input'Access));
 
       Result.Add_Test
         (Caller.Create

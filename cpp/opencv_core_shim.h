@@ -1006,6 +1006,21 @@ opencv_core_mat_covariance(const opencv_core_mat_handle *source,
                            opencv_core_mat_handle **out_mean);
 
 /*
+ * Decomposes a borrowed real symmetric Mat using cv::eigen. Both
+ * output pointer arguments must be non-null and distinct. On success
+ * both returned handles are independently owned. Eigenvalues is N x 1
+ * in descending order and eigenvectors is N x N with one vector per
+ * row, matching OpenCV 4.10. The source is borrowed and unchanged.
+ * If cv::eigen returns false, both outputs remain null and the call
+ * fails. On any other failure both outputs remain null.
+ */
+opencv_core_status
+opencv_core_mat_eigen_decomposition(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle **out_eigenvalues,
+    opencv_core_mat_handle **out_eigenvectors);
+
+/*
  * Applies cv::transform to each source element interpreted as its channel
  * vector. source and coefficients are borrowed. The independently owned
  * result has source.rows, source.cols, source.depth(), and

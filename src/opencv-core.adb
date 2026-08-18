@@ -3381,6 +3381,71 @@ package body OpenCV.Core is
       return Result;
    end Covariance;
 
+   procedure Validate_Eigen_Decomposition (Self : Mat) is
+   begin
+      if Self.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Eigen_Decomposition requires a non-empty Mat");
+      end if;
+
+      if Self.Rows /= Self.Columns then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Eigen_Decomposition requires a square Mat");
+      end if;
+
+      if Self.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Eigen_Decomposition requires a single-channel Mat");
+      end if;
+
+      if Self.Depth /= Float32 and then Self.Depth /= Float64 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Eigen_Decomposition requires a Float32 or Float64 Mat");
+      end if;
+   end Validate_Eigen_Decomposition;
+
+   function Eigen_Decomposition (Self : Mat) return Eigen_Decomposition_Result
+   is
+      Result              : Eigen_Decomposition_Result;
+      Eigenvalues_Handle  : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Eigenvectors_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status              : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Eigen_Decomposition (Self);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Eigen_Decomposition
+          (Source       => Self.Handle,
+           Eigenvalues  => Eigenvalues_Handle'Access,
+           Eigenvectors => Eigenvectors_Handle'Access);
+      if Status /= OpenCV.Internal.C_API.Success then
+         OpenCV.Internal.C_API.Mat_Destroy (Eigenvalues_Handle);
+         OpenCV.Internal.C_API.Mat_Destroy (Eigenvectors_Handle);
+         Raise_On_Error (Status, "Mat eigen decomposition operation");
+      end if;
+
+      if Eigenvalues_Handle = OpenCV.Internal.C_API.Null_Mat_Handle
+        or else Eigenvectors_Handle = OpenCV.Internal.C_API.Null_Mat_Handle
+      then
+         OpenCV.Internal.C_API.Mat_Destroy (Eigenvalues_Handle);
+         OpenCV.Internal.C_API.Mat_Destroy (Eigenvectors_Handle);
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat eigen decomposition operation returned a null result handle");
+      end if;
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Eigenvalues.Handle);
+      Result.Eigenvalues.Handle := Eigenvalues_Handle;
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Eigenvectors.Handle);
+      Result.Eigenvectors.Handle := Eigenvectors_Handle;
+      return Result;
+   end Eigen_Decomposition;
+
    function Supports_Transform_Source (Self : Mat) return Boolean
    is (Self.Depth = UInt8
        or else Self.Depth = Int8

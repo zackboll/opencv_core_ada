@@ -3440,6 +3440,53 @@ opencv_core_mat_covariance(const opencv_core_mat_handle *source,
     }
 }
 
+opencv_core_status
+opencv_core_mat_eigen_decomposition(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle **out_eigenvalues,
+    opencv_core_mat_handle **out_eigenvectors) {
+    clear_error();
+
+    if (out_eigenvalues != nullptr) {
+        *out_eigenvalues = nullptr;
+    }
+    if (out_eigenvectors != nullptr) {
+        *out_eigenvectors = nullptr;
+    }
+
+    if (out_eigenvalues == nullptr || out_eigenvectors == nullptr) {
+        return invalid_argument("output Mat handles must not be null");
+    }
+
+    if (out_eigenvalues == out_eigenvectors) {
+        return invalid_argument("output Mat handle pointers must be distinct");
+    }
+
+    if (source == nullptr) {
+        return invalid_argument("source Mat handle must not be null");
+    }
+
+    try {
+        cv::Mat eigenvalues;
+        cv::Mat eigenvectors;
+        const bool ok = cv::eigen(source->value, eigenvalues, eigenvectors);
+        if (!ok) {
+            set_error("eigen decomposition did not succeed");
+            return OPENCV_CORE_ERROR_OPENCV;
+        }
+
+        std::unique_ptr<opencv_core_mat_handle> eigenvalues_handle(
+            new opencv_core_mat_handle(eigenvalues));
+        std::unique_ptr<opencv_core_mat_handle> eigenvectors_handle(
+            new opencv_core_mat_handle(eigenvectors));
+
+        *out_eigenvalues = eigenvalues_handle.release();
+        *out_eigenvectors = eigenvectors_handle.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
 
 opencv_core_status
 opencv_core_mat_transform(const opencv_core_mat_handle *source,

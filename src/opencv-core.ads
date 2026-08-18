@@ -177,6 +177,16 @@ package OpenCV.Core is
       Mean       : Mat;
    end record;
 
+   --  Independently owned outputs of Eigen_Decomposition. Eigenvalues
+   --  is the N x 1 column of eigenvalues. Eigenvectors is the N x N
+   --  matrix of corresponding eigenvectors stored by row. Each field
+   --  has normal Mat controlled ownership and is independent of Self
+   --  and of the other field.
+   type Eigen_Decomposition_Result is record
+      Eigenvalues  : Mat;
+      Eigenvectors : Mat;
+   end record;
+
    --  Discriminated result of Invert. Inverse is present only when
    --  Invertible is True. Inverse has normal Mat controlled ownership
    --  and independent storage. A singular matrix yields Invertible
@@ -793,6 +803,32 @@ package OpenCV.Core is
       Orientation : Sample_Orientation := Samples_Are_Rows;
       Scaling     : Covariance_Scaling := By_Sample_Count)
       return Covariance_Result;
+
+   --  Decomposes a real symmetric matrix using OpenCV 4.10 cv::eigen.
+   --  Self must be a non-empty square single-channel Float32 or
+   --  Float64 Mat that represents a real symmetric matrix. This is
+   --  not PCA, SVD, or a non-symmetric eigen solver. OpenCV 4.10
+   --  does not validate symmetry and defines no symmetry tolerance;
+   --  Jacobi reads both triangles and the Eigen SelfAdjoint path
+   --  assumes one triangle. A non-symmetric input is therefore a
+   --  caller-precondition violation that can produce a misleading
+   --  result rather than a rejection. This binding does not invent a
+   --  floating-point symmetry check. Multi-channel Mats, integer
+   --  depths, and Float16 are rejected. Outputs preserve Self's
+   --  floating-point depth. For an N x N source, Eigenvalues is N x 1
+   --  with values stored from largest to smallest, and Eigenvectors
+   --  is N x N with one eigenvector per row so that row i corresponds
+   --  to eigenvalue i. Eigenvector sign is mathematically arbitrary:
+   --  v and -v represent the same eigenvector. Both OpenCV 4.10
+   --  backends produce orthonormal eigenvectors; a repeated
+   --  eigenspace does not have a unique basis. Continuity is not
+   --  required; non-contiguous Regions are supported. Self is
+   --  unchanged. Both outputs are independently owned. The caller
+   --  does not preallocate either output. A valid matrix satisfying
+   --  this contract yields a populated result. An OpenCV numerical
+   --  failure (cv::eigen returning false) raises OpenCV_Error rather
+   --  than exposing a Boolean.
+   function Eigen_Decomposition (Self : Mat) return Eigen_Decomposition_Result;
 
    --  Interprets each Self element as its channel vector and applies
    --  OpenCV 4.10 cv::transform. This is a per-element channel/vector

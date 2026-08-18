@@ -837,6 +837,15 @@ package OpenCV.Internal.C_API is
       Mean        : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_covariance";
 
+   function Mat_Eigen_Decomposition
+     (Source       : Mat_Handle;
+      Eigenvalues  : access Mat_Handle;
+      Eigenvectors : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_eigen_decomposition";
+
    function Mat_Transform
      (Source       : Mat_Handle;
       Coefficients : Mat_Handle;
