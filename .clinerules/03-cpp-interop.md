@@ -329,6 +329,8 @@ Acceptable reasons include:
 - violating this condition can cause out-of-bounds access
 - OpenCV accepts this representation but leaves part of the result uninitialized
 - the shim itself performs pointer arithmetic that requires this invariant
+- OpenCV performs signed integer arithmetic on dimensions or counts before it
+  validates the result, so overflow must be rejected at the ABI boundary
 
 "OpenCV might reject this" is not sufficient justification.
 

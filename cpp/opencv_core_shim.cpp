@@ -52,6 +52,16 @@ opencv_core_status translate_current_exception() noexcept {
     }
 }
 
+bool int32_sum_exceeds_max(int32_t left, int32_t right) noexcept {
+    return left >= 0 && right >= 0 &&
+           left > std::numeric_limits<int32_t>::max() - right;
+}
+
+bool int32_product_exceeds_max(int32_t left, int32_t right) noexcept {
+    return left > 0 && right > 0 &&
+           left > std::numeric_limits<int32_t>::max() / right;
+}
+
 opencv_core_status invalid_argument(const char *message) noexcept {
     set_error(message);
     return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
@@ -315,6 +325,37 @@ prepare_vec3_row(const opencv_core_mat_handle *mat, int32_t row,
         mat->value.template ptr<cv::Vec<T, 3>>(static_cast<int>(row));
     return OPENCV_CORE_OK;
 }
+
+// ABI safety: Mat::at<T> relies on CV_DbgAssert for type/dimension/
+// bounds validation and then performs typed pointer access. Release
+// OpenCV builds cannot be relied upon to reject a raw ABI caller safely.
+opencv_core_status validate_typed_at(const cv::Mat &mat, int32_t row,
+                                     int32_t column, int expected_depth,
+                                     int expected_channels,
+                                     const char *depth_message,
+                                     const char *channel_message) {
+    if (row < 0 || column < 0) {
+        return invalid_argument("row and column must not be negative");
+    }
+
+    if (mat.dims != 2) {
+        return invalid_argument("Mat must be two-dimensional");
+    }
+
+    if (mat.depth() != expected_depth) {
+        return invalid_argument(depth_message);
+    }
+
+    if (mat.channels() != expected_channels) {
+        return invalid_argument(channel_message);
+    }
+
+    if (row >= mat.rows || column >= mat.cols) {
+        return invalid_argument("row or column is outside Mat bounds");
+    }
+
+    return OPENCV_CORE_OK;
+}
  
 bool from_opencv_depth(int opencv_depth, int32_t &depth) noexcept {
     switch (opencv_depth) {
@@ -385,14 +426,9 @@ opencv_core_mat_create_2d(int32_t rows, int32_t columns, int32_t depth,
 
     *out_mat = nullptr;
 
-    if (rows < 0) {
-        return invalid_argument("rows must not be negative");
-    }
-
-    if (columns < 0) {
-        return invalid_argument("columns must not be negative");
-    }
-
+    // ABI safety: CV_MAKETYPE encodes (channels-1) into a bit field. Values
+    // outside 1 .. CV_CN_MAX produce a wrapped or truncated type before
+    // OpenCV sees the request.
     if (channels < 1 || channels > OPENCV_CORE_MAX_CHANNELS) {
         return invalid_argument("channels must be in the range 1 .. 512");
     }
@@ -604,10 +640,6 @@ opencv_core_mat_copy_make_border(const opencv_core_mat_handle *source,
         return invalid_argument("source Mat handle and border value must not be null");
     }
 
-    if (top < 0 || bottom < 0 || left < 0 || right < 0) {
-        return invalid_argument("border sizes must not be negative");
-    }
-
     if (isolated != 0 && isolated != 1) {
         return invalid_argument("isolated must be 0 or 1");
     }
@@ -622,6 +654,20 @@ opencv_core_mat_copy_make_border(const opencv_core_mat_handle *source,
     }
 
     try {
+        // ABI safety: OpenCV forms destination dimensions using signed int
+        // additions before allocation. Reject combinations exceeding INT_MAX.
+        if (top >= 0 && bottom >= 0 &&
+            (int32_sum_exceeds_max(top, bottom) ||
+             int32_sum_exceeds_max(source->value.rows, top + bottom))) {
+            return invalid_argument(
+                "bordered row count would exceed the signed 32-bit range");
+        }
+        if (left >= 0 && right >= 0 &&
+            (int32_sum_exceeds_max(left, right) ||
+             int32_sum_exceeds_max(source->value.cols, left + right))) {
+            return invalid_argument(
+                "bordered column count would exceed the signed 32-bit range");
+        }
         cv::Mat bordered;
         cv::copyMakeBorder(source->value, bordered, top, bottom, left, right,
                            opencv_border_kind, to_opencv_scalar(*value));
@@ -688,11 +734,16 @@ opencv_core_mat_repeat(const opencv_core_mat_handle *source,
         return invalid_argument("source Mat handle must not be null");
     }
 
-    if (row_repetitions <= 0 || column_repetitions <= 0) {
-        return invalid_argument("repeat counts must be positive");
-    }
-
     try {
+        // ABI safety: OpenCV computes repeated dimensions using signed int
+        // multiplication before destination creation. Reject values whose
+        // products would exceed INT_MAX and otherwise risk signed overflow.
+        if (int32_product_exceeds_max(source->value.rows, row_repetitions) ||
+            int32_product_exceeds_max(source->value.cols,
+                                      column_repetitions)) {
+            return invalid_argument(
+                "repeated dimensions would exceed the signed 32-bit range");
+        }
         cv::Mat repeated;
         cv::repeat(source->value, row_repetitions, column_repetitions, repeated);
         *out_mat = new opencv_core_mat_handle(repeated);
@@ -787,9 +838,21 @@ opencv_core_mat_hconcat(const opencv_core_mat_handle *const *sources,
     try {
         std::vector<cv::Mat> inputs;
         inputs.reserve(static_cast<size_t>(count));
+        int32_t total_columns = 0;
         for (int32_t index = 0; index < count; ++index) {
             if (sources[index] == nullptr) {
                 return invalid_argument("source Mat handle must not be null");
+            }
+            const int32_t columns = sources[index]->value.cols;
+            // ABI safety: OpenCV accumulates concatenated columns in signed int.
+            // Reject a total that would exceed INT_MAX before OpenCV performs
+            // the addition.
+            if (columns >= 0 && int32_sum_exceeds_max(total_columns, columns)) {
+                return invalid_argument(
+                    "concatenated column count would exceed the signed 32-bit range");
+            }
+            if (columns >= 0) {
+                total_columns += columns;
             }
             inputs.push_back(sources[index]->value);
         }
@@ -823,9 +886,21 @@ opencv_core_mat_vconcat(const opencv_core_mat_handle *const *sources,
     try {
         std::vector<cv::Mat> inputs;
         inputs.reserve(static_cast<size_t>(count));
+        int32_t total_rows = 0;
         for (int32_t index = 0; index < count; ++index) {
             if (sources[index] == nullptr) {
                 return invalid_argument("source Mat handle must not be null");
+            }
+            const int32_t rows = sources[index]->value.rows;
+            // ABI safety: OpenCV accumulates concatenated rows in signed int.
+            // Reject a total that would exceed INT_MAX before OpenCV performs
+            // the addition.
+            if (rows >= 0 && int32_sum_exceeds_max(total_rows, rows)) {
+                return invalid_argument(
+                    "concatenated row count would exceed the signed 32-bit range");
+            }
+            if (rows >= 0) {
+                total_rows += rows;
             }
             inputs.push_back(sources[index]->value);
         }
@@ -1772,28 +1847,17 @@ opencv_core_mat_region(const opencv_core_mat_handle *source, int32_t x,
         return invalid_argument("source Mat handle must not be null");
     }
 
-    if (x < 0 || y < 0) {
-        return invalid_argument("region origin must not be negative");
-    }
-
-    if (width <= 0 || height <= 0) {
-        return invalid_argument("region width and height must be positive");
-    }
-
     try {
-        // ABI safety: the shim constructs a cv::Rect view into source
-        // storage. An out-of-range region would form an invalid view.
+        // ABI safety: OpenCV's Rect Mat constructor adjusts the data pointer
+        // using roi.x/roi.y before its complete ROI bounds assertion. Validate
+        // the origin here so a raw ABI caller cannot form an invalid pointer.
         if (source->value.dims != 2) {
             return invalid_argument("source Mat must be two-dimensional");
         }
 
-        if (x >= source->value.cols || y >= source->value.rows) {
+        if (x < 0 || y < 0 || x >= source->value.cols ||
+            y >= source->value.rows) {
             return invalid_argument("region origin is outside source Mat bounds");
-        }
-
-        if (width > source->value.cols - x ||
-            height > source->value.rows - y) {
-            return invalid_argument("region extends outside source Mat bounds");
         }
 
         *out_mat = new opencv_core_mat_handle(
@@ -1819,17 +1883,10 @@ opencv_core_mat_row_view(const opencv_core_mat_handle *source, int32_t row,
         return invalid_argument("source Mat handle must not be null");
     }
 
-    if (row < 0) {
-        return invalid_argument("row must not be negative");
-    }
-
     try {
-        // ABI safety: the shim constructs a row header from this index.
-        if (source->value.dims != 2) {
-            return invalid_argument("source Mat must be two-dimensional");
-        }
-
-        if (row >= source->value.rows) {
+        // ABI safety: OpenCV Mat::row constructs Range(y, y + 1). y == INT_MAX
+        // overflows signed int before OpenCV's Range assertion.
+        if (row == std::numeric_limits<int32_t>::max()) {
             return invalid_argument("row is outside source Mat bounds");
         }
 
@@ -1857,17 +1914,10 @@ opencv_core_mat_column_view(const opencv_core_mat_handle *source,
         return invalid_argument("source Mat handle must not be null");
     }
 
-    if (column < 0) {
-        return invalid_argument("column must not be negative");
-    }
-
     try {
-        // ABI safety: the shim constructs a column header from this index.
-        if (source->value.dims != 2) {
-            return invalid_argument("source Mat must be two-dimensional");
-        }
-
-        if (column >= source->value.cols) {
+        // ABI safety: OpenCV Mat::col constructs Range(x, x + 1). x == INT_MAX
+        // overflows signed int before OpenCV's Range assertion.
+        if (column == std::numeric_limits<int32_t>::max()) {
             return invalid_argument("column is outside source Mat bounds");
         }
 
@@ -1895,24 +1945,7 @@ opencv_core_mat_row_range_view(const opencv_core_mat_handle *source,
         return invalid_argument("source Mat handle must not be null");
     }
 
-    if (start < 0 || stop < 0) {
-        return invalid_argument("range endpoints must not be negative");
-    }
-
-    if (start > stop) {
-        return invalid_argument("range start must not exceed range stop");
-    }
-
     try {
-        // ABI safety: the shim constructs a row-range header from [start, stop).
-        if (source->value.dims != 2) {
-            return invalid_argument("source Mat must be two-dimensional");
-        }
-
-        if (stop > source->value.rows) {
-            return invalid_argument("range stop is outside source Mat bounds");
-        }
-
         *out_mat = new opencv_core_mat_handle(
             source->value.rowRange(static_cast<int>(start),
                                    static_cast<int>(stop)));
@@ -1938,24 +1971,7 @@ opencv_core_mat_column_range_view(const opencv_core_mat_handle *source,
         return invalid_argument("source Mat handle must not be null");
     }
 
-    if (start < 0 || stop < 0) {
-        return invalid_argument("range endpoints must not be negative");
-    }
-
-    if (start > stop) {
-        return invalid_argument("range start must not exceed range stop");
-    }
-
     try {
-        // ABI safety: the shim constructs a column-range header from [start, stop).
-        if (source->value.dims != 2) {
-            return invalid_argument("source Mat must be two-dimensional");
-        }
-
-        if (stop > source->value.cols) {
-            return invalid_argument("range stop is outside source Mat bounds");
-        }
-
         *out_mat = new opencv_core_mat_handle(
             source->value.colRange(static_cast<int>(start),
                                    static_cast<int>(stop)));
@@ -1980,22 +1996,14 @@ opencv_core_mat_reshape(const opencv_core_mat_handle *source, int32_t channels,
         return invalid_argument("source Mat handle must not be null");
     }
 
+    // ABI safety: reshape writes (channels-1) into the Mat channel bit field.
+    // Values outside 1 .. CV_CN_MAX would wrap that encoding before OpenCV
+    // reports an unsupported reshape.
     if (channels < 1 || channels > OPENCV_CORE_MAX_CHANNELS) {
         return invalid_argument("channels must be in the range 1 .. 512");
     }
 
-    if (rows < 0) {
-        return invalid_argument("rows must not be negative");
-    }
-
     try {
-        // ABI safety: reshape shares storage and computes a new header from
-        // channels and rows. A non-2D non-empty source would produce an
-        // invalid shared-storage header.
-        if (!source->value.empty() && source->value.dims != 2) {
-            return invalid_argument("source Mat must be two-dimensional");
-        }
-
         *out_mat = new opencv_core_mat_handle(
             source->value.reshape(static_cast<int>(channels),
                                   static_cast<int>(rows)));
@@ -2329,25 +2337,13 @@ opencv_core_mat_get_uint8(const opencv_core_mat_handle *mat, int32_t row,
         return invalid_argument("Mat handle must not be null");
     }
 
-    if (row < 0 || column < 0) {
-        return invalid_argument("row and column must not be negative");
-    }
-
     try {
-        if (mat->value.dims != 2) {
-            return invalid_argument("Mat must be two-dimensional");
-        }
-
-        if (mat->value.depth() != CV_8U) {
-            return invalid_argument("Mat depth must be UInt8");
-        }
-
-        if (mat->value.channels() != 1) {
-            return invalid_argument("Mat must have exactly one channel");
-        }
-
-        if (row >= mat->value.rows || column >= mat->value.cols) {
-            return invalid_argument("row or column is outside Mat bounds");
+        const opencv_core_status status =
+            validate_typed_at(mat->value, row, column, CV_8U, 1,
+                              "Mat depth must be UInt8",
+                              "Mat must have exactly one channel");
+        if (status != OPENCV_CORE_OK) {
+            return status;
         }
 
         *out_value =
@@ -2368,25 +2364,13 @@ opencv_core_mat_set_uint8(opencv_core_mat_handle *mat, int32_t row,
         return invalid_argument("Mat handle must not be null");
     }
 
-    if (row < 0 || column < 0) {
-        return invalid_argument("row and column must not be negative");
-    }
-
     try {
-        if (mat->value.dims != 2) {
-            return invalid_argument("Mat must be two-dimensional");
-        }
-
-        if (mat->value.depth() != CV_8U) {
-            return invalid_argument("Mat depth must be UInt8");
-        }
-
-        if (mat->value.channels() != 1) {
-            return invalid_argument("Mat must have exactly one channel");
-        }
-
-        if (row >= mat->value.rows || column >= mat->value.cols) {
-            return invalid_argument("row or column is outside Mat bounds");
+        const opencv_core_status status =
+            validate_typed_at(mat->value, row, column, CV_8U, 1,
+                              "Mat depth must be UInt8",
+                              "Mat must have exactly one channel");
+        if (status != OPENCV_CORE_OK) {
+            return status;
         }
 
         mat->value.at<uint8_t>(static_cast<int>(row),
@@ -2412,25 +2396,13 @@ opencv_core_mat_get_float32(const opencv_core_mat_handle *mat, int32_t row,
         return invalid_argument("Mat handle must not be null");
     }
 
-    if (row < 0 || column < 0) {
-        return invalid_argument("row and column must not be negative");
-    }
-
     try {
-        if (mat->value.dims != 2) {
-            return invalid_argument("Mat must be two-dimensional");
-        }
-
-        if (mat->value.depth() != CV_32F) {
-            return invalid_argument("Mat depth must be Float32");
-        }
-
-        if (mat->value.channels() != 1) {
-            return invalid_argument("Mat must have exactly one channel");
-        }
-
-        if (row >= mat->value.rows || column >= mat->value.cols) {
-            return invalid_argument("row or column is outside Mat bounds");
+        const opencv_core_status status =
+            validate_typed_at(mat->value, row, column, CV_32F, 1,
+                              "Mat depth must be Float32",
+                              "Mat must have exactly one channel");
+        if (status != OPENCV_CORE_OK) {
+            return status;
         }
 
         *out_value = mat->value.at<float>(static_cast<int>(row),
@@ -2457,25 +2429,13 @@ opencv_core_mat_classify_float32(const opencv_core_mat_handle *mat,
         return invalid_argument("Mat handle must not be null");
     }
 
-    if (row < 0 || column < 0) {
-        return invalid_argument("row and column must not be negative");
-    }
-
     try {
-        if (mat->value.dims != 2) {
-            return invalid_argument("Mat must be two-dimensional");
-        }
-
-        if (mat->value.depth() != CV_32F) {
-            return invalid_argument("Mat depth must be Float32");
-        }
-
-        if (mat->value.channels() != 1) {
-            return invalid_argument("Mat must have exactly one channel");
-        }
-
-        if (row >= mat->value.rows || column >= mat->value.cols) {
-            return invalid_argument("row or column is outside Mat bounds");
+        const opencv_core_status status =
+            validate_typed_at(mat->value, row, column, CV_32F, 1,
+                              "Mat depth must be Float32",
+                              "Mat must have exactly one channel");
+        if (status != OPENCV_CORE_OK) {
+            return status;
         }
 
         const float value = mat->value.at<float>(static_cast<int>(row),
@@ -2502,25 +2462,13 @@ opencv_core_mat_set_float32(opencv_core_mat_handle *mat, int32_t row,
         return invalid_argument("Mat handle must not be null");
     }
 
-    if (row < 0 || column < 0) {
-        return invalid_argument("row and column must not be negative");
-    }
-
     try {
-        if (mat->value.dims != 2) {
-            return invalid_argument("Mat must be two-dimensional");
-        }
-
-        if (mat->value.depth() != CV_32F) {
-            return invalid_argument("Mat depth must be Float32");
-        }
-
-        if (mat->value.channels() != 1) {
-            return invalid_argument("Mat must have exactly one channel");
-        }
-
-        if (row >= mat->value.rows || column >= mat->value.cols) {
-            return invalid_argument("row or column is outside Mat bounds");
+        const opencv_core_status status =
+            validate_typed_at(mat->value, row, column, CV_32F, 1,
+                              "Mat depth must be Float32",
+                              "Mat must have exactly one channel");
+        if (status != OPENCV_CORE_OK) {
+            return status;
         }
 
         mat->value.at<float>(static_cast<int>(row),
@@ -2796,25 +2744,13 @@ opencv_core_mat_get_uint8_vec3(const opencv_core_mat_handle *mat, int32_t row,
         return invalid_argument("Mat handle must not be null");
     }
 
-    if (row < 0 || column < 0) {
-        return invalid_argument("row and column must not be negative");
-    }
-
     try {
-        if (mat->value.dims != 2) {
-            return invalid_argument("Mat must be two-dimensional");
-        }
-
-        if (mat->value.depth() != CV_8U) {
-            return invalid_argument("Mat depth must be UInt8");
-        }
-
-        if (mat->value.channels() != 3) {
-            return invalid_argument("Mat must have exactly three channels");
-        }
-
-        if (row >= mat->value.rows || column >= mat->value.cols) {
-            return invalid_argument("row or column is outside Mat bounds");
+        const opencv_core_status status =
+            validate_typed_at(mat->value, row, column, CV_8U, 3,
+                              "Mat depth must be UInt8",
+                              "Mat must have exactly three channels");
+        if (status != OPENCV_CORE_OK) {
+            return status;
         }
 
         *out_value = from_opencv_vec3(
@@ -2840,25 +2776,13 @@ opencv_core_mat_set_uint8_vec3(opencv_core_mat_handle *mat, int32_t row,
         return invalid_argument("Mat handle must not be null");
     }
 
-    if (row < 0 || column < 0) {
-        return invalid_argument("row and column must not be negative");
-    }
-
     try {
-        if (mat->value.dims != 2) {
-            return invalid_argument("Mat must be two-dimensional");
-        }
-
-        if (mat->value.depth() != CV_8U) {
-            return invalid_argument("Mat depth must be UInt8");
-        }
-
-        if (mat->value.channels() != 3) {
-            return invalid_argument("Mat must have exactly three channels");
-        }
-
-        if (row >= mat->value.rows || column >= mat->value.cols) {
-            return invalid_argument("row or column is outside Mat bounds");
+        const opencv_core_status status =
+            validate_typed_at(mat->value, row, column, CV_8U, 3,
+                              "Mat depth must be UInt8",
+                              "Mat must have exactly three channels");
+        if (status != OPENCV_CORE_OK) {
+            return status;
         }
 
         mat->value.at<cv::Vec<uint8_t, 3>>(static_cast<int>(row),
@@ -2886,25 +2810,13 @@ opencv_core_mat_get_float32_vec3(const opencv_core_mat_handle *mat,
         return invalid_argument("Mat handle must not be null");
     }
 
-    if (row < 0 || column < 0) {
-        return invalid_argument("row and column must not be negative");
-    }
-
     try {
-        if (mat->value.dims != 2) {
-            return invalid_argument("Mat must be two-dimensional");
-        }
-
-        if (mat->value.depth() != CV_32F) {
-            return invalid_argument("Mat depth must be Float32");
-        }
-
-        if (mat->value.channels() != 3) {
-            return invalid_argument("Mat must have exactly three channels");
-        }
-
-        if (row >= mat->value.rows || column >= mat->value.cols) {
-            return invalid_argument("row or column is outside Mat bounds");
+        const opencv_core_status status =
+            validate_typed_at(mat->value, row, column, CV_32F, 3,
+                              "Mat depth must be Float32",
+                              "Mat must have exactly three channels");
+        if (status != OPENCV_CORE_OK) {
+            return status;
         }
 
         *out_value = from_opencv_vec3(
@@ -2930,25 +2842,13 @@ opencv_core_mat_set_float32_vec3(opencv_core_mat_handle *mat, int32_t row,
         return invalid_argument("Mat handle must not be null");
     }
 
-    if (row < 0 || column < 0) {
-        return invalid_argument("row and column must not be negative");
-    }
-
     try {
-        if (mat->value.dims != 2) {
-            return invalid_argument("Mat must be two-dimensional");
-        }
-
-        if (mat->value.depth() != CV_32F) {
-            return invalid_argument("Mat depth must be Float32");
-        }
-
-        if (mat->value.channels() != 3) {
-            return invalid_argument("Mat must have exactly three channels");
-        }
-
-        if (row >= mat->value.rows || column >= mat->value.cols) {
-            return invalid_argument("row or column is outside Mat bounds");
+        const opencv_core_status status =
+            validate_typed_at(mat->value, row, column, CV_32F, 3,
+                              "Mat depth must be Float32",
+                              "Mat must have exactly three channels");
+        if (status != OPENCV_CORE_OK) {
+            return status;
         }
 
         mat->value.at<cv::Vec<float, 3>>(static_cast<int>(row),
@@ -3970,9 +3870,6 @@ opencv_core_mat_mix_channels(const opencv_core_mat_handle *const *sources,
     if (sources == nullptr || destinations == nullptr || from_to == nullptr) {
         return invalid_argument("channel arrays must not be null for nonempty routes");
     }
-    if (source_count == 0 || destination_count == 0) {
-        return invalid_argument("source and destination counts must be positive");
-    }
 
     try {
         std::vector<cv::Mat> source_mats;
@@ -4010,19 +3907,32 @@ opencv_core_mat_merge(const opencv_core_mat_handle *const *sources,
     }
     *out_mat = nullptr;
 
-    if (sources == nullptr) {
-        return invalid_argument("sources must not be null");
+    if (count < 0) {
+        return invalid_argument("input count must not be negative");
     }
-    if (count <= 0) {
-        return invalid_argument("input count must be positive");
+    if (count > 0 && sources == nullptr) {
+        return invalid_argument("sources must not be null for nonempty input");
     }
 
     try {
         std::vector<cv::Mat> inputs;
         inputs.reserve(static_cast<size_t>(count));
+        int32_t total_channels = 0;
         for (int32_t index = 0; index < count; ++index) {
             if (sources[index] == nullptr) {
                 return invalid_argument("source Mat handle must not be null");
+            }
+            const int32_t channels = sources[index]->value.channels();
+            // ABI safety: OpenCV accumulates merged channel counts in signed
+            // int before the CV_CN_MAX assertion. Reject a total that would
+            // exceed INT_MAX before OpenCV performs the addition.
+            if (channels >= 0 &&
+                int32_sum_exceeds_max(total_channels, channels)) {
+                return invalid_argument(
+                    "merged channel count would exceed the signed 32-bit range");
+            }
+            if (channels >= 0) {
+                total_channels += channels;
             }
             inputs.push_back(sources[index]->value);
         }
