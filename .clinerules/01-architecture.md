@@ -38,6 +38,36 @@ The shim may:
 
 The shim must not contain high-level Ada API policy or duplicate functionality that can reasonably be implemented in Ada.
 
+## Validation Ownership
+
+The thick Ada API is the single source of truth for public semantic policy.
+
+Public semantic policy includes empty/non-empty requirements, compatible dimensions, square-matrix requirements, matching depth and channel counts, supported public depth and channel sets, legal operation-mode combinations, Ada-specific abstraction restrictions, and semantic relationships between multiple Mats.
+
+Do not duplicate that policy in the C++ shim merely for defense in depth, friendlier error messages, or to keep Ada and C++ diagnostics identical.
+
+The C++ shim validates ABI and memory safety, not the complete public API contract:
+
+- null opaque handles and output pointers
+- null buffer pointers and unsafe pointer + length combinations
+- integer conversions that could overflow before OpenCV sees them
+- bounds required because the shim itself accesses Mat data or constructs views
+- output initialization and failure atomicity
+- ownership transfer
+- exception containment and translation
+
+If a semantic-looking C++ check must duplicate an Ada condition for actual ABI safety, it must be accompanied by:
+
+    // ABI safety: <specific reason this cannot safely be Ada-only>
+
+The comment must name the concrete failure mode, such as out-of-bounds access, a partially initialized result, or pointer arithmetic performed by the shim. "OpenCV might reject this", "defense in depth", and "keep the layers identical" are not sufficient justifications.
+
+OpenCV should normally be allowed to reject invalid semantic input that reaches the raw shim when doing so is safe. A raw C ABI caller is not entitled to all of the friendly semantic validation supplied by the thick Ada API.
+
+Error-message friendliness alone is not a reason to duplicate validation.
+
+Postcondition checks that simply restate documented OpenCV behavior must not be added unless they protect ownership, memory, or ABI safety.
+
 Do not expose C++ classes, references, templates, STL containers, exceptions, or name-mangled symbols directly across the Ada boundary.
 
 ## Thin Ada Interop Layer

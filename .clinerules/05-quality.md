@@ -121,6 +121,42 @@ Typical checks include:
 4. run GNATprove for affected SPARK-compatible code when appropriate
 5. run GNATcov when the size or risk of the change justifies coverage analysis
 6. inspect the final diff for unrelated changes
+7. complete the validation-boundary review when `cpp/opencv_core_shim.cpp` changed
+
+## Validation-Boundary Review
+
+Before finishing any feature that modifies `cpp/opencv_core_shim.cpp`, inspect every new or changed C++ guard involving:
+
+- empty
+- rows
+- cols
+- dims
+- depth
+- channels
+- type
+- shape
+- semantic ranges
+- public mode or enum combinations
+
+Classify each guard as:
+
+- ABI / memory safety, which belongs in C++
+- public semantic policy, which belongs in thick Ada
+- a semantic-looking condition retained only because bypassing it is unsafe
+
+Do not leave a duplicated public semantic check in C++ without an
+
+    // ABI safety: <specific justification>
+
+comment.
+
+The final feature summary must state either:
+
+    No public semantic validation is duplicated in the C++ shim.
+
+or identify every retained duplicate condition and its ABI-safety reason.
+
+Do not add a brittle static-analysis or grep-based checker for this distinction. Prefer these architectural rules and this explicit review checklist.
 
 Not every task requires every possible verification tool.
 

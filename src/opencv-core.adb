@@ -3643,6 +3643,11 @@ package body OpenCV.Core is
          Component_3 => 0.0);
       Result               : OpenCV.Internal.C_API.Status;
    begin
+      if Self.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Mean/stddev requires a non-empty Mat");
+      end if;
+
       if Self.Channels > 4 then
          Ada.Exceptions.Raise_Exception
            (OpenCV_Error'Identity,

@@ -280,6 +280,8 @@ Prefer:
 
 to passing invalid values into the shim and waiting for OpenCV to reject them.
 
+The thick Ada API is the single source of truth for public semantic policy. The C++ shim must not reimplement that policy merely for defense in depth, identical diagnostics, or friendlier messages.
+
 The C++ shim must nevertheless perform sufficient defensive validation to protect the ABI boundary.
 
 The shim must not blindly dereference:
@@ -290,6 +292,18 @@ The shim must not blindly dereference:
 - obviously invalid lengths or dimensions
 
 when doing so could cause undefined behavior.
+
+A typical result-producing shim function should:
+
+1. clear the thread-local error state
+2. initialize every output parameter to a safe value
+3. reject null output pointers and null input handles
+4. reject any other condition required to prevent undefined behavior
+5. call OpenCV
+6. publish owned outputs only after success
+7. translate C++ exceptions into the C status model
+
+The shim should not contain a second copy of the public Ada preconditions.
 
 Distinguish between:
 
@@ -303,4 +317,21 @@ Invalid ABI arguments should return an explicit shim error status rather than ca
 
 Valid operations rejected by OpenCV should preserve the resulting OpenCV diagnostic and be translated through the normal exception/error mechanism.
 
-Do not duplicate expensive semantic validation in both Ada and C++ unless it is required for safety.
+Do not duplicate semantic validation in both Ada and C++ unless it is required for safety.
+
+If a semantic-looking C++ check must remain because bypassing it would be unsafe, document it with:
+
+    // ABI safety: <specific reason this cannot safely be Ada-only>
+
+Acceptable reasons include:
+
+- OpenCV does not validate this condition before performing raw pointer access
+- violating this condition can cause out-of-bounds access
+- OpenCV accepts this representation but leaves part of the result uninitialized
+- the shim itself performs pointer arithmetic that requires this invariant
+
+"OpenCV might reject this" is not sufficient justification.
+
+A raw C ABI caller is not entitled to the complete friendly public Ada contract. OpenCV should normally be allowed to reject invalid semantic input that reaches the shim when doing so is safe.
+
+Do not add postcondition checks that merely restate documented OpenCV behavior unless they protect ownership, memory, or ABI safety.

@@ -141,17 +141,6 @@ bool to_opencv_compare_kind(int32_t comparison_kind,
     }
 }
 
-bool mats_have_same_shape_and_type(const cv::Mat &left,
-                                   const cv::Mat &right) noexcept {
-    return left.dims == right.dims && left.rows == right.rows &&
-           left.cols == right.cols && left.type() == right.type();
-}
-
-bool is_valid_mask_for(const cv::Mat &source, const cv::Mat &mask) noexcept {
-    return mask.depth() == CV_8U && mask.channels() == 1 &&
-           mask.rows == source.rows && mask.cols == source.cols;
-}
-
 bool to_opencv_depth(int32_t depth, int &opencv_depth) noexcept {
     switch (depth) {
     case OPENCV_CORE_DEPTH_UINT8:
@@ -242,7 +231,10 @@ opencv_core_status prepare_row(const opencv_core_mat_handle *mat, int32_t row,
     if (row < 0) {
         return invalid_argument("row must not be negative");
     }
- 
+
+    // ABI safety: this helper forms a typed row pointer and copies
+    // element_count * sizeof(T) bytes. Depth, channel, dimension, and
+    // bounds errors would cause out-of-bounds access here.
     if (mat->value.dims != 2) {
         return invalid_argument("Mat must be two-dimensional");
     }
@@ -290,6 +282,9 @@ prepare_vec3_row(const opencv_core_mat_handle *mat, int32_t row,
         return invalid_argument("row must not be negative");
     }
 
+    // ABI safety: this helper forms a typed Vec3 row pointer and copies
+    // element_count * 3 scalars. Depth, channel, dimension, and bounds
+    // errors would cause out-of-bounds access here.
     if (mat->value.dims != 2) {
         return invalid_argument("Mat must be two-dimensional");
     }
@@ -693,10 +688,6 @@ opencv_core_mat_repeat(const opencv_core_mat_handle *source,
         return invalid_argument("source Mat handle must not be null");
     }
 
-    if (source->value.dims > 2) {
-        return invalid_argument("Mat repeat supports two-dimensional Mats only");
-    }
-
     if (row_repetitions <= 0 || column_repetitions <= 0) {
         return invalid_argument("repeat counts must be positive");
     }
@@ -724,9 +715,6 @@ opencv_core_mat_reduce(const opencv_core_mat_handle *source, int32_t axis,
 
     if (source == nullptr) {
         return invalid_argument("source Mat handle must not be null");
-    }
-    if (source->value.dims > 2) {
-        return invalid_argument("Mat reduce supports two-dimensional Mats only");
     }
 
     int opencv_axis;
@@ -880,11 +868,6 @@ opencv_core_mat_copy_to_masked(const opencv_core_mat_handle *source,
     }
 
     try {
-        if (!is_valid_mask_for(source->value, mask->value)) {
-            return invalid_argument(
-                "mask must be a same-sized single-channel UInt8 Mat");
-        }
-
         source->value.copyTo(destination->value, mask->value);
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -1284,10 +1267,6 @@ opencv_core_mat_add(const opencv_core_mat_handle *left,
         return invalid_argument("Mat operand handles must not be null");
     }
 
-    if (!mats_have_same_shape_and_type(left->value, right->value)) {
-        return invalid_argument("Mat operands must have identical shape and type");
-    }
-
     try {
         cv::Mat sum;
         cv::add(left->value, right->value, sum, cv::noArray(), -1);
@@ -1312,10 +1291,6 @@ opencv_core_mat_subtract(const opencv_core_mat_handle *left,
 
     if (left == nullptr || right == nullptr) {
         return invalid_argument("Mat operand handles must not be null");
-    }
-
-    if (!mats_have_same_shape_and_type(left->value, right->value)) {
-        return invalid_argument("Mat operands must have identical shape and type");
     }
 
     try {
@@ -1344,10 +1319,6 @@ opencv_core_mat_multiply(const opencv_core_mat_handle *left,
         return invalid_argument("Mat operand handles must not be null");
     }
 
-    if (!mats_have_same_shape_and_type(left->value, right->value)) {
-        return invalid_argument("Mat operands must have identical shape and type");
-    }
-
     try {
         cv::Mat product;
         cv::multiply(left->value, right->value, product, 1.0, -1);
@@ -1372,10 +1343,6 @@ opencv_core_mat_divide(const opencv_core_mat_handle *left,
 
     if (left == nullptr || right == nullptr) {
         return invalid_argument("Mat operand handles must not be null");
-    }
-
-    if (!mats_have_same_shape_and_type(left->value, right->value)) {
-        return invalid_argument("Mat operands must have identical shape and type");
     }
 
     try {
@@ -1404,10 +1371,6 @@ opencv_core_mat_abs_diff(const opencv_core_mat_handle *left,
         return invalid_argument("Mat operand handles must not be null");
     }
 
-    if (!mats_have_same_shape_and_type(left->value, right->value)) {
-        return invalid_argument("Mat operands must have identical shape and type");
-    }
-
     try {
         cv::Mat difference;
         cv::absdiff(left->value, right->value, difference);
@@ -1432,10 +1395,6 @@ opencv_core_mat_add_weighted(const opencv_core_mat_handle *left, double alpha,
 
     if (left == nullptr || right == nullptr) {
         return invalid_argument("Mat operand handles must not be null");
-    }
-
-    if (!mats_have_same_shape_and_type(left->value, right->value)) {
-        return invalid_argument("Mat operands must have identical shape and type");
     }
 
     try {
@@ -1465,10 +1424,6 @@ opencv_core_mat_scale_add(const opencv_core_mat_handle *left, double scale,
         return invalid_argument("Mat operand handles must not be null");
     }
 
-    if (!mats_have_same_shape_and_type(left->value, right->value)) {
-        return invalid_argument("Mat operands must have identical shape and type");
-    }
-
     try {
         cv::Mat scaled_sum;
         cv::scaleAdd(left->value, scale, right->value, scaled_sum);
@@ -1493,10 +1448,6 @@ opencv_core_mat_minimum(const opencv_core_mat_handle *left,
 
     if (left == nullptr || right == nullptr) {
         return invalid_argument("Mat operand handles must not be null");
-    }
-
-    if (!mats_have_same_shape_and_type(left->value, right->value)) {
-        return invalid_argument("Mat operands must have identical shape and type");
     }
 
     try {
@@ -1525,10 +1476,6 @@ opencv_core_mat_maximum(const opencv_core_mat_handle *left,
         return invalid_argument("Mat operand handles must not be null");
     }
 
-    if (!mats_have_same_shape_and_type(left->value, right->value)) {
-        return invalid_argument("Mat operands must have identical shape and type");
-    }
-
     try {
         cv::Mat result;
         cv::max(left->value, right->value, result);
@@ -1553,10 +1500,6 @@ opencv_core_mat_bitwise_and(const opencv_core_mat_handle *left,
 
     if (left == nullptr || right == nullptr) {
         return invalid_argument("Mat operand handles must not be null");
-    }
-
-    if (!mats_have_same_shape_and_type(left->value, right->value)) {
-        return invalid_argument("Mat operands must have identical shape and type");
     }
 
     try {
@@ -1585,10 +1528,6 @@ opencv_core_mat_bitwise_or(const opencv_core_mat_handle *left,
         return invalid_argument("Mat operand handles must not be null");
     }
 
-    if (!mats_have_same_shape_and_type(left->value, right->value)) {
-        return invalid_argument("Mat operands must have identical shape and type");
-    }
-
     try {
         cv::Mat result;
         cv::bitwise_or(left->value, right->value, result);
@@ -1613,10 +1552,6 @@ opencv_core_mat_bitwise_xor(const opencv_core_mat_handle *left,
 
     if (left == nullptr || right == nullptr) {
         return invalid_argument("Mat operand handles must not be null");
-    }
-
-    if (!mats_have_same_shape_and_type(left->value, right->value)) {
-        return invalid_argument("Mat operands must have identical shape and type");
     }
 
     try {
@@ -1671,15 +1606,6 @@ opencv_core_mat_bitwise_and_masked(const opencv_core_mat_handle *left,
         return invalid_argument("Mat operand and mask handles must not be null");
     }
 
-    if (!mats_have_same_shape_and_type(left->value, right->value)) {
-        return invalid_argument("Mat operands must have identical shape and type");
-    }
-
-    if (!is_valid_mask_for(left->value, mask->value)) {
-        return invalid_argument(
-            "mask must be a same-sized single-channel UInt8 Mat");
-    }
-
     try {
         cv::Mat result;
         cv::bitwise_and(left->value, right->value, result, mask->value);
@@ -1705,15 +1631,6 @@ opencv_core_mat_bitwise_or_masked(const opencv_core_mat_handle *left,
 
     if (left == nullptr || right == nullptr || mask == nullptr) {
         return invalid_argument("Mat operand and mask handles must not be null");
-    }
-
-    if (!mats_have_same_shape_and_type(left->value, right->value)) {
-        return invalid_argument("Mat operands must have identical shape and type");
-    }
-
-    if (!is_valid_mask_for(left->value, mask->value)) {
-        return invalid_argument(
-            "mask must be a same-sized single-channel UInt8 Mat");
     }
 
     try {
@@ -1743,15 +1660,6 @@ opencv_core_mat_bitwise_xor_masked(const opencv_core_mat_handle *left,
         return invalid_argument("Mat operand and mask handles must not be null");
     }
 
-    if (!mats_have_same_shape_and_type(left->value, right->value)) {
-        return invalid_argument("Mat operands must have identical shape and type");
-    }
-
-    if (!is_valid_mask_for(left->value, mask->value)) {
-        return invalid_argument(
-            "mask must be a same-sized single-channel UInt8 Mat");
-    }
-
     try {
         cv::Mat result;
         cv::bitwise_xor(left->value, right->value, result, mask->value);
@@ -1776,11 +1684,6 @@ opencv_core_mat_bitwise_not_masked(const opencv_core_mat_handle *source,
 
     if (source == nullptr || mask == nullptr) {
         return invalid_argument("source Mat and mask handles must not be null");
-    }
-
-    if (!is_valid_mask_for(source->value, mask->value)) {
-        return invalid_argument(
-            "mask must be a same-sized single-channel UInt8 Mat");
     }
 
     try {
@@ -1811,17 +1714,9 @@ opencv_core_mat_in_range_scalar(const opencv_core_mat_handle *source,
     }
 
     try {
-        if (source->value.channels() > 4) {
-            return invalid_argument(
-                "scalar-bounded in-range supports Mats with at most four channels");
-        }
-
         cv::Mat result;
         cv::inRange(source->value, to_opencv_scalar(*lower),
                     to_opencv_scalar(*upper), result);
-        if (result.type() != CV_8UC1 || result.size() != source->value.size()) {
-            return invalid_argument("in-range produced an invalid mask result");
-        }
         *out_mat = new opencv_core_mat_handle(result);
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -1851,34 +1746,9 @@ opencv_core_mat_compare(const opencv_core_mat_handle *left,
         return invalid_argument("comparison kind is not supported");
     }
 
-    const cv::Mat &left_mat = left->value;
-    const cv::Mat &right_mat = right->value;
-
-    if (left_mat.dims > 2 || right_mat.dims > 2) {
-        return invalid_argument("Mat compare supports two-dimensional Mats only");
-    }
-
-    if (left_mat.channels() != 1 || right_mat.channels() != 1) {
-        return invalid_argument("Mat compare requires single-channel operands");
-    }
-
-    if (left_mat.rows != right_mat.rows || left_mat.cols != right_mat.cols) {
-        return invalid_argument(
-            "Mat compare requires operands with identical dimensions");
-    }
-
-    if (left_mat.depth() != right_mat.depth()) {
-        return invalid_argument(
-            "Mat compare requires operands with identical depths");
-    }
-
     try {
         cv::Mat result;
-        cv::compare(left_mat, right_mat, result, opencv_compare_kind);
-        if (result.type() != CV_8UC1 || result.rows != left_mat.rows ||
-            result.cols != left_mat.cols) {
-            return invalid_argument("compare produced an invalid mask result");
-        }
+        cv::compare(left->value, right->value, result, opencv_compare_kind);
         *out_mat = new opencv_core_mat_handle(result);
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -1911,6 +1781,8 @@ opencv_core_mat_region(const opencv_core_mat_handle *source, int32_t x,
     }
 
     try {
+        // ABI safety: the shim constructs a cv::Rect view into source
+        // storage. An out-of-range region would form an invalid view.
         if (source->value.dims != 2) {
             return invalid_argument("source Mat must be two-dimensional");
         }
@@ -1952,6 +1824,7 @@ opencv_core_mat_row_view(const opencv_core_mat_handle *source, int32_t row,
     }
 
     try {
+        // ABI safety: the shim constructs a row header from this index.
         if (source->value.dims != 2) {
             return invalid_argument("source Mat must be two-dimensional");
         }
@@ -1989,6 +1862,7 @@ opencv_core_mat_column_view(const opencv_core_mat_handle *source,
     }
 
     try {
+        // ABI safety: the shim constructs a column header from this index.
         if (source->value.dims != 2) {
             return invalid_argument("source Mat must be two-dimensional");
         }
@@ -2030,6 +1904,7 @@ opencv_core_mat_row_range_view(const opencv_core_mat_handle *source,
     }
 
     try {
+        // ABI safety: the shim constructs a row-range header from [start, stop).
         if (source->value.dims != 2) {
             return invalid_argument("source Mat must be two-dimensional");
         }
@@ -2072,6 +1947,7 @@ opencv_core_mat_column_range_view(const opencv_core_mat_handle *source,
     }
 
     try {
+        // ABI safety: the shim constructs a column-range header from [start, stop).
         if (source->value.dims != 2) {
             return invalid_argument("source Mat must be two-dimensional");
         }
@@ -2113,6 +1989,9 @@ opencv_core_mat_reshape(const opencv_core_mat_handle *source, int32_t channels,
     }
 
     try {
+        // ABI safety: reshape shares storage and computes a new header from
+        // channels and rows. A non-2D non-empty source would produce an
+        // invalid shared-storage header.
         if (!source->value.empty() && source->value.dims != 2) {
             return invalid_argument("source Mat must be two-dimensional");
         }
@@ -2142,11 +2021,6 @@ opencv_core_mat_diagonal_matrix(const opencv_core_mat_handle *diagonal,
     }
 
     try {
-        if (diagonal->value.dims != 2 ||
-            (diagonal->value.rows != 1 && diagonal->value.cols != 1)) {
-            return invalid_argument("diagonal Mat must be a row or column vector");
-        }
-
         *out_mat = new opencv_core_mat_handle(cv::Mat::diag(diagonal->value));
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -2171,10 +2045,9 @@ opencv_core_mat_diagonal_view(const opencv_core_mat_handle *source,
     }
 
     try {
-        if (source->value.dims > 2) {
-            return invalid_argument("source Mat must be at most two-dimensional");
-        }
-
+        // ABI safety: OpenCV 4.10 Mat::diag(offset) constructs a view from
+        // rows/cols without a safe empty/out-of-range rejection before
+        // forming that header.
         if (source->value.empty() || offset >= source->value.cols ||
             offset <= -source->value.rows) {
             return invalid_argument("diagonal offset selects no source elements");
@@ -3123,11 +2996,6 @@ opencv_core_mat_set_to_masked(opencv_core_mat_handle *mat,
     }
 
     try {
-        if (!is_valid_mask_for(mat->value, mask->value)) {
-            return invalid_argument(
-                "mask must be a same-sized single-channel UInt8 Mat");
-        }
-
         mat->value.setTo(to_opencv_scalar(*value), mask->value);
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -3174,18 +3042,6 @@ opencv_core_mat_trace(const opencv_core_mat_handle *mat,
     }
 
     try {
-        if (mat->value.dims > 2) {
-            return invalid_argument("Trace requires a Mat with at most two dimensions");
-        }
-
-        if (mat->value.channels() > 4) {
-            return invalid_argument("Trace supports Mats with at most four channels");
-        }
-
-        if (mat->value.depth() == CV_16F) {
-            return invalid_argument("Trace does not support Float16 Mats");
-        }
-
         *out_trace = from_opencv_scalar(cv::trace(mat->value));
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -3231,40 +3087,7 @@ opencv_core_mat_dot_product(const opencv_core_mat_handle *left,
     }
 
     try {
-        const cv::Mat &A = left->value;
-        const cv::Mat &B = right->value;
-
-        if (A.empty() || B.empty()) {
-            return invalid_argument(
-                "dot product requires non-empty Left and Right Mats");
-        }
-
-        if (A.dims > 2 || B.dims > 2) {
-            return invalid_argument(
-                "dot product requires Mats with at most two dimensions");
-        }
-
-        if (A.rows != B.rows || A.cols != B.cols) {
-            return invalid_argument(
-                "dot product requires operands with identical rows and columns");
-        }
-
-        if (A.type() != B.type()) {
-            return invalid_argument(
-                "dot product requires operands with identical complete types");
-        }
-
-        const int depth = A.depth();
-        if (depth != CV_8U && depth != CV_8S && depth != CV_16U &&
-            depth != CV_16S && depth != CV_32S && depth != CV_32F &&
-            depth != CV_64F) {
-            return invalid_argument(
-                "dot product requires UInt8, Int8, UInt16, Int16, Int32, "
-                "Float32, or Float64 Mats");
-        }
-
-        const double result = A.dot(B);
-        *out_value = result;
+        *out_value = left->value.dot(right->value);
         return OPENCV_CORE_OK;
     } catch (...) {
         return translate_current_exception();
@@ -3290,75 +3113,8 @@ opencv_core_mat_mahalanobis_distance(
     }
 
     try {
-        const cv::Mat &v1 = left->value;
-        const cv::Mat &v2 = right->value;
-        const cv::Mat &icovar = inverse_covariance->value;
-
-        if (v1.empty() || v2.empty()) {
-            return invalid_argument(
-                "Mahalanobis distance requires non-empty Self and Other Mats");
-        }
-
-        if (v1.dims > 2 || v2.dims > 2 || icovar.dims > 2) {
-            return invalid_argument(
-                "Mahalanobis distance requires Mats with at most two "
-                "dimensions");
-        }
-
-        if (v1.rows != v2.rows || v1.cols != v2.cols) {
-            return invalid_argument(
-                "Mahalanobis distance requires Self and Other with identical "
-                "rows and columns");
-        }
-
-        if (v1.type() != v2.type()) {
-            return invalid_argument(
-                "Mahalanobis distance requires Self and Other with identical "
-                "complete types");
-        }
-
-        if (v1.channels() != 1) {
-            return invalid_argument(
-                "Mahalanobis distance requires single-channel vectors");
-        }
-
-        if (v1.depth() != CV_32F && v1.depth() != CV_64F) {
-            return invalid_argument(
-                "Mahalanobis distance requires Float32 or Float64 vectors");
-        }
-
-        if (v1.rows != 1 && v1.cols != 1) {
-            return invalid_argument(
-                "Mahalanobis distance requires Self and Other to be row or "
-                "column vectors");
-        }
-
-        if (icovar.empty()) {
-            return invalid_argument(
-                "Mahalanobis distance requires a non-empty Inverse_Covariance "
-                "Mat");
-        }
-
-        if (icovar.channels() != 1) {
-            return invalid_argument(
-                "Mahalanobis distance requires a single-channel "
-                "Inverse_Covariance");
-        }
-
-        if (icovar.depth() != v1.depth()) {
-            return invalid_argument(
-                "Mahalanobis distance requires Inverse_Covariance to have the "
-                "same depth as the vectors");
-        }
-
-        const int length = v1.rows == 1 ? v1.cols : v1.rows;
-        if (icovar.rows != length || icovar.cols != length) {
-            return invalid_argument(
-                "Mahalanobis distance requires Inverse_Covariance to be N x N "
-                "for an N-element vector");
-        }
-
-        *out_value = cv::Mahalanobis(v1, v2, icovar);
+        *out_value = cv::Mahalanobis(left->value, right->value,
+                                     inverse_covariance->value);
         return OPENCV_CORE_OK;
     } catch (...) {
         return translate_current_exception();
@@ -3387,46 +3143,24 @@ opencv_core_mat_cross_product(const opencv_core_mat_handle *left,
         const cv::Mat &A = left->value;
         const cv::Mat &B = right->value;
 
-        if (A.empty() || B.empty()) {
-            return invalid_argument(
-                "cross product requires non-empty Self and Other Mats");
-        }
-
-        if (A.dims > 2 || B.dims > 2) {
-            return invalid_argument(
-                "cross product requires Mats with at most two dimensions");
-        }
-
-        if (A.rows != B.rows || A.cols != B.cols) {
-            return invalid_argument(
-                "cross product requires operands with identical rows and columns");
-        }
-
-        if (A.type() != B.type()) {
-            return invalid_argument(
-                "cross product requires operands with identical complete types");
-        }
-
+        // ABI safety: OpenCV 4.10 Mat::cross writes only three CV_32F or
+        // CV_64F scalars. Other depths that pass its shape assertion leave
+        // the allocated result uninitialized.
         if (A.depth() != CV_32F && A.depth() != CV_64F) {
             return invalid_argument(
                 "cross product requires Float32 or Float64 vectors");
         }
 
-        const bool is_column = A.rows == 3 && A.cols == 1 && A.channels() == 1;
-        const bool is_row = A.rows == 1 && A.cols == 3 && A.channels() == 1;
-        const bool is_vec3 = A.rows == 1 && A.cols == 1 && A.channels() == 3;
-        if (!is_column && !is_row && !is_vec3) {
+        // ABI safety: OpenCV 4.10 Mat::cross accepts rows == 3 && cols == 1
+        // without constraining channels, then writes only three scalars into
+        // a same-type result. Extra channels in a 3x1 multi-channel Mat
+        // would remain uninitialized.
+        if (A.rows == 3 && A.cols == 1 && A.channels() != 1) {
             return invalid_argument(
-                "cross product requires a 3x1 C1, 1x3 C1, or 1x1 C3 vector");
+                "cross product of a 3x1 Mat requires a single channel");
         }
 
         cv::Mat product = A.cross(B);
-
-        if (product.rows != A.rows || product.cols != A.cols ||
-            product.type() != A.type()) {
-            return invalid_argument(
-                "cross product produced a result with inconsistent shape or type");
-        }
 
         std::unique_ptr<opencv_core_mat_handle> result_handle(
             new opencv_core_mat_handle(product));
@@ -3502,32 +3236,10 @@ opencv_core_mat_solve(const opencv_core_mat_handle *coefficients,
     }
 
     try {
-        const cv::Mat &A = coefficients->value;
-        const cv::Mat &B = right_hand_side->value;
-
-        if (A.empty() || B.empty()) {
-            return invalid_argument("solve requires non-empty coefficient and right-hand-side Mats");
-        }
-
-        if (A.rows != A.cols) {
-            return invalid_argument("solve requires a square coefficient matrix");
-        }
-
-        if (A.type() != CV_32FC1 && A.type() != CV_64FC1) {
-            return invalid_argument("solve requires a single-channel Float32 or Float64 coefficient matrix");
-        }
-
-        if (B.type() != A.type()) {
-            return invalid_argument("solve requires a right-hand side with the same type as the coefficients");
-        }
-
-        if (B.rows != A.rows) {
-            return invalid_argument("solve requires a right-hand side with the same number of rows as the coefficients");
-        }
-
         cv::Mat solution;
-        const bool solved =
-            cv::solve(A, B, solution, cv::DECOMP_LU);
+        const bool solved = cv::solve(coefficients->value,
+                                      right_hand_side->value, solution,
+                                      cv::DECOMP_LU);
 
         if (!solved) {
             return OPENCV_CORE_OK;
@@ -3562,43 +3274,8 @@ opencv_core_mat_matrix_multiply(const opencv_core_mat_handle *left,
     }
 
     try {
-        const cv::Mat &A = left->value;
-        const cv::Mat &B = right->value;
-
-        if (A.empty() || B.empty()) {
-            return invalid_argument(
-                "matrix multiply requires non-empty Left and Right Mats");
-        }
-
-        if (A.dims > 2 || B.dims > 2) {
-            return invalid_argument(
-                "matrix multiply requires Mats with at most two dimensions");
-        }
-
-        if (A.type() != B.type()) {
-            return invalid_argument(
-                "matrix multiply requires operands with identical complete types");
-        }
-
-        if (A.type() != CV_32FC1 && A.type() != CV_64FC1 &&
-            A.type() != CV_32FC2 && A.type() != CV_64FC2) {
-            return invalid_argument(
-                "matrix multiply requires Float32 or Float64 Mats with one or two channels");
-        }
-
-        if (A.cols != B.rows) {
-            return invalid_argument(
-                "matrix multiply requires Left.Columns to equal Right.Rows");
-        }
-
         cv::Mat result;
-        cv::gemm(A, B, 1.0, cv::noArray(), 0.0, result, 0);
-
-        if (result.rows != A.rows || result.cols != B.cols ||
-            result.type() != A.type()) {
-            return invalid_argument(
-                "matrix multiply produced a result with inconsistent shape or type");
-        }
+        cv::gemm(left->value, right->value, 1.0, cv::noArray(), 0.0, result, 0);
 
         std::unique_ptr<opencv_core_mat_handle> result_handle(
             new opencv_core_mat_handle(result));
@@ -3631,54 +3308,9 @@ opencv_core_mat_matrix_multiply_add(const opencv_core_mat_handle *left,
     }
 
     try {
-        const cv::Mat &A = left->value;
-        const cv::Mat &B = right->value;
-        const cv::Mat &C = addend->value;
-
-        if (A.empty() || B.empty() || C.empty()) {
-            return invalid_argument(
-                "matrix multiply-add requires non-empty Left, Right, and Addend Mats");
-        }
-
-        if (A.dims > 2 || B.dims > 2 || C.dims > 2) {
-            return invalid_argument(
-                "matrix multiply-add requires Mats with at most two dimensions");
-        }
-
-        if (A.type() != B.type()) {
-            return invalid_argument(
-                "matrix multiply-add requires Left and Right with identical complete types");
-        }
-
-        if (C.type() != A.type()) {
-            return invalid_argument(
-                "matrix multiply-add requires Addend to have the same complete type as Left and Right");
-        }
-
-        if (A.type() != CV_32FC1 && A.type() != CV_64FC1 &&
-            A.type() != CV_32FC2 && A.type() != CV_64FC2) {
-            return invalid_argument(
-                "matrix multiply-add requires Float32 or Float64 Mats with one or two channels");
-        }
-
-        if (A.cols != B.rows) {
-            return invalid_argument(
-                "matrix multiply-add requires Left.Columns to equal Right.Rows");
-        }
-
-        if (C.rows != A.rows || C.cols != B.cols) {
-            return invalid_argument(
-                "matrix multiply-add requires Addend to have shape Left.Rows x Right.Columns");
-        }
-
         cv::Mat result;
-        cv::gemm(A, B, product_scale, C, addend_scale, result, 0);
-
-        if (result.rows != A.rows || result.cols != B.cols ||
-            result.type() != A.type()) {
-            return invalid_argument(
-                "matrix multiply-add produced a result with inconsistent shape or type");
-        }
+        cv::gemm(left->value, right->value, product_scale, addend->value,
+                 addend_scale, result, 0);
 
         std::unique_ptr<opencv_core_mat_handle> result_handle(
             new opencv_core_mat_handle(result));
@@ -3709,29 +3341,6 @@ opencv_core_mat_transposed_product(const opencv_core_mat_handle *source,
     }
 
     try {
-        const cv::Mat &A = source->value;
-
-        if (A.empty()) {
-            return invalid_argument(
-                "transposed product requires a non-empty source Mat");
-        }
-
-        if (A.dims > 2) {
-            return invalid_argument(
-                "transposed product requires a Mat with at most two dimensions");
-        }
-
-        if (A.channels() != 1) {
-            return invalid_argument(
-                "transposed product requires a single-channel source Mat");
-        }
-
-        if (A.depth() != CV_8U && A.depth() != CV_16U && A.depth() != CV_16S &&
-            A.depth() != CV_32F && A.depth() != CV_64F) {
-            return invalid_argument(
-                "transposed product requires a UInt8, UInt16, Int16, Float32, or Float64 source");
-        }
-
         bool a_t_a;
         switch (order) {
         case OPENCV_CORE_TRANSPOSED_PRODUCT_TRANSPOSE_TIMES_SELF:
@@ -3746,37 +3355,15 @@ opencv_core_mat_transposed_product(const opencv_core_mat_handle *source,
         }
 
         int requested_dtype = -1;
-        int expected_depth = (A.depth() == CV_64F) ? CV_64F : CV_32F;
-
-        if (output_depth != OPENCV_CORE_DEFAULT_OUTPUT_DEPTH) {
-            if (!to_opencv_depth(output_depth, requested_dtype)) {
-                return invalid_argument(
-                    "output depth is not a supported depth identifier");
-            }
-
-            if (requested_dtype != CV_32F && requested_dtype != CV_64F) {
-                return invalid_argument(
-                    "transposed product output depth must be Float32 or Float64");
-            }
-
-            if (A.depth() == CV_64F && requested_dtype == CV_32F) {
-                return invalid_argument(
-                    "transposed product does not support Float64 source with Float32 output");
-            }
-
-            expected_depth = requested_dtype;
+        if (output_depth != OPENCV_CORE_DEFAULT_OUTPUT_DEPTH &&
+            !to_opencv_depth(output_depth, requested_dtype)) {
+            return invalid_argument(
+                "output depth is not a supported depth identifier");
         }
 
         cv::Mat result;
-        cv::mulTransposed(A, result, a_t_a, cv::noArray(), scale,
+        cv::mulTransposed(source->value, result, a_t_a, cv::noArray(), scale,
                           requested_dtype);
-
-        const int expected_size = a_t_a ? A.cols : A.rows;
-        if (result.rows != expected_size || result.cols != expected_size ||
-            result.channels() != 1 || result.depth() != expected_depth) {
-            return invalid_argument(
-                "transposed product produced a result with inconsistent shape or type");
-        }
 
         std::unique_ptr<opencv_core_mat_handle> result_handle(
             new opencv_core_mat_handle(result));
@@ -3807,58 +3394,6 @@ opencv_core_mat_transposed_product_with_delta(
     }
 
     try {
-        const cv::Mat &A = source->value;
-        const cv::Mat &D = delta->value;
-
-        if (A.empty()) {
-            return invalid_argument(
-                "transposed product requires a non-empty source Mat");
-        }
-
-        if (D.empty()) {
-            return invalid_argument(
-                "centered transposed product requires a non-empty Delta Mat");
-        }
-
-        if (A.dims > 2 || D.dims > 2) {
-            return invalid_argument(
-                "transposed product requires Mats with at most two dimensions");
-        }
-
-        if (A.channels() != 1) {
-            return invalid_argument(
-                "transposed product requires a single-channel source Mat");
-        }
-
-        if (D.channels() != 1) {
-            return invalid_argument(
-                "centered transposed product requires a single-channel Delta Mat");
-        }
-
-        if (A.depth() != CV_8U && A.depth() != CV_16U && A.depth() != CV_16S &&
-            A.depth() != CV_32F && A.depth() != CV_64F) {
-            return invalid_argument(
-                "transposed product requires a UInt8, UInt16, Int16, Float32, or Float64 source");
-        }
-
-        if (D.depth() == CV_16F) {
-            return invalid_argument(
-                "centered transposed product does not support Float16 Delta");
-        }
-
-        if (D.depth() != CV_8U && D.depth() != CV_8S && D.depth() != CV_16U &&
-            D.depth() != CV_16S && D.depth() != CV_32S && D.depth() != CV_32F &&
-            D.depth() != CV_64F) {
-            return invalid_argument(
-                "centered transposed product requires a UInt8, Int8, UInt16, Int16, Int32, Float32, or Float64 Delta");
-        }
-
-        if ((D.rows != A.rows && D.rows != 1) ||
-            (D.cols != A.cols && D.cols != 1)) {
-            return invalid_argument(
-                "centered transposed product Delta must match source rows or be 1 and match source columns or be 1");
-        }
-
         bool a_t_a;
         switch (order) {
         case OPENCV_CORE_TRANSPOSED_PRODUCT_TRANSPOSE_TIMES_SELF:
@@ -3873,38 +3408,15 @@ opencv_core_mat_transposed_product_with_delta(
         }
 
         int requested_dtype = -1;
-        int expected_depth =
-            (A.depth() == CV_64F || D.depth() == CV_64F) ? CV_64F : CV_32F;
-
-        if (output_depth != OPENCV_CORE_DEFAULT_OUTPUT_DEPTH) {
-            if (!to_opencv_depth(output_depth, requested_dtype)) {
-                return invalid_argument(
-                    "output depth is not a supported depth identifier");
-            }
-
-            if (requested_dtype != CV_32F && requested_dtype != CV_64F) {
-                return invalid_argument(
-                    "transposed product output depth must be Float32 or Float64");
-            }
-
-            if (requested_dtype == CV_32F &&
-                (A.depth() == CV_64F || D.depth() == CV_64F)) {
-                return invalid_argument(
-                    "centered transposed product does not support Float64 source or Delta with Float32 output");
-            }
-
-            expected_depth = requested_dtype;
+        if (output_depth != OPENCV_CORE_DEFAULT_OUTPUT_DEPTH &&
+            !to_opencv_depth(output_depth, requested_dtype)) {
+            return invalid_argument(
+                "output depth is not a supported depth identifier");
         }
 
         cv::Mat result;
-        cv::mulTransposed(A, result, a_t_a, D, scale, requested_dtype);
-
-        const int expected_size = a_t_a ? A.cols : A.rows;
-        if (result.rows != expected_size || result.cols != expected_size ||
-            result.channels() != 1 || result.depth() != expected_depth) {
-            return invalid_argument(
-                "transposed product produced a result with inconsistent shape or type");
-        }
+        cv::mulTransposed(source->value, result, a_t_a, delta->value, scale,
+                          requested_dtype);
 
         std::unique_ptr<opencv_core_mat_handle> result_handle(
             new opencv_core_mat_handle(result));
@@ -3935,76 +3447,8 @@ opencv_core_mat_transform(const opencv_core_mat_handle *source,
     }
 
     try {
-        const cv::Mat &src = source->value;
-        const cv::Mat &mtx = coefficients->value;
-
-        if (src.empty()) {
-            return invalid_argument("transform requires a non-empty source Mat");
-        }
-
-        if (src.dims > 2) {
-            return invalid_argument(
-                "transform requires a source with at most two dimensions");
-        }
-
-        if (src.channels() < 1 || src.channels() > 4) {
-            return invalid_argument(
-                "transform requires a source with 1 to 4 channels");
-        }
-
-        const int depth = src.depth();
-        if (depth != CV_8U && depth != CV_8S && depth != CV_16U &&
-            depth != CV_16S && depth != CV_32S && depth != CV_32F &&
-            depth != CV_64F) {
-            return invalid_argument(
-                "transform requires a UInt8, Int8, UInt16, Int16, Int32, "
-                "Float32, or Float64 source");
-        }
-
-        if (mtx.empty()) {
-            return invalid_argument(
-                "transform requires a non-empty coefficient Mat");
-        }
-
-        if (mtx.dims > 2) {
-            return invalid_argument(
-                "transform requires coefficients with at most two dimensions");
-        }
-
-        if (mtx.channels() != 1) {
-            return invalid_argument(
-                "transform requires a single-channel coefficient Mat");
-        }
-
-        if (mtx.depth() != CV_32F && mtx.depth() != CV_64F) {
-            return invalid_argument(
-                "transform requires Float32 or Float64 coefficients");
-        }
-
-        if (mtx.rows < 1) {
-            return invalid_argument(
-                "transform requires at least one coefficient row");
-        }
-
-        if (mtx.rows > OPENCV_CORE_MAX_CHANNELS) {
-            return invalid_argument(
-                "transform coefficient rows must not exceed 512");
-        }
-
-        if (mtx.cols != src.channels() && mtx.cols != src.channels() + 1) {
-            return invalid_argument(
-                "transform coefficients must have source.channels or "
-                "source.channels + 1 columns");
-        }
-
         cv::Mat result;
-        cv::transform(src, result, mtx);
-
-        if (result.rows != src.rows || result.cols != src.cols ||
-            result.depth() != src.depth() || result.channels() != mtx.rows) {
-            return invalid_argument(
-                "transform produced a result with inconsistent shape or type");
-        }
+        cv::transform(source->value, result, coefficients->value);
 
         std::unique_ptr<opencv_core_mat_handle> result_handle(
             new opencv_core_mat_handle(result));
@@ -4035,77 +3479,8 @@ opencv_core_mat_perspective_transform(
     }
 
     try {
-        const cv::Mat &src = source->value;
-        const cv::Mat &mtx = transform_matrix->value;
-
-        if (src.empty()) {
-            return invalid_argument(
-                "perspective transform requires a non-empty source Mat");
-        }
-
-        if (src.dims > 2) {
-            return invalid_argument(
-                "perspective transform requires a source with at most two "
-                "dimensions");
-        }
-
-        if (src.channels() != 2 && src.channels() != 3) {
-            return invalid_argument(
-                "perspective transform requires a source with 2 or 3 "
-                "channels");
-        }
-
-        if (src.depth() != CV_32F && src.depth() != CV_64F) {
-            return invalid_argument(
-                "perspective transform requires a Float32 or Float64 source");
-        }
-
-        if (mtx.empty()) {
-            return invalid_argument(
-                "perspective transform requires a non-empty transformation "
-                "matrix");
-        }
-
-        if (mtx.dims > 2) {
-            return invalid_argument(
-                "perspective transform requires a transformation matrix "
-                "with at most two dimensions");
-        }
-
-        if (mtx.channels() != 1) {
-            return invalid_argument(
-                "perspective transform requires a single-channel "
-                "transformation matrix");
-        }
-
-        if (mtx.depth() != CV_32F && mtx.depth() != CV_64F) {
-            return invalid_argument(
-                "perspective transform requires a Float32 or Float64 "
-                "transformation matrix");
-        }
-
-        if (src.channels() == 2) {
-            if (mtx.rows != 3 || mtx.cols != 3) {
-                return invalid_argument(
-                    "perspective transform of a 2-channel source requires "
-                    "a 3x3 transformation matrix");
-            }
-        } else if (mtx.rows != 4 || mtx.cols != 4) {
-            return invalid_argument(
-                "perspective transform of a 3-channel source requires a "
-                "4x4 transformation matrix");
-        }
-
         cv::Mat result;
-        cv::perspectiveTransform(src, result, mtx);
-
-        if (result.rows != src.rows || result.cols != src.cols ||
-            result.depth() != src.depth() ||
-            result.channels() != src.channels()) {
-            return invalid_argument(
-                "perspective transform produced a result with inconsistent "
-                "shape or type");
-        }
+        cv::perspectiveTransform(source->value, result, transform_matrix->value);
 
         std::unique_ptr<opencv_core_mat_handle> result_handle(
             new opencv_core_mat_handle(result));
@@ -4132,10 +3507,6 @@ opencv_core_mat_mean(const opencv_core_mat_handle *mat,
     }
 
     try {
-        if (mat->value.channels() > 4) {
-            return invalid_argument("Mean supports Mats with at most four channels");
-        }
-
         *out_mean = from_opencv_scalar(cv::mean(mat->value));
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -4160,15 +3531,6 @@ opencv_core_mat_mean_masked(const opencv_core_mat_handle *mat,
     }
 
     try {
-        if (mat->value.channels() > 4) {
-            return invalid_argument("Mean supports Mats with at most four channels");
-        }
-
-        if (!is_valid_mask_for(mat->value, mask->value)) {
-            return invalid_argument(
-                "mask must be a same-sized single-channel UInt8 Mat");
-        }
-
         *out_mean = from_opencv_scalar(cv::mean(mat->value, mask->value));
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -4194,15 +3556,6 @@ opencv_core_mat_mean_std_dev(const opencv_core_mat_handle *mat,
     }
 
     try {
-        if (mat->value.empty()) {
-            return invalid_argument("Mean/stddev requires a non-empty Mat");
-        }
-
-        if (mat->value.channels() > 4) {
-            return invalid_argument(
-                "Mean/stddev supports Mats with at most four channels");
-        }
-
         cv::Scalar mean;
         cv::Scalar standard_deviation;
         cv::meanStdDev(mat->value, mean, standard_deviation);
@@ -4232,20 +3585,6 @@ opencv_core_mat_mean_std_dev_masked(
     }
 
     try {
-        if (mat->value.empty()) {
-            return invalid_argument("Mean/stddev requires a non-empty Mat");
-        }
-
-        if (mat->value.channels() > 4) {
-            return invalid_argument(
-                "Mean/stddev supports Mats with at most four channels");
-        }
-
-        if (!is_valid_mask_for(mat->value, mask->value)) {
-            return invalid_argument(
-                "mask must be a same-sized single-channel UInt8 Mat");
-        }
-
         cv::Scalar mean;
         cv::Scalar standard_deviation;
         cv::meanStdDev(mat->value, mean, standard_deviation, mask->value);
@@ -4307,11 +3646,6 @@ opencv_core_mat_norm_masked(const opencv_core_mat_handle *mat,
     }
 
     try {
-        if (!is_valid_mask_for(mat->value, mask->value)) {
-            return invalid_argument(
-                "mask must be a same-sized single-channel UInt8 Mat");
-        }
-
         *out_norm = cv::norm(mat->value, opencv_norm, mask->value);
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -4344,20 +3678,11 @@ opencv_core_mat_min_max_loc(const opencv_core_mat_handle *mat,
     }
 
     try {
-        if (mat->value.dims != 2) {
-            return invalid_argument("Mat must be two-dimensional");
-        }
-
-        if (mat->value.channels() != 1) {
-            return invalid_argument("Mat must have exactly one channel");
-        }
-
+        // ABI safety: OpenCV 4.10 minMaxLoc does not initialize the location
+        // outputs for an empty Mat, so a raw C ABI caller would receive
+        // uninitialized coordinates.
         if (mat->value.empty()) {
             return invalid_argument("Mat must not be empty");
-        }
-
-        if (mat->value.depth() == CV_16F) {
-            return invalid_argument("Mat depth Float16 is not supported");
         }
 
         double minimum = 0.0;
@@ -4404,25 +3729,11 @@ opencv_core_mat_min_max_loc_masked(
     }
 
     try {
-        if (mat->value.dims != 2) {
-            return invalid_argument("Mat must be two-dimensional");
-        }
-
-        if (mat->value.channels() != 1) {
-            return invalid_argument("Mat must have exactly one channel");
-        }
-
+        // ABI safety: OpenCV 4.10 minMaxLoc does not initialize the location
+        // outputs for an empty Mat, so a raw C ABI caller would receive
+        // uninitialized coordinates.
         if (mat->value.empty()) {
             return invalid_argument("Mat must not be empty");
-        }
-
-        if (mat->value.depth() == CV_16F) {
-            return invalid_argument("Mat depth Float16 is not supported");
-        }
-
-        if (!is_valid_mask_for(mat->value, mask->value)) {
-            return invalid_argument(
-                "mask must be a same-sized single-channel UInt8 Mat");
         }
 
         double minimum = 0.0;
@@ -4460,14 +3771,6 @@ opencv_core_mat_count_non_zero(const opencv_core_mat_handle *mat,
     }
 
     try {
-        if (mat->value.dims != 2) {
-            return invalid_argument("Mat must be two-dimensional");
-        }
-
-        if (mat->value.channels() != 1) {
-            return invalid_argument("Mat must have exactly one channel");
-        }
-
         *out_count = static_cast<int64_t>(cv::countNonZero(mat->value));
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -4491,14 +3794,6 @@ opencv_core_mat_has_non_zero(const opencv_core_mat_handle *mat,
     }
 
     try {
-        if (mat->value.dims != 2) {
-            return invalid_argument("Mat must be two-dimensional");
-        }
-
-        if (mat->value.channels() != 1) {
-            return invalid_argument("Mat must have exactly one channel");
-        }
-
         *out_result = cv::hasNonZero(mat->value) ? 1 : 0;
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -4527,18 +3822,6 @@ opencv_core_mat_find_non_zero(const opencv_core_mat_handle *mat,
     }
 
     try {
-        if (mat->value.dims != 2) {
-            return invalid_argument("Mat must be two-dimensional");
-        }
-
-        if (mat->value.channels() != 1) {
-            return invalid_argument("Mat must have exactly one channel");
-        }
-
-        if (mat->value.depth() == CV_16F) {
-            return invalid_argument("Mat depth Float16 is not supported");
-        }
-
         std::vector<cv::Point> locations;
         cv::findNonZero(mat->value, locations);
 
@@ -4590,6 +3873,8 @@ opencv_core_mat_split(const opencv_core_mat_handle *source,
 
     std::vector<std::unique_ptr<opencv_core_mat_handle>> handles;
     try {
+        // ABI safety: this function writes count output handles. An empty
+        // source must not produce leftover or mismatched owned handles.
         if (source->value.empty()) {
             if (count != 0) {
                 return invalid_argument("empty source requires zero output count");
@@ -4597,6 +3882,8 @@ opencv_core_mat_split(const opencv_core_mat_handle *source,
             return OPENCV_CORE_OK;
         }
 
+        // ABI safety: count is the caller-owned output-handle length used
+        // for writes below; it must match the number of Mats split produces.
         if (count != source->value.channels()) {
             return invalid_argument("output count must equal source channel count");
         }
@@ -4636,9 +3923,6 @@ opencv_core_mat_extract_channel(const opencv_core_mat_handle *source,
     if (source == nullptr) {
         return invalid_argument("source Mat handle must not be null");
     }
-    if (channel < 0 || channel >= source->value.channels()) {
-        return invalid_argument("channel index is outside the source channel range");
-    }
 
     try {
         cv::Mat extracted;
@@ -4662,26 +3946,6 @@ opencv_core_mat_insert_channel(const opencv_core_mat_handle *source,
     }
 
     try {
-        if (source->value.channels() != 1) {
-            return invalid_argument("source Mat must have exactly one channel");
-        }
-        if (source->value.rows != destination->value.rows) {
-            return invalid_argument(
-                "source and destination Mats must have identical row counts");
-        }
-        if (source->value.cols != destination->value.cols) {
-            return invalid_argument(
-                "source and destination Mats must have identical column counts");
-        }
-        if (source->value.depth() != destination->value.depth()) {
-            return invalid_argument(
-                "source and destination Mats must have identical depths");
-        }
-        if (channel < 0 || channel >= destination->value.channels()) {
-            return invalid_argument(
-                "channel index is outside the destination channel range");
-        }
-
         cv::insertChannel(source->value, destination->value, channel);
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -4801,14 +4065,6 @@ opencv_core_mat_check_range(const opencv_core_mat_handle *source,
     }
 
     try {
-        if (source->value.dims > 2) {
-            return invalid_argument("Mat must be two-dimensional");
-        }
-
-        if (source->value.depth() == CV_16F) {
-            return invalid_argument("Mat depth Float16 is not supported");
-        }
-
         const double effective_minimum =
             use_bounds != 0 ? minimum : -std::numeric_limits<double>::max();
         const double effective_maximum =
@@ -4863,20 +4119,6 @@ opencv_core_mat_complete_symmetry(opencv_core_mat_handle *mat,
     }
 
     try {
-        if (mat->value.dims > 2) {
-            return invalid_argument("Mat must be two-dimensional");
-        }
-
-        if (mat->value.rows != mat->value.cols) {
-            return invalid_argument("complete symmetry requires a square Mat");
-        }
-
-        const int depth = mat->value.depth();
-        if (depth != CV_32F && depth != CV_64F) {
-            return invalid_argument(
-                "complete symmetry requires a Float32 or Float64 Mat");
-        }
-
         const bool lower_to_upper = source_triangle != 0;
         cv::completeSymm(mat->value, lower_to_upper);
         return OPENCV_CORE_OK;
@@ -4899,19 +4141,6 @@ opencv_core_mat_set_identity(opencv_core_mat_handle *mat,
     }
 
     try {
-        if (mat->value.dims > 2) {
-            return invalid_argument("Mat must be two-dimensional");
-        }
-
-        if (mat->value.channels() > 4) {
-            return invalid_argument(
-                "set identity supports at most four channels");
-        }
-
-        if (mat->value.empty()) {
-            return OPENCV_CORE_OK;
-        }
-
         cv::setIdentity(mat->value, to_opencv_scalar(*value));
         return OPENCV_CORE_OK;
     } catch (...) {

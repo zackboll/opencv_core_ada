@@ -270,6 +270,9 @@ Prefer this sequence:
 7. format and build affected code
 8. run the affected tests
 9. run GNATprove or coverage when appropriate
+10. if `cpp/opencv_core_shim.cpp` changed, complete the validation-boundary review from `.clinerules/05-quality.md`
+
+When that review applies, the feature summary must state either that no public semantic validation is duplicated in the C++ shim, or list every retained duplicate and its ABI-safety reason.
 
 Do not batch large numbers of unrelated C++ wrapper functions before the Ada
 API that requires them exists.
