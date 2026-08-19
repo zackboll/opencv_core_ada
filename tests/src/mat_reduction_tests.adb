@@ -10012,16 +10012,22 @@ package body Mat_Reduction_Tests is
 
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
+   Masked_Min_Max_Loc_In_Range         : constant Caller.Test_Method :=
+     Masked_Min_Max_Loc_Excludes_Global_Extrema_And_Uses_In_Range_Mask'Access;
+   PCA_Supports_Noncontiguous_Region   : constant Caller.Test_Method :=
+     Principal_Component_Analysis_Supports_Noncontiguous_Region'Access;
+   PCA_Retained_Variance_Rejects_Range : constant Caller.Test_Method :=
+     Principal_Component_Analysis_Retained_Variance_Rejects_Range'Access;
+   PCA_Retained_Variance_Rejects_Input : constant Caller.Test_Method :=
+     Principal_Component_Analysis_Retained_Variance_Rejects_Input'Access;
+
    Result : aliased AUnit.Test_Suites.Test_Suite;
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
-      Masked_Mean_Std_Dev_Views   : constant Caller.Test_Method :=
+      Masked_Mean_Std_Dev_Views : constant Caller.Test_Method :=
         Masked_Mean_Std_Dev_Non_Continuous_Views_And_All_Zero_Mask'Access;
-      Masked_Min_Max_Loc_UInt8    : constant Caller.Test_Method :=
+      Masked_Min_Max_Loc_UInt8  : constant Caller.Test_Method :=
         Masked_Min_Max_Loc_UInt8_Selects_Extrema_And_Column_Row_Points'Access;
-      Masked_Min_Max_Loc_In_Range : constant Caller.Test_Method :=
-        Masked_Min_Max_Loc_Excludes_Global_Extrema_And_Uses_In_Range_Mask'
-          Access;
    begin
       Result.Add_Test
         (Caller.Create
@@ -10654,8 +10660,7 @@ package body Mat_Reduction_Tests is
       Result.Add_Test
         (Caller.Create
            ("Principal_Component_Analysis supports a non-contiguous Region",
-            Principal_Component_Analysis_Supports_Noncontiguous_Region'
-              Access));
+            PCA_Supports_Noncontiguous_Region));
       Result.Add_Test
         (Caller.Create
            ("Principal_Component_Analysis preserves Float64 depth",
@@ -10722,8 +10727,7 @@ package body Mat_Reduction_Tests is
       Result.Add_Test
         (Caller.Create
            ("Principal_Component_Analysis retained variance rejects range",
-            Principal_Component_Analysis_Retained_Variance_Rejects_Range'
-              Access));
+            PCA_Retained_Variance_Rejects_Range));
       Result.Add_Test
         (Caller.Create
            ("Principal_Component_Analysis retained variance needs two"
@@ -10733,8 +10737,7 @@ package body Mat_Reduction_Tests is
         (Caller.Create
            ("Principal_Component_Analysis retained variance rejects invalid"
             & " input",
-            Principal_Component_Analysis_Retained_Variance_Rejects_Input'
-              Access));
+            PCA_Retained_Variance_Rejects_Input));
 
       Result.Add_Test
         (Caller.Create
