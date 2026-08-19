@@ -1090,6 +1090,21 @@ opencv_core_mat_pca_back_project(
     opencv_core_mat_handle **out_mat);
 
 /*
+ * Computes the default compact SVD of a borrowed Mat using
+ * cv::SVD::compute(..., flags = 0). All three output pointer
+ * arguments must be non-null and pairwise distinct. On success the
+ * three returned handles are independently owned. On any failure
+ * all three outputs remain null. The source is borrowed and
+ * unchanged.
+ */
+opencv_core_status
+opencv_core_mat_singular_value_decomposition(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle **out_singular_values,
+    opencv_core_mat_handle **out_u,
+    opencv_core_mat_handle **out_v_transpose);
+
+/*
  * Applies cv::transform to each source element interpreted as its channel
  * vector. source and coefficients are borrowed. The independently owned
  * result has source.rows, source.cols, source.depth(), and

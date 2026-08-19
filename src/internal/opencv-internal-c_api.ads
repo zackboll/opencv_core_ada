@@ -893,6 +893,16 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_pca_back_project";
 
+   function Mat_Singular_Value_Decomposition
+     (Source          : Mat_Handle;
+      Singular_Values : access Mat_Handle;
+      U               : access Mat_Handle;
+      V_Transpose     : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_singular_value_decomposition";
+
    function Mat_Transform
      (Source       : Mat_Handle;
       Coefficients : Mat_Handle;

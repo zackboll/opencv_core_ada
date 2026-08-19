@@ -3781,6 +3781,61 @@ opencv_core_mat_pca_back_project(
 }
 
 opencv_core_status
+opencv_core_mat_singular_value_decomposition(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle **out_singular_values,
+    opencv_core_mat_handle **out_u,
+    opencv_core_mat_handle **out_v_transpose) {
+    clear_error();
+
+    if (out_singular_values != nullptr) {
+        *out_singular_values = nullptr;
+    }
+    if (out_u != nullptr) {
+        *out_u = nullptr;
+    }
+    if (out_v_transpose != nullptr) {
+        *out_v_transpose = nullptr;
+    }
+
+    if (out_singular_values == nullptr || out_u == nullptr ||
+        out_v_transpose == nullptr) {
+        return invalid_argument("output Mat handles must not be null");
+    }
+
+    if (out_singular_values == out_u ||
+        out_singular_values == out_v_transpose ||
+        out_u == out_v_transpose) {
+        return invalid_argument("output Mat handle pointers must be distinct");
+    }
+
+    if (source == nullptr) {
+        return invalid_argument("source Mat handle must not be null");
+    }
+
+    try {
+        cv::Mat singular_values;
+        cv::Mat u;
+        cv::Mat v_transpose;
+        cv::SVD::compute(source->value, singular_values, u, v_transpose, 0);
+
+        std::unique_ptr<opencv_core_mat_handle> singular_values_handle(
+            new opencv_core_mat_handle(singular_values));
+        std::unique_ptr<opencv_core_mat_handle> u_handle(
+            new opencv_core_mat_handle(u));
+        std::unique_ptr<opencv_core_mat_handle> v_transpose_handle(
+            new opencv_core_mat_handle(v_transpose));
+
+        *out_singular_values = singular_values_handle.release();
+        *out_u = u_handle.release();
+        *out_v_transpose = v_transpose_handle.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_transform(const opencv_core_mat_handle *source,
                           const opencv_core_mat_handle *coefficients,
                           opencv_core_mat_handle **out_mat) {

@@ -9044,6 +9044,415 @@ package body Mat_Reduction_Tests is
          "A Float32 Mat sum should preserve fractional values");
    end Float32_Set_To_And_Sum;
 
+   procedure Fill_Tall_SVD_Source (Image : in out OpenCV.Core.Mat) is
+   begin
+      Fill_3x2 (Image, 3.0, 0.0, 0.0, 2.0, 0.0, 0.0);
+   end Fill_Tall_SVD_Source;
+
+   procedure Fill_Wide_SVD_Source (Image : in out OpenCV.Core.Mat) is
+   begin
+      Fill_2x3 (Image, 3.0, 0.0, 0.0, 0.0, 2.0, 0.0);
+   end Fill_Wide_SVD_Source;
+
+   function Singular_Value_At
+     (Values : OpenCV.Core.Mat; Row : Natural) return Long_Float
+   is (Long_Float (OpenCV.Core.Float32_Access.Get (Values, Row, 0)));
+
+   function Compact_Outputs_Have_Shapes
+     (Result                      :
+        OpenCV.Core.Singular_Value_Decomposition_Result;
+      Source_Rows, Source_Columns : Natural;
+      Depth                       : OpenCV.Core.Depth_Type) return Boolean
+   is
+      Rank : constant Natural :=
+        (if Source_Rows < Source_Columns then Source_Rows else Source_Columns);
+   begin
+      return
+        Result.Singular_Values.Rows = Rank
+        and then Result.Singular_Values.Columns = 1
+        and then Result.U.Rows = Source_Rows
+        and then Result.U.Columns = Rank
+        and then Result.V_Transpose.Rows = Rank
+        and then Result.V_Transpose.Columns = Source_Columns
+        and then Result.Singular_Values.Depth = Depth
+        and then Result.U.Depth = Depth
+        and then Result.V_Transpose.Depth = Depth
+        and then Result.Singular_Values.Channels = 1
+        and then Result.U.Channels = 1
+        and then Result.V_Transpose.Channels = 1;
+   end Compact_Outputs_Have_Shapes;
+
+   function SVD_Sigma
+     (Singular_Values : OpenCV.Core.Mat) return OpenCV.Core.Mat
+   is (OpenCV.Core.Diagonal_Matrix (Singular_Values));
+
+   function Reconstructs_Source
+     (Source    : OpenCV.Core.Mat;
+      Result    : OpenCV.Core.Singular_Value_Decomposition_Result;
+      Tolerance : Long_Float) return Boolean
+   is
+      Reconstructed : constant OpenCV.Core.Mat :=
+        Result.U.Matrix_Multiply (SVD_Sigma (Result.Singular_Values))
+          .Matrix_Multiply (Result.V_Transpose);
+   begin
+      return Mats_Approximately_Equal (Reconstructed, Source, Tolerance);
+   end Reconstructs_Source;
+
+   function Compact_Vectors_Are_Orthonormal
+     (Result    : OpenCV.Core.Singular_Value_Decomposition_Result;
+      Tolerance : Long_Float) return Boolean
+   is
+      Rank     : constant Natural := Result.Singular_Values.Rows;
+      Identity : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (Rank, Rank, (Result.Singular_Values.Depth, 1));
+      U_Gram   : constant OpenCV.Core.Mat :=
+        Result.U.Transpose.Matrix_Multiply (Result.U);
+      V_Gram   : constant OpenCV.Core.Mat :=
+        Result.V_Transpose.Matrix_Multiply (Result.V_Transpose.Transpose);
+   begin
+      Identity.Set_Identity;
+      return
+        Mats_Approximately_Equal (U_Gram, Identity, Tolerance)
+        and then Mats_Approximately_Equal (V_Gram, Identity, Tolerance);
+   end Compact_Vectors_Are_Orthonormal;
+
+   procedure Singular_Value_Decomposition_Tall_Compact_Shapes
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Singular_Value_Decomposition_Result;
+   begin
+      Fill_Tall_SVD_Source (Source);
+      Result := Source.Singular_Value_Decomposition;
+
+      AUnit.Assertions.Assert
+        (Compact_Outputs_Have_Shapes (Result, 3, 2, OpenCV.Core.Float32),
+         "Tall compact SVD must return 2x1, 3x2, and 2x2 Float32 C1 outputs");
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Singular_Value_At (Result.Singular_Values, 0), 3.0)
+         and then Approximately_Equal
+                    (Singular_Value_At (Result.Singular_Values, 1), 2.0),
+         "Tall compact SVD must return singular values 3 and 2");
+      AUnit.Assertions.Assert
+        (Unchanged_3x2 (Source, 3.0, 0.0, 0.0, 2.0, 0.0, 0.0),
+         "Tall SVD must leave the source unchanged");
+   end Singular_Value_Decomposition_Tall_Compact_Shapes;
+
+   procedure Singular_Value_Decomposition_Tall_Reconstruction
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Singular_Value_Decomposition_Result;
+   begin
+      Fill_Tall_SVD_Source (Source);
+      Result := Source.Singular_Value_Decomposition;
+
+      AUnit.Assertions.Assert
+        (Reconstructs_Source (Source, Result, 0.000_1),
+         "U * diag(W) * V^T must reconstruct the tall source");
+   end Singular_Value_Decomposition_Tall_Reconstruction;
+
+   procedure Singular_Value_Decomposition_Wide_Compact_Shapes
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Singular_Value_Decomposition_Result;
+   begin
+      Fill_Wide_SVD_Source (Source);
+      Result := Source.Singular_Value_Decomposition;
+
+      AUnit.Assertions.Assert
+        (Compact_Outputs_Have_Shapes (Result, 2, 3, OpenCV.Core.Float32),
+         "Wide compact SVD must return 2x1, 2x2, and 2x3 Float32 C1 outputs");
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Singular_Value_At (Result.Singular_Values, 0), 3.0)
+         and then Approximately_Equal
+                    (Singular_Value_At (Result.Singular_Values, 1), 2.0),
+         "Wide compact SVD must return singular values 3 and 2");
+      AUnit.Assertions.Assert
+        (Reconstructs_Source (Source, Result, 0.000_1),
+         "U * diag(W) * V^T must reconstruct the wide source");
+      AUnit.Assertions.Assert
+        (Unchanged_2x3 (Source, 3.0, 0.0, 0.0, 0.0, 2.0, 0.0),
+         "Wide SVD must leave the source unchanged");
+   end Singular_Value_Decomposition_Wide_Compact_Shapes;
+
+   procedure Singular_Value_Decomposition_Orthonormal_Vectors
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Singular_Value_Decomposition_Result;
+   begin
+      Fill_Tall_SVD_Source (Source);
+      Result := Source.Singular_Value_Decomposition;
+
+      AUnit.Assertions.Assert
+        (Compact_Vectors_Are_Orthonormal (Result, 0.000_1),
+         "Compact U and V_Transpose must be orthonormal to working precision");
+   end Singular_Value_Decomposition_Orthonormal_Vectors;
+
+   procedure Singular_Value_Decomposition_Matches_Eigen_Of_Gram
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Singular_Value_Decomposition_Result;
+      Gram   : OpenCV.Core.Mat;
+      Eigen  : OpenCV.Core.Eigen_Decomposition_Result;
+   begin
+      Fill_Tall_SVD_Source (Source);
+      Result := Source.Singular_Value_Decomposition;
+      Gram := Source.Transpose.Matrix_Multiply (Source);
+      Eigen := Gram.Eigen_Decomposition;
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Singular_Value_At (Result.Singular_Values, 0)**2,
+            Eigenvalue_At (Eigen.Eigenvalues, 0),
+            0.000_1)
+         and then Approximately_Equal
+                    (Singular_Value_At (Result.Singular_Values, 1)**2,
+                     Eigenvalue_At (Eigen.Eigenvalues, 1),
+                     0.000_1),
+         "Squared SVD singular values must match eigenvalues of A^T * A");
+   end Singular_Value_Decomposition_Matches_Eigen_Of_Gram;
+
+   procedure Singular_Value_Decomposition_Rank_Deficient
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Singular_Value_Decomposition_Result;
+   begin
+      Fill_3x2 (Source, 3.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+      Result := Source.Singular_Value_Decomposition;
+
+      AUnit.Assertions.Assert
+        (Compact_Outputs_Have_Shapes (Result, 3, 2, OpenCV.Core.Float32),
+         "Rank-deficient SVD must still return compact 2x1, 3x2, and 2x2");
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Singular_Value_At (Result.Singular_Values, 0), 3.0)
+         and then Approximately_Equal
+                    (Singular_Value_At (Result.Singular_Values, 1), 0.0),
+         "Rank-deficient SVD must return singular values 3 and 0");
+      AUnit.Assertions.Assert
+        (Reconstructs_Source (Source, Result, 0.000_1),
+         "Rank-deficient SVD must still reconstruct the source");
+   end Singular_Value_Decomposition_Rank_Deficient;
+
+   procedure Singular_Value_Decomposition_Preserves_Float64
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source32 : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
+      Source   : OpenCV.Core.Mat;
+      Result   : OpenCV.Core.Singular_Value_Decomposition_Result;
+      Values   : OpenCV.Core.Mat;
+   begin
+      Fill_Tall_SVD_Source (Source32);
+      Source := Source32.Convert_To (OpenCV.Core.Float64);
+      Result := Source.Singular_Value_Decomposition;
+      Values := Result.Singular_Values.Convert_To (OpenCV.Core.Float32);
+
+      AUnit.Assertions.Assert
+        (Source.Depth = OpenCV.Core.Float64
+         and then Compact_Outputs_Have_Shapes
+                    (Result, 3, 2, OpenCV.Core.Float64),
+         "Float64 SVD must keep Float64 compact outputs");
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Singular_Value_At (Values, 0), 3.0)
+         and then Approximately_Equal (Singular_Value_At (Values, 1), 2.0),
+         "Float64 SVD of the converted tall source must keep singular"
+         & " values 3 and 2");
+      AUnit.Assertions.Assert
+        (Reconstructs_Source (Source, Result, 0.000_000_000_1),
+         "Float64 SVD must reconstruct the converted source more tightly");
+   end Singular_Value_Decomposition_Preserves_Float64;
+
+   procedure Singular_Value_Decomposition_Noncontiguous_Region
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (5, 4, (OpenCV.Core.Float32, 1));
+      Contiguous : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
+      Expected   : OpenCV.Core.Singular_Value_Decomposition_Result;
+   begin
+      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Fill_Tall_SVD_Source (Contiguous);
+      Expected := Contiguous.Singular_Value_Decomposition;
+      declare
+         Source : OpenCV.Core.Mat :=
+           Parent.Region ((X => 1, Y => 1, Width => 2, Height => 3));
+         Result : OpenCV.Core.Singular_Value_Decomposition_Result;
+      begin
+         Fill_Tall_SVD_Source (Source);
+         AUnit.Assertions.Assert
+           (not Source.Is_Continuous,
+            "The Region used for SVD must be non-contiguous");
+         Result := Source.Singular_Value_Decomposition;
+         AUnit.Assertions.Assert
+           (Approximately_Equal
+              (Singular_Value_At (Result.Singular_Values, 0),
+               Singular_Value_At (Expected.Singular_Values, 0))
+            and then Approximately_Equal
+                       (Singular_Value_At (Result.Singular_Values, 1),
+                        Singular_Value_At (Expected.Singular_Values, 1)),
+            "Non-contiguous SVD must match contiguous singular values");
+         AUnit.Assertions.Assert
+           (Reconstructs_Source (Source, Result, 0.000_1)
+            and then Reconstructs_Source (Contiguous, Expected, 0.000_1),
+            "Both contiguous and Region SVD must reconstruct their sources");
+         AUnit.Assertions.Assert
+           (Unchanged_3x2 (Source, 3.0, 0.0, 0.0, 2.0, 0.0, 0.0)
+            and then OpenCV.Core.Float32_Access.Get (Parent, 0, 0) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 0, 3) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 4, 0) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 1, 0) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 1, 3) = 99.0,
+            "SVD must not modify the Region or surrounding parent storage");
+      end;
+   end Singular_Value_Decomposition_Noncontiguous_Region;
+
+   procedure Singular_Value_Decomposition_Outputs_Are_Independent
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Result  : OpenCV.Core.Singular_Value_Decomposition_Result;
+      Saved_W : OpenCV.Core.Mat;
+      Saved_U : OpenCV.Core.Mat;
+      Saved_V : OpenCV.Core.Mat;
+   begin
+      declare
+         Source : OpenCV.Core.Mat :=
+           OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
+      begin
+         Fill_Tall_SVD_Source (Source);
+         Result := Source.Singular_Value_Decomposition;
+         Saved_W := Result.Singular_Values.Clone;
+         Saved_U := Result.U.Clone;
+         Saved_V := Result.V_Transpose.Clone;
+         OpenCV.Core.Float32_Access.Set (Source, 0, 0, 50.0);
+      end;
+
+      AUnit.Assertions.Assert
+        (Mats_Approximately_Equal (Result.Singular_Values, Saved_W)
+         and then Mats_Approximately_Equal (Result.U, Saved_U)
+         and then Mats_Approximately_Equal (Result.V_Transpose, Saved_V),
+         "SVD outputs must remain valid after the source finalizes");
+
+      OpenCV.Core.Float32_Access.Set (Result.Singular_Values, 0, 0, 7.0);
+      AUnit.Assertions.Assert
+        (Mats_Approximately_Equal (Result.U, Saved_U)
+         and then Mats_Approximately_Equal (Result.V_Transpose, Saved_V),
+         "Mutating Singular_Values must not change U or V_Transpose");
+
+      OpenCV.Core.Float32_Access.Set (Result.U, 0, 0, 9.0);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Result.Singular_Values, 0, 0) = 7.0
+         and then Mats_Approximately_Equal (Result.V_Transpose, Saved_V),
+         "Mutating U must not change Singular_Values or V_Transpose");
+
+      OpenCV.Core.Float32_Access.Set (Result.V_Transpose, 0, 0, 11.0);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Result.Singular_Values, 0, 0) = 7.0
+         and then OpenCV.Core.Float32_Access.Get (Result.U, 0, 0) = 9.0,
+         "Mutating V_Transpose must not change Singular_Values or U");
+   end Singular_Value_Decomposition_Outputs_Are_Independent;
+
+   procedure Singular_Value_Decomposition_Rejects_Invalid_Input
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Default_Empty : OpenCV.Core.Mat;
+      Empty32       : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 1));
+      Two_Channel   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 2));
+      UInt8_Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.UInt8, 1));
+      Int32_Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Int32, 1));
+      Float16_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float16, 1));
+
+      procedure Check_Default is
+         Result : constant OpenCV.Core.Singular_Value_Decomposition_Result :=
+           Default_Empty.Singular_Value_Decomposition;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Default;
+
+      procedure Check_Empty32 is
+         Result : constant OpenCV.Core.Singular_Value_Decomposition_Result :=
+           Empty32.Singular_Value_Decomposition;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Empty32;
+
+      procedure Check_Two_Channel is
+         Result : constant OpenCV.Core.Singular_Value_Decomposition_Result :=
+           Two_Channel.Singular_Value_Decomposition;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Two_Channel;
+
+      procedure Check_UInt8 is
+         Result : constant OpenCV.Core.Singular_Value_Decomposition_Result :=
+           UInt8_Image.Singular_Value_Decomposition;
+      begin
+         pragma Unreferenced (Result);
+      end Check_UInt8;
+
+      procedure Check_Int32 is
+         Result : constant OpenCV.Core.Singular_Value_Decomposition_Result :=
+           Int32_Image.Singular_Value_Decomposition;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Int32;
+
+      procedure Check_Float16 is
+         Result : constant OpenCV.Core.Singular_Value_Decomposition_Result :=
+           Float16_Image.Singular_Value_Decomposition;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Float16;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Check_Default'Access,
+         "Singular_Value_Decomposition must reject a default empty Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_Empty32'Access,
+         "Singular_Value_Decomposition must reject a typed empty Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_Two_Channel'Access,
+         "Singular_Value_Decomposition must reject C2 input");
+      Assert_Raises_OpenCV_Error
+        (Check_UInt8'Access,
+         "Singular_Value_Decomposition must reject UInt8 input");
+      Assert_Raises_OpenCV_Error
+        (Check_Int32'Access,
+         "Singular_Value_Decomposition must reject Int32 input");
+      Assert_Raises_OpenCV_Error
+        (Check_Float16'Access,
+         "Singular_Value_Decomposition must reject Float16 input");
+   end Singular_Value_Decomposition_Rejects_Invalid_Input;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -9830,6 +10239,48 @@ package body Mat_Reduction_Tests is
         (Caller.Create
            ("PCA_Back_Project rejects empty, C2, and invalid types",
             PCA_Back_Project_Rejects_Invalid_Input'Access));
+
+      Result.Add_Test
+        (Caller.Create
+           ("Singular_Value_Decomposition tall compact shapes",
+            Singular_Value_Decomposition_Tall_Compact_Shapes'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Singular_Value_Decomposition tall reconstruction",
+            Singular_Value_Decomposition_Tall_Reconstruction'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Singular_Value_Decomposition wide compact shapes",
+            Singular_Value_Decomposition_Wide_Compact_Shapes'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Singular_Value_Decomposition orthonormal compact vectors",
+            Singular_Value_Decomposition_Orthonormal_Vectors'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Singular_Value_Decomposition matches Eigen of the Gram matrix",
+            Singular_Value_Decomposition_Matches_Eigen_Of_Gram'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Singular_Value_Decomposition rank-deficient matrix",
+            Singular_Value_Decomposition_Rank_Deficient'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Singular_Value_Decomposition preserves Float64",
+            Singular_Value_Decomposition_Preserves_Float64'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Singular_Value_Decomposition supports a non-contiguous Region",
+            Singular_Value_Decomposition_Noncontiguous_Region'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Singular_Value_Decomposition outputs are independent",
+            Singular_Value_Decomposition_Outputs_Are_Independent'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Singular_Value_Decomposition rejects empty, C2, and invalid"
+            & " types",
+            Singular_Value_Decomposition_Rejects_Invalid_Input'Access));
 
       Result.Add_Test
         (Caller.Create

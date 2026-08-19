@@ -3677,6 +3677,75 @@ package body OpenCV.Core is
       return Result;
    end Principal_Component_Analysis;
 
+   procedure Validate_Singular_Value_Decomposition (Self : Mat) is
+   begin
+      if Self.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Singular_Value_Decomposition requires a non-empty Mat");
+      end if;
+
+      if Self.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Singular_Value_Decomposition requires a single-channel Mat");
+      end if;
+
+      if Self.Depth /= Float32 and then Self.Depth /= Float64 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Singular_Value_Decomposition requires a Float32 or Float64 Mat");
+      end if;
+   end Validate_Singular_Value_Decomposition;
+
+   function Singular_Value_Decomposition
+     (Self : Mat) return Singular_Value_Decomposition_Result
+   is
+      Result                 : Singular_Value_Decomposition_Result;
+      Singular_Values_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      U_Handle               : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      V_Transpose_Handle     : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status                 : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Singular_Value_Decomposition (Self);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Singular_Value_Decomposition
+          (Source          => Self.Handle,
+           Singular_Values => Singular_Values_Handle'Access,
+           U               => U_Handle'Access,
+           V_Transpose     => V_Transpose_Handle'Access);
+      if Status /= OpenCV.Internal.C_API.Success then
+         OpenCV.Internal.C_API.Mat_Destroy (Singular_Values_Handle);
+         OpenCV.Internal.C_API.Mat_Destroy (U_Handle);
+         OpenCV.Internal.C_API.Mat_Destroy (V_Transpose_Handle);
+         Raise_On_Error (Status, "Mat singular value decomposition operation");
+      end if;
+
+      if Singular_Values_Handle = OpenCV.Internal.C_API.Null_Mat_Handle
+        or else U_Handle = OpenCV.Internal.C_API.Null_Mat_Handle
+        or else V_Transpose_Handle = OpenCV.Internal.C_API.Null_Mat_Handle
+      then
+         OpenCV.Internal.C_API.Mat_Destroy (Singular_Values_Handle);
+         OpenCV.Internal.C_API.Mat_Destroy (U_Handle);
+         OpenCV.Internal.C_API.Mat_Destroy (V_Transpose_Handle);
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat singular value decomposition operation returned a"
+            & " null result handle");
+      end if;
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Singular_Values.Handle);
+      Result.Singular_Values.Handle := Singular_Values_Handle;
+      OpenCV.Internal.C_API.Mat_Destroy (Result.U.Handle);
+      Result.U.Handle := U_Handle;
+      OpenCV.Internal.C_API.Mat_Destroy (Result.V_Transpose.Handle);
+      Result.V_Transpose.Handle := V_Transpose_Handle;
+      return Result;
+   end Singular_Value_Decomposition;
+
    function Is_PCA_Floating_Depth (Value : Depth_Type) return Boolean
    is (Value = Float32 or else Value = Float64);
 

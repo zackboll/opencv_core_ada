@@ -200,6 +200,19 @@ package OpenCV.Core is
       Eigenvectors : Mat;
    end record;
 
+   --  Independently owned outputs of Singular_Value_Decomposition.
+   --  Singular_Values is the R x 1 column of nonnegative singular
+   --  values in descending order, where R = min (Rows, Columns).
+   --  U is the Rows x R matrix of left singular vectors stored as
+   --  columns. V_Transpose is the R x Columns matrix of transposed
+   --  right singular vectors. Each field has normal Mat controlled
+   --  ownership and is independent of Self and of the other fields.
+   type Singular_Value_Decomposition_Result is record
+      Singular_Values : Mat;
+      U               : Mat;
+      V_Transpose     : Mat;
+   end record;
+
    --  Discriminated result of Invert. Inverse is present only when
    --  Invertible is True. Inverse has normal Mat controlled ownership
    --  and independent storage. A singular matrix yields Invertible
@@ -848,6 +861,31 @@ package OpenCV.Core is
    --  failure (cv::eigen returning false) raises OpenCV_Error rather
    --  than exposing a Boolean.
    function Eigen_Decomposition (Self : Mat) return Eigen_Decomposition_Result;
+
+   --  Computes the default compact/economy SVD of Self using OpenCV
+   --  4.10 cv::SVD::compute with flags = 0. This is not PCA, a
+   --  symmetric eigen solver, or a full-size SVD. Self is treated as
+   --  the mathematical matrix A exactly as stored; no orientation
+   --  parameter is required. The decomposition satisfies
+   --  A ~= U * diag (Singular_Values) * V_Transpose subject to
+   --  ordinary floating-point rounding. Let R = min (Rows, Columns).
+   --  Singular_Values is R x 1, U is Rows x R, and V_Transpose is
+   --  R x Columns. Those compact shapes apply to tall, square, and
+   --  wide matrices. Singular values are nonnegative and sorted from
+   --  largest to smallest. Self must be a non-empty single-channel
+   --  Float32 or Float64 Mat. Multi-channel Mats, integer depths, and
+   --  Float16 are rejected. Square shape, full rank, and
+   --  nonsingularity are not required. Rank-deficient matrices and
+   --  zero singular values are valid. Singular-vector signs are
+   --  arbitrary: corresponding columns of U and rows of V_Transpose
+   --  may simultaneously change sign. A repeated or zero singular
+   --  value does not have a unique basis within its singular
+   --  subspace. Outputs preserve Self's floating-point depth and are
+   --  independently owned. The caller does not preallocate any
+   --  output. Continuity is not required; non-contiguous Regions are
+   --  supported. Self is unchanged.
+   function Singular_Value_Decomposition
+     (Self : Mat) return Singular_Value_Decomposition_Result;
 
    --  Computes the PCA basis of Self using OpenCV 4.10 cv::PCA.
    --  Self is a 2-D single-channel sample matrix. Samples_Are_Rows,
