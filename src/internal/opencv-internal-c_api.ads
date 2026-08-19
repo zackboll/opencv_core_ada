@@ -921,6 +921,13 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_pseudo_inverse";
 
+   function Mat_Reciprocal_Condition_Number
+     (Source : Mat_Handle; Result : access C_Double) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_reciprocal_condition_number";
+
    function Mat_Transform
      (Source       : Mat_Handle;
       Coefficients : Mat_Handle;

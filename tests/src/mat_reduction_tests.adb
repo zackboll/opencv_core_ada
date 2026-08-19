@@ -10418,6 +10418,266 @@ package body Mat_Reduction_Tests is
          "A singular square Mat remains valid for Pseudo_Inverse");
    end Pseudo_Inverse_Remains_Distinct_From_Invert;
 
+   procedure Reciprocal_Condition_Number_Known_Diagonal
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+   begin
+      Fill_2x2 (Source, 4.0, 0.0, 0.0, 2.0);
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Source.Reciprocal_Condition_Number, 0.5),
+         "diag(4, 2) must have reciprocal condition number 0.5");
+      AUnit.Assertions.Assert
+        (Unchanged_2x2 (Source, 4.0, 0.0, 0.0, 2.0),
+         "Reciprocal_Condition_Number must leave the known diagonal"
+         & " unchanged");
+   end Reciprocal_Condition_Number_Known_Diagonal;
+
+   procedure Reciprocal_Condition_Number_Perfectly_Conditioned
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+   begin
+      Fill_2x2 (Source, 7.0, 0.0, 0.0, 7.0);
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Source.Reciprocal_Condition_Number, 1.0),
+         "A scaled identity must have reciprocal condition number 1.0");
+   end Reciprocal_Condition_Number_Perfectly_Conditioned;
+
+   procedure Reciprocal_Condition_Number_Is_Scale_Invariant
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Scaled : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+   begin
+      Fill_2x2 (Source, 4.0, 0.0, 0.0, 2.0);
+      Fill_2x2 (Scaled, 40.0, 0.0, 0.0, 20.0);
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Source.Reciprocal_Condition_Number, 0.5)
+         and then Approximately_Equal
+                    (Scaled.Reciprocal_Condition_Number, 0.5),
+         "rcond(c * A) must equal rcond(A) for a finite nonzero scale");
+   end Reciprocal_Condition_Number_Is_Scale_Invariant;
+
+   procedure Reciprocal_Condition_Number_Small_Scale_Float64
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source32 : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Source   : OpenCV.Core.Mat;
+      Result   : Long_Float;
+   begin
+      Fill_2x2 (Source32, 4.0, 0.0, 0.0, 2.0);
+      Source := Source32.Convert_To (OpenCV.Core.Float64, Scale => 1.0E-20);
+      Result := Source.Reciprocal_Condition_Number;
+      AUnit.Assertions.Assert
+        (Source.Depth = OpenCV.Core.Float64,
+         "The small-scale source must remain Float64");
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Result, 0.5, 0.000_000_000_1),
+         "1.0E-20 * diag(4, 2) must still have rcond approximately 0.5");
+   end Reciprocal_Condition_Number_Small_Scale_Float64;
+
+   procedure Reciprocal_Condition_Number_Singular_Matrix
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+   begin
+      Fill_2x2 (Source, 4.0, 0.0, 0.0, 0.0);
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Source.Reciprocal_Condition_Number, 0.0),
+         "A singular matrix must return rcond approximately 0.0");
+   end Reciprocal_Condition_Number_Singular_Matrix;
+
+   procedure Reciprocal_Condition_Number_Zero_Matrix
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
+   begin
+      Source.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      AUnit.Assertions.Assert
+        (Source.Reciprocal_Condition_Number = 0.0,
+         "A non-empty zero matrix must return rcond 0.0 rather than 0 / 0");
+   end Reciprocal_Condition_Number_Zero_Matrix;
+
+   procedure Reciprocal_Condition_Number_Tall_Matrix
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
+   begin
+      Fill_Tall_SVD_Source (Source);
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Source.Reciprocal_Condition_Number, 2.0 / 3.0),
+         "A tall compact matrix with singular values 3 and 2 must return"
+         & " 2/3");
+   end Reciprocal_Condition_Number_Tall_Matrix;
+
+   procedure Reciprocal_Condition_Number_Wide_Matrix
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+   begin
+      Fill_Wide_SVD_Source (Source);
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Source.Reciprocal_Condition_Number, 2.0 / 3.0),
+         "A wide compact matrix with singular values 3 and 2 must return"
+         & " 2/3");
+   end Reciprocal_Condition_Number_Wide_Matrix;
+
+   procedure Reciprocal_Condition_Number_Matches_Compact_SVD
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Basis  : OpenCV.Core.Singular_Value_Decomposition_Result;
+      Rank   : Natural;
+      Ratio  : Long_Float;
+   begin
+      Fill_2x2 (Source, 4.0, 0.0, 0.0, 2.0);
+      Basis := Source.Singular_Value_Decomposition;
+      Rank := Basis.Singular_Values.Rows;
+      Ratio :=
+        Singular_Value_At (Basis.Singular_Values, Rank - 1)
+        / Singular_Value_At (Basis.Singular_Values, 0);
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Source.Reciprocal_Condition_Number, Ratio),
+         "NO_UV rcond must match sigma_min / sigma_max from compact SVD");
+   end Reciprocal_Condition_Number_Matches_Compact_SVD;
+
+   procedure Reciprocal_Condition_Number_Noncontiguous_Region
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (5, 4, (OpenCV.Core.Float32, 1));
+      Contiguous : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Expected   : Long_Float;
+   begin
+      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Fill_2x2 (Contiguous, 4.0, 0.0, 0.0, 2.0);
+      Expected := Contiguous.Reciprocal_Condition_Number;
+      declare
+         Region : OpenCV.Core.Mat :=
+           Parent.Region ((X => 1, Y => 1, Width => 2, Height => 2));
+         Result : Long_Float;
+      begin
+         Fill_2x2 (Region, 4.0, 0.0, 0.0, 2.0);
+         AUnit.Assertions.Assert
+           (not Region.Is_Continuous,
+            "The Region used for Reciprocal_Condition_Number must be"
+            & " non-contiguous");
+         Result := Region.Reciprocal_Condition_Number;
+         AUnit.Assertions.Assert
+           (Approximately_Equal (Result, Expected)
+            and then Approximately_Equal (Result, 0.5),
+            "A non-contiguous Region must match the contiguous rcond");
+         AUnit.Assertions.Assert
+           (Unchanged_2x2 (Region, 4.0, 0.0, 0.0, 2.0)
+            and then OpenCV.Core.Float32_Access.Get (Parent, 0, 0) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 0, 3) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 4, 0) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 1, 0) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 1, 3) = 99.0,
+            "Reciprocal_Condition_Number must not modify the Region or"
+            & " surrounding parent storage");
+      end;
+   end Reciprocal_Condition_Number_Noncontiguous_Region;
+
+   procedure Reciprocal_Condition_Number_Rejects_Invalid_Input
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Default_Empty : OpenCV.Core.Mat;
+      Empty32       : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 1));
+      Two_Channel   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 2));
+      UInt8_Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      Int32_Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Int32, 1));
+      Float16_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float16, 1));
+
+      procedure Check_Default is
+         Result : constant Long_Float :=
+           Default_Empty.Reciprocal_Condition_Number;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Default;
+
+      procedure Check_Empty32 is
+         Result : constant Long_Float := Empty32.Reciprocal_Condition_Number;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Empty32;
+
+      procedure Check_Two_Channel is
+         Result : constant Long_Float :=
+           Two_Channel.Reciprocal_Condition_Number;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Two_Channel;
+
+      procedure Check_UInt8 is
+         Result : constant Long_Float :=
+           UInt8_Image.Reciprocal_Condition_Number;
+      begin
+         pragma Unreferenced (Result);
+      end Check_UInt8;
+
+      procedure Check_Int32 is
+         Result : constant Long_Float :=
+           Int32_Image.Reciprocal_Condition_Number;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Int32;
+
+      procedure Check_Float16 is
+         Result : constant Long_Float :=
+           Float16_Image.Reciprocal_Condition_Number;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Float16;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Check_Default'Access,
+         "Reciprocal_Condition_Number must reject a default empty Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_Empty32'Access,
+         "Reciprocal_Condition_Number must reject a typed empty Float32 Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_Two_Channel'Access,
+         "Reciprocal_Condition_Number must reject a two-channel Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_UInt8'Access,
+         "Reciprocal_Condition_Number must reject UInt8 input");
+      Assert_Raises_OpenCV_Error
+        (Check_Int32'Access,
+         "Reciprocal_Condition_Number must reject Int32 input");
+      Assert_Raises_OpenCV_Error
+        (Check_Float16'Access,
+         "Reciprocal_Condition_Number must reject Float16 input");
+   end Reciprocal_Condition_Number_Rejects_Invalid_Input;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Masked_Min_Max_Loc_In_Range         : constant Caller.Test_Method :=
@@ -11339,6 +11599,52 @@ package body Mat_Reduction_Tests is
         (Caller.Create
            ("Pseudo_Inverse remains distinct from Invert",
             Pseudo_Inverse_Remains_Distinct_From_Invert'Access));
+
+      Result.Add_Test
+        (Caller.Create
+           ("Reciprocal_Condition_Number known diagonal",
+            Reciprocal_Condition_Number_Known_Diagonal'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Reciprocal_Condition_Number perfectly conditioned",
+            Reciprocal_Condition_Number_Perfectly_Conditioned'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Reciprocal_Condition_Number is scale invariant",
+            Reciprocal_Condition_Number_Is_Scale_Invariant'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Reciprocal_Condition_Number small-scale Float64",
+            Reciprocal_Condition_Number_Small_Scale_Float64'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Reciprocal_Condition_Number singular matrix",
+            Reciprocal_Condition_Number_Singular_Matrix'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Reciprocal_Condition_Number zero matrix",
+            Reciprocal_Condition_Number_Zero_Matrix'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Reciprocal_Condition_Number tall matrix",
+            Reciprocal_Condition_Number_Tall_Matrix'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Reciprocal_Condition_Number wide matrix",
+            Reciprocal_Condition_Number_Wide_Matrix'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Reciprocal_Condition_Number matches compact SVD",
+            Reciprocal_Condition_Number_Matches_Compact_SVD'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Reciprocal_Condition_Number non-contiguous Region",
+            Reciprocal_Condition_Number_Noncontiguous_Region'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Reciprocal_Condition_Number rejects empty, C2, and invalid"
+            & " types",
+            Reciprocal_Condition_Number_Rejects_Invalid_Input'Access));
 
       Result.Add_Test
         (Caller.Create

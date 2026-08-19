@@ -4001,6 +4001,59 @@ opencv_core_mat_pseudo_inverse(
 }
 
 opencv_core_status
+opencv_core_mat_reciprocal_condition_number(
+    const opencv_core_mat_handle *source,
+    double *out_value) {
+    clear_error();
+
+    if (out_value != nullptr) {
+        *out_value = 0.0;
+    }
+
+    if (out_value == nullptr) {
+        return invalid_argument("out_value must not be null");
+    }
+
+    if (source == nullptr) {
+        return invalid_argument("source Mat handle must not be null");
+    }
+
+    try {
+        cv::Mat singular_values;
+        cv::SVD::compute(source->value, singular_values, cv::SVD::NO_UV);
+
+        // ABI safety: this function indexes W[0] and W[R-1] after
+        // SVD::compute. OpenCV 4.10 _SVDcompute accepts a typed empty
+        // CV_32F/CV_64F Mat and copies an empty W, so those accesses
+        // would be out of bounds if R == 0.
+        if (singular_values.rows < 1) {
+            return OPENCV_CORE_OK;
+        }
+
+        const int rank = singular_values.rows;
+        double sigma_max = 0.0;
+        double sigma_min = 0.0;
+        if (singular_values.type() == CV_32F) {
+            sigma_max = static_cast<double>(singular_values.at<float>(0, 0));
+            sigma_min =
+                static_cast<double>(singular_values.at<float>(rank - 1, 0));
+        } else {
+            sigma_max = singular_values.at<double>(0, 0);
+            sigma_min = singular_values.at<double>(rank - 1, 0);
+        }
+
+        if (sigma_max == 0.0) {
+            return OPENCV_CORE_OK;
+        }
+
+        *out_value = sigma_min / sigma_max;
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_transform(const opencv_core_mat_handle *source,
                           const opencv_core_mat_handle *coefficients,
                           opencv_core_mat_handle **out_mat) {

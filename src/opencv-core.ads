@@ -946,6 +946,30 @@ package OpenCV.Core is
    --  address with signed int index arithmetic. Self is unchanged.
    function Pseudo_Inverse (Self : Mat) return Mat;
 
+   --  Returns the reciprocal 2-norm condition number of Self:
+   --  sigma_min / sigma_max. Singular values come from OpenCV 4.10
+   --  SVD. Compact rank is R = min (Rows, Columns), so the values
+   --  are sigma_1 >= ... >= sigma_R >= 0 and the result is
+   --  sigma_R / sigma_1 when sigma_1 > 0. A result of 1.0 means
+   --  well / perfectly conditioned. Values approaching 0 indicate
+   --  ill conditioning. If the largest singular value is exactly 0,
+   --  the result is 0.0 rather than 0 / 0. Singular and zero
+   --  matrices are valid and return 0.0 when the smallest singular
+   --  value is zero. Square, tall, and wide matrices are supported.
+   --  Self must be a non-empty single-channel Float32 or Float64
+   --  Mat. Multi-channel Mats, integer depths, and Float16 are
+   --  rejected. Computation uses singular values only; U and
+   --  V_Transpose are not required. The result is scale invariant
+   --  subject to floating-point representability and rounding:
+   --  rcond (c * A) = rcond (A) for nonzero scalar c. This is the
+   --  ratio of the singular values OpenCV actually computes, not
+   --  the pseudoinverse / SVD back-substitution numerical-rank
+   --  threshold and not cv::invert (DECOMP_SVD)'s scale-dependent
+   --  return metric. There is no caller tolerance. Continuity is
+   --  not required; non-contiguous Regions are supported. Self is
+   --  unchanged. Ordinary floating-point rounding applies.
+   function Reciprocal_Condition_Number (Self : Mat) return Long_Float;
+
    --  Computes the PCA basis of Self using OpenCV 4.10 cv::PCA.
    --  Self is a 2-D single-channel sample matrix. Samples_Are_Rows,
    --  the default, treats an M x N Mat as M samples of N features:

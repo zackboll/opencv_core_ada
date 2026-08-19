@@ -1132,6 +1132,19 @@ opencv_core_mat_pseudo_inverse(
     opencv_core_mat_handle **out_mat);
 
 /*
+ * Computes the reciprocal 2-norm condition number of a borrowed Mat
+ * from OpenCV 4.10 singular-values-only SVD (SVD::NO_UV). On success
+ * *out_value is sigma_min / sigma_max from the compact W column, or
+ * 0.0 when sigma_max is exactly 0. On entry *out_value is set to 0.0
+ * when out_value is non-null. On failure *out_value remains 0.0. The
+ * source is borrowed and unchanged. U and V_Transpose are not computed.
+ */
+opencv_core_status
+opencv_core_mat_reciprocal_condition_number(
+    const opencv_core_mat_handle *source,
+    double *out_value);
+
+/*
  * Applies cv::transform to each source element interpreted as its channel
  * vector. source and coefficients are borrowed. The independently owned
  * result has source.rows, source.cols, source.depth(), and

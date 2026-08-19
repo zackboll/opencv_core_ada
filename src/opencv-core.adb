@@ -4008,6 +4008,39 @@ package body OpenCV.Core is
       return Result;
    end Pseudo_Inverse;
 
+   procedure Validate_Reciprocal_Condition_Number (Self : Mat) is
+   begin
+      if Self.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Reciprocal_Condition_Number requires a non-empty Mat");
+      end if;
+
+      if Self.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Reciprocal_Condition_Number requires a single-channel Mat");
+      end if;
+
+      if not Is_SVD_Floating_Depth (Self.Depth) then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Reciprocal_Condition_Number requires a Float32 or Float64 Mat");
+      end if;
+   end Validate_Reciprocal_Condition_Number;
+
+   function Reciprocal_Condition_Number (Self : Mat) return Long_Float is
+      C_Result : aliased OpenCV.Internal.C_API.C_Double := 0.0;
+      Status   : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Reciprocal_Condition_Number (Self);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Reciprocal_Condition_Number
+          (Source => Self.Handle, Result => C_Result'Access);
+      Raise_On_Error (Status, "Mat reciprocal condition number operation");
+      return Long_Float (C_Result);
+   end Reciprocal_Condition_Number;
+
    function Is_PCA_Floating_Depth (Value : Depth_Type) return Boolean
    is (Value = Float32 or else Value = Float64);
 
