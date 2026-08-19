@@ -6273,6 +6273,558 @@ package body Mat_Reduction_Tests is
          "Principal_Component_Analysis must reject Components above K_all");
    end Principal_Component_Analysis_Rejects_Invalid_Input;
 
+   procedure Fill_PCA_Retained_Variance_Row_Samples
+     (Image : in out OpenCV.Core.Mat) is
+   begin
+      OpenCV.Core.Float32_Access.Set (Image, 0, 0, 3.0);
+      OpenCV.Core.Float32_Access.Set (Image, 0, 1, 0.0);
+      OpenCV.Core.Float32_Access.Set (Image, 0, 2, 0.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 0, -3.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 1, 0.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 2, 0.0);
+      OpenCV.Core.Float32_Access.Set (Image, 2, 0, 0.0);
+      OpenCV.Core.Float32_Access.Set (Image, 2, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Image, 2, 2, 0.0);
+      OpenCV.Core.Float32_Access.Set (Image, 3, 0, 0.0);
+      OpenCV.Core.Float32_Access.Set (Image, 3, 1, -2.0);
+      OpenCV.Core.Float32_Access.Set (Image, 3, 2, 0.0);
+      OpenCV.Core.Float32_Access.Set (Image, 4, 0, 0.0);
+      OpenCV.Core.Float32_Access.Set (Image, 4, 1, 0.0);
+      OpenCV.Core.Float32_Access.Set (Image, 4, 2, 1.0);
+      OpenCV.Core.Float32_Access.Set (Image, 5, 0, 0.0);
+      OpenCV.Core.Float32_Access.Set (Image, 5, 1, 0.0);
+      OpenCV.Core.Float32_Access.Set (Image, 5, 2, -1.0);
+   end Fill_PCA_Retained_Variance_Row_Samples;
+
+   procedure Fill_PCA_Retained_Variance_Column_Samples
+     (Image : in out OpenCV.Core.Mat) is
+   begin
+      OpenCV.Core.Float32_Access.Set (Image, 0, 0, 3.0);
+      OpenCV.Core.Float32_Access.Set (Image, 0, 1, -3.0);
+      OpenCV.Core.Float32_Access.Set (Image, 0, 2, 0.0);
+      OpenCV.Core.Float32_Access.Set (Image, 0, 3, 0.0);
+      OpenCV.Core.Float32_Access.Set (Image, 0, 4, 0.0);
+      OpenCV.Core.Float32_Access.Set (Image, 0, 5, 0.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 0, 0.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 1, 0.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 2, 2.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 3, -2.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 4, 0.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 5, 0.0);
+      OpenCV.Core.Float32_Access.Set (Image, 2, 0, 0.0);
+      OpenCV.Core.Float32_Access.Set (Image, 2, 1, 0.0);
+      OpenCV.Core.Float32_Access.Set (Image, 2, 2, 0.0);
+      OpenCV.Core.Float32_Access.Set (Image, 2, 3, 0.0);
+      OpenCV.Core.Float32_Access.Set (Image, 2, 4, 1.0);
+      OpenCV.Core.Float32_Access.Set (Image, 2, 5, -1.0);
+   end Fill_PCA_Retained_Variance_Column_Samples;
+
+   function Unchanged_PCA_Retained_Variance_Row_Samples
+     (Image : OpenCV.Core.Mat) return Boolean
+   is (OpenCV.Core.Float32_Access.Get (Image, 0, 0) = 3.0
+       and then OpenCV.Core.Float32_Access.Get (Image, 0, 1) = 0.0
+       and then OpenCV.Core.Float32_Access.Get (Image, 0, 2) = 0.0
+       and then OpenCV.Core.Float32_Access.Get (Image, 1, 0) = -3.0
+       and then OpenCV.Core.Float32_Access.Get (Image, 1, 1) = 0.0
+       and then OpenCV.Core.Float32_Access.Get (Image, 1, 2) = 0.0
+       and then OpenCV.Core.Float32_Access.Get (Image, 2, 0) = 0.0
+       and then OpenCV.Core.Float32_Access.Get (Image, 2, 1) = 2.0
+       and then OpenCV.Core.Float32_Access.Get (Image, 2, 2) = 0.0
+       and then OpenCV.Core.Float32_Access.Get (Image, 3, 0) = 0.0
+       and then OpenCV.Core.Float32_Access.Get (Image, 3, 1) = -2.0
+       and then OpenCV.Core.Float32_Access.Get (Image, 3, 2) = 0.0
+       and then OpenCV.Core.Float32_Access.Get (Image, 4, 0) = 0.0
+       and then OpenCV.Core.Float32_Access.Get (Image, 4, 1) = 0.0
+       and then OpenCV.Core.Float32_Access.Get (Image, 4, 2) = 1.0
+       and then OpenCV.Core.Float32_Access.Get (Image, 5, 0) = 0.0
+       and then OpenCV.Core.Float32_Access.Get (Image, 5, 1) = 0.0
+       and then OpenCV.Core.Float32_Access.Get (Image, 5, 2) = -1.0);
+
+   function PCA_Zero_Mean_1x3 (Image : OpenCV.Core.Mat) return Boolean
+   is (Image.Rows = 1
+       and then Image.Columns = 3
+       and then Image.Channels = 1
+       and then Approximately_Equal
+                  (Long_Float (OpenCV.Core.Float32_Access.Get (Image, 0, 0)),
+                   0.0)
+       and then Approximately_Equal
+                  (Long_Float (OpenCV.Core.Float32_Access.Get (Image, 0, 1)),
+                   0.0)
+       and then Approximately_Equal
+                  (Long_Float (OpenCV.Core.Float32_Access.Get (Image, 0, 2)),
+                   0.0));
+
+   function PCA_Zero_Mean_3x1 (Image : OpenCV.Core.Mat) return Boolean
+   is (Image.Rows = 3
+       and then Image.Columns = 1
+       and then Image.Channels = 1
+       and then Approximately_Equal
+                  (Long_Float (OpenCV.Core.Float32_Access.Get (Image, 0, 0)),
+                   0.0)
+       and then Approximately_Equal
+                  (Long_Float (OpenCV.Core.Float32_Access.Get (Image, 1, 0)),
+                   0.0)
+       and then Approximately_Equal
+                  (Long_Float (OpenCV.Core.Float32_Access.Get (Image, 2, 0)),
+                   0.0));
+
+   function Two_Leading_Retained_Eigenvalues
+     (Values : OpenCV.Core.Mat) return Boolean
+   is (Approximately_Equal (Eigenvalue_At (Values, 0), 3.0, 0.000_1)
+       and then Approximately_Equal
+                  (Eigenvalue_At (Values, 1), 4.0 / 3.0, 0.000_1));
+
+   function Mats_Approximately_Equal
+     (Left, Right : OpenCV.Core.Mat; Tolerance : Long_Float := 0.000_1)
+      return Boolean;
+
+   procedure Principal_Component_Analysis_Retained_Variance_0_80
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (6, 3, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Principal_Component_Analysis_Result;
+   begin
+      Fill_PCA_Retained_Variance_Row_Samples (Source);
+      Result :=
+        Source.Principal_Component_Analysis (Retained_Variance => 0.80);
+
+      AUnit.Assertions.Assert
+        (Result.Mean.Rows = 1
+         and then Result.Mean.Columns = 3
+         and then Result.Eigenvalues.Rows = 2
+         and then Result.Eigenvalues.Columns = 1
+         and then Result.Eigenvectors.Rows = 2
+         and then Result.Eigenvectors.Columns = 3
+         and then Result.Mean.Depth = OpenCV.Core.Float32
+         and then Result.Eigenvalues.Depth = OpenCV.Core.Float32
+         and then Result.Eigenvectors.Depth = OpenCV.Core.Float32,
+         "Retained_Variance 0.80 must return a 1x3 mean and two components");
+      AUnit.Assertions.Assert
+        (PCA_Zero_Mean_1x3 (Result.Mean)
+         and then Two_Leading_Retained_Eigenvalues (Result.Eigenvalues),
+         "Retained_Variance 0.80 must keep eigenvalues 3 and 4/3");
+      AUnit.Assertions.Assert
+        (Unchanged_PCA_Retained_Variance_Row_Samples (Source),
+         "Retained-variance PCA must leave Self unchanged");
+   end Principal_Component_Analysis_Retained_Variance_0_80;
+
+   procedure Principal_Component_Analysis_Retained_Variance_0_95_Quirk
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (6, 3, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Principal_Component_Analysis_Result;
+   begin
+      Fill_PCA_Retained_Variance_Row_Samples (Source);
+      Result :=
+        Source.Principal_Component_Analysis (Retained_Variance => 0.95);
+
+      AUnit.Assertions.Assert
+        (Result.Eigenvalues.Rows = 2
+         and then Result.Eigenvectors.Rows = 2
+         and then Two_Leading_Retained_Eigenvalues (Result.Eigenvalues),
+         "OpenCV 4.10 retained-variance 0.95 must keep only the first two"
+         & " components even though they represent about 13/14 < 0.95");
+   end Principal_Component_Analysis_Retained_Variance_0_95_Quirk;
+
+   procedure Principal_Component_Analysis_Retained_Variance_1_0
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (6, 3, (OpenCV.Core.Float32, 1));
+      Retained : OpenCV.Core.Principal_Component_Analysis_Result;
+      Complete : OpenCV.Core.Principal_Component_Analysis_Result;
+   begin
+      Fill_PCA_Retained_Variance_Row_Samples (Source);
+      Retained :=
+        Source.Principal_Component_Analysis (Retained_Variance => 1.0);
+      Complete := Source.Principal_Component_Analysis;
+
+      AUnit.Assertions.Assert
+        (Retained.Eigenvalues.Rows = 3
+         and then Retained.Eigenvectors.Rows = 3
+         and then Retained.Eigenvectors.Columns = 3
+         and then Approximately_Equal
+                    (Eigenvalue_At (Retained.Eigenvalues, 0), 3.0, 0.000_1)
+         and then Approximately_Equal
+                    (Eigenvalue_At (Retained.Eigenvalues, 1),
+                     4.0 / 3.0,
+                     0.000_1)
+         and then Approximately_Equal
+                    (Eigenvalue_At (Retained.Eigenvalues, 2),
+                     1.0 / 3.0,
+                     0.000_1),
+         "Retained_Variance 1.0 must keep every available component");
+      AUnit.Assertions.Assert
+        (Mats_Approximately_Equal (Retained.Mean, Complete.Mean)
+         and then Mats_Approximately_Equal
+                    (Retained.Eigenvalues, Complete.Eigenvalues)
+         and then Mats_Approximately_Equal
+                    (Retained.Eigenvectors, Complete.Eigenvectors),
+         "Retained_Variance 1.0 must match the all-components PCA result");
+   end Principal_Component_Analysis_Retained_Variance_1_0;
+
+   procedure Principal_Component_Analysis_Retained_Variance_Keeps_Two
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (6, 3, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Principal_Component_Analysis_Result;
+   begin
+      Fill_PCA_Retained_Variance_Row_Samples (Source);
+      Result :=
+        Source.Principal_Component_Analysis (Retained_Variance => 0.50);
+
+      AUnit.Assertions.Assert
+        (Result.Eigenvalues.Rows = 2
+         and then Result.Eigenvectors.Rows = 2
+         and then Two_Leading_Retained_Eigenvalues (Result.Eigenvalues),
+         "OpenCV 4.10 retained-variance PCA must keep at least two"
+         & " components");
+   end Principal_Component_Analysis_Retained_Variance_Keeps_Two;
+
+   procedure Principal_Component_Analysis_Retained_Variance_Columns
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 6, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Principal_Component_Analysis_Result;
+   begin
+      Fill_PCA_Retained_Variance_Column_Samples (Source);
+      Result :=
+        Source.Principal_Component_Analysis
+          (Retained_Variance => 0.80,
+           Orientation       => OpenCV.Core.Samples_Are_Columns);
+
+      AUnit.Assertions.Assert
+        (Result.Mean.Rows = 3
+         and then Result.Mean.Columns = 1
+         and then Result.Eigenvalues.Rows = 2
+         and then Result.Eigenvalues.Columns = 1
+         and then Result.Eigenvectors.Rows = 2
+         and then Result.Eigenvectors.Columns = 3,
+         "Column retained-variance PCA must return 3x1 mean and 2x3"
+         & " directions");
+      AUnit.Assertions.Assert
+        (PCA_Zero_Mean_3x1 (Result.Mean)
+         and then Two_Leading_Retained_Eigenvalues (Result.Eigenvalues),
+         "Column retained-variance 0.80 must keep eigenvalues 3 and 4/3");
+   end Principal_Component_Analysis_Retained_Variance_Columns;
+
+   procedure Principal_Component_Analysis_Retained_Variance_Project
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source         : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (6, 3, (OpenCV.Core.Float32, 1));
+      Basis          : OpenCV.Core.Principal_Component_Analysis_Result;
+      Coordinates    : OpenCV.Core.Mat;
+      Reconstruction : OpenCV.Core.Mat;
+      Expected_Coord : OpenCV.Core.Mat;
+      Expected_Back  : OpenCV.Core.Mat;
+   begin
+      Fill_PCA_Retained_Variance_Row_Samples (Source);
+      Basis := Source.Principal_Component_Analysis (Retained_Variance => 0.80);
+      Coordinates := Source.PCA_Project (Basis);
+      Reconstruction := Coordinates.PCA_Back_Project (Basis);
+      Expected_Coord :=
+        Source.Subtract (Basis.Mean.Repeat (6, 1)).Matrix_Multiply
+          (Basis.Eigenvectors.Transpose);
+      Expected_Back :=
+        Coordinates.Matrix_Multiply (Basis.Eigenvectors).Add
+          (Basis.Mean.Repeat (6, 1));
+
+      AUnit.Assertions.Assert
+        (Coordinates.Rows = 6
+         and then Coordinates.Columns = 2
+         and then Reconstruction.Rows = 6
+         and then Reconstruction.Columns = 3,
+         "Two-component retained-variance project/back-project must return"
+         & " 6x2 then 6x3");
+      AUnit.Assertions.Assert
+        (Mats_Approximately_Equal (Coordinates, Expected_Coord)
+         and then Mats_Approximately_Equal (Reconstruction, Expected_Back),
+         "Retained-variance PCA must integrate with PCA_Project and"
+         & " PCA_Back_Project");
+      AUnit.Assertions.Assert
+        (not Mats_Approximately_Equal (Reconstruction, Source, 0.1),
+         "Dropped-component reconstruction must not equal the original"
+         & " Source");
+   end Principal_Component_Analysis_Retained_Variance_Project;
+
+   procedure Principal_Component_Analysis_Retained_Variance_Float64
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source32 : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (6, 3, (OpenCV.Core.Float32, 1));
+      Source   : OpenCV.Core.Mat;
+      Result   : OpenCV.Core.Principal_Component_Analysis_Result;
+      Values   : OpenCV.Core.Mat;
+   begin
+      Fill_PCA_Retained_Variance_Row_Samples (Source32);
+      Source := Source32.Convert_To (OpenCV.Core.Float64);
+      Result :=
+        Source.Principal_Component_Analysis (Retained_Variance => 0.80);
+      Values := Result.Eigenvalues.Convert_To (OpenCV.Core.Float32);
+
+      AUnit.Assertions.Assert
+        (Result.Mean.Depth = OpenCV.Core.Float64
+         and then Result.Eigenvalues.Depth = OpenCV.Core.Float64
+         and then Result.Eigenvectors.Depth = OpenCV.Core.Float64
+         and then Result.Mean.Rows = 1
+         and then Result.Mean.Columns = 3
+         and then Result.Eigenvalues.Rows = 2
+         and then Result.Eigenvectors.Rows = 2
+         and then Result.Eigenvectors.Columns = 3
+         and then Two_Leading_Retained_Eigenvalues (Values),
+         "Float64 retained-variance PCA must keep Float64 two-component"
+         & " outputs");
+   end Principal_Component_Analysis_Retained_Variance_Float64;
+
+   procedure Principal_Component_Analysis_Retained_Variance_Region
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (8, 5, (OpenCV.Core.Float32, 1));
+      Contiguous : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (6, 3, (OpenCV.Core.Float32, 1));
+      Expected   : OpenCV.Core.Principal_Component_Analysis_Result;
+      Result     : OpenCV.Core.Principal_Component_Analysis_Result;
+   begin
+      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Fill_PCA_Retained_Variance_Row_Samples (Contiguous);
+      Expected :=
+        Contiguous.Principal_Component_Analysis (Retained_Variance => 0.80);
+      declare
+         Source : OpenCV.Core.Mat :=
+           Parent.Region ((X => 1, Y => 1, Width => 3, Height => 6));
+      begin
+         Fill_PCA_Retained_Variance_Row_Samples (Source);
+         AUnit.Assertions.Assert
+           (not Source.Is_Continuous,
+            "The Region used for retained-variance PCA must be"
+            & " non-contiguous");
+         Result :=
+           Source.Principal_Component_Analysis (Retained_Variance => 0.80);
+         AUnit.Assertions.Assert
+           (Mats_Approximately_Equal (Result.Mean, Expected.Mean)
+            and then Mats_Approximately_Equal
+                       (Result.Eigenvalues, Expected.Eigenvalues)
+            and then Mats_Approximately_Equal
+                       (Result.Eigenvectors, Expected.Eigenvectors),
+            "Retained-variance PCA must honor a non-contiguous sample"
+            & " Region");
+         AUnit.Assertions.Assert
+           (Unchanged_PCA_Retained_Variance_Row_Samples (Source)
+            and then OpenCV.Core.Float32_Access.Get (Parent, 0, 0) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 1, 0) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 1, 4) = 99.0,
+            "Retained-variance PCA must not modify the Region or its parent");
+      end;
+   end Principal_Component_Analysis_Retained_Variance_Region;
+
+   procedure Principal_Component_Analysis_Retained_Variance_Ownership
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Result : OpenCV.Core.Principal_Component_Analysis_Result;
+   begin
+      declare
+         Source : OpenCV.Core.Mat :=
+           OpenCV.Core.Create (6, 3, (OpenCV.Core.Float32, 1));
+      begin
+         Fill_PCA_Retained_Variance_Row_Samples (Source);
+         Result :=
+           Source.Principal_Component_Analysis (Retained_Variance => 0.80);
+         OpenCV.Core.Float32_Access.Set (Source, 0, 0, 50.0);
+         AUnit.Assertions.Assert
+           (PCA_Zero_Mean_1x3 (Result.Mean)
+            and then Two_Leading_Retained_Eigenvalues (Result.Eigenvalues),
+            "Mutating Self must not change retained-variance PCA outputs");
+      end;
+
+      AUnit.Assertions.Assert
+        (PCA_Zero_Mean_1x3 (Result.Mean)
+         and then Two_Leading_Retained_Eigenvalues (Result.Eigenvalues)
+         and then Result.Eigenvectors.Rows = 2
+         and then Result.Eigenvectors.Columns = 3,
+         "Retained-variance PCA outputs must remain valid after the source"
+         & " finalizes");
+      OpenCV.Core.Float32_Access.Set (Result.Mean, 0, 0, 9.0);
+      AUnit.Assertions.Assert
+        (Two_Leading_Retained_Eigenvalues (Result.Eigenvalues)
+         and then Result.Eigenvectors.Columns = 3,
+         "Mutating Mean must not change eigenvalues or eigenvectors");
+      OpenCV.Core.Float32_Access.Set (Result.Eigenvalues, 0, 0, 7.0);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Result.Mean, 0, 0) = 9.0
+         and then OpenCV.Core.Float32_Access.Get (Result.Mean, 0, 1) = 0.0,
+         "Mutating eigenvalues must not change Mean");
+      OpenCV.Core.Float32_Access.Set (Result.Eigenvectors, 0, 0, 0.0);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Result.Eigenvalues, 0, 0) = 7.0
+         and then OpenCV.Core.Float32_Access.Get (Result.Mean, 0, 2) = 0.0,
+         "Mutating eigenvectors must not change Mean or eigenvalues");
+   end Principal_Component_Analysis_Retained_Variance_Ownership;
+
+   procedure Principal_Component_Analysis_Retained_Variance_Rejects_Range
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (6, 3, (OpenCV.Core.Float32, 1));
+
+      procedure Check_Zero is
+         Result : constant OpenCV.Core.Principal_Component_Analysis_Result :=
+           Source.Principal_Component_Analysis (Retained_Variance => 0.0);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Zero;
+
+      procedure Check_Negative is
+         Result : constant OpenCV.Core.Principal_Component_Analysis_Result :=
+           Source.Principal_Component_Analysis (Retained_Variance => -0.1);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Negative;
+
+      procedure Check_Above_One is
+         Result : constant OpenCV.Core.Principal_Component_Analysis_Result :=
+           Source.Principal_Component_Analysis (Retained_Variance => 1.1);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Above_One;
+   begin
+      Fill_PCA_Retained_Variance_Row_Samples (Source);
+      Assert_Raises_OpenCV_Error
+        (Check_Zero'Access, "Retained_Variance 0.0 must raise OpenCV_Error");
+      Assert_Raises_OpenCV_Error
+        (Check_Negative'Access,
+         "Negative Retained_Variance must raise OpenCV_Error");
+      Assert_Raises_OpenCV_Error
+        (Check_Above_One'Access,
+         "Retained_Variance above 1.0 must raise OpenCV_Error");
+   end Principal_Component_Analysis_Retained_Variance_Rejects_Range;
+
+   procedure Principal_Component_Analysis_Retained_Variance_Needs_Two
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 1, (OpenCV.Core.Float32, 1));
+      Complete : OpenCV.Core.Principal_Component_Analysis_Result;
+
+      procedure Check_Retained is
+         Result : constant OpenCV.Core.Principal_Component_Analysis_Result :=
+           Source.Principal_Component_Analysis (Retained_Variance => 0.80);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Retained;
+   begin
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Source, 1, 0, 2.0);
+      OpenCV.Core.Float32_Access.Set (Source, 2, 0, 3.0);
+      OpenCV.Core.Float32_Access.Set (Source, 3, 0, 4.0);
+      Complete := Source.Principal_Component_Analysis;
+      AUnit.Assertions.Assert
+        (Complete.Eigenvalues.Rows = 1
+         and then Complete.Eigenvectors.Rows = 1
+         and then Complete.Eigenvectors.Columns = 1,
+         "All-components PCA must still support a one-component source");
+      Assert_Raises_OpenCV_Error
+        (Check_Retained'Access,
+         "Retained_Variance PCA must reject Available_Components = 1");
+   end Principal_Component_Analysis_Retained_Variance_Needs_Two;
+
+   procedure Principal_Component_Analysis_Retained_Variance_Rejects_Input
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Default_Empty : OpenCV.Core.Mat;
+      Empty32       : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 1));
+      Two_Channel   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (6, 3, (OpenCV.Core.Float32, 2));
+      UInt8_Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (6, 3, (OpenCV.Core.UInt8, 1));
+      Int32_Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (6, 3, (OpenCV.Core.Int32, 1));
+      Float16_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (6, 3, (OpenCV.Core.Float16, 1));
+
+      procedure Check_Default is
+         Result : constant OpenCV.Core.Principal_Component_Analysis_Result :=
+           Default_Empty.Principal_Component_Analysis
+             (Retained_Variance => 0.80);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Default;
+
+      procedure Check_Empty32 is
+         Result : constant OpenCV.Core.Principal_Component_Analysis_Result :=
+           Empty32.Principal_Component_Analysis (Retained_Variance => 0.80);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Empty32;
+
+      procedure Check_Two_Channel is
+         Result : constant OpenCV.Core.Principal_Component_Analysis_Result :=
+           Two_Channel.Principal_Component_Analysis
+             (Retained_Variance => 0.80);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Two_Channel;
+
+      procedure Check_UInt8 is
+         Result : constant OpenCV.Core.Principal_Component_Analysis_Result :=
+           UInt8_Image.Principal_Component_Analysis
+             (Retained_Variance => 0.80);
+      begin
+         pragma Unreferenced (Result);
+      end Check_UInt8;
+
+      procedure Check_Int32 is
+         Result : constant OpenCV.Core.Principal_Component_Analysis_Result :=
+           Int32_Image.Principal_Component_Analysis
+             (Retained_Variance => 0.80);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Int32;
+
+      procedure Check_Float16 is
+         Result : constant OpenCV.Core.Principal_Component_Analysis_Result :=
+           Float16_Image.Principal_Component_Analysis
+             (Retained_Variance => 0.80);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Float16;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Check_Default'Access,
+         "Retained_Variance PCA must reject a default empty Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_Empty32'Access,
+         "Retained_Variance PCA must reject a typed empty Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_Two_Channel'Access,
+         "Retained_Variance PCA must reject C2 input");
+      Assert_Raises_OpenCV_Error
+        (Check_UInt8'Access, "Retained_Variance PCA must reject UInt8 input");
+      Assert_Raises_OpenCV_Error
+        (Check_Int32'Access, "Retained_Variance PCA must reject Int32 input");
+      Assert_Raises_OpenCV_Error
+        (Check_Float16'Access,
+         "Retained_Variance PCA must reject Float16 input");
+   end Principal_Component_Analysis_Retained_Variance_Rejects_Input;
+
    procedure Fill_PCA_Column_Samples (Image : in out OpenCV.Core.Mat) is
    begin
       OpenCV.Core.Float32_Access.Set (Image, 0, 0, 1.0);
@@ -6686,9 +7238,9 @@ package body Mat_Reduction_Tests is
         OpenCV.Core.Create (4, 2, (OpenCV.Core.Float16, 1));
       Source        : OpenCV.Core.Mat :=
         OpenCV.Core.Create (4, 2, (OpenCV.Core.Float32, 1));
-      Wrong_Rows    : OpenCV.Core.Mat :=
+      Wrong_Rows    : constant OpenCV.Core.Mat :=
         OpenCV.Core.Create (4, 3, (OpenCV.Core.Float32, 1));
-      Wrong_Cols    : OpenCV.Core.Mat :=
+      Wrong_Cols    : constant OpenCV.Core.Mat :=
         OpenCV.Core.Create (3, 4, (OpenCV.Core.Float32, 1));
       Basis         : OpenCV.Core.Principal_Component_Analysis_Result;
       Column_Source : OpenCV.Core.Mat :=
@@ -8502,7 +9054,8 @@ package body Mat_Reduction_Tests is
       Masked_Min_Max_Loc_UInt8    : constant Caller.Test_Method :=
         Masked_Min_Max_Loc_UInt8_Selects_Extrema_And_Column_Row_Points'Access;
       Masked_Min_Max_Loc_In_Range : constant Caller.Test_Method :=
-        Masked_Min_Max_Loc_Excludes_Global_Extrema_And_Uses_In_Range_Mask'Access;
+        Masked_Min_Max_Loc_Excludes_Global_Extrema_And_Uses_In_Range_Mask'
+          Access;
    begin
       Result.Add_Test
         (Caller.Create
@@ -9135,7 +9688,8 @@ package body Mat_Reduction_Tests is
       Result.Add_Test
         (Caller.Create
            ("Principal_Component_Analysis supports a non-contiguous Region",
-            Principal_Component_Analysis_Supports_Noncontiguous_Region'Access));
+            Principal_Component_Analysis_Supports_Noncontiguous_Region'
+              Access));
       Result.Add_Test
         (Caller.Create
            ("Principal_Component_Analysis preserves Float64 depth",
@@ -9157,6 +9711,64 @@ package body Mat_Reduction_Tests is
            ("Principal_Component_Analysis rejects empty, C2, and invalid"
             & " types",
             Principal_Component_Analysis_Rejects_Invalid_Input'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Principal_Component_Analysis retained variance 0.80 keeps two",
+            Principal_Component_Analysis_Retained_Variance_0_80'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Principal_Component_Analysis retained variance 0.95 OpenCV"
+            & " quirk",
+            Principal_Component_Analysis_Retained_Variance_0_95_Quirk'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Principal_Component_Analysis retained variance 1.0 keeps all",
+            Principal_Component_Analysis_Retained_Variance_1_0'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Principal_Component_Analysis retained variance keeps at least"
+            & " two",
+            Principal_Component_Analysis_Retained_Variance_Keeps_Two'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Principal_Component_Analysis retained variance samples as"
+            & " columns",
+            Principal_Component_Analysis_Retained_Variance_Columns'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Principal_Component_Analysis retained variance project"
+            & " integration",
+            Principal_Component_Analysis_Retained_Variance_Project'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Principal_Component_Analysis retained variance preserves"
+            & " Float64",
+            Principal_Component_Analysis_Retained_Variance_Float64'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Principal_Component_Analysis retained variance non-contiguous"
+            & " Region",
+            Principal_Component_Analysis_Retained_Variance_Region'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Principal_Component_Analysis retained variance ownership",
+            Principal_Component_Analysis_Retained_Variance_Ownership'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Principal_Component_Analysis retained variance rejects range",
+            Principal_Component_Analysis_Retained_Variance_Rejects_Range'
+              Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Principal_Component_Analysis retained variance needs two"
+            & " components",
+            Principal_Component_Analysis_Retained_Variance_Needs_Two'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Principal_Component_Analysis retained variance rejects invalid"
+            & " input",
+            Principal_Component_Analysis_Retained_Variance_Rejects_Input'
+              Access));
 
       Result.Add_Test
         (Caller.Create

@@ -3453,11 +3453,11 @@ package body OpenCV.Core is
       return Result;
    end Eigen_Decomposition;
 
-   procedure Validate_Principal_Component_Analysis
+   function Validate_Principal_Component_Analysis
      (Self        : Mat;
       Orientation : Sample_Orientation;
       Components  : Natural;
-      Explicit_K  : Boolean)
+      Explicit_K  : Boolean) return Natural
    is
       Sample_Count         : Natural;
       Feature_Count        : Natural;
@@ -3515,7 +3515,33 @@ package body OpenCV.Core is
             "Principal_Component_Analysis Components must not exceed"
             & " the available component count");
       end if;
+
+      return Available_Components;
    end Validate_Principal_Component_Analysis;
+
+   procedure Validate_Principal_Component_Analysis_Retained_Variance
+     (Self              : Mat;
+      Orientation       : Sample_Orientation;
+      Retained_Variance : Long_Float)
+   is
+      Available_Components : constant Natural :=
+        Validate_Principal_Component_Analysis
+          (Self, Orientation, Components => 0, Explicit_K => False);
+   begin
+      if not (Retained_Variance > 0.0 and then Retained_Variance <= 1.0) then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Principal_Component_Analysis Retained_Variance must be"
+            & " greater than 0.0 and at most 1.0");
+      end if;
+
+      if Available_Components < 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Principal_Component_Analysis Retained_Variance requires"
+            & " at least two available components");
+      end if;
+   end Validate_Principal_Component_Analysis_Retained_Variance;
 
    function Principal_Component_Analysis_Impl
      (Self : Mat; Orientation : Sample_Orientation; Max_Components : Natural)
@@ -3569,10 +3595,13 @@ package body OpenCV.Core is
 
    function Principal_Component_Analysis
      (Self : Mat; Orientation : Sample_Orientation := Samples_Are_Rows)
-      return Principal_Component_Analysis_Result is
+      return Principal_Component_Analysis_Result
+   is
+      Unused : constant Natural :=
+        Validate_Principal_Component_Analysis
+          (Self, Orientation, Components => 0, Explicit_K => False);
    begin
-      Validate_Principal_Component_Analysis
-        (Self, Orientation, Components => 0, Explicit_K => False);
+      pragma Unreferenced (Unused);
       return Principal_Component_Analysis_Impl (Self, Orientation, 0);
    end Principal_Component_Analysis;
 
@@ -3580,11 +3609,72 @@ package body OpenCV.Core is
      (Self        : Mat;
       Components  : Positive;
       Orientation : Sample_Orientation := Samples_Are_Rows)
-      return Principal_Component_Analysis_Result is
+      return Principal_Component_Analysis_Result
+   is
+      Unused : constant Natural :=
+        Validate_Principal_Component_Analysis
+          (Self, Orientation, Components, Explicit_K => True);
    begin
-      Validate_Principal_Component_Analysis
-        (Self, Orientation, Components, Explicit_K => True);
+      pragma Unreferenced (Unused);
       return Principal_Component_Analysis_Impl (Self, Orientation, Components);
+   end Principal_Component_Analysis;
+
+   function Principal_Component_Analysis
+     (Self              : Mat;
+      Retained_Variance : Long_Float;
+      Orientation       : Sample_Orientation := Samples_Are_Rows)
+      return Principal_Component_Analysis_Result
+   is
+      Result              : Principal_Component_Analysis_Result;
+      Mean_Handle         : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Eigenvalues_Handle  : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Eigenvectors_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status              : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Principal_Component_Analysis_Retained_Variance
+        (Self, Orientation, Retained_Variance);
+      Status :=
+        OpenCV
+          .Internal
+          .C_API
+          .Mat_Principal_Component_Analysis_Retained_Variance
+             (Source            => Self.Handle,
+              Orientation       => To_C_Sample_Orientation (Orientation),
+              Retained_Variance =>
+                OpenCV.Internal.C_API.C_Double (Retained_Variance),
+              Mean              => Mean_Handle'Access,
+              Eigenvalues       => Eigenvalues_Handle'Access,
+              Eigenvectors      => Eigenvectors_Handle'Access);
+      if Status /= OpenCV.Internal.C_API.Success then
+         OpenCV.Internal.C_API.Mat_Destroy (Mean_Handle);
+         OpenCV.Internal.C_API.Mat_Destroy (Eigenvalues_Handle);
+         OpenCV.Internal.C_API.Mat_Destroy (Eigenvectors_Handle);
+         Raise_On_Error (Status, "Mat principal component analysis operation");
+      end if;
+
+      if Mean_Handle = OpenCV.Internal.C_API.Null_Mat_Handle
+        or else Eigenvalues_Handle = OpenCV.Internal.C_API.Null_Mat_Handle
+        or else Eigenvectors_Handle = OpenCV.Internal.C_API.Null_Mat_Handle
+      then
+         OpenCV.Internal.C_API.Mat_Destroy (Mean_Handle);
+         OpenCV.Internal.C_API.Mat_Destroy (Eigenvalues_Handle);
+         OpenCV.Internal.C_API.Mat_Destroy (Eigenvectors_Handle);
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat principal component analysis operation returned a"
+            & " null result handle");
+      end if;
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Mean.Handle);
+      Result.Mean.Handle := Mean_Handle;
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Eigenvalues.Handle);
+      Result.Eigenvalues.Handle := Eigenvalues_Handle;
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Eigenvectors.Handle);
+      Result.Eigenvectors.Handle := Eigenvectors_Handle;
+      return Result;
    end Principal_Component_Analysis;
 
    function Is_PCA_Floating_Depth (Value : Depth_Type) return Boolean

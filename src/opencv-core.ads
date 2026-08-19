@@ -860,7 +860,27 @@ package OpenCV.Core is
    --  the numerical rank, and zero-variance components may be
    --  present. The Components overload requests exactly that many
    --  leading components: 1 <= Components <= K_all. Excess requests
-   --  raise OpenCV_Error rather than silently clamping. For K
+   --  raise OpenCV_Error rather than silently clamping. The
+   --  Retained_Variance overload asks OpenCV 4.10 to choose K from a
+   --  variance fraction: 0.95 means 95 percent, not 95.0. Valid
+   --  values satisfy 0.0 < Retained_Variance <= 1.0; NaN is
+   --  rejected. OpenCV 4.10 computes the full eigenvalue set, then
+   --  retains rowRange(0, L) after breaking at the first cumulative
+   --  energy that is strictly greater than Retained_Variance. The
+   --  component that first exceeded the threshold is therefore not
+   --  included, so the returned basis is not guaranteed in every
+   --  case to represent at least the requested fraction. This is
+   --  OpenCV 4.10 behavior. Retained_Variance = 1.0 cannot satisfy
+   --  energy > 1.0 for ordinary positive-total-variance input, so
+   --  OpenCV retains every available component. The overload always
+   --  keeps at least two components and therefore requires
+   --  Available_Components >= 2. A one-component source is rejected
+   --  here because OpenCV 4.10's retained-variance implementation
+   --  would then attempt rowRange(0, 2) on a one-row eigen result.
+   --  The all-components and Components overloads continue to
+   --  support one-component PCA. Zero-total-variance input can
+   --  produce 0/0 in OpenCV's cumulative-energy ratio and is outside
+   --  this binding's stronger public numerical guarantees. For K
    --  retained components, Eigenvalues is K x 1 in descending order
    --  and Eigenvectors is K x Feature_Count with one principal
    --  direction per row. Eigenvector sign is mathematically
@@ -893,6 +913,11 @@ package OpenCV.Core is
      (Self        : Mat;
       Components  : Positive;
       Orientation : Sample_Orientation := Samples_Are_Rows)
+      return Principal_Component_Analysis_Result;
+   function Principal_Component_Analysis
+     (Self              : Mat;
+      Retained_Variance : Long_Float;
+      Orientation       : Sample_Orientation := Samples_Are_Rows)
       return Principal_Component_Analysis_Result;
 
    --  Projects Self onto an already computed PCA basis. This does

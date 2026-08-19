@@ -858,6 +858,19 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_principal_component_analysis";
 
+   function Mat_Principal_Component_Analysis_Retained_Variance
+     (Source            : Mat_Handle;
+      Orientation       : C_Int32;
+      Retained_Variance : C_Double;
+      Mean              : access Mat_Handle;
+      Eigenvalues       : access Mat_Handle;
+      Eigenvectors      : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name =>
+       "opencv_core_mat_principal_component_analysis_retained_variance";
+
    function Mat_PCA_Project
      (Source       : Mat_Handle;
       Mean         : Mat_Handle;

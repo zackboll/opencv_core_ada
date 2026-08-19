@@ -1038,6 +1038,25 @@ opencv_core_mat_principal_component_analysis(
     opencv_core_mat_handle **out_eigenvectors);
 
 /*
+ * Computes the PCA basis of a borrowed sample Mat using the OpenCV
+ * 4.10 cv::PCA retained-variance overload. orientation is 0
+ * (samples are rows) or 1 (samples are columns). retained_variance
+ * is forwarded as a double so C++ overload resolution selects
+ * PCA::operator()(..., double retainedVariance) rather than the
+ * integer maxComponents overload. Public range and minimum-two
+ * component policy belong in Ada; a raw caller may be rejected by
+ * OpenCV. All three output pointer arguments must be non-null and
+ * pairwise distinct. On success the three returned handles are
+ * independently owned. On any failure all three outputs remain null.
+ */
+opencv_core_status
+opencv_core_mat_principal_component_analysis_retained_variance(
+    const opencv_core_mat_handle *source, int32_t orientation,
+    double retained_variance, opencv_core_mat_handle **out_mean,
+    opencv_core_mat_handle **out_eigenvalues,
+    opencv_core_mat_handle **out_eigenvectors);
+
+/*
  * Projects borrowed samples onto a borrowed PCA basis (mean and
  * eigenvectors). orientation is 0 (samples are rows) or 1 (samples
  * are columns). Column orientation is adapted through OpenCV's
