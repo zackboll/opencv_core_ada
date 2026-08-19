@@ -3746,6 +3746,215 @@ package body OpenCV.Core is
       return Result;
    end Singular_Value_Decomposition;
 
+   function Is_SVD_Floating_Depth (Value : Depth_Type) return Boolean
+   is (Value = Float32 or else Value = Float64);
+
+   function Product_Exceeds_Signed_Int32 (Left, Right : Natural) return Boolean
+   is (Left > 0 and then Right > 0 and then Left > 2_147_483_647 / Right);
+
+   procedure Validate_SVD_Basis (Basis : Singular_Value_Decomposition_Result)
+   is
+      Rank         : Natural;
+      Row_Count    : Natural;
+      Column_Count : Natural;
+      Compact_Rank : Natural;
+   begin
+      if Basis.Singular_Values.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "SVD basis Singular_Values must be a non-empty Mat");
+      end if;
+
+      if Basis.Singular_Values.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "SVD basis Singular_Values must be a single-channel Mat");
+      end if;
+
+      if not Is_SVD_Floating_Depth (Basis.Singular_Values.Depth) then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "SVD basis Singular_Values must be a Float32 or Float64 Mat");
+      end if;
+
+      if Basis.Singular_Values.Columns /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "SVD basis Singular_Values must be an R x 1 column");
+      end if;
+
+      Rank := Basis.Singular_Values.Rows;
+      if Rank = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "SVD basis Singular_Values must have at least one row");
+      end if;
+
+      if Basis.U.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "SVD basis U must be a non-empty Mat");
+      end if;
+
+      if Basis.U.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "SVD basis U must be a single-channel Mat");
+      end if;
+
+      if Basis.U.Depth /= Basis.Singular_Values.Depth then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "SVD basis U must have the same depth as Singular_Values");
+      end if;
+
+      Row_Count := Basis.U.Rows;
+      if Row_Count = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "SVD basis U must have at least one row");
+      end if;
+
+      if Basis.U.Columns /= Rank then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "SVD basis U must have Singular_Values.Rows columns");
+      end if;
+
+      if Basis.V_Transpose.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "SVD basis V_Transpose must be a non-empty Mat");
+      end if;
+
+      if Basis.V_Transpose.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "SVD basis V_Transpose must be a single-channel Mat");
+      end if;
+
+      if Basis.V_Transpose.Depth /= Basis.Singular_Values.Depth then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "SVD basis V_Transpose must have the same depth as"
+            & " Singular_Values");
+      end if;
+
+      if Basis.V_Transpose.Rows /= Rank then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "SVD basis V_Transpose must have Singular_Values.Rows rows");
+      end if;
+
+      Column_Count := Basis.V_Transpose.Columns;
+      if Column_Count = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "SVD basis V_Transpose must have at least one column");
+      end if;
+
+      Compact_Rank :=
+        (if Row_Count < Column_Count then Row_Count else Column_Count);
+      if Rank /= Compact_Rank then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "SVD basis rank must equal min (U.Rows, V_Transpose.Columns)");
+      end if;
+   end Validate_SVD_Basis;
+
+   procedure Validate_SVD_Back_Substitution
+     (Basis : Singular_Value_Decomposition_Result; Right_Hand_Side : Mat)
+   is
+      Row_Count    : Natural;
+      Column_Count : Natural;
+      Rank         : Natural;
+   begin
+      Validate_SVD_Basis (Basis);
+
+      Row_Count := Basis.U.Rows;
+      Column_Count := Basis.V_Transpose.Columns;
+      Rank := Basis.Singular_Values.Rows;
+
+      if Right_Hand_Side.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "SVD_Back_Substitute requires a non-empty right-hand side");
+      end if;
+
+      if Right_Hand_Side.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "SVD_Back_Substitute requires a single-channel right-hand side");
+      end if;
+
+      if Right_Hand_Side.Depth /= Basis.Singular_Values.Depth then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "SVD_Back_Substitute requires a right-hand side with the same"
+            & " depth as the basis");
+      end if;
+
+      if Right_Hand_Side.Rows /= Row_Count then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "SVD_Back_Substitute requires a right-hand side with U.Rows"
+            & " rows");
+      end if;
+
+      if Right_Hand_Side.Columns = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "SVD_Back_Substitute requires a right-hand side with at least"
+            & " one column");
+      end if;
+
+      if Product_Exceeds_Signed_Int32 (Column_Count, Right_Hand_Side.Columns)
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "SVD_Back_Substitute destination index N * K must not exceed"
+            & " 2147483647");
+      end if;
+
+      if Product_Exceeds_Signed_Int32 (Row_Count, Rank) then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "SVD_Back_Substitute U index M * R must not exceed 2147483647");
+      end if;
+
+   end Validate_SVD_Back_Substitution;
+
+   function SVD_Back_Substitute
+     (Basis : Singular_Value_Decomposition_Result; Right_Hand_Side : Mat)
+      return Mat
+   is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_SVD_Back_Substitution (Basis, Right_Hand_Side);
+      Status :=
+        OpenCV.Internal.C_API.Mat_SVD_Back_Substitute
+          (Singular_Values => Basis.Singular_Values.Handle,
+           U               => Basis.U.Handle,
+           V_Transpose     => Basis.V_Transpose.Handle,
+           Right_Hand_Side => Right_Hand_Side.Handle,
+           Result          => New_Handle'Access);
+      if Status /= OpenCV.Internal.C_API.Success then
+         OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+         Raise_On_Error (Status, "Mat SVD back substitution operation");
+      end if;
+
+      if New_Handle = OpenCV.Internal.C_API.Null_Mat_Handle then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat SVD back substitution operation returned a null result"
+            & " handle");
+      end if;
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end SVD_Back_Substitute;
+
    function Is_PCA_Floating_Depth (Value : Depth_Type) return Boolean
    is (Value = Float32 or else Value = Float64);
 

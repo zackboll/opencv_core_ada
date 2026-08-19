@@ -887,6 +887,44 @@ package OpenCV.Core is
    function Singular_Value_Decomposition
      (Self : Mat) return Singular_Value_Decomposition_Result;
 
+   --  Solves A * X ~= Right_Hand_Side from an already computed
+   --  compact SVD basis using OpenCV 4.10 cv::SVD::backSubst. This
+   --  does not recompute the SVD, does not reconstruct A, and does
+   --  not expose cv::SVD. The mathematical operation is
+   --  X ~= V * diag (W)^+ * U^T * Right_Hand_Side, where the
+   --  reciprocal of sufficiently small singular values is omitted
+   --  according to OpenCV 4.10's internal threshold. There is no
+   --  caller-configurable tolerance. For a full-rank square system
+   --  this behaves like solving A * X = B. For an overdetermined
+   --  system (M > N) it returns the SVD least-squares solution. For
+   --  an underdetermined system (M < N) it returns the SVD
+   --  minimum-norm solution. Rank-deficient bases are accepted;
+   --  near-zero singular directions are discarded by OpenCV rather
+   --  than rejected here. Basis is a publicly constructible record,
+   --  so its compact structure is validated before the ABI. Let
+   --  M = Basis.U.Rows, N = Basis.V_Transpose.Columns, and
+   --  R = Basis.Singular_Values.Rows. Singular_Values must be a
+   --  non-empty single-channel Float32 or Float64 R x 1 column with
+   --  R >= 1. U must be a non-empty single-channel Mat of the same
+   --  depth and shape M x R with M >= 1. V_Transpose must be a
+   --  non-empty single-channel Mat of the same depth and shape
+   --  R x N with N >= 1. The compact identity R = min (M, N) is
+   --  required; FULL_UV layouts are rejected. Right_Hand_Side must
+   --  be a non-empty single-channel Mat of the same depth, M rows,
+   --  and K >= 1 columns. Empty RHS is rejected; this is not a
+   --  pseudoinverse API. Depths are not converted: Float32 Basis
+   --  plus Float32 RHS yields a Float32 result, and Float64 Basis
+   --  plus Float64 RHS yields a Float64 result. The independently
+   --  owned result has shape N x K. The products N * K and M * R
+   --  must not exceed 2_147_483_647 because OpenCV 4.10 forms
+   --  destination and U element addresses with signed int index
+   --  arithmetic. Continuity is not required;
+   --  non-contiguous Regions are supported. Basis fields and
+   --  Right_Hand_Side are unchanged.
+   function SVD_Back_Substitute
+     (Basis : Singular_Value_Decomposition_Result; Right_Hand_Side : Mat)
+      return Mat;
+
    --  Computes the PCA basis of Self using OpenCV 4.10 cv::PCA.
    --  Self is a 2-D single-channel sample matrix. Samples_Are_Rows,
    --  the default, treats an M x N Mat as M samples of N features:

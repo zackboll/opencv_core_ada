@@ -1105,6 +1105,21 @@ opencv_core_mat_singular_value_decomposition(
     opencv_core_mat_handle **out_v_transpose);
 
 /*
+ * Solves A * X ~= right_hand_side by cv::SVD::backSubst using an
+ * already computed compact SVD basis. This does not recompute the
+ * SVD and does not reconstruct A. The four input handles are
+ * borrowed. The independently owned result is published only after
+ * success. On failure *out_mat remains null. Inputs are unchanged.
+ */
+opencv_core_status
+opencv_core_mat_svd_back_substitute(
+    const opencv_core_mat_handle *singular_values,
+    const opencv_core_mat_handle *u,
+    const opencv_core_mat_handle *v_transpose,
+    const opencv_core_mat_handle *right_hand_side,
+    opencv_core_mat_handle **out_mat);
+
+/*
  * Applies cv::transform to each source element interpreted as its channel
  * vector. source and coefficients are borrowed. The independently owned
  * result has source.rows, source.cols, source.depth(), and

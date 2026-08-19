@@ -3836,6 +3836,90 @@ opencv_core_mat_singular_value_decomposition(
 }
 
 opencv_core_status
+opencv_core_mat_svd_back_substitute(
+    const opencv_core_mat_handle *singular_values,
+    const opencv_core_mat_handle *u,
+    const opencv_core_mat_handle *v_transpose,
+    const opencv_core_mat_handle *right_hand_side,
+    opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat != nullptr) {
+        *out_mat = nullptr;
+    }
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    if (singular_values == nullptr || u == nullptr ||
+        v_transpose == nullptr || right_hand_side == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    const cv::Mat &w = singular_values->value;
+    const cv::Mat &left = u->value;
+    const cv::Mat &vt = v_transpose->value;
+    const cv::Mat &rhs = right_hand_side->value;
+
+    // ABI safety: OpenCV 4.10 SVBkSbImpl_ zeros the destination with
+    // x[i * ldx + j] using signed int index arithmetic. The wrapper
+    // destination is newly allocated and packed, so ldx equals the
+    // RHS column count K. Valid Mat dimensions are each at most
+    // INT_MAX, but N * K can still overflow int before OpenCV writes
+    // the solution.
+    if (vt.cols > 0 && rhs.cols > 0 &&
+        int32_product_exceeds_max(vt.cols, rhs.cols)) {
+        return invalid_argument(
+            "SVD back substitution destination index N * K exceeds INT_MAX");
+    }
+
+    const size_t elem_size = left.elemSize();
+    const size_t u_ld =
+        elem_size == 0 ? 0 : left.step / elem_size;
+    // ABI safety: OpenCV 4.10 SVBkSbImpl_ indexes left singular
+    // vectors as u[j * udelta1]. For compact U (uT = false), udelta1
+    // is (int)(u.step / sizeof(element)). A packed U row has stride
+    // R, and a Region can have a still-larger parent stride, so
+    // U.rows * that stride can overflow int.
+    if (u_ld > static_cast<size_t>(std::numeric_limits<int32_t>::max()) ||
+        (left.rows > 0 && u_ld > 0 &&
+         int32_product_exceeds_max(left.rows, static_cast<int32_t>(u_ld)))) {
+        return invalid_argument(
+            "SVD back substitution U index exceeds INT_MAX");
+    }
+
+    const size_t w_elem_size = w.elemSize();
+    const size_t w_inc =
+        w.rows == 1
+            ? 1
+            : (w_elem_size == 0 ? 0 : w.step / w_elem_size);
+    const int32_t nm = left.rows < vt.cols ? left.rows : vt.cols;
+    // ABI safety: OpenCV 4.10 SVBkSbImpl_ reads singular values as
+    // w[i * incw]. A compact packed column has incw = 1, but a
+    // Region can inherit a parent row stride whose product with R
+    // overflows int.
+    if (w_inc > static_cast<size_t>(std::numeric_limits<int32_t>::max()) ||
+        (nm > 0 && w_inc > 0 &&
+         int32_product_exceeds_max(nm, static_cast<int32_t>(w_inc)))) {
+        return invalid_argument(
+            "SVD back substitution W index exceeds INT_MAX");
+    }
+
+    try {
+        cv::Mat result;
+        cv::SVD::backSubst(w, left, vt, rhs, result);
+
+        std::unique_ptr<opencv_core_mat_handle> result_handle(
+            new opencv_core_mat_handle(result));
+        *out_mat = result_handle.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_transform(const opencv_core_mat_handle *source,
                           const opencv_core_mat_handle *coefficients,
                           opencv_core_mat_handle **out_mat) {

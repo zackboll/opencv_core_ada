@@ -9451,7 +9451,495 @@ package body Mat_Reduction_Tests is
       Assert_Raises_OpenCV_Error
         (Check_Float16'Access,
          "Singular_Value_Decomposition must reject Float16 input");
+
    end Singular_Value_Decomposition_Rejects_Invalid_Input;
+
+   procedure SVD_Back_Substitute_Square_Full_Rank
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      RHS    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 1, (OpenCV.Core.Float32, 1));
+      Basis  : OpenCV.Core.Singular_Value_Decomposition_Result;
+      X      : OpenCV.Core.Mat;
+      AX     : OpenCV.Core.Mat;
+   begin
+      Fill_2x2 (Source, 2.0, 0.0, 0.0, 4.0);
+      Fill_2x1 (RHS, 4.0, 8.0);
+      Basis := Source.Singular_Value_Decomposition;
+      X := OpenCV.Core.SVD_Back_Substitute (Basis, RHS);
+      AX := Source.Matrix_Multiply (X);
+
+      AUnit.Assertions.Assert
+        (X.Rows = 2
+         and then X.Columns = 1
+         and then X.Depth = OpenCV.Core.Float32
+         and then X.Channels = 1,
+         "Square SVD back substitution must return a 2x1 Float32 C1 solution");
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float (OpenCV.Core.Float32_Access.Get (X, 0, 0)), 2.0)
+         and then Approximately_Equal
+                    (Long_Float (OpenCV.Core.Float32_Access.Get (X, 1, 0)),
+                     2.0),
+         "Square full-rank SVD back substitution must return [2, 2]");
+      AUnit.Assertions.Assert
+        (Mats_Approximately_Equal (AX, RHS),
+         "Square full-rank SVD back substitution must satisfy A * X ~= B");
+   end SVD_Back_Substitute_Square_Full_Rank;
+
+   procedure SVD_Back_Substitute_Overdetermined_Least_Squares
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
+      RHS      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 1, (OpenCV.Core.Float32, 1));
+      Basis    : OpenCV.Core.Singular_Value_Decomposition_Result;
+      X        : OpenCV.Core.Mat;
+      Residual : OpenCV.Core.Mat;
+      Normal   : OpenCV.Core.Mat;
+      Zero     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 1, (OpenCV.Core.Float32, 1));
+   begin
+      Fill_3x2 (Source, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0);
+      Fill_3x1 (RHS, 1.0, 2.0, 4.0);
+      Zero.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Basis := Source.Singular_Value_Decomposition;
+      X := OpenCV.Core.SVD_Back_Substitute (Basis, RHS);
+      Residual := Source.Matrix_Multiply (X).Subtract (RHS);
+      Normal := Source.Transpose.Matrix_Multiply (Residual);
+
+      AUnit.Assertions.Assert
+        (X.Rows = 2 and then X.Columns = 1,
+         "Overdetermined SVD back substitution must return a 2x1 solution");
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float (OpenCV.Core.Float32_Access.Get (X, 0, 0)),
+            4.0 / 3.0,
+            0.000_1)
+         and then Approximately_Equal
+                    (Long_Float (OpenCV.Core.Float32_Access.Get (X, 1, 0)),
+                     7.0 / 3.0,
+                     0.000_1),
+         "Overdetermined SVD back substitution must return the least-squares"
+         & " solution [4/3, 7/3]");
+      AUnit.Assertions.Assert
+        (Mats_Approximately_Equal (Normal, Zero, 0.000_1),
+         "Overdetermined SVD residual must be orthogonal to the columns of A");
+   end SVD_Back_Substitute_Overdetermined_Least_Squares;
+
+   procedure SVD_Back_Substitute_Underdetermined_Minimum_Norm
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      RHS    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 1, (OpenCV.Core.Float32, 1));
+      Basis  : OpenCV.Core.Singular_Value_Decomposition_Result;
+      X      : OpenCV.Core.Mat;
+      AX     : OpenCV.Core.Mat;
+   begin
+      Fill_2x3 (Source, 1.0, 0.0, 1.0, 0.0, 1.0, 1.0);
+      Fill_2x1 (RHS, 1.0, 1.0);
+      Basis := Source.Singular_Value_Decomposition;
+      X := OpenCV.Core.SVD_Back_Substitute (Basis, RHS);
+      AX := Source.Matrix_Multiply (X);
+
+      AUnit.Assertions.Assert
+        (X.Rows = 3 and then X.Columns = 1,
+         "Underdetermined SVD back substitution must return a 3x1 solution");
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float (OpenCV.Core.Float32_Access.Get (X, 0, 0)),
+            1.0 / 3.0,
+            0.000_1)
+         and then Approximately_Equal
+                    (Long_Float (OpenCV.Core.Float32_Access.Get (X, 1, 0)),
+                     1.0 / 3.0,
+                     0.000_1)
+         and then Approximately_Equal
+                    (Long_Float (OpenCV.Core.Float32_Access.Get (X, 2, 0)),
+                     2.0 / 3.0,
+                     0.000_1),
+         "Underdetermined SVD back substitution must return the minimum-norm"
+         & " solution [1/3, 1/3, 2/3]");
+      AUnit.Assertions.Assert
+        (Mats_Approximately_Equal (AX, RHS, 0.000_1),
+         "Underdetermined SVD back substitution must satisfy A * X ~= B");
+   end SVD_Back_Substitute_Underdetermined_Minimum_Norm;
+
+   procedure SVD_Back_Substitute_Multiple_Right_Hand_Sides
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      RHS    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Basis  : OpenCV.Core.Singular_Value_Decomposition_Result;
+      X      : OpenCV.Core.Mat;
+      AX     : OpenCV.Core.Mat;
+   begin
+      Fill_2x2 (Source, 2.0, 0.0, 0.0, 4.0);
+      Fill_2x2 (RHS, 4.0, 2.0, 8.0, 12.0);
+      Basis := Source.Singular_Value_Decomposition;
+      X := OpenCV.Core.SVD_Back_Substitute (Basis, RHS);
+      AX := Source.Matrix_Multiply (X);
+
+      AUnit.Assertions.Assert
+        (X.Rows = 2 and then X.Columns = 2,
+         "Multiple-RHS SVD back substitution must return a 2x2 solution");
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float (OpenCV.Core.Float32_Access.Get (X, 0, 0)), 2.0)
+         and then Approximately_Equal
+                    (Long_Float (OpenCV.Core.Float32_Access.Get (X, 0, 1)),
+                     1.0)
+         and then Approximately_Equal
+                    (Long_Float (OpenCV.Core.Float32_Access.Get (X, 1, 0)),
+                     2.0)
+         and then Approximately_Equal
+                    (Long_Float (OpenCV.Core.Float32_Access.Get (X, 1, 1)),
+                     3.0),
+         "Multiple-RHS SVD back substitution must return [[2, 1], [2, 3]]");
+      AUnit.Assertions.Assert
+        (Mats_Approximately_Equal (AX, RHS),
+         "Multiple-RHS SVD back substitution must satisfy A * X ~= B");
+   end SVD_Back_Substitute_Multiple_Right_Hand_Sides;
+
+   procedure SVD_Back_Substitute_Rank_Deficient
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
+      RHS    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 1, (OpenCV.Core.Float32, 1));
+      Basis  : OpenCV.Core.Singular_Value_Decomposition_Result;
+      X      : OpenCV.Core.Mat;
+   begin
+      Fill_3x2 (Source, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+      Fill_3x1 (RHS, 2.0, 3.0, 4.0);
+      Basis := Source.Singular_Value_Decomposition;
+      X := OpenCV.Core.SVD_Back_Substitute (Basis, RHS);
+
+      AUnit.Assertions.Assert
+        (X.Rows = 2 and then X.Columns = 1,
+         "Rank-deficient SVD back substitution must return a 2x1 solution");
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float (OpenCV.Core.Float32_Access.Get (X, 0, 0)), 2.0)
+         and then Approximately_Equal
+                    (Long_Float (OpenCV.Core.Float32_Access.Get (X, 1, 0)),
+                     0.0),
+         "Rank-deficient SVD back substitution must return [2, 0]");
+   end SVD_Back_Substitute_Rank_Deficient;
+
+   procedure SVD_Back_Substitute_Preserves_Float64
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source32 : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      RHS32    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 1, (OpenCV.Core.Float32, 1));
+      Source   : OpenCV.Core.Mat;
+      RHS      : OpenCV.Core.Mat;
+      Basis    : OpenCV.Core.Singular_Value_Decomposition_Result;
+      X        : OpenCV.Core.Mat;
+      AX       : OpenCV.Core.Mat;
+   begin
+      Fill_2x2 (Source32, 2.0, 0.0, 0.0, 4.0);
+      Fill_2x1 (RHS32, 4.0, 8.0);
+      Source := Source32.Convert_To (OpenCV.Core.Float64);
+      RHS := RHS32.Convert_To (OpenCV.Core.Float64);
+      Basis := Source.Singular_Value_Decomposition;
+      X := OpenCV.Core.SVD_Back_Substitute (Basis, RHS);
+      AX := Source.Matrix_Multiply (X);
+
+      AUnit.Assertions.Assert
+        (Basis.Singular_Values.Depth = OpenCV.Core.Float64
+         and then Basis.U.Depth = OpenCV.Core.Float64
+         and then Basis.V_Transpose.Depth = OpenCV.Core.Float64
+         and then X.Depth = OpenCV.Core.Float64,
+         "Float64 SVD back substitution must keep Float64 basis and result");
+      AUnit.Assertions.Assert
+        (Mats_Approximately_Equal (AX, RHS, 0.000_000_000_1),
+         "Float64 SVD back substitution must satisfy A * X ~= B more tightly");
+   end SVD_Back_Substitute_Preserves_Float64;
+
+   procedure SVD_Back_Substitute_Noncontiguous_RHS
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Contiguous : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 1, (OpenCV.Core.Float32, 1));
+      Parent     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 3, (OpenCV.Core.Float32, 1));
+      Basis      : OpenCV.Core.Singular_Value_Decomposition_Result;
+      Expected   : OpenCV.Core.Mat;
+   begin
+      Fill_2x2 (Source, 2.0, 0.0, 0.0, 4.0);
+      Fill_2x1 (Contiguous, 4.0, 8.0);
+      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Basis := Source.Singular_Value_Decomposition;
+      Expected := OpenCV.Core.SVD_Back_Substitute (Basis, Contiguous);
+      declare
+         RHS    : OpenCV.Core.Mat :=
+           Parent.Region ((X => 1, Y => 1, Width => 1, Height => 2));
+         Result : OpenCV.Core.Mat;
+      begin
+         Fill_2x1 (RHS, 4.0, 8.0);
+         AUnit.Assertions.Assert
+           (not RHS.Is_Continuous,
+            "The Region used as SVD RHS must be non-contiguous");
+         Result := OpenCV.Core.SVD_Back_Substitute (Basis, RHS);
+         AUnit.Assertions.Assert
+           (Mats_Approximately_Equal (Result, Expected),
+            "Non-contiguous SVD RHS must match the contiguous solution");
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float32_Access.Get (RHS, 0, 0) = 4.0
+            and then OpenCV.Core.Float32_Access.Get (RHS, 1, 0) = 8.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 0, 0) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 0, 2) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 3, 0) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 1, 0) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 1, 2) = 99.0,
+            "SVD back substitution must not modify the RHS Region or parent");
+      end;
+   end SVD_Back_Substitute_Noncontiguous_RHS;
+
+   procedure SVD_Back_Substitute_Inputs_And_Result_Are_Independent
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      RHS     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 1, (OpenCV.Core.Float32, 1));
+      Basis   : OpenCV.Core.Singular_Value_Decomposition_Result;
+      Result  : OpenCV.Core.Mat;
+      Saved_W : OpenCV.Core.Mat;
+      Saved_U : OpenCV.Core.Mat;
+      Saved_V : OpenCV.Core.Mat;
+      Saved_B : OpenCV.Core.Mat;
+      Saved_X : OpenCV.Core.Mat;
+   begin
+      Fill_2x2 (Source, 2.0, 0.0, 0.0, 4.0);
+      Fill_2x1 (RHS, 4.0, 8.0);
+      Basis := Source.Singular_Value_Decomposition;
+      Saved_W := Basis.Singular_Values.Clone;
+      Saved_U := Basis.U.Clone;
+      Saved_V := Basis.V_Transpose.Clone;
+      Saved_B := RHS.Clone;
+      Result := OpenCV.Core.SVD_Back_Substitute (Basis, RHS);
+      Saved_X := Result.Clone;
+
+      AUnit.Assertions.Assert
+        (Mats_Approximately_Equal (Basis.Singular_Values, Saved_W)
+         and then Mats_Approximately_Equal (Basis.U, Saved_U)
+         and then Mats_Approximately_Equal (Basis.V_Transpose, Saved_V)
+         and then Mats_Approximately_Equal (RHS, Saved_B),
+         "SVD back substitution must leave the basis and RHS unchanged");
+
+      OpenCV.Core.Float32_Access.Set (RHS, 0, 0, 50.0);
+      OpenCV.Core.Float32_Access.Set (Basis.Singular_Values, 0, 0, 7.0);
+      OpenCV.Core.Float32_Access.Set (Basis.U, 0, 0, 9.0);
+      OpenCV.Core.Float32_Access.Set (Basis.V_Transpose, 0, 0, 11.0);
+      AUnit.Assertions.Assert
+        (Mats_Approximately_Equal (Result, Saved_X),
+         "Mutating the basis or RHS must not change the returned solution");
+   end SVD_Back_Substitute_Inputs_And_Result_Are_Independent;
+
+   procedure SVD_Back_Substitute_Rejects_Invalid_RHS
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source        : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
+      Basis         : OpenCV.Core.Singular_Value_Decomposition_Result;
+      Default_Empty : OpenCV.Core.Mat;
+      Empty32       : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 1));
+      Two_Channel   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 1, (OpenCV.Core.Float32, 2));
+      Float64_RHS   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 1, (OpenCV.Core.Float64, 1));
+      Too_Short     : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 1, (OpenCV.Core.Float32, 1));
+      Too_Tall      : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 1, (OpenCV.Core.Float32, 1));
+
+      procedure Check_Default is
+         Result : constant OpenCV.Core.Mat :=
+           OpenCV.Core.SVD_Back_Substitute (Basis, Default_Empty);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Default;
+
+      procedure Check_Empty32 is
+         Result : constant OpenCV.Core.Mat :=
+           OpenCV.Core.SVD_Back_Substitute (Basis, Empty32);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Empty32;
+
+      procedure Check_Two_Channel is
+         Result : constant OpenCV.Core.Mat :=
+           OpenCV.Core.SVD_Back_Substitute (Basis, Two_Channel);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Two_Channel;
+
+      procedure Check_Depth_Mismatch is
+         Result : constant OpenCV.Core.Mat :=
+           OpenCV.Core.SVD_Back_Substitute (Basis, Float64_RHS);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Depth_Mismatch;
+
+      procedure Check_Too_Short is
+         Result : constant OpenCV.Core.Mat :=
+           OpenCV.Core.SVD_Back_Substitute (Basis, Too_Short);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Too_Short;
+
+      procedure Check_Too_Tall is
+         Result : constant OpenCV.Core.Mat :=
+           OpenCV.Core.SVD_Back_Substitute (Basis, Too_Tall);
+      begin
+         pragma Unreferenced (Result);
+      end Check_Too_Tall;
+   begin
+      Fill_3x2 (Source, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0);
+      Basis := Source.Singular_Value_Decomposition;
+      Assert_Raises_OpenCV_Error
+        (Check_Default'Access,
+         "SVD_Back_Substitute must reject a default empty RHS");
+      Assert_Raises_OpenCV_Error
+        (Check_Empty32'Access,
+         "SVD_Back_Substitute must reject a typed empty RHS");
+      Assert_Raises_OpenCV_Error
+        (Check_Two_Channel'Access, "SVD_Back_Substitute must reject a C2 RHS");
+      Assert_Raises_OpenCV_Error
+        (Check_Depth_Mismatch'Access,
+         "SVD_Back_Substitute must reject a depth-mismatched RHS");
+      Assert_Raises_OpenCV_Error
+        (Check_Too_Short'Access,
+         "SVD_Back_Substitute must reject an RHS with too few rows");
+      Assert_Raises_OpenCV_Error
+        (Check_Too_Tall'Access,
+         "SVD_Back_Substitute must reject an RHS with too many rows");
+   end SVD_Back_Substitute_Rejects_Invalid_RHS;
+
+   procedure SVD_Back_Substitute_Rejects_Malformed_Basis
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
+      RHS    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 1, (OpenCV.Core.Float32, 1));
+      Basis  : OpenCV.Core.Singular_Value_Decomposition_Result;
+
+      procedure Check_Default_Basis is
+         Local  : OpenCV.Core.Singular_Value_Decomposition_Result;
+         Result : OpenCV.Core.Mat;
+      begin
+         Result := OpenCV.Core.SVD_Back_Substitute (Local, RHS);
+         pragma Unreferenced (Result);
+      end Check_Default_Basis;
+
+      procedure Check_Row_Vector_W is
+         Local  : OpenCV.Core.Singular_Value_Decomposition_Result := Basis;
+         Result : OpenCV.Core.Mat;
+      begin
+         Local.Singular_Values :=
+           OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+         Result := OpenCV.Core.SVD_Back_Substitute (Local, RHS);
+         pragma Unreferenced (Result);
+      end Check_Row_Vector_W;
+
+      procedure Check_U_Columns is
+         Local  : OpenCV.Core.Singular_Value_Decomposition_Result := Basis;
+         Result : OpenCV.Core.Mat;
+      begin
+         Local.U := OpenCV.Core.Create (3, 1, (OpenCV.Core.Float32, 1));
+         Result := OpenCV.Core.SVD_Back_Substitute (Local, RHS);
+         pragma Unreferenced (Result);
+      end Check_U_Columns;
+
+      procedure Check_VT_Rows is
+         Local  : OpenCV.Core.Singular_Value_Decomposition_Result := Basis;
+         Result : OpenCV.Core.Mat;
+      begin
+         Local.V_Transpose :=
+           OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+         Result := OpenCV.Core.SVD_Back_Substitute (Local, RHS);
+         pragma Unreferenced (Result);
+      end Check_VT_Rows;
+
+      procedure Check_Compact_Rank is
+         Local  : OpenCV.Core.Singular_Value_Decomposition_Result := Basis;
+         Result : OpenCV.Core.Mat;
+      begin
+         Local.U := OpenCV.Core.Create (4, 2, (OpenCV.Core.Float32, 1));
+         Result := OpenCV.Core.SVD_Back_Substitute (Local, RHS);
+         pragma Unreferenced (Result);
+      end Check_Compact_Rank;
+
+      procedure Check_Depth_Mismatch is
+         Local  : OpenCV.Core.Singular_Value_Decomposition_Result := Basis;
+         Result : OpenCV.Core.Mat;
+      begin
+         Local.U := Local.U.Convert_To (OpenCV.Core.Float64);
+         Result := OpenCV.Core.SVD_Back_Substitute (Local, RHS);
+         pragma Unreferenced (Result);
+      end Check_Depth_Mismatch;
+
+      procedure Check_Multi_Channel is
+         Local  : OpenCV.Core.Singular_Value_Decomposition_Result := Basis;
+         Result : OpenCV.Core.Mat;
+      begin
+         Local.V_Transpose :=
+           OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 2));
+         Result := OpenCV.Core.SVD_Back_Substitute (Local, RHS);
+         pragma Unreferenced (Result);
+      end Check_Multi_Channel;
+   begin
+      Fill_3x2 (Source, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0);
+      Fill_3x1 (RHS, 1.0, 2.0, 4.0);
+      Basis := Source.Singular_Value_Decomposition;
+      Assert_Raises_OpenCV_Error
+        (Check_Default_Basis'Access,
+         "SVD_Back_Substitute must reject a default empty basis");
+      Assert_Raises_OpenCV_Error
+        (Check_Row_Vector_W'Access,
+         "SVD_Back_Substitute must reject a row-vector Singular_Values");
+      Assert_Raises_OpenCV_Error
+        (Check_U_Columns'Access,
+         "SVD_Back_Substitute must reject U.Columns /= R");
+      Assert_Raises_OpenCV_Error
+        (Check_VT_Rows'Access,
+         "SVD_Back_Substitute must reject V_Transpose.Rows /= R");
+      Assert_Raises_OpenCV_Error
+        (Check_Compact_Rank'Access,
+         "SVD_Back_Substitute must reject R /= min (M, N)");
+      Assert_Raises_OpenCV_Error
+        (Check_Depth_Mismatch'Access,
+         "SVD_Back_Substitute must reject a depth mismatch among W/U/VT");
+      Assert_Raises_OpenCV_Error
+        (Check_Multi_Channel'Access,
+         "SVD_Back_Substitute must reject a multi-channel basis component");
+   end SVD_Back_Substitute_Rejects_Malformed_Basis;
 
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
@@ -10281,6 +10769,47 @@ package body Mat_Reduction_Tests is
            ("Singular_Value_Decomposition rejects empty, C2, and invalid"
             & " types",
             Singular_Value_Decomposition_Rejects_Invalid_Input'Access));
+
+      Result.Add_Test
+        (Caller.Create
+           ("SVD_Back_Substitute square full-rank system",
+            SVD_Back_Substitute_Square_Full_Rank'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("SVD_Back_Substitute overdetermined least squares",
+            SVD_Back_Substitute_Overdetermined_Least_Squares'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("SVD_Back_Substitute underdetermined minimum-norm solution",
+            SVD_Back_Substitute_Underdetermined_Minimum_Norm'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("SVD_Back_Substitute multiple right-hand sides",
+            SVD_Back_Substitute_Multiple_Right_Hand_Sides'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("SVD_Back_Substitute rank-deficient system",
+            SVD_Back_Substitute_Rank_Deficient'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("SVD_Back_Substitute preserves Float64",
+            SVD_Back_Substitute_Preserves_Float64'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("SVD_Back_Substitute supports a non-contiguous RHS",
+            SVD_Back_Substitute_Noncontiguous_RHS'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("SVD_Back_Substitute inputs and result are independent",
+            SVD_Back_Substitute_Inputs_And_Result_Are_Independent'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("SVD_Back_Substitute rejects invalid RHS",
+            SVD_Back_Substitute_Rejects_Invalid_RHS'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("SVD_Back_Substitute rejects a malformed basis",
+            SVD_Back_Substitute_Rejects_Malformed_Basis'Access));
 
       Result.Add_Test
         (Caller.Create
