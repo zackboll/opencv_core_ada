@@ -9716,6 +9716,75 @@ package body Mat_Reduction_Tests is
       end;
    end SVD_Back_Substitute_Noncontiguous_RHS;
 
+   procedure SVD_Back_Substitute_Noncontiguous_Basis
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      RHS          : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 1, (OpenCV.Core.Float32, 1));
+      Original     : OpenCV.Core.Singular_Value_Decomposition_Result;
+      Expected     : OpenCV.Core.Mat;
+      W_Parent     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 3, (OpenCV.Core.Float32, 1));
+      U_Parent     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 4, (OpenCV.Core.Float32, 1));
+      VT_Parent    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 4, (OpenCV.Core.Float32, 1));
+      Region_Basis : OpenCV.Core.Singular_Value_Decomposition_Result;
+      Result       : OpenCV.Core.Mat;
+   begin
+      Fill_2x2 (Source, 2.0, 0.0, 0.0, 4.0);
+      Fill_2x1 (RHS, 4.0, 8.0);
+      Original := Source.Singular_Value_Decomposition;
+      Expected := OpenCV.Core.SVD_Back_Substitute (Original, RHS);
+
+      W_Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      U_Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      VT_Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+
+      Region_Basis.Singular_Values :=
+        W_Parent.Region ((X => 1, Y => 1, Width => 1, Height => 2));
+      Region_Basis.U :=
+        U_Parent.Region ((X => 1, Y => 1, Width => 2, Height => 2));
+      Region_Basis.V_Transpose :=
+        VT_Parent.Region ((X => 1, Y => 1, Width => 2, Height => 2));
+
+      Original.Singular_Values.Copy_To (Region_Basis.Singular_Values);
+      Original.U.Copy_To (Region_Basis.U);
+      Original.V_Transpose.Copy_To (Region_Basis.V_Transpose);
+
+      AUnit.Assertions.Assert
+        (not Region_Basis.U.Is_Continuous
+         and then not Region_Basis.V_Transpose.Is_Continuous,
+         "The compact U and V_Transpose Regions must be non-contiguous");
+
+      Result := OpenCV.Core.SVD_Back_Substitute (Region_Basis, RHS);
+
+      AUnit.Assertions.Assert
+        (Mats_Approximately_Equal (Result, Expected),
+         "A non-contiguous compact SVD basis must match the contiguous"
+         & " solution");
+      AUnit.Assertions.Assert
+        (Mats_Approximately_Equal
+           (Region_Basis.Singular_Values, Original.Singular_Values)
+         and then Mats_Approximately_Equal (Region_Basis.U, Original.U)
+         and then Mats_Approximately_Equal
+                    (Region_Basis.V_Transpose, Original.V_Transpose)
+         and then OpenCV.Core.Float32_Access.Get (W_Parent, 0, 0) = 99.0
+         and then OpenCV.Core.Float32_Access.Get (W_Parent, 0, 2) = 99.0
+         and then OpenCV.Core.Float32_Access.Get (W_Parent, 3, 0) = 99.0
+         and then OpenCV.Core.Float32_Access.Get (U_Parent, 0, 0) = 99.0
+         and then OpenCV.Core.Float32_Access.Get (U_Parent, 0, 3) = 99.0
+         and then OpenCV.Core.Float32_Access.Get (U_Parent, 3, 0) = 99.0
+         and then OpenCV.Core.Float32_Access.Get (VT_Parent, 0, 0) = 99.0
+         and then OpenCV.Core.Float32_Access.Get (VT_Parent, 0, 3) = 99.0
+         and then OpenCV.Core.Float32_Access.Get (VT_Parent, 3, 0) = 99.0,
+         "SVD back substitution must not modify basis parent storage"
+         & " outside the Regions");
+   end SVD_Back_Substitute_Noncontiguous_Basis;
+
    procedure SVD_Back_Substitute_Inputs_And_Result_Are_Independent
      (Test : in out Mat_Test_Fixture)
    is
@@ -10798,6 +10867,11 @@ package body Mat_Reduction_Tests is
         (Caller.Create
            ("SVD_Back_Substitute supports a non-contiguous RHS",
             SVD_Back_Substitute_Noncontiguous_RHS'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("SVD_Back_Substitute supports a non-contiguous compact basis",
+            SVD_Back_Substitute_Noncontiguous_Basis'Access));
+
       Result.Add_Test
         (Caller.Create
            ("SVD_Back_Substitute inputs and result are independent",

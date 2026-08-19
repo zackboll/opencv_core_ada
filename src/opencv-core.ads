@@ -918,9 +918,10 @@ package OpenCV.Core is
    --  owned result has shape N x K. The products N * K and M * R
    --  must not exceed 2_147_483_647 because OpenCV 4.10 forms
    --  destination and U element addresses with signed int index
-   --  arithmetic. Continuity is not required;
-   --  non-contiguous Regions are supported. Basis fields and
-   --  Right_Hand_Side are unchanged.
+   --  arithmetic. Continuity is not required; ordinary
+   --  non-contiguous Regions are supported subject to OpenCV 4.10's
+   --  signed-index limits on inherited physical row strides. Basis
+   --  fields and Right_Hand_Side are unchanged.
    function SVD_Back_Substitute
      (Basis : Singular_Value_Decomposition_Result; Right_Hand_Side : Mat)
       return Mat;

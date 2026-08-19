@@ -3906,6 +3906,39 @@ opencv_core_mat_svd_back_substitute(
             "SVD back substitution W index exceeds INT_MAX");
     }
 
+    const size_t rhs_element_size = rhs.elemSize();
+    const size_t rhs_ld =
+        rhs_element_size == 0 ? 0 : rhs.step / rhs_element_size;
+    // ABI safety: OpenCV 4.10 SVBkSb converts bstep / sizeof(T) from
+    // size_t to int ldb. A non-contiguous Region can inherit a parent
+    // row stride larger than INT_MAX even when logical Rows/Columns
+    // are individually valid. For a single-column RHS, SVBkSbImpl_
+    // then evaluates b[j * ldb] with signed int multiplication, so
+    // M * rhs_ld must also fit int. Multi-column RHS uses MatrAXPY,
+    // which advances the RHS pointer incrementally by ldb rather than
+    // forming that product.
+    if (rhs_ld > static_cast<size_t>(std::numeric_limits<int32_t>::max()) ||
+        (rhs.cols == 1 && left.rows > 0 && rhs_ld > 0 &&
+         int32_product_exceeds_max(left.rows,
+                                   static_cast<int32_t>(rhs_ld)))) {
+        return invalid_argument(
+            "SVD back substitution RHS index exceeds INT_MAX");
+    }
+
+    const size_t vt_element_size = vt.elemSize();
+    const size_t vt_ld =
+        vt_element_size == 0 ? 0 : vt.step / vt_element_size;
+    // ABI safety: OpenCV 4.10 SVBkSb converts vstep / sizeof(T) from
+    // size_t to int ldv. This API calls SVBkSb with vT = true, so
+    // vdelta0 = ldv and the outer loop advances the V pointer by that
+    // converted stride. An inherited Region stride can exceed INT_MAX
+    // even when the logical V_Transpose dimensions are individually
+    // valid. The loop does not form a signed R * ldv product.
+    if (vt_ld > static_cast<size_t>(std::numeric_limits<int32_t>::max())) {
+        return invalid_argument(
+            "SVD back substitution V_Transpose stride exceeds INT_MAX");
+    }
+
     try {
         cv::Mat result;
         cv::SVD::backSubst(w, left, vt, rhs, result);
