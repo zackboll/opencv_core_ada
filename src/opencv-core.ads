@@ -926,6 +926,26 @@ package OpenCV.Core is
      (Basis : Singular_Value_Decomposition_Result; Right_Hand_Side : Mat)
       return Mat;
 
+   --  Returns the Moore-Penrose pseudoinverse of Self using compact
+   --  OpenCV 4.10 SVD and empty-RHS SVD back substitution. This is
+   --  not Invert, Solve, or a caller-tunable rank decision. Self of
+   --  shape M x N yields an independently owned N x M result with
+   --  Self's floating depth and one channel. Self must be a
+   --  non-empty single-channel Float32 or Float64 Mat. Multi-channel
+   --  Mats, integer depths, and Float16 are rejected. Square,
+   --  tall, and wide shapes are supported. Full rank and
+   --  nonsingularity are not required. Rank-deficient matrices and
+   --  the zero matrix are valid. Numerical rank follows OpenCV
+   --  4.10's SVD back-substitution threshold; there is no caller
+   --  tolerance. For a square nonsingular matrix the result agrees
+   --  numerically with Invert.Inverse subject to ordinary
+   --  floating-point rounding. Continuity is not required;
+   --  non-contiguous Regions are supported. The product
+   --  Self.Rows * Self.Columns must not exceed 2_147_483_647
+   --  because OpenCV 4.10 forms the packed N x M destination
+   --  address with signed int index arithmetic. Self is unchanged.
+   function Pseudo_Inverse (Self : Mat) return Mat;
+
    --  Computes the PCA basis of Self using OpenCV 4.10 cv::PCA.
    --  Self is a 2-D single-channel sample matrix. Samples_Are_Rows,
    --  the default, treats an M x N Mat as M samples of N features:

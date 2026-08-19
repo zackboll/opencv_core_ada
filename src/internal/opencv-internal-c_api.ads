@@ -914,6 +914,13 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_svd_back_substitute";
 
+   function Mat_Pseudo_Inverse
+     (Source : Mat_Handle; Result : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_pseudo_inverse";
+
    function Mat_Transform
      (Source       : Mat_Handle;
       Coefficients : Mat_Handle;

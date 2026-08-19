@@ -1120,6 +1120,18 @@ opencv_core_mat_svd_back_substitute(
     opencv_core_mat_handle **out_mat);
 
 /*
+ * Computes the Moore-Penrose pseudoinverse of a borrowed Mat using
+ * compact cv::SVD::compute(..., flags = 0) followed by empty-RHS
+ * cv::SVD::backSubst. This does not call cv::invert. The source is
+ * borrowed. The independently owned result is published only after
+ * success. On failure *out_mat remains null. The source is unchanged.
+ */
+opencv_core_status
+opencv_core_mat_pseudo_inverse(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle **out_mat);
+
+/*
  * Applies cv::transform to each source element interpreted as its channel
  * vector. source and coefficients are borrowed. The independently owned
  * result has source.rows, source.cols, source.depth(), and

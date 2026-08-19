@@ -10010,6 +10010,414 @@ package body Mat_Reduction_Tests is
          "SVD_Back_Substitute must reject a multi-channel basis component");
    end SVD_Back_Substitute_Rejects_Malformed_Basis;
 
+   function Pinv_At
+     (Image : OpenCV.Core.Mat; Row, Column : Natural) return Long_Float
+   is (Long_Float (OpenCV.Core.Float32_Access.Get (Image, Row, Column)));
+
+   function Satisfies_Moore_Penrose
+     (Source, Inverse : OpenCV.Core.Mat; Tolerance : Long_Float) return Boolean
+   is
+      Source_Inverse : constant OpenCV.Core.Mat :=
+        Source.Matrix_Multiply (Inverse);
+      Inverse_Source : constant OpenCV.Core.Mat :=
+        Inverse.Matrix_Multiply (Source);
+   begin
+      return
+        Mats_Approximately_Equal
+          (Source_Inverse.Matrix_Multiply (Source), Source, Tolerance)
+        and then Mats_Approximately_Equal
+                   (Inverse_Source.Matrix_Multiply (Inverse),
+                    Inverse,
+                    Tolerance)
+        and then Mats_Approximately_Equal
+                   (Source_Inverse.Transpose, Source_Inverse, Tolerance)
+        and then Mats_Approximately_Equal
+                   (Inverse_Source.Transpose, Inverse_Source, Tolerance);
+   end Satisfies_Moore_Penrose;
+
+   procedure Fill_Tall_Pinv_Source (Image : in out OpenCV.Core.Mat) is
+   begin
+      Fill_3x2 (Image, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0);
+   end Fill_Tall_Pinv_Source;
+
+   procedure Fill_Wide_Pinv_Source (Image : in out OpenCV.Core.Mat) is
+   begin
+      Fill_2x3 (Image, 1.0, 0.0, 1.0, 0.0, 1.0, 1.0);
+   end Fill_Wide_Pinv_Source;
+
+   function Expected_Tall_Pinv (Image : OpenCV.Core.Mat) return Boolean
+   is (Image.Rows = 2
+       and then Image.Columns = 3
+       and then Image.Channels = 1
+       and then Approximately_Equal (Pinv_At (Image, 0, 0), 2.0 / 3.0)
+       and then Approximately_Equal (Pinv_At (Image, 0, 1), -1.0 / 3.0)
+       and then Approximately_Equal (Pinv_At (Image, 0, 2), 1.0 / 3.0)
+       and then Approximately_Equal (Pinv_At (Image, 1, 0), -1.0 / 3.0)
+       and then Approximately_Equal (Pinv_At (Image, 1, 1), 2.0 / 3.0)
+       and then Approximately_Equal (Pinv_At (Image, 1, 2), 1.0 / 3.0));
+
+   function Expected_Wide_Pinv (Image : OpenCV.Core.Mat) return Boolean
+   is (Image.Rows = 3
+       and then Image.Columns = 2
+       and then Image.Channels = 1
+       and then Approximately_Equal (Pinv_At (Image, 0, 0), 2.0 / 3.0)
+       and then Approximately_Equal (Pinv_At (Image, 0, 1), -1.0 / 3.0)
+       and then Approximately_Equal (Pinv_At (Image, 1, 0), -1.0 / 3.0)
+       and then Approximately_Equal (Pinv_At (Image, 1, 1), 2.0 / 3.0)
+       and then Approximately_Equal (Pinv_At (Image, 2, 0), 1.0 / 3.0)
+       and then Approximately_Equal (Pinv_At (Image, 2, 1), 1.0 / 3.0));
+
+   procedure Pseudo_Inverse_Square_Nonsingular (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Result   : OpenCV.Core.Mat;
+      Ordinary : OpenCV.Core.Inversion_Result;
+   begin
+      Fill_2x2 (Source, 2.0, 0.0, 0.0, 4.0);
+      Result := Source.Pseudo_Inverse;
+      Ordinary := Source.Invert;
+
+      AUnit.Assertions.Assert
+        (Result.Rows = 2
+         and then Result.Columns = 2
+         and then Result.Depth = OpenCV.Core.Float32
+         and then Result.Channels = 1
+         and then Approximately_Equal (Pinv_At (Result, 0, 0), 0.5)
+         and then Approximately_Equal (Pinv_At (Result, 0, 1), 0.0)
+         and then Approximately_Equal (Pinv_At (Result, 1, 0), 0.0)
+         and then Approximately_Equal (Pinv_At (Result, 1, 1), 0.25),
+         "Square nonsingular Pseudo_Inverse must return diag (0.5, 0.25)");
+      AUnit.Assertions.Assert
+        (Ordinary.Invertible
+         and then Mats_Approximately_Equal (Result, Ordinary.Inverse),
+         "Square nonsingular Pseudo_Inverse must agree with Invert.Inverse");
+      AUnit.Assertions.Assert
+        (Unchanged_2x2 (Source, 2.0, 0.0, 0.0, 4.0),
+         "Pseudo_Inverse must leave a square source unchanged");
+   end Pseudo_Inverse_Square_Nonsingular;
+
+   procedure Pseudo_Inverse_Tall_Full_Column_Rank
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      Fill_Tall_Pinv_Source (Source);
+      Result := Source.Pseudo_Inverse;
+
+      AUnit.Assertions.Assert
+        (Expected_Tall_Pinv (Result)
+         and then Result.Depth = OpenCV.Core.Float32,
+         "Tall Pseudo_Inverse must return the known 2x3 values");
+      AUnit.Assertions.Assert
+        (Mats_Approximately_Equal
+           (Source.Matrix_Multiply (Result).Matrix_Multiply (Source),
+            Source,
+            0.000_1),
+         "Tall Pseudo_Inverse must satisfy A * A^+ * A ~= A");
+      AUnit.Assertions.Assert
+        (Unchanged_3x2 (Source, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0),
+         "Pseudo_Inverse must leave a tall source unchanged");
+   end Pseudo_Inverse_Tall_Full_Column_Rank;
+
+   procedure Pseudo_Inverse_Wide_Full_Row_Rank (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      Fill_Wide_Pinv_Source (Source);
+      Result := Source.Pseudo_Inverse;
+
+      AUnit.Assertions.Assert
+        (Expected_Wide_Pinv (Result)
+         and then Result.Depth = OpenCV.Core.Float32,
+         "Wide Pseudo_Inverse must return the known 3x2 values");
+      AUnit.Assertions.Assert
+        (Satisfies_Moore_Penrose (Source, Result, 0.000_1),
+         "Wide Pseudo_Inverse must satisfy the Moore-Penrose identities");
+      AUnit.Assertions.Assert
+        (Unchanged_2x3 (Source, 1.0, 0.0, 1.0, 0.0, 1.0, 1.0),
+         "Pseudo_Inverse must leave a wide source unchanged");
+   end Pseudo_Inverse_Wide_Full_Row_Rank;
+
+   procedure Pseudo_Inverse_Rank_Deficient (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      Fill_3x2 (Source, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+      Result := Source.Pseudo_Inverse;
+
+      AUnit.Assertions.Assert
+        (Result.Rows = 2
+         and then Result.Columns = 3
+         and then Approximately_Equal (Pinv_At (Result, 0, 0), 1.0)
+         and then Approximately_Equal (Pinv_At (Result, 0, 1), 0.0)
+         and then Approximately_Equal (Pinv_At (Result, 0, 2), 0.0)
+         and then Approximately_Equal (Pinv_At (Result, 1, 0), 0.0)
+         and then Approximately_Equal (Pinv_At (Result, 1, 1), 0.0)
+         and then Approximately_Equal (Pinv_At (Result, 1, 2), 0.0),
+         "Rank-deficient Pseudo_Inverse must keep the nonzero singular"
+         & " direction");
+      AUnit.Assertions.Assert
+        (Mats_Approximately_Equal
+           (Source.Matrix_Multiply (Result).Matrix_Multiply (Source),
+            Source,
+            0.000_1),
+         "Rank-deficient Pseudo_Inverse must satisfy A * A^+ * A ~= A");
+   end Pseudo_Inverse_Rank_Deficient;
+
+   procedure Pseudo_Inverse_Zero_Matrix (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      Source.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Result := Source.Pseudo_Inverse;
+
+      AUnit.Assertions.Assert
+        (Result.Rows = 2
+         and then Result.Columns = 3
+         and then Result.Depth = OpenCV.Core.Float32
+         and then Result.Channels = 1
+         and then Approximately_Equal (Pinv_At (Result, 0, 0), 0.0)
+         and then Approximately_Equal (Pinv_At (Result, 0, 1), 0.0)
+         and then Approximately_Equal (Pinv_At (Result, 0, 2), 0.0)
+         and then Approximately_Equal (Pinv_At (Result, 1, 0), 0.0)
+         and then Approximately_Equal (Pinv_At (Result, 1, 1), 0.0)
+         and then Approximately_Equal (Pinv_At (Result, 1, 2), 0.0),
+         "Zero-matrix Pseudo_Inverse must return a zero 2x3 result");
+   end Pseudo_Inverse_Zero_Matrix;
+
+   procedure Pseudo_Inverse_Matches_SVD_Back_Substitute
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
+      RHS    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 1, (OpenCV.Core.Float32, 1));
+      Via_BS : OpenCV.Core.Mat;
+      Via_PI : OpenCV.Core.Mat;
+   begin
+      Fill_Tall_Pinv_Source (Source);
+      Fill_3x1 (RHS, 1.0, 2.0, 4.0);
+      Via_BS :=
+        OpenCV.Core.SVD_Back_Substitute
+          (Source.Singular_Value_Decomposition, RHS);
+      Via_PI := Source.Pseudo_Inverse.Matrix_Multiply (RHS);
+
+      AUnit.Assertions.Assert
+        (Mats_Approximately_Equal (Via_PI, Via_BS, 0.000_1),
+         "P * B must match SVD_Back_Substitute of the same A and B");
+   end Pseudo_Inverse_Matches_SVD_Back_Substitute;
+
+   procedure Pseudo_Inverse_Preserves_Float64 (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source32 : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
+      Source   : OpenCV.Core.Mat;
+      Result   : OpenCV.Core.Mat;
+      Values   : OpenCV.Core.Mat;
+   begin
+      Fill_Tall_Pinv_Source (Source32);
+      Source := Source32.Convert_To (OpenCV.Core.Float64);
+      Result := Source.Pseudo_Inverse;
+      Values := Result.Convert_To (OpenCV.Core.Float32);
+
+      AUnit.Assertions.Assert
+        (Result.Depth = OpenCV.Core.Float64
+         and then Result.Rows = 2
+         and then Result.Columns = 3
+         and then Result.Channels = 1
+         and then Expected_Tall_Pinv (Values),
+         "Float64 Pseudo_Inverse must keep Float64 depth and the known"
+         & " values");
+      AUnit.Assertions.Assert
+        (Satisfies_Moore_Penrose (Source, Result, 0.000_000_000_1),
+         "Float64 Pseudo_Inverse must satisfy Moore-Penrose more tightly");
+   end Pseudo_Inverse_Preserves_Float64;
+
+   procedure Pseudo_Inverse_Supports_Noncontiguous_Region
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (5, 4, (OpenCV.Core.Float32, 1));
+      Contiguous : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
+      Expected   : OpenCV.Core.Mat;
+   begin
+      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Fill_Tall_Pinv_Source (Contiguous);
+      Expected := Contiguous.Pseudo_Inverse;
+      declare
+         Source : OpenCV.Core.Mat :=
+           Parent.Region ((X => 1, Y => 1, Width => 2, Height => 3));
+         Result : OpenCV.Core.Mat;
+      begin
+         Fill_Tall_Pinv_Source (Source);
+         AUnit.Assertions.Assert
+           (not Source.Is_Continuous,
+            "The Region used for Pseudo_Inverse must be non-contiguous");
+         Result := Source.Pseudo_Inverse;
+         AUnit.Assertions.Assert
+           (Mats_Approximately_Equal (Result, Expected, 0.000_1)
+            and then Expected_Tall_Pinv (Result),
+            "Non-contiguous Pseudo_Inverse must match the contiguous result");
+         AUnit.Assertions.Assert
+           (Unchanged_3x2 (Source, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0)
+            and then OpenCV.Core.Float32_Access.Get (Parent, 0, 0) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 0, 3) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 4, 0) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 1, 0) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 1, 3) = 99.0,
+            "Pseudo_Inverse must not modify the Region or parent storage");
+      end;
+   end Pseudo_Inverse_Supports_Noncontiguous_Region;
+
+   procedure Pseudo_Inverse_Owns_Independent_Storage
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Result : OpenCV.Core.Mat;
+      Saved  : OpenCV.Core.Mat;
+   begin
+      declare
+         Source : OpenCV.Core.Mat :=
+           OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
+      begin
+         Fill_Tall_Pinv_Source (Source);
+         Result := Source.Pseudo_Inverse;
+         Saved := Result.Clone;
+         OpenCV.Core.Float32_Access.Set (Source, 0, 0, 50.0);
+         AUnit.Assertions.Assert
+           (Mats_Approximately_Equal (Result, Saved),
+            "Mutating Self must not change its pseudoinverse");
+      end;
+
+      AUnit.Assertions.Assert
+        (Expected_Tall_Pinv (Result),
+         "A pseudoinverse must remain valid after the source finalizes");
+      OpenCV.Core.Float32_Access.Set (Result, 0, 0, 9.0);
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Pinv_At (Saved, 0, 0), 2.0 / 3.0),
+         "Mutating the result must not change an independent clone");
+   end Pseudo_Inverse_Owns_Independent_Storage;
+
+   procedure Pseudo_Inverse_Rejects_Invalid_Input
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Default_Empty : OpenCV.Core.Mat;
+      Empty32       : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 1));
+      Two_Channel   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 2));
+      UInt8_Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.UInt8, 1));
+      Int32_Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Int32, 1));
+      Float16_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float16, 1));
+
+      procedure Check_Default is
+         Result : constant OpenCV.Core.Mat := Default_Empty.Pseudo_Inverse;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Default;
+
+      procedure Check_Empty32 is
+         Result : constant OpenCV.Core.Mat := Empty32.Pseudo_Inverse;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Empty32;
+
+      procedure Check_Two_Channel is
+         Result : constant OpenCV.Core.Mat := Two_Channel.Pseudo_Inverse;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Two_Channel;
+
+      procedure Check_UInt8 is
+         Result : constant OpenCV.Core.Mat := UInt8_Image.Pseudo_Inverse;
+      begin
+         pragma Unreferenced (Result);
+      end Check_UInt8;
+
+      procedure Check_Int32 is
+         Result : constant OpenCV.Core.Mat := Int32_Image.Pseudo_Inverse;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Int32;
+
+      procedure Check_Float16 is
+         Result : constant OpenCV.Core.Mat := Float16_Image.Pseudo_Inverse;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Float16;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Check_Default'Access,
+         "Pseudo_Inverse must reject a default empty Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_Empty32'Access, "Pseudo_Inverse must reject a typed empty Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_Two_Channel'Access, "Pseudo_Inverse must reject C2 input");
+      Assert_Raises_OpenCV_Error
+        (Check_UInt8'Access, "Pseudo_Inverse must reject UInt8 input");
+      Assert_Raises_OpenCV_Error
+        (Check_Int32'Access, "Pseudo_Inverse must reject Int32 input");
+      Assert_Raises_OpenCV_Error
+        (Check_Float16'Access, "Pseudo_Inverse must reject Float16 input");
+   end Pseudo_Inverse_Rejects_Invalid_Input;
+
+   procedure Pseudo_Inverse_Remains_Distinct_From_Invert
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Rectangular : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Singular    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Pinv        : OpenCV.Core.Mat;
+      Ordinary    : OpenCV.Core.Inversion_Result;
+
+      procedure Check_Rectangular is
+         Result : constant OpenCV.Core.Inversion_Result := Rectangular.Invert;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Rectangular;
+   begin
+      Fill_Wide_Pinv_Source (Rectangular);
+      Fill_2x2 (Singular, 1.0, 0.0, 0.0, 0.0);
+      Pinv := Rectangular.Pseudo_Inverse;
+      Ordinary := Singular.Invert;
+
+      AUnit.Assertions.Assert
+        (Expected_Wide_Pinv (Pinv),
+         "A rectangular Mat valid for Pseudo_Inverse must succeed");
+      Assert_Raises_OpenCV_Error
+        (Check_Rectangular'Access,
+         "Ordinary Invert must still reject a rectangular Mat");
+      AUnit.Assertions.Assert
+        (not Ordinary.Invertible,
+         "A singular square Mat remains Invertible False for Invert");
+      AUnit.Assertions.Assert
+        (Singular.Pseudo_Inverse.Rows = 2
+         and then Singular.Pseudo_Inverse.Columns = 2,
+         "A singular square Mat remains valid for Pseudo_Inverse");
+   end Pseudo_Inverse_Remains_Distinct_From_Invert;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Masked_Min_Max_Loc_In_Range         : constant Caller.Test_Method :=
@@ -10887,6 +11295,50 @@ package body Mat_Reduction_Tests is
         (Caller.Create
            ("SVD_Back_Substitute rejects a malformed basis",
             SVD_Back_Substitute_Rejects_Malformed_Basis'Access));
+
+      Result.Add_Test
+        (Caller.Create
+           ("Pseudo_Inverse square nonsingular agrees with Invert",
+            Pseudo_Inverse_Square_Nonsingular'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Pseudo_Inverse tall full-column-rank matrix",
+            Pseudo_Inverse_Tall_Full_Column_Rank'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Pseudo_Inverse wide full-row-rank matrix",
+            Pseudo_Inverse_Wide_Full_Row_Rank'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Pseudo_Inverse rank-deficient matrix",
+            Pseudo_Inverse_Rank_Deficient'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Pseudo_Inverse zero matrix", Pseudo_Inverse_Zero_Matrix'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Pseudo_Inverse matches SVD_Back_Substitute",
+            Pseudo_Inverse_Matches_SVD_Back_Substitute'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Pseudo_Inverse preserves Float64",
+            Pseudo_Inverse_Preserves_Float64'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Pseudo_Inverse supports a non-contiguous Region",
+            Pseudo_Inverse_Supports_Noncontiguous_Region'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Pseudo_Inverse owns independent storage",
+            Pseudo_Inverse_Owns_Independent_Storage'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Pseudo_Inverse rejects empty, C2, and invalid types",
+            Pseudo_Inverse_Rejects_Invalid_Input'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Pseudo_Inverse remains distinct from Invert",
+            Pseudo_Inverse_Remains_Distinct_From_Invert'Access));
 
       Result.Add_Test
         (Caller.Create

@@ -3955,6 +3955,59 @@ package body OpenCV.Core is
       return Result;
    end SVD_Back_Substitute;
 
+   procedure Validate_Pseudo_Inverse (Self : Mat) is
+   begin
+      if Self.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Pseudo_Inverse requires a non-empty Mat");
+      end if;
+
+      if Self.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Pseudo_Inverse requires a single-channel Mat");
+      end if;
+
+      if not Is_SVD_Floating_Depth (Self.Depth) then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Pseudo_Inverse requires a Float32 or Float64 Mat");
+      end if;
+
+      if Product_Exceeds_Signed_Int32 (Self.Rows, Self.Columns) then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Pseudo_Inverse destination index N * M must not exceed"
+            & " 2147483647");
+      end if;
+   end Validate_Pseudo_Inverse;
+
+   function Pseudo_Inverse (Self : Mat) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Pseudo_Inverse (Self);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Pseudo_Inverse
+          (Source => Self.Handle, Result => New_Handle'Access);
+      if Status /= OpenCV.Internal.C_API.Success then
+         OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+         Raise_On_Error (Status, "Mat pseudoinverse operation");
+      end if;
+
+      if New_Handle = OpenCV.Internal.C_API.Null_Mat_Handle then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat pseudoinverse operation returned a null result handle");
+      end if;
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Pseudo_Inverse;
+
    function Is_PCA_Floating_Depth (Value : Depth_Type) return Boolean
    is (Value = Float32 or else Value = Float64);
 

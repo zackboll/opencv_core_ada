@@ -3953,6 +3953,54 @@ opencv_core_mat_svd_back_substitute(
 }
 
 opencv_core_status
+opencv_core_mat_pseudo_inverse(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat != nullptr) {
+        *out_mat = nullptr;
+    }
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    if (source == nullptr) {
+        return invalid_argument("source Mat handle must not be null");
+    }
+
+    const cv::Mat &src = source->value;
+    // ABI safety: OpenCV 4.10 empty-RHS SVD::backSubst creates an
+    // N x M packed destination and zeros it with x[i * ldx + j]
+    // using signed int index arithmetic and ldx = M. That product
+    // is N * M. Compact U is later indexed as u[j * udelta1] with
+    // udelta1 = R = min(M, N), so M * R <= M * N. Rejecting
+    // M * N > INT_MAX therefore also bounds the compact U span.
+    if (src.rows > 0 && src.cols > 0 &&
+        int32_product_exceeds_max(src.rows, src.cols)) {
+        return invalid_argument(
+            "pseudoinverse destination index N * M exceeds INT_MAX");
+    }
+
+    try {
+        cv::Mat singular_values;
+        cv::Mat u;
+        cv::Mat v_transpose;
+        cv::Mat result;
+        cv::SVD::compute(src, singular_values, u, v_transpose, 0);
+        cv::SVD::backSubst(singular_values, u, v_transpose, cv::Mat(), result);
+
+        std::unique_ptr<opencv_core_mat_handle> result_handle(
+            new opencv_core_mat_handle(result));
+        *out_mat = result_handle.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_transform(const opencv_core_mat_handle *source,
                           const opencv_core_mat_handle *coefficients,
                           opencv_core_mat_handle **out_mat) {
