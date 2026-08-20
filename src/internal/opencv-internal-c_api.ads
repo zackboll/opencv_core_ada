@@ -15,6 +15,10 @@ package OpenCV.Internal.C_API is
    type Mat_Handle is new System.Address;
    Null_Mat_Handle : constant Mat_Handle := Mat_Handle (System.Null_Address);
 
+   type File_Storage_Handle is new System.Address;
+   Null_File_Storage_Handle : constant File_Storage_Handle :=
+     File_Storage_Handle (System.Null_Address);
+
    subtype C_Int32 is Interfaces.Integer_32;
    subtype C_UInt8 is Interfaces.Unsigned_8;
    subtype C_UInt64 is Interfaces.Unsigned_64;
@@ -1062,5 +1066,41 @@ package OpenCV.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_core_mat_set_identity";
+
+   Storage_Mode_Read_Only  : constant C_Int32 := 0;
+   Storage_Mode_Write_Only : constant C_Int32 := 1;
+
+   function File_Storage_Open
+     (Filename : Interfaces.C.char_array;
+      Mode     : C_Int32;
+      Result   : access File_Storage_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_file_storage_open";
+
+   procedure File_Storage_Destroy (Self : File_Storage_Handle)
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_file_storage_destroy";
+
+   function File_Storage_Write_Mat
+     (Self  : File_Storage_Handle;
+      Name  : Interfaces.C.char_array;
+      Value : Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_file_storage_write_mat";
+
+   function File_Storage_Read_Mat
+     (Self   : File_Storage_Handle;
+      Name   : Interfaces.C.char_array;
+      Result : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_file_storage_read_mat";
 
 end OpenCV.Internal.C_API;

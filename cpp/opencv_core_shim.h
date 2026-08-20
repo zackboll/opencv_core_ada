@@ -16,6 +16,8 @@ typedef int32_t opencv_core_status;
 #define OPENCV_CORE_ERROR_INVALID_ARGUMENT ((opencv_core_status)4)
 
 typedef struct opencv_core_mat_handle opencv_core_mat_handle;
+typedef struct opencv_core_file_storage_handle
+    opencv_core_file_storage_handle;
 
 typedef struct opencv_core_point {
     int32_t x;
@@ -1354,6 +1356,49 @@ opencv_core_mat_complete_symmetry(opencv_core_mat_handle *mat,
 opencv_core_status
 opencv_core_mat_set_identity(opencv_core_mat_handle *mat,
                              const opencv_core_scalar *value);
+
+/*
+ * Stable FileStorage mode identifiers for the C ABI. These are translated
+ * explicitly to cv::FileStorage::Mode by the shim and are not OpenCV flags.
+ */
+#define OPENCV_CORE_FILE_STORAGE_READ_ONLY ((int32_t)0)
+#define OPENCV_CORE_FILE_STORAGE_WRITE_ONLY ((int32_t)1)
+
+/*
+ * Opens a disk-backed cv::FileStorage and returns a newly owned handle.
+ * filename is a borrowed NUL-terminated path. mode must be one of the
+ * OPENCV_CORE_FILE_STORAGE_* identifiers above. On success out_storage
+ * receives one independently owned handle. On every failure out_storage
+ * remains null. OpenCV selects XML/YAML/JSON from the filename extension.
+ */
+opencv_core_status
+opencv_core_file_storage_open(const char *filename, int32_t mode,
+                              opencv_core_file_storage_handle **out_storage);
+
+/* Null-safe and exception-contained. */
+void opencv_core_file_storage_destroy(
+    opencv_core_file_storage_handle *storage);
+
+/*
+ * Writes a borrowed Mat under name using FileStorage::write. name is a
+ * borrowed NUL-terminated node name. The Mat handle is not consumed and
+ * the source Mat is not modified.
+ */
+opencv_core_status
+opencv_core_file_storage_write_mat(
+    opencv_core_file_storage_handle *storage, const char *name,
+    const opencv_core_mat_handle *value);
+
+/*
+ * Looks up name and reads it as a Mat. A missing node is a failure, not
+ * an empty Mat. On success out_mat receives one independently owned Mat
+ * handle whose storage does not depend on FileStorage lifetime. On every
+ * failure out_mat remains null.
+ */
+opencv_core_status
+opencv_core_file_storage_read_mat(
+    const opencv_core_file_storage_handle *storage, const char *name,
+    opencv_core_mat_handle **out_mat);
 
 #ifdef __cplusplus
 }

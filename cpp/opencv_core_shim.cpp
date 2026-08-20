@@ -21,6 +21,10 @@ struct opencv_core_mat_handle {
         : value(source) {}
 };
 
+struct opencv_core_file_storage_handle {
+    cv::FileStorage value;
+};
+
 namespace {
 
 constexpr std::size_t error_message_capacity = 1024;
@@ -383,6 +387,19 @@ bool from_opencv_depth(int opencv_depth, int32_t &depth) noexcept {
         return true;
     case CV_16F:
         depth = OPENCV_CORE_DEPTH_FLOAT16;
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool to_opencv_file_storage_mode(int32_t mode, int &opencv_mode) noexcept {
+    switch (mode) {
+    case OPENCV_CORE_FILE_STORAGE_READ_ONLY:
+        opencv_mode = cv::FileStorage::READ;
+        return true;
+    case OPENCV_CORE_FILE_STORAGE_WRITE_ONLY:
+        opencv_mode = cv::FileStorage::WRITE;
         return true;
     default:
         return false;
@@ -4777,6 +4794,123 @@ opencv_core_mat_set_identity(opencv_core_mat_handle *mat,
 
     try {
         cv::setIdentity(mat->value, to_opencv_scalar(*value));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_file_storage_open(const char *filename, int32_t mode,
+                              opencv_core_file_storage_handle **out_storage) {
+    clear_error();
+
+    if (out_storage != nullptr) {
+        *out_storage = nullptr;
+    }
+
+    if (out_storage == nullptr) {
+        return invalid_argument("out_storage must not be null");
+    }
+
+    if (filename == nullptr) {
+        return invalid_argument("filename must not be null");
+    }
+
+    int opencv_mode = 0;
+    if (!to_opencv_file_storage_mode(mode, opencv_mode)) {
+        return invalid_argument("file storage mode is not supported");
+    }
+
+    try {
+        auto storage = std::make_unique<opencv_core_file_storage_handle>();
+        const bool opened = storage->value.open(filename, opencv_mode);
+        if (!opened || !storage->value.isOpened()) {
+            return invalid_argument("could not open file storage");
+        }
+
+        *out_storage = storage.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+void opencv_core_file_storage_destroy(
+    opencv_core_file_storage_handle *storage) {
+    clear_error();
+
+    try {
+        delete storage;
+    } catch (const cv::Exception &error) {
+        set_error(error.what());
+    } catch (const std::exception &error) {
+        set_error(error.what());
+    } catch (...) {
+        set_error("Unknown C++ exception during FileStorage destruction");
+    }
+}
+
+opencv_core_status
+opencv_core_file_storage_write_mat(
+    opencv_core_file_storage_handle *storage, const char *name,
+    const opencv_core_mat_handle *value) {
+    clear_error();
+
+    if (storage == nullptr) {
+        return invalid_argument("file storage handle must not be null");
+    }
+
+    if (name == nullptr) {
+        return invalid_argument("node name must not be null");
+    }
+
+    if (value == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        storage->value.write(name, value->value);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_file_storage_read_mat(
+    const opencv_core_file_storage_handle *storage, const char *name,
+    opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat != nullptr) {
+        *out_mat = nullptr;
+    }
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    if (storage == nullptr) {
+        return invalid_argument("file storage handle must not be null");
+    }
+
+    if (name == nullptr) {
+        return invalid_argument("node name must not be null");
+    }
+
+    try {
+        const cv::FileNode node = storage->value[name];
+        if (node.empty()) {
+            return invalid_argument("named file node is missing");
+        }
+
+        // FileNode::mat() calls read(*this, value, Mat()), which
+        // Mat::create()s destination storage and copies parsed values
+        // into it. The returned Mat does not alias FileStorage memory.
+        const cv::Mat loaded = node.mat();
+        auto result = std::make_unique<opencv_core_mat_handle>(loaded);
+        *out_mat = result.release();
         return OPENCV_CORE_OK;
     } catch (...) {
         return translate_current_exception();
