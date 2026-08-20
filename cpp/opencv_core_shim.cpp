@@ -22,6 +22,8 @@ struct opencv_core_mat_handle {
         : value(source) {}
 };
 
+enum class opencv_core_file_storage_structure_kind { map, sequence };
+
 struct opencv_core_file_storage_handle {
     cv::FileStorage value;
     // ABI/lifetime safety: OpenCV 4.10 memory-read sets
@@ -33,7 +35,12 @@ struct opencv_core_file_storage_handle {
     bool memory_backed = false;
     bool write_mode = false;
     bool released_memory_text_ready = false;
+    std::vector<opencv_core_file_storage_structure_kind> write_structure_stack;
+    // Declared after value so FileNode copies are destroyed before the
+    // FileStorage implementation they reference.
+    std::vector<cv::FileNode> read_context_stack;
 };
+
 
 namespace {
 
@@ -431,6 +438,155 @@ bool to_opencv_file_storage_format(int32_t format,
     default:
         return false;
     }
+}
+
+bool to_file_storage_structure_kind(
+    int32_t kind, opencv_core_file_storage_structure_kind &decoded) noexcept {
+    switch (kind) {
+    case OPENCV_CORE_FILE_STORAGE_STRUCTURE_MAP:
+        decoded = opencv_core_file_storage_structure_kind::map;
+        return true;
+    case OPENCV_CORE_FILE_STORAGE_STRUCTURE_SEQUENCE:
+        decoded = opencv_core_file_storage_structure_kind::sequence;
+        return true;
+    default:
+        return false;
+    }
+}
+
+int to_opencv_file_node_flags(
+    opencv_core_file_storage_structure_kind kind) noexcept {
+    switch (kind) {
+    case opencv_core_file_storage_structure_kind::map:
+        return cv::FileNode::MAP;
+    case opencv_core_file_storage_structure_kind::sequence:
+        return cv::FileNode::SEQ;
+    }
+
+    return cv::FileNode::NONE;
+}
+
+bool write_context_is_sequence(
+    const opencv_core_file_storage_handle &storage) noexcept {
+    return !storage.write_structure_stack.empty() &&
+           storage.write_structure_stack.back() ==
+               opencv_core_file_storage_structure_kind::sequence;
+}
+
+opencv_core_status require_write_name_for_context(
+    const opencv_core_file_storage_handle &storage, const char *name) {
+    const bool unnamed = name[0] == '\0';
+    if (write_context_is_sequence(storage)) {
+        if (!unnamed) {
+            return invalid_argument(
+                "named write is not valid inside a sequence");
+        }
+    } else if (unnamed) {
+        return invalid_argument(
+            "unnamed write is not valid outside a sequence");
+    }
+
+    return OPENCV_CORE_OK;
+}
+
+cv::FileNode current_read_context(
+    const opencv_core_file_storage_handle &storage) {
+    if (storage.read_context_stack.empty()) {
+        return cv::FileNode();
+    }
+
+    return storage.read_context_stack.back();
+}
+
+opencv_core_status lookup_named_node(
+    const opencv_core_file_storage_handle &storage, const char *name,
+    cv::FileNode &node) {
+    node = cv::FileNode();
+
+    if (storage.read_context_stack.empty()) {
+        node = storage.value[name];
+    } else {
+        const cv::FileNode &context = storage.read_context_stack.back();
+        if (!context.isMap()) {
+            return invalid_argument(
+                "named lookup requires a mapping read context");
+        }
+
+        node = context[name];
+    }
+
+    if (node.empty()) {
+        return invalid_argument("named file node is missing");
+    }
+
+    return OPENCV_CORE_OK;
+}
+
+opencv_core_status lookup_indexed_node(
+    const opencv_core_file_storage_handle &storage, uint64_t index,
+    cv::FileNode &node) {
+    node = cv::FileNode();
+
+    if (storage.read_context_stack.empty()) {
+        return invalid_argument(
+            "indexed lookup is not valid at the file storage root");
+    }
+
+    const cv::FileNode &context = storage.read_context_stack.back();
+    if (!context.isSeq()) {
+        return invalid_argument(
+            "indexed lookup requires a sequence read context");
+    }
+
+    const size_t length = context.size();
+    if (index >= static_cast<uint64_t>(length)) {
+        return invalid_argument("sequence index is out of range");
+    }
+
+    // ABI safety: FileNode::operator[](int) takes a signed int. Reject
+    // values that cannot convert without implementation-defined narrowing
+    // before the shim performs that conversion.
+    if (index > static_cast<uint64_t>(std::numeric_limits<int>::max())) {
+        return invalid_argument("sequence index exceeds OpenCV int range");
+    }
+
+    node = context[static_cast<int>(index)];
+    if (node.empty()) {
+        return invalid_argument("indexed file node is missing");
+    }
+
+    return OPENCV_CORE_OK;
+}
+
+opencv_core_status copy_file_node_string(const cv::FileNode &node,
+                                         char *buffer, uint64_t capacity,
+                                         uint64_t *out_length) {
+    if (!node.isString()) {
+        return invalid_argument("file node is not a string");
+    }
+
+    const std::string value = node.string();
+    uint64_t length = 0;
+    if (!size_to_abi(value.size(), length)) {
+        return invalid_argument("stored string exceeds the ABI size range");
+    }
+
+    if (buffer == nullptr) {
+        *out_length = length;
+        return OPENCV_CORE_OK;
+    }
+
+    if (capacity < length) {
+        return invalid_argument(
+            "string buffer capacity is smaller than the stored value");
+    }
+
+    if (!value.empty()) {
+        std::memcpy(buffer, value.data(), value.size());
+    }
+
+    *out_length = length;
+    return OPENCV_CORE_OK;
 }
 
 } // namespace
@@ -4899,6 +5055,12 @@ opencv_core_file_storage_write_mat(
         return invalid_argument("Mat handle must not be null");
     }
 
+    const opencv_core_status context_status =
+        require_write_name_for_context(*storage, name);
+    if (context_status != OPENCV_CORE_OK) {
+        return context_status;
+    }
+
     try {
         storage->value.write(name, value->value);
         return OPENCV_CORE_OK;
@@ -4930,9 +5092,11 @@ opencv_core_file_storage_read_mat(
     }
 
     try {
-        const cv::FileNode node = storage->value[name];
-        if (node.empty()) {
-            return invalid_argument("named file node is missing");
+        cv::FileNode node;
+        const opencv_core_status lookup_status =
+            lookup_named_node(*storage, name, node);
+        if (lookup_status != OPENCV_CORE_OK) {
+            return lookup_status;
         }
 
         // FileNode::mat() calls read(*this, value, Mat()), which
@@ -4969,6 +5133,12 @@ opencv_core_file_storage_write_int(
             "integer value INT32_MIN cannot be written with OpenCV 4.10");
     }
 
+    const opencv_core_status context_status =
+        require_write_name_for_context(*storage, name);
+    if (context_status != OPENCV_CORE_OK) {
+        return context_status;
+    }
+
     try {
         storage->value.write(name, static_cast<int>(value));
         return OPENCV_CORE_OK;
@@ -5000,9 +5170,11 @@ opencv_core_file_storage_read_int(
     }
 
     try {
-        const cv::FileNode node = storage->value[name];
-        if (node.empty()) {
-            return invalid_argument("named file node is missing");
+        cv::FileNode node;
+        const opencv_core_status lookup_status =
+            lookup_named_node(*storage, name, node);
+        if (lookup_status != OPENCV_CORE_OK) {
+            return lookup_status;
         }
 
         if (!node.isInt()) {
@@ -5028,6 +5200,12 @@ opencv_core_file_storage_write_double(
 
     if (name == nullptr) {
         return invalid_argument("node name must not be null");
+    }
+
+    const opencv_core_status context_status =
+        require_write_name_for_context(*storage, name);
+    if (context_status != OPENCV_CORE_OK) {
+        return context_status;
     }
 
     try {
@@ -5061,9 +5239,11 @@ opencv_core_file_storage_read_double(
     }
 
     try {
-        const cv::FileNode node = storage->value[name];
-        if (node.empty()) {
-            return invalid_argument("named file node is missing");
+        cv::FileNode node;
+        const opencv_core_status lookup_status =
+            lookup_named_node(*storage, name, node);
+        if (lookup_status != OPENCV_CORE_OK) {
+            return lookup_status;
         }
 
         if (node.isReal()) {
@@ -5098,6 +5278,12 @@ opencv_core_file_storage_write_string(
 
     if (value == nullptr) {
         return invalid_argument("string value must not be null");
+    }
+
+    const opencv_core_status context_status =
+        require_write_name_for_context(*storage, name);
+    if (context_status != OPENCV_CORE_OK) {
+        return context_status;
     }
 
     try {
@@ -5136,34 +5322,14 @@ opencv_core_file_storage_read_string(
     }
 
     try {
-        const cv::FileNode node = storage->value[name];
-        if (node.empty()) {
-            return invalid_argument("named file node is missing");
+        cv::FileNode node;
+        const opencv_core_status lookup_status =
+            lookup_named_node(*storage, name, node);
+        if (lookup_status != OPENCV_CORE_OK) {
+            return lookup_status;
         }
 
-        if (!node.isString()) {
-            return invalid_argument("named file node is not a string");
-        }
-
-        const std::string value = node.string();
-        const uint64_t length = static_cast<uint64_t>(value.size());
-
-        if (buffer == nullptr) {
-            *out_length = length;
-            return OPENCV_CORE_OK;
-        }
-
-        if (capacity < length) {
-            return invalid_argument(
-                "string buffer capacity is smaller than the stored value");
-        }
-
-        if (!value.empty()) {
-            std::memcpy(buffer, value.data(), value.size());
-        }
-
-        *out_length = length;
-        return OPENCV_CORE_OK;
+        return copy_file_node_string(node, buffer, capacity, out_length);
     } catch (...) {
         return translate_current_exception();
     }
@@ -5277,6 +5443,11 @@ opencv_core_file_storage_finish_memory_write(
             "finish memory write requires write-only file storage");
     }
 
+    if (!storage->write_structure_stack.empty()) {
+        return invalid_argument(
+            "finish memory write requires all structures to be closed");
+    }
+
     try {
         if (!storage->released_memory_text_ready) {
             if (!storage->value.isOpened()) {
@@ -5320,4 +5491,367 @@ opencv_core_file_storage_finish_memory_write(
     }
 }
 
+opencv_core_status
+opencv_core_file_storage_begin_structure(
+    opencv_core_file_storage_handle *storage, const char *name, int32_t kind) {
+    clear_error();
+
+    if (storage == nullptr) {
+        return invalid_argument("file storage handle must not be null");
+    }
+
+    if (name == nullptr) {
+        return invalid_argument("node name must not be null");
+    }
+
+    opencv_core_file_storage_structure_kind decoded =
+        opencv_core_file_storage_structure_kind::map;
+    if (!to_file_storage_structure_kind(kind, decoded)) {
+        return invalid_argument("file storage structure kind is not supported");
+    }
+
+    const opencv_core_status context_status =
+        require_write_name_for_context(*storage, name);
+    if (context_status != OPENCV_CORE_OK) {
+        return context_status;
+    }
+
+    try {
+        // Reserve first so a later push_back cannot allocate after
+        // OpenCV has already entered the structure.
+        storage->write_structure_stack.reserve(
+            storage->write_structure_stack.size() + 1);
+        storage->value.startWriteStruct(name,
+                                        to_opencv_file_node_flags(decoded));
+        storage->write_structure_stack.push_back(decoded);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_file_storage_end_structure(
+    opencv_core_file_storage_handle *storage) {
+    clear_error();
+
+    if (storage == nullptr) {
+        return invalid_argument("file storage handle must not be null");
+    }
+
+    if (storage->write_structure_stack.empty()) {
+        return invalid_argument(
+            "end structure is not valid at the file storage root");
+    }
+
+    try {
+        storage->value.endWriteStruct();
+        storage->write_structure_stack.pop_back();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_file_storage_enter_named_structure(
+    opencv_core_file_storage_handle *storage, const char *name, int32_t kind) {
+    clear_error();
+
+    if (storage == nullptr) {
+        return invalid_argument("file storage handle must not be null");
+    }
+
+    if (name == nullptr) {
+        return invalid_argument("node name must not be null");
+    }
+
+    opencv_core_file_storage_structure_kind decoded =
+        opencv_core_file_storage_structure_kind::map;
+    if (!to_file_storage_structure_kind(kind, decoded)) {
+        return invalid_argument("file storage structure kind is not supported");
+    }
+
+    try {
+        cv::FileNode node;
+        const opencv_core_status lookup_status =
+            lookup_named_node(*storage, name, node);
+        if (lookup_status != OPENCV_CORE_OK) {
+            return lookup_status;
+        }
+
+        const bool matches =
+            decoded == opencv_core_file_storage_structure_kind::map
+                ? node.isMap()
+                : node.isSeq();
+        if (!matches) {
+            return invalid_argument(
+                "named file node does not match the requested structure kind");
+        }
+
+        storage->read_context_stack.reserve(
+            storage->read_context_stack.size() + 1);
+        storage->read_context_stack.push_back(node);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_file_storage_enter_indexed_structure(
+    opencv_core_file_storage_handle *storage, uint64_t index, int32_t kind) {
+
+    clear_error();
+
+    if (storage == nullptr) {
+        return invalid_argument("file storage handle must not be null");
+    }
+
+    opencv_core_file_storage_structure_kind decoded =
+        opencv_core_file_storage_structure_kind::map;
+    if (!to_file_storage_structure_kind(kind, decoded)) {
+        return invalid_argument("file storage structure kind is not supported");
+    }
+
+    try {
+        cv::FileNode node;
+        const opencv_core_status lookup_status =
+            lookup_indexed_node(*storage, index, node);
+        if (lookup_status != OPENCV_CORE_OK) {
+            return lookup_status;
+        }
+
+        const bool matches =
+            decoded == opencv_core_file_storage_structure_kind::map
+                ? node.isMap()
+                : node.isSeq();
+        if (!matches) {
+            return invalid_argument(
+                "indexed file node does not match the requested structure "
+                "kind");
+        }
+
+        storage->read_context_stack.reserve(
+            storage->read_context_stack.size() + 1);
+        storage->read_context_stack.push_back(node);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_file_storage_leave_structure(
+    opencv_core_file_storage_handle *storage) {
+    clear_error();
+
+    if (storage == nullptr) {
+        return invalid_argument("file storage handle must not be null");
+    }
+
+    if (storage->read_context_stack.empty()) {
+        return invalid_argument(
+            "leave structure is not valid at the file storage root");
+    }
+
+    try {
+        storage->read_context_stack.pop_back();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_file_storage_sequence_length(
+    const opencv_core_file_storage_handle *storage, uint64_t *out_length) {
+    clear_error();
+
+    if (out_length != nullptr) {
+        *out_length = 0;
+    }
+
+    if (out_length == nullptr) {
+        return invalid_argument("out_length must not be null");
+    }
+
+    if (storage == nullptr) {
+        return invalid_argument("file storage handle must not be null");
+    }
+
+    try {
+        const cv::FileNode context = current_read_context(*storage);
+        if (context.empty() || !context.isSeq()) {
+            return invalid_argument(
+                "sequence length requires a sequence read context");
+        }
+
+        uint64_t length = 0;
+        if (!size_to_abi(context.size(), length)) {
+            return invalid_argument(
+                "sequence length exceeds the ABI size range");
+        }
+
+        *out_length = length;
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+
+
+opencv_core_status
+opencv_core_file_storage_read_mat_at(
+    const opencv_core_file_storage_handle *storage, uint64_t index,
+    opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat != nullptr) {
+        *out_mat = nullptr;
+    }
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    if (storage == nullptr) {
+        return invalid_argument("file storage handle must not be null");
+    }
+
+    try {
+        cv::FileNode node;
+        const opencv_core_status lookup_status =
+            lookup_indexed_node(*storage, index, node);
+        if (lookup_status != OPENCV_CORE_OK) {
+            return lookup_status;
+        }
+
+        const cv::Mat loaded = node.mat();
+        auto result = std::make_unique<opencv_core_mat_handle>(loaded);
+        *out_mat = result.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_file_storage_read_int_at(
+    const opencv_core_file_storage_handle *storage, uint64_t index,
+    int32_t *out_value) {
+    clear_error();
+
+    if (out_value != nullptr) {
+        *out_value = 0;
+    }
+
+    if (out_value == nullptr) {
+        return invalid_argument("out_value must not be null");
+    }
+
+    if (storage == nullptr) {
+        return invalid_argument("file storage handle must not be null");
+    }
+
+    try {
+        cv::FileNode node;
+        const opencv_core_status lookup_status =
+            lookup_indexed_node(*storage, index, node);
+        if (lookup_status != OPENCV_CORE_OK) {
+            return lookup_status;
+        }
+
+        if (!node.isInt()) {
+            return invalid_argument("indexed file node is not an integer");
+        }
+
+        *out_value = static_cast<int32_t>(static_cast<int>(node));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_file_storage_read_double_at(
+    const opencv_core_file_storage_handle *storage, uint64_t index,
+    double *out_value) {
+    clear_error();
+
+    if (out_value != nullptr) {
+        *out_value = 0.0;
+    }
+
+    if (out_value == nullptr) {
+        return invalid_argument("out_value must not be null");
+    }
+
+    if (storage == nullptr) {
+        return invalid_argument("file storage handle must not be null");
+    }
+
+    try {
+        cv::FileNode node;
+        const opencv_core_status lookup_status =
+            lookup_indexed_node(*storage, index, node);
+        if (lookup_status != OPENCV_CORE_OK) {
+            return lookup_status;
+        }
+
+        if (node.isReal()) {
+            *out_value = node.real();
+            return OPENCV_CORE_OK;
+        }
+
+        if (node.isInt()) {
+            *out_value = static_cast<double>(static_cast<int>(node));
+            return OPENCV_CORE_OK;
+        }
+
+        return invalid_argument("indexed file node is not a real or integer");
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_file_storage_read_string_at(
+    const opencv_core_file_storage_handle *storage, uint64_t index,
+    char *buffer, uint64_t capacity, uint64_t *out_length) {
+    clear_error();
+
+    if (out_length != nullptr) {
+        *out_length = 0;
+    }
+
+    if (out_length == nullptr) {
+        return invalid_argument("out_length must not be null");
+    }
+
+    if (storage == nullptr) {
+        return invalid_argument("file storage handle must not be null");
+    }
+
+    if (buffer == nullptr && capacity != 0) {
+        return invalid_argument(
+            "string buffer must not be null when capacity is nonzero");
+    }
+
+    try {
+        cv::FileNode node;
+        const opencv_core_status lookup_status =
+            lookup_indexed_node(*storage, index, node);
+        if (lookup_status != OPENCV_CORE_OK) {
+            return lookup_status;
+        }
+
+        return copy_file_node_string(node, buffer, capacity, out_length);
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
 } // extern "C"
+
+

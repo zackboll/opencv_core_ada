@@ -1382,6 +1382,731 @@ package body Persistence_Tests is
         (Write_Int_Min'Access,
          "memory Write(Integer) must reject -2147483648 with OpenCV 4.10");
    end Memory_Integer_Min_Is_Rejected;
+   procedure Nested_Map_Round_Trip (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Matrix : constant OpenCV.Core.Mat := Make_Float32_Matrix;
+   begin
+      declare
+         Storage : Persistence.File_Storage :=
+           Persistence.Create_Memory (Persistence.YAML);
+      begin
+         Storage.Write ("Version", 1);
+         Storage.Begin_Map ("Camera");
+         Storage.Write ("Name", "Front");
+         Storage.Write ("RMS", 0.18);
+         Storage.Write ("Matrix", Matrix);
+         Storage.Begin_Map ("Settings");
+         Storage.Write ("Count", 4);
+         Storage.Write ("Threshold", 0.25);
+         Storage.End_Structure;
+         Storage.End_Structure;
+
+         declare
+            Serialized : constant String := Storage.Close_And_Get_Text;
+            Reader     : Persistence.File_Storage :=
+              Persistence.Open_Memory (Serialized);
+         begin
+            Reader.Enter_Map ("Camera");
+            AUnit.Assertions.Assert
+              (Reader.Read_String ("Name") = "Front",
+               "nested map string must round trip");
+            AUnit.Assertions.Assert
+              (Approximately_Equal (Reader.Read_Real ("RMS"), 0.18, 1.0E-15),
+               "nested map real must round trip");
+            Assert_Same_Float32_Matrix
+              (Matrix,
+               Reader.Read_Mat ("Matrix"),
+               "nested map Mat must round trip");
+
+            Reader.Enter_Map ("Settings");
+            AUnit.Assertions.Assert
+              (Reader.Read_Integer ("Count") = 4,
+               "inner nested map integer must round trip");
+            AUnit.Assertions.Assert
+              (Approximately_Equal
+                 (Reader.Read_Real ("Threshold"), 0.25, 1.0E-15),
+               "inner nested map real must round trip");
+            Reader.Leave_Structure;
+            Reader.Leave_Structure;
+
+            AUnit.Assertions.Assert
+              (Reader.Read_Integer ("Version") = 1,
+               "top-level value must remain readable after unwind");
+         end;
+      end;
+   end Nested_Map_Round_Trip;
+
+   procedure Scalar_Sequence_Round_Trip (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+   begin
+      declare
+         Storage : Persistence.File_Storage :=
+           Persistence.Create_Memory (Persistence.YAML);
+      begin
+         Storage.Begin_Sequence ("Values");
+         Storage.Append (7);
+         Storage.Append (-3);
+         Storage.Append (42);
+         Storage.End_Structure;
+
+         declare
+            Serialized : constant String := Storage.Close_And_Get_Text;
+            Reader     : Persistence.File_Storage :=
+              Persistence.Open_Memory (Serialized);
+         begin
+            Reader.Enter_Sequence ("Values");
+            AUnit.Assertions.Assert
+              (Reader.Sequence_Length = 3, "scalar sequence length must be 3");
+            AUnit.Assertions.Assert
+              (Reader.Read_Integer (0) = 7, "sequence integer 0 must match");
+            AUnit.Assertions.Assert
+              (Reader.Read_Integer (1) = -3, "sequence integer 1 must match");
+            AUnit.Assertions.Assert
+              (Reader.Read_Integer (2) = 42, "sequence integer 2 must match");
+            Reader.Leave_Structure;
+         end;
+      end;
+   end Scalar_Sequence_Round_Trip;
+
+   procedure Heterogeneous_Sequence_Round_Trip (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Matrix : constant OpenCV.Core.Mat := Make_Float32_Matrix;
+   begin
+      declare
+         Storage : Persistence.File_Storage :=
+           Persistence.Create_Memory (Persistence.YAML);
+      begin
+         Storage.Begin_Sequence ("Mixed");
+         Storage.Append (11);
+         Storage.Append (0.5);
+         Storage.Append ("label");
+         Storage.Append (Matrix);
+         Storage.End_Structure;
+
+         declare
+            Serialized : constant String := Storage.Close_And_Get_Text;
+            Reader     : Persistence.File_Storage :=
+              Persistence.Open_Memory (Serialized);
+
+            procedure Read_Integer_From_Real is
+               Unused : constant Integer := Reader.Read_Integer (1);
+               pragma Unreferenced (Unused);
+            begin
+               null;
+            end Read_Integer_From_Real;
+         begin
+            Reader.Enter_Sequence ("Mixed");
+            AUnit.Assertions.Assert
+              (Reader.Sequence_Length = 4,
+               "heterogeneous sequence length must be 4");
+            AUnit.Assertions.Assert
+              (Reader.Read_Integer (0) = 11,
+               "heterogeneous integer element must round trip");
+            AUnit.Assertions.Assert
+              (Approximately_Equal (Reader.Read_Real (1), 0.5, 1.0E-15),
+               "heterogeneous real element must round trip");
+            AUnit.Assertions.Assert
+              (Reader.Read_String (2) = "label",
+               "heterogeneous string element must round trip");
+            Assert_Same_Float32_Matrix
+              (Matrix,
+               Reader.Read_Mat (3),
+               "heterogeneous Mat element must round trip");
+            Assert_Raises_OpenCV_Error
+              (Read_Integer_From_Real'Access,
+               "Read_Integer must reject a real sequence element");
+            Reader.Leave_Structure;
+         end;
+      end;
+   end Heterogeneous_Sequence_Round_Trip;
+   procedure Sequence_Of_Maps_With_Nested_Sequence
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+   begin
+      declare
+         Storage : Persistence.File_Storage :=
+           Persistence.Create_Memory (Persistence.YAML);
+      begin
+         Storage.Begin_Sequence ("Features");
+
+         Storage.Begin_Map;
+         Storage.Write ("X", 167);
+         Storage.Write ("Y", 49);
+         Storage.Begin_Sequence ("LBP");
+         Storage.Append (1);
+         Storage.Append (0);
+         Storage.Append (0);
+         Storage.Append (1);
+         Storage.Append (1);
+         Storage.Append (0);
+         Storage.Append (1);
+         Storage.Append (1);
+         Storage.End_Structure;
+         Storage.End_Structure;
+
+         Storage.Begin_Map;
+         Storage.Write ("X", 298);
+         Storage.Write ("Y", 130);
+         Storage.Begin_Sequence ("LBP");
+         Storage.Append (0);
+         Storage.Append (0);
+         Storage.Append (0);
+         Storage.Append (1);
+         Storage.Append (0);
+         Storage.Append (0);
+         Storage.Append (1);
+         Storage.Append (1);
+         Storage.End_Structure;
+         Storage.End_Structure;
+
+         Storage.End_Structure;
+
+         declare
+            Serialized : constant String := Storage.Close_And_Get_Text;
+            Reader     : Persistence.File_Storage :=
+              Persistence.Open_Memory (Serialized);
+         begin
+            Reader.Enter_Sequence ("Features");
+            AUnit.Assertions.Assert
+              (Reader.Sequence_Length = 2,
+               "features sequence length must be 2");
+
+            Reader.Enter_Map (0);
+            AUnit.Assertions.Assert
+              (Reader.Read_Integer ("X") = 167, "feature 0 X must match");
+            AUnit.Assertions.Assert
+              (Reader.Read_Integer ("Y") = 49, "feature 0 Y must match");
+            Reader.Enter_Sequence ("LBP");
+            AUnit.Assertions.Assert
+              (Reader.Sequence_Length = 8, "feature 0 LBP length must be 8");
+            AUnit.Assertions.Assert
+              (Reader.Read_Integer (0) = 1
+               and then Reader.Read_Integer (3) = 1
+               and then Reader.Read_Integer (7) = 1,
+               "feature 0 LBP values must match");
+            Reader.Leave_Structure;
+            Reader.Leave_Structure;
+
+            Reader.Enter_Map (1);
+            AUnit.Assertions.Assert
+              (Reader.Read_Integer ("X") = 298, "feature 1 X must match");
+            AUnit.Assertions.Assert
+              (Reader.Read_Integer ("Y") = 130, "feature 1 Y must match");
+            Reader.Enter_Sequence ("LBP");
+            AUnit.Assertions.Assert
+              (Reader.Read_Integer (3) = 1
+               and then Reader.Read_Integer (6) = 1
+               and then Reader.Read_Integer (7) = 1,
+               "feature 1 LBP values must match");
+            Reader.Leave_Structure;
+            Reader.Leave_Structure;
+            Reader.Leave_Structure;
+         end;
+      end;
+   end Sequence_Of_Maps_With_Nested_Sequence;
+
+   procedure Empty_Map_And_Sequence_Are_Present
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+   begin
+      declare
+         Storage : Persistence.File_Storage :=
+           Persistence.Create_Memory (Persistence.YAML);
+      begin
+         Storage.Begin_Map ("Empty_Map");
+         Storage.End_Structure;
+         Storage.Begin_Sequence ("Empty_Sequence");
+         Storage.End_Structure;
+
+         declare
+            Serialized : constant String := Storage.Close_And_Get_Text;
+            Reader     : Persistence.File_Storage :=
+              Persistence.Open_Memory (Serialized);
+
+            procedure Enter_Missing_Map is
+            begin
+               Reader.Enter_Map ("Missing_Map");
+            end Enter_Missing_Map;
+
+            procedure Enter_Missing_Sequence is
+            begin
+               Reader.Enter_Sequence ("Missing_Sequence");
+            end Enter_Missing_Sequence;
+         begin
+            Reader.Enter_Map ("Empty_Map");
+            Reader.Leave_Structure;
+            Reader.Enter_Sequence ("Empty_Sequence");
+            AUnit.Assertions.Assert
+              (Reader.Sequence_Length = 0, "empty sequence length must be 0");
+            Reader.Leave_Structure;
+            Assert_Raises_OpenCV_Error
+              (Enter_Missing_Map'Access,
+               "a missing map must remain distinct from an empty map");
+            Assert_Raises_OpenCV_Error
+              (Enter_Missing_Sequence'Access,
+               "a missing sequence must remain distinct from an empty "
+               & "sequence");
+         end;
+      end;
+   end Empty_Map_And_Sequence_Are_Present;
+
+   procedure JSON_Hierarchy_Round_Trip (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Escaped : constant String := "quote "" and backslash \ path";
+   begin
+      declare
+         Storage : Persistence.File_Storage :=
+           Persistence.Create_Memory (Persistence.JSON);
+      begin
+         Storage.Begin_Map ("Camera");
+         Storage.Write ("Name", Escaped);
+         Storage.Begin_Sequence ("Coefficients");
+         Storage.Append (0.1);
+         Storage.Append (-0.02);
+         Storage.End_Structure;
+         Storage.End_Structure;
+
+         declare
+            Serialized : constant String := Storage.Close_And_Get_Text;
+            Reader     : Persistence.File_Storage :=
+              Persistence.Open_Memory (Serialized);
+         begin
+            Reader.Enter_Map ("Camera");
+            AUnit.Assertions.Assert
+              (Reader.Read_String ("Name") = Escaped,
+               "JSON nested escaped string must round trip");
+            Reader.Enter_Sequence ("Coefficients");
+            AUnit.Assertions.Assert
+              (Reader.Sequence_Length = 2, "JSON nested sequence length");
+            AUnit.Assertions.Assert
+              (Approximately_Equal (Reader.Read_Real (0), 0.1, 1.0E-15),
+               "JSON nested sequence first real");
+            AUnit.Assertions.Assert
+              (Approximately_Equal (Reader.Read_Real (1), -0.02, 1.0E-15),
+               "JSON nested sequence second real");
+            Reader.Leave_Structure;
+            Reader.Leave_Structure;
+         end;
+      end;
+   end JSON_Hierarchy_Round_Trip;
+
+   procedure XML_Hierarchy_Round_Trip (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Path : constant String :=
+        Test_Path ("opencvcore_ada_persistence_hierarchy.xml");
+   begin
+      Prepare (Path);
+      begin
+         declare
+            Storage : Persistence.File_Storage :=
+              Persistence.Open (Path, Persistence.Write_Only);
+         begin
+            Storage.Begin_Map ("Camera");
+            Storage.Write ("Count", 3);
+            Storage.Begin_Sequence ("Values");
+            Storage.Append (8);
+            Storage.Append (9);
+            Storage.End_Structure;
+            Storage.End_Structure;
+         end;
+
+         declare
+            Reader : Persistence.File_Storage :=
+              Persistence.Open (Path, Persistence.Read_Only);
+         begin
+            Reader.Enter_Map ("Camera");
+            AUnit.Assertions.Assert
+              (Reader.Read_Integer ("Count") = 3,
+               "XML nested integer must round trip");
+            Reader.Enter_Sequence ("Values");
+            AUnit.Assertions.Assert
+              (Reader.Sequence_Length = 2, "XML nested sequence length");
+            AUnit.Assertions.Assert
+              (Reader.Read_Integer (0) = 8
+               and then Reader.Read_Integer (1) = 9,
+               "XML nested sequence values must match");
+            Reader.Leave_Structure;
+            Reader.Leave_Structure;
+         end;
+      exception
+         when others =>
+            Cleanup (Path);
+            raise;
+      end;
+      Cleanup (Path);
+   end XML_Hierarchy_Round_Trip;
+
+   procedure Nested_Non_Contiguous_Mat_Round_Trip
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 4,
+           Columns      => 5,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Region : OpenCV.Core.Mat;
+   begin
+      for Row in 0 .. 3 loop
+         for Column in 0 .. 4 loop
+            OpenCV.Core.UInt8_Access.Set
+              (Parent, Row, Column, Interfaces.Unsigned_8 (Row * 10 + Column));
+         end loop;
+      end loop;
+
+      Region := Parent.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+      AUnit.Assertions.Assert
+        (not Region.Is_Continuous, "Region fixture must be non-contiguous");
+
+      declare
+         Storage : Persistence.File_Storage :=
+           Persistence.Create_Memory (Persistence.YAML);
+      begin
+         Storage.Begin_Map ("Nested");
+         Storage.Write ("Region", Region);
+         Storage.End_Structure;
+
+         declare
+            Serialized : constant String := Storage.Close_And_Get_Text;
+            Reader     : Persistence.File_Storage :=
+              Persistence.Open_Memory (Serialized);
+            Loaded     : OpenCV.Core.Mat;
+         begin
+            Reader.Enter_Map ("Nested");
+            Loaded := Reader.Read_Mat ("Region");
+            AUnit.Assertions.Assert
+              (Loaded.Rows = 2 and then Loaded.Columns = 3,
+               "nested Region must keep its logical dimensions");
+            AUnit.Assertions.Assert
+              (OpenCV.Core.UInt8_Access.Get (Loaded, 0, 0) = 11
+               and then OpenCV.Core.UInt8_Access.Get (Loaded, 1, 2) = 23,
+               "nested Region must contain only the ROI values");
+            AUnit.Assertions.Assert
+              (OpenCV.Core.UInt8_Access.Get (Parent, 0, 0) = 0
+               and then OpenCV.Core.UInt8_Access.Get (Region, 0, 0) = 11,
+               "nested Region write must leave parent and Region unchanged");
+            Reader.Leave_Structure;
+         end;
+      end;
+   end Nested_Non_Contiguous_Mat_Round_Trip;
+
+   procedure Writer_State_Misuse_Is_Rejected (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Storage : Persistence.File_Storage :=
+        Persistence.Create_Memory (Persistence.YAML);
+
+      procedure Append_At_Root is
+      begin
+         Storage.Append (1);
+      end Append_At_Root;
+
+      procedure Unnamed_Map_At_Root is
+      begin
+         Storage.Begin_Map;
+      end Unnamed_Map_At_Root;
+
+      procedure Unnamed_Sequence_At_Root is
+      begin
+         Storage.Begin_Sequence;
+      end Unnamed_Sequence_At_Root;
+
+      procedure End_At_Root is
+      begin
+         Storage.End_Structure;
+      end End_At_Root;
+
+      procedure Append_Inside_Map is
+      begin
+         Storage.Append (2);
+      end Append_Inside_Map;
+
+      procedure Named_Write_Inside_Sequence is
+      begin
+         Storage.Write ("Named", 3);
+      end Named_Write_Inside_Sequence;
+
+      procedure Named_Map_Inside_Sequence is
+      begin
+         Storage.Begin_Map ("Named");
+      end Named_Map_Inside_Sequence;
+
+      procedure Named_Sequence_Inside_Sequence is
+      begin
+         Storage.Begin_Sequence ("Named");
+      end Named_Sequence_Inside_Sequence;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Append_At_Root'Access, "Append must reject the root mapping");
+      Assert_Raises_OpenCV_Error
+        (Unnamed_Map_At_Root'Access, "unnamed Begin_Map must reject root");
+      Assert_Raises_OpenCV_Error
+        (Unnamed_Sequence_At_Root'Access,
+         "unnamed Begin_Sequence must reject root");
+      Assert_Raises_OpenCV_Error
+        (End_At_Root'Access, "End_Structure must reject the implicit root");
+
+      Storage.Begin_Map ("Inner");
+      Assert_Raises_OpenCV_Error
+        (Append_Inside_Map'Access, "Append must reject a mapping context");
+      Storage.End_Structure;
+
+      Storage.Begin_Sequence ("Items");
+      Assert_Raises_OpenCV_Error
+        (Named_Write_Inside_Sequence'Access,
+         "named Write must reject a sequence context");
+      Assert_Raises_OpenCV_Error
+        (Named_Map_Inside_Sequence'Access,
+         "named Begin_Map must reject a sequence context");
+      Assert_Raises_OpenCV_Error
+        (Named_Sequence_Inside_Sequence'Access,
+         "named Begin_Sequence must reject a sequence context");
+      Storage.End_Structure;
+   end Writer_State_Misuse_Is_Rejected;
+
+   procedure Unbalanced_Memory_Close_Is_Recoverable
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Storage : Persistence.File_Storage :=
+        Persistence.Create_Memory (Persistence.YAML);
+
+      procedure Close_While_Open is
+         Unused : constant String := Storage.Close_And_Get_Text;
+         pragma Unreferenced (Unused);
+      begin
+         null;
+      end Close_While_Open;
+   begin
+      Storage.Begin_Map ("Open");
+      Assert_Raises_OpenCV_Error
+        (Close_While_Open'Access,
+         "Close_And_Get_Text must reject an unclosed structure");
+      Storage.Write ("Count", 5);
+      Storage.End_Structure;
+
+      declare
+         Serialized : constant String := Storage.Close_And_Get_Text;
+         Reader     : Persistence.File_Storage :=
+           Persistence.Open_Memory (Serialized);
+      begin
+         Reader.Enter_Map ("Open");
+         AUnit.Assertions.Assert
+           (Reader.Read_Integer ("Count") = 5,
+            "recovered Close_And_Get_Text must persist the closed map");
+         Reader.Leave_Structure;
+      end;
+   end Unbalanced_Memory_Close_Is_Recoverable;
+   procedure Reader_State_Misuse_Is_Rejected (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Writer : Persistence.File_Storage :=
+        Persistence.Create_Memory (Persistence.YAML);
+   begin
+      Writer.Write ("Count", 1);
+      Writer.Begin_Map ("Inner");
+      Writer.Write ("X", 2);
+      Writer.End_Structure;
+      Writer.Begin_Sequence ("Items");
+      Writer.Append (3);
+      Writer.End_Structure;
+
+      declare
+         Serialized : constant String := Writer.Close_And_Get_Text;
+         Reader     : Persistence.File_Storage :=
+           Persistence.Open_Memory (Serialized);
+
+         procedure Length_At_Root is
+            Unused : constant Natural := Reader.Sequence_Length;
+            pragma Unreferenced (Unused);
+         begin
+            null;
+         end Length_At_Root;
+
+         procedure Indexed_Read_At_Root is
+            Unused : constant Integer := Reader.Read_Integer (0);
+            pragma Unreferenced (Unused);
+         begin
+            null;
+         end Indexed_Read_At_Root;
+
+         procedure Indexed_Enter_At_Root is
+         begin
+            Reader.Enter_Map (0);
+         end Indexed_Enter_At_Root;
+
+         procedure Leave_At_Root is
+         begin
+            Reader.Leave_Structure;
+         end Leave_At_Root;
+
+         procedure Indexed_Read_Inside_Map is
+            Unused : constant Integer := Reader.Read_Integer (0);
+            pragma Unreferenced (Unused);
+         begin
+            null;
+         end Indexed_Read_Inside_Map;
+
+         procedure Named_Read_Inside_Sequence is
+            Unused : constant Integer := Reader.Read_Integer ("Name");
+            pragma Unreferenced (Unused);
+         begin
+            null;
+         end Named_Read_Inside_Sequence;
+
+         procedure Named_Enter_Inside_Sequence is
+         begin
+            Reader.Enter_Map ("Name");
+         end Named_Enter_Inside_Sequence;
+      begin
+         Assert_Raises_OpenCV_Error
+           (Length_At_Root'Access, "Sequence_Length must reject root");
+         Assert_Raises_OpenCV_Error
+           (Indexed_Read_At_Root'Access,
+            "indexed Read_Integer must reject root");
+         Assert_Raises_OpenCV_Error
+           (Indexed_Enter_At_Root'Access,
+            "indexed Enter_Map must reject root");
+         Assert_Raises_OpenCV_Error
+           (Leave_At_Root'Access, "Leave_Structure must reject the root");
+
+         Reader.Enter_Map ("Inner");
+         Assert_Raises_OpenCV_Error
+           (Indexed_Read_Inside_Map'Access,
+            "indexed read must reject a mapping context");
+         Reader.Leave_Structure;
+
+         Reader.Enter_Sequence ("Items");
+         Assert_Raises_OpenCV_Error
+           (Named_Read_Inside_Sequence'Access,
+            "named Read_Integer must reject a sequence context");
+         Assert_Raises_OpenCV_Error
+           (Named_Enter_Inside_Sequence'Access,
+            "named Enter_Map must reject a sequence context");
+         Reader.Leave_Structure;
+      end;
+   end Reader_State_Misuse_Is_Rejected;
+
+   procedure Wrong_Collection_Type_Is_Rejected (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Writer : Persistence.File_Storage :=
+        Persistence.Create_Memory (Persistence.YAML);
+   begin
+      Writer.Begin_Map ("One_Map");
+      Writer.Write ("X", 1);
+      Writer.End_Structure;
+      Writer.Begin_Sequence ("One_Sequence");
+      Writer.Begin_Map;
+      Writer.Write ("Y", 2);
+      Writer.End_Structure;
+      Writer.End_Structure;
+
+      declare
+         Serialized : constant String := Writer.Close_And_Get_Text;
+         Reader     : Persistence.File_Storage :=
+           Persistence.Open_Memory (Serialized);
+
+         procedure Enter_Map_As_Sequence is
+         begin
+            Reader.Enter_Sequence ("One_Map");
+         end Enter_Map_As_Sequence;
+
+         procedure Enter_Sequence_As_Map is
+         begin
+            Reader.Enter_Map ("One_Sequence");
+         end Enter_Sequence_As_Map;
+
+         procedure Enter_Map_As_Indexed_Sequence is
+         begin
+            Reader.Enter_Sequence (0);
+         end Enter_Map_As_Indexed_Sequence;
+      begin
+         Assert_Raises_OpenCV_Error
+           (Enter_Map_As_Sequence'Access,
+            "Enter_Sequence must reject a mapping node");
+         Assert_Raises_OpenCV_Error
+           (Enter_Sequence_As_Map'Access,
+            "Enter_Map must reject a sequence node");
+
+         Reader.Enter_Sequence ("One_Sequence");
+         Assert_Raises_OpenCV_Error
+           (Enter_Map_As_Indexed_Sequence'Access,
+            "indexed Enter_Sequence must reject a mapping element");
+         Reader.Leave_Structure;
+      end;
+   end Wrong_Collection_Type_Is_Rejected;
+   procedure Out_Of_Range_Index_Is_Rejected (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Writer : Persistence.File_Storage :=
+        Persistence.Create_Memory (Persistence.YAML);
+   begin
+      Writer.Begin_Sequence ("Values");
+      Writer.Append (1);
+      Writer.Append (2);
+      Writer.End_Structure;
+
+      declare
+         Serialized : constant String := Writer.Close_And_Get_Text;
+         Reader     : Persistence.File_Storage :=
+           Persistence.Open_Memory (Serialized);
+
+         procedure Read_At_Length is
+            Unused : constant Integer :=
+              Reader.Read_Integer (Reader.Sequence_Length);
+            pragma Unreferenced (Unused);
+         begin
+            null;
+         end Read_At_Length;
+      begin
+         Reader.Enter_Sequence ("Values");
+         Assert_Raises_OpenCV_Error
+           (Read_At_Length'Access,
+            "indexed read must reject Sequence_Length as an index");
+         Reader.Leave_Structure;
+      end;
+   end Out_Of_Range_Index_Is_Rejected;
+
+   procedure Navigation_Unwind_Preserves_Root (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Writer : Persistence.File_Storage :=
+        Persistence.Create_Memory (Persistence.YAML);
+   begin
+      Writer.Write ("Root", 99);
+      Writer.Begin_Map ("Outer");
+      Writer.Begin_Sequence ("Middle");
+      Writer.Begin_Map;
+      Writer.Begin_Sequence ("Inner");
+      Writer.Append (1);
+      Writer.End_Structure;
+      Writer.End_Structure;
+      Writer.End_Structure;
+      Writer.End_Structure;
+
+      declare
+         Serialized : constant String := Writer.Close_And_Get_Text;
+         Reader     : Persistence.File_Storage :=
+           Persistence.Open_Memory (Serialized);
+      begin
+         Reader.Enter_Map ("Outer");
+         Reader.Enter_Sequence ("Middle");
+         Reader.Enter_Map (0);
+         Reader.Enter_Sequence ("Inner");
+         AUnit.Assertions.Assert
+           (Reader.Read_Integer (0) = 1, "deepest sequence value must match");
+         Reader.Leave_Structure;
+         Reader.Leave_Structure;
+         Reader.Leave_Structure;
+         Reader.Leave_Structure;
+         AUnit.Assertions.Assert
+           (Reader.Read_Integer ("Root") = 99,
+            "root value must remain readable after deep unwind");
+      end;
+   end Navigation_Unwind_Preserves_Root;
 
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
@@ -1499,6 +2224,58 @@ package body Persistence_Tests is
         (Caller.Create
            ("Memory integer INT_MIN is rejected",
             Memory_Integer_Min_Is_Rejected'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Nested map round trip", Nested_Map_Round_Trip'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Scalar sequence round trip", Scalar_Sequence_Round_Trip'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Heterogeneous sequence round trip",
+            Heterogeneous_Sequence_Round_Trip'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sequence of maps with nested sequence",
+            Sequence_Of_Maps_With_Nested_Sequence'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Empty map and sequence are present",
+            Empty_Map_And_Sequence_Are_Present'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("JSON hierarchy round trip", JSON_Hierarchy_Round_Trip'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("XML hierarchy round trip", XML_Hierarchy_Round_Trip'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Nested non-contiguous Mat round trip",
+            Nested_Non_Contiguous_Mat_Round_Trip'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Writer state misuse is rejected",
+            Writer_State_Misuse_Is_Rejected'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Unbalanced memory close is recoverable",
+            Unbalanced_Memory_Close_Is_Recoverable'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Reader state misuse is rejected",
+            Reader_State_Misuse_Is_Rejected'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Wrong collection type is rejected",
+            Wrong_Collection_Type_Is_Rejected'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Out-of-range index is rejected",
+            Out_Of_Range_Index_Is_Rejected'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Navigation unwind preserves root",
+            Navigation_Unwind_Preserves_Root'Access));
       return Result'Access;
    end Suite;
 

@@ -1481,6 +1481,14 @@ opencv_core_file_storage_read_string(
 #define OPENCV_CORE_FILE_STORAGE_FORMAT_JSON ((int32_t)2)
 
 /*
+ * Stable FileStorage structure-kind identifiers for the C ABI. These
+ * are translated explicitly to cv::FileNode::MAP / cv::FileNode::SEQ
+ * by the shim and are not OpenCV FileNode flags.
+ */
+#define OPENCV_CORE_FILE_STORAGE_STRUCTURE_MAP ((int32_t)0)
+#define OPENCV_CORE_FILE_STORAGE_STRUCTURE_SEQUENCE ((int32_t)1)
+
+/*
  * Opens a memory-backed cv::FileStorage for writing and returns a newly
  * owned handle. format must be one of the
  * OPENCV_CORE_FILE_STORAGE_FORMAT_* identifiers above. On success
@@ -1523,6 +1531,107 @@ opencv_core_status
 opencv_core_file_storage_finish_memory_write(
     opencv_core_file_storage_handle *storage, char *buffer,
     uint64_t capacity, uint64_t *out_length);
+
+/*
+ * Starts a nested mapping or sequence. kind must be one of the
+ * OPENCV_CORE_FILE_STORAGE_STRUCTURE_* identifiers above. name is a
+ * borrowed NUL-terminated node name. A nonempty name creates a named
+ * child of the current mapping or root. An empty string creates an
+ * unnamed sequence element and is valid only while writing a sequence.
+ * FileNode::FLOW and typeName are not exposed.
+ */
+opencv_core_status
+opencv_core_file_storage_begin_structure(
+    opencv_core_file_storage_handle *storage, const char *name, int32_t kind);
+
+/*
+ * Ends the current nested mapping or sequence opened by
+ * begin_structure. The implicit root mapping cannot be closed.
+ * OpenCV endWriteStruct is invoked before the ABI write stack is
+ * popped. An empty write stack is a failure.
+ */
+opencv_core_status
+opencv_core_file_storage_end_structure(
+    opencv_core_file_storage_handle *storage);
+
+/*
+ * Enters a named child mapping or sequence. kind must be one of the
+ * OPENCV_CORE_FILE_STORAGE_STRUCTURE_* identifiers. The child must
+ * exist and match kind. Named entry is valid at root or inside a
+ * mapping. FileNode remains internal to the handle.
+ */
+opencv_core_status
+opencv_core_file_storage_enter_named_structure(
+    opencv_core_file_storage_handle *storage, const char *name, int32_t kind);
+
+/*
+ * Enters an indexed child mapping or sequence of the current sequence.
+ * kind must be one of the OPENCV_CORE_FILE_STORAGE_STRUCTURE_*
+ * identifiers. index is zero-based. The child must exist and match
+ * kind. Indexed entry is valid only inside a sequence.
+ */
+opencv_core_status
+opencv_core_file_storage_enter_indexed_structure(
+    opencv_core_file_storage_handle *storage, uint64_t index, int32_t kind);
+
+/*
+ * Leaves the current read mapping or sequence and returns to the
+ * parent context. The implicit root cannot be left.
+ */
+opencv_core_status
+opencv_core_file_storage_leave_structure(
+    opencv_core_file_storage_handle *storage);
+
+/*
+ * Returns FileNode::size of the current sequence. Valid only while
+ * the current read context is a sequence. On every failure
+ * *out_length is 0 when out_length is non-null.
+ */
+opencv_core_status
+opencv_core_file_storage_sequence_length(
+    const opencv_core_file_storage_handle *storage, uint64_t *out_length);
+
+/*
+ * Reads the indexed current-sequence element as a Mat. A missing or
+ * out-of-range index is a failure. On success out_mat receives one
+ * independently owned Mat handle. On every failure out_mat remains
+ * null.
+ */
+opencv_core_status
+opencv_core_file_storage_read_mat_at(
+    const opencv_core_file_storage_handle *storage, uint64_t index,
+    opencv_core_mat_handle **out_mat);
+
+/*
+ * Reads the indexed current-sequence element as a signed 32-bit
+ * integer. The node must be an OpenCV integer node. On every failure
+ * *out_value is 0 when out_value is non-null.
+ */
+opencv_core_status
+opencv_core_file_storage_read_int_at(
+    const opencv_core_file_storage_handle *storage, uint64_t index,
+    int32_t *out_value);
+
+/*
+ * Reads the indexed current-sequence element as a double. A real node
+ * returns its exact OpenCV value. An integer node is widened exactly
+ * to double. On every failure *out_value is 0.0 when out_value is
+ * non-null.
+ */
+opencv_core_status
+opencv_core_file_storage_read_double_at(
+    const opencv_core_file_storage_handle *storage, uint64_t index,
+    double *out_value);
+
+/*
+ * Reads the indexed current-sequence element as a string using a
+ * caller-owned buffer. Query and copy modes match
+ * opencv_core_file_storage_read_string.
+ */
+opencv_core_status
+opencv_core_file_storage_read_string_at(
+    const opencv_core_file_storage_handle *storage, uint64_t index,
+    char *buffer, uint64_t capacity, uint64_t *out_length);
 
 #ifdef __cplusplus
 }

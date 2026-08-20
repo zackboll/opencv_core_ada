@@ -1074,6 +1074,9 @@ package OpenCV.Internal.C_API is
    Storage_Format_YAML : constant C_Int32 := 1;
    Storage_Format_JSON : constant C_Int32 := 2;
 
+   Storage_Structure_Map      : constant C_Int32 := 0;
+   Storage_Structure_Sequence : constant C_Int32 := 1;
+
    function File_Storage_Open
      (Filename : Interfaces.C.char_array;
       Mode     : C_Int32;
@@ -1187,5 +1190,87 @@ package OpenCV.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_core_file_storage_read_string";
+
+   function File_Storage_Begin_Structure
+     (Self : File_Storage_Handle;
+      Name : Interfaces.C.char_array;
+      Kind : C_Int32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_file_storage_begin_structure";
+
+   function File_Storage_End_Structure
+     (Self : File_Storage_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_file_storage_end_structure";
+
+   function File_Storage_Enter_Named_Structure
+     (Self : File_Storage_Handle;
+      Name : Interfaces.C.char_array;
+      Kind : C_Int32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_file_storage_enter_named_structure";
+
+   function File_Storage_Enter_Indexed_Structure
+     (Self : File_Storage_Handle; Index : C_UInt64; Kind : C_Int32)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_file_storage_enter_indexed_structure";
+
+   function File_Storage_Leave_Structure
+     (Self : File_Storage_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_file_storage_leave_structure";
+
+   function File_Storage_Sequence_Length
+     (Self : File_Storage_Handle; Out_Length : access C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_file_storage_sequence_length";
+
+   function File_Storage_Read_Mat_At
+     (Self : File_Storage_Handle; Index : C_UInt64; Result : access Mat_Handle)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_file_storage_read_mat_at";
+
+   function File_Storage_Read_Int_At
+     (Self : File_Storage_Handle; Index : C_UInt64; Result : access C_Int32)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_file_storage_read_int_at";
+
+   function File_Storage_Read_Double_At
+     (Self : File_Storage_Handle; Index : C_UInt64; Result : access C_Double)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_file_storage_read_double_at";
+
+   function File_Storage_Read_String_At
+     (Self       : File_Storage_Handle;
+      Index      : C_UInt64;
+      Buffer     : System.Address;
+      Capacity   : C_UInt64;
+      Out_Length : access C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_file_storage_read_string_at";
 
 end OpenCV.Internal.C_API;

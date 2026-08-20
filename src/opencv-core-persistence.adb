@@ -516,6 +516,298 @@ package body OpenCV.Core.Persistence is
       end;
    end Read_String;
 
+   procedure Begin_Named_Structure
+     (Self : in out File_Storage;
+      Name : String;
+      Kind : OpenCV.Internal.C_API.C_Int32)
+   is
+      Status : OpenCV.Internal.C_API.Status;
+   begin
+      Require_Open (Self, Write_Only, "File_Storage begin structure");
+      Validate_Node_Name (Name);
+
+      declare
+         C_Name : constant Interfaces.C.char_array := Interfaces.C.To_C (Name);
+      begin
+         Status :=
+           OpenCV.Internal.C_API.File_Storage_Begin_Structure
+             (Self => Self.Handle, Name => C_Name, Kind => Kind);
+      end;
+
+      Raise_On_Error (Status, "File_Storage begin structure");
+   end Begin_Named_Structure;
+
+   procedure Begin_Unnamed_Structure
+     (Self : in out File_Storage; Kind : OpenCV.Internal.C_API.C_Int32)
+   is
+      Status : OpenCV.Internal.C_API.Status;
+      C_Name : constant Interfaces.C.char_array := Interfaces.C.To_C ("");
+   begin
+      Require_Open (Self, Write_Only, "File_Storage begin structure");
+      Status :=
+        OpenCV.Internal.C_API.File_Storage_Begin_Structure
+          (Self => Self.Handle, Name => C_Name, Kind => Kind);
+      Raise_On_Error (Status, "File_Storage begin structure");
+   end Begin_Unnamed_Structure;
+
+   procedure Begin_Map (Self : in out File_Storage; Name : String) is
+   begin
+      Begin_Named_Structure
+        (Self, Name, OpenCV.Internal.C_API.Storage_Structure_Map);
+   end Begin_Map;
+
+   procedure Begin_Map (Self : in out File_Storage) is
+   begin
+      Begin_Unnamed_Structure
+        (Self, OpenCV.Internal.C_API.Storage_Structure_Map);
+   end Begin_Map;
+
+   procedure Begin_Sequence (Self : in out File_Storage; Name : String) is
+   begin
+      Begin_Named_Structure
+        (Self, Name, OpenCV.Internal.C_API.Storage_Structure_Sequence);
+   end Begin_Sequence;
+
+   procedure Begin_Sequence (Self : in out File_Storage) is
+   begin
+      Begin_Unnamed_Structure
+        (Self, OpenCV.Internal.C_API.Storage_Structure_Sequence);
+   end Begin_Sequence;
+
+   procedure End_Structure (Self : in out File_Storage) is
+      Status : OpenCV.Internal.C_API.Status;
+   begin
+      Require_Open (Self, Write_Only, "File_Storage end structure");
+      Status := OpenCV.Internal.C_API.File_Storage_End_Structure (Self.Handle);
+      Raise_On_Error (Status, "File_Storage end structure");
+   end End_Structure;
+
+   procedure Append (Self : in out File_Storage; Value : Mat) is
+      Status : OpenCV.Internal.C_API.Status;
+      C_Name : constant Interfaces.C.char_array := Interfaces.C.To_C ("");
+   begin
+      Require_Open (Self, Write_Only, "File_Storage append");
+      Status :=
+        OpenCV.Internal.C_API.File_Storage_Write_Mat
+          (Self => Self.Handle, Name => C_Name, Value => Value.Handle);
+      Raise_On_Error (Status, "File_Storage append");
+   end Append;
+
+   procedure Append (Self : in out File_Storage; Value : Integer) is
+      Status : OpenCV.Internal.C_API.Status;
+      Stored : constant OpenCV.Internal.C_API.C_Int32 :=
+        To_OpenCV_Int32 (Value);
+      C_Name : constant Interfaces.C.char_array := Interfaces.C.To_C ("");
+   begin
+      Require_Open (Self, Write_Only, "File_Storage append");
+      Status :=
+        OpenCV.Internal.C_API.File_Storage_Write_Int
+          (Self => Self.Handle, Name => C_Name, Value => Stored);
+      Raise_On_Error (Status, "File_Storage append");
+   end Append;
+
+   procedure Append (Self : in out File_Storage; Value : Long_Float) is
+      Status : OpenCV.Internal.C_API.Status;
+      C_Name : constant Interfaces.C.char_array := Interfaces.C.To_C ("");
+   begin
+      Require_Open (Self, Write_Only, "File_Storage append");
+      Status :=
+        OpenCV.Internal.C_API.File_Storage_Write_Double
+          (Self  => Self.Handle,
+           Name  => C_Name,
+           Value => OpenCV.Internal.C_API.C_Double (Value));
+      Raise_On_Error (Status, "File_Storage append");
+   end Append;
+
+   procedure Append (Self : in out File_Storage; Value : String) is
+      Status  : OpenCV.Internal.C_API.Status;
+      C_Name  : constant Interfaces.C.char_array := Interfaces.C.To_C ("");
+      C_Value : constant Interfaces.C.char_array := Interfaces.C.To_C (Value);
+   begin
+      Require_Open (Self, Write_Only, "File_Storage append");
+      Validate_String_Value (Value);
+      Status :=
+        OpenCV.Internal.C_API.File_Storage_Write_String
+          (Self => Self.Handle, Name => C_Name, Value => C_Value);
+      Raise_On_Error (Status, "File_Storage append");
+   end Append;
+
+   procedure Enter_Named_Structure
+     (Self : in out File_Storage;
+      Name : String;
+      Kind : OpenCV.Internal.C_API.C_Int32)
+   is
+      Status : OpenCV.Internal.C_API.Status;
+   begin
+      Require_Open (Self, Read_Only, "File_Storage enter structure");
+      Validate_Node_Name (Name);
+
+      declare
+         C_Name : constant Interfaces.C.char_array := Interfaces.C.To_C (Name);
+      begin
+         Status :=
+           OpenCV.Internal.C_API.File_Storage_Enter_Named_Structure
+             (Self => Self.Handle, Name => C_Name, Kind => Kind);
+      end;
+
+      Raise_On_Error (Status, "File_Storage enter structure");
+   end Enter_Named_Structure;
+
+   procedure Enter_Indexed_Structure
+     (Self  : in out File_Storage;
+      Index : Natural;
+      Kind  : OpenCV.Internal.C_API.C_Int32)
+   is
+      Status : OpenCV.Internal.C_API.Status;
+   begin
+      Require_Open (Self, Read_Only, "File_Storage enter structure");
+      Status :=
+        OpenCV.Internal.C_API.File_Storage_Enter_Indexed_Structure
+          (Self  => Self.Handle,
+           Index => OpenCV.Internal.C_API.C_UInt64 (Index),
+           Kind  => Kind);
+      Raise_On_Error (Status, "File_Storage enter structure");
+   end Enter_Indexed_Structure;
+
+   procedure Enter_Map (Self : in out File_Storage; Name : String) is
+   begin
+      Enter_Named_Structure
+        (Self, Name, OpenCV.Internal.C_API.Storage_Structure_Map);
+   end Enter_Map;
+
+   procedure Enter_Map (Self : in out File_Storage; Index : Natural) is
+   begin
+      Enter_Indexed_Structure
+        (Self, Index, OpenCV.Internal.C_API.Storage_Structure_Map);
+   end Enter_Map;
+
+   procedure Enter_Sequence (Self : in out File_Storage; Name : String) is
+   begin
+      Enter_Named_Structure
+        (Self, Name, OpenCV.Internal.C_API.Storage_Structure_Sequence);
+   end Enter_Sequence;
+
+   procedure Enter_Sequence (Self : in out File_Storage; Index : Natural) is
+   begin
+      Enter_Indexed_Structure
+        (Self, Index, OpenCV.Internal.C_API.Storage_Structure_Sequence);
+   end Enter_Sequence;
+
+   procedure Leave_Structure (Self : in out File_Storage) is
+      Status : OpenCV.Internal.C_API.Status;
+   begin
+      Require_Open (Self, Read_Only, "File_Storage leave structure");
+      Status :=
+        OpenCV.Internal.C_API.File_Storage_Leave_Structure (Self.Handle);
+      Raise_On_Error (Status, "File_Storage leave structure");
+   end Leave_Structure;
+
+   function Sequence_Length (Self : File_Storage) return Natural is
+      Length : aliased OpenCV.Internal.C_API.C_UInt64 := 0;
+      Status : OpenCV.Internal.C_API.Status;
+   begin
+      Require_Open (Self, Read_Only, "File_Storage sequence length");
+      Status :=
+        OpenCV.Internal.C_API.File_Storage_Sequence_Length
+          (Self => Self.Handle, Out_Length => Length'Access);
+      Raise_On_Error (Status, "File_Storage sequence length");
+      return To_Ada_String_Length (Length);
+   end Sequence_Length;
+
+   function Read_Mat (Self : File_Storage; Index : Natural) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Require_Open (Self, Read_Only, "File_Storage read");
+      Status :=
+        OpenCV.Internal.C_API.File_Storage_Read_Mat_At
+          (Self   => Self.Handle,
+           Index  => OpenCV.Internal.C_API.C_UInt64 (Index),
+           Result => New_Handle'Access);
+      Raise_On_Error (Status, "File_Storage read");
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Read_Mat;
+
+   function Read_Integer (Self : File_Storage; Index : Natural) return Integer
+   is
+      Stored : aliased OpenCV.Internal.C_API.C_Int32 := 0;
+      Status : OpenCV.Internal.C_API.Status;
+   begin
+      Require_Open (Self, Read_Only, "File_Storage read");
+      Status :=
+        OpenCV.Internal.C_API.File_Storage_Read_Int_At
+          (Self   => Self.Handle,
+           Index  => OpenCV.Internal.C_API.C_UInt64 (Index),
+           Result => Stored'Access);
+      Raise_On_Error (Status, "File_Storage read");
+      return From_OpenCV_Int32 (Stored);
+   end Read_Integer;
+
+   function Read_Real (Self : File_Storage; Index : Natural) return Long_Float
+   is
+      Stored : aliased OpenCV.Internal.C_API.C_Double := 0.0;
+      Status : OpenCV.Internal.C_API.Status;
+   begin
+      Require_Open (Self, Read_Only, "File_Storage read");
+      Status :=
+        OpenCV.Internal.C_API.File_Storage_Read_Double_At
+          (Self   => Self.Handle,
+           Index  => OpenCV.Internal.C_API.C_UInt64 (Index),
+           Result => Stored'Access);
+      Raise_On_Error (Status, "File_Storage read");
+      return Long_Float (Stored);
+   end Read_Real;
+
+   function Read_String (Self : File_Storage; Index : Natural) return String is
+      Length : aliased OpenCV.Internal.C_API.C_UInt64 := 0;
+      Status : OpenCV.Internal.C_API.Status;
+   begin
+      Require_Open (Self, Read_Only, "File_Storage read");
+      Status :=
+        OpenCV.Internal.C_API.File_Storage_Read_String_At
+          (Self       => Self.Handle,
+           Index      => OpenCV.Internal.C_API.C_UInt64 (Index),
+           Buffer     => System.Null_Address,
+           Capacity   => 0,
+           Out_Length => Length'Access);
+      Raise_On_Error (Status, "File_Storage read");
+
+      declare
+         Ada_Length : constant Natural := To_Ada_String_Length (Length);
+      begin
+         if Ada_Length = 0 then
+            return "";
+         end if;
+
+         declare
+            Buffer :
+              Interfaces.C.char_array (1 .. Interfaces.C.size_t (Ada_Length));
+            Copied : aliased OpenCV.Internal.C_API.C_UInt64 := 0;
+         begin
+            Status :=
+              OpenCV.Internal.C_API.File_Storage_Read_String_At
+                (Self       => Self.Handle,
+                 Index      => OpenCV.Internal.C_API.C_UInt64 (Index),
+                 Buffer     => Buffer (Buffer'First)'Address,
+                 Capacity   => OpenCV.Internal.C_API.C_UInt64 (Ada_Length),
+                 Out_Length => Copied'Access);
+            Raise_On_Error (Status, "File_Storage read");
+
+            if Copied /= Length then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  "File_Storage read failed: string length changed");
+            end if;
+
+            return Interfaces.C.To_Ada (Buffer, Trim_Nul => False);
+         end;
+      end;
+   end Read_String;
+
    overriding
    procedure Finalize (Self : in out File_Storage) is
       Old_Handle : constant OpenCV.Internal.C_API.File_Storage_Handle :=

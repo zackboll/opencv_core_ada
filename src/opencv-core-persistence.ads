@@ -1,26 +1,37 @@
 with Ada.Finalization;
 private with OpenCV.Internal.C_API;
 
---  OpenCV XML/YAML/JSON persistence for named values.
+--  OpenCV XML/YAML/JSON persistence for named values and nested
+--  mappings and sequences.
 --
 --  File_Storage reads or writes named Mat, Integer, Long_Float, and
---  String values. Disk Open selects the format from the filename
---  extension: .xml, .yml, .yaml, or .json. Create_Memory writes to an
---  in-memory buffer in an explicit XML, YAML, or JSON format.
---  Open_Memory reads a previously serialized document and lets OpenCV
---  auto-detect the format from the text. Gzip, append, explicit disk
---  format flags, maps, sequences, comments, and a public FileNode API
---  are not part of this slice.
+--  String values, plus nested mappings and sequences of those values.
+--  Disk Open selects the format from the filename extension: .xml,
+--  .yml, .yaml, or .json. Create_Memory writes to an in-memory buffer
+--  in an explicit XML, YAML, or JSON format. Open_Memory reads a
+--  previously serialized document and lets OpenCV auto-detect the
+--  format from the text. Gzip, append, explicit disk format flags,
+--  comments, FLOW formatting, custom type names, map key enumeration,
+--  and a public FileNode API are not part of this slice.
 --
 --  File_Storage is limited and not copyable. Exactly one Ada object
 --  owns the underlying OpenCV FileStorage, which is released when the
---  Ada object is finalized.
+--  Ada object is finalized. Hierarchy is navigated through
+--  File_Storage itself; FileNode never appears in the public API.
+--
+--  The FileStorage root is an implicit mapping. Named Write,
+--  Begin_Map, Begin_Sequence, Read_*, Enter_Map, and Enter_Sequence
+--  are valid at root or inside a mapping. Unnamed Begin_Map /
+--  Begin_Sequence, Append, indexed Read_*, indexed Enter_*, and
+--  Sequence_Length are valid only inside a sequence. End_Structure
+--  and Leave_Structure cannot close or leave the implicit root.
 --
 --  Write borrows the source value for the duration of the call and does
 --  not modify it. Read operations return independently owned Ada values
 --  that remain valid after the storage is finalized. A missing name
---  raises OpenCV_Error. Stored 0, 0.0, empty String, and empty Mat
---  values are present nodes and remain distinguishable from absence.
+--  raises OpenCV_Error. Stored 0, 0.0, empty String, empty Mat, empty
+--  mapping, and empty sequence values are present nodes and remain
+--  distinguishable from absence.
 --
 --  Integer persistence uses OpenCV's signed 32-bit integer file node.
 --  Write rejects an Ada Integer outside that domain with OpenCV_Error
@@ -43,10 +54,14 @@ private with OpenCV.Internal.C_API;
 --  embedded NUL because they cross a NUL-terminated ABI. OpenCV 4.10
 --  memory-read measures the document with strlen.
 --
+--  Sequence indices are zero-based and match OpenCV FileNode
+--  indexing. An out-of-range index raises OpenCV_Error.
+--
 --  Close_And_Get_Text finalizes a memory Write_Only storage and
 --  returns the complete serialized document as an independently owned
---  Ada String. The storage is then closed. Disk storage and memory
---  readers reject Close_And_Get_Text.
+--  Ada String. The storage is then closed. Disk storage, memory
+--  readers, and writers with unclosed structures reject
+--  Close_And_Get_Text without closing the storage.
 --
 --  Non-contiguous Mats are supported.
 
@@ -79,9 +94,12 @@ package OpenCV.Core.Persistence is
    --  OpenCV writer, and returns the complete serialized document.
    --  Self becomes closed on a successful first finish even if a later
    --  Ada conversion fails. Subsequent Write, Read, and
-   --  Close_And_Get_Text calls raise OpenCV_Error. Disk storage and
-   --  memory readers raise OpenCV_Error. The returned String does not
+   --  Close_And_Get_Text calls raise OpenCV_Error. Disk storage,
+   --  memory readers, and writers with unclosed structures raise
+   --  OpenCV_Error. An unbalanced Close_And_Get_Text does not close
+   --  the writer. The returned String does not
    --  depend on Self.
+
    function Close_And_Get_Text (Self : in out File_Storage) return String;
 
    --  Writes Value under Name. Self must be an open Write_Only storage.
@@ -110,6 +128,68 @@ package OpenCV.Core.Persistence is
    --  or if Name is empty or contains an embedded NUL.
    procedure Write (Self : in out File_Storage; Name : String; Value : String);
 
+   --  Starts a named mapping child of the current root or mapping.
+   --  Raises OpenCV_Error if Self is not open for writing, if Name is
+   --  empty or contains an embedded NUL, or if the current write
+   --  context is a sequence.
+   procedure Begin_Map (Self : in out File_Storage; Name : String);
+
+   --  Starts an unnamed mapping element of the current sequence.
+   --  Raises OpenCV_Error if Self is not open for writing or if the
+   --  current write context is not a sequence.
+   procedure Begin_Map (Self : in out File_Storage);
+
+   --  Starts a named sequence child of the current root or mapping.
+   --  Raises OpenCV_Error if Self is not open for writing, if Name is
+   --  empty or contains an embedded NUL, or if the current write
+   --  context is a sequence.
+   procedure Begin_Sequence (Self : in out File_Storage; Name : String);
+
+   --  Starts an unnamed sequence element of the current sequence.
+   --  Raises OpenCV_Error if Self is not open for writing or if the
+   --  current write context is not a sequence.
+   procedure Begin_Sequence (Self : in out File_Storage);
+
+   --  Ends the current mapping or sequence opened by Begin_Map or
+   --  Begin_Sequence. The implicit root cannot be closed.
+   procedure End_Structure (Self : in out File_Storage);
+
+   --  Appends Value as the next element of the current sequence.
+   --  Valid only while the current write context is a sequence.
+   procedure Append (Self : in out File_Storage; Value : Mat);
+
+   procedure Append (Self : in out File_Storage; Value : Integer);
+
+   procedure Append (Self : in out File_Storage; Value : Long_Float);
+
+   --  Appends Value as a string sequence element. Raises OpenCV_Error
+   --  if Value contains an embedded NUL.
+   procedure Append (Self : in out File_Storage; Value : String);
+
+   --  Enters the named mapping child of the current root or mapping.
+   --  A missing name or a non-mapping node raises OpenCV_Error.
+   procedure Enter_Map (Self : in out File_Storage; Name : String);
+
+   --  Enters the indexed mapping child of the current sequence.
+   --  Index is zero-based. Valid only inside a sequence.
+   procedure Enter_Map (Self : in out File_Storage; Index : Natural);
+
+   --  Enters the named sequence child of the current root or mapping.
+   --  A missing name or a non-sequence node raises OpenCV_Error.
+   procedure Enter_Sequence (Self : in out File_Storage; Name : String);
+
+   --  Enters the indexed sequence child of the current sequence.
+   --  Index is zero-based. Valid only inside a sequence.
+   procedure Enter_Sequence (Self : in out File_Storage; Index : Natural);
+
+   --  Returns to the parent read context. The implicit root cannot be
+   --  left.
+   procedure Leave_Structure (Self : in out File_Storage);
+
+   --  Returns FileNode::size of the current sequence. Valid only
+   --  while the current read context is a sequence.
+   function Sequence_Length (Self : File_Storage) return Natural;
+
    --  Reads the named Mat. Self must be an open Read_Only storage. The
    --  result owns independent storage and does not depend on Self.
    --  A missing name raises OpenCV_Error. A present empty Mat returns
@@ -130,6 +210,23 @@ package OpenCV.Core.Persistence is
    --  raise OpenCV_Error. An actually stored empty string is returned
    --  as "".
    function Read_String (Self : File_Storage; Name : String) return String;
+
+   --  Reads the indexed current-sequence Mat. Index is zero-based.
+   --  Valid only while the current read context is a sequence.
+   function Read_Mat (Self : File_Storage; Index : Natural) return Mat;
+
+   --  Reads the indexed current-sequence integer node. Index is
+   --  zero-based. A real, string, Mat, or missing node raises
+   --  OpenCV_Error.
+   function Read_Integer (Self : File_Storage; Index : Natural) return Integer;
+
+   --  Reads the indexed current-sequence real node, or widens an
+   --  indexed integer node to Long_Float.
+   function Read_Real (Self : File_Storage; Index : Natural) return Long_Float;
+
+   --  Reads the indexed current-sequence string node. Numeric, Mat,
+   --  and missing nodes raise OpenCV_Error.
+   function Read_String (Self : File_Storage; Index : Natural) return String;
 
 private
 
