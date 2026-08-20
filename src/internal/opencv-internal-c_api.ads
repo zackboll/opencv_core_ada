@@ -1103,4 +1103,60 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_file_storage_read_mat";
 
+   function File_Storage_Write_Int
+     (Self  : File_Storage_Handle;
+      Name  : Interfaces.C.char_array;
+      Value : C_Int32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_file_storage_write_int";
+
+   function File_Storage_Read_Int
+     (Self   : File_Storage_Handle;
+      Name   : Interfaces.C.char_array;
+      Result : access C_Int32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_file_storage_read_int";
+
+   function File_Storage_Write_Double
+     (Self  : File_Storage_Handle;
+      Name  : Interfaces.C.char_array;
+      Value : C_Double) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_file_storage_write_double";
+
+   function File_Storage_Read_Double
+     (Self   : File_Storage_Handle;
+      Name   : Interfaces.C.char_array;
+      Result : access C_Double) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_file_storage_read_double";
+
+   function File_Storage_Write_String
+     (Self  : File_Storage_Handle;
+      Name  : Interfaces.C.char_array;
+      Value : Interfaces.C.char_array) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_file_storage_write_string";
+
+   function File_Storage_Read_String
+     (Self       : File_Storage_Handle;
+      Name       : Interfaces.C.char_array;
+      Buffer     : System.Address;
+      Capacity   : C_UInt64;
+      Out_Length : access C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_file_storage_read_string";
+
 end OpenCV.Internal.C_API;

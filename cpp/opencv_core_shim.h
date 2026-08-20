@@ -1400,6 +1400,76 @@ opencv_core_file_storage_read_mat(
     const opencv_core_file_storage_handle *storage, const char *name,
     opencv_core_mat_handle **out_mat);
 
+/*
+ * Writes a signed 32-bit integer under name using FileStorage::write.
+ * name is a borrowed NUL-terminated node name.
+ */
+opencv_core_status
+opencv_core_file_storage_write_int(
+    opencv_core_file_storage_handle *storage, const char *name,
+    int32_t value);
+
+/*
+ * Looks up name and reads it as a signed 32-bit integer. A missing node
+ * is a failure. The node must be an OpenCV integer node; a real node is
+ * rejected rather than rounded. On every failure *out_value is 0 when
+ * out_value is non-null.
+ */
+opencv_core_status
+opencv_core_file_storage_read_int(
+    const opencv_core_file_storage_handle *storage, const char *name,
+    int32_t *out_value);
+
+/*
+ * Writes a double under name using FileStorage::write. name is a
+ * borrowed NUL-terminated node name.
+ */
+opencv_core_status
+opencv_core_file_storage_write_double(
+    opencv_core_file_storage_handle *storage, const char *name,
+    double value);
+
+/*
+ * Looks up name and reads it as a double. A missing node is a failure.
+ * A real node returns its exact OpenCV value. An integer node is widened
+ * exactly to double. Strings and other node types are rejected. On every
+ * failure *out_value is 0.0 when out_value is non-null.
+ */
+opencv_core_status
+opencv_core_file_storage_read_double(
+    const opencv_core_file_storage_handle *storage, const char *name,
+    double *out_value);
+
+/*
+ * Writes a borrowed NUL-terminated string under name using
+ * FileStorage::write. OpenCV 4.10 persistence emitters measure string
+ * values with strlen, so embedded NUL cannot be persisted.
+ */
+opencv_core_status
+opencv_core_file_storage_write_string(
+    opencv_core_file_storage_handle *storage, const char *name,
+    const char *value);
+
+/*
+ * Looks up name and reads it as a string using a caller-owned buffer.
+ * A missing node or a non-string node is a failure. FileNode remains
+ * internal to the shim.
+ *
+ * Query mode: buffer == NULL and capacity == 0. On success *out_length
+ * is the exact byte count and no bytes are copied.
+ *
+ * Copy mode: buffer != NULL and capacity >= the value length. On
+ * success the exact bytes are copied and *out_length is that length.
+ * The buffer is not NUL-terminated by this function.
+ *
+ * On every failure *out_length is 0 when out_length is non-null, and
+ * no caller-visible bytes are written.
+ */
+opencv_core_status
+opencv_core_file_storage_read_string(
+    const opencv_core_file_storage_handle *storage, const char *name,
+    char *buffer, uint64_t capacity, uint64_t *out_length);
+
 #ifdef __cplusplus
 }
 #endif

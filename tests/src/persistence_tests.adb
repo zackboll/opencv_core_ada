@@ -477,6 +477,19 @@ package body Persistence_Tests is
             Assert_Raises_OpenCV_Error
               (Read_From_Writer'Access,
                "Read_Mat must reject Write_Only storage");
+
+            declare
+               procedure Read_Integer_From_Writer is
+                  Unused : constant Integer := Writer.Read_Integer ("Count");
+                  pragma Unreferenced (Unused);
+               begin
+                  null;
+               end Read_Integer_From_Writer;
+            begin
+               Assert_Raises_OpenCV_Error
+                 (Read_Integer_From_Writer'Access,
+                  "Read_Integer must reject Write_Only storage");
+            end;
          end;
 
          declare
@@ -488,9 +501,17 @@ package body Persistence_Tests is
             begin
                Reader.Write ("Matrix", Value);
             end Write_On_Reader;
+
+            procedure Write_Integer_On_Reader is
+            begin
+               Reader.Write ("Count", 1);
+            end Write_Integer_On_Reader;
          begin
             Assert_Raises_OpenCV_Error
               (Write_On_Reader'Access, "Write must reject Read_Only storage");
+            Assert_Raises_OpenCV_Error
+              (Write_Integer_On_Reader'Access,
+               "Write(Integer) must reject Read_Only storage");
          end;
       exception
          when others =>
@@ -581,6 +602,436 @@ package body Persistence_Tests is
       Cleanup (Path);
    end Invalid_Names_And_Filenames_Are_Rejected;
 
+   procedure Integer_Round_Trip (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Path : constant String :=
+        Test_Path ("opencvcore_ada_persistence_integers.yml");
+   begin
+      Prepare (Path);
+      begin
+         declare
+            Storage : Persistence.File_Storage :=
+              Persistence.Open (Path, Persistence.Write_Only);
+         begin
+            Storage.Write ("Positive", 123_456);
+            Storage.Write ("Negative", -123_456);
+            Storage.Write ("Zero", 0);
+            Storage.Write ("Max_Int32", 2_147_483_647);
+            Storage.Write ("Min_Int32", -2_147_483_648);
+         end;
+
+         declare
+            Storage : constant Persistence.File_Storage :=
+              Persistence.Open (Path, Persistence.Read_Only);
+         begin
+            AUnit.Assertions.Assert
+              (Storage.Read_Integer ("Positive") = 123_456,
+               "positive integer must round trip exactly");
+            AUnit.Assertions.Assert
+              (Storage.Read_Integer ("Negative") = -123_456,
+               "negative integer must round trip exactly");
+            AUnit.Assertions.Assert
+              (Storage.Read_Integer ("Zero") = 0,
+               "integer zero must round trip exactly");
+            AUnit.Assertions.Assert
+              (Storage.Read_Integer ("Max_Int32") = 2_147_483_647,
+               "signed 32-bit maximum must round trip exactly");
+            AUnit.Assertions.Assert
+              (Storage.Read_Integer ("Min_Int32") = -2_147_483_648,
+               "signed 32-bit minimum must round trip exactly");
+         end;
+      exception
+         when others =>
+            Cleanup (Path);
+            raise;
+      end;
+      Cleanup (Path);
+   end Integer_Round_Trip;
+
+   procedure Real_Round_Trip (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Path : constant String :=
+        Test_Path ("opencvcore_ada_persistence_reals.yml");
+   begin
+      Prepare (Path);
+      begin
+         declare
+            Storage : Persistence.File_Storage :=
+              Persistence.Open (Path, Persistence.Write_Only);
+         begin
+            Storage.Write ("Zero", 0.0);
+            Storage.Write ("Negative", -2.5);
+            Storage.Write ("Precise", 1.234_567_890_123_45);
+         end;
+
+         declare
+            Storage : constant Persistence.File_Storage :=
+              Persistence.Open (Path, Persistence.Read_Only);
+         begin
+            AUnit.Assertions.Assert
+              (Approximately_Equal (Storage.Read_Real ("Zero"), 0.0, 1.0E-15),
+               "real zero must round trip");
+            AUnit.Assertions.Assert
+              (Approximately_Equal
+                 (Storage.Read_Real ("Negative"), -2.5, 1.0E-15),
+               "negative real must round trip");
+            AUnit.Assertions.Assert
+              (Approximately_Equal
+                 (Storage.Read_Real ("Precise"),
+                  1.234_567_890_123_45,
+                  1.0E-15),
+               "Float64 real must round trip at binary64 precision");
+         end;
+      exception
+         when others =>
+            Cleanup (Path);
+            raise;
+      end;
+      Cleanup (Path);
+   end Real_Round_Trip;
+
+   procedure Integer_Widens_To_Real (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Path : constant String :=
+        Test_Path ("opencvcore_ada_persistence_int_to_real.yml");
+   begin
+      Prepare (Path);
+      begin
+         declare
+            Storage : Persistence.File_Storage :=
+              Persistence.Open (Path, Persistence.Write_Only);
+         begin
+            Storage.Write ("Count", 123_456_789);
+         end;
+
+         declare
+            Storage : constant Persistence.File_Storage :=
+              Persistence.Open (Path, Persistence.Read_Only);
+         begin
+            AUnit.Assertions.Assert
+              (Approximately_Equal
+                 (Storage.Read_Real ("Count"), 123_456_789.0, 0.0),
+               "Read_Real must widen an integer node exactly");
+         end;
+      exception
+         when others =>
+            Cleanup (Path);
+            raise;
+      end;
+      Cleanup (Path);
+   end Integer_Widens_To_Real;
+
+   procedure String_Round_Trip (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Path     : constant String :=
+        Test_Path ("opencvcore_ada_persistence_strings.yml");
+      Ordinary : constant String := "Front Camera";
+      Empty    : constant String := "";
+      Spaced   : constant String := "  leading and trailing  ";
+      Escaped  : constant String := "quote "" and backslash \ path";
+      Broken   : constant String := "line one" & ASCII.LF & "line two";
+   begin
+      Prepare (Path);
+      begin
+         declare
+            Storage : Persistence.File_Storage :=
+              Persistence.Open (Path, Persistence.Write_Only);
+         begin
+            Storage.Write ("Ordinary", Ordinary);
+            Storage.Write ("Empty", Empty);
+            Storage.Write ("Spaced", Spaced);
+            Storage.Write ("Escaped", Escaped);
+            Storage.Write ("Broken", Broken);
+         end;
+
+         declare
+            Storage : constant Persistence.File_Storage :=
+              Persistence.Open (Path, Persistence.Read_Only);
+         begin
+            AUnit.Assertions.Assert
+              (Storage.Read_String ("Ordinary") = Ordinary,
+               "ordinary text must round trip exactly");
+            AUnit.Assertions.Assert
+              (Storage.Read_String ("Empty") = Empty,
+               "empty string must round trip as a present empty value");
+            AUnit.Assertions.Assert
+              (Storage.Read_String ("Spaced") = Spaced,
+               "spaces must be preserved");
+            AUnit.Assertions.Assert
+              (Storage.Read_String ("Escaped") = Escaped,
+               "quotes and backslashes must round trip exactly");
+            AUnit.Assertions.Assert
+              (Storage.Read_String ("Broken") = Broken,
+               "a YAML line break in a string must round trip exactly");
+         end;
+      exception
+         when others =>
+            Cleanup (Path);
+            raise;
+      end;
+      Cleanup (Path);
+   end String_Round_Trip;
+
+   procedure Mixed_Named_Values_Round_Trip (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Path   : constant String :=
+        Test_Path ("opencvcore_ada_persistence_mixed.yml");
+      Matrix : constant OpenCV.Core.Mat := Make_Float32_Matrix;
+      Camera : constant String := "Front Camera";
+   begin
+      Prepare (Path);
+      begin
+         declare
+            Storage : Persistence.File_Storage :=
+              Persistence.Open (Path, Persistence.Write_Only);
+         begin
+            Storage.Write ("Iterations", 100);
+            Storage.Write ("Threshold", 0.001);
+            Storage.Write ("Camera_Name", Camera);
+            Storage.Write ("Camera_Matrix", Matrix);
+         end;
+
+         declare
+            Storage : constant Persistence.File_Storage :=
+              Persistence.Open (Path, Persistence.Read_Only);
+         begin
+            AUnit.Assertions.Assert
+              (Storage.Read_Integer ("Iterations") = 100,
+               "mixed file integer must round trip");
+            AUnit.Assertions.Assert
+              (Approximately_Equal
+                 (Storage.Read_Real ("Threshold"), 0.001, 1.0E-15),
+               "mixed file real must round trip");
+            AUnit.Assertions.Assert
+              (Storage.Read_String ("Camera_Name") = Camera,
+               "mixed file string must round trip");
+            Assert_Same_Float32_Matrix
+              (Matrix,
+               Storage.Read_Mat ("Camera_Matrix"),
+               "mixed file Mat must round trip");
+         end;
+      exception
+         when others =>
+            Cleanup (Path);
+            raise;
+      end;
+      Cleanup (Path);
+   end Mixed_Named_Values_Round_Trip;
+
+   procedure JSON_Scalar_And_String_Round_Trip (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Path    : constant String :=
+        Test_Path ("opencvcore_ada_persistence_scalars.json");
+      Escaped : constant String := "quote "" and slash / path";
+   begin
+      Prepare (Path);
+      begin
+         declare
+            Storage : Persistence.File_Storage :=
+              Persistence.Open (Path, Persistence.Write_Only);
+         begin
+            Storage.Write ("Threshold", 1.234_567_890_123_45);
+            Storage.Write ("Label", Escaped);
+         end;
+
+         declare
+            Storage : constant Persistence.File_Storage :=
+              Persistence.Open (Path, Persistence.Read_Only);
+         begin
+            AUnit.Assertions.Assert
+              (Approximately_Equal
+                 (Storage.Read_Real ("Threshold"),
+                  1.234_567_890_123_45,
+                  1.0E-15),
+               "JSON real must round trip at binary64 precision");
+            AUnit.Assertions.Assert
+              (Storage.Read_String ("Label") = Escaped,
+               "JSON escaped string must round trip exactly");
+         end;
+      exception
+         when others =>
+            Cleanup (Path);
+            raise;
+      end;
+      Cleanup (Path);
+   end JSON_Scalar_And_String_Round_Trip;
+
+   procedure Wrong_Node_Types_Are_Rejected (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Path : constant String :=
+        Test_Path ("opencvcore_ada_persistence_wrong_types.yml");
+   begin
+      Prepare (Path);
+      begin
+         declare
+            Storage : Persistence.File_Storage :=
+              Persistence.Open (Path, Persistence.Write_Only);
+         begin
+            Storage.Write ("Int_Value", 7);
+            Storage.Write ("Real_Value", 1.5);
+            Storage.Write ("Text_Value", "seven");
+            Storage.Write ("Mat_Value", Make_Float32_Matrix);
+         end;
+
+         declare
+            Storage : constant Persistence.File_Storage :=
+              Persistence.Open (Path, Persistence.Read_Only);
+
+            procedure Read_Integer_From_Real is
+               Unused : constant Integer :=
+                 Storage.Read_Integer ("Real_Value");
+               pragma Unreferenced (Unused);
+            begin
+               null;
+            end Read_Integer_From_Real;
+
+            procedure Read_Integer_From_Text is
+               Unused : constant Integer :=
+                 Storage.Read_Integer ("Text_Value");
+               pragma Unreferenced (Unused);
+            begin
+               null;
+            end Read_Integer_From_Text;
+
+            procedure Read_Real_From_Text is
+               Unused : constant Long_Float :=
+                 Storage.Read_Real ("Text_Value");
+               pragma Unreferenced (Unused);
+            begin
+               null;
+            end Read_Real_From_Text;
+
+            procedure Read_String_From_Int is
+               Unused : constant String := Storage.Read_String ("Int_Value");
+               pragma Unreferenced (Unused);
+            begin
+               null;
+            end Read_String_From_Int;
+         begin
+            Assert_Raises_OpenCV_Error
+              (Read_Integer_From_Real'Access,
+               "Read_Integer must reject a real node");
+            Assert_Raises_OpenCV_Error
+              (Read_Integer_From_Text'Access,
+               "Read_Integer must reject a string node");
+            Assert_Raises_OpenCV_Error
+              (Read_Real_From_Text'Access,
+               "Read_Real must reject a string node");
+            Assert_Raises_OpenCV_Error
+              (Read_String_From_Int'Access,
+               "Read_String must reject an integer node");
+            AUnit.Assertions.Assert
+              (Approximately_Equal (Storage.Read_Real ("Int_Value"), 7.0, 0.0),
+               "Read_Real must accept an integer node");
+         end;
+      exception
+         when others =>
+            Cleanup (Path);
+            raise;
+      end;
+      Cleanup (Path);
+   end Wrong_Node_Types_Are_Rejected;
+
+   procedure Missing_Versus_Stored_Zero_And_Empty
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Path : constant String :=
+        Test_Path ("opencvcore_ada_persistence_zero_empty.yml");
+   begin
+      Prepare (Path);
+      begin
+         declare
+            Storage : Persistence.File_Storage :=
+              Persistence.Open (Path, Persistence.Write_Only);
+         begin
+            Storage.Write ("Zero_Int", 0);
+            Storage.Write ("Zero_Real", 0.0);
+            Storage.Write ("Empty_Text", "");
+         end;
+
+         declare
+            Storage : constant Persistence.File_Storage :=
+              Persistence.Open (Path, Persistence.Read_Only);
+
+            procedure Read_Missing_Integer is
+               Unused : constant Integer := Storage.Read_Integer ("Missing");
+               pragma Unreferenced (Unused);
+            begin
+               null;
+            end Read_Missing_Integer;
+
+            procedure Read_Missing_Real is
+               Unused : constant Long_Float := Storage.Read_Real ("Missing");
+               pragma Unreferenced (Unused);
+            begin
+               null;
+            end Read_Missing_Real;
+
+            procedure Read_Missing_String is
+               Unused : constant String := Storage.Read_String ("Missing");
+               pragma Unreferenced (Unused);
+            begin
+               null;
+            end Read_Missing_String;
+         begin
+            AUnit.Assertions.Assert
+              (Storage.Read_Integer ("Zero_Int") = 0,
+               "stored integer zero must remain a present value");
+            AUnit.Assertions.Assert
+              (Approximately_Equal (Storage.Read_Real ("Zero_Real"), 0.0, 0.0),
+               "stored real 0.0 must remain a present value");
+            AUnit.Assertions.Assert
+              (Storage.Read_String ("Empty_Text") = "",
+               "stored empty string must remain a present value");
+            Assert_Raises_OpenCV_Error
+              (Read_Missing_Integer'Access,
+               "a missing integer name must raise OpenCV_Error");
+            Assert_Raises_OpenCV_Error
+              (Read_Missing_Real'Access,
+               "a missing real name must raise OpenCV_Error");
+            Assert_Raises_OpenCV_Error
+              (Read_Missing_String'Access,
+               "a missing string name must raise OpenCV_Error");
+         end;
+      exception
+         when others =>
+            Cleanup (Path);
+            raise;
+      end;
+      Cleanup (Path);
+   end Missing_Versus_Stored_Zero_And_Empty;
+
+   procedure Embedded_NUL_String_Is_Rejected (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Path : constant String :=
+        Test_Path ("opencvcore_ada_persistence_nul.yml");
+   begin
+      Prepare (Path);
+      begin
+         declare
+            Storage : Persistence.File_Storage :=
+              Persistence.Open (Path, Persistence.Write_Only);
+
+            procedure Write_Embedded_NUL is
+            begin
+               Storage.Write ("Broken", "A" & Character'Val (0) & "B");
+            end Write_Embedded_NUL;
+         begin
+            Assert_Raises_OpenCV_Error
+              (Write_Embedded_NUL'Access,
+               "Write(String) must reject an embedded NUL");
+         end;
+      exception
+         when others =>
+            Cleanup (Path);
+            raise;
+      end;
+      Cleanup (Path);
+   end Embedded_NUL_String_Is_Rejected;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -627,6 +1078,35 @@ package body Persistence_Tests is
         (Caller.Create
            ("Invalid names and filenames are rejected",
             Invalid_Names_And_Filenames_Are_Rejected'Access));
+      Result.Add_Test
+        (Caller.Create ("Integer round trip", Integer_Round_Trip'Access));
+      Result.Add_Test
+        (Caller.Create ("Real round trip", Real_Round_Trip'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Integer widens to real", Integer_Widens_To_Real'Access));
+      Result.Add_Test
+        (Caller.Create ("String round trip", String_Round_Trip'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mixed named values round trip",
+            Mixed_Named_Values_Round_Trip'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("JSON scalar and string round trip",
+            JSON_Scalar_And_String_Round_Trip'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Wrong node types are rejected",
+            Wrong_Node_Types_Are_Rejected'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Missing versus stored zero and empty",
+            Missing_Versus_Stored_Zero_And_Empty'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Embedded NUL string is rejected",
+            Embedded_NUL_String_Is_Rejected'Access));
       return Result'Access;
    end Suite;
 

@@ -1,10 +1,13 @@
 with Ada.Exceptions;
+with Interfaces;
 with Interfaces.C;
+with System;
 
 package body OpenCV.Core.Persistence is
 
    use type OpenCV.Internal.C_API.File_Storage_Handle;
    use type OpenCV.Internal.C_API.Status;
+   use type OpenCV.Internal.C_API.C_UInt64;
 
    function Contains_NUL (Item : String) return Boolean is
    begin
@@ -83,6 +86,64 @@ package body OpenCV.Core.Persistence is
       end if;
    end Validate_Node_Name;
 
+   procedure Validate_String_Value (Value : String) is
+   begin
+      if Contains_NUL (Value) then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "File_Storage string value must not contain an embedded NUL");
+      end if;
+   end Validate_String_Value;
+
+   function To_OpenCV_Int32
+     (Value : Integer) return OpenCV.Internal.C_API.C_Int32
+   is
+      Lowest  : constant Long_Long_Integer :=
+        Long_Long_Integer (Interfaces.Integer_32'First);
+      Highest : constant Long_Long_Integer :=
+        Long_Long_Integer (Interfaces.Integer_32'Last);
+      Wide    : constant Long_Long_Integer := Long_Long_Integer (Value);
+   begin
+      if Wide < Lowest or else Wide > Highest then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "File_Storage integer must fit a signed 32-bit OpenCV node");
+      end if;
+
+      return OpenCV.Internal.C_API.C_Int32 (Wide);
+   end To_OpenCV_Int32;
+
+   function From_OpenCV_Int32
+     (Value : OpenCV.Internal.C_API.C_Int32) return Integer
+   is
+      Wide : constant Long_Long_Integer := Long_Long_Integer (Value);
+   begin
+      if Wide < Long_Long_Integer (Integer'First)
+        or else Wide > Long_Long_Integer (Integer'Last)
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "stored File_Storage integer does not fit Ada Integer");
+      end if;
+
+      return Integer (Wide);
+   end From_OpenCV_Int32;
+
+   function To_Ada_String_Length
+     (Length : OpenCV.Internal.C_API.C_UInt64) return Natural
+   is
+      Highest : constant OpenCV.Internal.C_API.C_UInt64 :=
+        OpenCV.Internal.C_API.C_UInt64 (Natural'Last);
+   begin
+      if Length > Highest then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "stored File_Storage string is longer than Ada String");
+      end if;
+
+      return Natural (Length);
+   end To_Ada_String_Length;
+
    procedure Require_Open
      (Self : File_Storage; Expected : Storage_Mode; Operation : String) is
    begin
@@ -146,6 +207,69 @@ package body OpenCV.Core.Persistence is
       Raise_On_Error (Status, "File_Storage write");
    end Write;
 
+   procedure Write (Self : in out File_Storage; Name : String; Value : Integer)
+   is
+      Status : OpenCV.Internal.C_API.Status;
+      Stored : constant OpenCV.Internal.C_API.C_Int32 :=
+        To_OpenCV_Int32 (Value);
+   begin
+      Require_Open (Self, Write_Only, "File_Storage write");
+      Validate_Node_Name (Name);
+
+      declare
+         C_Name : constant Interfaces.C.char_array := Interfaces.C.To_C (Name);
+      begin
+         Status :=
+           OpenCV.Internal.C_API.File_Storage_Write_Int
+             (Self => Self.Handle, Name => C_Name, Value => Stored);
+      end;
+
+      Raise_On_Error (Status, "File_Storage write");
+   end Write;
+
+   procedure Write
+     (Self : in out File_Storage; Name : String; Value : Long_Float)
+   is
+      Status : OpenCV.Internal.C_API.Status;
+   begin
+      Require_Open (Self, Write_Only, "File_Storage write");
+      Validate_Node_Name (Name);
+
+      declare
+         C_Name : constant Interfaces.C.char_array := Interfaces.C.To_C (Name);
+      begin
+         Status :=
+           OpenCV.Internal.C_API.File_Storage_Write_Double
+             (Self  => Self.Handle,
+              Name  => C_Name,
+              Value => OpenCV.Internal.C_API.C_Double (Value));
+      end;
+
+      Raise_On_Error (Status, "File_Storage write");
+   end Write;
+
+   procedure Write (Self : in out File_Storage; Name : String; Value : String)
+   is
+      Status : OpenCV.Internal.C_API.Status;
+   begin
+      Require_Open (Self, Write_Only, "File_Storage write");
+      Validate_Node_Name (Name);
+      Validate_String_Value (Value);
+
+      declare
+         C_Name  : constant Interfaces.C.char_array :=
+           Interfaces.C.To_C (Name);
+         C_Value : constant Interfaces.C.char_array :=
+           Interfaces.C.To_C (Value);
+      begin
+         Status :=
+           OpenCV.Internal.C_API.File_Storage_Write_String
+             (Self => Self.Handle, Name => C_Name, Value => C_Value);
+      end;
+
+      Raise_On_Error (Status, "File_Storage write");
+   end Write;
+
    function Read_Mat (Self : File_Storage; Name : String) return Mat is
       Result     : Mat;
       New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
@@ -170,6 +294,99 @@ package body OpenCV.Core.Persistence is
       Result.Handle := New_Handle;
       return Result;
    end Read_Mat;
+
+   function Read_Integer (Self : File_Storage; Name : String) return Integer is
+      Stored : aliased OpenCV.Internal.C_API.C_Int32 := 0;
+      Status : OpenCV.Internal.C_API.Status;
+   begin
+      Require_Open (Self, Read_Only, "File_Storage read");
+      Validate_Node_Name (Name);
+
+      declare
+         C_Name : constant Interfaces.C.char_array := Interfaces.C.To_C (Name);
+      begin
+         Status :=
+           OpenCV.Internal.C_API.File_Storage_Read_Int
+             (Self => Self.Handle, Name => C_Name, Result => Stored'Access);
+      end;
+
+      Raise_On_Error (Status, "File_Storage read");
+      return From_OpenCV_Int32 (Stored);
+   end Read_Integer;
+
+   function Read_Real (Self : File_Storage; Name : String) return Long_Float is
+      Stored : aliased OpenCV.Internal.C_API.C_Double := 0.0;
+      Status : OpenCV.Internal.C_API.Status;
+   begin
+      Require_Open (Self, Read_Only, "File_Storage read");
+      Validate_Node_Name (Name);
+
+      declare
+         C_Name : constant Interfaces.C.char_array := Interfaces.C.To_C (Name);
+      begin
+         Status :=
+           OpenCV.Internal.C_API.File_Storage_Read_Double
+             (Self => Self.Handle, Name => C_Name, Result => Stored'Access);
+      end;
+
+      Raise_On_Error (Status, "File_Storage read");
+      return Long_Float (Stored);
+   end Read_Real;
+
+   function Read_String (Self : File_Storage; Name : String) return String is
+      Length : aliased OpenCV.Internal.C_API.C_UInt64 := 0;
+      Status : OpenCV.Internal.C_API.Status;
+   begin
+      Require_Open (Self, Read_Only, "File_Storage read");
+      Validate_Node_Name (Name);
+
+      declare
+         C_Name : constant Interfaces.C.char_array := Interfaces.C.To_C (Name);
+      begin
+         Status :=
+           OpenCV.Internal.C_API.File_Storage_Read_String
+             (Self       => Self.Handle,
+              Name       => C_Name,
+              Buffer     => System.Null_Address,
+              Capacity   => 0,
+              Out_Length => Length'Access);
+      end;
+
+      Raise_On_Error (Status, "File_Storage read");
+
+      declare
+         Ada_Length : constant Natural := To_Ada_String_Length (Length);
+      begin
+         if Ada_Length = 0 then
+            return "";
+         end if;
+
+         declare
+            Buffer :
+              Interfaces.C.char_array (1 .. Interfaces.C.size_t (Ada_Length));
+            Copied : aliased OpenCV.Internal.C_API.C_UInt64 := 0;
+            C_Name : constant Interfaces.C.char_array :=
+              Interfaces.C.To_C (Name);
+         begin
+            Status :=
+              OpenCV.Internal.C_API.File_Storage_Read_String
+                (Self       => Self.Handle,
+                 Name       => C_Name,
+                 Buffer     => Buffer (Buffer'First)'Address,
+                 Capacity   => OpenCV.Internal.C_API.C_UInt64 (Ada_Length),
+                 Out_Length => Copied'Access);
+            Raise_On_Error (Status, "File_Storage read");
+
+            if Copied /= Length then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  "File_Storage read failed: string length changed");
+            end if;
+
+            return Interfaces.C.To_Ada (Buffer, Trim_Nul => False);
+         end;
+      end;
+   end Read_String;
 
    overriding
    procedure Finalize (Self : in out File_Storage) is
