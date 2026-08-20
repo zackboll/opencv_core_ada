@@ -12,3 +12,8 @@ tags = ["opencv", "computer-vision", "binding", "ada"]
 [[actions]]
 type = "pre-build"
 command = ["sh", "scripts/configure_opencv.sh"]
+
+[[actions]]
+type = "test"
+directory = "tests"
+command = ["alr", "run"]
