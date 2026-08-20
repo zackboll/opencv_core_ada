@@ -1,5 +1,5 @@
 name = "tests"
-description = "Unit tests for opencvcore_ada crate"
+description = "Unit tests for opencv_core crate"
 version = "0.1.0-dev"
 
 authors = ["Zack Boll"]
@@ -13,10 +13,10 @@ tags = []
 aunit = "^26.0.0"
 
 [[depends-on]]
-opencvcore_ada = "*"
+opencv_core = "*"
 
 [[pins]]
-opencvcore_ada = { path='..' }
+opencv_core = { path='..' }
 
 [[depends-on]]
 gnatprove = "^16.1.0"

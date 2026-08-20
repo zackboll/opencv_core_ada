@@ -1,6 +1,6 @@
 with "config/tests_config.gpr";
 with "aunit";
-with "opencvcore_ada";
+with "opencv_core";
 
 project Tests is
 

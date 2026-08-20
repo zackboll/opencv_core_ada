@@ -1,4 +1,4 @@
-name = "opencvcore_ada"
+name = "opencv_core"
 description = "Thick Ada binding to OpenCV Core Library"
 version = "0.1.0-dev"
 
@@ -6,7 +6,7 @@ authors = ["Zack Boll"]
 maintainers = ["Zack Boll <zackboll@gmail.com>"]
 maintainers-logins = ["zackboll"]
 licenses = "Apache-2.0"
-website = ""
+website = "https://github.com/zackboll/opencv_core_ada"
 tags = ["opencv", "computer-vision", "binding", "ada"]
 
 [[actions]]
