@@ -4931,6 +4931,14 @@ opencv_core_file_storage_write_int(
         return invalid_argument("node name must not be null");
     }
 
+    // ABI safety: OpenCV 4.10 persistence formats integers through
+    // fs::itoa(), which calls abs(int). abs(INT_MIN) is not
+    // representable as int, so reject INT32_MIN before OpenCV sees it.
+    if (value == std::numeric_limits<int32_t>::min()) {
+        return invalid_argument(
+            "integer value INT32_MIN cannot be written with OpenCV 4.10");
+    }
+
     try {
         storage->value.write(name, static_cast<int>(value));
         return OPENCV_CORE_OK;

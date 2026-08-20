@@ -1402,7 +1402,8 @@ opencv_core_file_storage_read_mat(
 
 /*
  * Writes a signed 32-bit integer under name using FileStorage::write.
- * name is a borrowed NUL-terminated node name.
+ * name is a borrowed NUL-terminated node name. OpenCV 4.10 formats
+ * integers through fs::itoa()/abs(int), so INT32_MIN is rejected.
  */
 opencv_core_status
 opencv_core_file_storage_write_int(

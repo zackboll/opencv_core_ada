@@ -99,11 +99,17 @@ package body OpenCV.Core.Persistence is
      (Value : Integer) return OpenCV.Internal.C_API.C_Int32
    is
       Lowest  : constant Long_Long_Integer :=
-        Long_Long_Integer (Interfaces.Integer_32'First);
+        -Long_Long_Integer (Interfaces.Integer_32'Last);
       Highest : constant Long_Long_Integer :=
         Long_Long_Integer (Interfaces.Integer_32'Last);
       Wide    : constant Long_Long_Integer := Long_Long_Integer (Value);
    begin
+      if Wide = Long_Long_Integer (Interfaces.Integer_32'First) then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "File_Storage cannot write -2147483648 with OpenCV 4.10");
+      end if;
+
       if Wide < Lowest or else Wide > Highest then
          Ada.Exceptions.Raise_Exception
            (OpenCV_Error'Identity,

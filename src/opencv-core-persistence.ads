@@ -22,6 +22,10 @@ private with OpenCV.Internal.C_API;
 --  Integer persistence uses OpenCV's signed 32-bit integer file node.
 --  Write rejects an Ada Integer outside that domain with OpenCV_Error
 --  rather than leaking Constraint_Error from a narrowing conversion.
+--  With OpenCV 4.10, Write cannot persist -2_147_483_648 because
+--  OpenCV's integer formatter uses abs(int); the supported write range
+--  is -2_147_483_647 .. 2_147_483_647. This is an OpenCV 4.10 writer
+--  limitation, not an Ada or file-format limitation.
 --  Read_Integer requires an actual integer node and does not round a
 --  real node.
 --
@@ -54,10 +58,12 @@ package OpenCV.Core.Persistence is
    --  writing or if Name is empty or contains an embedded NUL.
    procedure Write (Self : in out File_Storage; Name : String; Value : Mat);
 
-   --  Writes Value as an OpenCV signed 32-bit integer node. Raises
-   --  OpenCV_Error if Value is outside that domain, if Self is not
-   --  open for writing, or if Name is empty or contains an embedded
-   --  NUL.
+   --  Writes Value as an OpenCV signed 32-bit integer node. With
+   --  OpenCV 4.10, Value must be in -2_147_483_647 .. 2_147_483_647
+   --  because OpenCV formats integers with abs(int). Raises
+   --  OpenCV_Error if Value is outside that write domain, if Self is
+   --  not open for writing, or if Name is empty or contains an
+   --  embedded NUL.
    procedure Write
      (Self : in out File_Storage; Name : String; Value : Integer);
 

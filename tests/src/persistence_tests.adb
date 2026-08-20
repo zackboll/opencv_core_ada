@@ -617,7 +617,7 @@ package body Persistence_Tests is
             Storage.Write ("Negative", -123_456);
             Storage.Write ("Zero", 0);
             Storage.Write ("Max_Int32", 2_147_483_647);
-            Storage.Write ("Min_Int32", -2_147_483_648);
+            Storage.Write ("Min_Safe", -2_147_483_647);
          end;
 
          declare
@@ -637,8 +637,8 @@ package body Persistence_Tests is
               (Storage.Read_Integer ("Max_Int32") = 2_147_483_647,
                "signed 32-bit maximum must round trip exactly");
             AUnit.Assertions.Assert
-              (Storage.Read_Integer ("Min_Int32") = -2_147_483_648,
-               "signed 32-bit minimum must round trip exactly");
+              (Storage.Read_Integer ("Min_Safe") = -2_147_483_647,
+               "OpenCV 4.10 integer write minimum must round trip exactly");
          end;
       exception
          when others =>
@@ -647,6 +647,34 @@ package body Persistence_Tests is
       end;
       Cleanup (Path);
    end Integer_Round_Trip;
+
+   procedure Integer_Min_Is_Rejected (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Path : constant String :=
+        Test_Path ("opencvcore_ada_persistence_int_min.yml");
+   begin
+      Prepare (Path);
+      begin
+         declare
+            Storage : Persistence.File_Storage :=
+              Persistence.Open (Path, Persistence.Write_Only);
+
+            procedure Write_Int_Min is
+            begin
+               Storage.Write ("Min_Int32", -2_147_483_648);
+            end Write_Int_Min;
+         begin
+            Assert_Raises_OpenCV_Error
+              (Write_Int_Min'Access,
+               "Write(Integer) must reject -2147483648 with OpenCV 4.10");
+         end;
+      exception
+         when others =>
+            Cleanup (Path);
+            raise;
+      end;
+      Cleanup (Path);
+   end Integer_Min_Is_Rejected;
 
    procedure Real_Round_Trip (Test : in out Mat_Test_Fixture) is
       pragma Unreferenced (Test);
@@ -823,7 +851,7 @@ package body Persistence_Tests is
       pragma Unreferenced (Test);
       Path    : constant String :=
         Test_Path ("opencvcore_ada_persistence_scalars.json");
-      Escaped : constant String := "quote "" and slash / path";
+      Escaped : constant String := "quote "" and backslash \ path";
    begin
       Prepare (Path);
       begin
@@ -1080,6 +1108,9 @@ package body Persistence_Tests is
             Invalid_Names_And_Filenames_Are_Rejected'Access));
       Result.Add_Test
         (Caller.Create ("Integer round trip", Integer_Round_Trip'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Integer INT_MIN is rejected", Integer_Min_Is_Rejected'Access));
       Result.Add_Test
         (Caller.Create ("Real round trip", Real_Round_Trip'Access));
       Result.Add_Test
