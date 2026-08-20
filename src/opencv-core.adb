@@ -1,5 +1,6 @@
 with Ada.Exceptions;
 with Interfaces.C;
+with OpenCV.Internal.Safe_Arithmetic;
 
 package body OpenCV.Core is
 
@@ -3750,7 +3751,7 @@ package body OpenCV.Core is
    is (Value = Float32 or else Value = Float64);
 
    function Product_Exceeds_Signed_Int32 (Left, Right : Natural) return Boolean
-   is (Left > 0 and then Right > 0 and then Left > 2_147_483_647 / Right);
+   renames OpenCV.Internal.Safe_Arithmetic.Product_Exceeds_Signed_Int32;
 
    procedure Validate_SVD_Basis (Basis : Singular_Value_Decomposition_Result)
    is
