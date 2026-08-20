@@ -1471,6 +1471,59 @@ opencv_core_file_storage_read_string(
     const opencv_core_file_storage_handle *storage, const char *name,
     char *buffer, uint64_t capacity, uint64_t *out_length);
 
+/*
+ * Stable FileStorage format identifiers for the C ABI. These are
+ * translated explicitly to cv::FileStorage::FORMAT_* by the shim and
+ * are not OpenCV flags.
+ */
+#define OPENCV_CORE_FILE_STORAGE_FORMAT_XML ((int32_t)0)
+#define OPENCV_CORE_FILE_STORAGE_FORMAT_YAML ((int32_t)1)
+#define OPENCV_CORE_FILE_STORAGE_FORMAT_JSON ((int32_t)2)
+
+/*
+ * Opens a memory-backed cv::FileStorage for writing and returns a newly
+ * owned handle. format must be one of the
+ * OPENCV_CORE_FILE_STORAGE_FORMAT_* identifiers above. On success
+ * out_storage receives one independently owned handle. On every failure
+ * out_storage remains null. No file is created.
+ */
+opencv_core_status
+opencv_core_file_storage_open_memory_write(
+    int32_t format, opencv_core_file_storage_handle **out_storage);
+
+/*
+ * Opens a memory-backed cv::FileStorage for reading and returns a newly
+ * owned handle. text is a borrowed NUL-terminated document. OpenCV
+ * 4.10 auto-detects XML, YAML, or JSON from the contents. The handle
+ * owns a copy of text for the FileStorage lifetime. On success
+ * out_storage receives one independently owned handle. On every failure
+ * out_storage remains null.
+ */
+opencv_core_status
+opencv_core_file_storage_open_memory_read(
+    const char *text, opencv_core_file_storage_handle **out_storage);
+
+/*
+ * Finalizes a memory-backed write FileStorage and copies the serialized
+ * document into a caller-owned buffer. releaseAndGetString is invoked
+ * at most once; later calls read the cached result.
+ *
+ * Query mode: buffer == NULL and capacity == 0. On success *out_length
+ * is the exact byte count and no bytes are copied.
+ *
+ * Copy mode: buffer != NULL and capacity >= the text length. On
+ * success the exact bytes are copied and *out_length is that length.
+ * The buffer is not NUL-terminated by this function.
+ *
+ * Disk-backed storage and memory readers are rejected. On every
+ * failure *out_length is 0 when out_length is non-null, and no
+ * caller-visible bytes are written.
+ */
+opencv_core_status
+opencv_core_file_storage_finish_memory_write(
+    opencv_core_file_storage_handle *storage, char *buffer,
+    uint64_t capacity, uint64_t *out_length);
+
 #ifdef __cplusplus
 }
 #endif

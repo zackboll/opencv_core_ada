@@ -1070,6 +1070,10 @@ package OpenCV.Internal.C_API is
    Storage_Mode_Read_Only  : constant C_Int32 := 0;
    Storage_Mode_Write_Only : constant C_Int32 := 1;
 
+   Storage_Format_XML  : constant C_Int32 := 0;
+   Storage_Format_YAML : constant C_Int32 := 1;
+   Storage_Format_JSON : constant C_Int32 := 2;
+
    function File_Storage_Open
      (Filename : Interfaces.C.char_array;
       Mode     : C_Int32;
@@ -1078,6 +1082,31 @@ package OpenCV.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_core_file_storage_open";
+
+   function File_Storage_Open_Memory_Write
+     (Format : C_Int32; Result : access File_Storage_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_file_storage_open_memory_write";
+
+   function File_Storage_Open_Memory_Read
+     (Text : Interfaces.C.char_array; Result : access File_Storage_Handle)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_file_storage_open_memory_read";
+
+   function File_Storage_Finish_Memory_Write
+     (Self       : File_Storage_Handle;
+      Buffer     : System.Address;
+      Capacity   : C_UInt64;
+      Out_Length : access C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_file_storage_finish_memory_write";
 
    procedure File_Storage_Destroy (Self : File_Storage_Handle)
    with

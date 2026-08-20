@@ -11,6 +11,7 @@
 #include <memory>
 #include <new>
 #include <vector>
+#include <string>
 
 struct opencv_core_mat_handle {
     cv::Mat value;
@@ -23,6 +24,15 @@ struct opencv_core_mat_handle {
 
 struct opencv_core_file_storage_handle {
     cv::FileStorage value;
+    // ABI/lifetime safety: OpenCV 4.10 memory-read sets
+    // strbuf = (char *)filename_or_buf and measures it with strlen()
+    // while parsing. Keep an owned copy so a temporary Ada C-string
+    // cannot dangle during open() or any later access.
+    std::string memory_source;
+    std::string released_memory_text;
+    bool memory_backed = false;
+    bool write_mode = false;
+    bool released_memory_text_ready = false;
 };
 
 namespace {
@@ -400,6 +410,23 @@ bool to_opencv_file_storage_mode(int32_t mode, int &opencv_mode) noexcept {
         return true;
     case OPENCV_CORE_FILE_STORAGE_WRITE_ONLY:
         opencv_mode = cv::FileStorage::WRITE;
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool to_opencv_file_storage_format(int32_t format,
+                                   int &opencv_format) noexcept {
+    switch (format) {
+    case OPENCV_CORE_FILE_STORAGE_FORMAT_XML:
+        opencv_format = cv::FileStorage::FORMAT_XML;
+        return true;
+    case OPENCV_CORE_FILE_STORAGE_FORMAT_YAML:
+        opencv_format = cv::FileStorage::FORMAT_YAML;
+        return true;
+    case OPENCV_CORE_FILE_STORAGE_FORMAT_JSON:
+        opencv_format = cv::FileStorage::FORMAT_JSON;
         return true;
     default:
         return false;
@@ -4824,6 +4851,9 @@ opencv_core_file_storage_open(const char *filename, int32_t mode,
 
     try {
         auto storage = std::make_unique<opencv_core_file_storage_handle>();
+        storage->memory_backed = false;
+        storage->write_mode =
+            opencv_mode == cv::FileStorage::WRITE;
         const bool opened = storage->value.open(filename, opencv_mode);
         if (!opened || !storage->value.isOpened()) {
             return invalid_argument("could not open file storage");
@@ -5130,6 +5160,157 @@ opencv_core_file_storage_read_string(
 
         if (!value.empty()) {
             std::memcpy(buffer, value.data(), value.size());
+        }
+
+        *out_length = length;
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_file_storage_open_memory_write(
+    int32_t format, opencv_core_file_storage_handle **out_storage) {
+    clear_error();
+
+    if (out_storage != nullptr) {
+        *out_storage = nullptr;
+    }
+
+    if (out_storage == nullptr) {
+        return invalid_argument("out_storage must not be null");
+    }
+
+    int opencv_format = 0;
+    if (!to_opencv_file_storage_format(format, opencv_format)) {
+        return invalid_argument("file storage format is not supported");
+    }
+
+    try {
+        auto storage = std::make_unique<opencv_core_file_storage_handle>();
+        const int flags =
+            cv::FileStorage::WRITE | cv::FileStorage::MEMORY | opencv_format;
+        const bool opened = storage->value.open(cv::String(), flags);
+        if (!opened || !storage->value.isOpened()) {
+            return invalid_argument("could not open memory file storage");
+        }
+
+        storage->memory_backed = true;
+        storage->write_mode = true;
+        *out_storage = storage.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_file_storage_open_memory_read(
+    const char *text, opencv_core_file_storage_handle **out_storage) {
+    clear_error();
+
+    if (out_storage != nullptr) {
+        *out_storage = nullptr;
+    }
+
+    if (out_storage == nullptr) {
+        return invalid_argument("out_storage must not be null");
+    }
+
+    if (text == nullptr) {
+        return invalid_argument("memory text must not be null");
+    }
+
+    try {
+        auto storage = std::make_unique<opencv_core_file_storage_handle>();
+        // ABI/lifetime safety: OpenCV 4.10 memory-read retains
+        // filename_or_buf as strbuf during parse. Copy first so the
+        // Ada temporary C-string cannot dangle.
+        storage->memory_source = text;
+        const int flags = cv::FileStorage::READ | cv::FileStorage::MEMORY;
+        const bool opened =
+            storage->value.open(storage->memory_source, flags);
+        if (!opened || !storage->value.isOpened()) {
+            return invalid_argument("could not open memory file storage");
+        }
+
+        storage->memory_backed = true;
+        storage->write_mode = false;
+        *out_storage = storage.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_file_storage_finish_memory_write(
+    opencv_core_file_storage_handle *storage, char *buffer,
+    uint64_t capacity, uint64_t *out_length) {
+    clear_error();
+
+    if (out_length != nullptr) {
+        *out_length = 0;
+    }
+
+    if (out_length == nullptr) {
+        return invalid_argument("out_length must not be null");
+    }
+
+    if (storage == nullptr) {
+        return invalid_argument("file storage handle must not be null");
+    }
+
+    if (buffer == nullptr && capacity != 0) {
+        return invalid_argument(
+            "string buffer must not be null when capacity is nonzero");
+    }
+
+    if (!storage->memory_backed) {
+        return invalid_argument(
+            "finish memory write requires memory-backed file storage");
+    }
+
+    if (!storage->write_mode) {
+        return invalid_argument(
+            "finish memory write requires write-only file storage");
+    }
+
+    try {
+        if (!storage->released_memory_text_ready) {
+            if (!storage->value.isOpened()) {
+                return invalid_argument(
+                    "finish memory write requires open write storage");
+            }
+
+            // releaseAndGetString is one-shot: it closes FileStorage
+            // while producing the serialized document. Cache the
+            // result so later query/copy calls do not invoke it again.
+            storage->released_memory_text =
+                storage->value.releaseAndGetString();
+            storage->released_memory_text_ready = true;
+        }
+
+        uint64_t length = 0;
+        if (!size_to_abi(storage->released_memory_text.size(), length)) {
+            return invalid_argument(
+                "serialized memory text exceeds the ABI size range");
+        }
+
+        if (buffer == nullptr) {
+            *out_length = length;
+            return OPENCV_CORE_OK;
+        }
+
+        if (capacity < length) {
+            return invalid_argument(
+                "string buffer capacity is smaller than the serialized text");
+        }
+
+        if (!storage->released_memory_text.empty()) {
+            std::memcpy(buffer, storage->released_memory_text.data(),
+                        storage->released_memory_text.size());
         }
 
         *out_length = length;

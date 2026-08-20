@@ -58,6 +58,13 @@ package body OpenCV.Core.Persistence is
          when Read_Only  => OpenCV.Internal.C_API.Storage_Mode_Read_Only,
          when Write_Only => OpenCV.Internal.C_API.Storage_Mode_Write_Only);
 
+   function To_C_Format
+     (Format : Storage_Format) return OpenCV.Internal.C_API.C_Int32
+   is (case Format is
+         when XML  => OpenCV.Internal.C_API.Storage_Format_XML,
+         when YAML => OpenCV.Internal.C_API.Storage_Format_YAML,
+         when JSON => OpenCV.Internal.C_API.Storage_Format_JSON);
+
    procedure Validate_Filename (Filename : String) is
    begin
       if Filename'Length = 0 then
@@ -71,6 +78,21 @@ package body OpenCV.Core.Persistence is
             "File_Storage filename must not contain an embedded NUL");
       end if;
    end Validate_Filename;
+
+   procedure Validate_Memory_Text (Text : String) is
+   begin
+      if Text'Length = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "File_Storage memory text must not be empty");
+      end if;
+
+      if Contains_NUL (Text) then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "File_Storage memory text must not contain an embedded NUL");
+      end if;
+   end Validate_Memory_Text;
 
    procedure Validate_Node_Name (Name : String) is
    begin
@@ -192,9 +214,109 @@ package body OpenCV.Core.Persistence is
       return Result : File_Storage do
          Result.Handle := New_Handle;
          Result.Mode := Mode;
+         Result.Backend := Disk;
          Result.Opened := True;
       end return;
    end Open;
+
+   function Create_Memory (Format : Storage_Format) return File_Storage is
+      New_Handle : aliased OpenCV.Internal.C_API.File_Storage_Handle :=
+        OpenCV.Internal.C_API.Null_File_Storage_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Status :=
+        OpenCV.Internal.C_API.File_Storage_Open_Memory_Write
+          (Format => To_C_Format (Format), Result => New_Handle'Access);
+      Raise_On_Error (Status, "File_Storage create memory");
+
+      return Result : File_Storage do
+         Result.Handle := New_Handle;
+         Result.Mode := Write_Only;
+         Result.Backend := Memory;
+         Result.Opened := True;
+      end return;
+   end Create_Memory;
+
+   function Open_Memory (Text : String) return File_Storage is
+      New_Handle : aliased OpenCV.Internal.C_API.File_Storage_Handle :=
+        OpenCV.Internal.C_API.Null_File_Storage_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Memory_Text (Text);
+
+      declare
+         C_Text : constant Interfaces.C.char_array := Interfaces.C.To_C (Text);
+      begin
+         Status :=
+           OpenCV.Internal.C_API.File_Storage_Open_Memory_Read
+             (Text => C_Text, Result => New_Handle'Access);
+      end;
+
+      Raise_On_Error (Status, "File_Storage open memory");
+
+      return Result : File_Storage do
+         Result.Handle := New_Handle;
+         Result.Mode := Read_Only;
+         Result.Backend := Memory;
+         Result.Opened := True;
+      end return;
+   end Open_Memory;
+
+   function Close_And_Get_Text (Self : in out File_Storage) return String is
+      Length : aliased OpenCV.Internal.C_API.C_UInt64 := 0;
+      Status : OpenCV.Internal.C_API.Status;
+   begin
+      Require_Open (Self, Write_Only, "File_Storage close and get text");
+
+      if Self.Backend /= Memory then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "File_Storage close and get text requires memory-backed storage");
+      end if;
+
+      Status :=
+        OpenCV.Internal.C_API.File_Storage_Finish_Memory_Write
+          (Self       => Self.Handle,
+           Buffer     => System.Null_Address,
+           Capacity   => 0,
+           Out_Length => Length'Access);
+      Raise_On_Error (Status, "File_Storage close and get text");
+
+      --  The first successful finish call has already invoked
+      --  releaseAndGetString, so OpenCV storage is closed even if a
+      --  later Ada allocation or copy fails.
+      Self.Opened := False;
+
+      declare
+         Ada_Length : constant Natural := To_Ada_String_Length (Length);
+      begin
+         if Ada_Length = 0 then
+            return "";
+         end if;
+
+         declare
+            Buffer :
+              Interfaces.C.char_array (1 .. Interfaces.C.size_t (Ada_Length));
+            Copied : aliased OpenCV.Internal.C_API.C_UInt64 := 0;
+         begin
+            Status :=
+              OpenCV.Internal.C_API.File_Storage_Finish_Memory_Write
+                (Self       => Self.Handle,
+                 Buffer     => Buffer (Buffer'First)'Address,
+                 Capacity   => OpenCV.Internal.C_API.C_UInt64 (Ada_Length),
+                 Out_Length => Copied'Access);
+            Raise_On_Error (Status, "File_Storage close and get text");
+
+            if Copied /= Length then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  "File_Storage close and get text failed: length changed");
+            end if;
+
+            return Interfaces.C.To_Ada (Buffer, Trim_Nul => False);
+         end;
+      end;
+   end Close_And_Get_Text;
 
    procedure Write (Self : in out File_Storage; Name : String; Value : Mat) is
       Status : OpenCV.Internal.C_API.Status;

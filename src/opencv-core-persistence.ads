@@ -1,13 +1,16 @@
 with Ada.Finalization;
 private with OpenCV.Internal.C_API;
 
---  OpenCV XML/YAML/JSON persistence for disk-backed named values.
+--  OpenCV XML/YAML/JSON persistence for named values.
 --
---  File_Storage opens a file and reads or writes named Mat, Integer,
---  Long_Float, and String values. The filename extension selects the
---  format: .xml, .yml, .yaml, or .json. Gzip, memory mode, append,
---  explicit format flags, maps, sequences, comments, and a public
---  FileNode API are not part of this slice.
+--  File_Storage reads or writes named Mat, Integer, Long_Float, and
+--  String values. Disk Open selects the format from the filename
+--  extension: .xml, .yml, .yaml, or .json. Create_Memory writes to an
+--  in-memory buffer in an explicit XML, YAML, or JSON format.
+--  Open_Memory reads a previously serialized document and lets OpenCV
+--  auto-detect the format from the text. Gzip, append, explicit disk
+--  format flags, maps, sequences, comments, and a public FileNode API
+--  are not part of this slice.
 --
 --  File_Storage is limited and not copyable. Exactly one Ada object
 --  owns the underlying OpenCV FileStorage, which is released when the
@@ -36,8 +39,14 @@ private with OpenCV.Internal.C_API;
 --  Read_String requires an actual string node and does not stringify
 --  numeric values. OpenCV 4.10 persistence emitters measure string
 --  values with strlen, so Write rejects an embedded NUL in a String
---  value. Node names and filenames also reject embedded NUL because
---  they cross the NUL-terminated path/name ABI.
+--  value. Node names, filenames, and memory-read text also reject
+--  embedded NUL because they cross a NUL-terminated ABI. OpenCV 4.10
+--  memory-read measures the document with strlen.
+--
+--  Close_And_Get_Text finalizes a memory Write_Only storage and
+--  returns the complete serialized document as an independently owned
+--  Ada String. The storage is then closed. Disk storage and memory
+--  readers reject Close_And_Get_Text.
 --
 --  Non-contiguous Mats are supported.
 
@@ -45,12 +54,35 @@ package OpenCV.Core.Persistence is
 
    type Storage_Mode is (Read_Only, Write_Only);
 
+   type Storage_Format is (XML, YAML, JSON);
+
    type File_Storage is new Ada.Finalization.Limited_Controlled with private;
 
    --  Opens Filename for reading or writing. Format is selected from
    --  the filename extension. Raises OpenCV_Error if Filename is empty,
    --  contains an embedded NUL, or cannot be opened.
    function Open (Filename : String; Mode : Storage_Mode) return File_Storage;
+
+   --  Creates an open Write_Only memory-backed File_Storage that
+   --  serializes to Format. No file is created. Existing Write
+   --  operations work unchanged. Close_And_Get_Text returns the
+   --  serialized document and closes the storage.
+   function Create_Memory (Format : Storage_Format) return File_Storage;
+
+   --  Opens Text as a Read_Only memory-backed File_Storage. OpenCV
+   --  4.10 auto-detects XML, YAML, or JSON from the contents. Raises
+   --  OpenCV_Error if Text is empty, contains an embedded NUL, or
+   --  cannot be parsed.
+   function Open_Memory (Text : String) return File_Storage;
+
+   --  Finalizes an open memory Write_Only File_Storage, releases the
+   --  OpenCV writer, and returns the complete serialized document.
+   --  Self becomes closed on a successful first finish even if a later
+   --  Ada conversion fails. Subsequent Write, Read, and
+   --  Close_And_Get_Text calls raise OpenCV_Error. Disk storage and
+   --  memory readers raise OpenCV_Error. The returned String does not
+   --  depend on Self.
+   function Close_And_Get_Text (Self : in out File_Storage) return String;
 
    --  Writes Value under Name. Self must be an open Write_Only storage.
    --  Value is borrowed and is not modified. Empty and non-contiguous
@@ -101,11 +133,14 @@ package OpenCV.Core.Persistence is
 
 private
 
+   type Storage_Backend is (Disk, Memory);
+
    type File_Storage is new Ada.Finalization.Limited_Controlled with record
-      Handle : OpenCV.Internal.C_API.File_Storage_Handle :=
+      Handle  : OpenCV.Internal.C_API.File_Storage_Handle :=
         OpenCV.Internal.C_API.Null_File_Storage_Handle;
-      Mode   : Storage_Mode := Read_Only;
-      Opened : Boolean := False;
+      Mode    : Storage_Mode := Read_Only;
+      Backend : Storage_Backend := Disk;
+      Opened  : Boolean := False;
    end record;
 
    overriding

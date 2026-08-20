@@ -1,5 +1,6 @@
 with Ada.Directories;
 with Ada.Environment_Variables;
+with Ada.Strings.Unbounded;
 with AUnit.Assertions;
 with AUnit.Test_Caller;
 with Interfaces;
@@ -1060,6 +1061,328 @@ package body Persistence_Tests is
       Cleanup (Path);
    end Embedded_NUL_String_Is_Rejected;
 
+   procedure YAML_Memory_Mixed_Round_Trip (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Matrix : constant OpenCV.Core.Mat := Make_Float32_Matrix;
+      Camera : constant String := "Camera";
+   begin
+      declare
+         Storage : Persistence.File_Storage :=
+           Persistence.Create_Memory (Persistence.YAML);
+      begin
+         Storage.Write ("Count", 12);
+         Storage.Write ("Threshold", 0.25);
+         Storage.Write ("Name", Camera);
+         Storage.Write ("Matrix", Matrix);
+
+         declare
+            Serialized : constant String := Storage.Close_And_Get_Text;
+         begin
+            AUnit.Assertions.Assert
+              (Serialized'Length > 0,
+               "YAML memory serialization must produce text");
+
+            declare
+               Reader : constant Persistence.File_Storage :=
+                 Persistence.Open_Memory (Serialized);
+            begin
+               AUnit.Assertions.Assert
+                 (Reader.Read_Integer ("Count") = 12,
+                  "YAML memory integer must round trip");
+               AUnit.Assertions.Assert
+                 (Approximately_Equal
+                    (Reader.Read_Real ("Threshold"), 0.25, 1.0E-15),
+                  "YAML memory real must round trip");
+               AUnit.Assertions.Assert
+                 (Reader.Read_String ("Name") = Camera,
+                  "YAML memory string must round trip");
+               Assert_Same_Float32_Matrix
+                 (Matrix,
+                  Reader.Read_Mat ("Matrix"),
+                  "YAML memory Mat must round trip");
+            end;
+         end;
+      end;
+   end YAML_Memory_Mixed_Round_Trip;
+
+   procedure XML_Memory_Round_Trip (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Matrix : constant OpenCV.Core.Mat := Make_Float32_Matrix;
+   begin
+      declare
+         Storage : Persistence.File_Storage :=
+           Persistence.Create_Memory (Persistence.XML);
+      begin
+         Storage.Write ("Count", 7);
+         Storage.Write ("Matrix", Matrix);
+
+         declare
+            Serialized : constant String := Storage.Close_And_Get_Text;
+         begin
+            AUnit.Assertions.Assert
+              (Serialized'Length > 0,
+               "XML memory serialization must produce text");
+
+            declare
+               Reader : constant Persistence.File_Storage :=
+                 Persistence.Open_Memory (Serialized);
+            begin
+               AUnit.Assertions.Assert
+                 (Reader.Read_Integer ("Count") = 7,
+                  "XML memory integer must round trip");
+               Assert_Same_Float32_Matrix
+                 (Matrix,
+                  Reader.Read_Mat ("Matrix"),
+                  "XML memory Mat must round trip");
+            end;
+         end;
+      end;
+   end XML_Memory_Round_Trip;
+
+   procedure JSON_Memory_Round_Trip (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Escaped : constant String := "quote "" and backslash \ path";
+   begin
+      declare
+         Storage : Persistence.File_Storage :=
+           Persistence.Create_Memory (Persistence.JSON);
+      begin
+         Storage.Write ("Threshold", 1.234_567_890_123_45);
+         Storage.Write ("Label", Escaped);
+
+         declare
+            Serialized : constant String := Storage.Close_And_Get_Text;
+         begin
+            AUnit.Assertions.Assert
+              (Serialized'Length > 0,
+               "JSON memory serialization must produce text");
+
+            declare
+               Reader : constant Persistence.File_Storage :=
+                 Persistence.Open_Memory (Serialized);
+            begin
+               AUnit.Assertions.Assert
+                 (Approximately_Equal
+                    (Reader.Read_Real ("Threshold"),
+                     1.234_567_890_123_45,
+                     1.0E-15),
+                  "JSON memory real must round trip");
+               AUnit.Assertions.Assert
+                 (Reader.Read_String ("Label") = Escaped,
+                  "JSON memory escaped string must round trip exactly");
+            end;
+         end;
+      end;
+   end JSON_Memory_Round_Trip;
+
+   procedure Storage_Closes_After_Text_Extraction
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Storage : Persistence.File_Storage :=
+        Persistence.Create_Memory (Persistence.YAML);
+
+      procedure Write_After_Close is
+      begin
+         Storage.Write ("Again", 2);
+      end Write_After_Close;
+
+      procedure Close_Again is
+         Unused : constant String := Storage.Close_And_Get_Text;
+         pragma Unreferenced (Unused);
+      begin
+         null;
+      end Close_Again;
+   begin
+      Storage.Write ("Count", 1);
+
+      declare
+         Text : constant String := Storage.Close_And_Get_Text;
+         pragma Unreferenced (Text);
+      begin
+         Assert_Raises_OpenCV_Error
+           (Write_After_Close'Access,
+            "Write must reject File_Storage after Close_And_Get_Text");
+         Assert_Raises_OpenCV_Error
+           (Close_Again'Access,
+            "a second Close_And_Get_Text must raise OpenCV_Error");
+      end;
+   end Storage_Closes_After_Text_Extraction;
+
+   procedure Disk_Storage_Cannot_Get_Memory_Text
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Path : constant String :=
+        Test_Path ("opencvcore_ada_persistence_disk_text.yml");
+   begin
+      Prepare (Path);
+      begin
+         declare
+            Storage : Persistence.File_Storage :=
+              Persistence.Open (Path, Persistence.Write_Only);
+
+            procedure Get_Text is
+               Unused : constant String := Storage.Close_And_Get_Text;
+               pragma Unreferenced (Unused);
+            begin
+               null;
+            end Get_Text;
+         begin
+            Storage.Write ("Count", 1);
+            Assert_Raises_OpenCV_Error
+              (Get_Text'Access,
+               "Close_And_Get_Text must reject disk File_Storage");
+            Storage.Write ("Extra", 2);
+         end;
+
+         declare
+            Storage : constant Persistence.File_Storage :=
+              Persistence.Open (Path, Persistence.Read_Only);
+         begin
+            AUnit.Assertions.Assert
+              (Storage.Read_Integer ("Count") = 1,
+               "disk write must remain usable after rejected memory text");
+            AUnit.Assertions.Assert
+              (Storage.Read_Integer ("Extra") = 2,
+               "disk write after rejected Close_And_Get_Text must persist");
+         end;
+      exception
+         when others =>
+            Cleanup (Path);
+            raise;
+      end;
+      Cleanup (Path);
+   end Disk_Storage_Cannot_Get_Memory_Text;
+
+   procedure Memory_Reader_Cannot_Get_Output_Text
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+   begin
+      declare
+         Writer : Persistence.File_Storage :=
+           Persistence.Create_Memory (Persistence.YAML);
+      begin
+         Writer.Write ("Count", 3);
+
+         declare
+            Serialized : constant String := Writer.Close_And_Get_Text;
+            Storage    : Persistence.File_Storage :=
+              Persistence.Open_Memory (Serialized);
+
+            procedure Get_Text is
+               Unused : constant String := Storage.Close_And_Get_Text;
+               pragma Unreferenced (Unused);
+            begin
+               null;
+            end Get_Text;
+         begin
+            AUnit.Assertions.Assert
+              (Storage.Read_Integer ("Count") = 3,
+               "memory reader fixture must contain the stored integer");
+            Assert_Raises_OpenCV_Error
+              (Get_Text'Access,
+               "Close_And_Get_Text must reject memory Read_Only storage");
+         end;
+      end;
+   end Memory_Reader_Cannot_Get_Output_Text;
+
+   procedure Invalid_Memory_Input_Is_Rejected (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+
+      procedure Open_Empty is
+         Unused : Persistence.File_Storage := Persistence.Open_Memory ("");
+         pragma Unreferenced (Unused);
+      begin
+         null;
+      end Open_Empty;
+
+      procedure Open_Malformed is
+         Unused : Persistence.File_Storage :=
+           Persistence.Open_Memory ("this is not yaml, xml, or json");
+         pragma Unreferenced (Unused);
+      begin
+         null;
+      end Open_Malformed;
+
+      procedure Open_Embedded_NUL is
+         Unused : Persistence.File_Storage :=
+           Persistence.Open_Memory
+             ("%YAML:1.0" & Character'Val (0) & "Count: 1");
+         pragma Unreferenced (Unused);
+      begin
+         null;
+      end Open_Embedded_NUL;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Open_Empty'Access, "Open_Memory must reject empty text");
+      Assert_Raises_OpenCV_Error
+        (Open_Malformed'Access,
+         "Open_Memory must reject malformed nonempty text");
+      Assert_Raises_OpenCV_Error
+        (Open_Embedded_NUL'Access, "Open_Memory must reject an embedded NUL");
+   end Invalid_Memory_Input_Is_Rejected;
+
+   function Serialized_Count_Document return String is
+      Storage : Persistence.File_Storage :=
+        Persistence.Create_Memory (Persistence.YAML);
+   begin
+      Storage.Write ("Count", 42);
+      return Storage.Close_And_Get_Text;
+   end Serialized_Count_Document;
+
+   procedure Temporary_Input_Buffer_Outlives_Open
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Storage : constant Persistence.File_Storage :=
+        Persistence.Open_Memory (Serialized_Count_Document);
+   begin
+      AUnit.Assertions.Assert
+        (Storage.Read_Integer ("Count") = 42,
+         "Open_Memory must not depend on a temporary Ada C-string buffer");
+   end Temporary_Input_Buffer_Outlives_Open;
+
+   procedure Returned_Text_Outlives_Storage (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Held : Ada.Strings.Unbounded.Unbounded_String;
+   begin
+      declare
+         Storage : Persistence.File_Storage :=
+           Persistence.Create_Memory (Persistence.JSON);
+      begin
+         Storage.Write ("Name", "Independent");
+         Ada.Strings.Unbounded.Set_Unbounded_String
+           (Held, Storage.Close_And_Get_Text);
+      end;
+
+      declare
+         Storage : constant Persistence.File_Storage :=
+           Persistence.Open_Memory (Ada.Strings.Unbounded.To_String (Held));
+      begin
+         AUnit.Assertions.Assert
+           (Storage.Read_String ("Name") = "Independent",
+            "Close_And_Get_Text must return an independent Ada String");
+      end;
+   end Returned_Text_Outlives_Storage;
+
+   procedure Memory_Integer_Min_Is_Rejected (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Storage : Persistence.File_Storage :=
+        Persistence.Create_Memory (Persistence.YAML);
+
+      procedure Write_Int_Min is
+      begin
+         Storage.Write ("Min_Int32", -2_147_483_648);
+      end Write_Int_Min;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Write_Int_Min'Access,
+         "memory Write(Integer) must reject -2147483648 with OpenCV 4.10");
+   end Memory_Integer_Min_Is_Rejected;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -1138,6 +1461,44 @@ package body Persistence_Tests is
         (Caller.Create
            ("Embedded NUL string is rejected",
             Embedded_NUL_String_Is_Rejected'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("YAML memory mixed round trip",
+            YAML_Memory_Mixed_Round_Trip'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("XML memory round trip", XML_Memory_Round_Trip'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("JSON memory round trip", JSON_Memory_Round_Trip'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Storage closes after text extraction",
+            Storage_Closes_After_Text_Extraction'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Disk storage cannot get memory text",
+            Disk_Storage_Cannot_Get_Memory_Text'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Memory reader cannot get output text",
+            Memory_Reader_Cannot_Get_Output_Text'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Invalid memory input is rejected",
+            Invalid_Memory_Input_Is_Rejected'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Temporary input buffer outlives open",
+            Temporary_Input_Buffer_Outlives_Open'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Returned text outlives storage",
+            Returned_Text_Outlives_Storage'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Memory integer INT_MIN is rejected",
+            Memory_Integer_Min_Is_Rejected'Access));
       return Result'Access;
    end Suite;
 
