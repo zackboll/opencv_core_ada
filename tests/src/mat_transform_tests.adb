@@ -4446,6 +4446,550 @@ package body Mat_Transform_Tests is
          "Perspective_Transform must reject a typed 0x0 Float32 matrix");
    end Perspective_Transform_Rejects_Empty_Inputs;
 
+   function DFT_Sample_Real_Float32 return OpenCV.Core.Mat is
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Image, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Image, 0, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Image, 0, 2, 3.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 0, 4.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 1, 5.0);
+      OpenCV.Core.Float32_Access.Set (Image, 1, 2, 6.0);
+      return Image;
+   end DFT_Sample_Real_Float32;
+
+   function DFT_Sample_Complex_Float32 return OpenCV.Core.Mat is
+      Real_Part      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Imaginary_Part : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Real_Part, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Real_Part, 0, 1, 0.5);
+      OpenCV.Core.Float32_Access.Set (Real_Part, 1, 0, -1.0);
+      OpenCV.Core.Float32_Access.Set (Real_Part, 1, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Imaginary_Part, 0, 0, 0.25);
+      OpenCV.Core.Float32_Access.Set (Imaginary_Part, 0, 1, -0.5);
+      OpenCV.Core.Float32_Access.Set (Imaginary_Part, 1, 0, 1.5);
+      OpenCV.Core.Float32_Access.Set (Imaginary_Part, 1, 1, 0.0);
+      return OpenCV.Core.Merge ((0 => Real_Part, 1 => Imaginary_Part));
+   end DFT_Sample_Complex_Float32;
+
+   function DFT_Float32_C1_Close
+     (Left, Right : OpenCV.Core.Mat; Tolerance : Long_Float) return Boolean is
+   begin
+      if Left.Rows /= Right.Rows
+        or else Left.Columns /= Right.Columns
+        or else Left.Depth /= Right.Depth
+        or else Left.Channels /= Right.Channels
+      then
+         return False;
+      end if;
+
+      for Row in 0 .. Left.Rows - 1 loop
+         for Column in 0 .. Left.Columns - 1 loop
+            if not Approximately_Equal
+                     (Long_Float
+                        (OpenCV.Core.Float32_Access.Get (Left, Row, Column)),
+                      Long_Float
+                        (OpenCV.Core.Float32_Access.Get (Right, Row, Column)),
+                      Tolerance)
+            then
+               return False;
+            end if;
+         end loop;
+      end loop;
+
+      return True;
+   end DFT_Float32_C1_Close;
+
+   function DFT_Float32_C2_Close
+     (Left, Right : OpenCV.Core.Mat; Tolerance : Long_Float) return Boolean
+   is
+      Left_Channels  : constant OpenCV.Core.Mat_Array := Left.Split;
+      Right_Channels : constant OpenCV.Core.Mat_Array := Right.Split;
+   begin
+      return
+        Left.Channels = 2
+        and then Right.Channels = 2
+        and then DFT_Float32_C1_Close
+                   (Left_Channels (0), Right_Channels (0), Tolerance)
+        and then DFT_Float32_C1_Close
+                   (Left_Channels (1), Right_Channels (1), Tolerance);
+   end DFT_Float32_C2_Close;
+
+   procedure Discrete_Fourier_Transform_Real_Forward_Output_Type
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source32 : constant OpenCV.Core.Mat := DFT_Sample_Real_Float32;
+      Source64 : constant OpenCV.Core.Mat :=
+        Source32.Convert_To (OpenCV.Core.Float64);
+   begin
+      declare
+         Spectrum32 : constant OpenCV.Core.Mat :=
+           Source32.Discrete_Fourier_Transform;
+         Spectrum64 : constant OpenCV.Core.Mat :=
+           Source64.Discrete_Fourier_Transform;
+      begin
+         AUnit.Assertions.Assert
+           (Spectrum32.Rows = Source32.Rows
+            and then Spectrum32.Columns = Source32.Columns
+            and then Spectrum32.Depth = OpenCV.Core.Float32
+            and then Spectrum32.Channels = 2,
+            "A real Float32 DFT must return a same-shape Float32 C2 spectrum");
+         AUnit.Assertions.Assert
+           (Spectrum64.Rows = Source64.Rows
+            and then Spectrum64.Columns = Source64.Columns
+            and then Spectrum64.Depth = OpenCV.Core.Float64
+            and then Spectrum64.Channels = 2,
+            "A real Float64 DFT must preserve depth and return C2");
+      end;
+   end Discrete_Fourier_Transform_Real_Forward_Output_Type;
+
+   procedure Discrete_Fourier_Transform_Real_Round_Trip
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source32 : constant OpenCV.Core.Mat := DFT_Sample_Real_Float32;
+      Source64 : constant OpenCV.Core.Mat :=
+        Source32.Convert_To (OpenCV.Core.Float64);
+   begin
+      declare
+         Spectrum32 : constant OpenCV.Core.Mat :=
+           Source32.Discrete_Fourier_Transform;
+         Restored32 : constant OpenCV.Core.Mat :=
+           Spectrum32.Inverse_Real_Discrete_Fourier_Transform;
+         Spectrum64 : constant OpenCV.Core.Mat :=
+           Source64.Discrete_Fourier_Transform;
+         Restored64 : constant OpenCV.Core.Mat :=
+           Spectrum64.Inverse_Real_Discrete_Fourier_Transform;
+      begin
+         AUnit.Assertions.Assert
+           (Restored32.Rows = Source32.Rows
+            and then Restored32.Columns = Source32.Columns
+            and then Restored32.Depth = OpenCV.Core.Float32
+            and then Restored32.Channels = 1
+            and then DFT_Float32_C1_Close (Restored32, Source32, 0.000_1),
+            "A real Float32 DFT plus scaled inverse-real must round-trip");
+         AUnit.Assertions.Assert
+           (Restored64.Rows = Source64.Rows
+            and then Restored64.Columns = Source64.Columns
+            and then Restored64.Depth = OpenCV.Core.Float64
+            and then Restored64.Channels = 1
+            and then Restored64.Abs_Diff (Source64).Norm < 1.0E-12,
+            "A real Float64 DFT plus scaled inverse-real must round-trip"
+            & " more tightly than Float32");
+         AUnit.Assertions.Assert
+           (Restored32.Abs_Diff (Source32).Norm < 0.01
+            and then Restored64.Abs_Diff (Source64).Norm < 1.0E-10,
+            "Ada inverse DFT must use DFT_SCALE rather than returning"
+            & " Source * Rows * Columns");
+      end;
+   end Discrete_Fourier_Transform_Real_Round_Trip;
+
+   procedure Discrete_Fourier_Transform_Complex_Round_Trip
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat := DFT_Sample_Complex_Float32;
+   begin
+      declare
+         Spectrum : constant OpenCV.Core.Mat :=
+           Source.Discrete_Fourier_Transform;
+         Restored : constant OpenCV.Core.Mat :=
+           Spectrum.Inverse_Discrete_Fourier_Transform;
+      begin
+         AUnit.Assertions.Assert
+           (Spectrum.Rows = Source.Rows
+            and then Spectrum.Columns = Source.Columns
+            and then Spectrum.Depth = OpenCV.Core.Float32
+            and then Spectrum.Channels = 2
+            and then Restored.Channels = 2
+            and then DFT_Float32_C2_Close (Restored, Source, 0.000_1),
+            "A complex C2 DFT plus scaled inverse must reproduce both"
+            & " real and imaginary components");
+         AUnit.Assertions.Assert
+           (Restored.Abs_Diff (Source).Norm < 0.01,
+            "Complex inverse DFT must be DFT_SCALE-normalized rather than"
+            & " returning Source * Rows * Columns");
+      end;
+   end Discrete_Fourier_Transform_Complex_Round_Trip;
+
+   procedure Discrete_Fourier_Transform_Impulse_Spectrum
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 4, (OpenCV.Core.Float32, 1));
+   begin
+      Source.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, 1.0);
+
+      declare
+         Spectrum : constant OpenCV.Core.Mat :=
+           Source.Discrete_Fourier_Transform;
+         Channels : constant OpenCV.Core.Mat_Array := Spectrum.Split;
+      begin
+         AUnit.Assertions.Assert
+           (Spectrum.Rows = 4
+            and then Spectrum.Columns = 4
+            and then Spectrum.Channels = 2,
+            "An origin impulse DFT must remain 4x4 C2");
+         for Row in 0 .. 3 loop
+            for Column in 0 .. 3 loop
+               AUnit.Assertions.Assert
+                 (Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get
+                          (Channels (0), Row, Column)),
+                     1.0,
+                     0.000_1)
+                  and then Approximately_Equal
+                             (Long_Float
+                                (OpenCV.Core.Float32_Access.Get
+                                   (Channels (1), Row, Column)),
+                              0.0,
+                              0.000_1),
+                  "An origin impulse must have real component 1 and"
+                  & " imaginary component 0 everywhere");
+            end loop;
+         end loop;
+      end;
+   end Discrete_Fourier_Transform_Impulse_Spectrum;
+
+   procedure Discrete_Fourier_Transform_Constant_DC
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Constant_Value : constant Long_Float := 3.0;
+      Rows           : constant Natural := 2;
+      Columns        : constant Natural := 3;
+      Source         : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (Rows, Columns, (OpenCV.Core.Float32, 1));
+      Expected_DC    : constant Long_Float :=
+        Constant_Value * Long_Float (Rows) * Long_Float (Columns);
+   begin
+      Source.Set_To (OpenCV.Core.Make_Scalar (Constant_Value));
+
+      declare
+         Spectrum : constant OpenCV.Core.Mat :=
+           Source.Discrete_Fourier_Transform;
+         Channels : constant OpenCV.Core.Mat_Array := Spectrum.Split;
+      begin
+         AUnit.Assertions.Assert
+           (Approximately_Equal
+              (Long_Float
+                 (OpenCV.Core.Float32_Access.Get (Channels (0), 0, 0)),
+               Expected_DC,
+               0.000_1)
+            and then Approximately_Equal
+                       (Long_Float
+                          (OpenCV.Core.Float32_Access.Get
+                             (Channels (1), 0, 0)),
+                        0.0,
+                        0.000_1),
+            "Unscaled forward DFT of a constant C must have DC real"
+            & " equal to C * Rows * Columns");
+         for Row in 0 .. Rows - 1 loop
+            for Column in 0 .. Columns - 1 loop
+               if Row /= 0 or else Column /= 0 then
+                  AUnit.Assertions.Assert
+                    (Approximately_Equal
+                       (Long_Float
+                          (OpenCV.Core.Float32_Access.Get
+                             (Channels (0), Row, Column)),
+                        0.0,
+                        0.000_1)
+                     and then Approximately_Equal
+                                (Long_Float
+                                   (OpenCV.Core.Float32_Access.Get
+                                      (Channels (1), Row, Column)),
+                                 0.0,
+                                 0.000_1),
+                     "Non-DC bins of a constant matrix must be approximately"
+                     & " zero");
+               end if;
+            end loop;
+         end loop;
+      end;
+   end Discrete_Fourier_Transform_Constant_DC;
+
+   procedure Discrete_Fourier_Transform_Row_Vector
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 4, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 2, 3.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 3, 4.0);
+
+      declare
+         Spectrum : constant OpenCV.Core.Mat :=
+           Source.Discrete_Fourier_Transform;
+         Restored : constant OpenCV.Core.Mat :=
+           Spectrum.Inverse_Real_Discrete_Fourier_Transform;
+      begin
+         AUnit.Assertions.Assert
+           (Spectrum.Rows = 1
+            and then Spectrum.Columns = 4
+            and then Spectrum.Channels = 2
+            and then Restored.Rows = 1
+            and then Restored.Columns = 4
+            and then Restored.Channels = 1
+            and then DFT_Float32_C1_Close (Restored, Source, 0.000_1),
+            "A 1xN real DFT must remain 1xN and round-trip through"
+            & " inverse-real");
+      end;
+   end Discrete_Fourier_Transform_Row_Vector;
+
+   procedure Discrete_Fourier_Transform_Column_Vector
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 1, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Source, 1, 0, 2.0);
+      OpenCV.Core.Float32_Access.Set (Source, 2, 0, 3.0);
+      OpenCV.Core.Float32_Access.Set (Source, 3, 0, 4.0);
+
+      declare
+         Spectrum : constant OpenCV.Core.Mat :=
+           Source.Discrete_Fourier_Transform;
+         Restored : constant OpenCV.Core.Mat :=
+           Spectrum.Inverse_Real_Discrete_Fourier_Transform;
+      begin
+         AUnit.Assertions.Assert
+           (Spectrum.Rows = 4
+            and then Spectrum.Columns = 1
+            and then Spectrum.Channels = 2
+            and then Restored.Rows = 4
+            and then Restored.Columns = 1
+            and then Restored.Channels = 1
+            and then DFT_Float32_C1_Close (Restored, Source, 0.000_1),
+            "An Nx1 real DFT must remain Nx1 and round-trip through"
+            & " inverse-real");
+      end;
+   end Discrete_Fourier_Transform_Column_Vector;
+
+   procedure Discrete_Fourier_Transform_Noncontiguous_Region
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 4, (OpenCV.Core.Float32, 1));
+   begin
+      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      OpenCV.Core.Float32_Access.Set (Parent, 0, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Parent, 0, 2, 2.0);
+      OpenCV.Core.Float32_Access.Set (Parent, 1, 1, 3.0);
+      OpenCV.Core.Float32_Access.Set (Parent, 1, 2, 4.0);
+
+      declare
+         Region   : constant OpenCV.Core.Mat :=
+           Parent.Region ((X => 1, Y => 0, Width => 2, Height => 2));
+         Expected : OpenCV.Core.Mat :=
+           OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+         Spectrum : OpenCV.Core.Mat;
+         Restored : OpenCV.Core.Mat;
+      begin
+         OpenCV.Core.Float32_Access.Set (Expected, 0, 0, 1.0);
+         OpenCV.Core.Float32_Access.Set (Expected, 0, 1, 2.0);
+         OpenCV.Core.Float32_Access.Set (Expected, 1, 0, 3.0);
+         OpenCV.Core.Float32_Access.Set (Expected, 1, 1, 4.0);
+         AUnit.Assertions.Assert
+           (not Region.Is_Continuous,
+            "DFT Region fixture must be non-contiguous");
+         Spectrum := Region.Discrete_Fourier_Transform;
+         Restored := Spectrum.Inverse_Real_Discrete_Fourier_Transform;
+         AUnit.Assertions.Assert
+           (Spectrum.Rows = 2
+            and then Spectrum.Columns = 2
+            and then Restored.Rows = 2
+            and then Restored.Columns = 2
+            and then DFT_Float32_C1_Close (Restored, Expected, 0.000_1),
+            "A non-contiguous Region DFT must transform only Region values");
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float32_Access.Get (Region, 0, 0) = 1.0
+            and then OpenCV.Core.Float32_Access.Get (Region, 0, 1) = 2.0
+            and then OpenCV.Core.Float32_Access.Get (Region, 1, 0) = 3.0
+            and then OpenCV.Core.Float32_Access.Get (Region, 1, 1) = 4.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 0, 0) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 2, 3) = 99.0,
+            "DFT of a Region must leave the Region and parent unchanged");
+         OpenCV.Core.Float32_Access.Set (Restored, 0, 0, 50.0);
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float32_Access.Get (Region, 0, 0) = 1.0,
+            "Mutating a Region DFT result must not mutate the Region");
+      end;
+   end Discrete_Fourier_Transform_Noncontiguous_Region;
+
+   procedure Discrete_Fourier_Transform_Result_Is_Independent
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source   : constant OpenCV.Core.Mat := DFT_Sample_Real_Float32;
+      Spectrum : OpenCV.Core.Mat := Source.Discrete_Fourier_Transform;
+      Restored : OpenCV.Core.Mat :=
+        Spectrum.Inverse_Real_Discrete_Fourier_Transform;
+      Before   : constant OpenCV.Core.Mat_Array := Spectrum.Split;
+   begin
+      Spectrum.Set_To (OpenCV.Core.Make_Scalar (123.0, 456.0));
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Source, 0, 0) = 1.0
+         and then OpenCV.Core.Float32_Access.Get (Source, 1, 2) = 6.0,
+         "Mutating a DFT spectrum must not change the source");
+      OpenCV.Core.Float32_Access.Set (Restored, 0, 0, 77.0);
+      declare
+         Recheck : constant OpenCV.Core.Mat_Array := Spectrum.Split;
+      begin
+         AUnit.Assertions.Assert
+           (Approximately_Equal
+              (Long_Float (OpenCV.Core.Float32_Access.Get (Recheck (0), 0, 0)),
+               123.0,
+               0.000_1)
+            and then not Approximately_Equal
+                           (Long_Float
+                              (OpenCV.Core.Float32_Access.Get
+                                 (Before (0), 0, 0)),
+                            123.0,
+                            0.1),
+            "Mutating an inverse-real result must not change the spectrum");
+      end;
+   end Discrete_Fourier_Transform_Result_Is_Independent;
+
+   procedure Discrete_Fourier_Transform_Rejects_Empty
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Default_Source : OpenCV.Core.Mat;
+      Empty_Source   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 1));
+      Empty_Complex  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 2));
+
+      procedure Forward_Default is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Default_Source.Discrete_Fourier_Transform;
+      end Forward_Default;
+
+      procedure Forward_Empty is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Empty_Source.Discrete_Fourier_Transform;
+      end Forward_Empty;
+
+      procedure Inverse_Empty is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Empty_Complex.Inverse_Discrete_Fourier_Transform;
+      end Inverse_Empty;
+
+      procedure Inverse_Real_Empty is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Empty_Complex.Inverse_Real_Discrete_Fourier_Transform;
+      end Inverse_Real_Empty;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Forward_Default'Access,
+         "Discrete_Fourier_Transform must reject a default empty Mat");
+      Assert_Raises_OpenCV_Error
+        (Forward_Empty'Access,
+         "Discrete_Fourier_Transform must reject a typed 0x0 Mat");
+      Assert_Raises_OpenCV_Error
+        (Inverse_Empty'Access,
+         "Inverse_Discrete_Fourier_Transform must reject empty input");
+      Assert_Raises_OpenCV_Error
+        (Inverse_Real_Empty'Access,
+         "Inverse_Real_Discrete_Fourier_Transform must reject empty input");
+   end Discrete_Fourier_Transform_Rejects_Empty;
+
+   procedure Discrete_Fourier_Transform_Rejects_Unsupported_Depth
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      UInt8_Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      Int32_Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Int32, 1));
+
+      procedure Forward_UInt8 is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := UInt8_Source.Discrete_Fourier_Transform;
+      end Forward_UInt8;
+
+      procedure Forward_Int32 is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Int32_Source.Discrete_Fourier_Transform;
+      end Forward_Int32;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Forward_UInt8'Access, "Discrete_Fourier_Transform must reject UInt8");
+      Assert_Raises_OpenCV_Error
+        (Forward_Int32'Access, "Discrete_Fourier_Transform must reject Int32");
+   end Discrete_Fourier_Transform_Rejects_Unsupported_Depth;
+
+   procedure Discrete_Fourier_Transform_Rejects_Invalid_Channels
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      C3 : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 3));
+      C1 : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+
+      procedure Forward_C3 is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := C3.Discrete_Fourier_Transform;
+      end Forward_C3;
+
+      procedure Inverse_C1 is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := C1.Inverse_Discrete_Fourier_Transform;
+      end Inverse_C1;
+
+      procedure Inverse_C3 is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := C3.Inverse_Discrete_Fourier_Transform;
+      end Inverse_C3;
+
+      procedure Inverse_Real_C1 is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := C1.Inverse_Real_Discrete_Fourier_Transform;
+      end Inverse_Real_C1;
+
+      procedure Inverse_Real_C3 is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := C3.Inverse_Real_Discrete_Fourier_Transform;
+      end Inverse_Real_C3;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Forward_C3'Access, "Forward DFT must reject C3");
+      Assert_Raises_OpenCV_Error
+        (Inverse_C1'Access, "Inverse complex DFT must reject C1");
+      Assert_Raises_OpenCV_Error
+        (Inverse_C3'Access, "Inverse complex DFT must reject C3");
+      Assert_Raises_OpenCV_Error
+        (Inverse_Real_C1'Access, "Inverse-real DFT must reject C1");
+      Assert_Raises_OpenCV_Error
+        (Inverse_Real_C3'Access, "Inverse-real DFT must reject C3");
+   end Discrete_Fourier_Transform_Rejects_Invalid_Channels;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
    Result : aliased AUnit.Test_Suites.Test_Suite;
 
@@ -4933,6 +5477,54 @@ package body Mat_Transform_Tests is
         (Caller.Create
            ("Perspective_Transform rejects empty inputs",
             Perspective_Transform_Rejects_Empty_Inputs'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("DFT real forward output type",
+            Discrete_Fourier_Transform_Real_Forward_Output_Type'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("DFT real round trip uses DFT_SCALE",
+            Discrete_Fourier_Transform_Real_Round_Trip'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("DFT complex round trip uses DFT_SCALE",
+            Discrete_Fourier_Transform_Complex_Round_Trip'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("DFT origin impulse has real 1 and imaginary 0",
+            Discrete_Fourier_Transform_Impulse_Spectrum'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("DFT constant input has expected unscaled DC",
+            Discrete_Fourier_Transform_Constant_DC'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("DFT row vector round trip",
+            Discrete_Fourier_Transform_Row_Vector'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("DFT column vector round trip",
+            Discrete_Fourier_Transform_Column_Vector'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("DFT non-contiguous Region round trip",
+            Discrete_Fourier_Transform_Noncontiguous_Region'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("DFT result is independent of source",
+            Discrete_Fourier_Transform_Result_Is_Independent'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("DFT rejects empty input",
+            Discrete_Fourier_Transform_Rejects_Empty'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("DFT rejects unsupported depth",
+            Discrete_Fourier_Transform_Rejects_Unsupported_Depth'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("DFT rejects invalid channel counts",
+            Discrete_Fourier_Transform_Rejects_Invalid_Channels'Access));
 
       return Result'Access;
 

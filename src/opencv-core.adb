@@ -2120,6 +2120,130 @@ package body OpenCV.Core is
       return Polar_To_Cart (Empty_Magnitude, Angle, Units);
    end Polar_To_Cart;
 
+   procedure Validate_DFT_Floating_Source
+     (Self : Mat; Operation : String; Require_Complex : Boolean) is
+   begin
+      if Self.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, Operation & " requires a non-empty Mat");
+      end if;
+
+      if Self.Depth /= Float32 and then Self.Depth /= Float64 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            Operation & " requires a Float32 or Float64 Mat");
+      end if;
+
+      if Require_Complex then
+         if Self.Channels /= 2 then
+            Ada.Exceptions.Raise_Exception
+              (OpenCV_Error'Identity,
+               Operation & " requires a two-channel complex Mat");
+         end if;
+      elsif Self.Channels /= 1 and then Self.Channels /= 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            Operation
+            & " requires a one-channel real or two-channel"
+            & " complex Mat");
+      end if;
+   end Validate_DFT_Floating_Source;
+
+   function Discrete_Fourier_Transform (Self : Mat) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_DFT_Floating_Source
+        (Self, "Discrete_Fourier_Transform", Require_Complex => False);
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_DFT
+          (Source         => Self.Handle,
+           Transform_Kind => OpenCV.Internal.C_API.DFT_Forward_Complex,
+           Result         => New_Handle'Access);
+      if Status /= OpenCV.Internal.C_API.Success then
+         OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+         Raise_On_Error (Status, "Mat discrete Fourier transform");
+      end if;
+
+      if New_Handle = OpenCV.Internal.C_API.Null_Mat_Handle then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat discrete Fourier transform returned a null result handle");
+      end if;
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Discrete_Fourier_Transform;
+
+   function Inverse_Discrete_Fourier_Transform (Self : Mat) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_DFT_Floating_Source
+        (Self, "Inverse_Discrete_Fourier_Transform", Require_Complex => True);
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_DFT
+          (Source         => Self.Handle,
+           Transform_Kind => OpenCV.Internal.C_API.DFT_Inverse_Complex,
+           Result         => New_Handle'Access);
+      if Status /= OpenCV.Internal.C_API.Success then
+         OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+         Raise_On_Error (Status, "Mat inverse discrete Fourier transform");
+      end if;
+
+      if New_Handle = OpenCV.Internal.C_API.Null_Mat_Handle then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat inverse discrete Fourier transform returned a null"
+            & " result handle");
+      end if;
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Inverse_Discrete_Fourier_Transform;
+
+   function Inverse_Real_Discrete_Fourier_Transform (Self : Mat) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_DFT_Floating_Source
+        (Self,
+         "Inverse_Real_Discrete_Fourier_Transform",
+         Require_Complex => True);
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_DFT
+          (Source         => Self.Handle,
+           Transform_Kind => OpenCV.Internal.C_API.DFT_Inverse_Real,
+           Result         => New_Handle'Access);
+      if Status /= OpenCV.Internal.C_API.Success then
+         OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+         Raise_On_Error
+           (Status, "Mat inverse real discrete Fourier transform");
+      end if;
+
+      if New_Handle = OpenCV.Internal.C_API.Null_Mat_Handle then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat inverse real discrete Fourier transform returned a null"
+            & " result handle");
+      end if;
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Inverse_Real_Discrete_Fourier_Transform;
+
    function Is_Empty (Self : Mat) return Boolean is
       Empty  : aliased OpenCV.Internal.C_API.C_Boolean :=
         OpenCV.Internal.C_API.C_False;

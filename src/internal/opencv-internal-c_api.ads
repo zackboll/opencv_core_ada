@@ -119,6 +119,9 @@ package OpenCV.Internal.C_API is
 
    Covariance_Scaling_Unscaled        : constant C_Int32 := 0;
    Covariance_Scaling_By_Sample_Count : constant C_Int32 := 1;
+   DFT_Forward_Complex                : constant C_Int32 := 0;
+   DFT_Inverse_Complex                : constant C_Int32 := 1;
+   DFT_Inverse_Real                   : constant C_Int32 := 2;
 
    subtype C_Boolean is Interfaces.Unsigned_8;
    C_False : constant C_Boolean := 0;
@@ -946,6 +949,12 @@ package OpenCV.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_core_mat_perspective_transform";
+
+   function Mat_DFT
+     (Source         : Mat_Handle;
+      Transform_Kind : C_Int32;
+      Result         : access Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_dft";
 
    function Mat_Mean (Self : Mat_Handle; Result : access Scalar) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_mean";

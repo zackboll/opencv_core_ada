@@ -119,6 +119,15 @@ typedef struct {
 #define OPENCV_CORE_COVARIANCE_SCALING_BY_SAMPLE_COUNT ((int32_t)1)
 
 /*
+ * Stable DFT transform-kind identifiers for the C ABI. These are
+ * translated explicitly to OpenCV DftFlags by the shim and are not
+ * a raw cv::DftFlags mask.
+ */
+#define OPENCV_CORE_DFT_FORWARD_COMPLEX ((int32_t)0)
+#define OPENCV_CORE_DFT_INVERSE_COMPLEX ((int32_t)1)
+#define OPENCV_CORE_DFT_INVERSE_REAL ((int32_t)2)
+
+/*
  * Returns a borrowed pointer to the diagnostic for the most recent failed shim
  * operation on the calling thread. The pointer remains valid only until a
  * subsequent shim operation changes that thread's error state. The caller must
@@ -1192,6 +1201,29 @@ opencv_core_mat_perspective_transform(
     const opencv_core_mat_handle *source,
     const opencv_core_mat_handle *transform_matrix,
     opencv_core_mat_handle **out_mat);
+
+/*
+ * Performs a full-complex Discrete Fourier Transform of a borrowed Mat
+ * using cv::dft. transform_kind must be one of the
+ * OPENCV_CORE_DFT_* identifiers; the shim constructs the exact OpenCV
+ * flags and never forwards a raw DftFlags mask.
+ *
+ * FORWARD_COMPLEX:
+ *   C1 -> DFT_COMPLEX_OUTPUT (full C2 spectrum, not packed CCS)
+ *   C2 -> flags 0
+ * INVERSE_COMPLEX:
+ *   DFT_INVERSE | DFT_SCALE
+ * INVERSE_REAL:
+ *   DFT_INVERSE | DFT_SCALE | DFT_REAL_OUTPUT
+ *
+ * nonzeroRows is always 0. DFT_ROWS is never set. Source is borrowed
+ * and unmodified. The independently owned result is published only
+ * after success. On failure *out_mat remains null.
+ */
+opencv_core_status
+opencv_core_mat_dft(const opencv_core_mat_handle *source,
+                    int32_t transform_kind,
+                    opencv_core_mat_handle **out_mat);
 
 /*
  * Computes unmasked per-channel mean values. Both operations support one to

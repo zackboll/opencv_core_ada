@@ -4317,6 +4317,54 @@ opencv_core_mat_perspective_transform(
 }
 
 opencv_core_status
+opencv_core_mat_dft(const opencv_core_mat_handle *source,
+                    int32_t transform_kind,
+                    opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat != nullptr) {
+        *out_mat = nullptr;
+    }
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    if (source == nullptr) {
+        return invalid_argument("source Mat handle must not be null");
+    }
+
+    int flags = 0;
+    switch (transform_kind) {
+    case OPENCV_CORE_DFT_FORWARD_COMPLEX:
+        if (source->value.channels() == 1) {
+            flags = cv::DFT_COMPLEX_OUTPUT;
+        }
+        break;
+    case OPENCV_CORE_DFT_INVERSE_COMPLEX:
+        flags = cv::DFT_INVERSE | cv::DFT_SCALE;
+        break;
+    case OPENCV_CORE_DFT_INVERSE_REAL:
+        flags = cv::DFT_INVERSE | cv::DFT_SCALE | cv::DFT_REAL_OUTPUT;
+        break;
+    default:
+        return invalid_argument("transform_kind must be a known DFT kind");
+    }
+
+    try {
+        cv::Mat result;
+        cv::dft(source->value, result, flags, 0);
+
+        std::unique_ptr<opencv_core_mat_handle> result_handle(
+            new opencv_core_mat_handle(result));
+        *out_mat = result_handle.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_mean(const opencv_core_mat_handle *mat,
                      opencv_core_scalar *out_mean) {
     clear_error();

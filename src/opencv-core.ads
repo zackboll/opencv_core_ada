@@ -516,6 +516,59 @@ package OpenCV.Core is
       return Cartesian_Coordinates;
    function Polar_To_Cart
      (Angle : Mat; Units : Angle_Unit := Radians) return Cartesian_Coordinates;
+   --  Returns an independently owned full-complex Discrete Fourier
+   --  Transform of Self using OpenCV 4.10 cv::dft. This is not DCT,
+   --  a packed CCS spectrum, a batched DFT_ROWS transform, or an
+   --  in-place procedure. Self must be a non-empty 2-D Float32 or
+   --  Float64 Mat with 1 or 2 channels. A 1 x N row, an N x 1
+   --  column, and an ordinary M x N matrix are all transformed as
+   --  2-D arrays of those dimensions; OpenCV's 1-D path is used
+   --  only when the shape itself is a single row or column.
+   --  Single-channel real input uses DFT_COMPLEX_OUTPUT so the
+   --  result is an explicit C2 spectrum of the same rows, columns,
+   --  and floating depth: channel 0 is the real part and channel 1
+   --  is the imaginary part. Packed CCS output is not part of this
+   --  API. Two-channel input is already complex and is transformed
+   --  in place of that representation, returning C2 of the same
+   --  shape and depth. Other channel counts are rejected rather
+   --  than reinterpreted as complex. The forward transform is
+   --  unscaled. Continuity is not required; non-contiguous Regions
+   --  are supported. Self is unchanged. The result owns independent
+   --  storage.
+   function Discrete_Fourier_Transform (Self : Mat) return Mat;
+   --  Returns an independently owned normalized inverse Discrete
+   --  Fourier Transform of a full-complex spectrum using OpenCV
+   --  4.10 cv::dft with DFT_INVERSE and DFT_SCALE. Self must be a
+   --  non-empty 2-D Float32 or Float64 Mat with exactly 2 channels.
+   --  Channel 0 is the real part and channel 1 is the imaginary
+   --  part. The result has Self's rows, columns, depth, and 2
+   --  channels. DFT_SCALE is always applied so that
+   --  Inverse_Discrete_Fourier_Transform
+   --  (Discrete_Fourier_Transform (Source)) approximately
+   --  reproduces Source rather than Source * Rows * Columns.
+   --  OpenCV's unscaled inverse is not the default Ada behavior.
+   --  Continuity is not required; non-contiguous Regions are
+   --  supported. Self is unchanged. The result owns independent
+   --  storage.
+   function Inverse_Discrete_Fourier_Transform (Self : Mat) return Mat;
+   --  Returns an independently owned real inverse Discrete Fourier
+   --  Transform of a full-complex spectrum using OpenCV 4.10
+   --  cv::dft with DFT_INVERSE, DFT_SCALE, and DFT_REAL_OUTPUT.
+   --  Self must be a non-empty 2-D Float32 or Float64 Mat with
+   --  exactly 2 channels. The result has Self's rows, columns, and
+   --  depth, and 1 channel. This is the natural inverse of
+   --  Discrete_Fourier_Transform when the original source was real.
+   --  DFT_REAL_OUTPUT assumes the input complex spectrum has the
+   --  conjugate symmetry required for a real spatial-domain result.
+   --  OpenCV 4.10 does not verify that symmetry, and this binding
+   --  does not invent a numerical tolerance. A spectrum obtained
+   --  from a real forward transform satisfies the assumption. A
+   --  malformed arbitrary C2 input is a caller-precondition
+   --  violation rather than a rejected argument, analogous to the
+   --  symmetric-eigen policy. Continuity is not required;
+   --  non-contiguous Regions are supported. Self is unchanged. The
+   --  result owns independent storage.
+   function Inverse_Real_Discrete_Fourier_Transform (Self : Mat) return Mat;
 
    --  Returns an independent Mat with Self's shape and element type.  For L1,
    --  L2, and Infinity, Alpha is the target norm and Beta is ignored.  For
