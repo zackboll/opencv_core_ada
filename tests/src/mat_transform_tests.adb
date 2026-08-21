@@ -5969,24 +5969,55 @@ package body Mat_Transform_Tests is
          "Discrete_Cosine_Transform must reject a 2x3 odd 2-D dimension");
    end Discrete_Cosine_Transform_Rejects_Odd_2D;
 
-   procedure Discrete_Cosine_Transform_Rejects_1x1
+   procedure Discrete_Cosine_Transform_1x1_Is_Identity
      (Test : in out Mat_Test_Fixture)
    is
       pragma Unreferenced (Test);
-      Source : constant OpenCV.Core.Mat :=
+      Source : OpenCV.Core.Mat :=
         OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
-
-      procedure Forward is
-         Ignored : OpenCV.Core.Mat;
-      begin
-         Ignored := Source.Discrete_Cosine_Transform;
-      end Forward;
    begin
-      Assert_Raises_OpenCV_Error
-        (Forward'Access,
-         "Discrete_Cosine_Transform must reject 1x1; OpenCV 4.10 DCT"
-         & " requires even lengths of at least 2");
-   end Discrete_Cosine_Transform_Rejects_1x1;
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, -3.5);
+
+      declare
+         Forward        : constant OpenCV.Core.Mat :=
+           Source.Discrete_Cosine_Transform;
+         Restored       : constant OpenCV.Core.Mat :=
+           Forward.Inverse_Discrete_Cosine_Transform;
+         Direct_Inverse : constant OpenCV.Core.Mat :=
+           Source.Inverse_Discrete_Cosine_Transform;
+      begin
+         AUnit.Assertions.Assert
+           (Forward.Rows = 1
+            and then Forward.Columns = 1
+            and then Forward.Depth = OpenCV.Core.Float32
+            and then Forward.Channels = 1
+            and then Approximately_Equal
+                       (Long_Float
+                          (OpenCV.Core.Float32_Access.Get (Forward, 0, 0)),
+                        -3.5,
+                        0.000_1),
+            "OpenCV 4.10 DCT of a 1x1 Mat must copy the signed value");
+         AUnit.Assertions.Assert
+           (Restored.Rows = 1
+            and then Restored.Columns = 1
+            and then Restored.Depth = OpenCV.Core.Float32
+            and then Restored.Channels = 1
+            and then DCT_Float32_C1_Close (Restored, Source, 0.000_1),
+            "IDCT of a 1x1 DCT result must recover the signed source");
+         AUnit.Assertions.Assert
+           (Direct_Inverse.Rows = 1
+            and then Direct_Inverse.Columns = 1
+            and then Direct_Inverse.Depth = OpenCV.Core.Float32
+            and then Direct_Inverse.Channels = 1
+            and then Approximately_Equal
+                       (Long_Float
+                          (OpenCV.Core.Float32_Access.Get
+                             (Direct_Inverse, 0, 0)),
+                        -3.5,
+                        0.000_1),
+            "OpenCV 4.10 IDCT of a 1x1 Mat must copy the signed value");
+      end;
+   end Discrete_Cosine_Transform_1x1_Is_Identity;
 
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -6640,7 +6671,8 @@ package body Mat_Transform_Tests is
             Discrete_Cosine_Transform_Rejects_Odd_2D'Access));
       Result.Add_Test
         (Caller.Create
-           ("DCT rejects 1x1", Discrete_Cosine_Transform_Rejects_1x1'Access));
+           ("DCT 1x1 is identity",
+            Discrete_Cosine_Transform_1x1_Is_Identity'Access));
 
       return Result'Access;
 

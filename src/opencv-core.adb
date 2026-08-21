@@ -2297,10 +2297,12 @@ package body OpenCV.Core is
          Column_Count : constant Natural := Self.Columns;
          Even_Length  : Boolean;
       begin
-         if Row_Count = 1 then
-            Even_Length := Column_Count >= 2 and then Column_Count mod 2 = 0;
+         if Row_Count = 1 and then Column_Count = 1 then
+            Even_Length := True;
+         elsif Row_Count = 1 then
+            Even_Length := Column_Count mod 2 = 0;
          elsif Column_Count = 1 then
-            Even_Length := Row_Count >= 2 and then Row_Count mod 2 = 0;
+            Even_Length := Row_Count mod 2 = 0;
          else
             Even_Length := Row_Count mod 2 = 0 and then Column_Count mod 2 = 0;
          end if;
@@ -2308,7 +2310,7 @@ package body OpenCV.Core is
          if not Even_Length then
             Ada.Exceptions.Raise_Exception
               (OpenCV_Error'Identity,
-               Operation & " requires even transform sizes of at least 2");
+               Operation & " requires even transform sizes greater than 1");
          end if;
       end;
 

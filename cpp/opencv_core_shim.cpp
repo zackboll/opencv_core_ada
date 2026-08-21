@@ -4434,6 +4434,24 @@ opencv_core_mat_dct(const opencv_core_mat_handle *source,
         }
     }
 
+    if (depth == CV_32F) {
+        const size_t source_step = source->value.step[0];
+        // ABI safety: OpenCV 4.10's Float32 IPP DCT path
+        // (ippiDCTFwd_32f_C1R / ippiDCTInv_32f_C1R in
+        // ippi_DCT_32f and DctIPPLoop_Invoker) narrows Mat row
+        // steps from size_t to int before invoking IPP. A
+        // non-contiguous Region can keep a parent stride larger
+        // than INT_MAX even when rows and columns are small.
+        // Compare size_t to size_t so the check itself cannot
+        // narrow or overflow.
+        if (source_step >
+            static_cast<size_t>(std::numeric_limits<int>::max())) {
+            return invalid_argument(
+                "Float32 DCT source row step exceeds OpenCV 4.10 "
+                "IPP int range");
+        }
+    }
+
     try {
         cv::Mat result;
         cv::dct(source->value, result, flags);

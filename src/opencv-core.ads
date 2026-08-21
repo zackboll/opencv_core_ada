@@ -599,14 +599,15 @@ package OpenCV.Core is
    --  Self using OpenCV 4.10 cv::dct. This is not DFT, a packed CCS
    --  spectrum, a batched DCT_ROWS transform, or an in-place
    --  procedure. Self must be a non-empty 2-D Float32 or Float64 Mat
-   --  with exactly one channel. A 1 x N row or an N x 1 column is
-   --  transformed as a 1-D vector of length N and requires N even
-   --  and N >= 2. An ordinary M x N matrix is transformed as 2-D
-   --  and requires both M and N even. A 1 x 1 Mat is therefore
-   --  rejected. Odd transformed dimensions are rejected rather than
-   --  padded. The result has Self's rows, columns, floating depth,
-   --  and one channel. OpenCV's DCT uses its documented orthonormal
-   --  cosine-transform convention, so Inverse_Discrete_Cosine_Transform
+   --  with exactly one channel. OpenCV 4.10 treats 1 x 1 as an
+   --  identity DCT. A 1 x N row or an N x 1 column with N > 1 is
+   --  transformed as a 1-D vector and requires N even. An ordinary
+   --  M x N matrix with M > 1 and N > 1 is transformed as 2-D and
+   --  requires both M and N even. Odd transformed dimensions greater
+   --  than one are rejected rather than padded. The result has Self's
+   --  rows, columns, floating depth, and one channel. OpenCV's DCT
+   --  uses its documented orthonormal cosine-transform convention, so
+   --  Inverse_Discrete_Cosine_Transform
    --  (Discrete_Cosine_Transform (Source)) approximately reproduces
    --  Source without a caller scale factor. Continuity is not
    --  required; non-contiguous Regions are supported. Self is
@@ -621,14 +622,14 @@ package OpenCV.Core is
    --  Returns an independently owned inverse Discrete Cosine
    --  Transform of Self using OpenCV 4.10 cv::dct with DCT_INVERSE.
    --  Self must be a non-empty 2-D Float32 or Float64 Mat with
-   --  exactly one channel and the same even transform geometry as
-   --  Discrete_Cosine_Transform. The result has Self's rows,
-   --  columns, floating depth, and one channel. Continuity is not
-   --  required; non-contiguous Regions are supported. Self is
-   --  unchanged. The result owns independent storage. Very large
-   --  matrices whose transformed dimensions would cause OpenCV
-   --  4.10's internal signed DCT work-buffer arithmetic to overflow
-   --  are rejected with OpenCV_Error.
+   --  exactly one channel and the same transform geometry as
+   --  Discrete_Cosine_Transform, including the 1 x 1 identity case.
+   --  The result has Self's rows, columns, floating depth, and one
+   --  channel. Continuity is not required; non-contiguous Regions
+   --  are supported. Self is unchanged. The result owns independent
+   --  storage. Very large matrices whose transformed dimensions
+   --  would cause OpenCV 4.10's internal signed DCT work-buffer
+   --  arithmetic to overflow are rejected with OpenCV_Error.
    function Inverse_Discrete_Cosine_Transform (Self : Mat) return Mat;
    --  Returns an independently owned per-element product of two
    --  full-complex spectra using OpenCV 4.10 cv::mulSpectrums.

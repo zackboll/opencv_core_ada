@@ -1257,8 +1257,10 @@ opencv_core_mat_dft(const opencv_core_mat_handle *source,
  * DCT_ROWS is never set. Source is borrowed and unmodified. The
  * independently owned result is published only after success.
  * Transformed dimensions whose OpenCV 4.10 signed DCT work-buffer
- * products would overflow int are rejected before cv::dct. On
- * failure *out_mat remains null.
+ * products would overflow int are rejected before cv::dct. A
+ * Float32 source whose row step cannot be represented as the
+ * signed int expected by OpenCV 4.10's IPP DCT path is also
+ * rejected. On failure *out_mat remains null.
  */
 opencv_core_status
 opencv_core_mat_dct(const opencv_core_mat_handle *source,
