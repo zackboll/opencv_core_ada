@@ -3103,6 +3103,102 @@ package body OpenCV.Core is
       end;
    end Solve;
 
+   function Solve_Cubic (Coefficients : Mat) return Cubic_Solution_Result is
+      Root_Count : aliased OpenCV.Internal.C_API.C_Int32 := 0;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      if Coefficients.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Solve_Cubic requires a non-empty Mat");
+      end if;
+
+      if Coefficients.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve_Cubic requires a single-channel coefficient vector");
+      end if;
+
+      if Coefficients.Depth /= Float32 and then Coefficients.Depth /= Float64
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve_Cubic requires a Float32 or Float64 coefficient vector");
+      end if;
+
+      if not ((Coefficients.Rows = 1
+               and then (Coefficients.Columns = 3
+                         or else Coefficients.Columns = 4))
+              or else (Coefficients.Columns = 1
+                       and then (Coefficients.Rows = 3
+                                 or else Coefficients.Rows = 4)))
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve_Cubic requires a 1 x 3, 3 x 1, 1 x 4, or 4 x 1 vector");
+      end if;
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_Solve_Cubic
+          (Coefficients => Coefficients.Handle,
+           Root_Count   => Root_Count'Access,
+           Result       => New_Handle'Access);
+      if Status /= OpenCV.Internal.C_API.Success then
+         OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+         Raise_On_Error (Status, "Solve_Cubic operation");
+      end if;
+
+      case Root_Count is
+         when -1        =>
+            if New_Handle /= OpenCV.Internal.C_API.Null_Mat_Handle then
+               OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  "Solve_Cubic returned roots for an identically-zero"
+                  & " equation");
+            end if;
+            return (Status => Infinitely_Many_Roots);
+
+         when 0         =>
+            if New_Handle /= OpenCV.Internal.C_API.Null_Mat_Handle then
+               OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  "Solve_Cubic returned roots for an equation without"
+                  & " real roots");
+            end if;
+            return (Status => No_Real_Roots);
+
+         when 1 | 2 | 3 =>
+            if New_Handle = OpenCV.Internal.C_API.Null_Mat_Handle then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  "Solve_Cubic returned a positive root count without roots");
+            end if;
+
+            declare
+               Result :
+                 Cubic_Solution_Result
+                   (Status =>
+                      (case Root_Count is
+                         when 1      => One_Real_Root,
+                         when 2      => Two_Real_Roots,
+                         when others => Three_Real_Roots));
+            begin
+               OpenCV.Internal.C_API.Mat_Destroy (Result.Roots.Handle);
+               Result.Roots.Handle := New_Handle;
+               return Result;
+            end;
+
+         when others    =>
+            OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+            Ada.Exceptions.Raise_Exception
+              (OpenCV_Error'Identity,
+               "Solve_Cubic returned an invalid mathematical root count");
+      end case;
+   end Solve_Cubic;
+
    function Supports_Dot_Product_Depth (Self : Mat) return Boolean
    is (Self.Depth = UInt8
        or else Self.Depth = Int8

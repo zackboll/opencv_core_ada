@@ -799,6 +799,15 @@ package OpenCV.Internal.C_API is
       Result          : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_solve";
 
+   function Mat_Solve_Cubic
+     (Coefficients : Mat_Handle;
+      Root_Count   : access C_Int32;
+      Result       : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_solve_cubic";
+
    function Mat_Matrix_Multiply
      (Left, Right : Mat_Handle; Result : access Mat_Handle) return Status
    with

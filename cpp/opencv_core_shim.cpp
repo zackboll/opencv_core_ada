@@ -3488,6 +3488,42 @@ opencv_core_mat_solve(const opencv_core_mat_handle *coefficients,
 }
 
 opencv_core_status
+opencv_core_mat_solve_cubic(const opencv_core_mat_handle *coefficients,
+                            int32_t *out_root_count,
+                            opencv_core_mat_handle **out_roots) {
+    clear_error();
+
+    if (out_root_count != nullptr) {
+        *out_root_count = 0;
+    }
+    if (out_roots != nullptr) {
+        *out_roots = nullptr;
+    }
+
+    if (coefficients == nullptr || out_root_count == nullptr ||
+        out_roots == nullptr) {
+        return invalid_argument(
+            "solve cubic requires a Mat handle and non-null output pointers");
+    }
+
+    try {
+        cv::Mat roots;
+        const int root_count = cv::solveCubic(coefficients->value, roots);
+
+        if (root_count > 0) {
+            std::unique_ptr<opencv_core_mat_handle> roots_handle(
+                new opencv_core_mat_handle(roots));
+            *out_roots = roots_handle.release();
+        }
+
+        *out_root_count = root_count;
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_matrix_multiply(const opencv_core_mat_handle *left,
                                 const opencv_core_mat_handle *right,
                                 opencv_core_mat_handle **out_mat) {

@@ -940,6 +940,18 @@ opencv_core_mat_solve(const opencv_core_mat_handle *coefficients,
                       opencv_core_mat_handle **out_solution);
 
 /*
+ * Finds real roots with cv::solveCubic. Coefficients are borrowed and roots,
+ * when out_root_count is positive, are published as an independently owned
+ * 3 x 1 Mat. out_root_count is cv::solveCubic's mathematical result (-1 to
+ * 3), distinct from this function's execution status. For counts at most
+ * zero, out_roots remains null.
+ */
+opencv_core_status
+opencv_core_mat_solve_cubic(const opencv_core_mat_handle *coefficients,
+                            int32_t *out_root_count,
+                            opencv_core_mat_handle **out_roots);
+
+/*
  * Performs ordinary algebraic matrix multiplication of two borrowed Mats
  * using cv::gemm with alpha=1, no addend, and no transpose flags:
  * result = left * right. Both operands must be non-empty, at most

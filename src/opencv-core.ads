@@ -251,6 +251,29 @@ package OpenCV.Core is
       end case;
    end record;
 
+   type Cubic_Root_Status is
+     (Infinitely_Many_Roots,
+      No_Real_Roots,
+      One_Real_Root,
+      Two_Real_Roots,
+      Three_Real_Roots);
+
+   --  Discriminated result of Solve_Cubic. Roots is present only for a
+   --  finite nonzero number of distinct real roots. It is an independently
+   --  owned 3 x 1 single-channel Mat with the coefficient depth; only its
+   --  leading one, two, or three entries, as selected by Status, are valid.
+   --  OpenCV does not guarantee root ordering.
+   type Cubic_Solution_Result (Status : Cubic_Root_Status := No_Real_Roots) is
+   record
+      case Status is
+         when One_Real_Root | Two_Real_Roots | Three_Real_Roots =>
+            Roots : Mat;
+
+         when Infinitely_Many_Roots | No_Real_Roots =>
+            null;
+      end case;
+   end record;
+
    --  A zero-based, owning sequence of Mats. An empty result has the null
    --  range 1 .. 0. Each element has normal Mat controlled ownership and
    --  shallow-copy assignment semantics.
@@ -806,6 +829,17 @@ package OpenCV.Core is
    --  accepted. This is not a least-squares or pseudo-solution API.
    --  Numerical rounding is inherent in floating-point solution.
    function Solve (Self : Mat; Right_Hand_Side : Mat) return Solve_Result;
+   --  Finds the distinct real roots of a cubic equation using OpenCV 4.10
+   --  solveCubic. Coefficients must be a non-empty single-channel Float32 or
+   --  Float64 row (1 x 3 or 1 x 4) or column (3 x 1 or 4 x 1) vector.
+   --  Three coefficients represent x**3 + A*x**2 + B*x + C = 0; four
+   --  represent A*x**3 + B*x**2 + C*x + D = 0. A zero leading coefficient
+   --  in the four-coefficient form is valid and reduces the equation to a
+   --  quadratic, linear, or constant equation. Roots is independently owned
+   --  and has the coefficient depth. Its valid leading entry count is given
+   --  by Status; root ordering is not guaranteed. Coefficients are unchanged
+   --  and non-contiguous Regions are accepted.
+   function Solve_Cubic (Coefficients : Mat) return Cubic_Solution_Result;
    --  Returns the scalar dot product of Self and Other as Long_Float,
    --  corresponding to OpenCV 4.10 cv::Mat::dot's double. This is the
    --  sum of every corresponding spatial-element and channel product.
