@@ -4365,14 +4365,18 @@ opencv_core_mat_svd_solve_zero(
     // and leave internal Mat headers backed by undersized storage.
     // The expression is defined for zero dimensions, so empty raw
     // headers are still checked before solveZ.
-    if (!svd_solve_zero_workspace_fits_size_t(source->value.rows,
-                                              source->value.cols,
-                                              source->value.elemSize())) {
-        return invalid_argument(
-            "SVD solve-zero workspace size exceeds the host size_t range");
-    }
-
+    // elemSize() may assert/throw for malformed or empty raw Mats in
+    // OpenCV Debug builds, so keep the complete backend-safety check
+    // inside the C ABI exception boundary.
     try {
+        if (!svd_solve_zero_workspace_fits_size_t(
+                source->value.rows,
+                source->value.cols,
+                source->value.elemSize())) {
+            return invalid_argument(
+                "SVD solve-zero workspace size exceeds the host size_t range");
+        }
+
         cv::Mat result;
         cv::SVD::solveZ(source->value, result);
 
