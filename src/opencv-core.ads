@@ -663,6 +663,18 @@ package OpenCV.Core is
    --  OpenCV_Error because OpenCV returns a negative sentinel.
    function Optimal_DFT_Size (Minimum_Size : Positive) return Positive;
 
+   --  Returns OpenCV 4.10's recommended efficient even DCT length
+   --  N1 >= Minimum_Size using the documented relationship
+   --  2 * Optimal_DFT_Size (ceil (Minimum_Size / 2)). The helper
+   --  does not allocate or transform a Mat. It returns 2 for
+   --  Minimum_Size = 1 even though OpenCV 4.10 supports a 1 x 1
+   --  DCT as an identity; this function follows OpenCV's
+   --  performance-sizing formula rather than reporting the
+   --  minimum executable DCT size. The returned length does not
+   --  imply that a Mat of that size passes the separate
+   --  Float32/Float64 DCT arithmetic-safety limits.
+   function Optimal_DCT_Size (Minimum_Size : Positive) return Positive;
+
    --  Returns an independent Mat with Self's shape and element type.  For L1,
    --  L2, and Infinity, Alpha is the target norm and Beta is ignored.  For
    --  Min_Max, Alpha and Beta specify the destination range bounds.

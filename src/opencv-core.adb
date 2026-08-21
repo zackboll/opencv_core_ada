@@ -2504,6 +2504,36 @@ package body OpenCV.Core is
       return Positive (Result);
    end Optimal_DFT_Size;
 
+   function Optimal_DCT_Size (Minimum_Size : Positive) return Positive is
+      Wide_Minimum : constant Long_Long_Integer :=
+        Long_Long_Integer (Minimum_Size);
+      Half_Minimum : Positive;
+      Half_Optimal : Positive;
+      Wide_Result  : Long_Long_Integer;
+   begin
+      if not OpenCV.Internal.Safe_Arithmetic.Fits_Signed_Int32 (Wide_Minimum)
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Optimal_DCT_Size minimum size exceeds the signed 32-bit"
+            & " OpenCV dimension domain");
+      end if;
+
+      Half_Minimum := Minimum_Size / 2 + Minimum_Size mod 2;
+      Half_Optimal := Optimal_DFT_Size (Half_Minimum);
+      Wide_Result := 2 * Long_Long_Integer (Half_Optimal);
+
+      if not OpenCV.Internal.Safe_Arithmetic.Fits_Signed_Int32 (Wide_Result)
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Optimal_DCT_Size result exceeds the signed 32-bit"
+            & " OpenCV dimension domain");
+      end if;
+
+      return Positive (Wide_Result);
+   end Optimal_DCT_Size;
+
    function Is_Empty (Self : Mat) return Boolean is
       Empty  : aliased OpenCV.Internal.C_API.C_Boolean :=
         OpenCV.Internal.C_API.C_False;

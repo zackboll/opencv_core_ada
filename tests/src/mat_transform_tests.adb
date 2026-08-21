@@ -6019,6 +6019,119 @@ package body Mat_Transform_Tests is
       end;
    end Discrete_Cosine_Transform_1x1_Is_Identity;
 
+   procedure Optimal_DCT_Size_Documented_Values
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+   begin
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Optimal_DCT_Size (1) = 2
+         and then OpenCV.Core.Optimal_DCT_Size (2) = 2
+         and then OpenCV.Core.Optimal_DCT_Size (3) = 4
+         and then OpenCV.Core.Optimal_DCT_Size (4) = 4
+         and then OpenCV.Core.Optimal_DCT_Size (5) = 6
+         and then OpenCV.Core.Optimal_DCT_Size (6) = 6
+         and then OpenCV.Core.Optimal_DCT_Size (7) = 8
+         and then OpenCV.Core.Optimal_DCT_Size (8) = 8
+         and then OpenCV.Core.Optimal_DCT_Size (11) = 12
+         and then OpenCV.Core.Optimal_DCT_Size (13) = 16
+         and then OpenCV.Core.Optimal_DCT_Size (17) = 18
+         and then OpenCV.Core.Optimal_DCT_Size (300) = 300
+         and then OpenCV.Core.Optimal_DCT_Size (301) = 320,
+         "Optimal_DCT_Size must follow OpenCV 4.10's documented"
+         & " 2 * Optimal_DFT_Size(ceil(N / 2)) formula");
+   end Optimal_DCT_Size_Documented_Values;
+
+   procedure Optimal_DCT_Size_Factors_Are_Two_Three_Five
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Samples : constant array (Positive range <>) of Positive :=
+        (1, 3, 5, 7, 11, 13, 17, 64, 301, 1_024, 4_097);
+   begin
+      for Sample of Samples loop
+         declare
+            Optimal : constant Positive :=
+              OpenCV.Core.Optimal_DCT_Size (Sample);
+         begin
+            AUnit.Assertions.Assert
+              (Optimal >= Sample
+               and then Optimal mod 2 = 0
+               and then Remainder_After_Factors_Two_Three_Five (Optimal / 2)
+                        = 1,
+               "Optimal_DCT_Size must return an even length whose"
+               & " half is a 2/3/5 factorization");
+         end;
+      end loop;
+   end Optimal_DCT_Size_Factors_Are_Two_Three_Five;
+
+   procedure Optimal_DCT_Size_Upper_Bound (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+
+      procedure Too_Large is
+         Ignored : Positive;
+      begin
+         Ignored := OpenCV.Core.Optimal_DCT_Size (2_125_764_001);
+      end Too_Large;
+   begin
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Optimal_DCT_Size (2_125_764_000) = 2_125_764_000,
+         "The last successful OpenCV 4.10 optimal DCT size must be"
+         & " 2125764000");
+      Assert_Raises_OpenCV_Error
+        (Too_Large'Access,
+         "Optimal_DCT_Size must raise OpenCV_Error when doubling"
+         & " exceeds signed 32-bit");
+   end Optimal_DCT_Size_Upper_Bound;
+
+   procedure Optimal_DCT_Size_Pads_For_DCT_Integration
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Minimum : constant Positive := 13;
+      Optimal : constant Positive := OpenCV.Core.Optimal_DCT_Size (Minimum);
+      Source  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 13, (OpenCV.Core.Float32, 1));
+   begin
+      AUnit.Assertions.Assert
+        (Optimal = 16, "Optimal_DCT_Size (13) must be 16");
+
+      for Column in 0 .. 12 loop
+         OpenCV.Core.Float32_Access.Set
+           (Source, 0, Column, Interfaces.IEEE_Float_32 (Column + 1));
+      end loop;
+
+      declare
+         Padded   : constant OpenCV.Core.Mat :=
+           Source.Copy_Make_Border
+             (Top    => 0,
+              Bottom => 0,
+              Left   => 0,
+              Right  => Optimal - Minimum,
+              Kind   => OpenCV.Core.Constant_Border,
+              Value  => OpenCV.Core.Make_Scalar (0.0));
+         Spectrum : constant OpenCV.Core.Mat :=
+           Padded.Discrete_Cosine_Transform;
+         Restored : constant OpenCV.Core.Mat :=
+           Spectrum.Inverse_Discrete_Cosine_Transform;
+      begin
+         AUnit.Assertions.Assert
+           (Padded.Rows = 1
+            and then Padded.Columns = Optimal
+            and then Spectrum.Rows = 1
+            and then Spectrum.Columns = Optimal
+            and then Spectrum.Channels = 1
+            and then Spectrum.Depth = OpenCV.Core.Float32
+            and then Restored.Rows = 1
+            and then Restored.Columns = Optimal
+            and then Restored.Channels = 1
+            and then Restored.Depth = OpenCV.Core.Float32
+            and then DCT_Float32_C1_Close (Restored, Padded, 0.000_1),
+            "Zero-padding to Optimal_DCT_Size must produce a DCT of"
+            & " that length that round-trips");
+      end;
+   end Optimal_DCT_Size_Pads_For_DCT_Integration;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
    Result : aliased AUnit.Test_Suites.Test_Suite;
 
@@ -6673,6 +6786,22 @@ package body Mat_Transform_Tests is
         (Caller.Create
            ("DCT 1x1 is identity",
             Discrete_Cosine_Transform_1x1_Is_Identity'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Optimal_DCT_Size documented values",
+            Optimal_DCT_Size_Documented_Values'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Optimal_DCT_Size results factor as 2, 3, and 5",
+            Optimal_DCT_Size_Factors_Are_Two_Three_Five'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Optimal_DCT_Size OpenCV 4.10 upper bound",
+            Optimal_DCT_Size_Upper_Bound'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Optimal_DCT_Size pads a small DCT",
+            Optimal_DCT_Size_Pads_For_DCT_Integration'Access));
 
       return Result'Access;
 
