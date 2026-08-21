@@ -940,11 +940,12 @@ opencv_core_mat_solve(const opencv_core_mat_handle *coefficients,
                       opencv_core_mat_handle **out_solution);
 
 /*
- * Finds real roots with cv::solveCubic. Coefficients are borrowed and roots,
- * when out_root_count is positive, are published as an independently owned
- * 3 x 1 Mat. out_root_count is cv::solveCubic's mathematical result (-1 to
- * 3), distinct from this function's execution status. For counts at most
- * zero, out_roots remains null.
+ * Finds real roots with cv::solveCubic. coefficients is borrowed. out_root_count
+ * and out_roots must be non-null; they are initialized to zero and null before
+ * work. The opencv_core_status reports execution success or failure.
+ * On success, out_root_count is cv::solveCubic's mathematical -1/0/1/2/3 result;
+ * a positive count publishes an independently owned 3 x 1 roots handle, while
+ * counts at most zero leave out_roots null. On failure outputs remain safe.
  */
 opencv_core_status
 opencv_core_mat_solve_cubic(const opencv_core_mat_handle *coefficients,
@@ -1067,11 +1068,12 @@ opencv_core_mat_eigen_decomposition(
 
 /*
  * Decomposes a borrowed real square Mat using cv::eigenNonSymmetric.
- * OpenCV 4.10 assumes all eigenvalues are real and returns eigenvalues
- * in descending order, with each corresponding eigenvector in a row.
- * Both output pointer arguments must be non-null and distinct. On success
- * both returned handles are independently owned. On any failure both
- * outputs remain null. The source is borrowed and unchanged.
+ * OpenCV 4.10 assumes all eigenvalues are real and returns eigenvalues in
+ * descending order, with each corresponding eigenvector in a row. Both output
+ * pointers must be non-null and distinct; both are initialized to null before
+ * work. On success both handles are independently owned. On any failure both
+ * remain null. The source is borrowed and unchanged. Dimensions above
+ * INT_MAX / 1000 are rejected for OpenCV 4.10 signed iteration-limit safety.
  */
 opencv_core_status
 opencv_core_mat_non_symmetric_eigen_decomposition(
@@ -1204,10 +1206,11 @@ opencv_core_mat_reciprocal_condition_number(
     double *out_value);
 
 /*
- * Computes a unit-length homogeneous least-residual solution of a
- * borrowed Mat using cv::SVD::solveZ. The independently owned result
- * is published only after success. On failure *out_mat remains null.
- * The source is borrowed and unchanged.
+ * Computes a unit-length homogeneous least-residual solution of a borrowed Mat
+ * using cv::SVD::solveZ. out_mat must be non-null and is initialized to null.
+ * The independently owned result is published only after success; it remains
+ * null on failure. The source is borrowed and unchanged. Raw inputs whose
+ * OpenCV 4.10 SVD workspace arithmetic exceeds size_t are rejected.
  */
 opencv_core_status
 opencv_core_mat_svd_solve_zero(
@@ -1401,8 +1404,9 @@ opencv_core_mat_norm_masked(const opencv_core_mat_handle *mat,
                             int32_t norm_kind, double *out_norm);
 
 /*
- * Computes cv::PSNR for two borrowed Mats. Inputs and peak_value are passed
- * directly to OpenCV. On failure *out_psnr remains zero.
+ * Computes cv::PSNR for two borrowed Mats. out_psnr must be non-null and is
+ * initialized to zero; it remains zero on failure. Inputs and peak_value are
+ * passed directly to OpenCV and the Mats remain borrowed and unmodified.
  */
 opencv_core_status
 opencv_core_mat_psnr(const opencv_core_mat_handle *left,

@@ -187,11 +187,12 @@ package OpenCV.Core is
       Mean       : Mat;
    end record;
 
-   --  Independently owned outputs of Eigen_Decomposition. Eigenvalues
-   --  is the N x 1 column of eigenvalues. Eigenvectors is the N x N
-   --  matrix of corresponding eigenvectors stored by row. Each field
-   --  has normal Mat controlled ownership and is independent of Self
-   --  and of the other field.
+   --  Independently owned outputs of Eigen_Decomposition and
+   --  Non_Symmetric_Eigen_Decomposition. Eigenvalues is the N x 1
+   --  column of eigenvalues. Eigenvectors is the N x N matrix of
+   --  corresponding eigenvectors stored by row. Each field has normal
+   --  Mat controlled ownership and is independent of Self and of the
+   --  other field.
    type Eigen_Decomposition_Result is record
       Eigenvalues  : Mat;
       Eigenvectors : Mat;
@@ -251,6 +252,8 @@ package OpenCV.Core is
       end case;
    end record;
 
+   --  The mathematical real-root result of Solve_Cubic: infinitely many
+   --  roots, no real roots, or one, two, or three distinct real roots.
    type Cubic_Root_Status is
      (Infinitely_Many_Roots,
       No_Real_Roots,
@@ -258,11 +261,11 @@ package OpenCV.Core is
       Two_Real_Roots,
       Three_Real_Roots);
 
-   --  Discriminated result of Solve_Cubic. Roots is present only for a
-   --  finite nonzero number of distinct real roots. It is an independently
-   --  owned 3 x 1 single-channel Mat with the coefficient depth; only its
-   --  leading one, two, or three entries, as selected by Status, are valid.
-   --  OpenCV does not guarantee root ordering.
+   --  Discriminated result of Solve_Cubic. Roots exists only when Status
+   --  denotes a finite positive count of distinct real roots. It is an
+   --  independently owned 3 x 1 single-channel Mat with the coefficient
+   --  depth; only its leading one, two, or three entries selected by Status
+   --  are mathematically valid. OpenCV does not guarantee root ordering.
    type Cubic_Solution_Result (Status : Cubic_Root_Status := No_Real_Roots) is
    record
       case Status is
@@ -834,16 +837,17 @@ package OpenCV.Core is
    --  accepted. This is not a least-squares or pseudo-solution API.
    --  Numerical rounding is inherent in floating-point solution.
    function Solve (Self : Mat; Right_Hand_Side : Mat) return Solve_Result;
-   --  Finds the distinct real roots of a cubic equation using OpenCV 4.10
-   --  solveCubic. Coefficients must be a non-empty single-channel Float32 or
-   --  Float64 row (1 x 3 or 1 x 4) or column (3 x 1 or 4 x 1) vector.
-   --  Three coefficients represent x**3 + A*x**2 + B*x + C = 0; four
-   --  represent A*x**3 + B*x**2 + C*x + D = 0. A zero leading coefficient
-   --  in the four-coefficient form is valid and reduces the equation to a
-   --  quadratic, linear, or constant equation. Roots is independently owned
-   --  and has the coefficient depth. Its valid leading entry count is given
-   --  by Status; root ordering is not guaranteed. Coefficients are unchanged
-   --  and non-contiguous Regions are accepted.
+   --  Finds distinct real roots with OpenCV 4.10 cv::solveCubic, unlike Solve
+   --  which solves a linear system. Coefficients must be a non-empty,
+   --  single-channel Float32 or Float64 vector of shape 1 x 3, 3 x 1, 1 x 4,
+   --  or 4 x 1. Three coefficients represent x**3 + A*x**2 + B*x + C = 0;
+   --  four represent A*x**3 + B*x**2 + C*x + D = 0. A zero leading A in the
+   --  four-coefficient form is valid and reduces the equation to quadratic,
+   --  linear, or constant. Status describes the mathematical root result;
+   --  Roots is present only for a finite positive count, is independently
+   --  owned, has the coefficient depth, and has only the Status-selected
+   --  leading entries valid. Root ordering is not guaranteed. Coefficients
+   --  are unchanged, and non-contiguous Regions are accepted.
    function Solve_Cubic (Coefficients : Mat) return Cubic_Solution_Result;
    function Solve_Polynomial
      (Coefficients : Mat; Maximum_Iterations : Positive := 300)
@@ -1063,15 +1067,16 @@ package OpenCV.Core is
    function Eigen_Decomposition (Self : Mat) return Eigen_Decomposition_Result;
 
    --  Computes the real non-symmetric eigendecomposition using OpenCV 4.10
-   --  cv::eigenNonSymmetric. Self must be a non-empty, square, single-channel
-   --  Float32 or Float64 Mat. Unlike Eigen_Decomposition, Self need not be
-   --  symmetric. All eigenvalues must be real; this is an OpenCV caller
-   --  precondition and is not tested numerically by this binding. OpenCV 4.10
-   --  orders eigenvalues from largest to smallest. Each corresponding
-   --  eigenvector is in a row. Eigenvector sign is arbitrary, and repeated
-   --  eigenvalue eigenspaces need not have a unique basis. Non-contiguous
-   --  Regions are supported. Self is unchanged; both result Mats are
-   --  independently owned and independent of Self and each other.
+   --  cv::eigenNonSymmetric. Self must be a non-empty square Float32 or
+   --  Float64 single-channel Mat with dimension at most 2_147_483. Unlike
+   --  Eigen_Decomposition, symmetry is not required. All eigenvalues must be
+   --  real; this is an OpenCV caller precondition, and this binding does not
+   --  invent a numerical complex-eigenvalue detector. Eigenvalues are ordered
+   --  from largest to smallest, and each corresponding eigenvector is stored
+   --  in a row. Eigenvector sign is arbitrary, and repeated eigenspaces need
+   --  not have unique bases. Non-contiguous Regions are supported. Self is
+   --  unchanged; both result Mats are independently owned and independent of
+   --  Self and each other.
    function Non_Symmetric_Eigen_Decomposition
      (Self : Mat) return Eigen_Decomposition_Result;
 
@@ -1183,24 +1188,19 @@ package OpenCV.Core is
    --  unchanged. Ordinary floating-point rounding applies.
    function Reciprocal_Condition_Number (Self : Mat) return Long_Float;
 
-   --  SVD_Solve_Zero returns an independently owned unit-length N x 1
-   --  vector minimizing ||Self * X|| for an M x N Float32 or Float64
-   --  single-channel source, using OpenCV 4.10 cv::SVD::solveZ. When
-   --  Self has a nontrivial null space, the result is a null-space
-   --  direction and Self * X is approximately zero. For
-   --  full-column-rank Self, the result is the right singular vector
-   --  associated with the smallest singular value and the residual
-   --  need not be zero. Singular-vector sign is arbitrary. Square,
-   --  tall, and wide matrices are supported; square shape,
-   --  singularity, and rank deficiency are not required. Self must be
-   --  a non-empty single-channel Float32 or Float64 Mat.
-   --  Multi-channel Mats, integer depths, and Float16 are rejected.
-   --  Continuity is not required; non-contiguous Regions are
-   --  supported. For a wide M x N source OpenCV internally requests
-   --  FULL_UV to obtain the complete right-singular basis; this
-   --  binding does not expose FULL_UV as a public SVD option. That
-   --  full basis can require substantially more temporary storage
-   --  than Self. Self is unchanged. There is no caller tolerance.
+   --  Returns an independently owned unit-length N x 1 vector minimizing
+   --  ||Self * X|| for an M x N source, directly using OpenCV 4.10
+   --  cv::SVD::solveZ. This is an SVD null/minimum-residual vector, not an
+   --  ordinary linear-system solution. For a nontrivial null space it is a
+   --  null-space direction and Self * X is approximately zero; otherwise it
+   --  is the right singular vector for the smallest singular value. Its sign
+   --  is arbitrary. Self must be non-empty Float32 or Float64 C1; square,
+   --  tall, and wide Mats are accepted, including non-contiguous Regions.
+   --  Wide Mats use OpenCV's internal FULL_UV behavior to obtain the complete
+   --  right-singular basis. Otherwise valid inputs are rejected when OpenCV
+   --  4.10's internal SVD temporary-workspace arithmetic would overflow the
+   --  host allocation size. Self is unchanged, and there is no caller
+   --  tolerance.
    function SVD_Solve_Zero (Self : Mat) return Mat;
 
    --  Computes the PCA basis of Self using OpenCV 4.10 cv::PCA.
@@ -1415,18 +1415,18 @@ package OpenCV.Core is
    function Norm
      (Self : Mat; Mask : Mat; Kind : Norm_Kind := L2) return Long_Float;
 
-   --  Computes OpenCV 4.10's peak signal-to-noise ratio in decibels over
-   --  every scalar channel component. Left and Right must be non-empty and
-   --  have identical rows, columns, depth, and channel count. All public Mat
-   --  depths, including Float16, and all channel counts are supported.
-   --  Continuity is not required, so matching non-contiguous Regions are
-   --  accepted. Peak_Value is passed directly as OpenCV's R parameter and
-   --  defaults to 255.0. It must be positive, finite, and representable as a
-   --  C double. OpenCV computes
+   --  Computes OpenCV 4.10 cv::PSNR in decibels over every scalar channel
+   --  component. Left and Right must be non-empty and have identical rows,
+   --  columns, depth, and channel count. All public Mat depths, including
+   --  Float16, and all channel counts are supported. Continuity is not
+   --  required, so matching non-contiguous Regions are accepted. Peak_Value,
+   --  OpenCV's R parameter, defaults to 255.0 and must be positive, finite,
+   --  and representable as a C double. OpenCV computes
    --    20 * log10 (Peak_Value / (RMSE + DBL_EPSILON));
    --  consequently identical inputs return a large finite value rather than
-   --  infinity. OpenCV itself would produce non-finite results for zero,
-   --  negative, or non-finite peak values; this Ada API rejects those values.
+   --  infinity. Inputs are unchanged. OpenCV itself would produce non-finite
+   --  results for zero, negative, or non-finite peak values; this Ada API
+   --  rejects those values.
    function Peak_Signal_To_Noise_Ratio
      (Left : Mat; Right : Mat; Peak_Value : Long_Float := 255.0)
       return Long_Float;

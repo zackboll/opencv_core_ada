@@ -3896,8 +3896,8 @@ opencv_core_mat_non_symmetric_eigen_decomposition(
     try {
         // ABI safety: OpenCV 4.10's general eigensolver computes
         // max_iters_count = 1000 * n using signed int before it can report
-        // non-convergence. Reject dimensions larger than INT_MAX / 1000 to
-        // prevent signed overflow in that internal calculation.
+        // non-convergence. n <= INT_MAX / 1000 is required to prevent that
+        // internal signed overflow.
         if (source->value.rows > std::numeric_limits<int>::max() / 1000) {
             return invalid_argument(
                 "non-symmetric eigen source dimension would overflow OpenCV 4.10 iteration limit");
@@ -4493,16 +4493,12 @@ opencv_core_mat_svd_solve_zero(
         return invalid_argument("source Mat handle must not be null");
     }
 
-    // ABI safety: OpenCV 4.10 _SVDcompute forms its temporary
-    // SVD buffer size from unchecked size_t products and sums.
-    // In the solveZ wide/FULL_UV path these include
-    // urows * astep, which can wrap before AutoBuffer allocation
-    // and leave internal Mat headers backed by undersized storage.
-    // The expression is defined for zero dimensions, so empty raw
-    // headers are still checked before solveZ.
-    // elemSize() may assert/throw for malformed or empty raw Mats in
-    // OpenCV Debug builds, so keep the complete backend-safety check
-    // inside the C ABI exception boundary.
+    // ABI safety: OpenCV 4.10 _SVDcompute forms its temporary SVD buffer from
+    // unchecked size_t products and sums. solveZ's wide/FULL_UV path includes
+    // urows * astep, which can wrap before AutoBuffer allocation and leave
+    // internal Mat headers backed by undersized storage. elemSize() may
+    // assert/throw for malformed or empty raw Mats in OpenCV Debug builds, so
+    // the complete backend-safety check remains inside this exception boundary.
     try {
         if (!svd_solve_zero_workspace_fits_size_t(
                 source->value.rows,
