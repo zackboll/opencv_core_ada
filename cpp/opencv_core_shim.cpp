@@ -84,6 +84,93 @@ bool int32_product_exceeds_max(int32_t left, int32_t right) noexcept {
            left > std::numeric_limits<int32_t>::max() / right;
 }
 
+bool checked_size_mul(size_t a, size_t b, size_t *result) noexcept {
+    if (result == nullptr) {
+        return false;
+    }
+    if (a != 0 && b > std::numeric_limits<size_t>::max() / a) {
+        return false;
+    }
+    *result = a * b;
+    return true;
+}
+
+bool checked_size_add(size_t a, size_t b, size_t *result) noexcept {
+    if (result == nullptr) {
+        return false;
+    }
+    if (b > std::numeric_limits<size_t>::max() - a) {
+        return false;
+    }
+    *result = a + b;
+    return true;
+}
+
+bool checked_align_size_16(size_t value, size_t *result) noexcept {
+    const size_t padding = (static_cast<size_t>(16) - (value % 16u)) % 16u;
+    return checked_size_add(value, padding, result);
+}
+
+// Models OpenCV 4.10 _SVDcompute's AutoBuffer size:
+//   urows * astep + n * vstep + n * esz + 32
+// with astep = alignSize(m * esz, 16) and vstep = alignSize(n * esz, 16).
+// solveZ requests FULL_UV only when original rows < columns.
+bool svd_solve_zero_workspace_fits_size_t(int rows, int columns,
+                                          size_t esz) noexcept {
+    if (rows < 0 || columns < 0) {
+        return false;
+    }
+
+    const size_t original_rows = static_cast<size_t>(rows);
+    const size_t original_columns = static_cast<size_t>(columns);
+    const size_t m =
+        original_rows >= original_columns ? original_rows : original_columns;
+    const size_t n =
+        original_rows >= original_columns ? original_columns : original_rows;
+    const bool full_uv = rows < columns;
+    const size_t urows = full_uv ? m : n;
+
+    size_t raw_astep = 0;
+    if (!checked_size_mul(m, esz, &raw_astep)) {
+        return false;
+    }
+    size_t astep = 0;
+    if (!checked_align_size_16(raw_astep, &astep)) {
+        return false;
+    }
+
+    size_t raw_vstep = 0;
+    if (!checked_size_mul(n, esz, &raw_vstep)) {
+        return false;
+    }
+    size_t vstep = 0;
+    if (!checked_align_size_16(raw_vstep, &vstep)) {
+        return false;
+    }
+
+    size_t part_u = 0;
+    if (!checked_size_mul(urows, astep, &part_u)) {
+        return false;
+    }
+    size_t part_v = 0;
+    if (!checked_size_mul(n, vstep, &part_v)) {
+        return false;
+    }
+    size_t part_w = 0;
+    if (!checked_size_mul(n, esz, &part_w)) {
+        return false;
+    }
+
+    size_t workspace = 0;
+    if (!checked_size_add(part_u, part_v, &workspace)) {
+        return false;
+    }
+    if (!checked_size_add(workspace, part_w, &workspace)) {
+        return false;
+    }
+    return checked_size_add(workspace, static_cast<size_t>(32), &workspace);
+}
+
 opencv_core_status invalid_argument(const char *message) noexcept {
     set_error(message);
     return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
@@ -4269,6 +4356,20 @@ opencv_core_mat_svd_solve_zero(
 
     if (source == nullptr) {
         return invalid_argument("source Mat handle must not be null");
+    }
+
+    // ABI safety: OpenCV 4.10 _SVDcompute forms its temporary
+    // SVD buffer size from unchecked size_t products and sums.
+    // In the solveZ wide/FULL_UV path these include
+    // urows * astep, which can wrap before AutoBuffer allocation
+    // and leave internal Mat headers backed by undersized storage.
+    // The expression is defined for zero dimensions, so empty raw
+    // headers are still checked before solveZ.
+    if (!svd_solve_zero_workspace_fits_size_t(source->value.rows,
+                                              source->value.cols,
+                                              source->value.elemSize())) {
+        return invalid_argument(
+            "SVD solve-zero workspace size exceeds the host size_t range");
     }
 
     try {
