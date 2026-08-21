@@ -161,6 +161,14 @@ package body OpenCV.Core is
            OpenCV.Internal.C_API.Covariance_Scaling_Unscaled,
          when By_Sample_Count =>
            OpenCV.Internal.C_API.Covariance_Scaling_By_Sample_Count);
+   function To_C_Spectrum_Multiplication_Kind
+     (Value : Spectrum_Multiplication_Kind)
+      return OpenCV.Internal.C_API.C_Int32
+   is (case Value is
+         when Ordinary_Spectrum_Product        =>
+           OpenCV.Internal.C_API.Spectrum_Product_Ordinary,
+         when Conjugate_Right_Spectrum_Product =>
+           OpenCV.Internal.C_API.Spectrum_Product_Conjugate_Right);
 
    function To_Mat_Size
      (Value : OpenCV.Internal.C_API.C_UInt64) return Mat_Size is
@@ -2265,6 +2273,86 @@ package body OpenCV.Core is
       Result.Handle := New_Handle;
       return Result;
    end Inverse_Real_Discrete_Fourier_Transform;
+
+   procedure Validate_Spectrum_Multiplication_Operands (Left, Right : Mat) is
+   begin
+      if Left.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Multiply_Spectra requires a non-empty Left Mat");
+      end if;
+
+      if Right.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Multiply_Spectra requires a non-empty Right Mat");
+      end if;
+
+      if Left.Rows /= Right.Rows then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Multiply_Spectra requires operands with identical row counts");
+      end if;
+
+      if Left.Columns /= Right.Columns then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Multiply_Spectra requires operands with identical column counts");
+      end if;
+
+      if Left.Depth /= Right.Depth then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Multiply_Spectra requires operands with identical depths");
+      end if;
+
+      if Left.Depth /= Float32 and then Left.Depth /= Float64 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Multiply_Spectra requires Float32 or Float64 spectra");
+      end if;
+
+      if Left.Channels /= 2 or else Right.Channels /= 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Multiply_Spectra requires explicit two-channel complex spectra");
+      end if;
+   end Validate_Spectrum_Multiplication_Operands;
+
+   function Multiply_Spectra
+     (Left  : Mat;
+      Right : Mat;
+      Kind  : Spectrum_Multiplication_Kind := Ordinary_Spectrum_Product)
+      return Mat
+   is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Spectrum_Multiplication_Operands (Left, Right);
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_Multiply_Spectra
+          (Left   => Left.Handle,
+           Right  => Right.Handle,
+           Kind   => To_C_Spectrum_Multiplication_Kind (Kind),
+           Result => New_Handle'Access);
+      if Status /= OpenCV.Internal.C_API.Success then
+         OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+         Raise_On_Error (Status, "Mat spectrum multiplication");
+      end if;
+
+      if New_Handle = OpenCV.Internal.C_API.Null_Mat_Handle then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat spectrum multiplication returned a null result handle");
+      end if;
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Multiply_Spectra;
 
    function Optimal_DFT_Size (Minimum_Size : Positive) return Positive is
       Wide_Minimum : constant Long_Long_Integer :=

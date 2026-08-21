@@ -128,6 +128,14 @@ typedef struct {
 #define OPENCV_CORE_DFT_INVERSE_REAL ((int32_t)2)
 
 /*
+ * Stable spectrum-product identifiers for the C ABI. These are
+ * translated explicitly to cv::mulSpectrums conjB by the shim and
+ * are not a raw OpenCV flag or Boolean.
+ */
+#define OPENCV_CORE_SPECTRUM_PRODUCT_ORDINARY ((int32_t)0)
+#define OPENCV_CORE_SPECTRUM_PRODUCT_CONJUGATE_RIGHT ((int32_t)1)
+
+/*
  * Returns a borrowed pointer to the diagnostic for the most recent failed shim
  * operation on the calling thread. The pointer remains valid only until a
  * subsequent shim operation changes that thread's error state. The caller must
@@ -1240,6 +1248,26 @@ opencv_core_mat_dft(const opencv_core_mat_handle *source,
  */
 opencv_core_status
 opencv_core_get_optimal_dft_size(int32_t minimum_size, int32_t *out_size);
+
+/*
+ * Multiplies two borrowed full-complex spectra using cv::mulSpectrums
+ * with flags 0. kind must be one of the OPENCV_CORE_SPECTRUM_PRODUCT_*
+ * identifiers; the shim maps them to conjB and never forwards a raw
+ * OpenCV flag mask or DFT_ROWS.
+ *
+ * ORDINARY:
+ *   conjB = false  (Left(I) * Right(I))
+ * CONJUGATE_RIGHT:
+ *   conjB = true   (Left(I) * conjugate(Right(I)))
+ *
+ * Inputs are borrowed and unmodified. The independently owned result
+ * is published only after success. On failure *out_mat remains null.
+ */
+opencv_core_status
+opencv_core_mat_multiply_spectra(const opencv_core_mat_handle *left,
+                                 const opencv_core_mat_handle *right,
+                                 int32_t kind,
+                                 opencv_core_mat_handle **out_mat);
 
 /*
  * Computes unmasked per-channel mean values. Both operations support one to

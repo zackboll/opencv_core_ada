@@ -4420,6 +4420,50 @@ opencv_core_get_optimal_dft_size(int32_t minimum_size, int32_t *out_size) {
 }
 
 opencv_core_status
+opencv_core_mat_multiply_spectra(const opencv_core_mat_handle *left,
+                                 const opencv_core_mat_handle *right,
+                                 int32_t kind,
+                                 opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat != nullptr) {
+        *out_mat = nullptr;
+    }
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    if (left == nullptr || right == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    bool conjugate_right = false;
+    switch (kind) {
+    case OPENCV_CORE_SPECTRUM_PRODUCT_ORDINARY:
+        conjugate_right = false;
+        break;
+    case OPENCV_CORE_SPECTRUM_PRODUCT_CONJUGATE_RIGHT:
+        conjugate_right = true;
+        break;
+    default:
+        return invalid_argument("kind must be a known spectrum product kind");
+    }
+
+    try {
+        cv::Mat result;
+        cv::mulSpectrums(left->value, right->value, result, 0, conjugate_right);
+
+        std::unique_ptr<opencv_core_mat_handle> result_handle(
+            new opencv_core_mat_handle(result));
+        *out_mat = result_handle.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_mean(const opencv_core_mat_handle *mat,
                      opencv_core_scalar *out_mean) {
     clear_error();

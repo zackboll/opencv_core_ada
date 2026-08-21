@@ -63,6 +63,16 @@ package OpenCV.Core is
    --  is not unbiased covariance and is not 1/(N - 1).
    type Covariance_Scaling is (Unscaled, By_Sample_Count);
 
+   --  Selects ordinary complex spectrum multiplication or
+   --  multiplication by the conjugate of the right-hand spectrum.
+   --  Ordinary products participate in frequency-domain convolution.
+   --  Conjugate-right products participate in frequency-domain
+   --  correlation. This operation performs only spectral
+   --  multiplication; inverse transformation and any required
+   --  padding or cropping remain caller operations.
+   type Spectrum_Multiplication_Kind is
+     (Ordinary_Spectrum_Product, Conjugate_Right_Spectrum_Product);
+
    type Channel_Count is new Interfaces.Integer_32 range 1 .. 512;
 
    type Mat_Size is
@@ -585,6 +595,28 @@ package OpenCV.Core is
    --  the full-complex element size (8 bytes for Float32, 16 bytes
    --  for Float64).
    function Inverse_Real_Discrete_Fourier_Transform (Self : Mat) return Mat;
+   --  Returns an independently owned per-element product of two
+   --  full-complex spectra using OpenCV 4.10 cv::mulSpectrums.
+   --  Left and Right must be non-empty 2-D Float32 or Float64 Mats
+   --  with exactly 2 channels, identical rows, identical columns,
+   --  and identical depth. Channel 0 is the real part and channel 1
+   --  is the imaginary part. Packed CCS C1 spectra are rejected
+   --  even though OpenCV itself accepts them. Kind selects ordinary
+   --  complex multiplication or multiplication by the conjugate of
+   --  Right. Ordinary products participate in frequency-domain
+   --  convolution; conjugate-right products participate in
+   --  frequency-domain correlation. This operation does not
+   --  transform, pad, scale, or invert; those remain caller
+   --  operations. DFT_ROWS is not part of this API. Continuity is
+   --  not required; non-contiguous Regions are supported. Left and
+   --  Right are unchanged. The result has the same rows, columns,
+   --  depth, and two channels, and owns independent storage.
+   function Multiply_Spectra
+     (Left  : Mat;
+      Right : Mat;
+      Kind  : Spectrum_Multiplication_Kind := Ordinary_Spectrum_Product)
+      return Mat;
+
    --  Returns the smallest OpenCV-efficient DFT length N >=
    --  Minimum_Size using OpenCV 4.10 cv::getOptimalDFTSize. Efficient
    --  sizes are products of powers of 2, 3, and 5. This only selects

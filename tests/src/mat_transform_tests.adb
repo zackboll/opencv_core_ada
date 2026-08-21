@@ -5118,6 +5118,467 @@ package body Mat_Transform_Tests is
       end;
    end Optimal_DFT_Size_Pads_For_DFT_Integration;
 
+   function Complex_Spectrum_From_Reals
+     (Real_Part, Imaginary_Part : OpenCV.Core.Mat) return OpenCV.Core.Mat is
+   begin
+      return OpenCV.Core.Merge ((0 => Real_Part, 1 => Imaginary_Part));
+   end Complex_Spectrum_From_Reals;
+
+   function Unit_Complex_Spectrum
+     (Rows, Columns : Natural; Depth : OpenCV.Core.Depth_Type)
+      return OpenCV.Core.Mat
+   is
+      Real_Part      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (Rows, Columns, (Depth, 1));
+      Imaginary_Part : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (Rows, Columns, (Depth, 1));
+   begin
+      Real_Part.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      Imaginary_Part.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      return Complex_Spectrum_From_Reals (Real_Part, Imaginary_Part);
+   end Unit_Complex_Spectrum;
+
+   function Sample_Complex_Pair return OpenCV.Core.Mat is
+      Real_Part      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Imaginary_Part : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Real_Part, 0, 0, 2.0);
+      OpenCV.Core.Float32_Access.Set (Imaginary_Part, 0, 0, 3.0);
+      return Complex_Spectrum_From_Reals (Real_Part, Imaginary_Part);
+   end Sample_Complex_Pair;
+
+   function Sample_Complex_Right return OpenCV.Core.Mat is
+      Real_Part      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Imaginary_Part : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Real_Part, 0, 0, 4.0);
+      OpenCV.Core.Float32_Access.Set (Imaginary_Part, 0, 0, 5.0);
+      return Complex_Spectrum_From_Reals (Real_Part, Imaginary_Part);
+   end Sample_Complex_Right;
+
+   function Complex_Channels_Close
+     (Image       : OpenCV.Core.Mat;
+      Row, Column : Natural;
+      Real, Imag  : Long_Float;
+      Tolerance   : Long_Float) return Boolean
+   is
+      Channels : constant OpenCV.Core.Mat_Array := Image.Split;
+   begin
+      return
+        Image.Channels = 2
+        and then Approximately_Equal
+                   (Long_Float
+                      (OpenCV.Core.Float32_Access.Get
+                         (Channels (0), Row, Column)),
+                    Real,
+                    Tolerance)
+        and then Approximately_Equal
+                   (Long_Float
+                      (OpenCV.Core.Float32_Access.Get
+                         (Channels (1), Row, Column)),
+                    Imag,
+                    Tolerance);
+   end Complex_Channels_Close;
+
+   procedure Multiply_Spectra_Ordinary_Float32_Product
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left   : constant OpenCV.Core.Mat := Sample_Complex_Pair;
+      Right  : constant OpenCV.Core.Mat := Sample_Complex_Right;
+      Result : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Multiply_Spectra (Left, Right);
+   begin
+      AUnit.Assertions.Assert
+        (Result.Rows = 1
+         and then Result.Columns = 1
+         and then Result.Depth = OpenCV.Core.Float32
+         and then Result.Channels = 2
+         and then Complex_Channels_Close (Result, 0, 0, -7.0, 22.0, 0.000_1),
+         "Ordinary Float32 C2 product of (2+3i)*(4+5i) must be -7+22i");
+   end Multiply_Spectra_Ordinary_Float32_Product;
+
+   procedure Multiply_Spectra_Conjugate_Right_Float32_Product
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left   : constant OpenCV.Core.Mat := Sample_Complex_Pair;
+      Right  : constant OpenCV.Core.Mat := Sample_Complex_Right;
+      Result : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Multiply_Spectra
+          (Left, Right, OpenCV.Core.Conjugate_Right_Spectrum_Product);
+   begin
+      AUnit.Assertions.Assert
+        (Complex_Channels_Close (Result, 0, 0, 23.0, 2.0, 0.000_1),
+         "Conjugate-right Float32 product of (2+3i)*conj(4+5i) must be 23+2i");
+   end Multiply_Spectra_Conjugate_Right_Float32_Product;
+
+   procedure Multiply_Spectra_Float64_Product (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left     : constant OpenCV.Core.Mat :=
+        Sample_Complex_Pair.Convert_To (OpenCV.Core.Float64);
+      Right    : constant OpenCV.Core.Mat :=
+        Sample_Complex_Right.Convert_To (OpenCV.Core.Float64);
+      Result   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Multiply_Spectra (Left, Right);
+      Channels : constant OpenCV.Core.Mat_Array := Result.Split;
+   begin
+      AUnit.Assertions.Assert
+        (Result.Rows = 1
+         and then Result.Columns = 1
+         and then Result.Depth = OpenCV.Core.Float64
+         and then Result.Channels = 2
+         and then Channels (0).Abs_Diff
+                    (OpenCV.Core.Create (1, 1, (OpenCV.Core.Float64, 1))
+                       .Convert_To (OpenCV.Core.Float64))
+                    .Norm
+                  >= 0.0,
+         "Float64 spectrum product must preserve depth and C2");
+      AUnit.Assertions.Assert
+        (Channels (0).Norm > 6.9
+         and then Channels (0).Norm < 7.1
+         and then Channels (1).Norm > 21.9
+         and then Channels (1).Norm < 22.1,
+         "Float64 ordinary product of (2+3i)*(4+5i) must be -7+22i");
+   end Multiply_Spectra_Float64_Product;
+
+   procedure Multiply_Spectra_Is_Elementwise_Complex
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left_Real  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Left_Imag  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Right_Real : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Right_Imag : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Left_Real, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Left_Imag, 0, 0, 0.0);
+      OpenCV.Core.Float32_Access.Set (Left_Real, 0, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Left_Imag, 0, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Left_Real, 1, 0, 0.0);
+      OpenCV.Core.Float32_Access.Set (Left_Imag, 1, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Left_Real, 1, 1, 3.0);
+      OpenCV.Core.Float32_Access.Set (Left_Imag, 1, 1, 4.0);
+      OpenCV.Core.Float32_Access.Set (Right_Real, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Right_Imag, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Right_Real, 0, 1, 0.0);
+      OpenCV.Core.Float32_Access.Set (Right_Imag, 0, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Right_Real, 1, 0, 5.0);
+      OpenCV.Core.Float32_Access.Set (Right_Imag, 1, 0, 0.0);
+      OpenCV.Core.Float32_Access.Set (Right_Real, 1, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Right_Imag, 1, 1, 0.0);
+
+      declare
+         Left   : constant OpenCV.Core.Mat :=
+           Complex_Spectrum_From_Reals (Left_Real, Left_Imag);
+         Right  : constant OpenCV.Core.Mat :=
+           Complex_Spectrum_From_Reals (Right_Real, Right_Imag);
+         Result : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Multiply_Spectra (Left, Right);
+      begin
+         AUnit.Assertions.Assert
+           (Complex_Channels_Close (Result, 0, 0, 1.0, 1.0, 0.000_1)
+            and then Complex_Channels_Close (Result, 0, 1, -2.0, 4.0, 0.000_1)
+            and then Complex_Channels_Close (Result, 1, 0, 0.0, 5.0, 0.000_1)
+            and then Complex_Channels_Close (Result, 1, 1, 3.0, 4.0, 0.000_1),
+            "Multiply_Spectra must multiply each C2 element as a complex"
+            & " value, not as a matrix or independent channels");
+      end;
+   end Multiply_Spectra_Is_Elementwise_Complex;
+
+   procedure Multiply_Spectra_Identity_Spectrum
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source   : constant OpenCV.Core.Mat := DFT_Sample_Complex_Float32;
+      Identity : constant OpenCV.Core.Mat :=
+        Unit_Complex_Spectrum (Source.Rows, Source.Columns, Source.Depth);
+      Result   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Multiply_Spectra (Source, Identity);
+   begin
+      AUnit.Assertions.Assert
+        (DFT_Float32_C2_Close (Result, Source, 0.000_1),
+         "Multiplying by 1+0i must reproduce the original spectrum");
+   end Multiply_Spectra_Identity_Spectrum;
+
+   procedure Multiply_Spectra_DFT_Convolution_Integration
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      A : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 3, (OpenCV.Core.Float32, 1));
+      B : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (A, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (A, 0, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (A, 0, 2, 3.0);
+      OpenCV.Core.Float32_Access.Set (B, 0, 0, 4.0);
+      OpenCV.Core.Float32_Access.Set (B, 0, 1, 5.0);
+
+      declare
+         Required : constant Positive := 4;
+         Length   : constant Positive :=
+           OpenCV.Core.Optimal_DFT_Size (Required);
+         Padded_A : constant OpenCV.Core.Mat :=
+           A.Copy_Make_Border
+             (Top    => 0,
+              Bottom => 0,
+              Left   => 0,
+              Right  => Length - A.Columns,
+              Kind   => OpenCV.Core.Constant_Border,
+              Value  => OpenCV.Core.Make_Scalar (0.0));
+         Padded_B : constant OpenCV.Core.Mat :=
+           B.Copy_Make_Border
+             (Top    => 0,
+              Bottom => 0,
+              Left   => 0,
+              Right  => Length - B.Columns,
+              Kind   => OpenCV.Core.Constant_Border,
+              Value  => OpenCV.Core.Make_Scalar (0.0));
+         Product  : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Multiply_Spectra
+             (Padded_A.Discrete_Fourier_Transform,
+              Padded_B.Discrete_Fourier_Transform);
+         Result   : constant OpenCV.Core.Mat :=
+           Product.Inverse_Real_Discrete_Fourier_Transform;
+      begin
+         AUnit.Assertions.Assert
+           (Result.Rows = 1
+            and then Result.Columns = Length
+            and then Result.Channels = 1
+            and then Approximately_Equal
+                       (Long_Float
+                          (OpenCV.Core.Float32_Access.Get (Result, 0, 0)),
+                        4.0,
+                        0.001)
+            and then Approximately_Equal
+                       (Long_Float
+                          (OpenCV.Core.Float32_Access.Get (Result, 0, 1)),
+                        13.0,
+                        0.001)
+            and then Approximately_Equal
+                       (Long_Float
+                          (OpenCV.Core.Float32_Access.Get (Result, 0, 2)),
+                        22.0,
+                        0.001)
+            and then Approximately_Equal
+                       (Long_Float
+                          (OpenCV.Core.Float32_Access.Get (Result, 0, 3)),
+                        15.0,
+                        0.001),
+            "Ordinary spectrum product of padded DFTs must recover the"
+            & " linear convolution [4, 13, 22, 15]");
+      end;
+   end Multiply_Spectra_DFT_Convolution_Integration;
+
+   procedure Multiply_Spectra_Noncontiguous_Regions
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left_Parent_Real  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 4, (OpenCV.Core.Float32, 1));
+      Left_Parent_Imag  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 4, (OpenCV.Core.Float32, 1));
+      Right_Parent_Real : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 4, (OpenCV.Core.Float32, 1));
+      Right_Parent_Imag : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 4, (OpenCV.Core.Float32, 1));
+   begin
+      Left_Parent_Real.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Left_Parent_Imag.Set_To (OpenCV.Core.Make_Scalar (88.0));
+      Right_Parent_Real.Set_To (OpenCV.Core.Make_Scalar (77.0));
+      Right_Parent_Imag.Set_To (OpenCV.Core.Make_Scalar (66.0));
+      OpenCV.Core.Float32_Access.Set (Left_Parent_Real, 0, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Left_Parent_Imag, 0, 1, 3.0);
+      OpenCV.Core.Float32_Access.Set (Left_Parent_Real, 0, 2, 1.0);
+      OpenCV.Core.Float32_Access.Set (Left_Parent_Imag, 0, 2, 0.0);
+      OpenCV.Core.Float32_Access.Set (Left_Parent_Real, 1, 1, 0.0);
+      OpenCV.Core.Float32_Access.Set (Left_Parent_Imag, 1, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Left_Parent_Real, 1, 2, 4.0);
+      OpenCV.Core.Float32_Access.Set (Left_Parent_Imag, 1, 2, 5.0);
+      OpenCV.Core.Float32_Access.Set (Right_Parent_Real, 0, 1, 4.0);
+      OpenCV.Core.Float32_Access.Set (Right_Parent_Imag, 0, 1, 5.0);
+      OpenCV.Core.Float32_Access.Set (Right_Parent_Real, 0, 2, 1.0);
+      OpenCV.Core.Float32_Access.Set (Right_Parent_Imag, 0, 2, 1.0);
+      OpenCV.Core.Float32_Access.Set (Right_Parent_Real, 1, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Right_Parent_Imag, 1, 1, 0.0);
+      OpenCV.Core.Float32_Access.Set (Right_Parent_Real, 1, 2, 0.0);
+      OpenCV.Core.Float32_Access.Set (Right_Parent_Imag, 1, 2, 1.0);
+
+      declare
+         Left_Parent  : constant OpenCV.Core.Mat :=
+           Complex_Spectrum_From_Reals (Left_Parent_Real, Left_Parent_Imag);
+         Right_Parent : constant OpenCV.Core.Mat :=
+           Complex_Spectrum_From_Reals (Right_Parent_Real, Right_Parent_Imag);
+         Left         : constant OpenCV.Core.Mat :=
+           Left_Parent.Region ((X => 1, Y => 0, Width => 2, Height => 2));
+         Right        : constant OpenCV.Core.Mat :=
+           Right_Parent.Region ((X => 1, Y => 0, Width => 2, Height => 2));
+         Result       : OpenCV.Core.Mat;
+      begin
+         AUnit.Assertions.Assert
+           (not Left.Is_Continuous and then not Right.Is_Continuous,
+            "Spectrum Region fixtures must be non-contiguous");
+         Result := OpenCV.Core.Multiply_Spectra (Left, Right);
+         AUnit.Assertions.Assert
+           (Result.Rows = 2
+            and then Result.Columns = 2
+            and then Result.Channels = 2
+            and then Complex_Channels_Close (Result, 0, 0, -7.0, 22.0, 0.000_1)
+            and then Complex_Channels_Close (Result, 0, 1, 1.0, 1.0, 0.000_1)
+            and then Complex_Channels_Close (Result, 1, 0, 0.0, 2.0, 0.000_1)
+            and then Complex_Channels_Close (Result, 1, 1, -5.0, 4.0, 0.000_1),
+            "Non-contiguous C2 Regions must multiply as independent"
+            & " complex spectra");
+         AUnit.Assertions.Assert
+           (Complex_Channels_Close (Left, 0, 0, 2.0, 3.0, 0.000_1)
+            and then Complex_Channels_Close (Right, 0, 0, 4.0, 5.0, 0.000_1)
+            and then Complex_Channels_Close
+                       (Left_Parent, 0, 0, 99.0, 88.0, 0.000_1)
+            and then Complex_Channels_Close
+                       (Right_Parent, 2, 3, 77.0, 66.0, 0.000_1),
+            "Multiply_Spectra must leave Regions and parents unchanged");
+         Result.Set_To (OpenCV.Core.Make_Scalar (12.0, 34.0));
+         AUnit.Assertions.Assert
+           (Complex_Channels_Close (Left, 0, 0, 2.0, 3.0, 0.000_1)
+            and then Complex_Channels_Close (Right, 0, 0, 4.0, 5.0, 0.000_1),
+            "Mutating a Region product must not mutate the source Regions");
+      end;
+   end Multiply_Spectra_Noncontiguous_Regions;
+
+   procedure Multiply_Spectra_Result_Is_Independent
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left   : constant OpenCV.Core.Mat := Sample_Complex_Pair;
+      Right  : constant OpenCV.Core.Mat := Sample_Complex_Right;
+      Result : OpenCV.Core.Mat := OpenCV.Core.Multiply_Spectra (Left, Right);
+   begin
+      Result.Set_To (OpenCV.Core.Make_Scalar (50.0, 60.0));
+      AUnit.Assertions.Assert
+        (Complex_Channels_Close (Left, 0, 0, 2.0, 3.0, 0.000_1)
+         and then Complex_Channels_Close (Right, 0, 0, 4.0, 5.0, 0.000_1),
+         "Mutating the spectrum product must not change Left or Right");
+   end Multiply_Spectra_Result_Is_Independent;
+
+   procedure Multiply_Spectra_Rejects_Empty (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Empty_Left  : OpenCV.Core.Mat;
+      Empty_Right : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 2));
+      Valid       : constant OpenCV.Core.Mat := Sample_Complex_Pair;
+
+      procedure Empty_Left_Operand is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := OpenCV.Core.Multiply_Spectra (Empty_Left, Valid);
+      end Empty_Left_Operand;
+
+      procedure Empty_Right_Operand is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := OpenCV.Core.Multiply_Spectra (Valid, Empty_Right);
+      end Empty_Right_Operand;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Empty_Left_Operand'Access,
+         "Multiply_Spectra must reject an empty Left Mat");
+      Assert_Raises_OpenCV_Error
+        (Empty_Right_Operand'Access,
+         "Multiply_Spectra must reject an empty Right Mat");
+   end Multiply_Spectra_Rejects_Empty;
+
+   procedure Multiply_Spectra_Rejects_Shape_Mismatch
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 2));
+      Right : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 1, (OpenCV.Core.Float32, 2));
+
+      procedure Mismatched_Shape is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := OpenCV.Core.Multiply_Spectra (Left, Right);
+      end Mismatched_Shape;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Mismatched_Shape'Access,
+         "Multiply_Spectra must reject mismatched rows or columns");
+   end Multiply_Spectra_Rejects_Shape_Mismatch;
+
+   procedure Multiply_Spectra_Rejects_Depth_Mismatch_And_Integer
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Float32_C2 : constant OpenCV.Core.Mat := Sample_Complex_Pair;
+      Float64_C2 : constant OpenCV.Core.Mat :=
+        Float32_C2.Convert_To (OpenCV.Core.Float64);
+      Int32_C2   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Int32, 2));
+
+      procedure Depth_Mismatch is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := OpenCV.Core.Multiply_Spectra (Float32_C2, Float64_C2);
+      end Depth_Mismatch;
+
+      procedure Integer_Depth is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := OpenCV.Core.Multiply_Spectra (Int32_C2, Int32_C2);
+      end Integer_Depth;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Depth_Mismatch'Access,
+         "Multiply_Spectra must reject Float32 C2 versus Float64 C2");
+      Assert_Raises_OpenCV_Error
+        (Integer_Depth'Access,
+         "Multiply_Spectra must reject integer C2 spectra");
+   end Multiply_Spectra_Rejects_Depth_Mismatch_And_Integer;
+
+   procedure Multiply_Spectra_Rejects_Packed_And_Extra_Channels
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      C1 : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      C3 : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 3));
+
+      procedure Packed_C1 is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := OpenCV.Core.Multiply_Spectra (C1, C1);
+      end Packed_C1;
+
+      procedure Extra_C3 is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := OpenCV.Core.Multiply_Spectra (C3, C3);
+      end Extra_C3;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Packed_C1'Access,
+         "Multiply_Spectra must reject packed C1 CCS spectra; the public"
+         & " API accepts only explicit full-complex C2");
+      Assert_Raises_OpenCV_Error
+        (Extra_C3'Access,
+         "Multiply_Spectra must reject C3 input; only explicit C2 spectra"
+         & " are supported");
+   end Multiply_Spectra_Rejects_Packed_And_Extra_Channels;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
    Result : aliased AUnit.Test_Suites.Test_Suite;
 
@@ -5672,6 +6133,54 @@ package body Mat_Transform_Tests is
         (Caller.Create
            ("Optimal_DFT_Size pads a small DFT",
             Optimal_DFT_Size_Pads_For_DFT_Integration'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Multiply_Spectra ordinary Float32 complex product",
+            Multiply_Spectra_Ordinary_Float32_Product'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Multiply_Spectra conjugate-right Float32 product",
+            Multiply_Spectra_Conjugate_Right_Float32_Product'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Multiply_Spectra Float64 complex product",
+            Multiply_Spectra_Float64_Product'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Multiply_Spectra is element-wise complex multiplication",
+            Multiply_Spectra_Is_Elementwise_Complex'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Multiply_Spectra identity spectrum",
+            Multiply_Spectra_Identity_Spectrum'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Multiply_Spectra DFT convolution integration",
+            Multiply_Spectra_DFT_Convolution_Integration'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Multiply_Spectra non-contiguous Regions",
+            Multiply_Spectra_Noncontiguous_Regions'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Multiply_Spectra result is independent",
+            Multiply_Spectra_Result_Is_Independent'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Multiply_Spectra rejects empty inputs",
+            Multiply_Spectra_Rejects_Empty'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Multiply_Spectra rejects shape mismatch",
+            Multiply_Spectra_Rejects_Shape_Mismatch'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Multiply_Spectra rejects depth mismatch and integer depth",
+            Multiply_Spectra_Rejects_Depth_Mismatch_And_Integer'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Multiply_Spectra rejects packed C1 and C3",
+            Multiply_Spectra_Rejects_Packed_And_Extra_Channels'Access));
 
       return Result'Access;
 
