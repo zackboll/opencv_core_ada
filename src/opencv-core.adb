@@ -2274,6 +2274,124 @@ package body OpenCV.Core is
       return Result;
    end Inverse_Real_Discrete_Fourier_Transform;
 
+   procedure Validate_DCT_Source (Self : Mat; Operation : String) is
+   begin
+      if Self.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, Operation & " requires a non-empty Mat");
+      end if;
+
+      if Self.Depth /= Float32 and then Self.Depth /= Float64 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            Operation & " requires a Float32 or Float64 Mat");
+      end if;
+
+      if Self.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, Operation & " requires a one-channel Mat");
+      end if;
+
+      declare
+         Row_Count    : constant Natural := Self.Rows;
+         Column_Count : constant Natural := Self.Columns;
+         Even_Length  : Boolean;
+      begin
+         if Row_Count = 1 then
+            Even_Length := Column_Count >= 2 and then Column_Count mod 2 = 0;
+         elsif Column_Count = 1 then
+            Even_Length := Row_Count >= 2 and then Row_Count mod 2 = 0;
+         else
+            Even_Length := Row_Count mod 2 = 0 and then Column_Count mod 2 = 0;
+         end if;
+
+         if not Even_Length then
+            Ada.Exceptions.Raise_Exception
+              (OpenCV_Error'Identity,
+               Operation & " requires even transform sizes of at least 2");
+         end if;
+      end;
+
+      declare
+         function Product_Exceeds_Signed_Int32
+           (Left, Right : Natural) return Boolean
+         renames OpenCV.Internal.Safe_Arithmetic.Product_Exceeds_Signed_Int32;
+
+         Complex_Element_Bytes : constant Natural :=
+           (if Self.Depth = Float32 then 8 else 16);
+      begin
+         if Product_Exceeds_Signed_Int32 (Self.Rows, Complex_Element_Bytes)
+           or else Product_Exceeds_Signed_Int32
+                     (Self.Columns, Complex_Element_Bytes)
+         then
+            Ada.Exceptions.Raise_Exception
+              (OpenCV_Error'Identity,
+               Operation
+               & " dimensions exceed the OpenCV 4.10"
+               & " signed-arithmetic safety limit");
+         end if;
+      end;
+   end Validate_DCT_Source;
+
+   function Discrete_Cosine_Transform (Self : Mat) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_DCT_Source (Self, "Discrete_Cosine_Transform");
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_DCT
+          (Source         => Self.Handle,
+           Transform_Kind => OpenCV.Internal.C_API.DCT_Forward,
+           Result         => New_Handle'Access);
+      if Status /= OpenCV.Internal.C_API.Success then
+         OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+         Raise_On_Error (Status, "Mat discrete cosine transform");
+      end if;
+
+      if New_Handle = OpenCV.Internal.C_API.Null_Mat_Handle then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat discrete cosine transform returned a null result handle");
+      end if;
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Discrete_Cosine_Transform;
+
+   function Inverse_Discrete_Cosine_Transform (Self : Mat) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_DCT_Source (Self, "Inverse_Discrete_Cosine_Transform");
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_DCT
+          (Source         => Self.Handle,
+           Transform_Kind => OpenCV.Internal.C_API.DCT_Inverse,
+           Result         => New_Handle'Access);
+      if Status /= OpenCV.Internal.C_API.Success then
+         OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+         Raise_On_Error (Status, "Mat inverse discrete cosine transform");
+      end if;
+
+      if New_Handle = OpenCV.Internal.C_API.Null_Mat_Handle then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat inverse discrete cosine transform returned a null"
+            & " result handle");
+      end if;
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Inverse_Discrete_Cosine_Transform;
+
    procedure Validate_Spectrum_Multiplication_Operands (Left, Right : Mat) is
    begin
       if Left.Is_Empty then

@@ -122,8 +122,11 @@ package OpenCV.Internal.C_API is
    DFT_Forward_Complex                : constant C_Int32 := 0;
    DFT_Inverse_Complex                : constant C_Int32 := 1;
    DFT_Inverse_Real                   : constant C_Int32 := 2;
-   Spectrum_Product_Ordinary          : constant C_Int32 := 0;
-   Spectrum_Product_Conjugate_Right   : constant C_Int32 := 1;
+   DCT_Forward                        : constant C_Int32 := 0;
+   DCT_Inverse                        : constant C_Int32 := 1;
+
+   Spectrum_Product_Ordinary        : constant C_Int32 := 0;
+   Spectrum_Product_Conjugate_Right : constant C_Int32 := 1;
 
    subtype C_Boolean is Interfaces.Unsigned_8;
    C_False : constant C_Boolean := 0;
@@ -957,6 +960,12 @@ package OpenCV.Internal.C_API is
       Transform_Kind : C_Int32;
       Result         : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_dft";
+
+   function Mat_DCT
+     (Source         : Mat_Handle;
+      Transform_Kind : C_Int32;
+      Result         : access Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_dct";
 
    function Get_Optimal_DFT_Size
      (Minimum_Size : C_Int32; Result : access C_Int32) return Status

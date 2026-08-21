@@ -128,6 +128,14 @@ typedef struct {
 #define OPENCV_CORE_DFT_INVERSE_REAL ((int32_t)2)
 
 /*
+ * Stable DCT transform-kind identifiers for the C ABI. These are
+ * translated explicitly to OpenCV DCT flags by the shim and are not
+ * a raw cv::DftFlags / DCT_* mask.
+ */
+#define OPENCV_CORE_DCT_FORWARD ((int32_t)0)
+#define OPENCV_CORE_DCT_INVERSE ((int32_t)1)
+
+/*
  * Stable spectrum-product identifiers for the C ABI. These are
  * translated explicitly to cv::mulSpectrums conjB by the shim and
  * are not a raw OpenCV flag or Boolean.
@@ -1232,6 +1240,28 @@ opencv_core_mat_perspective_transform(
  */
 opencv_core_status
 opencv_core_mat_dft(const opencv_core_mat_handle *source,
+                    int32_t transform_kind,
+                    opencv_core_mat_handle **out_mat);
+
+/*
+ * Performs a Discrete Cosine Transform of a borrowed Mat using
+ * cv::dct. transform_kind must be one of the OPENCV_CORE_DCT_*
+ * identifiers; the shim constructs the exact OpenCV flags and never
+ * forwards a raw DCT flag mask.
+ *
+ * FORWARD:
+ *   cv::dct(source, result, 0)
+ * INVERSE:
+ *   cv::dct(source, result, cv::DCT_INVERSE)
+ *
+ * DCT_ROWS is never set. Source is borrowed and unmodified. The
+ * independently owned result is published only after success.
+ * Transformed dimensions whose OpenCV 4.10 signed DCT work-buffer
+ * products would overflow int are rejected before cv::dct. On
+ * failure *out_mat remains null.
+ */
+opencv_core_status
+opencv_core_mat_dct(const opencv_core_mat_handle *source,
                     int32_t transform_kind,
                     opencv_core_mat_handle **out_mat);
 

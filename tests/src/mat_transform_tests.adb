@@ -5570,6 +5570,424 @@ package body Mat_Transform_Tests is
          & " are supported");
    end Multiply_Spectra_Rejects_Packed_And_Extra_Channels;
 
+   function DCT_Float32_C1_Close
+     (Left, Right : OpenCV.Core.Mat; Tolerance : Long_Float) return Boolean is
+   begin
+      return DFT_Float32_C1_Close (Left, Right, Tolerance);
+   end DCT_Float32_C1_Close;
+
+   procedure Discrete_Cosine_Transform_Float32_Known_Forward
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 4, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 2, 1.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 3, 1.0);
+
+      declare
+         Spectrum : constant OpenCV.Core.Mat :=
+           Source.Discrete_Cosine_Transform;
+         Inverse  : OpenCV.Core.Mat :=
+           OpenCV.Core.Create (1, 4, (OpenCV.Core.Float32, 1));
+      begin
+         OpenCV.Core.Float32_Access.Set (Inverse, 0, 0, 2.0);
+         OpenCV.Core.Float32_Access.Set (Inverse, 0, 1, 0.0);
+         OpenCV.Core.Float32_Access.Set (Inverse, 0, 2, 0.0);
+         OpenCV.Core.Float32_Access.Set (Inverse, 0, 3, 0.0);
+         AUnit.Assertions.Assert
+           (Spectrum.Rows = 1
+            and then Spectrum.Columns = 4
+            and then Spectrum.Depth = OpenCV.Core.Float32
+            and then Spectrum.Channels = 1
+            and then DCT_Float32_C1_Close (Spectrum, Inverse, 0.000_1),
+            "OpenCV 4.10 DCT of [1,1,1,1] must be approximately [2,0,0,0]");
+         declare
+            Restored : constant OpenCV.Core.Mat :=
+              Inverse.Inverse_Discrete_Cosine_Transform;
+         begin
+            AUnit.Assertions.Assert
+              (DCT_Float32_C1_Close (Restored, Source, 0.000_1),
+               "OpenCV 4.10 IDCT of [2,0,0,0] must recover [1,1,1,1]");
+         end;
+      end;
+   end Discrete_Cosine_Transform_Float32_Known_Forward;
+
+   procedure Discrete_Cosine_Transform_Float32_Round_Trip
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 4, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 2, 3.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 3, 4.0);
+
+      declare
+         Spectrum : constant OpenCV.Core.Mat :=
+           Source.Discrete_Cosine_Transform;
+         Restored : constant OpenCV.Core.Mat :=
+           Spectrum.Inverse_Discrete_Cosine_Transform;
+      begin
+         AUnit.Assertions.Assert
+           (Spectrum.Rows = 1
+            and then Spectrum.Columns = 4
+            and then Spectrum.Depth = OpenCV.Core.Float32
+            and then Spectrum.Channels = 1
+            and then Restored.Rows = 1
+            and then Restored.Columns = 4
+            and then Restored.Depth = OpenCV.Core.Float32
+            and then Restored.Channels = 1
+            and then DCT_Float32_C1_Close (Restored, Source, 0.000_1),
+            "Float32 DCT followed by IDCT must recover a nontrivial 1x4");
+      end;
+   end Discrete_Cosine_Transform_Float32_Round_Trip;
+
+   procedure Discrete_Cosine_Transform_Float64_Round_Trip
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source32 : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 4, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Source32, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Source32, 0, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Source32, 0, 2, 3.0);
+      OpenCV.Core.Float32_Access.Set (Source32, 0, 3, 4.0);
+
+      declare
+         Source     : constant OpenCV.Core.Mat :=
+           Source32.Convert_To (OpenCV.Core.Float64);
+         Spectrum   : constant OpenCV.Core.Mat :=
+           Source.Discrete_Cosine_Transform;
+         Restored   : constant OpenCV.Core.Mat :=
+           Spectrum.Inverse_Discrete_Cosine_Transform;
+         Difference : constant OpenCV.Core.Scalar :=
+           Restored.Abs_Diff (Source).Mean;
+      begin
+         AUnit.Assertions.Assert
+           (Spectrum.Rows = 1
+            and then Spectrum.Columns = 4
+            and then Spectrum.Depth = OpenCV.Core.Float64
+            and then Spectrum.Channels = 1
+            and then Restored.Depth = OpenCV.Core.Float64
+            and then Restored.Channels = 1
+            and then Approximately_Equal
+                       (Difference.Component_0, 0.0, 1.0E-12),
+            "Float64 DCT followed by IDCT must preserve depth and recover"
+            & " the signed source values");
+      end;
+   end Discrete_Cosine_Transform_Float64_Round_Trip;
+
+   procedure Discrete_Cosine_Transform_Column_Vector
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 1, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Source, 1, 0, 2.0);
+      OpenCV.Core.Float32_Access.Set (Source, 2, 0, 3.0);
+      OpenCV.Core.Float32_Access.Set (Source, 3, 0, 4.0);
+
+      declare
+         Spectrum : constant OpenCV.Core.Mat :=
+           Source.Discrete_Cosine_Transform;
+         Restored : constant OpenCV.Core.Mat :=
+           Spectrum.Inverse_Discrete_Cosine_Transform;
+      begin
+         AUnit.Assertions.Assert
+           (Spectrum.Rows = 4
+            and then Spectrum.Columns = 1
+            and then Spectrum.Channels = 1
+            and then Restored.Rows = 4
+            and then Restored.Columns = 1
+            and then DCT_Float32_C1_Close (Restored, Source, 0.000_1),
+            "A 4x1 DCT must remain a 1-D column transform and round-trip");
+      end;
+   end Discrete_Cosine_Transform_Column_Vector;
+
+   procedure Discrete_Cosine_Transform_2D (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+   begin
+      Source.Set_To (OpenCV.Core.Make_Scalar (1.0));
+
+      declare
+         Spectrum : constant OpenCV.Core.Mat :=
+           Source.Discrete_Cosine_Transform;
+         Restored : constant OpenCV.Core.Mat :=
+           Spectrum.Inverse_Discrete_Cosine_Transform;
+      begin
+         AUnit.Assertions.Assert
+           (Spectrum.Rows = 2
+            and then Spectrum.Columns = 2
+            and then Spectrum.Depth = OpenCV.Core.Float32
+            and then Spectrum.Channels = 1
+            and then Approximately_Equal
+                       (Long_Float
+                          (OpenCV.Core.Float32_Access.Get (Spectrum, 0, 0)),
+                        2.0,
+                        0.000_1)
+            and then Approximately_Equal
+                       (Long_Float
+                          (OpenCV.Core.Float32_Access.Get (Spectrum, 0, 1)),
+                        0.0,
+                        0.000_1)
+            and then Approximately_Equal
+                       (Long_Float
+                          (OpenCV.Core.Float32_Access.Get (Spectrum, 1, 0)),
+                        0.0,
+                        0.000_1)
+            and then Approximately_Equal
+                       (Long_Float
+                          (OpenCV.Core.Float32_Access.Get (Spectrum, 1, 1)),
+                        0.0,
+                        0.000_1),
+            "A constant 2x2 DCT must be a true 2-D DC-only spectrum");
+         AUnit.Assertions.Assert
+           (DCT_Float32_C1_Close (Restored, Source, 0.000_1),
+            "A 2x2 DCT followed by IDCT must recover the source");
+      end;
+   end Discrete_Cosine_Transform_2D;
+
+   procedure Discrete_Cosine_Transform_Noncontiguous_Region
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 4, (OpenCV.Core.Float32, 1));
+   begin
+      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      OpenCV.Core.Float32_Access.Set (Parent, 0, 1, 1.0);
+      OpenCV.Core.Float32_Access.Set (Parent, 0, 2, 2.0);
+      OpenCV.Core.Float32_Access.Set (Parent, 1, 1, 3.0);
+      OpenCV.Core.Float32_Access.Set (Parent, 1, 2, 4.0);
+
+      declare
+         Region   : constant OpenCV.Core.Mat :=
+           Parent.Region ((X => 1, Y => 0, Width => 2, Height => 2));
+         Expected : OpenCV.Core.Mat :=
+           OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+         Spectrum : OpenCV.Core.Mat;
+         Restored : OpenCV.Core.Mat;
+      begin
+         OpenCV.Core.Float32_Access.Set (Expected, 0, 0, 1.0);
+         OpenCV.Core.Float32_Access.Set (Expected, 0, 1, 2.0);
+         OpenCV.Core.Float32_Access.Set (Expected, 1, 0, 3.0);
+         OpenCV.Core.Float32_Access.Set (Expected, 1, 1, 4.0);
+         AUnit.Assertions.Assert
+           (not Region.Is_Continuous,
+            "DCT Region fixture must be non-contiguous");
+         Spectrum := Region.Discrete_Cosine_Transform;
+         Restored := Spectrum.Inverse_Discrete_Cosine_Transform;
+         AUnit.Assertions.Assert
+           (Spectrum.Rows = 2
+            and then Spectrum.Columns = 2
+            and then Restored.Rows = 2
+            and then Restored.Columns = 2
+            and then DCT_Float32_C1_Close (Restored, Expected, 0.000_1),
+            "A non-contiguous Region DCT must transform only Region values");
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float32_Access.Get (Region, 0, 0) = 1.0
+            and then OpenCV.Core.Float32_Access.Get (Region, 0, 1) = 2.0
+            and then OpenCV.Core.Float32_Access.Get (Region, 1, 0) = 3.0
+            and then OpenCV.Core.Float32_Access.Get (Region, 1, 1) = 4.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 0, 0) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 2, 3) = 99.0,
+            "DCT of a Region must leave the Region and parent unchanged");
+         OpenCV.Core.Float32_Access.Set (Restored, 0, 0, 50.0);
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float32_Access.Get (Region, 0, 0) = 1.0,
+            "Mutating a Region DCT result must not mutate the Region");
+      end;
+   end Discrete_Cosine_Transform_Noncontiguous_Region;
+
+   procedure Discrete_Cosine_Transform_Result_Is_Independent
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 4, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 2, 3.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 3, 4.0);
+
+      declare
+         Spectrum : OpenCV.Core.Mat := Source.Discrete_Cosine_Transform;
+         Restored : OpenCV.Core.Mat :=
+           Spectrum.Inverse_Discrete_Cosine_Transform;
+      begin
+         OpenCV.Core.Float32_Access.Set (Spectrum, 0, 0, 123.0);
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float32_Access.Get (Source, 0, 0) = 1.0
+            and then OpenCV.Core.Float32_Access.Get (Source, 0, 3) = 4.0,
+            "Mutating a DCT result must not change the source");
+         OpenCV.Core.Float32_Access.Set (Restored, 0, 0, 77.0);
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float32_Access.Get (Source, 0, 0) = 1.0
+            and then OpenCV.Core.Float32_Access.Get (Spectrum, 0, 0) = 123.0,
+            "Mutating an IDCT result must not change the source or spectrum");
+      end;
+   end Discrete_Cosine_Transform_Result_Is_Independent;
+
+   procedure Discrete_Cosine_Transform_Rejects_Empty
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Default_Source : OpenCV.Core.Mat;
+      Empty_Source   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 1));
+
+      procedure Forward_Default is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Default_Source.Discrete_Cosine_Transform;
+      end Forward_Default;
+
+      procedure Forward_Empty is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Empty_Source.Discrete_Cosine_Transform;
+      end Forward_Empty;
+
+      procedure Inverse_Empty is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Empty_Source.Inverse_Discrete_Cosine_Transform;
+      end Inverse_Empty;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Forward_Default'Access,
+         "Discrete_Cosine_Transform must reject a default empty Mat");
+      Assert_Raises_OpenCV_Error
+        (Forward_Empty'Access,
+         "Discrete_Cosine_Transform must reject a typed 0x0 Mat");
+      Assert_Raises_OpenCV_Error
+        (Inverse_Empty'Access,
+         "Inverse_Discrete_Cosine_Transform must reject empty input");
+   end Discrete_Cosine_Transform_Rejects_Empty;
+
+   procedure Discrete_Cosine_Transform_Rejects_Unsupported_Depth
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      UInt8_Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      Int32_Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Int32, 1));
+
+      procedure Forward_UInt8 is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := UInt8_Source.Discrete_Cosine_Transform;
+      end Forward_UInt8;
+
+      procedure Forward_Int32 is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Int32_Source.Discrete_Cosine_Transform;
+      end Forward_Int32;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Forward_UInt8'Access, "Discrete_Cosine_Transform must reject UInt8");
+      Assert_Raises_OpenCV_Error
+        (Forward_Int32'Access, "Discrete_Cosine_Transform must reject Int32");
+   end Discrete_Cosine_Transform_Rejects_Unsupported_Depth;
+
+   procedure Discrete_Cosine_Transform_Rejects_Invalid_Channels
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      C2 : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 2));
+
+      procedure Forward_C2 is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := C2.Discrete_Cosine_Transform;
+      end Forward_C2;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Forward_C2'Access,
+         "Discrete_Cosine_Transform must reject C2; DCT is C1 only");
+   end Discrete_Cosine_Transform_Rejects_Invalid_Channels;
+
+   procedure Discrete_Cosine_Transform_Rejects_Odd_Vectors
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Row : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 3, (OpenCV.Core.Float32, 1));
+      Col : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 1, (OpenCV.Core.Float32, 1));
+
+      procedure Forward_Row is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Row.Discrete_Cosine_Transform;
+      end Forward_Row;
+
+      procedure Forward_Col is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Col.Discrete_Cosine_Transform;
+      end Forward_Col;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Forward_Row'Access,
+         "Discrete_Cosine_Transform must reject a 1x3 odd-length vector");
+      Assert_Raises_OpenCV_Error
+        (Forward_Col'Access,
+         "Discrete_Cosine_Transform must reject a 3x1 odd-length vector");
+   end Discrete_Cosine_Transform_Rejects_Odd_Vectors;
+
+   procedure Discrete_Cosine_Transform_Rejects_Odd_2D
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+
+      procedure Forward is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Source.Discrete_Cosine_Transform;
+      end Forward;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Forward'Access,
+         "Discrete_Cosine_Transform must reject a 2x3 odd 2-D dimension");
+   end Discrete_Cosine_Transform_Rejects_Odd_2D;
+
+   procedure Discrete_Cosine_Transform_Rejects_1x1
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+
+      procedure Forward is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Source.Discrete_Cosine_Transform;
+      end Forward;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Forward'Access,
+         "Discrete_Cosine_Transform must reject 1x1; OpenCV 4.10 DCT"
+         & " requires even lengths of at least 2");
+   end Discrete_Cosine_Transform_Rejects_1x1;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
    Result : aliased AUnit.Test_Suites.Test_Suite;
 
@@ -6172,6 +6590,57 @@ package body Mat_Transform_Tests is
         (Caller.Create
            ("Multiply_Spectra rejects packed C1 and C3",
             Multiply_Spectra_Rejects_Packed_And_Extra_Channels'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("DCT Float32 known 1-D forward coefficients",
+            Discrete_Cosine_Transform_Float32_Known_Forward'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("DCT Float32 1-D round trip",
+            Discrete_Cosine_Transform_Float32_Round_Trip'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("DCT Float64 1-D round trip",
+            Discrete_Cosine_Transform_Float64_Round_Trip'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("DCT column vector 1-D round trip",
+            Discrete_Cosine_Transform_Column_Vector'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("DCT 2-D constant DC-only and round trip",
+            Discrete_Cosine_Transform_2D'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("DCT non-contiguous Region",
+            Discrete_Cosine_Transform_Noncontiguous_Region'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("DCT result is independent",
+            Discrete_Cosine_Transform_Result_Is_Independent'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("DCT rejects empty input",
+            Discrete_Cosine_Transform_Rejects_Empty'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("DCT rejects unsupported depth",
+            Discrete_Cosine_Transform_Rejects_Unsupported_Depth'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("DCT rejects C2",
+            Discrete_Cosine_Transform_Rejects_Invalid_Channels'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("DCT rejects odd 1-D vectors",
+            Discrete_Cosine_Transform_Rejects_Odd_Vectors'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("DCT rejects odd 2-D dimensions",
+            Discrete_Cosine_Transform_Rejects_Odd_2D'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("DCT rejects 1x1", Discrete_Cosine_Transform_Rejects_1x1'Access));
 
       return Result'Access;
 

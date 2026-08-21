@@ -4386,6 +4386,68 @@ opencv_core_mat_dft(const opencv_core_mat_handle *source,
 }
 
 opencv_core_status
+opencv_core_mat_dct(const opencv_core_mat_handle *source,
+                    int32_t transform_kind,
+                    opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat != nullptr) {
+        *out_mat = nullptr;
+    }
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    if (source == nullptr) {
+        return invalid_argument("source Mat handle must not be null");
+    }
+
+    int flags = 0;
+    switch (transform_kind) {
+    case OPENCV_CORE_DCT_FORWARD:
+        flags = 0;
+        break;
+    case OPENCV_CORE_DCT_INVERSE:
+        flags = cv::DCT_INVERSE;
+        break;
+    default:
+        return invalid_argument("transform_kind must be a known DCT kind");
+    }
+
+    const int depth = source->value.depth();
+    if (depth == CV_32F || depth == CV_64F) {
+        const int32_t rows = source->value.rows;
+        const int32_t cols = source->value.cols;
+        const int32_t complex_elem_size =
+            depth == CV_32F ? static_cast<int32_t>(sizeof(float) * 2)
+                            : static_cast<int32_t>(sizeof(double) * 2);
+        // ABI safety: OpenCV 4.10 dxt.cpp computes DCT work-buffer
+        // sizes such as len * complex_elem_size in signed int.
+        // Reject transformed dimensions before those expressions
+        // can overflow.
+        if (int32_product_exceeds_max(rows, complex_elem_size) ||
+            int32_product_exceeds_max(cols, complex_elem_size)) {
+            return invalid_argument(
+                "DCT dimensions exceed OpenCV 4.10 signed-arithmetic "
+                "safety limit");
+        }
+    }
+
+    try {
+        cv::Mat result;
+        cv::dct(source->value, result, flags);
+
+        std::unique_ptr<opencv_core_mat_handle> result_handle(
+            new opencv_core_mat_handle(result));
+        *out_mat = result_handle.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_get_optimal_dft_size(int32_t minimum_size, int32_t *out_size) {
     clear_error();
 
