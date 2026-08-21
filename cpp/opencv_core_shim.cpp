@@ -3786,6 +3786,59 @@ opencv_core_mat_eigen_decomposition(
 }
 
 opencv_core_status
+opencv_core_mat_non_symmetric_eigen_decomposition(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle **out_eigenvalues,
+    opencv_core_mat_handle **out_eigenvectors) {
+    clear_error();
+
+    if (out_eigenvalues != nullptr) {
+        *out_eigenvalues = nullptr;
+    }
+    if (out_eigenvectors != nullptr) {
+        *out_eigenvectors = nullptr;
+    }
+
+    if (out_eigenvalues == nullptr || out_eigenvectors == nullptr) {
+        return invalid_argument("output Mat handles must not be null");
+    }
+
+    if (out_eigenvalues == out_eigenvectors) {
+        return invalid_argument("output Mat handle pointers must be distinct");
+    }
+
+    if (source == nullptr) {
+        return invalid_argument("source Mat handle must not be null");
+    }
+
+    try {
+        // ABI safety: OpenCV 4.10's general eigensolver computes
+        // max_iters_count = 1000 * n using signed int before it can report
+        // non-convergence. Reject dimensions larger than INT_MAX / 1000 to
+        // prevent signed overflow in that internal calculation.
+        if (source->value.rows > std::numeric_limits<int>::max() / 1000) {
+            return invalid_argument(
+                "non-symmetric eigen source dimension would overflow OpenCV 4.10 iteration limit");
+        }
+
+        cv::Mat eigenvalues;
+        cv::Mat eigenvectors;
+        cv::eigenNonSymmetric(source->value, eigenvalues, eigenvectors);
+
+        std::unique_ptr<opencv_core_mat_handle> eigenvalues_handle(
+            new opencv_core_mat_handle(eigenvalues));
+        std::unique_ptr<opencv_core_mat_handle> eigenvectors_handle(
+            new opencv_core_mat_handle(eigenvectors));
+
+        *out_eigenvalues = eigenvalues_handle.release();
+        *out_eigenvectors = eigenvectors_handle.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_principal_component_analysis(
     const opencv_core_mat_handle *source, int32_t orientation,
     int32_t max_components, opencv_core_mat_handle **out_mean,

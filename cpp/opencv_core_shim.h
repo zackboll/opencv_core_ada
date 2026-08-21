@@ -1048,6 +1048,20 @@ opencv_core_mat_eigen_decomposition(
     opencv_core_mat_handle **out_eigenvectors);
 
 /*
+ * Decomposes a borrowed real square Mat using cv::eigenNonSymmetric.
+ * OpenCV 4.10 assumes all eigenvalues are real and returns eigenvalues
+ * in descending order, with each corresponding eigenvector in a row.
+ * Both output pointer arguments must be non-null and distinct. On success
+ * both returned handles are independently owned. On any failure both
+ * outputs remain null. The source is borrowed and unchanged.
+ */
+opencv_core_status
+opencv_core_mat_non_symmetric_eigen_decomposition(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle **out_eigenvalues,
+    opencv_core_mat_handle **out_eigenvectors);
+
+/*
  * Computes the PCA basis of a borrowed sample Mat using cv::PCA.
  * orientation is 0 (samples are rows) or 1 (samples are columns).
  * max_components is 0 to retain every available component, or a

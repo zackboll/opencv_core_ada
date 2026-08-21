@@ -3868,6 +3868,75 @@ package body OpenCV.Core is
       return Result;
    end Eigen_Decomposition;
 
+   procedure Validate_Non_Symmetric_Eigen_Decomposition (Self : Mat) is
+   begin
+      if Self.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Non_Symmetric_Eigen_Decomposition requires a non-empty Mat");
+      end if;
+
+      if Self.Rows /= Self.Columns then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Non_Symmetric_Eigen_Decomposition requires a square Mat");
+      end if;
+
+      if Self.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Non_Symmetric_Eigen_Decomposition requires a single-channel Mat");
+      end if;
+
+      if Self.Depth /= Float32 and then Self.Depth /= Float64 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Non_Symmetric_Eigen_Decomposition requires a Float32 or"
+            & " Float64 Mat");
+      end if;
+   end Validate_Non_Symmetric_Eigen_Decomposition;
+
+   function Non_Symmetric_Eigen_Decomposition
+     (Self : Mat) return Eigen_Decomposition_Result
+   is
+      Result              : Eigen_Decomposition_Result;
+      Eigenvalues_Handle  : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Eigenvectors_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status              : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Non_Symmetric_Eigen_Decomposition (Self);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Non_Symmetric_Eigen_Decomposition
+          (Source       => Self.Handle,
+           Eigenvalues  => Eigenvalues_Handle'Access,
+           Eigenvectors => Eigenvectors_Handle'Access);
+      if Status /= OpenCV.Internal.C_API.Success then
+         OpenCV.Internal.C_API.Mat_Destroy (Eigenvalues_Handle);
+         OpenCV.Internal.C_API.Mat_Destroy (Eigenvectors_Handle);
+         Raise_On_Error
+           (Status, "Mat non-symmetric eigen decomposition operation");
+      end if;
+
+      if Eigenvalues_Handle = OpenCV.Internal.C_API.Null_Mat_Handle
+        or else Eigenvectors_Handle = OpenCV.Internal.C_API.Null_Mat_Handle
+      then
+         OpenCV.Internal.C_API.Mat_Destroy (Eigenvalues_Handle);
+         OpenCV.Internal.C_API.Mat_Destroy (Eigenvectors_Handle);
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat non-symmetric eigen decomposition operation returned a"
+            & " null result handle");
+      end if;
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Eigenvalues.Handle);
+      Result.Eigenvalues.Handle := Eigenvalues_Handle;
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Eigenvectors.Handle);
+      Result.Eigenvectors.Handle := Eigenvectors_Handle;
+      return Result;
+   end Non_Symmetric_Eigen_Decomposition;
+
    function Validate_Principal_Component_Analysis
      (Self        : Mat;
       Orientation : Sample_Orientation;

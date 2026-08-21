@@ -858,6 +858,15 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_eigen_decomposition";
 
+   function Mat_Non_Symmetric_Eigen_Decomposition
+     (Source       : Mat_Handle;
+      Eigenvalues  : access Mat_Handle;
+      Eigenvectors : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_non_symmetric_eigen_decomposition";
+
    function Mat_Principal_Component_Analysis
      (Source         : Mat_Handle;
       Orientation    : C_Int32;

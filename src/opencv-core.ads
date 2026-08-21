@@ -1020,6 +1020,19 @@ package OpenCV.Core is
    --  than exposing a Boolean.
    function Eigen_Decomposition (Self : Mat) return Eigen_Decomposition_Result;
 
+   --  Computes the real non-symmetric eigendecomposition using OpenCV 4.10
+   --  cv::eigenNonSymmetric. Self must be a non-empty, square, single-channel
+   --  Float32 or Float64 Mat. Unlike Eigen_Decomposition, Self need not be
+   --  symmetric. All eigenvalues must be real; this is an OpenCV caller
+   --  precondition and is not tested numerically by this binding. OpenCV 4.10
+   --  orders eigenvalues from largest to smallest. Each corresponding
+   --  eigenvector is in a row. Eigenvector sign is arbitrary, and repeated
+   --  eigenvalue eigenspaces need not have a unique basis. Non-contiguous
+   --  Regions are supported. Self is unchanged; both result Mats are
+   --  independently owned and independent of Self and each other.
+   function Non_Symmetric_Eigen_Decomposition
+     (Self : Mat) return Eigen_Decomposition_Result;
+
    --  Computes the default compact/economy SVD of Self using OpenCV
    --  4.10 cv::SVD::compute with flags = 0. This is not PCA, a
    --  symmetric eigen solver, or a full-size SVD. Self is treated as

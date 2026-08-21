@@ -5754,6 +5754,226 @@ package body Mat_Reduction_Tests is
          "Eigen_Decomposition must reject Float16 input");
    end Eigen_Decomposition_Rejects_Invalid_Input;
 
+   procedure Non_Symmetric_Eigen_Upper_Triangular_Float32
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Eigen_Decomposition_Result;
+   begin
+      Fill_2x2 (Source, 2.0, 1.0, 0.0, 3.0);
+      Result := Source.Non_Symmetric_Eigen_Decomposition;
+
+      AUnit.Assertions.Assert
+        (Result.Eigenvalues.Rows = 2
+         and then Result.Eigenvalues.Columns = 1
+         and then Result.Eigenvectors.Rows = 2
+         and then Result.Eigenvectors.Columns = 2
+         and then Result.Eigenvalues.Depth = OpenCV.Core.Float32
+         and then Result.Eigenvectors.Depth = OpenCV.Core.Float32
+         and then Satisfies_Eigen_Equation (Source, Result, 0)
+         and then Satisfies_Eigen_Equation (Source, Result, 1),
+         "Non-symmetric Float32 eigenpairs must have N x 1 / N x N layout"
+         & " and satisfy A * v = lambda * v");
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Eigenvalue_At (Result.Eigenvalues, 0), 3.0)
+         and then Approximately_Equal
+                    (Eigenvalue_At (Result.Eigenvalues, 1), 2.0)
+         and then Unchanged_2x2 (Source, 2.0, 1.0, 0.0, 3.0),
+         "Non-symmetric eigen decomposition must preserve its source");
+   end Non_Symmetric_Eigen_Upper_Triangular_Float32;
+
+   procedure Non_Symmetric_Eigen_Decomposition_Three_By_Three
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Eigen_Decomposition_Result;
+   begin
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 1, 4.0);
+      OpenCV.Core.Float32_Access.Set (Source, 0, 2, 2.0);
+      OpenCV.Core.Float32_Access.Set (Source, 1, 0, 0.0);
+      OpenCV.Core.Float32_Access.Set (Source, 1, 1, 2.0);
+      OpenCV.Core.Float32_Access.Set (Source, 1, 2, 3.0);
+      OpenCV.Core.Float32_Access.Set (Source, 2, 0, 0.0);
+      OpenCV.Core.Float32_Access.Set (Source, 2, 1, 0.0);
+      OpenCV.Core.Float32_Access.Set (Source, 2, 2, 3.0);
+      Result := Source.Non_Symmetric_Eigen_Decomposition;
+
+      AUnit.Assertions.Assert
+        (Satisfies_Eigen_Equation (Source, Result, 0)
+         and then Satisfies_Eigen_Equation (Source, Result, 1)
+         and then Satisfies_Eigen_Equation (Source, Result, 2)
+         and then Approximately_Equal
+                    (Eigenvalue_At (Result.Eigenvalues, 0), 3.0)
+         and then Approximately_Equal
+                    (Eigenvalue_At (Result.Eigenvalues, 1), 2.0)
+         and then Approximately_Equal
+                    (Eigenvalue_At (Result.Eigenvalues, 2), 1.0),
+         "Every distinct-real 3x3 non-symmetric eigenpair must be correct");
+   end Non_Symmetric_Eigen_Decomposition_Three_By_Three;
+
+   procedure Non_Symmetric_Eigen_Float64_And_Compatibility
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source32    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Source      : OpenCV.Core.Mat;
+      General     : OpenCV.Core.Eigen_Decomposition_Result;
+      Symmetric   : OpenCV.Core.Eigen_Decomposition_Result;
+      General32   : OpenCV.Core.Eigen_Decomposition_Result;
+      Symmetric32 : OpenCV.Core.Mat;
+   begin
+      Fill_2x2 (Source32, 2.0, 1.0, 1.0, 2.0);
+      Source := Source32.Convert_To (OpenCV.Core.Float64);
+      General := Source.Non_Symmetric_Eigen_Decomposition;
+      Symmetric := Source.Eigen_Decomposition;
+      General32.Eigenvalues :=
+        General.Eigenvalues.Convert_To (OpenCV.Core.Float32);
+      General32.Eigenvectors :=
+        General.Eigenvectors.Convert_To (OpenCV.Core.Float32);
+      Symmetric32 := Symmetric.Eigenvalues.Convert_To (OpenCV.Core.Float32);
+
+      AUnit.Assertions.Assert
+        (General.Eigenvalues.Depth = OpenCV.Core.Float64
+         and then General.Eigenvectors.Depth = OpenCV.Core.Float64
+         and then Satisfies_Eigen_Equation (Source32, General32, 0)
+         and then Satisfies_Eigen_Equation (Source32, General32, 1)
+         and then Approximately_Equal
+                    (General32.Eigenvalues.Abs_Diff (Symmetric32).Norm
+                       (OpenCV.Core.Infinity),
+                     0.0,
+                     0.000_1),
+         "Non-symmetric Float64 output must preserve depth and agree with"
+         & " Eigen_Decomposition on symmetric input");
+   end Non_Symmetric_Eigen_Float64_And_Compatibility;
+
+   procedure Non_Symmetric_Eigen_Decomposition_Region_And_Ownership
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent                 : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 4, (OpenCV.Core.Float32, 1));
+      Result                 : OpenCV.Core.Eigen_Decomposition_Result;
+      First_Vector_Component : OpenCV.Core.Float32_Value;
+   begin
+      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      declare
+         Source : OpenCV.Core.Mat :=
+           Parent.Region ((X => 1, Y => 1, Width => 2, Height => 2));
+      begin
+         Fill_2x2 (Source, 2.0, 1.0, 0.0, 3.0);
+         Result := Source.Non_Symmetric_Eigen_Decomposition;
+         AUnit.Assertions.Assert
+           (not Source.Is_Continuous
+            and then Satisfies_Eigen_Equation (Source, Result, 0)
+            and then Satisfies_Eigen_Equation (Source, Result, 1),
+            "Non-symmetric eigen decomposition must support non-contiguous"
+            & " Regions");
+      end;
+
+      First_Vector_Component :=
+        OpenCV.Core.Float32_Access.Get (Result.Eigenvectors, 0, 0);
+      OpenCV.Core.Float32_Access.Set (Result.Eigenvalues, 0, 0, 7.0);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Result.Eigenvectors, 0, 0)
+         = First_Vector_Component,
+         "Mutating eigenvalues must not change eigenvectors");
+      OpenCV.Core.Float32_Access.Set (Result.Eigenvectors, 0, 0, 9.0);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Parent, 0, 0) = 99.0
+         and then OpenCV.Core.Float32_Access.Get (Result.Eigenvalues, 0, 0)
+                  = 7.0
+         and then OpenCV.Core.Float32_Access.Get (Result.Eigenvectors, 0, 0)
+                  = 9.0,
+         "Non-symmetric result Mats must outlive Self and be independent");
+   end Non_Symmetric_Eigen_Decomposition_Region_And_Ownership;
+
+   procedure Non_Symmetric_Eigen_Decomposition_Rejects_Invalid_Input
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Default_Empty : OpenCV.Core.Mat;
+      Empty32       : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 1));
+      Non_Square    : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Two_Channel   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 2));
+      UInt8_Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      Int32_Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Int32, 1));
+      Float16_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float16, 1));
+
+      procedure Check_Default is
+         Result : constant OpenCV.Core.Eigen_Decomposition_Result :=
+           Default_Empty.Non_Symmetric_Eigen_Decomposition;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Default;
+      procedure Check_Empty32 is
+         Result : constant OpenCV.Core.Eigen_Decomposition_Result :=
+           Empty32.Non_Symmetric_Eigen_Decomposition;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Empty32;
+      procedure Check_Non_Square is
+         Result : constant OpenCV.Core.Eigen_Decomposition_Result :=
+           Non_Square.Non_Symmetric_Eigen_Decomposition;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Non_Square;
+      procedure Check_Two_Channel is
+         Result : constant OpenCV.Core.Eigen_Decomposition_Result :=
+           Two_Channel.Non_Symmetric_Eigen_Decomposition;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Two_Channel;
+      procedure Check_UInt8 is
+         Result : constant OpenCV.Core.Eigen_Decomposition_Result :=
+           UInt8_Image.Non_Symmetric_Eigen_Decomposition;
+      begin
+         pragma Unreferenced (Result);
+      end Check_UInt8;
+      procedure Check_Int32 is
+         Result : constant OpenCV.Core.Eigen_Decomposition_Result :=
+           Int32_Image.Non_Symmetric_Eigen_Decomposition;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Int32;
+      procedure Check_Float16 is
+         Result : constant OpenCV.Core.Eigen_Decomposition_Result :=
+           Float16_Image.Non_Symmetric_Eigen_Decomposition;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Float16;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Check_Default'Access,
+         "Non-symmetric eigen must reject default empty");
+      Assert_Raises_OpenCV_Error
+        (Check_Empty32'Access, "Non-symmetric eigen must reject typed empty");
+      Assert_Raises_OpenCV_Error
+        (Check_Non_Square'Access,
+         "Non-symmetric eigen must reject rectangular input");
+      Assert_Raises_OpenCV_Error
+        (Check_Two_Channel'Access,
+         "Non-symmetric eigen must reject multi-channel input");
+      Assert_Raises_OpenCV_Error
+        (Check_UInt8'Access, "Non-symmetric eigen must reject UInt8 input");
+      Assert_Raises_OpenCV_Error
+        (Check_Int32'Access, "Non-symmetric eigen must reject Int32 input");
+      Assert_Raises_OpenCV_Error
+        (Check_Float16'Access,
+         "Non-symmetric eigen must reject Float16 input");
+   end Non_Symmetric_Eigen_Decomposition_Rejects_Invalid_Input;
+
    procedure Fill_PCA_Row_Samples (Image : in out OpenCV.Core.Mat) is
    begin
       OpenCV.Core.Float32_Access.Set (Image, 0, 0, 1.0);
@@ -11933,6 +12153,26 @@ package body Mat_Reduction_Tests is
         (Caller.Create
            ("Eigen_Decomposition rejects empty, non-square, and invalid types",
             Eigen_Decomposition_Rejects_Invalid_Input'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Non_Symmetric_Eigen_Decomposition upper-triangular Float32",
+            Non_Symmetric_Eigen_Upper_Triangular_Float32'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Non_Symmetric_Eigen_Decomposition distinct-real 3x3",
+            Non_Symmetric_Eigen_Decomposition_Three_By_Three'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Non_Symmetric_Eigen_Decomposition Float64 compatibility",
+            Non_Symmetric_Eigen_Float64_And_Compatibility'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Non_Symmetric_Eigen_Decomposition Region and ownership",
+            Non_Symmetric_Eigen_Decomposition_Region_And_Ownership'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Non_Symmetric_Eigen_Decomposition rejects invalid input",
+            Non_Symmetric_Eigen_Decomposition_Rejects_Invalid_Input'Access));
       Result.Add_Test
         (Caller.Create
            ("Principal_Component_Analysis Float32 rows all components",

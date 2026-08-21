@@ -1150,6 +1150,23 @@ Important contract points:
   fallback eigensolver forms an internal iteration bound using signed integer
   arithmetic.
 
+## Non-symmetric eigen decomposition
+
+`Non_Symmetric_Eigen_Decomposition` wraps OpenCV 4.10
+`eigenNonSymmetric`, rather than the symmetric `eigen` operation used by
+`Eigen_Decomposition`. It accepts non-empty square Float32 or Float64
+single-channel matrices and supports non-contiguous Regions.
+
+OpenCV assumes every eigenvalue is real. This is a caller precondition; the
+binding does not invent a numerical test for it. OpenCV 4.10 sorts the returned
+eigenvalues in descending order and keeps each corresponding eigenvector in the
+same row. As with the symmetric operation, eigenvector sign is arbitrary and a
+repeated-eigenvalue eigenspace need not have a unique basis. The OpenCV 4.10
+general eigensolver has no counterpart to the symmetric operation's 8,460
+signed-iteration-bound limit. Its separately derived ABI-safety limit is
+`N <= INT_MAX / 1000` because its convergence loop computes `1000 * N` in a
+signed `int`.
+
 ## Principal component analysis
 
 `Principal_Component_Analysis` supports:
