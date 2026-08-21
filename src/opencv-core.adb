@@ -3199,6 +3199,126 @@ package body OpenCV.Core is
       end case;
    end Solve_Cubic;
 
+   function Solve_Polynomial
+     (Coefficients : Mat; Maximum_Iterations : Positive := 300)
+      return Polynomial_Solution_Result
+   is
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Correction : aliased OpenCV.Internal.C_API.C_Double := 0.0;
+      Status     : OpenCV.Internal.C_API.Status;
+
+      function Coefficient_Magnitude (Index : Natural) return Long_Float is
+         Element   : constant Mat :=
+           (if Coefficients.Rows = 1
+            then Coefficients.Column_View (Size_Coordinate (Index))
+            else Coefficients.Row_View (Size_Coordinate (Index)));
+         Parts     : constant Mat_Array := Element.Split;
+         Magnitude : Long_Float := 0.0;
+      begin
+         for Part of Parts loop
+            Magnitude := Magnitude + Part.Norm (Infinity);
+         end loop;
+         return Magnitude;
+      end Coefficient_Magnitude;
+
+      Coefficient_Count : Natural;
+      Effective_Degree  : Natural;
+   begin
+      if Coefficients.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve_Polynomial requires a non-empty coefficient vector");
+      end if;
+
+      if Coefficients.Channels > 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve_Polynomial requires one or two coefficient channels");
+      end if;
+
+      if Coefficients.Depth /= Float32 and then Coefficients.Depth /= Float64
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve_Polynomial requires Float32 or Float64 coefficients");
+      end if;
+
+      if Coefficients.Rows /= 1 and then Coefficients.Columns /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve_Polynomial requires a row or column coefficient vector");
+      end if;
+
+      Coefficient_Count :=
+        (if Coefficients.Rows = 1
+         then Coefficients.Columns
+         else Coefficients.Rows);
+      if Coefficient_Count < 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve_Polynomial requires at least two coefficients");
+      end if;
+
+      if Coefficient_Count - 1 > 1_073_741_822 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve_Polynomial coefficient vector exceeds OpenCV's safe range");
+      end if;
+
+      Effective_Degree := Coefficient_Count - 1;
+      while Effective_Degree > 1
+        and then Coefficient_Magnitude (Effective_Degree)
+                 <= Long_Float'Model_Epsilon
+      loop
+         Effective_Degree := Effective_Degree - 1;
+      end loop;
+
+      if Coefficient_Magnitude (Effective_Degree) <= Long_Float'Model_Epsilon
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve_Polynomial rejects constant and identically-zero"
+            & " polynomials");
+      end if;
+
+      if not OpenCV.Internal.Safe_Arithmetic.Fits_Signed_Int32
+               (Long_Long_Integer (Maximum_Iterations))
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve_Polynomial maximum iterations exceeds the C ABI range");
+      end if;
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_Solve_Poly
+          (Coefficients       => Coefficients.Handle,
+           Maximum_Iterations =>
+             OpenCV.Internal.Safe_Arithmetic.To_Signed_Int32
+               (Long_Long_Integer (Maximum_Iterations)),
+           Roots              => New_Handle'Access,
+           Maximum_Correction => Correction'Access);
+      if Status /= OpenCV.Internal.C_API.Success then
+         OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+         Raise_On_Error (Status, "Solve_Polynomial operation");
+      end if;
+
+      if New_Handle = OpenCV.Internal.C_API.Null_Mat_Handle then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve_Polynomial returned a null roots handle");
+      end if;
+
+      declare
+         Result : Polynomial_Solution_Result;
+      begin
+         OpenCV.Internal.C_API.Mat_Destroy (Result.Roots.Handle);
+         Result.Roots.Handle := New_Handle;
+         Result.Maximum_Correction := Long_Float (Correction);
+         return Result;
+      end;
+   end Solve_Polynomial;
+
    function Supports_Dot_Product_Depth (Self : Mat) return Boolean
    is (Self.Depth = UInt8
        or else Self.Depth = Int8

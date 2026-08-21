@@ -951,6 +951,12 @@ opencv_core_mat_solve_cubic(const opencv_core_mat_handle *coefficients,
                             int32_t *out_root_count,
                             opencv_core_mat_handle **out_roots);
 
+opencv_core_status
+opencv_core_mat_solve_poly(const opencv_core_mat_handle *coefficients,
+                           int32_t maximum_iterations,
+                           opencv_core_mat_handle **out_roots,
+                           double *out_maximum_correction);
+
 /*
  * Performs ordinary algebraic matrix multiplication of two borrowed Mats
  * using cv::gemm with alpha=1, no addend, and no transpose flags:

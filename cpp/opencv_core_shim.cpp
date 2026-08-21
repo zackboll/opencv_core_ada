@@ -3524,6 +3524,52 @@ opencv_core_mat_solve_cubic(const opencv_core_mat_handle *coefficients,
 }
 
 opencv_core_status
+opencv_core_mat_solve_poly(const opencv_core_mat_handle *coefficients,
+                           int32_t maximum_iterations,
+                           opencv_core_mat_handle **out_roots,
+                           double *out_maximum_correction) {
+    clear_error();
+
+    if (out_roots != nullptr) {
+        *out_roots = nullptr;
+    }
+    if (out_maximum_correction != nullptr) {
+        *out_maximum_correction = 0.0;
+    }
+
+    if (coefficients == nullptr || out_roots == nullptr ||
+        out_maximum_correction == nullptr) {
+        return invalid_argument(
+            "solve polynomial requires a Mat handle and non-null output pointers");
+    }
+
+    const int rows = coefficients->value.rows;
+    const int columns = coefficients->value.cols;
+    if ((rows == 1 || columns == 1) && rows >= 0 && columns >= 0) {
+        const int degree = rows == 1 ? columns - 1 : rows - 1;
+        // ABI safety: cv::solvePoly evaluates n * 2 + 2 as signed int for
+        // its AutoBuffer size before conversion to an allocation size.
+        if (degree > (std::numeric_limits<int>::max() - 2) / 2) {
+            return invalid_argument(
+                "coefficient vector degree exceeds solvePoly's safe range");
+        }
+    }
+
+    try {
+        cv::Mat roots;
+        const double maximum_correction =
+            cv::solvePoly(coefficients->value, roots, maximum_iterations);
+        std::unique_ptr<opencv_core_mat_handle> roots_handle(
+            new opencv_core_mat_handle(roots));
+        *out_roots = roots_handle.release();
+        *out_maximum_correction = maximum_correction;
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_matrix_multiply(const opencv_core_mat_handle *left,
                                 const opencv_core_mat_handle *right,
                                 opencv_core_mat_handle **out_mat) {

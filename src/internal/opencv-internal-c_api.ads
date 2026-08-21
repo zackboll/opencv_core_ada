@@ -808,6 +808,13 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_solve_cubic";
 
+   function Mat_Solve_Poly
+     (Coefficients       : Mat_Handle;
+      Maximum_Iterations : C_Int32;
+      Roots              : access Mat_Handle;
+      Maximum_Correction : access C_Double) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_solve_poly";
+
    function Mat_Matrix_Multiply
      (Left, Right : Mat_Handle; Result : access Mat_Handle) return Status
    with

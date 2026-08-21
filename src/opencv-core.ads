@@ -274,6 +274,11 @@ package OpenCV.Core is
       end case;
    end record;
 
+   type Polynomial_Solution_Result is record
+      Roots              : Mat;
+      Maximum_Correction : Long_Float;
+   end record;
+
    --  A zero-based, owning sequence of Mats. An empty result has the null
    --  range 1 .. 0. Each element has normal Mat controlled ownership and
    --  shallow-copy assignment semantics.
@@ -840,6 +845,9 @@ package OpenCV.Core is
    --  by Status; root ordering is not guaranteed. Coefficients are unchanged
    --  and non-contiguous Regions are accepted.
    function Solve_Cubic (Coefficients : Mat) return Cubic_Solution_Result;
+   function Solve_Polynomial
+     (Coefficients : Mat; Maximum_Iterations : Positive := 300)
+      return Polynomial_Solution_Result;
    --  Returns the scalar dot product of Self and Other as Long_Float,
    --  corresponding to OpenCV 4.10 cv::Mat::dot's double. This is the
    --  sum of every corresponding spatial-element and channel product.

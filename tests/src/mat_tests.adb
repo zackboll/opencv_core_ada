@@ -10,6 +10,7 @@ with Mat_Range_Tests;
 with Mat_Transform_Tests;
 with Persistence_Tests;
 with Cubic_Tests;
+with Polynomial_Tests;
 
 package body Mat_Tests is
 
@@ -29,6 +30,7 @@ package body Mat_Tests is
       Result.Add_Test (Mat_Transform_Tests.Suite);
       Result.Add_Test (Persistence_Tests.Suite);
       Result.Add_Test (Cubic_Tests.Suite);
+      Result.Add_Test (Polynomial_Tests.Suite);
       return Result'Access;
    end Suite;
 
