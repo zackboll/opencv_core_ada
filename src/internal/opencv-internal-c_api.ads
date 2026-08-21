@@ -956,6 +956,13 @@ package OpenCV.Internal.C_API is
       Result         : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_dft";
 
+   function Get_Optimal_DFT_Size
+     (Minimum_Size : C_Int32; Result : access C_Int32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_get_optimal_dft_size";
+
    function Mat_Mean (Self : Mat_Handle; Result : access Scalar) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_mean";
 

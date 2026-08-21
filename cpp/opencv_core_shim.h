@@ -1228,6 +1228,20 @@ opencv_core_mat_dft(const opencv_core_mat_handle *source,
                     opencv_core_mat_handle **out_mat);
 
 /*
+ * Returns the smallest OpenCV-efficient DFT length N >= minimum_size
+ * using cv::getOptimalDFTSize. OpenCV 4.10 efficient sizes are
+ * 2^p * 3^q * 5^r. This is a size lookup only: it does not allocate a
+ * Mat or apply the separate DFT signed-arithmetic safety limits.
+ *
+ * minimum_size must be positive. OpenCV's negative too-large sentinel
+ * is translated to OPENCV_CORE_ERROR_INVALID_ARGUMENT rather than
+ * published. *out_size is 0 on every failure and is published only
+ * after a positive OpenCV result.
+ */
+opencv_core_status
+opencv_core_get_optimal_dft_size(int32_t minimum_size, int32_t *out_size);
+
+/*
  * Computes unmasked per-channel mean values. Both operations support one to
  * four channels so each complete result fits opencv_core_scalar. Mean accepts
  * empty Mats and returns all zeroes; mean/stddev requires a non-empty Mat.

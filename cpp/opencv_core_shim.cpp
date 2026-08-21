@@ -4386,6 +4386,40 @@ opencv_core_mat_dft(const opencv_core_mat_handle *source,
 }
 
 opencv_core_status
+opencv_core_get_optimal_dft_size(int32_t minimum_size, int32_t *out_size) {
+    clear_error();
+
+    if (out_size != nullptr) {
+        *out_size = 0;
+    }
+
+    if (out_size == nullptr) {
+        return invalid_argument("out_size must not be null");
+    }
+
+    // ABI safety: a raw C caller can pass a nonpositive length that Ada
+    // Positive cannot express. Reject before OpenCV's lookup, which
+    // would return 1 for 0 and -1 for negatives.
+    if (minimum_size <= 0) {
+        return invalid_argument("minimum_size must be positive");
+    }
+
+    try {
+        const int result =
+            cv::getOptimalDFTSize(static_cast<int>(minimum_size));
+        if (result < 0) {
+            return invalid_argument(
+                "requested DFT size is too large for OpenCV 4.10");
+        }
+
+        *out_size = static_cast<int32_t>(result);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_mean(const opencv_core_mat_handle *mat,
                      opencv_core_scalar *out_mean) {
     clear_error();

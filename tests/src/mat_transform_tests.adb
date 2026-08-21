@@ -4990,6 +4990,134 @@ package body Mat_Transform_Tests is
         (Inverse_Real_C3'Access, "Inverse-real DFT must reject C3");
    end Discrete_Fourier_Transform_Rejects_Invalid_Channels;
 
+   function Remainder_After_Factors_Two_Three_Five
+     (Value : Positive) return Positive
+   is
+      Remaining : Positive := Value;
+   begin
+      while Remaining mod 2 = 0 loop
+         Remaining := Remaining / 2;
+      end loop;
+      while Remaining mod 3 = 0 loop
+         Remaining := Remaining / 3;
+      end loop;
+      while Remaining mod 5 = 0 loop
+         Remaining := Remaining / 5;
+      end loop;
+      return Remaining;
+   end Remainder_After_Factors_Two_Three_Five;
+
+   procedure Optimal_DFT_Size_Already_Optimal (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+   begin
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Optimal_DFT_Size (1) = 1
+         and then OpenCV.Core.Optimal_DFT_Size (2) = 2
+         and then OpenCV.Core.Optimal_DFT_Size (3) = 3
+         and then OpenCV.Core.Optimal_DFT_Size (4) = 4
+         and then OpenCV.Core.Optimal_DFT_Size (5) = 5
+         and then OpenCV.Core.Optimal_DFT_Size (6) = 6
+         and then OpenCV.Core.Optimal_DFT_Size (10) = 10
+         and then OpenCV.Core.Optimal_DFT_Size (300) = 300,
+         "Already-efficient DFT sizes must return themselves");
+   end Optimal_DFT_Size_Already_Optimal;
+
+   procedure Optimal_DFT_Size_Rounds_Up (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+   begin
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Optimal_DFT_Size (7) = 8
+         and then OpenCV.Core.Optimal_DFT_Size (11) = 12
+         and then OpenCV.Core.Optimal_DFT_Size (17) = 18
+         and then OpenCV.Core.Optimal_DFT_Size (301) = 320
+         and then OpenCV.Core.Optimal_DFT_Size (7) >= 7
+         and then OpenCV.Core.Optimal_DFT_Size (11) >= 11
+         and then OpenCV.Core.Optimal_DFT_Size (17) >= 17
+         and then OpenCV.Core.Optimal_DFT_Size (301) >= 301,
+         "Non-optimal sizes must round up to the next efficient length");
+   end Optimal_DFT_Size_Rounds_Up;
+
+   procedure Optimal_DFT_Size_Factors_Are_Two_Three_Five
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Samples : constant array (Positive range <>) of Positive :=
+        (1, 7, 11, 17, 64, 301, 1_024, 4_097);
+   begin
+      for Sample of Samples loop
+         declare
+            Optimal : constant Positive :=
+              OpenCV.Core.Optimal_DFT_Size (Sample);
+         begin
+            AUnit.Assertions.Assert
+              (Optimal >= Sample
+               and then Remainder_After_Factors_Two_Three_Five (Optimal) = 1,
+               "Optimal_DFT_Size must return a 2/3/5 factorization");
+         end;
+      end loop;
+   end Optimal_DFT_Size_Factors_Are_Two_Three_Five;
+
+   procedure Optimal_DFT_Size_Upper_Bound (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+
+      procedure Too_Large is
+         Ignored : Positive;
+      begin
+         Ignored := OpenCV.Core.Optimal_DFT_Size (2_125_764_000);
+      end Too_Large;
+   begin
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Optimal_DFT_Size (2_125_763_999) = 2_125_764_000,
+         "The last successful OpenCV 4.10 optimal size must be"
+         & " 2125764000");
+      Assert_Raises_OpenCV_Error
+        (Too_Large'Access,
+         "Optimal_DFT_Size must raise OpenCV_Error for the final table"
+         & " entry");
+   end Optimal_DFT_Size_Upper_Bound;
+
+   procedure Optimal_DFT_Size_Pads_For_DFT_Integration
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Minimum : constant Positive := 17;
+      Optimal : constant Positive := OpenCV.Core.Optimal_DFT_Size (Minimum);
+      Source  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 17, (OpenCV.Core.Float32, 1));
+   begin
+      AUnit.Assertions.Assert
+        (Optimal = 18, "Optimal_DFT_Size (17) must be 18");
+
+      for Column in 0 .. 16 loop
+         OpenCV.Core.Float32_Access.Set
+           (Source, 0, Column, Interfaces.IEEE_Float_32 (Column + 1));
+      end loop;
+
+      declare
+         Padded   : constant OpenCV.Core.Mat :=
+           Source.Copy_Make_Border
+             (Top    => 0,
+              Bottom => 0,
+              Left   => 0,
+              Right  => Optimal - Minimum,
+              Kind   => OpenCV.Core.Constant_Border,
+              Value  => OpenCV.Core.Make_Scalar (0.0));
+         Spectrum : constant OpenCV.Core.Mat :=
+           Padded.Discrete_Fourier_Transform;
+      begin
+         AUnit.Assertions.Assert
+           (Padded.Rows = 1
+            and then Padded.Columns = Optimal
+            and then Spectrum.Rows = 1
+            and then Spectrum.Columns = Optimal
+            and then Spectrum.Channels = 2
+            and then Spectrum.Depth = OpenCV.Core.Float32,
+            "Zero-padding to Optimal_DFT_Size must produce a DFT of"
+            & " that length");
+      end;
+   end Optimal_DFT_Size_Pads_For_DFT_Integration;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
    Result : aliased AUnit.Test_Suites.Test_Suite;
 
@@ -5525,6 +5653,25 @@ package body Mat_Transform_Tests is
         (Caller.Create
            ("DFT rejects invalid channel counts",
             Discrete_Fourier_Transform_Rejects_Invalid_Channels'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Optimal_DFT_Size already-efficient values",
+            Optimal_DFT_Size_Already_Optimal'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Optimal_DFT_Size rounds up", Optimal_DFT_Size_Rounds_Up'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Optimal_DFT_Size results factor as 2, 3, and 5",
+            Optimal_DFT_Size_Factors_Are_Two_Three_Five'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Optimal_DFT_Size OpenCV 4.10 upper bound",
+            Optimal_DFT_Size_Upper_Bound'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Optimal_DFT_Size pads a small DFT",
+            Optimal_DFT_Size_Pads_For_DFT_Integration'Access));
 
       return Result'Access;
 

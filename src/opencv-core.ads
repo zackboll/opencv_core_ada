@@ -585,6 +585,15 @@ package OpenCV.Core is
    --  the full-complex element size (8 bytes for Float32, 16 bytes
    --  for Float64).
    function Inverse_Real_Discrete_Fourier_Transform (Self : Mat) return Mat;
+   --  Returns the smallest OpenCV-efficient DFT length N >=
+   --  Minimum_Size using OpenCV 4.10 cv::getOptimalDFTSize. Efficient
+   --  sizes are products of powers of 2, 3, and 5. This only selects
+   --  an efficient length; it does not allocate a Mat or guarantee
+   --  that Discrete_Fourier_Transform will accept a matrix of that
+   --  size under the separate OpenCV 4.10 DFT signed-arithmetic
+   --  safety limits. A request too close to INT_MAX raises
+   --  OpenCV_Error because OpenCV returns a negative sentinel.
+   function Optimal_DFT_Size (Minimum_Size : Positive) return Positive;
 
    --  Returns an independent Mat with Self's shape and element type.  For L1,
    --  L2, and Infinity, Alpha is the target norm and Beta is ignored.  For
