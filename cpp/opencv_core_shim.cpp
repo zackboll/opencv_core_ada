@@ -4351,6 +4351,27 @@ opencv_core_mat_dft(const opencv_core_mat_handle *source,
         return invalid_argument("transform_kind must be a known DFT kind");
     }
 
+    const int depth = source->value.depth();
+    if (depth == CV_32F || depth == CV_64F) {
+        const int32_t rows = source->value.rows;
+        const int32_t cols = source->value.cols;
+        const int32_t complex_elem_size =
+            depth == CV_32F ? static_cast<int32_t>(sizeof(float) * 2)
+                            : static_cast<int32_t>(sizeof(double) * 2);
+        // ABI safety: OpenCV 4.10 dxt.cpp performs DFT dimension,
+        // count, and byte-size products in signed int, including
+        // opt.n * count, width * height, len * rowCount,
+        // opt.n * complex_elem_size, and len * elem_size.
+        // Reject dimensions before those expressions can overflow.
+        if (int32_product_exceeds_max(rows, cols) ||
+            int32_product_exceeds_max(rows, complex_elem_size) ||
+            int32_product_exceeds_max(cols, complex_elem_size)) {
+            return invalid_argument(
+                "DFT dimensions exceed OpenCV 4.10 signed-arithmetic "
+                "safety limit");
+        }
+    }
+
     try {
         cv::Mat result;
         cv::dft(source->value, result, flags, 0);

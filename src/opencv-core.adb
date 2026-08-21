@@ -2147,6 +2147,28 @@ package body OpenCV.Core is
             & " requires a one-channel real or two-channel"
             & " complex Mat");
       end if;
+
+      declare
+         function Product_Exceeds_Signed_Int32
+           (Left, Right : Natural) return Boolean
+         renames OpenCV.Internal.Safe_Arithmetic.Product_Exceeds_Signed_Int32;
+
+         Complex_Element_Bytes : constant Natural :=
+           (if Self.Depth = Float32 then 8 else 16);
+      begin
+         if Product_Exceeds_Signed_Int32 (Self.Rows, Self.Columns)
+           or else Product_Exceeds_Signed_Int32
+                     (Self.Rows, Complex_Element_Bytes)
+           or else Product_Exceeds_Signed_Int32
+                     (Self.Columns, Complex_Element_Bytes)
+         then
+            Ada.Exceptions.Raise_Exception
+              (OpenCV_Error'Identity,
+               Operation
+               & " dimensions exceed the OpenCV 4.10"
+               & " signed-arithmetic safety limit");
+         end if;
+      end;
    end Validate_DFT_Floating_Source;
 
    function Discrete_Fourier_Transform (Self : Mat) return Mat is

@@ -1218,7 +1218,9 @@ opencv_core_mat_perspective_transform(
  *
  * nonzeroRows is always 0. DFT_ROWS is never set. Source is borrowed
  * and unmodified. The independently owned result is published only
- * after success. On failure *out_mat remains null.
+ * after success. Dimensions whose OpenCV 4.10 signed DFT count or
+ * byte-size products would overflow int are rejected before cv::dft.
+ * On failure *out_mat remains null.
  */
 opencv_core_status
 opencv_core_mat_dft(const opencv_core_mat_handle *source,

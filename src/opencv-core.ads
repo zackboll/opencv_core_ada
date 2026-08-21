@@ -534,7 +534,12 @@ package OpenCV.Core is
    --  than reinterpreted as complex. The forward transform is
    --  unscaled. Continuity is not required; non-contiguous Regions
    --  are supported. Self is unchanged. The result owns independent
-   --  storage.
+   --  storage. Very large matrices whose dimensions would cause
+   --  OpenCV 4.10's internal signed DFT arithmetic to overflow are
+   --  rejected with OpenCV_Error. Rows * Columns must fit signed
+   --  32-bit, and each transformed dimension must fit that same
+   --  limit after multiplication by the full-complex element size
+   --  (8 bytes for Float32, 16 bytes for Float64).
    function Discrete_Fourier_Transform (Self : Mat) return Mat;
    --  Returns an independently owned normalized inverse Discrete
    --  Fourier Transform of a full-complex spectrum using OpenCV
@@ -549,7 +554,12 @@ package OpenCV.Core is
    --  OpenCV's unscaled inverse is not the default Ada behavior.
    --  Continuity is not required; non-contiguous Regions are
    --  supported. Self is unchanged. The result owns independent
-   --  storage.
+   --  storage. Very large matrices whose dimensions would cause
+   --  OpenCV 4.10's internal signed DFT arithmetic to overflow are
+   --  rejected with OpenCV_Error. Rows * Columns must fit signed
+   --  32-bit, and each transformed dimension must fit that same
+   --  limit after multiplication by the full-complex element size
+   --  (8 bytes for Float32, 16 bytes for Float64).
    function Inverse_Discrete_Fourier_Transform (Self : Mat) return Mat;
    --  Returns an independently owned real inverse Discrete Fourier
    --  Transform of a full-complex spectrum using OpenCV 4.10
@@ -567,7 +577,13 @@ package OpenCV.Core is
    --  violation rather than a rejected argument, analogous to the
    --  symmetric-eigen policy. Continuity is not required;
    --  non-contiguous Regions are supported. Self is unchanged. The
-   --  result owns independent storage.
+   --  result owns independent storage. Very large matrices whose
+   --  dimensions would cause OpenCV 4.10's internal signed DFT
+   --  arithmetic to overflow are rejected with OpenCV_Error. Rows
+   --  * Columns must fit signed 32-bit, and each transformed
+   --  dimension must fit that same limit after multiplication by
+   --  the full-complex element size (8 bytes for Float32, 16 bytes
+   --  for Float64).
    function Inverse_Real_Discrete_Fourier_Transform (Self : Mat) return Mat;
 
    --  Returns an independent Mat with Self's shape and element type.  For L1,
