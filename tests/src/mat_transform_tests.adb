@@ -5220,31 +5220,22 @@ package body Mat_Transform_Tests is
    procedure Multiply_Spectra_Float64_Product (Test : in out Mat_Test_Fixture)
    is
       pragma Unreferenced (Test);
-      Left     : constant OpenCV.Core.Mat :=
+      Left   : constant OpenCV.Core.Mat :=
         Sample_Complex_Pair.Convert_To (OpenCV.Core.Float64);
-      Right    : constant OpenCV.Core.Mat :=
+      Right  : constant OpenCV.Core.Mat :=
         Sample_Complex_Right.Convert_To (OpenCV.Core.Float64);
-      Result   : constant OpenCV.Core.Mat :=
+      Result : constant OpenCV.Core.Mat :=
         OpenCV.Core.Multiply_Spectra (Left, Right);
-      Channels : constant OpenCV.Core.Mat_Array := Result.Split;
+      Value  : constant OpenCV.Core.Scalar := Result.Mean;
    begin
       AUnit.Assertions.Assert
         (Result.Rows = 1
          and then Result.Columns = 1
          and then Result.Depth = OpenCV.Core.Float64
          and then Result.Channels = 2
-         and then Channels (0).Abs_Diff
-                    (OpenCV.Core.Create (1, 1, (OpenCV.Core.Float64, 1))
-                       .Convert_To (OpenCV.Core.Float64))
-                    .Norm
-                  >= 0.0,
-         "Float64 spectrum product must preserve depth and C2");
-      AUnit.Assertions.Assert
-        (Channels (0).Norm > 6.9
-         and then Channels (0).Norm < 7.1
-         and then Channels (1).Norm > 21.9
-         and then Channels (1).Norm < 22.1,
-         "Float64 ordinary product of (2+3i)*(4+5i) must be -7+22i");
+         and then Approximately_Equal (Value.Component_0, -7.0, 0.000_1)
+         and then Approximately_Equal (Value.Component_1, 22.0, 0.000_1),
+         "Ordinary Float64 C2 product of (2+3i)*(4+5i) must be -7+22i");
    end Multiply_Spectra_Float64_Product;
 
    procedure Multiply_Spectra_Is_Elementwise_Complex
