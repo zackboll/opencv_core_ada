@@ -11136,6 +11136,49 @@ package body Mat_Reduction_Tests is
          "PSNR must support OpenCV's Float32, Float64, and Float16 norms");
    end PSNR_Supports_Float32_Float64_And_Float16;
 
+   procedure PSNR_Supports_Int32_And_UInt16 (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Left8    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 1));
+      Right8   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 1));
+      Left32   : OpenCV.Core.Mat;
+      Right32  : OpenCV.Core.Mat;
+      Left16U  : OpenCV.Core.Mat;
+      Right16U : OpenCV.Core.Mat;
+      Expected : constant Long_Float :=
+        20.0 * Log (100.0 / Sqrt (2.0)) / Log (10.0);
+   begin
+      Left8.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Right8.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.UInt8_Access.Set (Right8, 0, 1, 2);
+      Left32 := Left8.Convert_To (OpenCV.Core.Int32);
+      Right32 := Right8.Convert_To (OpenCV.Core.Int32);
+      Left16U := Left8.Convert_To (OpenCV.Core.UInt16);
+      Right16U := Right8.Convert_To (OpenCV.Core.UInt16);
+
+      AUnit.Assertions.Assert
+        (Left32.Depth = OpenCV.Core.Int32
+         and then Right32.Depth = OpenCV.Core.Int32
+         and then Left32.Channels = 1
+         and then Right32.Channels = 1
+         and then Approximately_Equal
+                    (OpenCV.Core.Peak_Signal_To_Noise_Ratio
+                       (Left32, Right32, 100.0),
+                     Expected,
+                     0.000_000_001)
+         and then Left16U.Depth = OpenCV.Core.UInt16
+         and then Right16U.Depth = OpenCV.Core.UInt16
+         and then Left16U.Channels = 1
+         and then Right16U.Channels = 1
+         and then Approximately_Equal
+                    (OpenCV.Core.Peak_Signal_To_Noise_Ratio
+                       (Left16U, Right16U, 100.0),
+                     Expected,
+                     0.000_000_001),
+         "PSNR must accept matching Int32 and UInt16 complete element types");
+   end PSNR_Supports_Int32_And_UInt16;
+
    procedure PSNR_Supports_Multiple_And_More_Than_Four_Channels
      (Test : in out Mat_Test_Fixture)
    is
@@ -12411,6 +12454,10 @@ package body Mat_Reduction_Tests is
         (Caller.Create
            ("PSNR supports Float32 Float64 and Float16",
             PSNR_Supports_Float32_Float64_And_Float16'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("PSNR supports Int32 and UInt16",
+            PSNR_Supports_Int32_And_UInt16'Access));
       Result.Add_Test
         (Caller.Create
            ("PSNR supports multiple and more than four channels",
