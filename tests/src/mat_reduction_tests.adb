@@ -5886,11 +5886,16 @@ package body Mat_Reduction_Tests is
       OpenCV.Core.Float32_Access.Set (Result.Eigenvectors, 0, 0, 9.0);
       AUnit.Assertions.Assert
         (OpenCV.Core.Float32_Access.Get (Parent, 0, 0) = 99.0
+         and then OpenCV.Core.Float32_Access.Get (Parent, 1, 1) = 2.0
+         and then OpenCV.Core.Float32_Access.Get (Parent, 1, 2) = 1.0
+         and then OpenCV.Core.Float32_Access.Get (Parent, 2, 1) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Parent, 2, 2) = 3.0
          and then OpenCV.Core.Float32_Access.Get (Result.Eigenvalues, 0, 0)
                   = 7.0
          and then OpenCV.Core.Float32_Access.Get (Result.Eigenvectors, 0, 0)
                   = 9.0,
-         "Non-symmetric result Mats must outlive Self and be independent");
+         "Non-symmetric result Mats must outlive Self and not share its"
+         & " storage");
    end Non_Symmetric_Eigen_Decomposition_Region_And_Ownership;
 
    procedure Non_Symmetric_Eigen_Decomposition_Rejects_Invalid_Input
