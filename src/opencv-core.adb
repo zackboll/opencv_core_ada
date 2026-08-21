@@ -2267,30 +2267,23 @@ package body OpenCV.Core is
    end Inverse_Real_Discrete_Fourier_Transform;
 
    function Optimal_DFT_Size (Minimum_Size : Positive) return Positive is
-      Result : aliased OpenCV.Internal.C_API.C_Int32 := 0;
-      Status : OpenCV.Internal.C_API.Status;
+      Wide_Minimum : constant Long_Long_Integer :=
+        Long_Long_Integer (Minimum_Size);
+      Result       : aliased OpenCV.Internal.C_API.C_Int32 := 0;
+      Status       : OpenCV.Internal.C_API.Status;
    begin
-      --  Keep the signed-32-bit boundary explicit for targets where
-      --  Standard.Integer is wider than OpenCV's int. On this 32-bit
-      --  Integer target the comparison is statically False.
-      pragma
-        Warnings (Off, "condition can only be True if invalid values present");
-      pragma Warnings (Off, "condition is always False");
-      if Long_Long_Integer (Minimum_Size)
-        > Long_Long_Integer (OpenCV.Internal.C_API.C_Int32'Last)
+      if not OpenCV.Internal.Safe_Arithmetic.Fits_Signed_Int32 (Wide_Minimum)
       then
          Ada.Exceptions.Raise_Exception
            (OpenCV_Error'Identity,
             "Optimal_DFT_Size minimum size exceeds the signed 32-bit"
             & " OpenCV domain");
       end if;
-      pragma Warnings (On, "condition is always False");
-      pragma
-        Warnings (On, "condition can only be True if invalid values present");
 
       Status :=
         OpenCV.Internal.C_API.Get_Optimal_DFT_Size
-          (Minimum_Size => OpenCV.Internal.C_API.C_Int32 (Minimum_Size),
+          (Minimum_Size =>
+             OpenCV.Internal.Safe_Arithmetic.To_Signed_Int32 (Wide_Minimum),
            Result       => Result'Access);
       Raise_On_Error (Status, "Optimal DFT size query");
 
