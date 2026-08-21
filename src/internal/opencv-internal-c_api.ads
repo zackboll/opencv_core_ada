@@ -940,6 +940,13 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_reciprocal_condition_number";
 
+   function Mat_SVD_Solve_Zero
+     (Source : Mat_Handle; Result : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_svd_solve_zero";
+
    function Mat_Transform
      (Source       : Mat_Handle;
       Coefficients : Mat_Handle;

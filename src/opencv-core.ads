@@ -1128,6 +1128,26 @@ package OpenCV.Core is
    --  unchanged. Ordinary floating-point rounding applies.
    function Reciprocal_Condition_Number (Self : Mat) return Long_Float;
 
+   --  SVD_Solve_Zero returns an independently owned unit-length N x 1
+   --  vector minimizing ||Self * X|| for an M x N Float32 or Float64
+   --  single-channel source, using OpenCV 4.10 cv::SVD::solveZ. When
+   --  Self has a nontrivial null space, the result is a null-space
+   --  direction and Self * X is approximately zero. For
+   --  full-column-rank Self, the result is the right singular vector
+   --  associated with the smallest singular value and the residual
+   --  need not be zero. Singular-vector sign is arbitrary. Square,
+   --  tall, and wide matrices are supported; square shape,
+   --  singularity, and rank deficiency are not required. Self must be
+   --  a non-empty single-channel Float32 or Float64 Mat.
+   --  Multi-channel Mats, integer depths, and Float16 are rejected.
+   --  Continuity is not required; non-contiguous Regions are
+   --  supported. For a wide M x N source OpenCV internally requests
+   --  FULL_UV to obtain the complete right-singular basis; this
+   --  binding does not expose FULL_UV as a public SVD option. That
+   --  full basis can require substantially more temporary storage
+   --  than Self. Self is unchanged. There is no caller tolerance.
+   function SVD_Solve_Zero (Self : Mat) return Mat;
+
    --  Computes the PCA basis of Self using OpenCV 4.10 cv::PCA.
    --  Self is a 2-D single-channel sample matrix. Samples_Are_Rows,
    --  the default, treats an M x N Mat as M samples of N features:

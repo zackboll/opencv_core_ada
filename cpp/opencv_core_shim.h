@@ -1172,6 +1172,17 @@ opencv_core_mat_reciprocal_condition_number(
     double *out_value);
 
 /*
+ * Computes a unit-length homogeneous least-residual solution of a
+ * borrowed Mat using cv::SVD::solveZ. The independently owned result
+ * is published only after success. On failure *out_mat remains null.
+ * The source is borrowed and unchanged.
+ */
+opencv_core_status
+opencv_core_mat_svd_solve_zero(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle **out_mat);
+
+/*
  * Applies cv::transform to each source element interpreted as its channel
  * vector. source and coefficients are borrowed. The independently owned
  * result has source.rows, source.cols, source.depth(), and

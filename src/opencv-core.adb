@@ -4456,6 +4456,52 @@ package body OpenCV.Core is
       return Long_Float (C_Result);
    end Reciprocal_Condition_Number;
 
+   procedure Validate_SVD_Solve_Zero (Self : Mat) is
+   begin
+      if Self.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "SVD_Solve_Zero requires a non-empty Mat");
+      end if;
+
+      if Self.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "SVD_Solve_Zero requires a single-channel Mat");
+      end if;
+
+      if not Is_SVD_Floating_Depth (Self.Depth) then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "SVD_Solve_Zero requires a Float32 or Float64 Mat");
+      end if;
+   end Validate_SVD_Solve_Zero;
+
+   function SVD_Solve_Zero (Self : Mat) return Mat is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_SVD_Solve_Zero (Self);
+      Status :=
+        OpenCV.Internal.C_API.Mat_SVD_Solve_Zero
+          (Source => Self.Handle, Result => New_Handle'Access);
+      if Status /= OpenCV.Internal.C_API.Success then
+         OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+         Raise_On_Error (Status, "Mat SVD solve-zero operation");
+      end if;
+
+      if New_Handle = OpenCV.Internal.C_API.Null_Mat_Handle then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat SVD solve-zero operation returned a null result handle");
+      end if;
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end SVD_Solve_Zero;
+
    function Is_PCA_Floating_Depth (Value : Depth_Type) return Boolean
    is (Value = Float32 or else Value = Float64);
 

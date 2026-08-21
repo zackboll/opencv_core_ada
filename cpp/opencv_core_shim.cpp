@@ -4254,6 +4254,37 @@ opencv_core_mat_reciprocal_condition_number(
 }
 
 opencv_core_status
+opencv_core_mat_svd_solve_zero(
+    const opencv_core_mat_handle *source,
+    opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat != nullptr) {
+        *out_mat = nullptr;
+    }
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    if (source == nullptr) {
+        return invalid_argument("source Mat handle must not be null");
+    }
+
+    try {
+        cv::Mat result;
+        cv::SVD::solveZ(source->value, result);
+
+        std::unique_ptr<opencv_core_mat_handle> result_handle(
+            new opencv_core_mat_handle(result));
+        *out_mat = result_handle.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_transform(const opencv_core_mat_handle *source,
                           const opencv_core_mat_handle *coefficients,
                           opencv_core_mat_handle **out_mat) {

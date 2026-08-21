@@ -10678,6 +10678,360 @@ package body Mat_Reduction_Tests is
          "Reciprocal_Condition_Number must reject Float16 input");
    end Reciprocal_Condition_Number_Rejects_Invalid_Input;
 
+   function Unit_Column_Shape
+     (Image         : OpenCV.Core.Mat;
+      Expected_Rows : Natural;
+      Depth         : OpenCV.Core.Depth_Type) return Boolean
+   is (Image.Rows = Expected_Rows
+       and then Image.Columns = 1
+       and then Image.Depth = Depth
+       and then Image.Channels = 1);
+
+   function Approximately_Unit_L2
+     (Image : OpenCV.Core.Mat; Tolerance : Long_Float := 0.000_1)
+      return Boolean
+   is (Approximately_Equal (Image.Norm, 1.0, Tolerance));
+
+   function Residual_Norm
+     (Source, Solution : OpenCV.Core.Mat) return Long_Float
+   is (Source.Matrix_Multiply (Solution).Norm);
+
+   function Float32_Abs
+     (Value : OpenCV.Core.Float32_Value) return OpenCV.Core.Float32_Value
+   is (if Value < 0.0 then -Value else Value);
+
+   procedure SVD_Solve_Zero_Wide_Exact_Null_Space
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Result   : OpenCV.Core.Mat;
+      Residual : OpenCV.Core.Mat;
+   begin
+      Fill_2x3 (Source, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+      Result := Source.SVD_Solve_Zero;
+      Residual := Source.Matrix_Multiply (Result);
+
+      AUnit.Assertions.Assert
+        (Unit_Column_Shape (Result, 3, OpenCV.Core.Float32),
+         "Wide SVD_Solve_Zero must return a 3x1 Float32 C1 vector");
+      AUnit.Assertions.Assert
+        (Approximately_Unit_L2 (Result),
+         "Wide SVD_Solve_Zero must return a unit-length vector");
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Residual.Norm, 0.0, 0.000_1),
+         "Wide full-row-rank SVD_Solve_Zero must return a"
+         & " null-space direction");
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float (OpenCV.Core.Float32_Access.Get (Result, 0, 0)), 0.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result, 1, 0)),
+                     0.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (Float32_Abs
+                          (OpenCV.Core.Float32_Access.Get (Result, 2, 0))),
+                     1.0),
+         "Wide 2x3 null space must be sign-insensitive e3");
+      AUnit.Assertions.Assert
+        (Unchanged_2x3 (Source, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0),
+         "Wide SVD_Solve_Zero must leave the source unchanged");
+   end SVD_Solve_Zero_Wide_Exact_Null_Space;
+
+   procedure SVD_Solve_Zero_Square_Singular (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      Fill_2x2 (Source, 4.0, 0.0, 0.0, 0.0);
+      Result := Source.SVD_Solve_Zero;
+
+      AUnit.Assertions.Assert
+        (Unit_Column_Shape (Result, 2, OpenCV.Core.Float32),
+         "Square SVD_Solve_Zero must return a 2x1 Float32 C1 vector");
+      AUnit.Assertions.Assert
+        (Approximately_Unit_L2 (Result),
+         "Square SVD_Solve_Zero must return a unit-length vector");
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Residual_Norm (Source, Result), 0.0, 0.000_1),
+         "Singular square SVD_Solve_Zero must have approximately"
+         & " zero residual");
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float (OpenCV.Core.Float32_Access.Get (Result, 0, 0)), 0.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (Float32_Abs
+                          (OpenCV.Core.Float32_Access.Get (Result, 1, 0))),
+                     1.0),
+         "Singular 2x2 SVD_Solve_Zero must be sign-insensitive e2");
+      AUnit.Assertions.Assert
+        (Unchanged_2x2 (Source, 4.0, 0.0, 0.0, 0.0),
+         "Square SVD_Solve_Zero must leave the source unchanged");
+   end SVD_Solve_Zero_Square_Singular;
+
+   procedure SVD_Solve_Zero_Full_Rank_Minimizer
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      Fill_2x2 (Source, 3.0, 0.0, 0.0, 1.0);
+      Result := Source.SVD_Solve_Zero;
+
+      AUnit.Assertions.Assert
+        (Unit_Column_Shape (Result, 2, OpenCV.Core.Float32)
+         and then Approximately_Unit_L2 (Result),
+         "Full-rank SVD_Solve_Zero must return a unit 2x1 vector");
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Residual_Norm (Source, Result), 1.0, 0.000_1),
+         "Full-rank SVD_Solve_Zero residual must be the smallest"
+         & " singular value");
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float (OpenCV.Core.Float32_Access.Get (Result, 0, 0)), 0.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (Float32_Abs
+                          (OpenCV.Core.Float32_Access.Get (Result, 1, 0))),
+                     1.0),
+         "Full-rank 2x2 SVD_Solve_Zero must be the smallest right"
+         & " singular vector");
+   end SVD_Solve_Zero_Full_Rank_Minimizer;
+
+   procedure SVD_Solve_Zero_Tall_Full_Column_Rank
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
+      Result   : OpenCV.Core.Mat;
+      Compact  : OpenCV.Core.Singular_Value_Decomposition_Result;
+      Last_Row : OpenCV.Core.Mat;
+   begin
+      Fill_3x2 (Source, 3.0, 0.0, 0.0, 1.0, 0.0, 0.0);
+      Result := Source.SVD_Solve_Zero;
+      Compact := Source.Singular_Value_Decomposition;
+      Last_Row := Compact.V_Transpose.Row_View (1).Transpose;
+
+      AUnit.Assertions.Assert
+        (Unit_Column_Shape (Result, 2, OpenCV.Core.Float32)
+         and then Approximately_Unit_L2 (Result),
+         "Tall SVD_Solve_Zero must return a unit 2x1 vector");
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Residual_Norm (Source, Result), 1.0, 0.000_1),
+         "Tall full-column-rank residual must be the smallest singular value");
+      AUnit.Assertions.Assert
+        (Mats_Approximately_Equal (Result, Last_Row, 0.000_1)
+         or else Approximately_Equal
+                   (Result.Add (Last_Row).Norm, 0.0, 0.000_1),
+         "Tall SVD_Solve_Zero must match compact VT last row up to sign");
+      AUnit.Assertions.Assert
+        (Unchanged_3x2 (Source, 3.0, 0.0, 0.0, 1.0, 0.0, 0.0),
+         "Tall SVD_Solve_Zero must leave the source unchanged");
+   end SVD_Solve_Zero_Tall_Full_Column_Rank;
+
+   procedure SVD_Solve_Zero_Preserves_Float64 (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source32  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Source    : OpenCV.Core.Mat;
+      Result    : OpenCV.Core.Mat;
+      Residual  : OpenCV.Core.Mat;
+      Converted : OpenCV.Core.Mat;
+   begin
+      Fill_2x3 (Source32, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+      Source := Source32.Convert_To (OpenCV.Core.Float64);
+      Result := Source.SVD_Solve_Zero;
+      Residual := Source.Matrix_Multiply (Result);
+      Converted := Result.Convert_To (OpenCV.Core.Float32);
+
+      AUnit.Assertions.Assert
+        (Unit_Column_Shape (Result, 3, OpenCV.Core.Float64),
+         "Float64 SVD_Solve_Zero must keep Float64 C1 3x1 output");
+      AUnit.Assertions.Assert
+        (Approximately_Unit_L2 (Result, 0.000_000_000_1),
+         "Float64 SVD_Solve_Zero must return a unit-length vector");
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Residual.Norm, 0.0, 0.000_000_000_1),
+         "Float64 wide SVD_Solve_Zero residual must be approximately zero");
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float (OpenCV.Core.Float32_Access.Get (Converted, 0, 0)), 0.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Converted, 1, 0)),
+                     0.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (Float32_Abs
+                          (OpenCV.Core.Float32_Access.Get (Converted, 2, 0))),
+                     1.0),
+         "Float64 wide null space must be sign-insensitive e3");
+   end SVD_Solve_Zero_Preserves_Float64;
+
+   procedure SVD_Solve_Zero_Zero_Matrix (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      Source.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Result := Source.SVD_Solve_Zero;
+
+      AUnit.Assertions.Assert
+        (Unit_Column_Shape (Result, 2, OpenCV.Core.Float32)
+         and then Approximately_Unit_L2 (Result)
+         and then Approximately_Equal
+                    (Residual_Norm (Source, Result), 0.0, 0.000_1),
+         "Zero-matrix SVD_Solve_Zero must return a unit vector with"
+         & " zero residual");
+   end SVD_Solve_Zero_Zero_Matrix;
+
+   procedure SVD_Solve_Zero_One_By_One (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set (Source, 0, 0, -3.5);
+      Result := Source.SVD_Solve_Zero;
+
+      AUnit.Assertions.Assert
+        (Unit_Column_Shape (Result, 1, OpenCV.Core.Float32),
+         "1x1 SVD_Solve_Zero must return a 1x1 Float32 C1 vector");
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float
+              (Float32_Abs (OpenCV.Core.Float32_Access.Get (Result, 0, 0))),
+            1.0),
+         "1x1 SVD_Solve_Zero must return plus or minus one");
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Residual_Norm (Source, Result), 3.5, 0.000_1),
+         "1x1 SVD_Solve_Zero residual magnitude must be abs(A)");
+   end SVD_Solve_Zero_One_By_One;
+
+   procedure SVD_Solve_Zero_Noncontiguous_Region
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (5, 5, (OpenCV.Core.Float32, 1));
+   begin
+      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      declare
+         Source : OpenCV.Core.Mat :=
+           Parent.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+         Result : OpenCV.Core.Mat;
+      begin
+         Fill_2x3 (Source, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+         AUnit.Assertions.Assert
+           (not Source.Is_Continuous,
+            "The Region used for SVD_Solve_Zero must be non-contiguous");
+         Result := Source.SVD_Solve_Zero;
+         AUnit.Assertions.Assert
+           (Unit_Column_Shape (Result, 3, OpenCV.Core.Float32)
+            and then Approximately_Unit_L2 (Result)
+            and then Approximately_Equal
+                       (Residual_Norm (Source, Result), 0.0, 0.000_1),
+            "Non-contiguous SVD_Solve_Zero must return the 2x3"
+            & " null-space direction");
+         AUnit.Assertions.Assert
+           (Unchanged_2x3 (Source, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0)
+            and then OpenCV.Core.Float32_Access.Get (Parent, 0, 0) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 0, 4) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 4, 0) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 1, 0) = 99.0
+            and then OpenCV.Core.Float32_Access.Get (Parent, 1, 4) = 99.0,
+            "SVD_Solve_Zero must not modify the Region or surrounding"
+            & " parent storage");
+      end;
+   end SVD_Solve_Zero_Noncontiguous_Region;
+
+   procedure SVD_Solve_Zero_Owns_Independent_Storage
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Result : OpenCV.Core.Mat;
+      Saved  : OpenCV.Core.Mat;
+   begin
+      declare
+         Source : OpenCV.Core.Mat :=
+           OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      begin
+         Fill_2x3 (Source, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+         Result := Source.SVD_Solve_Zero;
+         Saved := Result.Clone;
+         OpenCV.Core.Float32_Access.Set (Source, 0, 0, 50.0);
+         AUnit.Assertions.Assert
+           (Mats_Approximately_Equal (Result, Saved),
+            "Mutating Self must not change SVD_Solve_Zero");
+      end;
+
+      AUnit.Assertions.Assert
+        (Unit_Column_Shape (Result, 3, OpenCV.Core.Float32)
+         and then Approximately_Unit_L2 (Result),
+         "SVD_Solve_Zero must remain valid after the source finalizes");
+      OpenCV.Core.Float32_Access.Set (Result, 0, 0, 9.0);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float32_Access.Get (Saved, 0, 0) /= 9.0,
+         "Mutating the result must not change an independent clone");
+   end SVD_Solve_Zero_Owns_Independent_Storage;
+
+   procedure SVD_Solve_Zero_Rejects_Invalid_Input
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Default_Empty : OpenCV.Core.Mat;
+      Empty32       : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 1));
+      Two_Channel   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 2));
+      Int32_Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Int32, 1));
+
+      procedure Check_Default is
+         Result : constant OpenCV.Core.Mat := Default_Empty.SVD_Solve_Zero;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Default;
+
+      procedure Check_Empty32 is
+         Result : constant OpenCV.Core.Mat := Empty32.SVD_Solve_Zero;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Empty32;
+
+      procedure Check_Two_Channel is
+         Result : constant OpenCV.Core.Mat := Two_Channel.SVD_Solve_Zero;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Two_Channel;
+
+      procedure Check_Int32 is
+         Result : constant OpenCV.Core.Mat := Int32_Image.SVD_Solve_Zero;
+      begin
+         pragma Unreferenced (Result);
+      end Check_Int32;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Check_Default'Access,
+         "SVD_Solve_Zero must reject a default empty Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_Empty32'Access, "SVD_Solve_Zero must reject a typed empty Mat");
+      Assert_Raises_OpenCV_Error
+        (Check_Two_Channel'Access, "SVD_Solve_Zero must reject C2 input");
+      Assert_Raises_OpenCV_Error
+        (Check_Int32'Access, "SVD_Solve_Zero must reject Int32 input");
+   end SVD_Solve_Zero_Rejects_Invalid_Input;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Masked_Min_Max_Loc_In_Range         : constant Caller.Test_Method :=
@@ -11645,6 +11999,45 @@ package body Mat_Reduction_Tests is
            ("Reciprocal_Condition_Number rejects empty, C2, and invalid"
             & " types",
             Reciprocal_Condition_Number_Rejects_Invalid_Input'Access));
+
+      Result.Add_Test
+        (Caller.Create
+           ("SVD_Solve_Zero wide exact null space",
+            SVD_Solve_Zero_Wide_Exact_Null_Space'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("SVD_Solve_Zero square singular matrix",
+            SVD_Solve_Zero_Square_Singular'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("SVD_Solve_Zero full-rank minimizer is not a null vector",
+            SVD_Solve_Zero_Full_Rank_Minimizer'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("SVD_Solve_Zero tall full-column-rank matrix",
+            SVD_Solve_Zero_Tall_Full_Column_Rank'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("SVD_Solve_Zero preserves Float64",
+            SVD_Solve_Zero_Preserves_Float64'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("SVD_Solve_Zero zero matrix", SVD_Solve_Zero_Zero_Matrix'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("SVD_Solve_Zero 1x1 matrix", SVD_Solve_Zero_One_By_One'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("SVD_Solve_Zero supports a non-contiguous Region",
+            SVD_Solve_Zero_Noncontiguous_Region'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("SVD_Solve_Zero owns independent storage",
+            SVD_Solve_Zero_Owns_Independent_Storage'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("SVD_Solve_Zero rejects empty, C2, and invalid types",
+            SVD_Solve_Zero_Rejects_Invalid_Input'Access));
 
       Result.Add_Test
         (Caller.Create
