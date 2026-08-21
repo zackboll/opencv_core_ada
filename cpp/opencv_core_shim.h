@@ -1369,6 +1369,15 @@ opencv_core_mat_norm_masked(const opencv_core_mat_handle *mat,
                             int32_t norm_kind, double *out_norm);
 
 /*
+ * Computes cv::PSNR for two borrowed Mats. Inputs and peak_value are passed
+ * directly to OpenCV. On failure *out_psnr remains zero.
+ */
+opencv_core_status
+opencv_core_mat_psnr(const opencv_core_mat_handle *left,
+                     const opencv_core_mat_handle *right, double peak_value,
+                     double *out_psnr);
+
+/*
  * Finds extrema in a non-empty, two-dimensional, single-channel Mat.
  * Locations are reported as zero-based X (column) and Y (row) coordinates.
  */

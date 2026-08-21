@@ -1359,6 +1359,23 @@ package OpenCV.Core is
    --  Self/Mask and all-zero masks return zero according to OpenCV semantics.
    function Norm
      (Self : Mat; Mask : Mat; Kind : Norm_Kind := L2) return Long_Float;
+
+   --  Computes OpenCV 4.10's peak signal-to-noise ratio in decibels over
+   --  every scalar channel component. Left and Right must be non-empty and
+   --  have identical rows, columns, depth, and channel count. All public Mat
+   --  depths, including Float16, and all channel counts are supported.
+   --  Continuity is not required, so matching non-contiguous Regions are
+   --  accepted. Peak_Value is passed directly as OpenCV's R parameter and
+   --  defaults to 255.0. It must be positive, finite, and representable as a
+   --  C double. OpenCV computes
+   --    20 * log10 (Peak_Value / (RMSE + DBL_EPSILON));
+   --  consequently identical inputs return a large finite value rather than
+   --  infinity. OpenCV itself would produce non-finite results for zero,
+   --  negative, or non-finite peak values; this Ada API rejects those values.
+   function Peak_Signal_To_Noise_Ratio
+     (Left : Mat; Right : Mat; Peak_Value : Long_Float := 255.0)
+      return Long_Float;
+
    function Min_Max_Loc (Self : Mat) return Min_Max_Result;
    --  Finds extrema among Self elements selected by Mask. Mask uses the
    --  common mask contract. Any nonzero mask value selects the element. An

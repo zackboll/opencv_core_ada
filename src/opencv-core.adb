@@ -5131,6 +5131,41 @@ package body OpenCV.Core is
       return Long_Float (C_Result);
    end Norm;
 
+   function Peak_Signal_To_Noise_Ratio
+     (Left : Mat; Right : Mat; Peak_Value : Long_Float := 255.0)
+      return Long_Float
+   is
+      C_Result : aliased OpenCV.Internal.C_API.C_Double := 0.0;
+      Status   : OpenCV.Internal.C_API.Status;
+   begin
+      if Left.Is_Empty or else Right.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Peak signal-to-noise ratio requires non-empty Mats");
+      end if;
+
+      if Peak_Value <= 0.0
+        or else Peak_Value /= Peak_Value
+        or else Peak_Value > Long_Float (OpenCV.Internal.C_API.C_Double'Last)
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Peak signal-to-noise ratio requires a positive finite"
+            & " peak value");
+      end if;
+
+      Validate_Arithmetic_Compatibility (Left, Right);
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_PSNR
+          (Left       => Left.Handle,
+           Right      => Right.Handle,
+           Peak_Value => OpenCV.Internal.C_API.C_Double (Peak_Value),
+           Result     => C_Result'Access);
+      Raise_On_Error (Status, "Mat peak signal-to-noise ratio operation");
+      return Long_Float (C_Result);
+   end Peak_Signal_To_Noise_Ratio;
+
    function Min_Max_Loc (Self : Mat) return Min_Max_Result is
       Minimum   : aliased OpenCV.Internal.C_API.C_Double := 0.0;
       Maximum   : aliased OpenCV.Internal.C_API.C_Double := 0.0;

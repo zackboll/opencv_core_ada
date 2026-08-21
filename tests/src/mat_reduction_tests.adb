@@ -11032,6 +11032,237 @@ package body Mat_Reduction_Tests is
         (Check_Int32'Access, "SVD_Solve_Zero must reject Int32 input");
    end SVD_Solve_Zero_Rejects_Invalid_Input;
 
+   procedure PSNR_Known_Value_Uses_Default_Peak
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+      Right    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+      Expected : constant Long_Float := 20.0 * Log (255.0) / Log (10.0);
+   begin
+      OpenCV.Core.UInt8_Access.Set (Left, 0, 0, 10);
+      OpenCV.Core.UInt8_Access.Set (Right, 0, 0, 11);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (OpenCV.Core.Peak_Signal_To_Noise_Ratio (Left, Right),
+            Expected,
+            0.000_000_001),
+         "PSNR must default R to 255 and match the known one-unit RMSE");
+   end PSNR_Known_Value_Uses_Default_Peak;
+
+   procedure PSNR_Uses_Custom_Peak_Value (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Left     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 1));
+      Right    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 1));
+      Expected : constant Long_Float :=
+        20.0 * Log (100.0 / Sqrt (2.0)) / Log (10.0);
+   begin
+      Left.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Right.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.UInt8_Access.Set (Right, 0, 1, 2);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (OpenCV.Core.Peak_Signal_To_Noise_Ratio
+              (Left, Right, Peak_Value => 100.0),
+            Expected,
+            0.000_000_001),
+         "PSNR must pass an explicit custom peak value to OpenCV");
+   end PSNR_Uses_Custom_Peak_Value;
+
+   procedure PSNR_Identical_Returns_OpenCV_Finite_Value
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image          : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      Double_Epsilon : constant Long_Float := 2.220_446_049_250_313E-16;
+      Expected       : constant Long_Float :=
+        20.0 * Log (255.0 / Double_Epsilon) / Log (10.0);
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (42.0));
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (OpenCV.Core.Peak_Signal_To_Noise_Ratio (Image, Image),
+            Expected,
+            0.000_000_001),
+         "Zero MSE must use OpenCV's DBL_EPSILON denominator, not infinity");
+   end PSNR_Identical_Returns_OpenCV_Finite_Value;
+
+   procedure PSNR_Supports_Float32_Float64_And_Float16
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left32   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+      Right32  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+      Left64   : OpenCV.Core.Mat;
+      Right64  : OpenCV.Core.Mat;
+      Left16   : OpenCV.Core.Mat;
+      Right16  : OpenCV.Core.Mat;
+      Expected : constant Long_Float :=
+        20.0 * Log (10.0 / Sqrt (2.0)) / Log (10.0);
+   begin
+      Left32.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Right32.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.Float32_Access.Set (Right32, 0, 1, 2.0);
+      Left64 := Left32.Convert_To (OpenCV.Core.Float64);
+      Right64 := Right32.Convert_To (OpenCV.Core.Float64);
+      Left16 := Left32.Convert_To (OpenCV.Core.Float16);
+      Right16 := Right32.Convert_To (OpenCV.Core.Float16);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (OpenCV.Core.Peak_Signal_To_Noise_Ratio (Left32, Right32, 10.0),
+            Expected,
+            0.000_001)
+         and then Approximately_Equal
+                    (OpenCV.Core.Peak_Signal_To_Noise_Ratio
+                       (Left64, Right64, 10.0),
+                     Expected,
+                     0.000_000_001)
+         and then Approximately_Equal
+                    (OpenCV.Core.Peak_Signal_To_Noise_Ratio
+                       (Left16, Right16, 10.0),
+                     Expected,
+                     0.000_001),
+         "PSNR must support OpenCV's Float32, Float64, and Float16 norms");
+   end PSNR_Supports_Float32_Float64_And_Float16;
+
+   procedure PSNR_Supports_Multiple_And_More_Than_Four_Channels
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left3        : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 3));
+      Right3       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 3));
+      Five_Channel : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 5));
+      Expected     : constant Long_Float :=
+        20.0 * Log (255.0 / Sqrt (1.0 / 3.0)) / Log (10.0);
+   begin
+      OpenCV.Core.UInt8_Vec3_Access.Set (Left3, 0, 0, (0, 0, 0));
+      OpenCV.Core.UInt8_Vec3_Access.Set (Right3, 0, 0, (1, 0, 0));
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (OpenCV.Core.Peak_Signal_To_Noise_Ratio (Left3, Right3),
+            Expected,
+            0.000_000_001),
+         "PSNR MSE must include every channel component");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Peak_Signal_To_Noise_Ratio (Five_Channel, Five_Channel)
+         > 300.0,
+         "PSNR must support channel counts greater than Scalar's four");
+   end PSNR_Supports_Multiple_And_More_Than_Four_Channels;
+
+   procedure PSNR_Supports_Noncontiguous_Regions
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left_Parent  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 4, (OpenCV.Core.UInt8, 1));
+      Right_Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 4, (OpenCV.Core.UInt8, 1));
+      Left         : OpenCV.Core.Mat;
+      Right        : OpenCV.Core.Mat;
+      Expected     : constant Long_Float := 20.0 * Log (255.0) / Log (10.0);
+   begin
+      Left_Parent.Set_To (OpenCV.Core.Make_Scalar (20.0));
+      Right_Parent.Set_To (OpenCV.Core.Make_Scalar (21.0));
+      Left := Left_Parent.Region ((X => 1, Y => 0, Width => 2, Height => 2));
+      Right := Right_Parent.Region ((X => 1, Y => 0, Width => 2, Height => 2));
+
+      AUnit.Assertions.Assert
+        (not Left.Is_Continuous
+         and then not Right.Is_Continuous
+         and then Approximately_Equal
+                    (OpenCV.Core.Peak_Signal_To_Noise_Ratio (Left, Right),
+                     Expected,
+                     0.000_000_001),
+         "PSNR must support matching non-contiguous Regions");
+   end PSNR_Supports_Noncontiguous_Regions;
+
+   procedure PSNR_Rejects_Empty_And_Incompatible_Mats
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Empty          : OpenCV.Core.Mat;
+      Base           : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      Wrong_Rows     : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 1));
+      Wrong_Depth    : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
+      Wrong_Channels : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 3));
+
+      procedure Check_Empty is
+         Value : constant Long_Float :=
+           OpenCV.Core.Peak_Signal_To_Noise_Ratio (Empty, Empty);
+      begin
+         pragma Unreferenced (Value);
+      end Check_Empty;
+
+      procedure Check_Rows is
+         Value : constant Long_Float :=
+           OpenCV.Core.Peak_Signal_To_Noise_Ratio (Base, Wrong_Rows);
+      begin
+         pragma Unreferenced (Value);
+      end Check_Rows;
+
+      procedure Check_Depth is
+         Value : constant Long_Float :=
+           OpenCV.Core.Peak_Signal_To_Noise_Ratio (Base, Wrong_Depth);
+      begin
+         pragma Unreferenced (Value);
+      end Check_Depth;
+
+      procedure Check_Channels is
+         Value : constant Long_Float :=
+           OpenCV.Core.Peak_Signal_To_Noise_Ratio (Base, Wrong_Channels);
+      begin
+         pragma Unreferenced (Value);
+      end Check_Channels;
+
+      procedure Check_Zero_Peak is
+         Value : constant Long_Float :=
+           OpenCV.Core.Peak_Signal_To_Noise_Ratio
+             (Base, Base, Peak_Value => 0.0);
+      begin
+         pragma Unreferenced (Value);
+      end Check_Zero_Peak;
+
+      procedure Check_Negative_Peak is
+         Value : constant Long_Float :=
+           OpenCV.Core.Peak_Signal_To_Noise_Ratio
+             (Base, Base, Peak_Value => -1.0);
+      begin
+         pragma Unreferenced (Value);
+      end Check_Negative_Peak;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Check_Empty'Access, "PSNR must reject empty Mats");
+      Assert_Raises_OpenCV_Error
+        (Check_Rows'Access, "PSNR must reject mismatched dimensions");
+      Assert_Raises_OpenCV_Error
+        (Check_Depth'Access, "PSNR must reject mismatched depths");
+      Assert_Raises_OpenCV_Error
+        (Check_Channels'Access, "PSNR must reject mismatched channel counts");
+      Assert_Raises_OpenCV_Error
+        (Check_Zero_Peak'Access, "PSNR must reject a zero peak value");
+      Assert_Raises_OpenCV_Error
+        (Check_Negative_Peak'Access, "PSNR must reject a negative peak value");
+   end PSNR_Rejects_Empty_And_Incompatible_Mats;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Masked_Min_Max_Loc_In_Range         : constant Caller.Test_Method :=
@@ -12164,6 +12395,34 @@ package body Mat_Reduction_Tests is
         (Caller.Create
            ("Masked Min_Max_Loc rejects invalid input",
             Masked_Min_Max_Loc_Rejects_Invalid_Input'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("PSNR known value uses default peak",
+            PSNR_Known_Value_Uses_Default_Peak'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("PSNR uses custom peak value",
+            PSNR_Uses_Custom_Peak_Value'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("PSNR identical inputs return OpenCV finite value",
+            PSNR_Identical_Returns_OpenCV_Finite_Value'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("PSNR supports Float32 Float64 and Float16",
+            PSNR_Supports_Float32_Float64_And_Float16'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("PSNR supports multiple and more than four channels",
+            PSNR_Supports_Multiple_And_More_Than_Four_Channels'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("PSNR supports non-contiguous Regions",
+            PSNR_Supports_Noncontiguous_Regions'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("PSNR rejects empty and incompatible Mats",
+            PSNR_Rejects_Empty_And_Incompatible_Mats'Access));
       Result.Add_Test
         (Caller.Create
            ("UInt8 Mat set-to and sum", UInt8_Set_To_And_Sum'Access));

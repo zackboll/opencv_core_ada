@@ -4842,6 +4842,30 @@ opencv_core_mat_norm_masked(const opencv_core_mat_handle *mat,
 }
 
 opencv_core_status
+opencv_core_mat_psnr(const opencv_core_mat_handle *left,
+                     const opencv_core_mat_handle *right, double peak_value,
+                     double *out_psnr) {
+    clear_error();
+
+    if (out_psnr == nullptr) {
+        return invalid_argument("PSNR output pointer must not be null");
+    }
+
+    *out_psnr = 0.0;
+
+    if (left == nullptr || right == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        *out_psnr = cv::PSNR(left->value, right->value, peak_value);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_min_max_loc(const opencv_core_mat_handle *mat,
                             double *out_minimum, double *out_maximum,
                             int32_t *out_minimum_x, int32_t *out_minimum_y,

@@ -1030,6 +1030,12 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_norm_masked";
 
+   function Mat_PSNR
+     (Left, Right : Mat_Handle;
+      Peak_Value  : C_Double;
+      Result      : access C_Double) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_psnr";
+
    function Mat_Min_Max_Loc
      (Self      : Mat_Handle;
       Minimum   : access C_Double;
