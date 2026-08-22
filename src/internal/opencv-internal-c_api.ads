@@ -852,6 +852,15 @@ package OpenCV.Internal.C_API is
       Result          : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_solve";
 
+   function Mat_Solve_Least_Squares
+     (Coefficients    : Mat_Handle;
+      Right_Hand_Side : Mat_Handle;
+      Result          : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_solve_least_squares";
+
    --  Execution status is the function result; Root_Count is solveCubic's
    --  mathematical -1/0/1/2/3 result.
    function Mat_Solve_Cubic

@@ -293,6 +293,21 @@ package OpenCV.Core is
       end case;
    end record;
 
+   --  Solves the least-squares problem A * X ~= B using OpenCV 4.10
+   --  cv::solve with DECOMP_SVD. Unlike Solve, which is the LU API for
+   --  ordinary square systems, Self (A) may be square or overdetermined:
+   --  M = A.Rows must be at least N = A.Columns. Underdetermined systems
+   --  are rejected because OpenCV 4.10 cv::solve rejects M < N even for
+   --  DECOMP_SVD. Right_Hand_Side (B) must have M rows and may have K >= 1
+   --  columns. The independently owned Float32 or Float64 C1 result has
+   --  shape N x K. A and B must be non-empty, single-channel, Float32 or
+   --  Float64, and have the same depth. Rank-deficient A is accepted and
+   --  receives OpenCV's SVD pseudo-solution using its internal singular-value
+   --  threshold. Inputs are unchanged, the result owns independent storage,
+   --  and non-contiguous Regions are supported. Numerical rounding and SVD
+   --  singular-value thresholding apply.
+   function Solve_Least_Squares (Self : Mat; Right_Hand_Side : Mat) return Mat;
+
    --  The mathematical real-root result of Solve_Cubic: infinitely many
    --  roots, no real roots, or one, two, or three distinct real roots.
    type Cubic_Root_Status is

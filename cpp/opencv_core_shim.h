@@ -990,6 +990,18 @@ opencv_core_mat_solve(const opencv_core_mat_handle *coefficients,
                       opencv_core_mat_handle **out_solution);
 
 /*
+ * Computes OpenCV 4.10's DECOMP_SVD pseudo-solution minimizing A * X - B.
+ * Inputs are borrowed and unchanged. The independently owned solution has
+ * coefficients.cols rows and right_hand_side.cols columns. It is published
+ * only after success; *out_solution is initialized to null on entry.
+ */
+opencv_core_status
+opencv_core_mat_solve_least_squares(
+    const opencv_core_mat_handle *coefficients,
+    const opencv_core_mat_handle *right_hand_side,
+    opencv_core_mat_handle **out_solution);
+
+/*
  * Finds real roots with cv::solveCubic. coefficients is borrowed. out_root_count
  * and out_roots must be non-null; they are initialized to zero and null before
  * work. The opencv_core_status reports execution success or failure.

@@ -3295,6 +3295,83 @@ package body OpenCV.Core is
       end;
    end Solve;
 
+   function Solve_Least_Squares (Self : Mat; Right_Hand_Side : Mat) return Mat
+   is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      if Self.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve_Least_Squares requires a non-empty coefficient Mat");
+      end if;
+      if Self.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve_Least_Squares requires a single-channel coefficient Mat");
+      end if;
+      if Self.Depth /= Float32 and then Self.Depth /= Float64 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve_Least_Squares requires Float32 or Float64 coefficients");
+      end if;
+      if Self.Rows < Self.Columns then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve_Least_Squares does not support underdetermined systems");
+      end if;
+      if Right_Hand_Side.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve_Least_Squares requires a non-empty right-hand side");
+      end if;
+      if Right_Hand_Side.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve_Least_Squares requires a single-channel right-hand side");
+      end if;
+      if Right_Hand_Side.Depth /= Float32
+        and then Right_Hand_Side.Depth /= Float64
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve_Least_Squares requires a Float32 or Float64"
+            & " right-hand side");
+      end if;
+      if Right_Hand_Side.Depth /= Self.Depth then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve_Least_Squares requires matching input depths");
+      end if;
+      if Right_Hand_Side.Rows /= Self.Rows then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve_Least_Squares requires B.Rows = A.Rows");
+      end if;
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_Solve_Least_Squares
+          (Coefficients    => Self.Handle,
+           Right_Hand_Side => Right_Hand_Side.Handle,
+           Result          => New_Handle'Access);
+      if Status /= OpenCV.Internal.C_API.Success then
+         OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+         Raise_On_Error (Status, "Mat SVD least-squares solve operation");
+      end if;
+      if New_Handle = OpenCV.Internal.C_API.Null_Mat_Handle then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat SVD least-squares solve operation returned a null"
+            & " result handle");
+      end if;
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Solve_Least_Squares;
+
    function Solve_Cubic (Coefficients : Mat) return Cubic_Solution_Result is
       Root_Count : aliased OpenCV.Internal.C_API.C_Int32 := 0;
       New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=

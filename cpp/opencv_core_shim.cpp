@@ -202,6 +202,68 @@ bool svd_solve_zero_workspace_fits_size_t(int rows, int columns,
     return checked_size_add(workspace, static_cast<size_t>(32), &workspace);
 }
 
+// Models the OpenCV 4.10 cv::solve DECOMP_SVD workspace:
+//   asize + 32 + n * 5 * esz + n * vstep + nb * sizeof(double) + 32
+// where vstep = alignSize(n * esz, 16),
+// astep = alignSize(m * esz, 16), and asize = astep * n.
+bool solve_svd_workspace_fits_size_t(int m, int n, int nb,
+                                     size_t esz) noexcept {
+    if (m < 0 || n < 0 || nb < 0 ||
+        n > std::numeric_limits<int>::max() / 5) {
+        return false;
+    }
+
+    size_t raw_vstep = 0;
+    size_t vstep = 0;
+    size_t raw_astep = 0;
+    size_t astep = 0;
+    size_t asize = 0;
+    size_t workspace = 0;
+    size_t part = 0;
+    if (!checked_size_mul(static_cast<size_t>(n), esz, &raw_vstep) ||
+        !checked_align_size_16(raw_vstep, &vstep) ||
+        !checked_size_mul(static_cast<size_t>(m), esz, &raw_astep) ||
+        !checked_align_size_16(raw_astep, &astep) ||
+        !checked_size_mul(astep, static_cast<size_t>(n), &asize) ||
+        !checked_size_add(asize, static_cast<size_t>(32), &workspace) ||
+        !checked_size_mul(static_cast<size_t>(n * 5), esz, &part) ||
+        !checked_size_add(workspace, part, &workspace) ||
+        !checked_size_mul(static_cast<size_t>(n), vstep, &part) ||
+        !checked_size_add(workspace, part, &workspace) ||
+        !checked_size_mul(static_cast<size_t>(nb), sizeof(double), &part) ||
+        !checked_size_add(workspace, part, &workspace)) {
+        return false;
+    }
+    return checked_size_add(workspace, static_cast<size_t>(32), &workspace);
+}
+
+bool solve_svd_strides_fit_int(int m, int n, int nb, size_t esz,
+                               size_t rhs_step) noexcept {
+    size_t raw_vstep = 0;
+    size_t vstep = 0;
+    size_t raw_astep = 0;
+    size_t astep = 0;
+    if (!checked_size_mul(static_cast<size_t>(n), esz, &raw_vstep) ||
+        !checked_align_size_16(raw_vstep, &vstep) ||
+        !checked_size_mul(static_cast<size_t>(m), esz, &raw_astep) ||
+        !checked_align_size_16(raw_astep, &astep)) {
+        return false;
+    }
+
+    const size_t int_max =
+        static_cast<size_t>(std::numeric_limits<int>::max());
+    if (esz == 0 || astep / esz > int_max || vstep / esz > int_max ||
+        rhs_step / esz > int_max) {
+        return false;
+    }
+
+    // ABI safety: OpenCV 4.10 SVBkSbImpl_ evaluates b[j * ldb] for a
+    // one-column RHS after converting bstep / sizeof(T) to int.
+    const size_t rhs_ld = rhs_step / esz;
+    return nb != 1 || m == 0 || rhs_ld == 0 ||
+           static_cast<size_t>(m) <= int_max / rhs_ld;
+}
+
 opencv_core_status invalid_argument(const char *message) noexcept {
     set_error(message);
     return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
@@ -3759,6 +3821,71 @@ opencv_core_mat_solve(const opencv_core_mat_handle *coefficients,
             new opencv_core_mat_handle(solution));
         *out_solution = solution_handle.release();
         *out_solved = UINT8_C(1);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_solve_least_squares(
+    const opencv_core_mat_handle *coefficients,
+    const opencv_core_mat_handle *right_hand_side,
+    opencv_core_mat_handle **out_solution) {
+    clear_error();
+
+    if (out_solution != nullptr) {
+        *out_solution = nullptr;
+    }
+    if (out_solution == nullptr) {
+        return invalid_argument("solve least-squares output pointer must not be null");
+    }
+    if (coefficients == nullptr || right_hand_side == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        const cv::Mat &a = coefficients->value;
+        const cv::Mat &b = right_hand_side->value;
+
+        // ABI safety: OpenCV 4.10 SVBkSbImpl_ clears the packed solution with
+        // x[i * ldx + j], where ldx is B.cols. N * K must fit signed int
+        // before that index expression is evaluated.
+        if (a.cols > 0 && b.cols > 0 &&
+            int32_product_exceeds_max(a.cols, b.cols)) {
+            return invalid_argument(
+                "SVD least-squares solution index N * K exceeds INT_MAX");
+        }
+
+        // ABI safety: OpenCV 4.10 cv::solve DECOMP_SVD constructs its
+        // AutoBuffer with unchecked size_t products and sums, including the
+        // signed-int expression n * 5. A wrapped allocation can leave its
+        // internal Mat headers backed by undersized storage.
+        if (!solve_svd_workspace_fits_size_t(a.rows, a.cols, b.cols,
+                                             a.elemSize())) {
+            return invalid_argument(
+                "SVD least-squares workspace exceeds safe arithmetic limits");
+        }
+
+        // ABI safety: OpenCV 4.10 converts its aligned internal SVD strides
+        // and the external RHS step from size_t to int in SVBkSb. A narrowed
+        // stride, or b[j * ldb] overflowing for a one-column RHS, can make
+        // back substitution address unrelated or out-of-bounds storage.
+        if (!solve_svd_strides_fit_int(a.rows, a.cols, b.cols, a.elemSize(),
+                                       b.step)) {
+            return invalid_argument(
+                "SVD least-squares stride exceeds signed-index limits");
+        }
+
+        cv::Mat solution;
+        if (!cv::solve(a, b, solution, cv::DECOMP_SVD)) {
+            return invalid_argument(
+                "OpenCV SVD least-squares solve returned false");
+        }
+
+        std::unique_ptr<opencv_core_mat_handle> solution_handle(
+            new opencv_core_mat_handle(solution));
+        *out_solution = solution_handle.release();
         return OPENCV_CORE_OK;
     } catch (...) {
         return translate_current_exception();
