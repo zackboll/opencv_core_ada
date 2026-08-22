@@ -4,6 +4,8 @@ with OpenCV.Internal.Safe_Arithmetic;
 
 package body OpenCV.Core is
 
+   Maximum_Jacobi_Dimension : constant Natural := 8_460;
+
    use type OpenCV.Internal.C_API.C_Boolean;
    use type OpenCV.Internal.C_API.Mat_Handle;
    use type OpenCV.Internal.C_API.C_UInt64;
@@ -4666,7 +4668,7 @@ package body OpenCV.Core is
             "Eigen_Decomposition requires a Float32 or Float64 Mat");
       end if;
 
-      if Self.Rows > 8_460 then
+      if Self.Rows > Maximum_Jacobi_Dimension then
          Ada.Exceptions.Raise_Exception
            (OpenCV_Error'Identity,
             "Eigen_Decomposition dimension must not exceed 8460");
@@ -4808,6 +4810,11 @@ package body OpenCV.Core is
            (OpenCV_Error'Identity,
             "Linear_Discriminant_Analysis requires at least one sample"
             & " and feature");
+      end if;
+      if Samples.Columns > Maximum_Jacobi_Dimension then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Linear_Discriminant_Analysis feature count must not exceed 8460");
       end if;
       if not Samples.Check_Range.Valid then
          Ada.Exceptions.Raise_Exception

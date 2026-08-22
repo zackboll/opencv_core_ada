@@ -1325,6 +1325,9 @@ package OpenCV.Core is
    --  Singular or ill-conditioned within-class scatter can yield degenerate
    --  numerical results under OpenCV 4.10. OpenCV warns to stdout when N < D;
    --  this binding preserves that native behavior rather than rejecting it.
+   --  D must not exceed 8460 because OpenCV 4.10's internal LDA eigensolver
+   --  can use either a non-symmetric path or the symmetric cv::eigen fallback;
+   --  this signed-arithmetic safety limit covers both paths.
    function Linear_Discriminant_Analysis
      (Samples : Mat; Labels : Mat) return Linear_Discriminant_Analysis_Result;
 

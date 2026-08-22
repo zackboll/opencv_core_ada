@@ -1262,7 +1262,8 @@ opencv_core_mat_principal_component_analysis(
  * eigenvalues is a Float64 K x 1 column and eigenvectors is Float64 D x K,
  * with one discriminant direction per column. Inputs are borrowed and
  * unchanged; both outputs own independent storage. On any failure both output
- * handles remain null.
+ * handles remain null. D must not exceed 8460 because OpenCV 4.10's internal
+ * eigensolver can take either a non-symmetric path or cv::eigen fallback.
  */
 opencv_core_status
 opencv_core_mat_linear_discriminant_analysis(

@@ -48,6 +48,7 @@ struct opencv_core_file_storage_handle {
 namespace {
 
 constexpr std::size_t error_message_capacity = 1024;
+constexpr int maximum_jacobi_dimension = 8460;
 thread_local char last_error_message[error_message_capacity] = "";
 
 void clear_error() noexcept {
@@ -4923,13 +4924,14 @@ opencv_core_mat_linear_discriminant_analysis(
                 "LDA labels must be an Int32 C1 row or column vector with one label per sample");
         }
 
-        // ABI safety: OpenCV 4.10's EigenvalueDecomposition computes
-        // max_iters_count = 1000 * n using signed int, where n is the feature
-        // count. This prevents that multiplication overflowing before its
-        // iteration can report non-convergence.
-        if (sample_mat.cols > std::numeric_limits<int>::max() / 1000) {
+        // ABI safety: OpenCV 4.10's EigenvalueDecomposition can use either
+        // max_iters_count = 1000 * n in its nonsymmetric path or the symmetric
+        // cv::eigen fallback, whose Jacobi backend computes n*n*30 with signed
+        // int. 8460 is the largest safe Jacobi dimension and also makes
+        // 1000*n safe before either path can run.
+        if (sample_mat.cols > maximum_jacobi_dimension) {
             return invalid_argument(
-                "LDA feature count would overflow OpenCV 4.10 iteration limit");
+                "LDA feature count exceeds OpenCV 4.10 eigensolver safety limit");
         }
 
         std::set<int> classes;
