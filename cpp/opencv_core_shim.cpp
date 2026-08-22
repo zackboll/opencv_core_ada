@@ -82,7 +82,9 @@ bool int32_sum_exceeds_max(int32_t left, int32_t right) noexcept {
 
 int solve_poly_effective_degree(const cv::Mat &coefficients,
                                 bool *has_leading_coefficient) {
-    const int original_degree = coefficients.cols + coefficients.rows - 2;
+    const int original_degree = coefficients.rows == 1
+                                    ? coefficients.cols - 1
+                                    : coefficients.rows - 1;
     int degree = original_degree;
     cv::Mat converted;
     coefficients.convertTo(

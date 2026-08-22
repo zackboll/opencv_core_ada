@@ -279,8 +279,9 @@ package OpenCV.Core is
 
    --  Result of Solve_Polynomial. Roots is an independently owned effective-
    --  degree x 1 C2 Mat. Trailing high-order coefficients whose converted
-   --  Float64 complex magnitude is at most OpenCV 4.10's DBL_EPSILON are
-   --  trimmed; OpenCV's original-degree padding rows are not exposed.
+   --  Float64 components' absolute-value sum is at most OpenCV 4.10's
+   --  DBL_EPSILON are trimmed; OpenCV's original-degree padding rows are not
+   --  exposed.
    type Polynomial_Solution_Result is record
       Roots              : Mat;
       Maximum_Correction : Long_Float;
