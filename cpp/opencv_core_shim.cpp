@@ -3,6 +3,7 @@
 #include <opencv2/core.hpp>
 
 #include <cstdio>
+#include <cfloat>
 #include <cmath>
 #include <cstring>
 #include <algorithm>
@@ -77,6 +78,34 @@ opencv_core_status translate_current_exception() noexcept {
 bool int32_sum_exceeds_max(int32_t left, int32_t right) noexcept {
     return left >= 0 && right >= 0 &&
            left > std::numeric_limits<int32_t>::max() - right;
+}
+
+int solve_poly_effective_degree(const cv::Mat &coefficients,
+                                bool *has_leading_coefficient) {
+    const int original_degree = coefficients.cols + coefficients.rows - 2;
+    int degree = original_degree;
+    cv::Mat converted;
+    coefficients.convertTo(
+        converted, CV_MAKETYPE(CV_64F, coefficients.channels()));
+
+    const auto coefficient_at = [&converted, &coefficients](int index) {
+        return coefficients.channels() == 1
+                   ? cv::Vec2d(converted.ptr<double>()[index], 0.0)
+                   : converted.ptr<cv::Vec2d>()[index];
+    };
+    for (; degree > 1; --degree) {
+        const cv::Vec2d coefficient = coefficient_at(degree);
+        if (std::abs(coefficient[0]) + std::abs(coefficient[1]) > DBL_EPSILON) {
+            break;
+        }
+    }
+    const cv::Vec2d leading_coefficient = coefficient_at(degree);
+    if (has_leading_coefficient != nullptr) {
+        *has_leading_coefficient =
+            std::abs(leading_coefficient[0]) + std::abs(leading_coefficient[1]) >
+            DBL_EPSILON;
+    }
+    return degree;
 }
 
 bool int32_product_exceeds_max(int32_t left, int32_t right) noexcept {
@@ -3524,6 +3553,46 @@ opencv_core_mat_solve_cubic(const opencv_core_mat_handle *coefficients,
 }
 
 opencv_core_status
+opencv_core_mat_solve_poly_effective_degree(
+    const opencv_core_mat_handle *coefficients, int32_t *out_degree,
+    uint8_t *out_has_leading_coefficient) {
+    clear_error();
+
+    if (out_degree != nullptr) {
+        *out_degree = 0;
+    }
+    if (out_has_leading_coefficient != nullptr) {
+        *out_has_leading_coefficient = UINT8_C(0);
+    }
+
+    if (coefficients == nullptr || out_degree == nullptr ||
+        out_has_leading_coefficient == nullptr) {
+        return invalid_argument(
+            "solve polynomial effective degree requires a Mat handle and output pointers");
+    }
+
+    // ABI safety: solve_poly_effective_degree indexes the converted vector by
+    // degree, so non-vector or more-than-two-channel input could otherwise
+    // perform out-of-bounds access before OpenCV validates it.
+    if (coefficients->value.rows <= 0 || coefficients->value.cols <= 0 ||
+        (coefficients->value.rows != 1 && coefficients->value.cols != 1) ||
+        coefficients->value.channels() > 2) {
+        return invalid_argument(
+            "solve polynomial effective degree requires a non-empty one- or two-channel vector");
+    }
+
+    try {
+        bool has_leading_coefficient = false;
+        *out_degree = solve_poly_effective_degree(
+            coefficients->value, &has_leading_coefficient);
+        *out_has_leading_coefficient = has_leading_coefficient ? UINT8_C(1) : UINT8_C(0);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_solve_poly(const opencv_core_mat_handle *coefficients,
                            int32_t maximum_iterations,
                            opencv_core_mat_handle **out_roots,
@@ -3559,8 +3628,14 @@ opencv_core_mat_solve_poly(const opencv_core_mat_handle *coefficients,
         cv::Mat roots;
         const double maximum_correction =
             cv::solvePoly(coefficients->value, roots, maximum_iterations);
+        const int effective_degree =
+            solve_poly_effective_degree(
+                coefficients->value, nullptr);
         std::unique_ptr<opencv_core_mat_handle> roots_handle(
-            new opencv_core_mat_handle(roots));
+            new opencv_core_mat_handle(
+                effective_degree == roots.rows
+                    ? roots
+                    : roots.rowRange(0, effective_degree).clone()));
         *out_roots = roots_handle.release();
         *out_maximum_correction = maximum_correction;
         return OPENCV_CORE_OK;

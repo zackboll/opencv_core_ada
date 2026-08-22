@@ -810,6 +810,15 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_solve_cubic";
 
+   function Mat_Solve_Poly_Effective_Degree
+     (Coefficients            : Mat_Handle;
+      Degree                  : access C_Int32;
+      Has_Leading_Coefficient : access C_Boolean) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_solve_poly_effective_degree";
+
    function Mat_Solve_Poly
      (Coefficients       : Mat_Handle;
       Maximum_Iterations : C_Int32;

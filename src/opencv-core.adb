@@ -3208,22 +3208,10 @@ package body OpenCV.Core is
       Correction : aliased OpenCV.Internal.C_API.C_Double := 0.0;
       Status     : OpenCV.Internal.C_API.Status;
 
-      function Coefficient_Magnitude (Index : Natural) return Long_Float is
-         Element   : constant Mat :=
-           (if Coefficients.Rows = 1
-            then Coefficients.Column_View (Size_Coordinate (Index))
-            else Coefficients.Row_View (Size_Coordinate (Index)));
-         Parts     : constant Mat_Array := Element.Split;
-         Magnitude : Long_Float := 0.0;
-      begin
-         for Part of Parts loop
-            Magnitude := Magnitude + Part.Norm (Infinity);
-         end loop;
-         return Magnitude;
-      end Coefficient_Magnitude;
-
-      Coefficient_Count : Natural;
-      Effective_Degree  : Natural;
+      Coefficient_Count       : Natural;
+      Effective_Degree        : aliased OpenCV.Internal.C_API.C_Int32 := 0;
+      Has_Leading_Coefficient : aliased OpenCV.Internal.C_API.C_Boolean :=
+        OpenCV.Internal.C_API.C_False;
    begin
       if Coefficients.Is_Empty then
          Ada.Exceptions.Raise_Exception
@@ -3266,15 +3254,15 @@ package body OpenCV.Core is
             "Solve_Polynomial coefficient vector exceeds OpenCV's safe range");
       end if;
 
-      Effective_Degree := Coefficient_Count - 1;
-      while Effective_Degree > 1
-        and then Coefficient_Magnitude (Effective_Degree)
-                 <= Long_Float'Model_Epsilon
-      loop
-         Effective_Degree := Effective_Degree - 1;
-      end loop;
+      Status :=
+        OpenCV.Internal.C_API.Mat_Solve_Poly_Effective_Degree
+          (Coefficients            => Coefficients.Handle,
+           Degree                  => Effective_Degree'Access,
+           Has_Leading_Coefficient => Has_Leading_Coefficient'Access);
+      Raise_On_Error (Status, "Solve_Polynomial effective-degree calculation");
 
-      if Coefficient_Magnitude (Effective_Degree) <= Long_Float'Model_Epsilon
+      if Effective_Degree <= 0
+        or else Has_Leading_Coefficient = OpenCV.Internal.C_API.C_False
       then
          Ada.Exceptions.Raise_Exception
            (OpenCV_Error'Identity,

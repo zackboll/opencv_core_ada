@@ -225,7 +225,68 @@ package body Polynomial_Tests is
       OpenCV.Core.Float32_Access.Set (Parent, 1, 1, 99.0);
       Assert_Contains (Result, (1.0, 0.0), 1.0E-4);
       Assert_Contains (Result, (2.0, 0.0), 1.0E-4);
+      Assert_Residuals (Result, (2.0, -3.0, 1.0), 1.0E-4);
    end Depths_Views_And_Independent_Result;
+
+   procedure Effective_Degree_Roots (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Double_Epsilon          : constant Long_Float := 2.220446049250313E-16;
+      One_Zero_Input          : constant Values := (2.0, -3.0, 1.0, 0.0);
+      Many_Zero_Input         : constant Values := (2.0, -3.0, 1.0, 0.0, 0.0);
+      Cubic_Input             : constant Values := (-6.0, 11.0, -6.0, 1.0);
+      Trimmed_Boundary_Input  : constant Values :=
+        (2.0, -3.0, 1.0, Double_Epsilon);
+      Retained_Boundary_Input : constant Values :=
+        (-2.0 * Double_Epsilon, 0.0, 0.0, 2.0 * Double_Epsilon);
+      One_Zero                :
+        constant OpenCV.Core.Polynomial_Solution_Result :=
+          OpenCV.Core.Solve_Polynomial (Coefficients (One_Zero_Input));
+      Many_Zero               :
+        constant OpenCV.Core.Polynomial_Solution_Result :=
+          OpenCV.Core.Solve_Polynomial (Coefficients (Many_Zero_Input));
+      Cubic                   :
+        constant OpenCV.Core.Polynomial_Solution_Result :=
+          OpenCV.Core.Solve_Polynomial (Coefficients (Cubic_Input));
+      Trimmed_Boundary        :
+        constant OpenCV.Core.Polynomial_Solution_Result :=
+          OpenCV.Core.Solve_Polynomial
+            (Coefficients
+               (Trimmed_Boundary_Input, Depth => OpenCV.Core.Float64));
+      Retained_Boundary       :
+        constant OpenCV.Core.Polynomial_Solution_Result :=
+          OpenCV.Core.Solve_Polynomial
+            (Coefficients
+               (Retained_Boundary_Input, Depth => OpenCV.Core.Float64));
+   begin
+      AUnit.Assertions.Assert
+        (One_Zero.Roots.Rows = 2
+         and then One_Zero.Roots.Columns = 1
+         and then One_Zero.Roots.Channels = 2
+         and then Many_Zero.Roots.Rows = 2
+         and then Many_Zero.Roots.Columns = 1
+         and then Many_Zero.Roots.Channels = 2,
+         "Trailing high-order zeros must not expose padded roots");
+      Assert_Contains (One_Zero, (1.0, 0.0), 1.0E-4);
+      Assert_Contains (One_Zero, (2.0, 0.0), 1.0E-4);
+      Assert_Contains (Many_Zero, (1.0, 0.0), 1.0E-4);
+      Assert_Contains (Many_Zero, (2.0, 0.0), 1.0E-4);
+      Assert_Residuals (One_Zero, One_Zero_Input, 1.0E-4);
+      Assert_Residuals (Many_Zero, Many_Zero_Input, 1.0E-4);
+
+      AUnit.Assertions.Assert
+        (Cubic.Roots.Rows = 3, "A true cubic must expose three roots");
+      Assert_Residuals (Cubic, Cubic_Input, 1.0E-3);
+
+      AUnit.Assertions.Assert
+        (Trimmed_Boundary.Roots.Rows = 2,
+         "A CV_64F coefficient at DBL_EPSILON must be trimmed");
+      Assert_Residuals (Trimmed_Boundary, Trimmed_Boundary_Input, 1.0E-10);
+      AUnit.Assertions.Assert
+        (Retained_Boundary.Roots.Rows = 3,
+         "A CV_64F coefficient above DBL_EPSILON must be retained");
+      Assert_Contains (Retained_Boundary, (1.0, 0.0), 1.0E-10);
+      Assert_Residuals (Retained_Boundary, Retained_Boundary_Input, 1.0E-10);
+   end Effective_Degree_Roots;
 
    procedure Degenerate_And_Invalid_Inputs (Test : in out Mat_Test_Fixture) is
       pragma Unreferenced (Test);
@@ -277,14 +338,7 @@ package body Polynomial_Tests is
       begin
          pragma Unreferenced (Ignored);
       end All_Zero;
-      Leading_Zero : constant OpenCV.Core.Polynomial_Solution_Result :=
-        OpenCV.Core.Solve_Polynomial (Coefficients ((2.0, -3.0, 1.0, 0.0)));
    begin
-      Assert_Contains (Leading_Zero, (1.0, 0.0), 1.0E-4);
-      Assert_Contains (Leading_Zero, (2.0, 0.0), 1.0E-4);
-      AUnit.Assertions.Assert
-        (Leading_Zero.Roots.Rows = 3,
-         "Leading zeros must preserve OpenCV's original-degree root shape");
       Assert_Raises_OpenCV_Error
         (Empty'Access, "Must reject default empty Mat");
       Assert_Raises_OpenCV_Error
@@ -320,6 +374,10 @@ package body Polynomial_Tests is
         (Caller.Create
            ("Solve_Polynomial depths views and independent results",
             Depths_Views_And_Independent_Result'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Solve_Polynomial effective-degree roots",
+            Effective_Degree_Roots'Access));
       Result.Add_Test
         (Caller.Create
            ("Solve_Polynomial degenerate and invalid inputs",

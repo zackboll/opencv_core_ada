@@ -952,6 +952,26 @@ opencv_core_mat_solve_cubic(const opencv_core_mat_handle *coefficients,
                             int32_t *out_root_count,
                             opencv_core_mat_handle **out_roots);
 
+/*
+ * Reports the degree cv::solvePoly will use after converting coefficients to
+ * CV_64F and trimming trailing coefficients whose abs(real) + abs(imaginary)
+ * is at most DBL_EPSILON. out_has_leading_coefficient reports whether the
+ * coefficient at that degree exceeds the same threshold. coefficients is
+ * borrowed; outputs must be non-null and are initialized to safe values on
+ * failure.
+ */
+opencv_core_status
+opencv_core_mat_solve_poly_effective_degree(
+    const opencv_core_mat_handle *coefficients, int32_t *out_degree,
+    uint8_t *out_has_leading_coefficient);
+
+/*
+ * Solves coefficients with cv::solvePoly. coefficients is borrowed. On
+ * success out_roots owns an independent effective-degree x 1 C2 Mat: the
+ * original-degree padding rows produced by cv::solvePoly are not exposed.
+ * out_roots and out_maximum_correction must be non-null and are initialized
+ * to safe values before work.
+ */
 opencv_core_status
 opencv_core_mat_solve_poly(const opencv_core_mat_handle *coefficients,
                            int32_t maximum_iterations,
