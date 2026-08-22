@@ -1079,37 +1079,44 @@ package body Random_Tests is
         (A = B, "invalid scalar uniform arguments must preserve state");
    end Scalar_Uniform_Invalid_Arguments_Preserve_State;
 
-   procedure Scalar_Gaussian_Replay_Zero_And_Invalid_Arguments
+   procedure Scalar_Uniform_Nonfinite_Arguments_Preserve_State
      (Test : in out Mat_Test_Fixture)
    is
+      pragma Suppress (Validity_Check);
       pragma Unreferenced (Test);
-      G1, G2         : OpenCV.Core.Random_Number_Generator :=
+      G1, G2            : OpenCV.Core.Random_Number_Generator :=
         OpenCV.Core.Make_Random_Number_Generator (6_543);
-      A, B           : Long_Float;
-      Next_1, Next_2 : Interfaces.Unsigned_32;
-      procedure Negative_Deviation is
+      One, Zero         : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Positive_Infinity : Long_Float;
+      Not_A_Number      : Long_Float;
+      Value             : Long_Float;
+      Next_1, Next_2    : Interfaces.Unsigned_32;
+      procedure Infinite_Bound is
       begin
-         OpenCV.Core.Gaussian_Random (G1, -1.0, A);
-      end Negative_Deviation;
+         OpenCV.Core.Uniform_Random (G1, Positive_Infinity, 1.0, Value);
+      end Infinite_Bound;
+      procedure NaN_Bound is
+      begin
+         OpenCV.Core.Uniform_Random (G1, Not_A_Number, 1.0, Value);
+      end NaN_Bound;
    begin
-      for Index in 1 .. 20 loop
-         OpenCV.Core.Gaussian_Random (G1, 2.0, A);
-         OpenCV.Core.Gaussian_Random (G2, 2.0, B);
-         AUnit.Assertions.Assert (A = B, "scalar Gaussian draws must replay");
-      end loop;
-      OpenCV.Core.Gaussian_Random (G1, 0.0, A);
-      AUnit.Assertions.Assert
-        (A = 0.0, "zero Gaussian deviation must return zero");
-      G2 := G1;
+      One.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      Zero.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Positive_Infinity :=
+        Long_Float (OpenCV.Core.Float32_Access.Get (One.Divide (Zero), 0, 0));
+      Not_A_Number :=
+        Long_Float (OpenCV.Core.Float32_Access.Get (Zero.Divide (Zero), 0, 0));
       Assert_Raises_OpenCV_Error
-        (Negative_Deviation'Access,
-         "scalar Gaussian must reject negative standard deviation");
+        (Infinite_Bound'Access, "scalar uniform must reject infinity");
+      Assert_Raises_OpenCV_Error
+        (NaN_Bound'Access, "scalar uniform must reject NaN");
       OpenCV.Core.Next_Random (G1, Next_1);
       OpenCV.Core.Next_Random (G2, Next_2);
       AUnit.Assertions.Assert
         (Next_1 = Next_2,
-         "invalid scalar Gaussian arguments must preserve state");
-   end Scalar_Gaussian_Replay_Zero_And_Invalid_Arguments;
+         "nonfinite scalar uniform arguments must preserve state");
+   end Scalar_Uniform_Nonfinite_Arguments_Preserve_State;
 
    procedure Scalar_And_Mat_Operations_Share_Explicit_State
      (Test : in out Mat_Test_Fixture)
@@ -1125,11 +1132,11 @@ package body Random_Tests is
       OpenCV.Core.Next_Random (G1, First_1);
       A.Fill_Uniform
         (G1, OpenCV.Core.Make_Scalar (-1.0), OpenCV.Core.Make_Scalar (1.0));
-      OpenCV.Core.Gaussian_Random (G1, 2.0, Last_1);
+      OpenCV.Core.Uniform_Random (G1, -2.0, 3.0, Last_1);
       OpenCV.Core.Next_Random (G2, First_2);
       B.Fill_Uniform
         (G2, OpenCV.Core.Make_Scalar (-1.0), OpenCV.Core.Make_Scalar (1.0));
-      OpenCV.Core.Gaussian_Random (G2, 2.0, Last_2);
+      OpenCV.Core.Uniform_Random (G2, -2.0, 3.0, Last_2);
       AUnit.Assertions.Assert
         (First_1 = First_2
          and then Last_1 = Last_2
@@ -1159,7 +1166,8 @@ package body Random_Tests is
       OpenCV.Core.Set_Random_Seed (321);
       OpenCV.Core.Next_Random (Explicit, N1);
       OpenCV.Core.Uniform_Random (Explicit, -1.0, 1.0, Value);
-      OpenCV.Core.Gaussian_Random (Explicit, 1.0, Value);
+      OpenCV.Core.Next_Random (Explicit, N1);
+      OpenCV.Core.Uniform_Random (Explicit, -1.0, 1.0, Value);
       Observed.Fill_Uniform
         (OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
       OpenCV.Core.Next_Random (Default_Generator, N1);
@@ -1298,8 +1306,8 @@ package body Random_Tests is
             Scalar_Uniform_Invalid_Arguments_Preserve_State'Access));
       Result.Add_Test
         (Caller.Create
-           ("Scalar Gaussian replay zero and invalid arguments",
-            Scalar_Gaussian_Replay_Zero_And_Invalid_Arguments'Access));
+           ("Scalar uniform nonfinite arguments preserve state",
+            Scalar_Uniform_Nonfinite_Arguments_Preserve_State'Access));
       Result.Add_Test
         (Caller.Create
            ("Scalar and Mat operations share explicit state",

@@ -202,18 +202,6 @@ package OpenCV.Core is
       Upper_Bound : Long_Float;
       Value       : out Long_Float);
 
-   --  Draws OpenCV 4.10's mean-zero Ziggurat Gaussian with the supplied
-   --  finite nonnegative standard deviation from caller-owned Generator. The
-   --  Long_Float result is OpenCV's double result. State consumption is
-   --  variable; zero standard deviation still advances Generator. This
-   --  deterministic operation is not cryptographic, does not alter OpenCV's
-   --  thread-local default RNG, and composes with explicit Fill_Uniform,
-   --  Fill_Normal, and Shuffle calls.
-   procedure Gaussian_Random
-     (Generator          : in out Random_Number_Generator;
-      Standard_Deviation : Long_Float;
-      Value              : out Long_Float);
-
    --  Selects OpenCV's random or Arthur--Vassilvitskii k-means++ center
    --  initialization. Both choices consume OpenCV's global RNG. Cluster
    --  numbers, including their order in Centers, have no semantic meaning.

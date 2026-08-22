@@ -3776,6 +3776,8 @@ opencv_core_status fill_uniform_impl(opencv_core_mat_handle *destination,
 opencv_core_status fill_normal_impl(
     opencv_core_mat_handle *destination, const opencv_core_scalar *mean,
     const opencv_core_scalar *standard_deviation, cv::RNG &rng) {
+    // TODO: Audit OpenCV 4.10 randn_0_1_32f's INT_MIN/std::abs path before
+    // expanding normal-generation API surface.
     // ABI safety: RNG::fill asserts before writing an empty Mat.
     if (destination->value.empty()) {
         return invalid_argument("destination Mat must not be empty");
@@ -3886,35 +3888,22 @@ opencv_core_status opencv_core_rng_uniform_double(uint64_t *rng_state,
         return invalid_argument("RNG state must not be null");
     }
 
+    if (!std::isfinite(lower_bound) || !std::isfinite(upper_bound)) {
+        return invalid_argument("uniform bounds must be finite");
+    }
+    if (lower_bound > upper_bound) {
+        return invalid_argument("uniform lower bound must not exceed upper bound");
+    }
+    // ABI safety: RNG::uniform evaluates upper_bound - lower_bound; reject
+    // the overflow case before OpenCV performs that floating-point operation.
+    if (lower_bound < 0.0 && upper_bound > 0.0 &&
+        upper_bound > DBL_MAX + lower_bound) {
+        return invalid_argument("uniform bound width must be finite");
+    }
+
     try {
         cv::RNG rng(*rng_state);
         const double result = rng.uniform(lower_bound, upper_bound);
-        const uint64_t final_state = rng.state;
-        *out_value = result;
-        *rng_state = final_state;
-        return OPENCV_CORE_OK;
-    } catch (...) {
-        return translate_current_exception();
-    }
-}
-
-opencv_core_status opencv_core_rng_gaussian_double(uint64_t *rng_state,
-                                                   double standard_deviation,
-                                                   double *out_value) {
-    clear_error();
-
-    if (out_value == nullptr) {
-        return invalid_argument("out_value must not be null");
-    }
-    *out_value = 0.0;
-
-    if (rng_state == nullptr) {
-        return invalid_argument("RNG state must not be null");
-    }
-
-    try {
-        cv::RNG rng(*rng_state);
-        const double result = rng.gaussian(standard_deviation);
         const uint64_t final_state = rng.state;
         *out_value = result;
         *rng_state = final_state;

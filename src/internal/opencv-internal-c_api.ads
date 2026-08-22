@@ -843,15 +843,6 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_rng_uniform_double";
 
-   function RNG_Gaussian_Double
-     (RNG_State          : access C_UInt64;
-      Standard_Deviation : C_Double;
-      Value              : access C_Double) return Status
-   with
-     Import,
-     Convention    => C,
-     External_Name => "opencv_core_rng_gaussian_double";
-
    function Mat_Fill_Uniform
      (Destination : Mat_Handle; Lower_Bound, Upper_Bound : access Scalar)
       return Status
