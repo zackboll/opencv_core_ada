@@ -3754,6 +3754,87 @@ opencv_core_mat_set_to(opencv_core_mat_handle *mat,
     }
 }
 
+namespace {
+
+opencv_core_status fill_uniform_impl(opencv_core_mat_handle *destination,
+                                     const opencv_core_scalar *lower_bound,
+                                     const opencv_core_scalar *upper_bound,
+                                     cv::RNG &rng) {
+    // ABI safety: RNG::fill asserts before writing an empty Mat.
+    if (destination->value.empty()) {
+        return invalid_argument("destination Mat must not be empty");
+    }
+    // ABI safety review: OpenCV 4.10 NAryMatIterator only folds dimensions
+    // while the resulting plane size remains representable as int.
+    // RNG::fill later narrows it.size to int, but the iterator already
+    // bounds that value. No total-element limit is required here.
+    rng.fill(destination->value, cv::RNG::UNIFORM,
+             to_opencv_scalar(*lower_bound), to_opencv_scalar(*upper_bound));
+    return OPENCV_CORE_OK;
+}
+
+opencv_core_status fill_normal_impl(
+    opencv_core_mat_handle *destination, const opencv_core_scalar *mean,
+    const opencv_core_scalar *standard_deviation, cv::RNG &rng) {
+    // ABI safety: RNG::fill asserts before writing an empty Mat.
+    if (destination->value.empty()) {
+        return invalid_argument("destination Mat must not be empty");
+    }
+    // ABI safety review: OpenCV 4.10 NAryMatIterator only folds dimensions
+    // while the resulting plane size remains representable as int.
+    // RNG::fill later narrows it.size to int, but the iterator already
+    // bounds that value. No total-element limit is required here.
+    rng.fill(destination->value, cv::RNG::NORMAL, to_opencv_scalar(*mean),
+             to_opencv_scalar(*standard_deviation));
+    return OPENCV_CORE_OK;
+}
+
+opencv_core_status shuffle_impl(opencv_core_mat_handle *destination,
+                                cv::RNG &rng) {
+    const cv::Mat &mat = destination->value;
+    // ABI safety: OpenCV randShuffle_ evaluates rng % total(), so an empty
+    // Mat would perform a modulo by zero.
+    if (mat.empty()) {
+        return invalid_argument("destination Mat must not be empty");
+    }
+    // ABI safety: randShuffle_'s non-continuous path asserts dims <= 2
+    // before using rows and cols for its address calculations.
+    if (mat.dims != 2) {
+        return invalid_argument("destination Mat must be two-dimensional");
+    }
+    // ABI safety: restricting to a row or column vector ensures total() is
+    // nonzero and no greater than INT_MAX before randShuffle_ narrows it to
+    // unsigned and uses it as a modulo divisor.
+    if (mat.rows != 1 && mat.cols != 1) {
+        return invalid_argument("destination Mat must be a row or column vector");
+    }
+
+    const size_t element_size = mat.elemSize();
+    // ABI safety: OpenCV indexes a fixed 32-entry dispatch table by
+    // elemSize() and asserts that the selected function is non-null.
+    switch (element_size) {
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+    case 6:
+    case 8:
+    case 12:
+    case 16:
+    case 24:
+    case 32:
+        break;
+    default:
+        return invalid_argument(
+            "destination Mat element size is not supported by randShuffle");
+    }
+
+    cv::randShuffle(destination->value, 1.0, &rng);
+    return OPENCV_CORE_OK;
+}
+
+} // namespace
+
 opencv_core_status opencv_core_set_rng_seed(int32_t seed) {
     clear_error();
 
@@ -3777,16 +3858,32 @@ opencv_core_mat_fill_uniform(opencv_core_mat_handle *destination,
     }
 
     try {
-        // ABI safety: RNG::fill asserts before writing an empty Mat.
-        if (destination->value.empty()) {
-            return invalid_argument("destination Mat must not be empty");
+        return fill_uniform_impl(destination, lower_bound, upper_bound, cv::theRNG());
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_fill_uniform_rng(opencv_core_mat_handle *destination,
+                                 const opencv_core_scalar *lower_bound,
+                                 const opencv_core_scalar *upper_bound,
+                                 uint64_t *rng_state) {
+    clear_error();
+
+    if (destination == nullptr || lower_bound == nullptr || upper_bound == nullptr ||
+        rng_state == nullptr) {
+        return invalid_argument("destination Mat, scalar bounds, and RNG state must not be null");
+    }
+
+    try {
+        cv::RNG rng(*rng_state);
+        const opencv_core_status status =
+            fill_uniform_impl(destination, lower_bound, upper_bound, rng);
+        if (status != OPENCV_CORE_OK) {
+            return status;
         }
-        // ABI safety review: OpenCV 4.10 NAryMatIterator only folds dimensions
-        // while the resulting plane size remains representable as int.
-        // RNG::fill later narrows it.size to int, but the iterator already
-        // bounds that value. No total-element limit is required here.
-        cv::randu(destination->value, to_opencv_scalar(*lower_bound),
-                  to_opencv_scalar(*upper_bound));
+        *rng_state = rng.state;
         return OPENCV_CORE_OK;
     } catch (...) {
         return translate_current_exception();
@@ -3805,16 +3902,33 @@ opencv_core_mat_fill_normal(opencv_core_mat_handle *destination,
     }
 
     try {
-        // ABI safety: RNG::fill asserts before writing an empty Mat.
-        if (destination->value.empty()) {
-            return invalid_argument("destination Mat must not be empty");
+        return fill_normal_impl(destination, mean, standard_deviation, cv::theRNG());
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_fill_normal_rng(opencv_core_mat_handle *destination,
+                                const opencv_core_scalar *mean,
+                                const opencv_core_scalar *standard_deviation,
+                                uint64_t *rng_state) {
+    clear_error();
+
+    if (destination == nullptr || mean == nullptr || standard_deviation == nullptr ||
+        rng_state == nullptr) {
+        return invalid_argument(
+            "destination Mat, normal-distribution scalars, and RNG state must not be null");
+    }
+
+    try {
+        cv::RNG rng(*rng_state);
+        const opencv_core_status status =
+            fill_normal_impl(destination, mean, standard_deviation, rng);
+        if (status != OPENCV_CORE_OK) {
+            return status;
         }
-        // ABI safety review: OpenCV 4.10 NAryMatIterator only folds dimensions
-        // while the resulting plane size remains representable as int.
-        // RNG::fill later narrows it.size to int, but the iterator already
-        // bounds that value. No total-element limit is required here.
-        cv::randn(destination->value, to_opencv_scalar(*mean),
-                  to_opencv_scalar(*standard_deviation));
+        *rng_state = rng.state;
         return OPENCV_CORE_OK;
     } catch (...) {
         return translate_current_exception();
@@ -3830,45 +3944,28 @@ opencv_core_mat_shuffle(opencv_core_mat_handle *destination) {
     }
 
     try {
-        const cv::Mat &mat = destination->value;
-        // ABI safety: OpenCV randShuffle_ evaluates rng % total(), so an empty
-        // Mat would perform a modulo by zero.
-        if (mat.empty()) {
-            return invalid_argument("destination Mat must not be empty");
-        }
-        // ABI safety: randShuffle_'s non-continuous path asserts dims <= 2
-        // before using rows and cols for its address calculations.
-        if (mat.dims != 2) {
-            return invalid_argument("destination Mat must be two-dimensional");
-        }
-        // ABI safety: restricting to a row or column vector ensures total() is
-        // nonzero and no greater than INT_MAX before randShuffle_ narrows it to
-        // unsigned and uses it as a modulo divisor.
-        if (mat.rows != 1 && mat.cols != 1) {
-            return invalid_argument("destination Mat must be a row or column vector");
-        }
+        return shuffle_impl(destination, cv::theRNG());
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
 
-        const size_t element_size = mat.elemSize();
-        // ABI safety: OpenCV indexes a fixed 32-entry dispatch table by
-        // elemSize() and asserts that the selected function is non-null.
-        switch (element_size) {
-        case 1:
-        case 2:
-        case 3:
-        case 4:
-        case 6:
-        case 8:
-        case 12:
-        case 16:
-        case 24:
-        case 32:
-            break;
-        default:
-            return invalid_argument(
-                "destination Mat element size is not supported by randShuffle");
-        }
+opencv_core_status
+opencv_core_mat_shuffle_rng(opencv_core_mat_handle *destination,
+                            uint64_t *rng_state) {
+    clear_error();
 
-        cv::randShuffle(destination->value, 1.0, nullptr);
+    if (destination == nullptr || rng_state == nullptr) {
+        return invalid_argument("destination Mat and RNG state must not be null");
+    }
+
+    try {
+        cv::RNG rng(*rng_state);
+        const opencv_core_status status = shuffle_impl(destination, rng);
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+        *rng_state = rng.state;
         return OPENCV_CORE_OK;
     } catch (...) {
         return translate_current_exception();

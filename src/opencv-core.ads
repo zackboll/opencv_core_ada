@@ -174,6 +174,13 @@ package OpenCV.Core is
 
    type Mat is tagged private;
 
+   --  OpenCV 4.10 cv::RNG Multiply-With-Carry state. This deterministic
+   --  pseudorandom generator is caller-owned rather than thread-local. Its
+   --  complete state is 64 bits, so assignment copies the current sequence
+   --  position and the copies subsequently advance independently. A default
+   --  generator has state 16#FFFF_FFFF#; seed zero selects that same state.
+   type Random_Number_Generator is private;
+
    --  Selects OpenCV's random or Arthur--Vassilvitskii k-means++ center
    --  initialization. Both choices consume OpenCV's global RNG. Cluster
    --  numbers, including their order in Centers, have no semantic meaning.
@@ -994,6 +1001,18 @@ package OpenCV.Core is
    --  from another thread controls that other thread's independent RNG.
    procedure Set_Random_Seed (Seed : Interfaces.Integer_32);
 
+   --  Creates a caller-owned OpenCV 4.10 cv::RNG state. Seed zero maps to the
+   --  default state 16#FFFF_FFFF#, matching cv::RNG (uint64).
+   function Make_Random_Number_Generator
+     (Seed : Interfaces.Unsigned_64 := 16#FFFF_FFFF#)
+      return Random_Number_Generator;
+
+   --  Restarts Generator at Seed without changing OpenCV's calling-thread
+   --  default RNG. Seed zero maps to the default state 16#FFFF_FFFF#.
+   procedure Reseed
+     (Generator : in out Random_Number_Generator;
+      Seed      : Interfaces.Unsigned_64);
+
    procedure Set_To (Self : in out Mat; Value : Scalar);
    --  Sets elements selected by Mask to Value. Mask uses the common mask
    --  contract (UInt8, one channel, same shape as Self). Any nonzero mask
@@ -1006,6 +1025,13 @@ package OpenCV.Core is
    --  supported. Non-contiguous Regions are supported and remain Regions.
    procedure Fill_Uniform
      (Self : in out Mat; Lower_Bound, Upper_Bound : Scalar);
+   --  As above, using and advancing the supplied caller-owned Generator
+   --  instead of the calling thread's default RNG.
+   procedure Fill_Uniform
+     (Self        : in out Mat;
+      Generator   : in out Random_Number_Generator;
+      Lower_Bound : Scalar;
+      Upper_Bound : Scalar);
    --  Fills Self in place from OpenCV's default RNG using one Mean and
    --  Standard_Deviation per channel (the diagonal/vector form only). Self
    --  must be non-empty, have 1 .. 4 channels, and have depth UInt8, Int8,
@@ -1014,6 +1040,13 @@ package OpenCV.Core is
    --  Regions are supported and remain Regions.
    procedure Fill_Normal
      (Self : in out Mat; Mean : Scalar; Standard_Deviation : Scalar);
+   --  As above, using and advancing the supplied caller-owned Generator
+   --  instead of the calling thread's default RNG.
+   procedure Fill_Normal
+     (Self               : in out Mat;
+      Generator          : in out Random_Number_Generator;
+      Mean               : Scalar;
+      Standard_Deviation : Scalar);
    --  Randomly permutes Self in place using the calling thread's OpenCV
    --  default RNG, which advances. Set_Random_Seed makes it reproducible
    --  on that thread. Self must be a non-empty 2-D row or column vector.
@@ -1024,6 +1057,10 @@ package OpenCV.Core is
    --  The order may remain unchanged by chance. Iteration_Factor is not
    --  exposed because OpenCV 4.10's randShuffle implementation ignores it.
    procedure Shuffle (Self : in out Mat);
+   --  As above, using and advancing the supplied caller-owned Generator
+   --  instead of the calling thread's default RNG.
+   procedure Shuffle
+     (Self : in out Mat; Generator : in out Random_Number_Generator);
    function Sum (Self : Mat) return Scalar;
    --  Returns the per-channel sum of Self's main diagonal. Rectangular and
    --  empty Mats are accepted. Self must have at most four channels, matching
@@ -1845,6 +1882,10 @@ package OpenCV.Core is
      (Self  : in out Mat;
       Value : Scalar := (Component_0 => 1.0, others => 0.0));
 private
+
+   type Random_Number_Generator is record
+      State : Interfaces.Unsigned_64 := 16#FFFF_FFFF#;
+   end record;
 
    type Mat is new Ada.Finalization.Controlled with record
       Handle : OpenCV.Internal.C_API.Mat_Handle :=

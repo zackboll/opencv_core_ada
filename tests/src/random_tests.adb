@@ -19,6 +19,40 @@ package body Random_Tests is
 
    use Mat_Test_Support;
 
+   function Float_Mats_Equal (Left, Right : OpenCV.Core.Mat) return Boolean is
+   begin
+      if Left.Rows /= Right.Rows or else Left.Columns /= Right.Columns then
+         return False;
+      end if;
+      for Row in 0 .. Left.Rows - 1 loop
+         for Column in 0 .. Left.Columns - 1 loop
+            if OpenCV.Core.Float32_Access.Get (Left, Row, Column)
+              /= OpenCV.Core.Float32_Access.Get (Right, Row, Column)
+            then
+               return False;
+            end if;
+         end loop;
+      end loop;
+      return True;
+   end Float_Mats_Equal;
+
+   function UInt8_Mats_Equal (Left, Right : OpenCV.Core.Mat) return Boolean is
+   begin
+      if Left.Rows /= Right.Rows or else Left.Columns /= Right.Columns then
+         return False;
+      end if;
+      for Row in 0 .. Left.Rows - 1 loop
+         for Column in 0 .. Left.Columns - 1 loop
+            if OpenCV.Core.UInt8_Access.Get (Left, Row, Column)
+              /= OpenCV.Core.UInt8_Access.Get (Right, Row, Column)
+            then
+               return False;
+            end if;
+         end loop;
+      end loop;
+      return True;
+   end UInt8_Mats_Equal;
+
    procedure Uniform_Float32_Range_And_Metadata
      (Test : in out Mat_Test_Fixture)
    is
@@ -626,6 +660,300 @@ package body Random_Tests is
          "Shuffle must accept a single-element vector without changing it");
    end Shuffle_Accepts_Single_Element_Vector;
 
+   procedure Explicit_Generator_Construction_And_Reseeding
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Default_A, Default_B, Zero, Replay_A, Replay_B           :
+        OpenCV.Core.Mat := OpenCV.Core.Create (8, 8, (OpenCV.Core.Float32, 1));
+      Advance                                                  :
+        OpenCV.Core.Mat := OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Default_Generator_A, Default_Generator_B, Zero_Generator :
+        OpenCV.Core.Random_Number_Generator;
+      Generator                                                :
+        OpenCV.Core.Random_Number_Generator :=
+          OpenCV.Core.Make_Random_Number_Generator (12_345);
+   begin
+      Default_A.Fill_Uniform
+        (Default_Generator_A,
+         OpenCV.Core.Make_Scalar (-1.0),
+         OpenCV.Core.Make_Scalar (1.0));
+      Default_B.Fill_Uniform
+        (Default_Generator_B,
+         OpenCV.Core.Make_Scalar (-1.0),
+         OpenCV.Core.Make_Scalar (1.0));
+      Zero.Fill_Uniform
+        (Zero_Generator,
+         OpenCV.Core.Make_Scalar (-1.0),
+         OpenCV.Core.Make_Scalar (1.0));
+      Replay_A.Fill_Uniform
+        (Generator,
+         OpenCV.Core.Make_Scalar (-1.0),
+         OpenCV.Core.Make_Scalar (1.0));
+      Advance.Fill_Normal
+        (Generator,
+         OpenCV.Core.Make_Scalar (0.0),
+         OpenCV.Core.Make_Scalar (1.0));
+      OpenCV.Core.Reseed (Generator, 12_345);
+      Replay_B.Fill_Uniform
+        (Generator,
+         OpenCV.Core.Make_Scalar (-1.0),
+         OpenCV.Core.Make_Scalar (1.0));
+      AUnit.Assertions.Assert
+        (Float_Mats_Equal (Default_A, Default_B)
+         and then Float_Mats_Equal (Default_A, Zero)
+         and then Float_Mats_Equal (Replay_A, Replay_B),
+         "default and zero seeds must match cv::RNG and reseeding"
+         & " must replay");
+   end Explicit_Generator_Construction_And_Reseeding;
+
+   procedure Explicit_Generator_Value_Copy_And_Continuous_Sequence
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Initial, First_A, First_B, Second_A, Second_B : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (8, 8, (OpenCV.Core.Float32, 1));
+      G1                                            :
+        OpenCV.Core.Random_Number_Generator :=
+          OpenCV.Core.Make_Random_Number_Generator (22_222);
+      G2                                            :
+        OpenCV.Core.Random_Number_Generator;
+   begin
+      Initial.Fill_Uniform
+        (G1, OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+      G2 := G1;
+      First_A.Fill_Uniform
+        (G1, OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+      First_B.Fill_Uniform
+        (G2, OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+      Second_A.Fill_Uniform
+        (G1, OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+      Second_B.Fill_Uniform
+        (G2, OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+      AUnit.Assertions.Assert
+        (Float_Mats_Equal (First_A, First_B)
+         and then not Float_Mats_Equal (Initial, First_A)
+         and then not Float_Mats_Equal (First_A, Second_A)
+         and then not Float_Mats_Equal (First_B, Second_B),
+         "generator assignment must copy its sequence position independently");
+   end Explicit_Generator_Value_Copy_And_Continuous_Sequence;
+
+   procedure Explicit_Fills_Match_Default_And_Do_Not_Advance_It
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Uniform_Default,
+      Uniform_Explicit,
+      Normal_Default,
+      Normal_Explicit,
+      Default_Reference,
+      Default_Observed,
+      Scratch           : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (8, 8, (OpenCV.Core.Float32, 1));
+      Uniform_Generator : OpenCV.Core.Random_Number_Generator :=
+        OpenCV.Core.Make_Random_Number_Generator (1_234);
+      Normal_Generator  : OpenCV.Core.Random_Number_Generator :=
+        OpenCV.Core.Make_Random_Number_Generator (1_234);
+   begin
+      OpenCV.Core.Set_Random_Seed (1_234);
+      Uniform_Default.Fill_Uniform
+        (OpenCV.Core.Make_Scalar (-2.0), OpenCV.Core.Make_Scalar (3.0));
+      Uniform_Explicit.Fill_Uniform
+        (Uniform_Generator,
+         OpenCV.Core.Make_Scalar (-2.0),
+         OpenCV.Core.Make_Scalar (3.0));
+      OpenCV.Core.Set_Random_Seed (1_234);
+      Normal_Default.Fill_Normal
+        (OpenCV.Core.Make_Scalar (1.0), OpenCV.Core.Make_Scalar (2.0));
+      Normal_Explicit.Fill_Normal
+        (Normal_Generator,
+         OpenCV.Core.Make_Scalar (1.0),
+         OpenCV.Core.Make_Scalar (2.0));
+      OpenCV.Core.Set_Random_Seed (77);
+      Default_Reference.Fill_Uniform
+        (OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+      OpenCV.Core.Set_Random_Seed (77);
+      Scratch.Fill_Uniform
+        (Uniform_Generator,
+         OpenCV.Core.Make_Scalar (0.0),
+         OpenCV.Core.Make_Scalar (1.0));
+      Default_Observed.Fill_Uniform
+        (OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+      AUnit.Assertions.Assert
+        (Float_Mats_Equal (Uniform_Default, Uniform_Explicit)
+         and then Float_Mats_Equal (Normal_Default, Normal_Explicit)
+         and then Float_Mats_Equal (Default_Reference, Default_Observed),
+         "explicit fills must match seeded defaults without advancing theRNG");
+   end Explicit_Fills_Match_Default_And_Do_Not_Advance_It;
+
+   procedure Explicit_Shuffle_And_Invalid_Input_Preserve_State
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Default_Vector, Explicit_A, Explicit_B : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 32, (OpenCV.Core.UInt8, 1));
+      Invalid                                : OpenCV.Core.Mat;
+      G1                                     :
+        OpenCV.Core.Random_Number_Generator :=
+          OpenCV.Core.Make_Random_Number_Generator (1_234);
+      G2                                     :
+        OpenCV.Core.Random_Number_Generator := G1;
+      A, B                                   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 4, (OpenCV.Core.Float32, 1));
+      procedure Invalid_Fill is
+      begin
+         Invalid.Fill_Uniform
+           (G1, OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+      end Invalid_Fill;
+   begin
+      for Column in 0 .. 31 loop
+         OpenCV.Core.UInt8_Access.Set
+           (Default_Vector, 0, Column, Interfaces.Unsigned_8 (Column));
+         OpenCV.Core.UInt8_Access.Set
+           (Explicit_A, 0, Column, Interfaces.Unsigned_8 (Column));
+         OpenCV.Core.UInt8_Access.Set
+           (Explicit_B, 0, Column, Interfaces.Unsigned_8 (Column));
+      end loop;
+      OpenCV.Core.Set_Random_Seed (1_234);
+      Default_Vector.Shuffle;
+      Explicit_A.Shuffle (G1);
+      Explicit_B.Shuffle (G2);
+      Assert_Raises_OpenCV_Error
+        (Invalid_Fill'Access,
+         "invalid explicit fills must raise OpenCV_Error");
+      A.Fill_Uniform
+        (G1, OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+      B.Fill_Uniform
+        (G2, OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+      AUnit.Assertions.Assert
+        (UInt8_Mats_Equal (Default_Vector, Explicit_A)
+         and then UInt8_Mats_Equal (Explicit_A, Explicit_B)
+         and then Float_Mats_Equal (A, B),
+         "explicit shuffle must match default and invalid input must preserve"
+         & " state");
+   end Explicit_Shuffle_And_Invalid_Input_Preserve_State;
+
+   procedure Explicit_Generator_Different_Seeds_And_Mixed_Replay
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Different_A, Different_B, First_A, First_B, Second_A, Second_B :
+        OpenCV.Core.Mat := OpenCV.Core.Create (8, 8, (OpenCV.Core.Float32, 1));
+      Vector_A, Vector_B                                             :
+        OpenCV.Core.Mat := OpenCV.Core.Create (1, 16, (OpenCV.Core.UInt8, 1));
+      G1                                                             :
+        OpenCV.Core.Random_Number_Generator :=
+          OpenCV.Core.Make_Random_Number_Generator (10);
+      G2                                                             :
+        OpenCV.Core.Random_Number_Generator :=
+          OpenCV.Core.Make_Random_Number_Generator (11);
+      Replay_A                                                       :
+        OpenCV.Core.Random_Number_Generator :=
+          OpenCV.Core.Make_Random_Number_Generator (987);
+      Replay_B                                                       :
+        OpenCV.Core.Random_Number_Generator :=
+          OpenCV.Core.Make_Random_Number_Generator (987);
+   begin
+      Different_A.Fill_Uniform
+        (G1, OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+      Different_B.Fill_Uniform
+        (G2, OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+      for Column in 0 .. 15 loop
+         OpenCV.Core.UInt8_Access.Set
+           (Vector_A, 0, Column, Interfaces.Unsigned_8 (Column));
+         OpenCV.Core.UInt8_Access.Set
+           (Vector_B, 0, Column, Interfaces.Unsigned_8 (Column));
+      end loop;
+      First_A.Fill_Uniform
+        (Replay_A,
+         OpenCV.Core.Make_Scalar (-1.0),
+         OpenCV.Core.Make_Scalar (1.0));
+      Vector_A.Shuffle (Replay_A);
+      Second_A.Fill_Normal
+        (Replay_A,
+         OpenCV.Core.Make_Scalar (0.0),
+         OpenCV.Core.Make_Scalar (1.0));
+      First_B.Fill_Uniform
+        (Replay_B,
+         OpenCV.Core.Make_Scalar (-1.0),
+         OpenCV.Core.Make_Scalar (1.0));
+      Vector_B.Shuffle (Replay_B);
+      Second_B.Fill_Normal
+        (Replay_B,
+         OpenCV.Core.Make_Scalar (0.0),
+         OpenCV.Core.Make_Scalar (1.0));
+      AUnit.Assertions.Assert
+        (not Float_Mats_Equal (Different_A, Different_B)
+         and then Float_Mats_Equal (First_A, First_B)
+         and then Float_Mats_Equal (Second_A, Second_B)
+         and then UInt8_Mats_Equal (Vector_A, Vector_B),
+         "different seeds must differ and mixed explicit operations"
+         & " must replay");
+   end Explicit_Generator_Different_Seeds_And_Mixed_Replay;
+
+   procedure Explicit_Generator_Supports_Non_Continuous_Regions
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Uniform_Parent, Normal_Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 5, (OpenCV.Core.Float32, 1));
+      Uniform_Region                : OpenCV.Core.Mat :=
+        Uniform_Parent.Region ((1, 1, 3, 2));
+      Normal_Region                 : OpenCV.Core.Mat :=
+        Normal_Parent.Region ((1, 1, 3, 2));
+      Shuffle_Parent                : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (8, 2, (OpenCV.Core.UInt8, 1));
+      Shuffle_Region                : OpenCV.Core.Mat :=
+        Shuffle_Parent.Column_View (0);
+      Generator                     : OpenCV.Core.Random_Number_Generator :=
+        OpenCV.Core.Make_Random_Number_Generator (456);
+      Outside_Intact                : Boolean := True;
+   begin
+      Uniform_Parent.Set_To (OpenCV.Core.Make_Scalar (-99.0));
+      Normal_Parent.Set_To (OpenCV.Core.Make_Scalar (-99.0));
+      Uniform_Region.Fill_Uniform
+        (Generator,
+         OpenCV.Core.Make_Scalar (1.0),
+         OpenCV.Core.Make_Scalar (2.0));
+      Normal_Region.Fill_Normal
+        (Generator,
+         OpenCV.Core.Make_Scalar (0.0),
+         OpenCV.Core.Make_Scalar (1.0));
+      for Row in 0 .. 7 loop
+         OpenCV.Core.UInt8_Access.Set
+           (Shuffle_Parent, Row, 0, Interfaces.Unsigned_8 (Row + 1));
+         OpenCV.Core.UInt8_Access.Set (Shuffle_Parent, Row, 1, 200);
+      end loop;
+      Shuffle_Region.Shuffle (Generator);
+      for Row in 0 .. 3 loop
+         for Column in 0 .. 4 loop
+            if not (Row in 1 .. 2 and then Column in 1 .. 3) then
+               Outside_Intact :=
+                 Outside_Intact
+                 and then OpenCV.Core.Float32_Access.Get
+                            (Uniform_Parent, Row, Column)
+                          = -99.0
+                 and then OpenCV.Core.Float32_Access.Get
+                            (Normal_Parent, Row, Column)
+                          = -99.0;
+            end if;
+         end loop;
+      end loop;
+      for Row in 0 .. 7 loop
+         Outside_Intact :=
+           Outside_Intact
+           and then OpenCV.Core.UInt8_Access.Get (Shuffle_Parent, Row, 1)
+                    = 200;
+      end loop;
+      AUnit.Assertions.Assert
+        (not Uniform_Region.Is_Continuous
+         and then not Normal_Region.Is_Continuous
+         and then not Shuffle_Region.Is_Continuous
+         and then Outside_Intact,
+         "explicit fills and shuffle must preserve non-continuous"
+         & " Region views");
+   end Explicit_Generator_Supports_Non_Continuous_Regions;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -704,6 +1032,30 @@ package body Random_Tests is
         (Caller.Create
            ("Shuffle accepts single element",
             Shuffle_Accepts_Single_Element_Vector'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Explicit generator construction and reseeding",
+            Explicit_Generator_Construction_And_Reseeding'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Explicit generator value copy and continuous sequence",
+            Explicit_Generator_Value_Copy_And_Continuous_Sequence'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Explicit fills match default and preserve default RNG",
+            Explicit_Fills_Match_Default_And_Do_Not_Advance_It'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Explicit shuffle and invalid input preserve state",
+            Explicit_Shuffle_And_Invalid_Input_Preserve_State'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Explicit generator different seeds and mixed replay",
+            Explicit_Generator_Different_Seeds_And_Mixed_Replay'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Explicit generator supports non-continuous Regions",
+            Explicit_Generator_Supports_Non_Continuous_Regions'Access));
       return Result'Access;
    end Suite;
 

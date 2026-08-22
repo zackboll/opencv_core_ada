@@ -837,6 +837,15 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_fill_uniform";
 
+   function Mat_Fill_Uniform_RNG
+     (Destination              : Mat_Handle;
+      Lower_Bound, Upper_Bound : access Scalar;
+      RNG_State                : access C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_fill_uniform_rng";
+
    function Mat_Fill_Normal
      (Destination : Mat_Handle; Mean, Standard_Deviation : access Scalar)
       return Status
@@ -845,8 +854,24 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_fill_normal";
 
+   function Mat_Fill_Normal_RNG
+     (Destination              : Mat_Handle;
+      Mean, Standard_Deviation : access Scalar;
+      RNG_State                : access C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_fill_normal_rng";
+
    function Mat_Shuffle (Destination : Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_shuffle";
+
+   function Mat_Shuffle_RNG
+     (Destination : Mat_Handle; RNG_State : access C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_shuffle_rng";
 
    function Mat_Set_To_Masked
      (Self : Mat_Handle; Value : access Scalar; Mask : Mat_Handle)

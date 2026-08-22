@@ -3153,6 +3153,18 @@ package body OpenCV.Core is
       Raise_On_Error (Result, "OpenCV random seed operation");
    end Set_Random_Seed;
 
+   function Make_Random_Number_Generator
+     (Seed : Interfaces.Unsigned_64 := 16#FFFF_FFFF#)
+      return Random_Number_Generator
+   is (State => (if Seed = 0 then 16#FFFF_FFFF# else Seed));
+
+   procedure Reseed
+     (Generator : in out Random_Number_Generator;
+      Seed      : Interfaces.Unsigned_64) is
+   begin
+      Generator.State := (if Seed = 0 then 16#FFFF_FFFF# else Seed);
+   end Reseed;
+
    procedure Validate_Random_Fill_Destination
      (Self : Mat; Operation : String; Normal : Boolean) is
    begin
@@ -3209,6 +3221,28 @@ package body OpenCV.Core is
       Raise_On_Error (Result, "Uniform random fill");
    end Fill_Uniform;
 
+   procedure Fill_Uniform
+     (Self        : in out Mat;
+      Generator   : in out Random_Number_Generator;
+      Lower_Bound : Scalar;
+      Upper_Bound : Scalar)
+   is
+      C_Lower : aliased OpenCV.Internal.C_API.Scalar :=
+        To_C_Scalar (Lower_Bound);
+      C_Upper : aliased OpenCV.Internal.C_API.Scalar :=
+        To_C_Scalar (Upper_Bound);
+      C_State : aliased OpenCV.Internal.C_API.C_UInt64 :=
+        OpenCV.Internal.C_API.C_UInt64 (Generator.State);
+      Result  : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Random_Fill_Destination (Self, "Uniform random fill", False);
+      Result :=
+        OpenCV.Internal.C_API.Mat_Fill_Uniform_RNG
+          (Self.Handle, C_Lower'Access, C_Upper'Access, C_State'Access);
+      Raise_On_Error (Result, "Uniform random fill");
+      Generator.State := Interfaces.Unsigned_64 (C_State);
+   end Fill_Uniform;
+
    procedure Fill_Normal
      (Self : in out Mat; Mean : Scalar; Standard_Deviation : Scalar)
    is
@@ -3222,6 +3256,27 @@ package body OpenCV.Core is
         OpenCV.Internal.C_API.Mat_Fill_Normal
           (Self.Handle, C_Mean'Access, C_Stddev'Access);
       Raise_On_Error (Result, "Normal random fill");
+   end Fill_Normal;
+
+   procedure Fill_Normal
+     (Self               : in out Mat;
+      Generator          : in out Random_Number_Generator;
+      Mean               : Scalar;
+      Standard_Deviation : Scalar)
+   is
+      C_Mean   : aliased OpenCV.Internal.C_API.Scalar := To_C_Scalar (Mean);
+      C_Stddev : aliased OpenCV.Internal.C_API.Scalar :=
+        To_C_Scalar (Standard_Deviation);
+      C_State  : aliased OpenCV.Internal.C_API.C_UInt64 :=
+        OpenCV.Internal.C_API.C_UInt64 (Generator.State);
+      Result   : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Random_Fill_Destination (Self, "Normal random fill", True);
+      Result :=
+        OpenCV.Internal.C_API.Mat_Fill_Normal_RNG
+          (Self.Handle, C_Mean'Access, C_Stddev'Access, C_State'Access);
+      Raise_On_Error (Result, "Normal random fill");
+      Generator.State := Interfaces.Unsigned_64 (C_State);
    end Fill_Normal;
 
    function Shuffle_Element_Size (Self : Mat) return Mat_Size is
@@ -3262,6 +3317,20 @@ package body OpenCV.Core is
       Validate_Shuffle_Destination (Self);
       Result := OpenCV.Internal.C_API.Mat_Shuffle (Self.Handle);
       Raise_On_Error (Result, "Mat shuffle");
+   end Shuffle;
+
+   procedure Shuffle
+     (Self : in out Mat; Generator : in out Random_Number_Generator)
+   is
+      C_State : aliased OpenCV.Internal.C_API.C_UInt64 :=
+        OpenCV.Internal.C_API.C_UInt64 (Generator.State);
+      Result  : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Shuffle_Destination (Self);
+      Result :=
+        OpenCV.Internal.C_API.Mat_Shuffle_RNG (Self.Handle, C_State'Access);
+      Raise_On_Error (Result, "Mat shuffle");
+      Generator.State := Interfaces.Unsigned_64 (C_State);
    end Shuffle;
 
    function Sum (Self : Mat) return Scalar is
