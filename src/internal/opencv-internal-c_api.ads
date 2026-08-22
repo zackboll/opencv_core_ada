@@ -143,6 +143,9 @@ package OpenCV.Internal.C_API is
 
    function Last_Error_Message return String;
 
+   function Set_RNG_Seed (Seed : C_Int32) return Status
+   with Import, Convention => C, External_Name => "opencv_core_set_rng_seed";
+
    function Mat_Create (Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_create";
 
@@ -793,6 +796,22 @@ package OpenCV.Internal.C_API is
 
    function Mat_Set_To (Self : Mat_Handle; Value : access Scalar) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_set_to";
+
+   function Mat_Fill_Uniform
+     (Destination : Mat_Handle; Lower_Bound, Upper_Bound : access Scalar)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_fill_uniform";
+
+   function Mat_Fill_Normal
+     (Destination : Mat_Handle; Mean, Standard_Deviation : access Scalar)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_fill_normal";
 
    function Mat_Set_To_Masked
      (Self : Mat_Handle; Value : access Scalar; Mask : Mat_Handle)

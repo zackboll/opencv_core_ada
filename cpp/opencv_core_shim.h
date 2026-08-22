@@ -31,6 +31,12 @@ typedef struct {
     double component_3;
 } opencv_core_scalar;
 
+/*
+ * Sets the calling thread's OpenCV default RNG state.  The state is owned by
+ * OpenCV and is consumed by subsequent random operations on that thread.
+ */
+opencv_core_status opencv_core_set_rng_seed(int32_t seed);
+
 typedef struct {
     uint8_t component_0;
     uint8_t component_1;
@@ -879,6 +885,17 @@ opencv_core_mat_write_float32_vec3_row(opencv_core_mat_handle *mat,
 opencv_core_status
 opencv_core_mat_set_to(opencv_core_mat_handle *mat,
                        const opencv_core_scalar *value);
+
+/* Fills an existing Mat in place using OpenCV's default RNG. */
+opencv_core_status
+opencv_core_mat_fill_uniform(opencv_core_mat_handle *destination,
+                             const opencv_core_scalar *lower_bound,
+                             const opencv_core_scalar *upper_bound);
+
+opencv_core_status
+opencv_core_mat_fill_normal(opencv_core_mat_handle *destination,
+                            const opencv_core_scalar *mean,
+                            const opencv_core_scalar *standard_deviation);
 
 /*
  * Sets source elements selected by mask to value. Mask must be a same-sized

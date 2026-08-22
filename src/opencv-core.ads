@@ -890,11 +890,33 @@ package OpenCV.Core is
    function Column_View (Self : Mat; Column : Size_Coordinate) return Mat;
    function Column_View (Self : Mat; Columns : Index_Range) return Mat;
 
+   --  Sets the calling thread's OpenCV default RNG state. Reseeding that
+   --  thread with the same Seed restarts its sequence. Fill_Uniform,
+   --  Fill_Normal, and every other OpenCV operation that uses the default RNG
+   --  (including K_Means when it consumes that RNG) advance this state. A call
+   --  from another thread controls that other thread's independent RNG.
+   procedure Set_Random_Seed (Seed : Interfaces.Integer_32);
+
    procedure Set_To (Self : in out Mat; Value : Scalar);
    --  Sets elements selected by Mask to Value. Mask uses the common mask
    --  contract (UInt8, one channel, same shape as Self). Any nonzero mask
    --  value selects the complete element, including every channel.
    procedure Set_To (Self : in out Mat; Value : Scalar; Mask : Mat);
+   --  Fills Self in place from OpenCV's default RNG. Each channel uses its
+   --  corresponding Scalar bound; generated values are lower-inclusive and
+   --  upper-exclusive. Self must be non-empty and have 1 .. 4 channels.
+   --  UInt8, Int8, UInt16, Int16, Int32, Float32, Float64, and Float16 are
+   --  supported. Non-contiguous Regions are supported and remain Regions.
+   procedure Fill_Uniform
+     (Self : in out Mat; Lower_Bound, Upper_Bound : Scalar);
+   --  Fills Self in place from OpenCV's default RNG using one Mean and
+   --  Standard_Deviation per channel (the diagonal/vector form only). Self
+   --  must be non-empty, have 1 .. 4 channels, and have depth UInt8, Int8,
+   --  UInt16, Int16, Int32, Float32, or Float64. Integer results use OpenCV's
+   --  saturating conversion/clipping. Float16 is unsupported. Non-contiguous
+   --  Regions are supported and remain Regions.
+   procedure Fill_Normal
+     (Self : in out Mat; Mean : Scalar; Standard_Deviation : Scalar);
    function Sum (Self : Mat) return Scalar;
    --  Returns the per-channel sum of Self's main diagonal. Rectangular and
    --  empty Mats are accepted. Self must have at most four channels, matching

@@ -3553,6 +3553,83 @@ opencv_core_mat_set_to(opencv_core_mat_handle *mat,
     }
 }
 
+opencv_core_status opencv_core_set_rng_seed(int32_t seed) {
+    clear_error();
+
+    try {
+        cv::setRNGSeed(seed);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_fill_uniform(opencv_core_mat_handle *destination,
+                             const opencv_core_scalar *lower_bound,
+                             const opencv_core_scalar *upper_bound) {
+    clear_error();
+
+    if (destination == nullptr || lower_bound == nullptr || upper_bound == nullptr) {
+        return invalid_argument(
+            "destination Mat and scalar bounds must not be null");
+    }
+
+    try {
+        // ABI safety: RNG::fill asserts before writing an empty Mat.  For a
+        // continuous 2-D Mat, NAryMatIterator folds rows and columns into its
+        // size_t size then RNG::fill narrows that size to int.  Rejecting an
+        // oversized continuous plane prevents the narrowing from wrapping.
+        // A non-continuous 2-D ROI is iterated one row per plane, so its
+        // iterator size is only cols and must not be rejected by total().
+        if (destination->value.empty()) {
+            return invalid_argument("destination Mat must not be empty");
+        }
+        if (destination->value.isContinuous() &&
+            destination->value.total() >
+                static_cast<size_t>(std::numeric_limits<int>::max())) {
+            return invalid_argument(
+                "continuous destination Mat plane exceeds signed int range");
+        }
+        cv::randu(destination->value, to_opencv_scalar(*lower_bound),
+                  to_opencv_scalar(*upper_bound));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_fill_normal(opencv_core_mat_handle *destination,
+                            const opencv_core_scalar *mean,
+                            const opencv_core_scalar *standard_deviation) {
+    clear_error();
+
+    if (destination == nullptr || mean == nullptr || standard_deviation == nullptr) {
+        return invalid_argument(
+            "destination Mat and normal-distribution scalars must not be null");
+    }
+
+    try {
+        // ABI safety: see opencv_core_mat_fill_uniform.  The same RNG::fill
+        // NAryMatIterator narrowing is used for normal distribution fills.
+        if (destination->value.empty()) {
+            return invalid_argument("destination Mat must not be empty");
+        }
+        if (destination->value.isContinuous() &&
+            destination->value.total() >
+                static_cast<size_t>(std::numeric_limits<int>::max())) {
+            return invalid_argument(
+                "continuous destination Mat plane exceeds signed int range");
+        }
+        cv::randn(destination->value, to_opencv_scalar(*mean),
+                  to_opencv_scalar(*standard_deviation));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
 opencv_core_status
 opencv_core_mat_set_to_masked(opencv_core_mat_handle *mat,
                               const opencv_core_scalar *value,

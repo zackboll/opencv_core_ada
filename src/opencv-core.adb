@@ -3038,6 +3038,35 @@ package body OpenCV.Core is
       return Result;
    end Column_View;
 
+   procedure Set_Random_Seed (Seed : Interfaces.Integer_32) is
+      Result : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Set_RNG_Seed
+          (OpenCV.Internal.C_API.C_Int32 (Seed));
+   begin
+      Raise_On_Error (Result, "OpenCV random seed operation");
+   end Set_Random_Seed;
+
+   procedure Validate_Random_Fill_Destination
+     (Self : Mat; Operation : String; Normal : Boolean) is
+   begin
+      if Self.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, Operation & " requires a non-empty Mat");
+      end if;
+
+      if Self.Channels > 4 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            Operation & " supports Mats with one through four channels");
+      end if;
+
+      if Normal and then Self.Depth = Float16 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Normal random fill does not support Float16 Mats");
+      end if;
+   end Validate_Random_Fill_Destination;
+
    procedure Set_To (Self : in out Mat; Value : Scalar) is
       C_Value : aliased OpenCV.Internal.C_API.Scalar := To_C_Scalar (Value);
       Result  : constant OpenCV.Internal.C_API.Status :=
@@ -3056,6 +3085,37 @@ package body OpenCV.Core is
           (Self => Self.Handle, Value => C_Value'Access, Mask => Mask.Handle);
       Raise_On_Error (Result, "Masked Mat set-to operation");
    end Set_To;
+
+   procedure Fill_Uniform
+     (Self : in out Mat; Lower_Bound, Upper_Bound : Scalar)
+   is
+      C_Lower : aliased OpenCV.Internal.C_API.Scalar :=
+        To_C_Scalar (Lower_Bound);
+      C_Upper : aliased OpenCV.Internal.C_API.Scalar :=
+        To_C_Scalar (Upper_Bound);
+      Result  : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Random_Fill_Destination (Self, "Uniform random fill", False);
+      Result :=
+        OpenCV.Internal.C_API.Mat_Fill_Uniform
+          (Self.Handle, C_Lower'Access, C_Upper'Access);
+      Raise_On_Error (Result, "Uniform random fill");
+   end Fill_Uniform;
+
+   procedure Fill_Normal
+     (Self : in out Mat; Mean : Scalar; Standard_Deviation : Scalar)
+   is
+      C_Mean   : aliased OpenCV.Internal.C_API.Scalar := To_C_Scalar (Mean);
+      C_Stddev : aliased OpenCV.Internal.C_API.Scalar :=
+        To_C_Scalar (Standard_Deviation);
+      Result   : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Random_Fill_Destination (Self, "Normal random fill", True);
+      Result :=
+        OpenCV.Internal.C_API.Mat_Fill_Normal
+          (Self.Handle, C_Mean'Access, C_Stddev'Access);
+      Raise_On_Error (Result, "Normal random fill");
+   end Fill_Normal;
 
    function Sum (Self : Mat) return Scalar is
       C_Result : aliased OpenCV.Internal.C_API.Scalar :=
