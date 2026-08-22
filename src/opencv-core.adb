@@ -1008,6 +1008,96 @@ package body OpenCV.Core is
       return Result;
    end K_Means;
 
+   function To_C_Batch_Distance_Kind
+     (Value : Batch_Distance_Kind) return OpenCV.Internal.C_API.C_Int32
+   is (case Value is
+          when L1_Distance => OpenCV.Internal.C_API.Batch_Distance_L1,
+          when L2_Distance => OpenCV.Internal.C_API.Batch_Distance_L2,
+          when Squared_L2_Distance =>
+            OpenCV.Internal.C_API.Batch_Distance_Squared_L2,
+          when Hamming_Distance =>
+            OpenCV.Internal.C_API.Batch_Distance_Hamming,
+          when Hamming_2_Distance =>
+            OpenCV.Internal.C_API.Batch_Distance_Hamming_2);
+
+   procedure Validate_K_Nearest_Neighbors
+     (Queries        : Mat;
+      Candidates     : Mat;
+      Neighbor_Count : Positive;
+      Kind           : Batch_Distance_Kind)
+   is
+   begin
+      if Queries.Is_Empty or else Candidates.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "K_Nearest_Neighbors requires non-empty inputs");
+      end if;
+      if Queries.Channels /= 1 or else Candidates.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "K_Nearest_Neighbors requires single-channel inputs");
+      end if;
+      if Queries.Depth /= Candidates.Depth then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "K_Nearest_Neighbors requires matching input depths");
+      end if;
+      if Queries.Columns /= Candidates.Columns then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "K_Nearest_Neighbors requires matching vector widths");
+      end if;
+      if Queries.Depth /= UInt8 and then Queries.Depth /= Float32 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "K_Nearest_Neighbors supports UInt8 and Float32 inputs only");
+      end if;
+      if Neighbor_Count > Candidates.Rows then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "K_Nearest_Neighbors neighbor count exceeds candidate count");
+      end if;
+      if Queries.Depth = Float32
+        and then (Kind = Hamming_Distance or else Kind = Hamming_2_Distance)
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "K_Nearest_Neighbors Hamming distance requires UInt8 inputs");
+      end if;
+   end Validate_K_Nearest_Neighbors;
+
+   function K_Nearest_Neighbors
+     (Queries        : Mat;
+      Candidates     : Mat;
+      Neighbor_Count : Positive;
+      Kind           : Batch_Distance_Kind := L2_Distance)
+      return Nearest_Neighbor_Result
+   is
+      Result           : Nearest_Neighbor_Result;
+      Distances_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Indices_Handle   : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status           : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_K_Nearest_Neighbors
+        (Queries, Candidates, Neighbor_Count, Kind);
+      Status := OpenCV.Internal.C_API.Mat_Batch_Distance
+        (Queries        => Queries.Handle,
+         Candidates     => Candidates.Handle,
+         Neighbor_Count => OpenCV.Internal.C_API.C_Int32 (Neighbor_Count),
+         Kind           => To_C_Batch_Distance_Kind (Kind),
+         Distances      => Distances_Handle'Access,
+         Indices        => Indices_Handle'Access);
+      Raise_On_Error (Status, "K_Nearest_Neighbors");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Distances.Handle);
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Indices.Handle);
+      Result.Distances.Handle := Distances_Handle;
+      Result.Indices.Handle := Indices_Handle;
+      return Result;
+   end K_Nearest_Neighbors;
+
    function Transpose (Self : Mat) return Mat is
       Result     : Mat;
       New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=

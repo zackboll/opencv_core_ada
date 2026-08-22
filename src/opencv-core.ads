@@ -182,6 +182,20 @@ package OpenCV.Core is
       Compactness : Long_Float;
    end record;
 
+   type Batch_Distance_Kind is
+     (L1_Distance,
+      L2_Distance,
+      Squared_L2_Distance,
+      Hamming_Distance,
+      Hamming_2_Distance);
+
+   --  Independently owned K-nearest-neighbor outputs. Indices is Int32 C1
+   --  and contains zero-based rows of the candidate Mat.
+   type Nearest_Neighbor_Result is record
+      Distances : Mat;
+      Indices   : Mat;
+   end record;
+
    --  Independent polar outputs of Cart_To_Polar. Magnitude is
    --  sqrt (X**2 + Y**2). Angle is the corresponding OpenCV fast phase
    --  of (X, Y). Each component has normal Mat controlled ownership and
@@ -380,6 +394,25 @@ package OpenCV.Core is
       Attempts       : Positive := 3;
       Initialization : K_Means_Initialization := Plus_Plus_Centers)
       return K_Means_Result;
+
+   --  Returns Neighbor_Count nearest candidate row-vectors for each query row.
+   --  Queries and Candidates are non-empty, single-channel UInt8 or Float32
+   --  Mats with equal column counts; their row counts may differ. Each row is
+   --  one vector, so channels are not folded into its width. Neighbor_Count
+   --  must not exceed Candidates.Rows. Float32 supports L1, L2, and squared
+   --  L2; UInt8 additionally supports Hamming and Hamming2. Distances is
+   --  Queries.Rows x Neighbor_Count C1: Float32 except Int32 for Hamming and
+   --  Hamming2. Indices has the same shape and is Int32 C1. Rows are returned
+   --  nearest-first; ordering of exact ties is OpenCV-defined. Results own
+   --  independent storage, inputs are unchanged, and non-contiguous Regions
+   --  are supported. Masks, update, crosscheck, and all-pairs mode are not
+   --  exposed.
+   function K_Nearest_Neighbors
+     (Queries        : Mat;
+      Candidates     : Mat;
+      Neighbor_Count : Positive;
+      Kind           : Batch_Distance_Kind := L2_Distance)
+      return Nearest_Neighbor_Result;
    --  Returns an independent Mat whose rows and columns are swapped. Element
    --  depth and channel count are preserved, including for multi-channel Mats.
    --  Empty Mats produce an empty result. Non-contiguous Regions are accepted.

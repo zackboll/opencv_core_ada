@@ -12,6 +12,7 @@ with Persistence_Tests;
 with Cubic_Tests;
 with Polynomial_Tests;
 with K_Means_Tests;
+with K_Nearest_Neighbor_Tests;
 
 package body Mat_Tests is
 
@@ -33,6 +34,7 @@ package body Mat_Tests is
       Result.Add_Test (Cubic_Tests.Suite);
       Result.Add_Test (Polynomial_Tests.Suite);
       Result.Add_Test (K_Means_Tests.Suite);
+      Result.Add_Test (K_Nearest_Neighbor_Tests.Suite);
       return Result'Access;
    end Suite;
 

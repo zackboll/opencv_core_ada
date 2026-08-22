@@ -187,6 +187,22 @@ opencv_core_mat_kmeans(const opencv_core_mat_handle *samples,
                        double *out_compactness);
 
 /*
+ * Finds K nearest rows with cv::batchDistance. Queries and candidates are
+ * borrowed. kind is the stable ABI identifier 0..4 for L1, L2, squared L2,
+ * Hamming, and Hamming2. Each supplied output is initialized to null before
+ * validation; output pointer locations must be distinct. On success both
+ * independently owned handles are published together. On failure every
+ * supplied output remains null. Mask, update, crosscheck, and K=0 mode are
+ * intentionally unavailable through this ABI.
+ */
+opencv_core_status
+opencv_core_mat_batch_distance(const opencv_core_mat_handle *queries,
+                               const opencv_core_mat_handle *candidates,
+                               int32_t neighbor_count, int32_t kind,
+                               opencv_core_mat_handle **out_distances,
+                               opencv_core_mat_handle **out_indices);
+
+/*
  * Returns a newly allocated, independent Mat with rows and columns exchanged.
  * The result preserves source type, including depth and channel count.
  */

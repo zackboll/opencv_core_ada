@@ -684,6 +684,10 @@ package body Mat_Channel_Tests is
             Source_Index        => 5,
             Source_Channel      => 0));
    begin
+      --  Mix_Channels leaves un-routed destination channels unchanged. Create
+      --  does not initialize Mat storage, so define those expected channels.
+      Destinations (10).Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Destinations (11).Set_To (OpenCV.Core.Make_Scalar (0.0));
       OpenCV.Core.UInt8_Vec3_Access.Set (Sources (5), 0, 0, (11, 12, 0));
       OpenCV.Core.UInt8_Vec3_Access.Set (Sources (5), 0, 1, (21, 22, 0));
       OpenCV.Core.UInt8_Access.Set (Sources (6), 0, 0, 13);

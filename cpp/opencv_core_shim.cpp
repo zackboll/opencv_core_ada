@@ -916,6 +916,78 @@ opencv_core_mat_kmeans(const opencv_core_mat_handle *samples,
 }
 
 opencv_core_status
+opencv_core_mat_batch_distance(const opencv_core_mat_handle *queries,
+                               const opencv_core_mat_handle *candidates,
+                               int32_t neighbor_count, int32_t kind,
+                               opencv_core_mat_handle **out_distances,
+                               opencv_core_mat_handle **out_indices) {
+    clear_error();
+
+    if (out_distances != nullptr) {
+        *out_distances = nullptr;
+    }
+    if (out_indices != nullptr) {
+        *out_indices = nullptr;
+    }
+    if (out_distances == nullptr || out_indices == nullptr) {
+        return invalid_argument("batch distance output pointers must not be null");
+    }
+    if (out_distances == out_indices) {
+        return invalid_argument("batch distance output pointers must be distinct");
+    }
+    if (queries == nullptr || candidates == nullptr) {
+        return invalid_argument("batch distance Mat handles must not be null");
+    }
+
+    int norm_type;
+    switch (kind) {
+    case 0:
+        norm_type = cv::NORM_L1;
+        break;
+    case 1:
+        norm_type = cv::NORM_L2;
+        break;
+    case 2:
+        norm_type = cv::NORM_L2SQR;
+        break;
+    case 3:
+        norm_type = cv::NORM_HAMMING;
+        break;
+    case 4:
+        norm_type = cv::NORM_HAMMING2;
+        break;
+    default:
+        return invalid_argument("invalid batch distance kind");
+    }
+
+    const cv::Mat &query_mat = queries->value;
+    const cv::Mat &candidate_mat = candidates->value;
+    // ABI safety: OpenCV 4.10 indexes distptr[K - 1] and allocates an
+    // AutoBuffer<int> using candidate rows for every query row.
+    if (neighbor_count <= 0 || candidate_mat.rows <= 0 ||
+        neighbor_count > candidate_mat.rows) {
+        return invalid_argument("invalid batch distance neighbor count");
+    }
+
+    try {
+        cv::Mat distances;
+        cv::Mat indices;
+        cv::batchDistance(query_mat, candidate_mat, distances, -1, indices,
+                          norm_type, neighbor_count, cv::noArray(), 0, false);
+
+        std::unique_ptr<opencv_core_mat_handle> distances_handle(
+            new opencv_core_mat_handle(distances));
+        std::unique_ptr<opencv_core_mat_handle> indices_handle(
+            new opencv_core_mat_handle(indices));
+        *out_distances = distances_handle.release();
+        *out_indices = indices_handle.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_transpose(const opencv_core_mat_handle *source,
                           opencv_core_mat_handle **out_mat) {
     clear_error();

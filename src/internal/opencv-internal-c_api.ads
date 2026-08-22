@@ -131,6 +131,12 @@ package OpenCV.Internal.C_API is
    K_Means_Random_Centers    : constant C_Int32 := 0;
    K_Means_Plus_Plus_Centers : constant C_Int32 := 1;
 
+   Batch_Distance_L1         : constant C_Int32 := 0;
+   Batch_Distance_L2         : constant C_Int32 := 1;
+   Batch_Distance_Squared_L2 : constant C_Int32 := 2;
+   Batch_Distance_Hamming    : constant C_Int32 := 3;
+   Batch_Distance_Hamming_2  : constant C_Int32 := 4;
+
    subtype C_Boolean is Interfaces.Unsigned_8;
    C_False : constant C_Boolean := 0;
    C_True  : constant C_Boolean := 1;
@@ -167,6 +173,18 @@ package OpenCV.Internal.C_API is
       Centers            : access Mat_Handle;
       Compactness        : access C_Double) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_kmeans";
+
+   function Mat_Batch_Distance
+     (Queries        : Mat_Handle;
+      Candidates     : Mat_Handle;
+      Neighbor_Count : C_Int32;
+      Kind           : C_Int32;
+      Distances      : access Mat_Handle;
+      Indices        : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_batch_distance";
 
    function Mat_Transpose
      (Source : Mat_Handle; Result : access Mat_Handle) return Status
