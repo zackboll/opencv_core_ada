@@ -265,6 +265,17 @@ package OpenCV.Core is
       Eigenvectors : Mat;
    end record;
 
+   --  Independently owned outputs of Linear_Discriminant_Analysis.
+   --  Eigenvalues is the K x 1 column of discriminant eigenvalues in
+   --  descending order. Eigenvectors is D x K, with each discriminant
+   --  direction stored in a column corresponding to the eigenvalue in
+   --  that column. The fields have normal Mat controlled ownership and
+   --  are independent of the input Mats and of each other.
+   type Linear_Discriminant_Analysis_Result is record
+      Eigenvalues  : Mat;
+      Eigenvectors : Mat;
+   end record;
+
    --  Independently owned outputs of Singular_Value_Decomposition.
    --  Singular_Values is the R x 1 column of nonnegative singular
    --  values in descending order, where R = min (Rows, Columns).
@@ -1294,6 +1305,32 @@ package OpenCV.Core is
    --  Self and each other.
    function Non_Symmetric_Eigen_Decomposition
      (Self : Mat) return Eigen_Decomposition_Result;
+
+   --  Computes a supervised Linear Discriminant Analysis basis using OpenCV
+   --  4.10 cv::LDA. Samples is an N x D row-aligned matrix: each row is one
+   --  observation and each column is one feature. Samples must be non-empty,
+   --  single-channel, Float32 or Float64, and finite. Labels must be a
+   --  non-empty Int32 C1 row (1 x N) or column (N x 1) vector. Arbitrary
+   --  signed Int32 label values are accepted, but at least two distinct
+   --  classes are required. Inputs are unchanged and non-contiguous Regions
+   --  are supported.
+   --
+   --  The result is always Float64: Eigenvalues is K x 1 and Eigenvectors is
+   --  D x K, with discriminant directions stored by column, so Samples *
+   --  Eigenvectors projects row-aligned samples. Eigenvalues are descending;
+   --  eigenvector signs are arbitrary. The automatic count is
+   --  K = min (class count - 1, D). The explicit overload requires Components
+   --  not exceed that value. This computes a discriminant subspace, not a
+   --  classifier, and does not add projection or reconstruction wrappers.
+   --  Singular or ill-conditioned within-class scatter can yield degenerate
+   --  numerical results under OpenCV 4.10. OpenCV warns to stdout when N < D;
+   --  this binding preserves that native behavior rather than rejecting it.
+   function Linear_Discriminant_Analysis
+     (Samples : Mat; Labels : Mat) return Linear_Discriminant_Analysis_Result;
+
+   function Linear_Discriminant_Analysis
+     (Samples : Mat; Labels : Mat; Components : Positive)
+      return Linear_Discriminant_Analysis_Result;
 
    --  Computes the default compact/economy SVD of Self using OpenCV
    --  4.10 cv::SVD::compute with flags = 0. This is not PCA, a

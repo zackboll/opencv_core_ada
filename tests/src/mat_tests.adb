@@ -17,6 +17,7 @@ with Polynomial_Tests;
 with K_Means_Tests;
 with K_Nearest_Neighbor_Tests;
 with Random_Tests;
+with Linear_Discriminant_Analysis_Tests;
 
 package body Mat_Tests is
 
@@ -43,6 +44,7 @@ package body Mat_Tests is
       Result.Add_Test (K_Means_Tests.Suite);
       Result.Add_Test (K_Nearest_Neighbor_Tests.Suite);
       Result.Add_Test (Random_Tests.Suite);
+      Result.Add_Test (Linear_Discriminant_Analysis_Tests.Suite);
       return Result'Access;
    end Suite;
 

@@ -1255,6 +1255,23 @@ opencv_core_mat_principal_component_analysis(
     opencv_core_mat_handle **out_eigenvectors);
 
 /*
+ * Computes an OpenCV 4.10 LDA discriminant basis for row-aligned samples.
+ * samples has N rows of D features and labels has one Int32 C1 label per
+ * sample. components is zero for min(C - 1, D), or a positive exact retained
+ * count. Both output pointers must be non-null and distinct. On success,
+ * eigenvalues is a Float64 K x 1 column and eigenvectors is Float64 D x K,
+ * with one discriminant direction per column. Inputs are borrowed and
+ * unchanged; both outputs own independent storage. On any failure both output
+ * handles remain null.
+ */
+opencv_core_status
+opencv_core_mat_linear_discriminant_analysis(
+    const opencv_core_mat_handle *samples,
+    const opencv_core_mat_handle *labels, int32_t components,
+    opencv_core_mat_handle **out_eigenvalues,
+    opencv_core_mat_handle **out_eigenvectors);
+
+/*
  * Computes the PCA basis of a borrowed sample Mat using the OpenCV
  * 4.10 cv::PCA retained-variance overload. orientation is 0
  * (samples are rows) or 1 (samples are columns). retained_variance

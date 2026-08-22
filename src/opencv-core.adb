@@ -4781,6 +4781,132 @@ package body OpenCV.Core is
       return Result;
    end Non_Symmetric_Eigen_Decomposition;
 
+   function Validate_Linear_Discriminant_Analysis
+     (Samples : Mat; Labels : Mat; Components : Natural; Explicit_K : Boolean)
+      return Natural
+   is
+      Maximum_Components : Natural;
+   begin
+      if Samples.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Linear_Discriminant_Analysis requires non-empty Samples");
+      end if;
+      if Samples.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Linear_Discriminant_Analysis requires single-channel Samples");
+      end if;
+      if Samples.Depth /= Float32 and then Samples.Depth /= Float64 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Linear_Discriminant_Analysis requires Float32 or Float64"
+            & " Samples");
+      end if;
+      if Samples.Rows = 0 or else Samples.Columns = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Linear_Discriminant_Analysis requires at least one sample"
+            & " and feature");
+      end if;
+      if not Samples.Check_Range.Valid then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Linear_Discriminant_Analysis requires finite Samples");
+      end if;
+      if Labels.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Linear_Discriminant_Analysis requires non-empty Labels");
+      end if;
+      if Labels.Channels /= 1 or else Labels.Depth /= Int32 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Linear_Discriminant_Analysis requires Int32 C1 Labels");
+      end if;
+      if (Labels.Rows /= 1 and then Labels.Columns /= 1)
+        or else Labels.Total /= Mat_Size (Samples.Rows)
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Linear_Discriminant_Analysis Labels must be a row or column"
+            & " vector with one entry per sample");
+      end if;
+
+      Maximum_Components := Samples.Columns;
+      if Explicit_K and then Components > Maximum_Components then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Linear_Discriminant_Analysis Components must not exceed"
+            & " the feature count");
+      end if;
+      return Maximum_Components;
+   end Validate_Linear_Discriminant_Analysis;
+
+   function Linear_Discriminant_Analysis_Impl
+     (Samples : Mat; Labels : Mat; Components : Natural)
+      return Linear_Discriminant_Analysis_Result
+   is
+      Result              : Linear_Discriminant_Analysis_Result;
+      Eigenvalues_Handle  : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Eigenvectors_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status              : OpenCV.Internal.C_API.Status;
+   begin
+      Status :=
+        OpenCV.Internal.C_API.Mat_Linear_Discriminant_Analysis
+          (Samples.Handle,
+           Labels.Handle,
+           OpenCV.Internal.C_API.C_Int32 (Components),
+           Eigenvalues_Handle'Access,
+           Eigenvectors_Handle'Access);
+      if Status /= OpenCV.Internal.C_API.Success then
+         OpenCV.Internal.C_API.Mat_Destroy (Eigenvalues_Handle);
+         OpenCV.Internal.C_API.Mat_Destroy (Eigenvectors_Handle);
+         Raise_On_Error (Status, "Mat linear discriminant analysis operation");
+      end if;
+      if Eigenvalues_Handle = OpenCV.Internal.C_API.Null_Mat_Handle
+        or else Eigenvectors_Handle = OpenCV.Internal.C_API.Null_Mat_Handle
+      then
+         OpenCV.Internal.C_API.Mat_Destroy (Eigenvalues_Handle);
+         OpenCV.Internal.C_API.Mat_Destroy (Eigenvectors_Handle);
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat linear discriminant analysis operation returned a null"
+            & " result handle");
+      end if;
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Eigenvalues.Handle);
+      Result.Eigenvalues.Handle := Eigenvalues_Handle;
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Eigenvectors.Handle);
+      Result.Eigenvectors.Handle := Eigenvectors_Handle;
+      return Result;
+   end Linear_Discriminant_Analysis_Impl;
+
+   function Linear_Discriminant_Analysis
+     (Samples : Mat; Labels : Mat) return Linear_Discriminant_Analysis_Result
+   is
+      Unused : constant Natural :=
+        Validate_Linear_Discriminant_Analysis
+          (Samples, Labels, Components => 0, Explicit_K => False);
+   begin
+      pragma Unreferenced (Unused);
+      return
+        Linear_Discriminant_Analysis_Impl (Samples, Labels, Components => 0);
+   end Linear_Discriminant_Analysis;
+
+   function Linear_Discriminant_Analysis
+     (Samples : Mat; Labels : Mat; Components : Positive)
+      return Linear_Discriminant_Analysis_Result
+   is
+      Unused : constant Natural :=
+        Validate_Linear_Discriminant_Analysis
+          (Samples, Labels, Components, Explicit_K => True);
+   begin
+      pragma Unreferenced (Unused);
+      return Linear_Discriminant_Analysis_Impl (Samples, Labels, Components);
+   end Linear_Discriminant_Analysis;
+
    function Validate_Principal_Component_Analysis
      (Self        : Mat;
       Orientation : Sample_Orientation;

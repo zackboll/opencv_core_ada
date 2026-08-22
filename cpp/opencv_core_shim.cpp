@@ -12,6 +12,7 @@
 #include <limits>
 #include <memory>
 #include <new>
+#include <set>
 #include <vector>
 #include <string>
 
@@ -4871,6 +4872,99 @@ opencv_core_mat_principal_component_analysis(
             new opencv_core_mat_handle(pca.eigenvectors));
 
         *out_mean = mean_handle.release();
+        *out_eigenvalues = eigenvalues_handle.release();
+        *out_eigenvectors = eigenvectors_handle.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_linear_discriminant_analysis(
+    const opencv_core_mat_handle *samples,
+    const opencv_core_mat_handle *labels, int32_t components,
+    opencv_core_mat_handle **out_eigenvalues,
+    opencv_core_mat_handle **out_eigenvectors) {
+    clear_error();
+
+    if (out_eigenvalues != nullptr) {
+        *out_eigenvalues = nullptr;
+    }
+    if (out_eigenvectors != nullptr) {
+        *out_eigenvectors = nullptr;
+    }
+    if (out_eigenvalues == nullptr || out_eigenvectors == nullptr) {
+        return invalid_argument("LDA output Mat handles must not be null");
+    }
+    if (out_eigenvalues == out_eigenvectors) {
+        return invalid_argument(
+            "LDA output Mat handle pointers must be distinct");
+    }
+    if (samples == nullptr || labels == nullptr) {
+        return invalid_argument("LDA sample and label Mat handles must not be null");
+    }
+    if (components < 0) {
+        return invalid_argument("LDA components must not be negative");
+    }
+
+    try {
+        const cv::Mat &sample_mat = samples->value;
+        const cv::Mat &label_mat = labels->value;
+        const int sample_count = sample_mat.rows;
+
+        // ABI safety: OpenCV 4.10 reads every label with tmp.at<int>(i)
+        // before validating its type. A non-CV_32SC1 Mat would therefore be
+        // interpreted with the wrong element width.
+        if (label_mat.type() != CV_32SC1 ||
+            (label_mat.rows != 1 && label_mat.cols != 1) ||
+            label_mat.total() != static_cast<size_t>(sample_count)) {
+            return invalid_argument(
+                "LDA labels must be an Int32 C1 row or column vector with one label per sample");
+        }
+
+        // ABI safety: OpenCV 4.10's EigenvalueDecomposition computes
+        // max_iters_count = 1000 * n using signed int, where n is the feature
+        // count. This prevents that multiplication overflowing before its
+        // iteration can report non-convergence.
+        if (sample_mat.cols > std::numeric_limits<int>::max() / 1000) {
+            return invalid_argument(
+                "LDA feature count would overflow OpenCV 4.10 iteration limit");
+        }
+
+        std::set<int> classes;
+        for (int row = 0; row < sample_count; ++row) {
+            classes.insert(label_mat.rows == 1 ? label_mat.at<int>(0, row)
+                                               : label_mat.at<int>(row, 0));
+        }
+        const int class_count = static_cast<int>(classes.size());
+        if (class_count < 2) {
+            return invalid_argument("LDA requires at least two distinct labels");
+        }
+
+        const int maximum_components =
+            std::min(class_count - 1, sample_mat.cols);
+        const int retained_components =
+            components == 0 ? maximum_components : static_cast<int>(components);
+        if (retained_components < 1 || retained_components > maximum_components) {
+            return invalid_argument(
+                "LDA components must not exceed min(class count - 1, feature count)");
+        }
+
+        // LDA centers its working data in place. Cloning preserves borrowed
+        // Float64 inputs as well as Float32 inputs converted by OpenCV.
+        cv::Mat working_samples = sample_mat.clone();
+        cv::LDA lda(retained_components);
+        lda.compute(working_samples, label_mat);
+
+        cv::Mat eigenvalues = lda.eigenvalues().t();
+        eigenvalues = eigenvalues.clone();
+        cv::Mat eigenvectors = lda.eigenvectors().clone();
+        std::unique_ptr<opencv_core_mat_handle> eigenvalues_handle(
+            new opencv_core_mat_handle(eigenvalues));
+        std::unique_ptr<opencv_core_mat_handle> eigenvectors_handle(
+            new opencv_core_mat_handle(eigenvectors));
+
         *out_eigenvalues = eigenvalues_handle.release();
         *out_eigenvectors = eigenvectors_handle.release();
         return OPENCV_CORE_OK;
