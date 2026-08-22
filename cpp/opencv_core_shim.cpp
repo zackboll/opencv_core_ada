@@ -1311,6 +1311,79 @@ opencv_core_mat_reduce(const opencv_core_mat_handle *source, int32_t axis,
     }
 }
 
+namespace {
+
+opencv_core_status reduce_arg_extremum(const opencv_core_mat_handle *source,
+                                       int32_t axis, uint8_t last_index,
+                                       bool minimum,
+                                       opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+    *out_mat = nullptr;
+
+    if (source == nullptr) {
+        return invalid_argument("source Mat handle must not be null");
+    }
+
+    // ABI safety: reduceMinMax evaluates (axis + dims) % dims before its
+    // assertion. A default Mat has zero dimensions (division by zero), and a
+    // one-dimensional Mat makes the supported column axis invalid. This C ABI
+    // exposes only the binding's two-dimensional Mat contract.
+    if (source->value.dims != 2) {
+        return invalid_argument("source Mat must be two-dimensional");
+    }
+
+    int opencv_axis;
+    switch (axis) {
+    case OPENCV_CORE_REDUCE_ACROSS_ROWS:
+        opencv_axis = 0;
+        break;
+    case OPENCV_CORE_REDUCE_ACROSS_COLUMNS:
+        opencv_axis = 1;
+        break;
+    default:
+        // ABI safety: OpenCV 4.10 first evaluates (axis + dims) % dims;
+        // arbitrary int32 axis can overflow that signed addition.
+        return invalid_argument("reduction axis is not supported");
+    }
+
+    try {
+        cv::Mat result;
+        if (minimum) {
+            cv::reduceArgMin(source->value, result, opencv_axis,
+                             last_index != 0);
+        } else {
+            cv::reduceArgMax(source->value, result, opencv_axis,
+                             last_index != 0);
+        }
+        std::unique_ptr<opencv_core_mat_handle> handle(
+            new opencv_core_mat_handle(result));
+        *out_mat = handle.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+} // namespace
+
+opencv_core_status
+opencv_core_mat_reduce_arg_min(const opencv_core_mat_handle *source,
+                               int32_t axis, uint8_t last_index,
+                               opencv_core_mat_handle **out_mat) {
+    return reduce_arg_extremum(source, axis, last_index, true, out_mat);
+}
+
+opencv_core_status
+opencv_core_mat_reduce_arg_max(const opencv_core_mat_handle *source,
+                               int32_t axis, uint8_t last_index,
+                               opencv_core_mat_handle **out_mat) {
+    return reduce_arg_extremum(source, axis, last_index, false, out_mat);
+}
+
 opencv_core_status
 opencv_core_mat_hconcat(const opencv_core_mat_handle *const *sources,
                         int32_t count, opencv_core_mat_handle **out_mat) {

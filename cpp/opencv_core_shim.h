@@ -283,6 +283,21 @@ opencv_core_mat_reduce(const opencv_core_mat_handle *source, int32_t axis,
                        opencv_core_mat_handle **out_mat);
 
 /*
+ * Returns a newly owned CV_32SC1 Mat of zero-based extremum indices. axis uses
+ * OPENCV_CORE_REDUCE_ACROSS_ROWS or OPENCV_CORE_REDUCE_ACROSS_COLUMNS;
+ * last_index is 0 for first occurrence and 1 for last occurrence.
+ */
+opencv_core_status
+opencv_core_mat_reduce_arg_min(const opencv_core_mat_handle *source,
+                               int32_t axis, uint8_t last_index,
+                               opencv_core_mat_handle **out_mat);
+
+opencv_core_status
+opencv_core_mat_reduce_arg_max(const opencv_core_mat_handle *source,
+                               int32_t axis, uint8_t last_index,
+                               opencv_core_mat_handle **out_mat);
+
+/*
  * Horizontally concatenates count borrowed source Mats in input order. Inputs
  * must have identical row counts and complete types. An empty input collection
  * produces an empty Mat. On success out_mat receives one independently owned

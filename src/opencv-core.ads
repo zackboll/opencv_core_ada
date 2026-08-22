@@ -31,6 +31,9 @@ package OpenCV.Core is
 
    type Reduction_Kind is (Sum, Average, Maximum, Minimum, Sum_Of_Squares);
 
+   --  Selects which equal extremum is reported by Arg_Minimum and Arg_Maximum.
+   type Extremum_Occurrence is (First_Occurrence, Last_Occurrence);
+
    type Angle_Unit is (Radians, Degrees);
 
    --  Sort axis names describe the values being ordered, not a reduction.
@@ -1471,6 +1474,24 @@ package OpenCV.Core is
       Axis         : Reduction_Axis;
       Kind         : Reduction_Kind;
       Output_Depth : Depth_Type) return Mat;
+   --  Returns independently owned CV_32SC1 index Mats. Indices are zero-based
+   --  along Axis: Across_Rows produces 1 x Self.Columns row indices, while
+   --  Across_Columns produces Self.Rows x 1 column indices. Self must be
+   --  non-empty and single-channel; supported depths are UInt8, Int8, UInt16,
+   --  Int16, Int32, Float32, and Float64. Float16 is not dispatched by the
+   --  OpenCV 4.10 implementation. Equal
+   --  extrema select the first or last occurrence as requested. Non-contiguous
+   --  Regions are supported, Self is unchanged, and results do not share its
+   --  storage. OpenCV leaves behavior unspecified when Float32 or Float64 NaN
+   --  values participate in the reduction.
+   function Arg_Minimum
+     (Self       : Mat;
+      Axis       : Reduction_Axis;
+      Occurrence : Extremum_Occurrence := First_Occurrence) return Mat;
+   function Arg_Maximum
+     (Self       : Mat;
+      Axis       : Reduction_Axis;
+      Occurrence : Extremum_Occurrence := First_Occurrence) return Mat;
    --  Both reductions operate independently on each channel.  They support
    --  one through four channels, matching Scalar's complete representation.
    --  Mean returns a zero Scalar for an empty Mat; Mean_Std_Dev rejects one.

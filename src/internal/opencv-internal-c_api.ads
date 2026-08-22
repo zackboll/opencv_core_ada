@@ -247,6 +247,26 @@ package OpenCV.Internal.C_API is
       Result       : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_reduce";
 
+   function Mat_Reduce_Arg_Min
+     (Source     : Mat_Handle;
+      Axis       : C_Int32;
+      Last_Index : C_UInt8;
+      Result     : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_reduce_arg_min";
+
+   function Mat_Reduce_Arg_Max
+     (Source     : Mat_Handle;
+      Axis       : C_Int32;
+      Last_Index : C_UInt8;
+      Result     : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_reduce_arg_max";
+
    function Mat_HConcat
      (Sources : access Mat_Handle; Count : C_Int32; Result : access Mat_Handle)
       return Status

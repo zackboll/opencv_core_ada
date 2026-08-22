@@ -146,6 +146,12 @@ package body OpenCV.Core is
          when Minimum        => OpenCV.Internal.C_API.Reduce_Minimum,
          when Sum_Of_Squares => OpenCV.Internal.C_API.Reduce_Sum_Of_Squares);
 
+   function To_C_Last_Index
+     (Value : Extremum_Occurrence) return OpenCV.Internal.C_API.C_UInt8
+   is (case Value is
+         when First_Occurrence => 0,
+         when Last_Occurrence  => 1);
+
    function To_C_Sample_Orientation
      (Value : Sample_Orientation) return OpenCV.Internal.C_API.C_Int32
    is (case Value is
@@ -1011,21 +1017,20 @@ package body OpenCV.Core is
    function To_C_Batch_Distance_Kind
      (Value : Batch_Distance_Kind) return OpenCV.Internal.C_API.C_Int32
    is (case Value is
-          when L1_Distance => OpenCV.Internal.C_API.Batch_Distance_L1,
-          when L2_Distance => OpenCV.Internal.C_API.Batch_Distance_L2,
-          when Squared_L2_Distance =>
-            OpenCV.Internal.C_API.Batch_Distance_Squared_L2,
-          when Hamming_Distance =>
-            OpenCV.Internal.C_API.Batch_Distance_Hamming,
-          when Hamming_2_Distance =>
-            OpenCV.Internal.C_API.Batch_Distance_Hamming_2);
+         when L1_Distance         => OpenCV.Internal.C_API.Batch_Distance_L1,
+         when L2_Distance         => OpenCV.Internal.C_API.Batch_Distance_L2,
+         when Squared_L2_Distance =>
+           OpenCV.Internal.C_API.Batch_Distance_Squared_L2,
+         when Hamming_Distance    =>
+           OpenCV.Internal.C_API.Batch_Distance_Hamming,
+         when Hamming_2_Distance  =>
+           OpenCV.Internal.C_API.Batch_Distance_Hamming_2);
 
    procedure Validate_K_Nearest_Neighbors
      (Queries        : Mat;
       Candidates     : Mat;
       Neighbor_Count : Positive;
-      Kind           : Batch_Distance_Kind)
-   is
+      Kind           : Batch_Distance_Kind) is
    begin
       if Queries.Is_Empty or else Candidates.Is_Empty then
          Ada.Exceptions.Raise_Exception
@@ -1080,15 +1085,15 @@ package body OpenCV.Core is
         OpenCV.Internal.C_API.Null_Mat_Handle;
       Status           : OpenCV.Internal.C_API.Status;
    begin
-      Validate_K_Nearest_Neighbors
-        (Queries, Candidates, Neighbor_Count, Kind);
-      Status := OpenCV.Internal.C_API.Mat_Batch_Distance
-        (Queries        => Queries.Handle,
-         Candidates     => Candidates.Handle,
-         Neighbor_Count => OpenCV.Internal.C_API.C_Int32 (Neighbor_Count),
-         Kind           => To_C_Batch_Distance_Kind (Kind),
-         Distances      => Distances_Handle'Access,
-         Indices        => Indices_Handle'Access);
+      Validate_K_Nearest_Neighbors (Queries, Candidates, Neighbor_Count, Kind);
+      Status :=
+        OpenCV.Internal.C_API.Mat_Batch_Distance
+          (Queries        => Queries.Handle,
+           Candidates     => Candidates.Handle,
+           Neighbor_Count => OpenCV.Internal.C_API.C_Int32 (Neighbor_Count),
+           Kind           => To_C_Batch_Distance_Kind (Kind),
+           Distances      => Distances_Handle'Access,
+           Indices        => Indices_Handle'Access);
       Raise_On_Error (Status, "K_Nearest_Neighbors");
 
       OpenCV.Internal.C_API.Mat_Destroy (Result.Distances.Handle);
@@ -5418,6 +5423,83 @@ package body OpenCV.Core is
       Result.Handle := New_Handle;
       return Result;
    end Reduce;
+
+   procedure Validate_Arg_Reduction_Input (Self : Mat) is
+   begin
+      if Self.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Arg reduction requires a non-empty Mat");
+      end if;
+
+      if Self.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Arg reduction requires a single-channel Mat");
+      end if;
+
+      --  This explicit enumeration is the public supported-depth policy.
+      case Self.Depth is
+         when UInt8 | Int8 | UInt16 | Int16 | Int32 | Float32 | Float64 =>
+            null;
+
+         when Float16                                                   =>
+            Ada.Exceptions.Raise_Exception
+              (OpenCV_Error'Identity,
+               "Arg reduction does not support Float16 Mats in OpenCV 4.10");
+      end case;
+   end Validate_Arg_Reduction_Input;
+
+   function Arg_Reduction
+     (Self       : Mat;
+      Axis       : Reduction_Axis;
+      Occurrence : Extremum_Occurrence;
+      Is_Minimum : Boolean) return Mat
+   is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Arg_Reduction_Input (Self);
+      if Is_Minimum then
+         Status :=
+           OpenCV.Internal.C_API.Mat_Reduce_Arg_Min
+             (Self.Handle,
+              To_C_Reduction_Axis (Axis),
+              To_C_Last_Index (Occurrence),
+              New_Handle'Access);
+      else
+         Status :=
+           OpenCV.Internal.C_API.Mat_Reduce_Arg_Max
+             (Self.Handle,
+              To_C_Reduction_Axis (Axis),
+              To_C_Last_Index (Occurrence),
+              New_Handle'Access);
+      end if;
+      Raise_On_Error (Status, "Mat arg reduction");
+
+      if New_Handle = OpenCV.Internal.C_API.Null_Mat_Handle then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat arg reduction returned a null result handle");
+      end if;
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Arg_Reduction;
+
+   function Arg_Minimum
+     (Self       : Mat;
+      Axis       : Reduction_Axis;
+      Occurrence : Extremum_Occurrence := First_Occurrence) return Mat
+   is (Arg_Reduction (Self, Axis, Occurrence, True));
+
+   function Arg_Maximum
+     (Self       : Mat;
+      Axis       : Reduction_Axis;
+      Occurrence : Extremum_Occurrence := First_Occurrence) return Mat
+   is (Arg_Reduction (Self, Axis, Occurrence, False));
 
    function Reduce
      (Self         : Mat;
