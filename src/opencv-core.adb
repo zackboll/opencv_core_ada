@@ -3617,6 +3617,11 @@ package body OpenCV.Core is
            (OpenCV_Error'Identity,
             "Solve_Linear_Program requires at least one variable");
       end if;
+      if Variables > OpenCV.Internal.Safe_Arithmetic.Signed_Int32_Max - 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve_Linear_Program variable count exceeds INT32_MAX - 2");
+      end if;
       if Constraints.Is_Empty then
          Ada.Exceptions.Raise_Exception
            (OpenCV_Error'Identity,
