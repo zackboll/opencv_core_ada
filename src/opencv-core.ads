@@ -403,7 +403,9 @@ package OpenCV.Core is
    --  Float32 C1, N x 1 Float32 Cn, and 1 x N Float32 Cn are supported.
    --  Cluster_Count must not exceed the resulting sample count. Non-contiguous
    --  Regions are supported and Samples is unchanged. Epsilon must be finite
-   --  and nonnegative. KMEANS_USE_INITIAL_LABELS is intentionally unsupported.
+   --  and nonnegative. Initialization applies to every attempt. Attempts
+   --  defaults to 3. KMEANS_USE_INITIAL_LABELS is provided by the distinct
+   --  overload below.
    function K_Means
      (Samples        : Mat;
       Cluster_Count  : Positive;
@@ -411,6 +413,29 @@ package OpenCV.Core is
         (Maximum_Iterations => 100, Epsilon => 1.0E-4);
       Attempts       : Positive := 3;
       Initialization : K_Means_Initialization := Plus_Plus_Centers)
+      return K_Means_Result;
+
+   --  Refines an initial partition using OpenCV 4.10 cv::kmeans. Samples has
+   --  the same contract as the no-label overload. Initial_Labels must be a
+   --  non-empty Int32 C1 row or column vector containing exactly one
+   --  zero-based
+   --  label in 0 .. Cluster_Count - 1 for every logical sample. Labels may be
+   --  N x 1 or 1 x N, where N follows Samples' sample-count rule. The input is
+   --  unchanged, including when it is a non-contiguous Region. OpenCV repairs
+   --  initially empty clusters. Attempt 1 starts from Initial_Labels. Attempts
+   --  defaults to 1; when it exceeds 1, later attempts use
+   --  Subsequent_Initialization and the returned result has the lowest
+   --  compactness of all attempts, so its labels may be from a later attempt.
+   --  Set_Random_Seed makes those later randomized attempts reproducible
+   --  on the calling thread.
+   function K_Means
+     (Samples                   : Mat;
+      Cluster_Count             : Positive;
+      Initial_Labels            : Mat;
+      Criteria                  : K_Means_Criteria :=
+        (Maximum_Iterations => 100, Epsilon => 1.0E-4);
+      Attempts                  : Positive := 1;
+      Subsequent_Initialization : K_Means_Initialization := Plus_Plus_Centers)
       return K_Means_Result;
 
    --  Returns Neighbor_Count nearest candidate row-vectors for each query row.

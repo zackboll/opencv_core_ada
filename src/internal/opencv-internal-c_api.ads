@@ -177,6 +177,22 @@ package OpenCV.Internal.C_API is
       Compactness        : access C_Double) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_kmeans";
 
+   function Mat_K_Means_With_Initial_Labels
+     (Samples                   : Mat_Handle;
+      Initial_Labels            : Mat_Handle;
+      Cluster_Count             : C_Int32;
+      Maximum_Iterations        : C_Int32;
+      Epsilon                   : C_Double;
+      Attempts                  : C_Int32;
+      Subsequent_Initialization : C_Int32;
+      Labels                    : access Mat_Handle;
+      Centers                   : access Mat_Handle;
+      Compactness               : access C_Double) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_kmeans_with_initial_labels";
+
    function Mat_Batch_Distance
      (Queries        : Mat_Handle;
       Candidates     : Mat_Handle;

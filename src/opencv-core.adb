@@ -1014,6 +1014,85 @@ package body OpenCV.Core is
       return Result;
    end K_Means;
 
+   procedure Validate_K_Means_Initial_Labels
+     (Samples        : Mat;
+      Cluster_Count  : Positive;
+      Initial_Labels : Mat;
+      Criteria       : K_Means_Criteria;
+      Attempts       : Positive)
+   is
+      Sample_Count : Natural;
+   begin
+      Validate_K_Means (Samples, Cluster_Count, Criteria, Attempts);
+      if Initial_Labels.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "K_Means initial labels must be non-empty");
+      end if;
+      if Initial_Labels.Depth /= Int32 or else Initial_Labels.Channels /= 1
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "K_Means initial labels must be Int32 C1");
+      end if;
+      if Initial_Labels.Rows /= 1 and then Initial_Labels.Columns /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "K_Means initial labels must be a row or column vector");
+      end if;
+      Sample_Count :=
+        (if Samples.Rows = 1 then Samples.Columns else Samples.Rows);
+      if Initial_Labels.Total /= Mat_Size (Sample_Count) then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "K_Means initial label count must equal the sample count");
+      end if;
+   end Validate_K_Means_Initial_Labels;
+
+   function K_Means
+     (Samples                   : Mat;
+      Cluster_Count             : Positive;
+      Initial_Labels            : Mat;
+      Criteria                  : K_Means_Criteria :=
+        (Maximum_Iterations => 100, Epsilon => 1.0E-4);
+      Attempts                  : Positive := 1;
+      Subsequent_Initialization : K_Means_Initialization := Plus_Plus_Centers)
+      return K_Means_Result
+   is
+      Result         : K_Means_Result;
+      Labels_Handle  : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Centers_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Compactness    : aliased OpenCV.Internal.C_API.C_Double := 0.0;
+      Status         : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_K_Means_Initial_Labels
+        (Samples, Cluster_Count, Initial_Labels, Criteria, Attempts);
+      Status :=
+        OpenCV.Internal.C_API.Mat_K_Means_With_Initial_Labels
+          (Samples                   => Samples.Handle,
+           Initial_Labels            => Initial_Labels.Handle,
+           Cluster_Count             =>
+             OpenCV.Internal.C_API.C_Int32 (Cluster_Count),
+           Maximum_Iterations        =>
+             OpenCV.Internal.C_API.C_Int32 (Criteria.Maximum_Iterations),
+           Epsilon                   => Interfaces.C.double (Criteria.Epsilon),
+           Attempts                  =>
+             OpenCV.Internal.C_API.C_Int32 (Attempts),
+           Subsequent_Initialization =>
+             To_C_K_Means_Initialization (Subsequent_Initialization),
+           Labels                    => Labels_Handle'Access,
+           Centers                   => Centers_Handle'Access,
+           Compactness               => Compactness'Access);
+      Raise_On_Error (Status, "K_Means with initial labels");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Labels.Handle);
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Centers.Handle);
+      Result.Labels.Handle := Labels_Handle;
+      Result.Centers.Handle := Centers_Handle;
+      Result.Compactness := Long_Float (Compactness);
+      return Result;
+   end K_Means;
+
    function To_C_Batch_Distance_Kind
      (Value : Batch_Distance_Kind) return OpenCV.Internal.C_API.C_Int32
    is (case Value is

@@ -193,6 +193,23 @@ opencv_core_mat_kmeans(const opencv_core_mat_handle *samples,
                        double *out_compactness);
 
 /*
+ * Clusters borrowed Float32 samples using borrowed Int32 C1 initial labels.
+ * The labels must be a row or column vector with one label per sample. The
+ * shim clones and canonicalizes labels before cv::kmeans, so the caller's Mat
+ * is never used as its mutable InputOutputArray. subsequent_initialization is
+ * the stable ABI identifier 0 (random centers) or 1 (k-means++ centers), not
+ * an OpenCV flag. Output initialization, alias rejection, and ownership
+ * publication follow opencv_core_mat_kmeans.
+ */
+opencv_core_status
+opencv_core_mat_kmeans_with_initial_labels(
+    const opencv_core_mat_handle *samples,
+    const opencv_core_mat_handle *initial_labels, int32_t cluster_count,
+    int32_t maximum_iterations, double epsilon, int32_t attempts,
+    int32_t subsequent_initialization, opencv_core_mat_handle **out_labels,
+    opencv_core_mat_handle **out_centers, double *out_compactness);
+
+/*
  * Finds K nearest rows with cv::batchDistance. Queries and candidates are
  * borrowed. kind is the stable ABI identifier 0..4 for L1, L2, squared L2,
  * Hamming, and Hamming2. Each supplied output is initialized to null before

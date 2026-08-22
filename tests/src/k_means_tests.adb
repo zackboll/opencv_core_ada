@@ -3,12 +3,14 @@ with AUnit.Test_Caller;
 with Interfaces;
 with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
+with OpenCV.Core.UInt8_Access;
 with Mat_Test_Support;
 
 package body K_Means_Tests is
 
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
+   use type OpenCV.Core.Mat_Size;
    use type Interfaces.IEEE_Float_32;
    use Mat_Test_Support;
 
@@ -20,6 +22,29 @@ package body K_Means_Tests is
       OpenCV.Core.Float32_Access.Set
         (Samples, Row, 1, OpenCV.Core.Float32_Value (Y));
    end Set_Point;
+
+   procedure Set_Label
+     (Labels : in out OpenCV.Core.Mat; Row, Column : Natural; Value : Natural)
+   is
+   begin
+      OpenCV.Core.UInt8_Access.Set
+        (Labels, Row, Column, OpenCV.Core.UInt8_Value (Value));
+   end Set_Label;
+
+   function Labels_Are_Valid
+     (Labels : OpenCV.Core.Mat; Cluster_Count : Positive) return Boolean
+   is
+      As_Float : constant OpenCV.Core.Mat :=
+        Labels.Convert_To (OpenCV.Core.Float32);
+   begin
+      return
+        (for all Row in 0 .. Labels.Rows - 1 =>
+           Long_Float (OpenCV.Core.Float32_Access.Get (As_Float, Row, 0))
+           >= 0.0
+           and then Long_Float
+                      (OpenCV.Core.Float32_Access.Get (As_Float, Row, 0))
+                    < Long_Float (Cluster_Count));
+   end Labels_Are_Valid;
 
    procedure Two_Obvious_Clusters_Have_Independent_Outputs
      (Test : in out Mat_Test_Fixture)
@@ -188,6 +213,231 @@ package body K_Means_Tests is
       end;
    end Multi_Channel_And_One_Row_Representations_Work;
 
+   procedure Initial_Labels_Solve_And_Preserve_Inputs
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Samples          : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 2, (OpenCV.Core.Float32, 1));
+      Label_Source     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 1, (OpenCV.Core.UInt8, 1));
+      Initial_Labels   : OpenCV.Core.Mat;
+      Snapshot         : OpenCV.Core.Mat;
+      Result           : OpenCV.Core.K_Means_Result;
+      Labels_Snapshot  : OpenCV.Core.Mat;
+      Centers_Snapshot : OpenCV.Core.Mat;
+   begin
+      Set_Point (Samples, 0, 0.0, 0.0);
+      Set_Point (Samples, 1, 0.0, 1.0);
+      Set_Point (Samples, 2, 10.0, 10.0);
+      Set_Point (Samples, 3, 10.0, 11.0);
+      Set_Label (Label_Source, 0, 0, 0);
+      Set_Label (Label_Source, 1, 0, 0);
+      Set_Label (Label_Source, 2, 0, 1);
+      Set_Label (Label_Source, 3, 0, 1);
+      Initial_Labels := Label_Source.Convert_To (OpenCV.Core.Int32);
+      Snapshot := Initial_Labels.Clone;
+      Result := OpenCV.Core.K_Means (Samples, 2, Initial_Labels);
+      Labels_Snapshot := Result.Labels.Clone;
+      Centers_Snapshot := Result.Centers.Clone;
+      AUnit.Assertions.Assert
+        (Result.Labels.Rows = 4
+         and then Result.Labels.Columns = 1
+         and then Result.Labels.Depth = OpenCV.Core.Int32
+         and then Result.Labels.Channels = 1
+         and then Result.Centers.Rows = 2
+         and then Result.Centers.Columns = 2
+         and then Result.Centers.Depth = OpenCV.Core.Float32
+         and then Result.Centers.Channels = 1
+         and then Result.Compactness >= 0.0
+         and then Labels_Are_Valid (Result.Labels, 2),
+         "initial-label K_Means must return canonical valid outputs");
+      AUnit.Assertions.Assert
+        (Initial_Labels.Rows = Snapshot.Rows
+         and then Initial_Labels.Columns = Snapshot.Columns
+         and then Initial_Labels.Depth = Snapshot.Depth
+         and then Initial_Labels.Channels = Snapshot.Channels
+         and then Initial_Labels.Compare (Snapshot, OpenCV.Core.Equal)
+                    .Count_Non_Zero
+                  = OpenCV.Core.Mat_Size
+                      (Initial_Labels.Rows * Initial_Labels.Columns)
+         and then OpenCV.Core.Float32_Access.Get (Samples, 0, 0) = 0.0
+         and then OpenCV.Core.Float32_Access.Get (Samples, 3, 1) = 11.0,
+         "initial-label K_Means must not modify labels or samples");
+      Samples.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Initial_Labels.Set_To (OpenCV.Core.Make_Scalar (7.0));
+      AUnit.Assertions.Assert
+        (Result.Labels.Compare (Labels_Snapshot, OpenCV.Core.Equal)
+           .Count_Non_Zero
+         = 4
+         and then Result.Centers.Compare (Centers_Snapshot, OpenCV.Core.Equal)
+                    .Count_Non_Zero
+                  = 4,
+         "initial-label K_Means outputs must not alias either input");
+   end Initial_Labels_Solve_And_Preserve_Inputs;
+
+   procedure Label_Vector_Forms_And_Non_Continuous_Region_Work
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Samples    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 1, (OpenCV.Core.Float32, 1));
+      Row_Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 4, (OpenCV.Core.UInt8, 1));
+      Parent     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 2, (OpenCV.Core.UInt8, 1));
+   begin
+      for Row in 0 .. 3 loop
+         OpenCV.Core.Float32_Access.Set
+           (Samples, Row, 0, (if Row < 2 then 0.0 else 10.0));
+         Set_Label (Row_Source, 0, Row, (if Row < 2 then 0 else 1));
+         Set_Label (Parent, Row, 0, (if Row < 2 then 0 else 1));
+         Set_Label (Parent, Row, 1, 9);
+      end loop;
+      declare
+         Row_Labels      : constant OpenCV.Core.Mat :=
+           Row_Source.Convert_To (OpenCV.Core.Int32);
+         Parent32        : constant OpenCV.Core.Mat :=
+           Parent.Convert_To (OpenCV.Core.Int32);
+         Parent_Snapshot : constant OpenCV.Core.Mat := Parent32.Clone;
+         Region          : constant OpenCV.Core.Mat :=
+           Parent32.Region ((X => 0, Y => 0, Width => 1, Height => 4));
+         Row_Result      : constant OpenCV.Core.K_Means_Result :=
+           OpenCV.Core.K_Means (Samples, 2, Row_Labels);
+         Region_Result   : constant OpenCV.Core.K_Means_Result :=
+           OpenCV.Core.K_Means (Samples, 2, Region);
+      begin
+         AUnit.Assertions.Assert
+           (Row_Result.Labels.Rows = 4
+            and then not Region.Is_Continuous
+            and then Region_Result.Labels.Rows = 4
+            and then Parent32.Compare (Parent_Snapshot, OpenCV.Core.Equal)
+                       .Count_Non_Zero
+                     = 8,
+            "initial-label K_Means must accept row vectors and"
+            & " non-contiguous Regions");
+      end;
+   end Label_Vector_Forms_And_Non_Continuous_Region_Work;
+
+   procedure Empty_Cluster_And_Attempts_Work (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Samples        : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 1, (OpenCV.Core.Float32, 1));
+      Source         : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 1, (OpenCV.Core.UInt8, 1));
+      Initial_Labels : OpenCV.Core.Mat;
+      First, Second  : OpenCV.Core.K_Means_Result;
+   begin
+      for Row in 0 .. 3 loop
+         OpenCV.Core.Float32_Access.Set
+           (Samples, Row, 0, (if Row < 2 then 0.0 else 10.0));
+      end loop;
+      Initial_Labels := Source.Convert_To (OpenCV.Core.Int32);
+      First :=
+        OpenCV.Core.K_Means
+          (Samples,
+           2,
+           Initial_Labels,
+           Subsequent_Initialization => OpenCV.Core.Random_Centers);
+      AUnit.Assertions.Assert
+        (Labels_Are_Valid (First.Labels, 2),
+         "K_Means must repair an empty initial cluster");
+      First :=
+        OpenCV.Core.K_Means
+          (Samples,
+           2,
+           Initial_Labels,
+           Subsequent_Initialization => OpenCV.Core.Plus_Plus_Centers);
+      AUnit.Assertions.Assert
+        (Labels_Are_Valid (First.Labels, 2),
+         "both subsequent initializations must work with one attempt");
+      OpenCV.Core.Set_Random_Seed (12345);
+      First := OpenCV.Core.K_Means (Samples, 2, Initial_Labels, Attempts => 3);
+      OpenCV.Core.Set_Random_Seed (12345);
+      Second :=
+        OpenCV.Core.K_Means (Samples, 2, Initial_Labels, Attempts => 3);
+      AUnit.Assertions.Assert
+        (Approximately_Equal (First.Compactness, Second.Compactness)
+         and then First.Labels.Compare (Second.Labels, OpenCV.Core.Equal)
+                    .Count_Non_Zero
+                  = 4
+         and then First.Centers.Compare (Second.Centers, OpenCV.Core.Equal)
+                    .Count_Non_Zero
+                  = 2,
+         "seeded subsequent K_Means attempts must replay deterministically");
+   end Empty_Cluster_And_Attempts_Work;
+
+   procedure Invalid_Initial_Labels_Are_Rejected
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Samples      : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 1, (OpenCV.Core.Float32, 1));
+      Valid_Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 1, (OpenCV.Core.UInt8, 1));
+      procedure Out_Of_Range is
+         Labels  : OpenCV.Core.Mat := Valid_Source;
+         Ignored : OpenCV.Core.K_Means_Result;
+      begin
+         Set_Label (Labels, 0, 0, 2);
+         Ignored :=
+           OpenCV.Core.K_Means
+             (Samples, 2, Labels.Convert_To (OpenCV.Core.Int32));
+      end Out_Of_Range;
+      procedure Negative is
+         Labels  : OpenCV.Core.Mat :=
+           OpenCV.Core.Create (4, 1, (OpenCV.Core.Float32, 1));
+         Ignored : OpenCV.Core.K_Means_Result;
+      begin
+         Labels.Set_To (OpenCV.Core.Make_Scalar (-1.0));
+         Ignored :=
+           OpenCV.Core.K_Means
+             (Samples, 2, Labels.Convert_To (OpenCV.Core.Int32));
+      end Negative;
+      procedure Wrong_Depth is
+         Ignored : OpenCV.Core.K_Means_Result :=
+           OpenCV.Core.K_Means
+             (Samples, 2, Valid_Source.Convert_To (OpenCV.Core.Float32));
+      begin
+         pragma Unreferenced (Ignored);
+      end Wrong_Depth;
+      procedure Multi_Channel is
+         Ignored : OpenCV.Core.K_Means_Result :=
+           OpenCV.Core.K_Means
+             (Samples, 2, OpenCV.Core.Create (4, 1, (OpenCV.Core.Int32, 2)));
+      begin
+         pragma Unreferenced (Ignored);
+      end Multi_Channel;
+      procedure Wrong_Count is
+         Ignored : OpenCV.Core.K_Means_Result :=
+           OpenCV.Core.K_Means
+             (Samples, 2, OpenCV.Core.Create (3, 1, (OpenCV.Core.Int32, 1)));
+      begin
+         pragma Unreferenced (Ignored);
+      end Wrong_Count;
+      procedure Non_Vector is
+         Ignored : OpenCV.Core.K_Means_Result :=
+           OpenCV.Core.K_Means
+             (Samples, 2, OpenCV.Core.Create (2, 2, (OpenCV.Core.Int32, 1)));
+      begin
+         pragma Unreferenced (Ignored);
+      end Non_Vector;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Out_Of_Range'Access, "out-of-range labels must fail");
+      Assert_Raises_OpenCV_Error
+        (Negative'Access, "negative labels must fail");
+      Assert_Raises_OpenCV_Error
+        (Wrong_Depth'Access, "non-Int32 labels must fail");
+      Assert_Raises_OpenCV_Error
+        (Multi_Channel'Access, "multi-channel labels must fail");
+      Assert_Raises_OpenCV_Error
+        (Wrong_Count'Access, "wrong label count must fail");
+      Assert_Raises_OpenCV_Error
+        (Non_Vector'Access, "non-vector labels must fail");
+   end Invalid_Initial_Labels_Are_Rejected;
+
    procedure Non_Continuous_Region_And_Invalid_Inputs
      (Test : in out Mat_Test_Fixture)
    is
@@ -291,6 +541,22 @@ package body K_Means_Tests is
         (Caller.Create
            ("K_Means Region and validation",
             Non_Continuous_Region_And_Invalid_Inputs'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("K_Means initial labels solve and preservation",
+            Initial_Labels_Solve_And_Preserve_Inputs'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("K_Means initial-label vector forms and Region",
+            Label_Vector_Forms_And_Non_Continuous_Region_Work'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("K_Means empty initial cluster and attempts",
+            Empty_Cluster_And_Attempts_Work'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("K_Means initial-label validation",
+            Invalid_Initial_Labels_Are_Rejected'Access));
       return Result'Access;
    end Suite;
 end K_Means_Tests;
