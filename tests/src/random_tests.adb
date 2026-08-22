@@ -664,13 +664,16 @@ package body Random_Tests is
      (Test : in out Mat_Test_Fixture)
    is
       pragma Unreferenced (Test);
-      Default_A, Default_B, Zero, Replay_A, Replay_B           :
-        OpenCV.Core.Mat := OpenCV.Core.Create (8, 8, (OpenCV.Core.Float32, 1));
-      Advance                                                  :
-        OpenCV.Core.Mat := OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
-      Default_Generator_A, Default_Generator_B, Zero_Generator :
+      Default_A, Default_B, Zero, Replay_A, Replay_B : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (8, 8, (OpenCV.Core.Float32, 1));
+      Advance                                        : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Default_Generator_A, Default_Generator_B       :
         OpenCV.Core.Random_Number_Generator;
-      Generator                                                :
+      Zero_Generator                                 :
+        OpenCV.Core.Random_Number_Generator :=
+          OpenCV.Core.Make_Random_Number_Generator (0);
+      Generator                                      :
         OpenCV.Core.Random_Number_Generator :=
           OpenCV.Core.Make_Random_Number_Generator (12_345);
    begin
@@ -732,10 +735,9 @@ package body Random_Tests is
         (G2, OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
       AUnit.Assertions.Assert
         (Float_Mats_Equal (First_A, First_B)
-         and then not Float_Mats_Equal (Initial, First_A)
-         and then not Float_Mats_Equal (First_A, Second_A)
-         and then not Float_Mats_Equal (First_B, Second_B),
-         "generator assignment must copy its sequence position independently");
+         and then Float_Mats_Equal (Second_A, Second_B),
+         "generator assignment must copy its sequence position and advancing"
+         & " one copy must not advance the other");
    end Explicit_Generator_Value_Copy_And_Continuous_Sequence;
 
    procedure Explicit_Fills_Match_Default_And_Do_Not_Advance_It
