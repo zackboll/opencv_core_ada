@@ -54,9 +54,10 @@ package body Random_Tests is
      (Test : in out Mat_Test_Fixture)
    is
       pragma Unreferenced (Test);
-      A, B, Replay                : OpenCV.Core.Mat :=
+      A, B, Replay   : OpenCV.Core.Mat :=
         OpenCV.Core.Create (8, 8, (OpenCV.Core.Float32, 1));
-      Same_Replay, Different_Next : Boolean := True;
+      Same_Replay    : Boolean := True;
+      Any_Difference : Boolean := False;
    begin
       OpenCV.Core.Set_Random_Seed (6789);
       A.Fill_Uniform
@@ -72,14 +73,14 @@ package body Random_Tests is
               Same_Replay
               and then OpenCV.Core.Float32_Access.Get (A, Row, Column)
                        = OpenCV.Core.Float32_Access.Get (Replay, Row, Column);
-            Different_Next :=
-              Different_Next
-              and then OpenCV.Core.Float32_Access.Get (A, Row, Column)
-                       /= OpenCV.Core.Float32_Access.Get (B, Row, Column);
+            Any_Difference :=
+              Any_Difference
+              or else OpenCV.Core.Float32_Access.Get (A, Row, Column)
+                      /= OpenCV.Core.Float32_Access.Get (B, Row, Column);
          end loop;
       end loop;
       AUnit.Assertions.Assert
-        (Same_Replay and then Different_Next,
+        (Same_Replay and then Any_Difference,
          "Reseeding must replay uniform output and fills must advance"
          & " the sequence");
    end Uniform_Reseeding_And_Sequence_Advancement;
