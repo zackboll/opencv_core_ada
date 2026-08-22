@@ -171,10 +171,11 @@ opencv_core_mat_clone(const opencv_core_mat_handle *source,
  * Clusters borrowed Float32 samples with cv::kmeans. Initialization is the
  * stable ABI identifier 0 (random centers) or 1 (k-means++ centers), not an
  * OpenCV flag. All output pointers must be non-null and labels/centers output
- * pointer locations must be distinct. Outputs are initialized to null/null/0;
- * both independently owned handles are allocated before either is published,
- * so failure leaves only safe outputs. The shim rejects arithmetic ranges that
- * OpenCV 4.10 evaluates with signed int before allocation or parallel work.
+ * pointer locations must be distinct. Each supplied output is initialized to
+ * null/null/0 before validation or work. Both independently owned handles are
+ * allocated before either is published, so every failure leaves safe values in
+ * all supplied outputs. The shim rejects arithmetic ranges that OpenCV 4.10
+ * evaluates with signed int before allocation or parallel work.
  */
 opencv_core_status
 opencv_core_mat_kmeans(const opencv_core_mat_handle *samples,

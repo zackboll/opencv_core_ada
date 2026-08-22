@@ -25,11 +25,12 @@ package body K_Means_Tests is
      (Test : in out Mat_Test_Fixture)
    is
       pragma Unreferenced (Test);
-      Samples   : OpenCV.Core.Mat :=
+      Samples                                    : OpenCV.Core.Mat :=
         OpenCV.Core.Create (4, 2, (OpenCV.Core.Float32, 1));
-      Result    : OpenCV.Core.K_Means_Result;
-      Labels    : OpenCV.Core.Mat;
-      Low, High : Long_Float;
+      Result                                     : OpenCV.Core.K_Means_Result;
+      Labels                                     : OpenCV.Core.Mat;
+      Low, High                                  : Long_Float;
+      Center_00, Center_01, Center_10, Center_11 : Long_Float;
    begin
       Set_Point (Samples, 0, 0.0, 0.0);
       Set_Point (Samples, 1, 0.0, 0.0);
@@ -82,12 +83,35 @@ package body K_Means_Tests is
         (OpenCV.Core.Float32_Access.Get (Samples, 0, 0) = 0.0
          and then OpenCV.Core.Float32_Access.Get (Samples, 3, 1) = 10.0,
          "K_Means must not modify Samples");
+      Center_00 :=
+        Long_Float (OpenCV.Core.Float32_Access.Get (Result.Centers, 0, 0));
+      Center_01 :=
+        Long_Float (OpenCV.Core.Float32_Access.Get (Result.Centers, 0, 1));
+      Center_10 :=
+        Long_Float (OpenCV.Core.Float32_Access.Get (Result.Centers, 1, 0));
+      Center_11 :=
+        Long_Float (OpenCV.Core.Float32_Access.Get (Result.Centers, 1, 1));
       Samples.Set_To (OpenCV.Core.Make_Scalar (99.0));
       AUnit.Assertions.Assert
         (Approximately_Equal
            (Long_Float (OpenCV.Core.Float32_Access.Get (Result.Centers, 0, 0)),
-            0.0,
-            10.0)
+            Center_00,
+            1.0E-5)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result.Centers, 0, 1)),
+                     Center_01,
+                     1.0E-5)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result.Centers, 1, 0)),
+                     Center_10,
+                     1.0E-5)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (Result.Centers, 1, 1)),
+                     Center_11,
+                     1.0E-5)
          and then Result.Labels.Rows = 4,
          "K_Means outputs must own storage independently of Samples");
    end Two_Obvious_Clusters_Have_Independent_Outputs;

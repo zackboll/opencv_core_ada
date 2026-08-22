@@ -823,6 +823,16 @@ opencv_core_mat_kmeans(const opencv_core_mat_handle *samples,
                        double *out_compactness) {
     clear_error();
 
+    if (out_labels != nullptr) {
+        *out_labels = nullptr;
+    }
+    if (out_centers != nullptr) {
+        *out_centers = nullptr;
+    }
+    if (out_compactness != nullptr) {
+        *out_compactness = 0.0;
+    }
+
     if (out_labels == nullptr || out_centers == nullptr ||
         out_compactness == nullptr) {
         return invalid_argument("kmeans output pointers must not be null");
@@ -830,9 +840,6 @@ opencv_core_mat_kmeans(const opencv_core_mat_handle *samples,
     if (out_labels == out_centers) {
         return invalid_argument("kmeans output handle pointers must be distinct");
     }
-    *out_labels = nullptr;
-    *out_centers = nullptr;
-    *out_compactness = 0.0;
 
     if (samples == nullptr) {
         return invalid_argument("kmeans samples handle must not be null");
@@ -863,12 +870,10 @@ opencv_core_mat_kmeans(const opencv_core_mat_handle *samples,
     }
     const int32_t dimensions = base_dimensions * channel_count;
 
-    // ABI safety: OpenCV 4.10 computes dims * sizeof(float) as signed int for
-    // its one-row data view before passing that value as a byte stride.
-    if (source.rows == 1 && dimensions > maximum_int / 4) {
-        return invalid_argument("kmeans one-row stride exceeds signed int range");
-    }
-    // ABI safety: OpenCV 4.10 evaluates K * dims while allocating centers.
+    // ABI safety: kmeans.cpp passes K and dims to cv::Mat constructors for
+    // centers and temporary Mats. Their allocation arithmetic is internal to
+    // cv::Mat, but this bound keeps the scalar extent representable in the
+    // signed-int domain used by this OpenCV 4.10 call path.
     if (dimensions > 0 && cluster_count > maximum_int / dimensions) {
         return invalid_argument("kmeans center scalar count exceeds signed int range");
     }
