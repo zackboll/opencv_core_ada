@@ -685,9 +685,10 @@ package body Mat_Channel_Tests is
             Source_Channel      => 0));
    begin
       --  Mix_Channels leaves un-routed destination channels unchanged. Create
-      --  does not initialize Mat storage, so define those expected channels.
-      Destinations (10).Set_To (OpenCV.Core.Make_Scalar (0.0));
-      Destinations (11).Set_To (OpenCV.Core.Make_Scalar (0.0));
+      --  does not initialize Mat storage, so define nonzero sentinels for
+      --  both untouched channels and the explicit zero-fill destination.
+      Destinations (10).Set_To (OpenCV.Core.Make_Scalar (91.0, 92.0, 93.0));
+      Destinations (11).Set_To (OpenCV.Core.Make_Scalar (81.0, 82.0, 83.0));
       OpenCV.Core.UInt8_Vec3_Access.Set (Sources (5), 0, 0, (11, 12, 0));
       OpenCV.Core.UInt8_Vec3_Access.Set (Sources (5), 0, 1, (21, 22, 0));
       OpenCV.Core.UInt8_Access.Set (Sources (6), 0, 0, 13);
@@ -696,15 +697,16 @@ package body Mat_Channel_Tests is
 
       AUnit.Assertions.Assert
         (OpenCV.Core.UInt8_Vec3_Access.Get (Destinations (10), 0, 0)
-         = (12, 13, 0)
+         = (12, 13, 93)
          and then OpenCV.Core.UInt8_Vec3_Access.Get (Destinations (10), 0, 1)
-                  = (22, 23, 0)
+                  = (22, 23, 93)
          and then OpenCV.Core.UInt8_Vec3_Access.Get (Destinations (11), 0, 0)
-                  = (0, 11, 0)
+                  = (0, 11, 83)
          and then OpenCV.Core.UInt8_Vec3_Access.Get (Destinations (11), 0, 1)
-                  = (0, 21, 0),
-         "Mix_Channels must use actual Ada array indices and zero-fill"
-         & " routes");
+                  = (0, 21, 83),
+         "Mix_Channels must use actual Ada array indices, overwrite routed"
+         & " channels, zero-fill its nonzero destination, and preserve"
+         & " un-routed sentinels");
    end Mix_Channels_Uses_Ada_Indices_And_Zero_Fill;
 
    procedure Mix_Channels_Validation_And_Empty_Routes
