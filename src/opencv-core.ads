@@ -306,6 +306,24 @@ package OpenCV.Core is
       end case;
    end record;
 
+   --  Status of a continuous linear-program maximization. Numerical_Loss means
+   --  OpenCV lost a feasible solution through floating-point arithmetic.
+   type Linear_Program_Status is
+     (Unique_Optimum, Multiple_Optima, Unbounded, Infeasible, Numerical_Loss);
+
+   --  Unique_Optimum and Multiple_Optima contain one independently owned
+   --  solution. The remaining statuses deliberately expose no candidate Mat.
+   type Linear_Program_Result (Status : Linear_Program_Status := Infeasible) is
+   record
+      case Status is
+         when Unique_Optimum | Multiple_Optima =>
+            Solution : Mat;
+
+         when Unbounded | Infeasible | Numerical_Loss =>
+            null;
+      end case;
+   end record;
+
    --  Solves the least-squares problem A * X ~= B using OpenCV 4.10
    --  cv::solve with DECOMP_SVD. Unlike Solve, which is the LU API for
    --  ordinary square systems, Self (A) may be square or overdetermined:
@@ -320,6 +338,23 @@ package OpenCV.Core is
    --  and non-contiguous Regions are supported. Numerical rounding and SVD
    --  singular-value thresholding apply.
    function Solve_Least_Squares (Self : Mat; Right_Hand_Side : Mat) return Mat;
+
+   --  Solves a continuous linear program using OpenCV 4.10 simplex: maximize
+   --  c * x subject to A * x <= b and x >= 0. Objective is a non-empty C1
+   --  Float32 or Float64 1 x N or N x 1 vector (N >= 1). Constraints is a
+   --  non-empty C1 Float32 or Float64 M x (N + 1) Mat (M >= 1), with A in its
+   --  first N columns and b in its last column. Input depths may differ, but
+   --  every coefficient must be finite. Constraint_Tolerance is finite and
+   --  nonnegative. Unique_Optimum and Multiple_Optima contain one arbitrary
+   --  optimum as an independently owned N x 1 Float64 C1 Solution; Unbounded,
+   --  Infeasible, and Numerical_Loss contain no Solution. Inputs are unchanged
+   --  and non-contiguous Regions are supported. This is maximization only; a
+   --  caller may negate c when its minimization fits this formulation.
+   function Solve_Linear_Program
+     (Objective            : Mat;
+      Constraints          : Mat;
+      Constraint_Tolerance : Long_Float := 1.0E-12)
+      return Linear_Program_Result;
 
    --  The mathematical real-root result of Solve_Cubic: infinitely many
    --  roots, no real roots, or one, two, or three distinct real roots.

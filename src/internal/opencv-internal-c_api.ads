@@ -70,6 +70,12 @@ package OpenCV.Internal.C_API is
    Depth_Float64 : constant C_Int32 := 6;
    Depth_Float16 : constant C_Int32 := 7;
 
+   LP_Unique         : constant C_Int32 := 0;
+   LP_Multiple       : constant C_Int32 := 1;
+   LP_Unbounded      : constant C_Int32 := 2;
+   LP_Infeasible     : constant C_Int32 := 3;
+   LP_Numerical_Loss : constant C_Int32 := 4;
+
    Norm_L1  : constant C_Int32 := 1;
    Norm_L2  : constant C_Int32 := 2;
    Norm_Inf : constant C_Int32 := 3;
@@ -908,6 +914,17 @@ package OpenCV.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_core_mat_solve_least_squares";
+
+   function Solve_Linear_Program
+     (Objective            : Mat_Handle;
+      Constraints          : Mat_Handle;
+      Constraint_Tolerance : C_Double;
+      LP_Status            : access C_Int32;
+      Solution             : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_solve_linear_program";
 
    --  Execution status is the function result; Root_Count is solveCubic's
    --  mathematical -1/0/1/2/3 result.

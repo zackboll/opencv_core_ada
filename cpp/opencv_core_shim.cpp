@@ -1,6 +1,7 @@
 #include "opencv_core_shim.h"
 
 #include <opencv2/core.hpp>
+#include <opencv2/core/optim.hpp>
 
 #include <cstdio>
 #include <cfloat>
@@ -140,6 +141,28 @@ bool checked_size_add(size_t a, size_t b, size_t *result) noexcept {
 bool checked_align_size_16(size_t value, size_t *result) noexcept {
     const size_t padding = (static_cast<size_t>(16) - (value % 16u)) % 16u;
     return checked_size_add(value, padding, result);
+}
+
+bool solve_lp_workspace_fits_size_t(int variables, int constraints) noexcept {
+    if (variables < 1 || constraints < 1) {
+        return false;
+    }
+
+    size_t big_b_elements = 0;
+    size_t big_b_bytes = 0;
+    if (!checked_size_mul(static_cast<size_t>(constraints),
+                          static_cast<size_t>(variables) + 2,
+                          &big_b_elements) ||
+        !checked_size_mul(big_b_elements, sizeof(double), &big_b_bytes)) {
+        return false;
+    }
+
+    size_t big_c_bytes = 0;
+    size_t solution_bytes = 0;
+    return checked_size_mul(static_cast<size_t>(variables) + 1, sizeof(double),
+                            &big_c_bytes) &&
+           checked_size_mul(static_cast<size_t>(variables), sizeof(double),
+                            &solution_bytes);
 }
 
 // Models OpenCV 4.10 _SVDcompute's AutoBuffer size:
@@ -4192,6 +4215,99 @@ opencv_core_mat_solve_least_squares(
             new opencv_core_mat_handle(solution));
         *out_solution = solution_handle.release();
         return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_solve_linear_program(
+    const opencv_core_mat_handle *objective,
+    const opencv_core_mat_handle *constraints,
+    double constraint_tolerance,
+    int32_t *out_lp_status,
+    opencv_core_mat_handle **out_solution) {
+    clear_error();
+
+    if (out_lp_status != nullptr) {
+        *out_lp_status = OPENCV_CORE_LP_INFEASIBLE;
+    }
+    if (out_solution != nullptr) {
+        *out_solution = nullptr;
+    }
+    if (objective == nullptr || constraints == nullptr ||
+        out_lp_status == nullptr || out_solution == nullptr) {
+        return invalid_argument(
+            "linear program requires Mat handles and non-null output pointers");
+    }
+
+    try {
+        const cv::Mat &c = objective->value;
+        const cv::Mat &a_and_b = constraints->value;
+        const int n = c.rows == 1 ? c.cols : c.rows;
+        const int64_t n64 = static_cast<int64_t>(n);
+        const int64_t m64 = static_cast<int64_t>(a_and_b.rows);
+        const int64_t int_max = std::numeric_limits<int>::max();
+
+        // ABI safety: OpenCV 4.10 initialize_simplex writes B[0] and scans a
+        // constraint row before any OpenCV assertion can establish rows > 0.
+        if (a_and_b.rows < 1) {
+            return invalid_argument("linear program requires at least one constraint row");
+        }
+
+        // ABI safety: OpenCV 4.10 constructs bigC with N + 1 columns and bigB
+        // with Constraints.cols + 1 = N + 2 columns using signed int arithmetic.
+        if (n64 < 1 || n64 > int_max - 2) {
+            return invalid_argument("linear program variable count exceeds safe limits");
+        }
+
+        // ABI safety: OpenCV 4.10 initialize_simplex evaluates c.cols + b.rows
+        // as signed int for indexToRow.resize; overflow can create an undersized
+        // vector subsequently indexed by simplex variable identifiers.
+        if (n64 + 1 + m64 > int_max) {
+            return invalid_argument("linear program N + 1 + M exceeds INT_MAX");
+        }
+
+        // ABI safety: OpenCV 4.10 allocates bigB as M x (N + 2) doubles and
+        // bigC and z as N + 1 and N doubles. A wrapped size_t product could
+        // produce undersized workspace before simplex indexing begins.
+        if (!solve_lp_workspace_fits_size_t(n, a_and_b.rows)) {
+            return invalid_argument("linear program workspace exceeds size_t");
+        }
+
+        // OpenCV 4.10's final feasibility check multiplies the original
+        // constraints by its Float64 candidate z. Convert both inputs first so
+        // all documented Float32/Float64 combinations have a Float64 check.
+        cv::Mat objective64;
+        cv::Mat constraints64;
+        c.convertTo(objective64, CV_64FC1);
+        a_and_b.convertTo(constraints64, CV_64FC1);
+        cv::Mat solution;
+        const int native_status =
+            cv::solveLP(objective64, constraints64, solution, constraint_tolerance);
+        switch (native_status) {
+        case cv::SOLVELP_SINGLE:
+        case cv::SOLVELP_MULTI: {
+            std::unique_ptr<opencv_core_mat_handle> solution_handle(
+                new opencv_core_mat_handle(solution));
+            *out_solution = solution_handle.release();
+            *out_lp_status = native_status == cv::SOLVELP_SINGLE
+                                 ? OPENCV_CORE_LP_UNIQUE
+                                 : OPENCV_CORE_LP_MULTIPLE;
+            return OPENCV_CORE_OK;
+        }
+        case cv::SOLVELP_UNBOUNDED:
+            *out_lp_status = OPENCV_CORE_LP_UNBOUNDED;
+            return OPENCV_CORE_OK;
+        case cv::SOLVELP_UNFEASIBLE:
+            *out_lp_status = OPENCV_CORE_LP_INFEASIBLE;
+            return OPENCV_CORE_OK;
+        case cv::SOLVELP_LOST:
+            *out_lp_status = OPENCV_CORE_LP_NUMERICAL_LOSS;
+            return OPENCV_CORE_OK;
+        default:
+            return invalid_argument("OpenCV solveLP returned an unknown result");
+        }
     } catch (...) {
         return translate_current_exception();
     }

@@ -15,6 +15,13 @@ typedef int32_t opencv_core_status;
 #define OPENCV_CORE_ERROR_UNKNOWN ((opencv_core_status)3)
 #define OPENCV_CORE_ERROR_INVALID_ARGUMENT ((opencv_core_status)4)
 
+/* Stable linear-program result identifiers, translated from cv::SolveLPResult. */
+#define OPENCV_CORE_LP_UNIQUE ((int32_t)0)
+#define OPENCV_CORE_LP_MULTIPLE ((int32_t)1)
+#define OPENCV_CORE_LP_UNBOUNDED ((int32_t)2)
+#define OPENCV_CORE_LP_INFEASIBLE ((int32_t)3)
+#define OPENCV_CORE_LP_NUMERICAL_LOSS ((int32_t)4)
+
 typedef struct opencv_core_mat_handle opencv_core_mat_handle;
 typedef struct opencv_core_file_storage_handle
     opencv_core_file_storage_handle;
@@ -1049,6 +1056,23 @@ opencv_core_status
 opencv_core_mat_solve_least_squares(
     const opencv_core_mat_handle *coefficients,
     const opencv_core_mat_handle *right_hand_side,
+    opencv_core_mat_handle **out_solution);
+
+/*
+ * Solves OpenCV 4.10's continuous maximization linear program. Objective and
+ * constraints are borrowed and unchanged. On successful execution,
+ * out_lp_status receives one OPENCV_CORE_LP_* identifier. Unique and multiple
+ * optima publish an independently owned Float64 column solution; unbounded,
+ * infeasible, and numerical-loss results leave out_solution null. Both output
+ * pointers must be non-null and are initialized to INFEASIBLE and null before
+ * work. The public Ada layer owns mathematical input validation.
+ */
+opencv_core_status
+opencv_core_solve_linear_program(
+    const opencv_core_mat_handle *objective,
+    const opencv_core_mat_handle *constraints,
+    double constraint_tolerance,
+    int32_t *out_lp_status,
     opencv_core_mat_handle **out_solution);
 
 /*

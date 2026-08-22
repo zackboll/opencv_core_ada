@@ -3577,6 +3577,167 @@ package body OpenCV.Core is
       return Result;
    end Solve_Least_Squares;
 
+   function Solve_Linear_Program
+     (Objective            : Mat;
+      Constraints          : Mat;
+      Constraint_Tolerance : Long_Float := 1.0E-12)
+      return Linear_Program_Result
+   is
+      LP_Status  : aliased OpenCV.Internal.C_API.C_Int32 :=
+        OpenCV.Internal.C_API.LP_Infeasible;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+      Variables  : Natural;
+   begin
+      if Objective.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve_Linear_Program requires a non-empty objective");
+      end if;
+      if Objective.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve_Linear_Program requires a single-channel objective");
+      end if;
+      if Objective.Depth /= Float32 and then Objective.Depth /= Float64 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve_Linear_Program requires a Float32 or Float64 objective");
+      end if;
+      if not (Objective.Rows = 1 or else Objective.Columns = 1) then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve_Linear_Program requires a row or column objective vector");
+      end if;
+      Variables :=
+        (if Objective.Rows = 1 then Objective.Columns else Objective.Rows);
+      if Variables = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve_Linear_Program requires at least one variable");
+      end if;
+      if Constraints.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve_Linear_Program requires non-empty constraints");
+      end if;
+      if Constraints.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve_Linear_Program requires single-channel constraints");
+      end if;
+      if Constraints.Depth /= Float32 and then Constraints.Depth /= Float64
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve_Linear_Program requires Float32 or Float64 constraints");
+      end if;
+      if Constraints.Rows = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve_Linear_Program requires at least one constraint row");
+      end if;
+      if Constraints.Columns /= Variables + 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve_Linear_Program requires Constraints.Columns = N + 1");
+      end if;
+      if not Objective.Check_Range.Valid
+        or else not Constraints.Check_Range.Valid
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve_Linear_Program requires finite coefficients");
+      end if;
+      if not (Constraint_Tolerance >= 0.0
+              and then Constraint_Tolerance <= Long_Float'Last)
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Solve_Linear_Program requires a finite nonnegative tolerance");
+      end if;
+
+      Status :=
+        OpenCV.Internal.C_API.Solve_Linear_Program
+          (Objective            => Objective.Handle,
+           Constraints          => Constraints.Handle,
+           Constraint_Tolerance =>
+             OpenCV.Internal.C_API.C_Double (Constraint_Tolerance),
+           LP_Status            => LP_Status'Access,
+           Solution             => New_Handle'Access);
+      if Status /= OpenCV.Internal.C_API.Success then
+         declare
+            Diagnostic : constant String :=
+              OpenCV.Internal.C_API.Last_Error_Message;
+         begin
+            if New_Handle /= OpenCV.Internal.C_API.Null_Mat_Handle then
+               OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+            end if;
+            if Diagnostic'Length = 0 then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  "linear program solve operation failed");
+            else
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  "linear program solve operation failed: " & Diagnostic);
+            end if;
+         end;
+      end if;
+
+      case LP_Status is
+         when OpenCV.Internal.C_API.LP_Unique
+            | OpenCV.Internal.C_API.LP_Multiple       =>
+            if New_Handle = OpenCV.Internal.C_API.Null_Mat_Handle then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  "linear program returned an optimum without a solution");
+            end if;
+            if LP_Status = OpenCV.Internal.C_API.LP_Unique then
+               declare
+                  Result : Linear_Program_Result (Status => Unique_Optimum);
+               begin
+                  OpenCV.Internal.C_API.Mat_Destroy (Result.Solution.Handle);
+                  Result.Solution.Handle := New_Handle;
+                  return Result;
+               end;
+            else
+               declare
+                  Result : Linear_Program_Result (Status => Multiple_Optima);
+               begin
+                  OpenCV.Internal.C_API.Mat_Destroy (Result.Solution.Handle);
+                  Result.Solution.Handle := New_Handle;
+                  return Result;
+               end;
+            end if;
+
+         when OpenCV.Internal.C_API.LP_Unbounded
+            | OpenCV.Internal.C_API.LP_Infeasible
+            | OpenCV.Internal.C_API.LP_Numerical_Loss =>
+            if New_Handle /= OpenCV.Internal.C_API.Null_Mat_Handle then
+               OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  "linear program returned a solution for a non-optimal"
+                  & " status");
+            end if;
+            if LP_Status = OpenCV.Internal.C_API.LP_Unbounded then
+               return (Status => Unbounded);
+            elsif LP_Status = OpenCV.Internal.C_API.LP_Infeasible then
+               return (Status => Infeasible);
+            else
+               return (Status => Numerical_Loss);
+            end if;
+
+         when others                                  =>
+            OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+            Ada.Exceptions.Raise_Exception
+              (OpenCV_Error'Identity,
+               "linear program returned an invalid binding status");
+      end case;
+   end Solve_Linear_Program;
+
    function Solve_Cubic (Coefficients : Mat) return Cubic_Solution_Result is
       Root_Count : aliased OpenCV.Internal.C_API.C_Int32 := 0;
       New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
