@@ -44,6 +44,20 @@ typedef struct {
  */
 opencv_core_status opencv_core_set_rng_seed(int32_t seed);
 
+/* Draws cv::RNG::next() from caller-owned state. */
+opencv_core_status
+opencv_core_rng_next(uint64_t *rng_state, uint32_t *out_value);
+
+/* Draws cv::RNG::uniform(double, double) from caller-owned state. */
+opencv_core_status
+opencv_core_rng_uniform_double(uint64_t *rng_state, double lower_bound,
+                               double upper_bound, double *out_value);
+
+/* Draws cv::RNG::gaussian(double) from caller-owned state. */
+opencv_core_status
+opencv_core_rng_gaussian_double(uint64_t *rng_state, double standard_deviation,
+                                double *out_value);
+
 typedef struct {
     uint8_t component_0;
     uint8_t component_1;

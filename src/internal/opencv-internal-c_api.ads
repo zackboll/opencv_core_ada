@@ -21,6 +21,7 @@ package OpenCV.Internal.C_API is
 
    subtype C_Int32 is Interfaces.Integer_32;
    subtype C_UInt8 is Interfaces.Unsigned_8;
+   subtype C_UInt32 is Interfaces.Unsigned_32;
    subtype C_UInt64 is Interfaces.Unsigned_64;
    subtype C_Float32 is Interfaces.C.C_float;
    subtype C_Double is Interfaces.C.double;
@@ -828,6 +829,28 @@ package OpenCV.Internal.C_API is
 
    function Mat_Set_To (Self : Mat_Handle; Value : access Scalar) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_set_to";
+
+   function RNG_Next
+     (RNG_State : access C_UInt64; Value : access C_UInt32) return Status
+   with Import, Convention => C, External_Name => "opencv_core_rng_next";
+
+   function RNG_Uniform_Double
+     (RNG_State                : access C_UInt64;
+      Lower_Bound, Upper_Bound : C_Double;
+      Value                    : access C_Double) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_rng_uniform_double";
+
+   function RNG_Gaussian_Double
+     (RNG_State          : access C_UInt64;
+      Standard_Deviation : C_Double;
+      Value              : access C_Double) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_rng_gaussian_double";
 
    function Mat_Fill_Uniform
      (Destination : Mat_Handle; Lower_Bound, Upper_Bound : access Scalar)

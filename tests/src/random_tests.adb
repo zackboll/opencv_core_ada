@@ -11,6 +11,7 @@ with Mat_Test_Support;
 package body Random_Tests is
 
    use type Interfaces.IEEE_Float_32;
+   use type Interfaces.Unsigned_32;
    use type Interfaces.Unsigned_8;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
@@ -956,6 +957,223 @@ package body Random_Tests is
          & " Region views");
    end Explicit_Generator_Supports_Non_Continuous_Regions;
 
+   procedure Scalar_Next_Replay_And_Source_Value
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left, Right : OpenCV.Core.Random_Number_Generator :=
+        OpenCV.Core.Make_Random_Number_Generator (1);
+      A, B        : Interfaces.Unsigned_32;
+      Replay      : Boolean := True;
+   begin
+      OpenCV.Core.Next_Random (Left, A);
+      OpenCV.Core.Next_Random (Right, B);
+      Replay := A = 4_164_903_690 and then A = B;
+      for Index in 1 .. 20 loop
+         OpenCV.Core.Next_Random (Left, A);
+         OpenCV.Core.Next_Random (Right, B);
+         Replay := Replay and then A = B;
+      end loop;
+      AUnit.Assertions.Assert
+        (Replay,
+         "Next_Random must replay and seed one must use OpenCV 4.10 MWC next");
+   end Scalar_Next_Replay_And_Source_Value;
+
+   procedure Scalar_Next_Value_Copy_Advances_One_Step
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      G1         : OpenCV.Core.Random_Number_Generator :=
+        OpenCV.Core.Make_Random_Number_Generator (93);
+      G2         : OpenCV.Core.Random_Number_Generator := G1;
+      A, B, C, D : Interfaces.Unsigned_32;
+   begin
+      OpenCV.Core.Next_Random (G1, A);
+      OpenCV.Core.Next_Random (G2, B);
+      OpenCV.Core.Next_Random (G1, C);
+      OpenCV.Core.Next_Random (G2, D);
+      AUnit.Assertions.Assert
+        (A = B and then C = D,
+         "Next_Random must advance copied generators exactly one step");
+   end Scalar_Next_Value_Copy_Advances_One_Step;
+
+   procedure Scalar_Uniform_Range_And_Replay (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      G1, G2 : OpenCV.Core.Random_Number_Generator :=
+        OpenCV.Core.Make_Random_Number_Generator (4_321);
+      A, B   : Long_Float;
+      Valid  : Boolean := True;
+   begin
+      for Index in 1 .. 100 loop
+         OpenCV.Core.Uniform_Random (G1, -2.0, 3.0, A);
+         OpenCV.Core.Uniform_Random (G2, -2.0, 3.0, B);
+         Valid := Valid and then A >= -2.0 and then A < 3.0 and then A = B;
+      end loop;
+      AUnit.Assertions.Assert
+        (Valid, "scalar uniform draws must be half-open and deterministic");
+   end Scalar_Uniform_Range_And_Replay;
+
+   procedure Scalar_Uniform_Consumes_Two_Steps_Including_Equal_Bounds
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Uniform_Generator                                   :
+        OpenCV.Core.Random_Number_Generator :=
+          OpenCV.Core.Make_Random_Number_Generator (707);
+      Next_Generator                                      :
+        OpenCV.Core.Random_Number_Generator := Uniform_Generator;
+      Value                                               : Long_Float;
+      Ignored_1, Ignored_2, After_Uniform, After_Two_Next :
+        Interfaces.Unsigned_32;
+   begin
+      OpenCV.Core.Uniform_Random (Uniform_Generator, 0.0, 1.0, Value);
+      OpenCV.Core.Next_Random (Next_Generator, Ignored_1);
+      OpenCV.Core.Next_Random (Next_Generator, Ignored_2);
+      OpenCV.Core.Next_Random (Uniform_Generator, After_Uniform);
+      OpenCV.Core.Next_Random (Next_Generator, After_Two_Next);
+      AUnit.Assertions.Assert
+        (After_Uniform = After_Two_Next,
+         "scalar uniform must consume exactly two Next steps");
+
+      Uniform_Generator := OpenCV.Core.Make_Random_Number_Generator (707);
+      Next_Generator := Uniform_Generator;
+      OpenCV.Core.Uniform_Random (Uniform_Generator, 5.0, 5.0, Value);
+      OpenCV.Core.Next_Random (Next_Generator, Ignored_1);
+      OpenCV.Core.Next_Random (Next_Generator, Ignored_2);
+      OpenCV.Core.Next_Random (Uniform_Generator, After_Uniform);
+      OpenCV.Core.Next_Random (Next_Generator, After_Two_Next);
+      AUnit.Assertions.Assert
+        (Value = 5.0 and then After_Uniform = After_Two_Next,
+         "equal scalar uniform bounds must return the bound and consume"
+         & " two steps");
+   end Scalar_Uniform_Consumes_Two_Steps_Including_Equal_Bounds;
+
+   procedure Scalar_Uniform_Invalid_Arguments_Preserve_State
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      G1    : OpenCV.Core.Random_Number_Generator :=
+        OpenCV.Core.Make_Random_Number_Generator (888);
+      G2    : OpenCV.Core.Random_Number_Generator := G1;
+      Value : Long_Float;
+      A, B  : Interfaces.Unsigned_32;
+      procedure Reversed_Bounds is
+      begin
+         OpenCV.Core.Uniform_Random (G1, 2.0, 1.0, Value);
+      end Reversed_Bounds;
+      procedure Infinite_Width is
+      begin
+         OpenCV.Core.Uniform_Random
+           (G1, Long_Float'First, Long_Float'Last, Value);
+      end Infinite_Width;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Reversed_Bounds'Access, "scalar uniform must reject reversed bounds");
+      Assert_Raises_OpenCV_Error
+        (Infinite_Width'Access,
+         "scalar uniform must reject infinite C double width");
+      OpenCV.Core.Next_Random (G1, A);
+      OpenCV.Core.Next_Random (G2, B);
+      AUnit.Assertions.Assert
+        (A = B, "invalid scalar uniform arguments must preserve state");
+   end Scalar_Uniform_Invalid_Arguments_Preserve_State;
+
+   procedure Scalar_Gaussian_Replay_Zero_And_Invalid_Arguments
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      G1, G2         : OpenCV.Core.Random_Number_Generator :=
+        OpenCV.Core.Make_Random_Number_Generator (6_543);
+      A, B           : Long_Float;
+      Next_1, Next_2 : Interfaces.Unsigned_32;
+      procedure Negative_Deviation is
+      begin
+         OpenCV.Core.Gaussian_Random (G1, -1.0, A);
+      end Negative_Deviation;
+   begin
+      for Index in 1 .. 20 loop
+         OpenCV.Core.Gaussian_Random (G1, 2.0, A);
+         OpenCV.Core.Gaussian_Random (G2, 2.0, B);
+         AUnit.Assertions.Assert (A = B, "scalar Gaussian draws must replay");
+      end loop;
+      OpenCV.Core.Gaussian_Random (G1, 0.0, A);
+      AUnit.Assertions.Assert
+        (A = 0.0, "zero Gaussian deviation must return zero");
+      G2 := G1;
+      Assert_Raises_OpenCV_Error
+        (Negative_Deviation'Access,
+         "scalar Gaussian must reject negative standard deviation");
+      OpenCV.Core.Next_Random (G1, Next_1);
+      OpenCV.Core.Next_Random (G2, Next_2);
+      AUnit.Assertions.Assert
+        (Next_1 = Next_2,
+         "invalid scalar Gaussian arguments must preserve state");
+   end Scalar_Gaussian_Replay_Zero_And_Invalid_Arguments;
+
+   procedure Scalar_And_Mat_Operations_Share_Explicit_State
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      A, B             : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 4, (OpenCV.Core.Float32, 1));
+      G1, G2           : OpenCV.Core.Random_Number_Generator :=
+        OpenCV.Core.Make_Random_Number_Generator (123);
+      First_1, First_2 : Interfaces.Unsigned_32;
+      Last_1, Last_2   : Long_Float;
+   begin
+      OpenCV.Core.Next_Random (G1, First_1);
+      A.Fill_Uniform
+        (G1, OpenCV.Core.Make_Scalar (-1.0), OpenCV.Core.Make_Scalar (1.0));
+      OpenCV.Core.Gaussian_Random (G1, 2.0, Last_1);
+      OpenCV.Core.Next_Random (G2, First_2);
+      B.Fill_Uniform
+        (G2, OpenCV.Core.Make_Scalar (-1.0), OpenCV.Core.Make_Scalar (1.0));
+      OpenCV.Core.Gaussian_Random (G2, 2.0, Last_2);
+      AUnit.Assertions.Assert
+        (First_1 = First_2
+         and then Last_1 = Last_2
+         and then Float_Mats_Equal (A, B),
+         "scalar and Mat operations must share one explicit generator"
+         & " sequence");
+   end Scalar_And_Mat_Operations_Share_Explicit_State;
+
+   procedure Scalar_Draws_Do_Not_Affect_Default_And_Zero_Seed
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Reference, Observed : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 4, (OpenCV.Core.Float32, 1));
+      Explicit            : OpenCV.Core.Random_Number_Generator :=
+        OpenCV.Core.Make_Random_Number_Generator (77);
+      Default_Generator   : OpenCV.Core.Random_Number_Generator :=
+        OpenCV.Core.Make_Random_Number_Generator;
+      Zero_Generator      : OpenCV.Core.Random_Number_Generator :=
+        OpenCV.Core.Make_Random_Number_Generator (0);
+      U1, U2, Value       : Long_Float;
+      N1, N2              : Interfaces.Unsigned_32;
+   begin
+      OpenCV.Core.Set_Random_Seed (321);
+      Reference.Fill_Uniform
+        (OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+      OpenCV.Core.Set_Random_Seed (321);
+      OpenCV.Core.Next_Random (Explicit, N1);
+      OpenCV.Core.Uniform_Random (Explicit, -1.0, 1.0, Value);
+      OpenCV.Core.Gaussian_Random (Explicit, 1.0, Value);
+      Observed.Fill_Uniform
+        (OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+      OpenCV.Core.Next_Random (Default_Generator, N1);
+      OpenCV.Core.Next_Random (Zero_Generator, N2);
+      OpenCV.Core.Uniform_Random (Default_Generator, 0.0, 1.0, U1);
+      OpenCV.Core.Uniform_Random (Zero_Generator, 0.0, 1.0, U2);
+      AUnit.Assertions.Assert
+        (Float_Mats_Equal (Reference, Observed)
+         and then N1 = N2
+         and then U1 = U2,
+         "scalar draws must not affect theRNG and zero seed must match"
+         & " default");
+   end Scalar_Draws_Do_Not_Affect_Default_And_Zero_Seed;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -1058,6 +1276,38 @@ package body Random_Tests is
         (Caller.Create
            ("Explicit generator supports non-continuous Regions",
             Explicit_Generator_Supports_Non_Continuous_Regions'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Scalar Next replay and source value",
+            Scalar_Next_Replay_And_Source_Value'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Scalar Next value copy advances one step",
+            Scalar_Next_Value_Copy_Advances_One_Step'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Scalar uniform range and replay",
+            Scalar_Uniform_Range_And_Replay'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Scalar uniform consumes two steps including equal bounds",
+            Scalar_Uniform_Consumes_Two_Steps_Including_Equal_Bounds'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Scalar uniform invalid arguments preserve state",
+            Scalar_Uniform_Invalid_Arguments_Preserve_State'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Scalar Gaussian replay zero and invalid arguments",
+            Scalar_Gaussian_Replay_Zero_And_Invalid_Arguments'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Scalar and Mat operations share explicit state",
+            Scalar_And_Mat_Operations_Share_Explicit_State'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Scalar draws do not affect default and zero seed",
+            Scalar_Draws_Do_Not_Affect_Default_And_Zero_Seed'Access));
       return Result'Access;
    end Suite;
 

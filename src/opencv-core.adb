@@ -7,6 +7,7 @@ package body OpenCV.Core is
    Maximum_Jacobi_Dimension : constant Natural := 8_460;
 
    use type OpenCV.Internal.C_API.C_Boolean;
+   use type OpenCV.Internal.C_API.C_Double;
    use type OpenCV.Internal.C_API.Mat_Handle;
    use type OpenCV.Internal.C_API.C_UInt64;
    use type OpenCV.Internal.C_API.C_Int32;
@@ -3164,6 +3165,115 @@ package body OpenCV.Core is
    begin
       Generator.State := (if Seed = 0 then 16#FFFF_FFFF# else Seed);
    end Reseed;
+
+   procedure Raise_Invalid_Random_Argument (Message : String) is
+   begin
+      Ada.Exceptions.Raise_Exception (OpenCV_Error'Identity, Message);
+   end Raise_Invalid_Random_Argument;
+
+   function Is_Finite_C_Double (Value : Long_Float) return Boolean
+   is (Value'Valid
+       and then Value = Value
+       and then Value >= Long_Float (OpenCV.Internal.C_API.C_Double'First)
+       and then Value <= Long_Float (OpenCV.Internal.C_API.C_Double'Last));
+
+   procedure Validate_Uniform_Random_Bounds
+     (Lower_Bound : Long_Float;
+      Upper_Bound : Long_Float;
+      C_Lower     : out OpenCV.Internal.C_API.C_Double;
+      C_Upper     : out OpenCV.Internal.C_API.C_Double) is
+   begin
+      if not Is_Finite_C_Double (Lower_Bound)
+        or else not Is_Finite_C_Double (Upper_Bound)
+      then
+         Raise_Invalid_Random_Argument
+           ("Uniform random bounds must be finite C double values");
+      end if;
+
+      if Lower_Bound > Upper_Bound then
+         Raise_Invalid_Random_Argument
+           ("Uniform random lower bound must not exceed upper bound");
+      end if;
+
+      C_Lower := OpenCV.Internal.C_API.C_Double (Lower_Bound);
+      C_Upper := OpenCV.Internal.C_API.C_Double (Upper_Bound);
+
+      --  This comparison avoids evaluating the potentially overflowing
+      --  subtraction OpenCV performs for the distribution width.
+      if C_Lower < 0.0
+        and then C_Upper > 0.0
+        and then C_Upper > OpenCV.Internal.C_API.C_Double'Last + C_Lower
+      then
+         Raise_Invalid_Random_Argument
+           ("Uniform random bound width must be finite C double");
+      end if;
+   end Validate_Uniform_Random_Bounds;
+
+   procedure Next_Random
+     (Generator : in out Random_Number_Generator;
+      Value     : out Interfaces.Unsigned_32)
+   is
+      C_State : aliased OpenCV.Internal.C_API.C_UInt64 :=
+        OpenCV.Internal.C_API.C_UInt64 (Generator.State);
+      C_Value : aliased OpenCV.Internal.C_API.C_UInt32 := 0;
+      Result  : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.RNG_Next (C_State'Access, C_Value'Access);
+   begin
+      Raise_On_Error (Result, "OpenCV random next operation");
+      Generator.State := Interfaces.Unsigned_64 (C_State);
+      Value := Interfaces.Unsigned_32 (C_Value);
+   end Next_Random;
+
+   procedure Uniform_Random
+     (Generator   : in out Random_Number_Generator;
+      Lower_Bound : Long_Float;
+      Upper_Bound : Long_Float;
+      Value       : out Long_Float)
+   is
+      C_Lower : OpenCV.Internal.C_API.C_Double;
+      C_Upper : OpenCV.Internal.C_API.C_Double;
+      C_State : aliased OpenCV.Internal.C_API.C_UInt64 :=
+        OpenCV.Internal.C_API.C_UInt64 (Generator.State);
+      C_Value : aliased OpenCV.Internal.C_API.C_Double := 0.0;
+      Result  : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Uniform_Random_Bounds
+        (Lower_Bound, Upper_Bound, C_Lower, C_Upper);
+      Result :=
+        OpenCV.Internal.C_API.RNG_Uniform_Double
+          (C_State'Access, C_Lower, C_Upper, C_Value'Access);
+      Raise_On_Error (Result, "OpenCV uniform random operation");
+      Generator.State := Interfaces.Unsigned_64 (C_State);
+      Value := Long_Float (C_Value);
+   end Uniform_Random;
+
+   procedure Gaussian_Random
+     (Generator          : in out Random_Number_Generator;
+      Standard_Deviation : Long_Float;
+      Value              : out Long_Float)
+   is
+      C_State : aliased OpenCV.Internal.C_API.C_UInt64 :=
+        OpenCV.Internal.C_API.C_UInt64 (Generator.State);
+      C_Value : aliased OpenCV.Internal.C_API.C_Double := 0.0;
+      Result  : OpenCV.Internal.C_API.Status;
+   begin
+      if not Is_Finite_C_Double (Standard_Deviation)
+        or else Standard_Deviation < 0.0
+      then
+         Raise_Invalid_Random_Argument
+           ("Gaussian random standard deviation must be finite and"
+            & " nonnegative");
+      end if;
+
+      Result :=
+        OpenCV.Internal.C_API.RNG_Gaussian_Double
+          (C_State'Access,
+           OpenCV.Internal.C_API.C_Double (Standard_Deviation),
+           C_Value'Access);
+      Raise_On_Error (Result, "OpenCV Gaussian random operation");
+      Generator.State := Interfaces.Unsigned_64 (C_State);
+      Value := Long_Float (C_Value);
+   end Gaussian_Random;
 
    procedure Validate_Random_Fill_Destination
      (Self : Mat; Operation : String; Normal : Boolean) is

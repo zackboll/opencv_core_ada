@@ -3846,6 +3846,84 @@ opencv_core_status opencv_core_set_rng_seed(int32_t seed) {
     }
 }
 
+opencv_core_status opencv_core_rng_next(uint64_t *rng_state,
+                                        uint32_t *out_value) {
+    clear_error();
+
+    if (out_value == nullptr) {
+        return invalid_argument("out_value must not be null");
+    }
+    *out_value = 0;
+
+    if (rng_state == nullptr) {
+        return invalid_argument("RNG state must not be null");
+    }
+
+    try {
+        cv::RNG rng(*rng_state);
+        const uint32_t result = static_cast<uint32_t>(rng.next());
+        const uint64_t final_state = rng.state;
+        *out_value = result;
+        *rng_state = final_state;
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status opencv_core_rng_uniform_double(uint64_t *rng_state,
+                                                  double lower_bound,
+                                                  double upper_bound,
+                                                  double *out_value) {
+    clear_error();
+
+    if (out_value == nullptr) {
+        return invalid_argument("out_value must not be null");
+    }
+    *out_value = 0.0;
+
+    if (rng_state == nullptr) {
+        return invalid_argument("RNG state must not be null");
+    }
+
+    try {
+        cv::RNG rng(*rng_state);
+        const double result = rng.uniform(lower_bound, upper_bound);
+        const uint64_t final_state = rng.state;
+        *out_value = result;
+        *rng_state = final_state;
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status opencv_core_rng_gaussian_double(uint64_t *rng_state,
+                                                   double standard_deviation,
+                                                   double *out_value) {
+    clear_error();
+
+    if (out_value == nullptr) {
+        return invalid_argument("out_value must not be null");
+    }
+    *out_value = 0.0;
+
+    if (rng_state == nullptr) {
+        return invalid_argument("RNG state must not be null");
+    }
+
+    try {
+        cv::RNG rng(*rng_state);
+        const double result = rng.gaussian(standard_deviation);
+        const uint64_t final_state = rng.state;
+        *out_value = result;
+        *rng_state = final_state;
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
 opencv_core_status
 opencv_core_mat_fill_uniform(opencv_core_mat_handle *destination,
                              const opencv_core_scalar *lower_bound,
