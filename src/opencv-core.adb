@@ -4914,6 +4914,133 @@ package body OpenCV.Core is
       return Linear_Discriminant_Analysis_Impl (Samples, Labels, Components);
    end Linear_Discriminant_Analysis;
 
+   procedure Validate_LDA_Basis (Basis : Linear_Discriminant_Analysis_Result)
+   is
+      Feature_Count   : Natural;
+      Component_Count : Natural;
+   begin
+      if Basis.Eigenvectors.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "LDA basis Eigenvectors must be a non-empty Mat");
+      end if;
+      if Basis.Eigenvectors.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "LDA basis Eigenvectors must be a single-channel Mat");
+      end if;
+      if Basis.Eigenvectors.Depth /= Float64 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "LDA basis Eigenvectors must be a Float64 Mat");
+      end if;
+
+      Feature_Count := Basis.Eigenvectors.Rows;
+      Component_Count := Basis.Eigenvectors.Columns;
+      if Feature_Count = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "LDA basis Eigenvectors must have at least one row");
+      end if;
+      if Component_Count = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "LDA basis Eigenvectors must have at least one column");
+      end if;
+      if Component_Count > Feature_Count then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "LDA basis component count must not exceed the feature count");
+      end if;
+   end Validate_LDA_Basis;
+
+   procedure Validate_LDA_Source (Self : Mat; Operation : String) is
+   begin
+      if Self.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, Operation & " requires a non-empty Mat");
+      end if;
+      if Self.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            Operation & " requires a single-channel Mat");
+      end if;
+      if Self.Depth /= Float32 and then Self.Depth /= Float64 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            Operation & " requires a Float32 or Float64 Mat");
+      end if;
+      if Self.Rows = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, Operation & " requires at least one row");
+      end if;
+   end Validate_LDA_Source;
+
+   function Call_LDA_Projection
+     (Self    : Mat;
+      Basis   : Linear_Discriminant_Analysis_Result;
+      Project : Boolean) return Mat
+   is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+      Operation  : constant String :=
+        (if Project
+         then "Mat LDA project operation"
+         else "Mat LDA reconstruct operation");
+   begin
+      if Project then
+         Status :=
+           OpenCV.Internal.C_API.Mat_LDA_Project
+             (Self.Handle, Basis.Eigenvectors.Handle, New_Handle'Access);
+      else
+         Status :=
+           OpenCV.Internal.C_API.Mat_LDA_Reconstruct
+             (Self.Handle, Basis.Eigenvectors.Handle, New_Handle'Access);
+      end if;
+      if Status /= OpenCV.Internal.C_API.Success then
+         OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
+         Raise_On_Error (Status, Operation);
+      end if;
+      if New_Handle = OpenCV.Internal.C_API.Null_Mat_Handle then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            Operation & " returned a null result handle");
+      end if;
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Call_LDA_Projection;
+
+   function LDA_Project
+     (Self : Mat; Basis : Linear_Discriminant_Analysis_Result) return Mat is
+   begin
+      Validate_LDA_Source (Self, "LDA_Project");
+      Validate_LDA_Basis (Basis);
+      if Self.Columns /= Basis.Eigenvectors.Rows then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "LDA_Project requires Self.Columns to equal the basis"
+            & " feature count");
+      end if;
+      return Call_LDA_Projection (Self, Basis, Project => True);
+   end LDA_Project;
+
+   function LDA_Reconstruct
+     (Self : Mat; Basis : Linear_Discriminant_Analysis_Result) return Mat is
+   begin
+      Validate_LDA_Source (Self, "LDA_Reconstruct");
+      Validate_LDA_Basis (Basis);
+      if Self.Columns /= Basis.Eigenvectors.Columns then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "LDA_Reconstruct requires Self.Columns to equal the basis"
+            & " component count");
+      end if;
+      return Call_LDA_Projection (Self, Basis, Project => False);
+   end LDA_Reconstruct;
+
    function Validate_Principal_Component_Analysis
      (Self        : Mat;
       Orientation : Sample_Orientation;

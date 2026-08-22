@@ -4976,6 +4976,84 @@ opencv_core_mat_linear_discriminant_analysis(
 }
 
 opencv_core_status
+opencv_core_mat_lda_project(const opencv_core_mat_handle *source,
+                            const opencv_core_mat_handle *eigenvectors,
+                            opencv_core_mat_handle **out_result) {
+    clear_error();
+
+    if (out_result != nullptr) {
+        *out_result = nullptr;
+    }
+    if (source == nullptr || eigenvectors == nullptr || out_result == nullptr) {
+        return invalid_argument("LDA projection Mat handles must not be null");
+    }
+
+    const cv::Mat &source_mat = source->value;
+    const cv::Mat &basis_mat = eigenvectors->value;
+    // ABI safety: cv::LDA::subspaceProject converts to W.type() then enters
+    // cv::gemm. Reject malformed raw operands before that internal GEMM path
+    // can interpret incompatible element widths or dimensions.
+    if (basis_mat.type() != CV_64FC1 || basis_mat.rows < 1 ||
+        basis_mat.cols < 1 || basis_mat.cols > basis_mat.rows) {
+        return invalid_argument("LDA eigenvectors must be Float64 C1 D x K with 1 <= K <= D");
+    }
+    if ((source_mat.type() != CV_32FC1 && source_mat.type() != CV_64FC1) ||
+        source_mat.rows < 1 || source_mat.cols != basis_mat.rows) {
+        return invalid_argument("LDA projection source must be Float32 or Float64 C1 N x D");
+    }
+
+    try {
+        cv::Mat result =
+            cv::LDA::subspaceProject(basis_mat, cv::Mat(), source_mat);
+        std::unique_ptr<opencv_core_mat_handle> result_handle(
+            new opencv_core_mat_handle(result));
+        *out_result = result_handle.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_lda_reconstruct(const opencv_core_mat_handle *coordinates,
+                                const opencv_core_mat_handle *eigenvectors,
+                                opencv_core_mat_handle **out_result) {
+    clear_error();
+
+    if (out_result != nullptr) {
+        *out_result = nullptr;
+    }
+    if (coordinates == nullptr || eigenvectors == nullptr || out_result == nullptr) {
+        return invalid_argument("LDA reconstruction Mat handles must not be null");
+    }
+
+    const cv::Mat &coordinate_mat = coordinates->value;
+    const cv::Mat &basis_mat = eigenvectors->value;
+    // ABI safety: cv::LDA::subspaceReconstruct converts to W.type() then
+    // enters cv::gemm with GEMM_2_T. Reject malformed raw operands before that
+    // internal GEMM path can interpret incompatible element widths or dimensions.
+    if (basis_mat.type() != CV_64FC1 || basis_mat.rows < 1 ||
+        basis_mat.cols < 1 || basis_mat.cols > basis_mat.rows) {
+        return invalid_argument("LDA eigenvectors must be Float64 C1 D x K with 1 <= K <= D");
+    }
+    if ((coordinate_mat.type() != CV_32FC1 && coordinate_mat.type() != CV_64FC1) ||
+        coordinate_mat.rows < 1 || coordinate_mat.cols != basis_mat.cols) {
+        return invalid_argument("LDA coordinates must be Float32 or Float64 C1 N x K");
+    }
+
+    try {
+        cv::Mat result =
+            cv::LDA::subspaceReconstruct(basis_mat, cv::Mat(), coordinate_mat);
+        std::unique_ptr<opencv_core_mat_handle> result_handle(
+            new opencv_core_mat_handle(result));
+        *out_result = result_handle.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_principal_component_analysis_retained_variance(
     const opencv_core_mat_handle *source, int32_t orientation,
     double retained_variance, opencv_core_mat_handle **out_mean,

@@ -1273,6 +1273,33 @@ opencv_core_mat_linear_discriminant_analysis(
     opencv_core_mat_handle **out_eigenvectors);
 
 /*
+ * Projects row-aligned Float32 or Float64 C1 samples through a borrowed LDA
+ * discriminant basis. eigenvectors must be CV_64FC1 D x K with 1 <= K <= D;
+ * source must be N x D with N >= 1. This calls OpenCV 4.10
+ * cv::LDA::subspaceProject(eigenvectors, cv::Mat(), source), so source is
+ * converted to the basis type and the independently owned Float64 C1 result
+ * is source * eigenvectors. Inputs are borrowed and unchanged.
+ */
+opencv_core_status
+opencv_core_mat_lda_project(const opencv_core_mat_handle *source,
+                            const opencv_core_mat_handle *eigenvectors,
+                            opencv_core_mat_handle **out_result);
+
+/*
+ * Reconstructs row-aligned Float32 or Float64 C1 LDA coordinates through a
+ * borrowed discriminant basis. eigenvectors must be CV_64FC1 D x K with
+ * 1 <= K <= D; coordinates must be N x K with N >= 1. This calls OpenCV
+ * 4.10 cv::LDA::subspaceReconstruct(eigenvectors, cv::Mat(), coordinates),
+ * so coordinates are converted to the basis type and the independently owned
+ * Float64 C1 result is coordinates * eigenvectors^T. Inputs are borrowed and
+ * unchanged.
+ */
+opencv_core_status
+opencv_core_mat_lda_reconstruct(const opencv_core_mat_handle *coordinates,
+                                const opencv_core_mat_handle *eigenvectors,
+                                opencv_core_mat_handle **out_result);
+
+/*
  * Computes the PCA basis of a borrowed sample Mat using the OpenCV
  * 4.10 cv::PCA retained-variance overload. orientation is 0
  * (samples are rows) or 1 (samples are columns). retained_variance

@@ -1044,6 +1044,24 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_linear_discriminant_analysis";
 
+   function Mat_LDA_Project
+     (Source       : Mat_Handle;
+      Eigenvectors : Mat_Handle;
+      Result       : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_lda_project";
+
+   function Mat_LDA_Reconstruct
+     (Coordinates  : Mat_Handle;
+      Eigenvectors : Mat_Handle;
+      Result       : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_lda_reconstruct";
+
    function Mat_Principal_Component_Analysis_Retained_Variance
      (Source            : Mat_Handle;
       Orientation       : C_Int32;

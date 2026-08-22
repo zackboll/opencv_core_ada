@@ -1335,6 +1335,41 @@ package OpenCV.Core is
      (Samples : Mat; Labels : Mat; Components : Positive)
       return Linear_Discriminant_Analysis_Result;
 
+   --  Projects row-aligned samples through an already computed LDA basis;
+   --  this does not recompute Linear_Discriminant_Analysis. If W is
+   --  Basis.Eigenvectors, this converts Self to W's precision and computes
+   --  Self * W. There is no centering. Self is N x D, where each row is a
+   --  sample, and W is D x K with directions stored by column; the
+   --  independently owned result is N x K. Self must be non-empty,
+   --  single-channel Float32 or Float64 with at least one row and D columns.
+   --  Basis.Eigenvectors must be non-empty Float64 C1 D x K with D >= 1,
+   --  K >= 1, and K <= D. Basis.Eigenvalues is unused. Binding-produced LDA
+   --  bases therefore produce Float64 C1 results. Continuity is not required;
+   --  non-contiguous Regions are supported. Self and Basis are unchanged.
+   --  The result owns independent storage. Finite sample and basis values are
+   --  a caller precondition; this binding does not replace NaN or Infinity.
+   function LDA_Project
+     (Self : Mat; Basis : Linear_Discriminant_Analysis_Result) return Mat;
+
+   --  Reconstructs row-aligned feature-space values from LDA coordinates;
+   --  this does not recompute Linear_Discriminant_Analysis. If W is
+   --  Basis.Eigenvectors, this converts Self to W's precision and computes
+   --  Self * W^T. There is no mean restoration. Self is N x K projected
+   --  coordinates and W is D x K; the independently owned result is N x D.
+   --  This is not an inverse transform: LDA eigenvectors are not guaranteed
+   --  orthonormal, so LDA_Reconstruct (LDA_Project (X, Basis), Basis) is
+   --  not guaranteed to reproduce X. Self must be non-empty, single-channel
+   --  Float32 or Float64 with at least one row and K columns.
+   --  Basis.Eigenvectors must be non-empty Float64 C1 D x K with D >= 1,
+   --  K >= 1, and K <= D. Basis.Eigenvalues is unused. Binding-produced LDA
+   --  bases therefore produce Float64 C1 results. Continuity is not required;
+   --  non-contiguous Regions are supported. Self and Basis are unchanged.
+   --  The result owns independent storage. Finite coordinate and basis
+   --  values are a caller precondition; this binding does not replace NaN
+   --  or Infinity.
+   function LDA_Reconstruct
+     (Self : Mat; Basis : Linear_Discriminant_Analysis_Result) return Mat;
+
    --  Computes the default compact/economy SVD of Self using OpenCV
    --  4.10 cv::SVD::compute with flags = 0. This is not PCA, a
    --  symmetric eigen solver, or a full-size SVD. Self is treated as
