@@ -911,6 +911,103 @@ package body OpenCV.Core is
       return Result;
    end Clone;
 
+   function To_C_K_Means_Initialization
+     (Value : K_Means_Initialization) return OpenCV.Internal.C_API.C_Int32
+   is (case Value is
+         when Random_Centers    =>
+           OpenCV.Internal.C_API.K_Means_Random_Centers,
+         when Plus_Plus_Centers =>
+           OpenCV.Internal.C_API.K_Means_Plus_Plus_Centers);
+
+   procedure Validate_K_Means
+     (Samples       : Mat;
+      Cluster_Count : Positive;
+      Criteria      : K_Means_Criteria;
+      Attempts      : Positive)
+   is
+      Sample_Count  : Natural;
+      Feature_Count : Mat_Size;
+   begin
+      if Samples.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "K_Means requires non-empty samples");
+      end if;
+      if Samples.Depth /= Float32 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "K_Means requires Float32 samples");
+      end if;
+
+      if Samples.Rows = 1 then
+         Sample_Count := Samples.Columns;
+         Feature_Count := Mat_Size (Samples.Channels);
+      else
+         Sample_Count := Samples.Rows;
+         Feature_Count :=
+           Mat_Size (Samples.Columns) * Mat_Size (Samples.Channels);
+      end if;
+      if Sample_Count = 0 or else Feature_Count = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "K_Means requires a positive sample count and feature dimension");
+      end if;
+      if Cluster_Count > Sample_Count then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "K_Means cluster count must not exceed sample count");
+      end if;
+      pragma Warnings (Off);
+      if not Criteria.Epsilon'Valid
+        or else Criteria.Epsilon < 0.0
+        or else Criteria.Epsilon > Long_Float (Interfaces.C.double'Last)
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "K_Means epsilon must be finite, nonnegative, and"
+            & " C-double representable");
+      end if;
+      pragma Warnings (On);
+   end Validate_K_Means;
+
+   function K_Means
+     (Samples        : Mat;
+      Cluster_Count  : Positive;
+      Criteria       : K_Means_Criteria :=
+        (Maximum_Iterations => 100, Epsilon => 1.0E-4);
+      Attempts       : Positive := 3;
+      Initialization : K_Means_Initialization := Plus_Plus_Centers)
+      return K_Means_Result
+   is
+      Result         : K_Means_Result;
+      Labels_Handle  : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Centers_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Compactness    : aliased OpenCV.Internal.C_API.C_Double := 0.0;
+      Status         : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_K_Means (Samples, Cluster_Count, Criteria, Attempts);
+      Status :=
+        OpenCV.Internal.C_API.Mat_K_Means
+          (Samples            => Samples.Handle,
+           Cluster_Count      => OpenCV.Internal.C_API.C_Int32 (Cluster_Count),
+           Maximum_Iterations =>
+             OpenCV.Internal.C_API.C_Int32 (Criteria.Maximum_Iterations),
+           Epsilon            => Interfaces.C.double (Criteria.Epsilon),
+           Attempts           => OpenCV.Internal.C_API.C_Int32 (Attempts),
+           Initialization     => To_C_K_Means_Initialization (Initialization),
+           Labels             => Labels_Handle'Access,
+           Centers            => Centers_Handle'Access,
+           Compactness        => Compactness'Access);
+      Raise_On_Error (Status, "K_Means");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Labels.Handle);
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Centers.Handle);
+      Result.Labels.Handle := Labels_Handle;
+      Result.Centers.Handle := Centers_Handle;
+      Result.Compactness := Long_Float (Compactness);
+      return Result;
+   end K_Means;
+
    function Transpose (Self : Mat) return Mat is
       Result     : Mat;
       New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=

@@ -814,6 +814,103 @@ opencv_core_mat_clone(const opencv_core_mat_handle *source,
 }
 
 opencv_core_status
+opencv_core_mat_kmeans(const opencv_core_mat_handle *samples,
+                       int32_t cluster_count, int32_t maximum_iterations,
+                       double epsilon, int32_t attempts,
+                       int32_t initialization,
+                       opencv_core_mat_handle **out_labels,
+                       opencv_core_mat_handle **out_centers,
+                       double *out_compactness) {
+    clear_error();
+
+    if (out_labels == nullptr || out_centers == nullptr ||
+        out_compactness == nullptr) {
+        return invalid_argument("kmeans output pointers must not be null");
+    }
+    if (out_labels == out_centers) {
+        return invalid_argument("kmeans output handle pointers must be distinct");
+    }
+    *out_labels = nullptr;
+    *out_centers = nullptr;
+    *out_compactness = 0.0;
+
+    if (samples == nullptr) {
+        return invalid_argument("kmeans samples handle must not be null");
+    }
+
+    int flags;
+    switch (initialization) {
+    case 0:
+        flags = cv::KMEANS_RANDOM_CENTERS;
+        break;
+    case 1:
+        flags = cv::KMEANS_PP_CENTERS;
+        break;
+    default:
+        return invalid_argument("invalid kmeans initialization");
+    }
+
+    const cv::Mat &source = samples->value;
+    const int32_t maximum_int = std::numeric_limits<int32_t>::max();
+    const int32_t sample_count = source.rows == 1 ? source.cols : source.rows;
+    const int32_t base_dimensions = source.rows == 1 ? 1 : source.cols;
+    const int32_t channel_count = source.channels();
+
+    // ABI safety: OpenCV 4.10 computes base_dimensions * channels() as a
+    // signed int before constructing its data view.
+    if (base_dimensions > 0 && channel_count > maximum_int / base_dimensions) {
+        return invalid_argument("kmeans feature dimension exceeds signed int range");
+    }
+    const int32_t dimensions = base_dimensions * channel_count;
+
+    // ABI safety: OpenCV 4.10 computes dims * sizeof(float) as signed int for
+    // its one-row data view before passing that value as a byte stride.
+    if (source.rows == 1 && dimensions > maximum_int / 4) {
+        return invalid_argument("kmeans one-row stride exceeds signed int range");
+    }
+    // ABI safety: OpenCV 4.10 evaluates K * dims while allocating centers.
+    if (dimensions > 0 && cluster_count > maximum_int / dimensions) {
+        return invalid_argument("kmeans center scalar count exceeds signed int range");
+    }
+    // ABI safety: OpenCV 4.10 evaluates dims * N for parallel granularity.
+    if (sample_count > 0 && dimensions > maximum_int / sample_count) {
+        return invalid_argument("kmeans sample scalar count exceeds signed int range");
+    }
+    // ABI safety: OpenCV 4.10 evaluates dims * N * K as signed int for
+    // assignment parallel granularity.
+    if (sample_count > 0 && cluster_count > 0 &&
+        dimensions > maximum_int / sample_count / cluster_count) {
+        return invalid_argument("kmeans assignment work exceeds signed int range");
+    }
+    // ABI safety: k-means++ allocates AutoBuffer<float>(N * 3) after signed
+    // multiplication. Random-center initialization does not execute this path.
+    if (initialization == 1 && sample_count > maximum_int / 3) {
+        return invalid_argument("kmeans++ distance buffer exceeds signed int range");
+    }
+
+    try {
+        cv::Mat labels;
+        cv::Mat centers;
+        const double compactness = cv::kmeans(
+            source, cluster_count, labels,
+            cv::TermCriteria(cv::TermCriteria::COUNT | cv::TermCriteria::EPS,
+                             maximum_iterations, epsilon),
+            attempts, flags, centers);
+
+        std::unique_ptr<opencv_core_mat_handle> labels_handle(
+            new opencv_core_mat_handle(labels));
+        std::unique_ptr<opencv_core_mat_handle> centers_handle(
+            new opencv_core_mat_handle(centers));
+        *out_labels = labels_handle.release();
+        *out_centers = centers_handle.release();
+        *out_compactness = compactness;
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_transpose(const opencv_core_mat_handle *source,
                           opencv_core_mat_handle **out_mat) {
     clear_error();

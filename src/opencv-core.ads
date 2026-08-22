@@ -158,6 +158,30 @@ package OpenCV.Core is
 
    type Mat is tagged private;
 
+   --  Selects OpenCV's random or Arthur--Vassilvitskii k-means++ center
+   --  initialization. Both choices consume OpenCV's global RNG. Cluster
+   --  numbers, including their order in Centers, have no semantic meaning.
+   type K_Means_Initialization is (Random_Centers, Plus_Plus_Centers);
+
+   --  OpenCV 4.10 k-means always uses both count and epsilon termination.
+   --  Its effective iteration count is constrained to 2 .. 100, so this type
+   --  prevents the silent clamping performed by the native implementation.
+   type K_Means_Iteration_Count is range 2 .. 100;
+
+   type K_Means_Criteria is record
+      Maximum_Iterations : K_Means_Iteration_Count := 100;
+      Epsilon            : Long_Float := 1.0E-4;
+   end record;
+
+   --  Independently owned K_Means outputs. Labels is N x 1 Int32 C1, and
+   --  Centers is Cluster_Count x feature-dimension Float32 C1. Compactness is
+   --  sum_i ||sample_i - center[labels_i]||**2.
+   type K_Means_Result is record
+      Labels      : Mat;
+      Centers     : Mat;
+      Compactness : Long_Float;
+   end record;
+
    --  Independent polar outputs of Cart_To_Polar. Magnitude is
    --  sqrt (X**2 + Y**2). Angle is the corresponding OpenCV fast phase
    --  of (X, Y). Each component has normal Mat controlled ownership and
@@ -339,6 +363,23 @@ package OpenCV.Core is
      (Self : Mat; Offset : Point_Coordinate := 0) return Mat;
 
    function Clone (Self : Mat) return Mat;
+
+   --  Clusters Float32 samples with OpenCV 4.10 cv::kmeans. Samples must be a
+   --  non-empty 2-D Mat with at least one channel. For Rows = 1, each column
+   --  is a sample and the feature dimension is Channels. Otherwise, each row
+   --  is a sample and the feature dimension is Columns * Channels. Thus N x D
+   --  Float32 C1, N x 1 Float32 Cn, and 1 x N Float32 Cn are supported.
+   --  Cluster_Count must not exceed the resulting sample count. Non-contiguous
+   --  Regions are supported and Samples is unchanged. Epsilon must be finite
+   --  and nonnegative. KMEANS_USE_INITIAL_LABELS is intentionally unsupported.
+   function K_Means
+     (Samples        : Mat;
+      Cluster_Count  : Positive;
+      Criteria       : K_Means_Criteria :=
+        (Maximum_Iterations => 100, Epsilon => 1.0E-4);
+      Attempts       : Positive := 3;
+      Initialization : K_Means_Initialization := Plus_Plus_Centers)
+      return K_Means_Result;
    --  Returns an independent Mat whose rows and columns are swapped. Element
    --  depth and channel count are preserved, including for multi-channel Mats.
    --  Empty Mats produce an empty result. Non-contiguous Regions are accepted.

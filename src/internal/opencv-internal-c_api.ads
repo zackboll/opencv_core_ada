@@ -128,6 +128,9 @@ package OpenCV.Internal.C_API is
    Spectrum_Product_Ordinary        : constant C_Int32 := 0;
    Spectrum_Product_Conjugate_Right : constant C_Int32 := 1;
 
+   K_Means_Random_Centers    : constant C_Int32 := 0;
+   K_Means_Plus_Plus_Centers : constant C_Int32 := 1;
+
    subtype C_Boolean is Interfaces.Unsigned_8;
    C_False : constant C_Boolean := 0;
    C_True  : constant C_Boolean := 1;
@@ -152,6 +155,18 @@ package OpenCV.Internal.C_API is
    function Mat_Clone
      (Source : Mat_Handle; Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_clone";
+
+   function Mat_K_Means
+     (Samples            : Mat_Handle;
+      Cluster_Count      : C_Int32;
+      Maximum_Iterations : C_Int32;
+      Epsilon            : C_Double;
+      Attempts           : C_Int32;
+      Initialization     : C_Int32;
+      Labels             : access Mat_Handle;
+      Centers            : access Mat_Handle;
+      Compactness        : access C_Double) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_kmeans";
 
    function Mat_Transpose
      (Source : Mat_Handle; Result : access Mat_Handle) return Status
