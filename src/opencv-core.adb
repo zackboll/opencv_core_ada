@@ -1315,6 +1315,32 @@ package body OpenCV.Core is
       return Result;
    end Copy_Make_Border;
 
+   function Border_Interpolate
+     (Position : Point_Coordinate; Length : Positive; Kind : Border_Kind)
+      return Border_Interpolation_Result
+   is
+      Index  : aliased OpenCV.Internal.C_API.C_Int32 := -1;
+      Status : OpenCV.Internal.C_API.Status;
+   begin
+      Status :=
+        OpenCV.Internal.C_API.Border_Interpolate
+          (Position => OpenCV.Internal.C_API.C_Int32 (Position),
+           Length   => OpenCV.Internal.C_API.C_Int32 (Length),
+           Kind     => To_C_Border_Kind (Kind),
+           Index    => Index'Access);
+      Raise_On_Error (Status, "Border interpolate");
+
+      if Index >= 0 then
+         return (Uses_Constant => False, Index => Size_Coordinate (Index));
+      elsif Index = -1 then
+         return (Uses_Constant => True);
+      else
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Border interpolate returned an invalid negative source index");
+      end if;
+   end Border_Interpolate;
+
    function Rotate (Self : Mat; Kind : Rotation_Kind) return Mat is
       Result     : Mat;
       New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=

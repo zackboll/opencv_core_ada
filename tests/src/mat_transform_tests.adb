@@ -15,7 +15,10 @@ package body Mat_Transform_Tests is
    use type Interfaces.IEEE_Float_32;
    use type Interfaces.Unsigned_8;
    use type OpenCV.Core.Channel_Count;
+   use type OpenCV.Core.Border_Kind;
    use type OpenCV.Core.Depth_Type;
+   use type OpenCV.Core.Point_Coordinate;
+   use type OpenCV.Core.Size_Coordinate;
    use type OpenCV.Core.UInt8_Vec3.Vector;
    use type OpenCV.Core.Float32_Vec3.Vector;
 
@@ -1010,6 +1013,248 @@ package body Mat_Transform_Tests is
          "Copy_Make_Border must reject border sizes beyond the supported"
          & " range");
    end Copy_Make_Border_Region_Isolation_Lifetime_Empty_And_Validation;
+
+   procedure Border_Interpolate_In_Range_Coordinates
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Kinds     :
+        constant array (Positive range <>) of OpenCV.Core.Border_Kind :=
+          (OpenCV.Core.Constant_Border,
+           OpenCV.Core.Replicate,
+           OpenCV.Core.Reflect,
+           OpenCV.Core.Reflect_101,
+           OpenCV.Core.Wrap);
+      Positions :
+        constant array (Positive range <>) of OpenCV.Core.Point_Coordinate :=
+          (0, 3, 7);
+   begin
+      for Kind of Kinds loop
+         for Position of Positions loop
+            declare
+               Interpolation :
+                 constant OpenCV.Core.Border_Interpolation_Result :=
+                   OpenCV.Core.Border_Interpolate (Position, 8, Kind);
+            begin
+               AUnit.Assertions.Assert
+                 (not Interpolation.Uses_Constant
+                  and then Interpolation.Index
+                           = OpenCV.Core.Size_Coordinate (Position)
+                  and then Interpolation.Index < 8,
+                  "In-range border interpolation must return its"
+                  & " source coordinate");
+            end;
+         end loop;
+      end loop;
+   end Border_Interpolate_In_Range_Coordinates;
+
+   procedure Border_Interpolate_Extrapolation_Mappings
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+
+      procedure Assert_Index
+        (Position : OpenCV.Core.Point_Coordinate;
+         Kind     : OpenCV.Core.Border_Kind;
+         Expected : OpenCV.Core.Size_Coordinate)
+      is
+         Interpolation : constant OpenCV.Core.Border_Interpolation_Result :=
+           OpenCV.Core.Border_Interpolate (Position, 8, Kind);
+      begin
+         AUnit.Assertions.Assert
+           (not Interpolation.Uses_Constant
+            and then Interpolation.Index = Expected
+            and then Interpolation.Index < 8,
+            "Border interpolation must return the expected"
+            & " valid donor index");
+      end Assert_Index;
+   begin
+      Assert_Index (-1, OpenCV.Core.Replicate, 0);
+      Assert_Index (-100, OpenCV.Core.Replicate, 0);
+      Assert_Index (8, OpenCV.Core.Replicate, 7);
+      Assert_Index (100, OpenCV.Core.Replicate, 7);
+
+      Assert_Index (-1, OpenCV.Core.Reflect, 0);
+      Assert_Index (-2, OpenCV.Core.Reflect, 1);
+      Assert_Index (8, OpenCV.Core.Reflect, 7);
+      Assert_Index (9, OpenCV.Core.Reflect, 6);
+      Assert_Index (-18, OpenCV.Core.Reflect, 1);
+      Assert_Index (25, OpenCV.Core.Reflect, 6);
+
+      Assert_Index (-1, OpenCV.Core.Reflect_101, 1);
+      Assert_Index (-2, OpenCV.Core.Reflect_101, 2);
+      Assert_Index (8, OpenCV.Core.Reflect_101, 6);
+      Assert_Index (9, OpenCV.Core.Reflect_101, 5);
+      Assert_Index (-18, OpenCV.Core.Reflect_101, 4);
+      Assert_Index (25, OpenCV.Core.Reflect_101, 3);
+
+      Assert_Index (-1, OpenCV.Core.Wrap, 7);
+      Assert_Index (-8, OpenCV.Core.Wrap, 0);
+      Assert_Index (-9, OpenCV.Core.Wrap, 7);
+      Assert_Index (8, OpenCV.Core.Wrap, 0);
+      Assert_Index (9, OpenCV.Core.Wrap, 1);
+      Assert_Index (-25, OpenCV.Core.Wrap, 7);
+      Assert_Index (25, OpenCV.Core.Wrap, 1);
+   end Border_Interpolate_Extrapolation_Mappings;
+
+   procedure Border_Interpolate_Constant_And_Length_One
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Kinds     :
+        constant array (Positive range <>) of OpenCV.Core.Border_Kind :=
+          (OpenCV.Core.Replicate,
+           OpenCV.Core.Reflect,
+           OpenCV.Core.Reflect_101,
+           OpenCV.Core.Wrap);
+      Positions :
+        constant array (Positive range <>) of OpenCV.Core.Point_Coordinate :=
+          (-7, 0, 7);
+   begin
+      for Position of Positions loop
+         for Kind of Kinds loop
+            declare
+               Interpolation :
+                 constant OpenCV.Core.Border_Interpolation_Result :=
+                   OpenCV.Core.Border_Interpolate (Position, 1, Kind);
+            begin
+               AUnit.Assertions.Assert
+                 (not Interpolation.Uses_Constant
+                  and then Interpolation.Index = 0,
+                  "Every non-constant length-one border must select"
+                  & " index zero");
+            end;
+         end loop;
+      end loop;
+
+      declare
+         In_Range : constant OpenCV.Core.Border_Interpolation_Result :=
+           OpenCV.Core.Border_Interpolate (0, 8, OpenCV.Core.Constant_Border);
+         At_End   : constant OpenCV.Core.Border_Interpolation_Result :=
+           OpenCV.Core.Border_Interpolate (7, 8, OpenCV.Core.Constant_Border);
+         Before   : constant OpenCV.Core.Border_Interpolation_Result :=
+           OpenCV.Core.Border_Interpolate (-1, 8, OpenCV.Core.Constant_Border);
+         After    : constant OpenCV.Core.Border_Interpolation_Result :=
+           OpenCV.Core.Border_Interpolate (8, 8, OpenCV.Core.Constant_Border);
+         One      : constant OpenCV.Core.Border_Interpolation_Result :=
+           OpenCV.Core.Border_Interpolate (0, 1, OpenCV.Core.Constant_Border);
+         Outside  : constant OpenCV.Core.Border_Interpolation_Result :=
+           OpenCV.Core.Border_Interpolate (-7, 1, OpenCV.Core.Constant_Border);
+      begin
+         AUnit.Assertions.Assert
+           (not In_Range.Uses_Constant
+            and then In_Range.Index = 0
+            and then not At_End.Uses_Constant
+            and then At_End.Index = 7
+            and then Before.Uses_Constant
+            and then After.Uses_Constant
+            and then not One.Uses_Constant
+            and then One.Index = 0
+            and then Outside.Uses_Constant,
+            "Constant border must expose a donor only for"
+            & " in-range coordinates");
+      end;
+   end Border_Interpolate_Constant_And_Length_One;
+
+   procedure Border_Interpolate_Overflow_Boundaries
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Maximum_Length : constant Positive :=
+        Positive (Interfaces.Integer_32'Last);
+
+      procedure Reflect_First is
+         Ignored : constant OpenCV.Core.Border_Interpolation_Result :=
+           OpenCV.Core.Border_Interpolate
+             (OpenCV.Core.Point_Coordinate'First, 8, OpenCV.Core.Reflect);
+      begin
+         null;
+      end Reflect_First;
+
+      procedure Reflect_101_First is
+         Ignored : constant OpenCV.Core.Border_Interpolation_Result :=
+           OpenCV.Core.Border_Interpolate
+             (OpenCV.Core.Point_Coordinate'First, 8, OpenCV.Core.Reflect_101);
+      begin
+         null;
+      end Reflect_101_First;
+
+      procedure Unsafe_Wrap is
+         Ignored : constant OpenCV.Core.Border_Interpolation_Result :=
+           OpenCV.Core.Border_Interpolate
+             (OpenCV.Core.Point_Coordinate'First, 8, OpenCV.Core.Wrap);
+      begin
+         null;
+      end Unsafe_Wrap;
+
+      procedure Length_One_Minimum_Wrap is
+         Ignored : constant OpenCV.Core.Border_Interpolation_Result :=
+           OpenCV.Core.Border_Interpolate
+             (OpenCV.Core.Point_Coordinate'First, 1, OpenCV.Core.Wrap);
+      begin
+         null;
+      end Length_One_Minimum_Wrap;
+
+   begin
+      Assert_Raises_OpenCV_Error
+        (Reflect_First'Access,
+         "Reflect must reject INT32_MIN before OpenCV negates it");
+      Assert_Raises_OpenCV_Error
+        (Reflect_101_First'Access,
+         "Reflect_101 must reject INT32_MIN before OpenCV negates it");
+      Assert_Raises_OpenCV_Error
+        (Unsafe_Wrap'Access,
+         "Wrap must reject coordinates where OpenCV's p - length"
+         & " overflows");
+      Assert_Raises_OpenCV_Error
+        (Length_One_Minimum_Wrap'Access,
+         "Length-one Wrap must reject INT32_MIN because p - 1" & " overflows");
+      declare
+         Reflect_Safe : constant OpenCV.Core.Border_Interpolation_Result :=
+           OpenCV.Core.Border_Interpolate
+             (OpenCV.Core.Point_Coordinate'First + 1,
+              Maximum_Length,
+              OpenCV.Core.Reflect);
+         Wrap_Safe    : constant OpenCV.Core.Border_Interpolation_Result :=
+           OpenCV.Core.Border_Interpolate
+             (OpenCV.Core.Point_Coordinate'First + 8, 8, OpenCV.Core.Wrap);
+      begin
+         AUnit.Assertions.Assert
+           (not Reflect_Safe.Uses_Constant
+            and then Reflect_Safe.Index = OpenCV.Core.Size_Coordinate'Last - 1
+            and then not Wrap_Safe.Uses_Constant
+            and then Wrap_Safe.Index = 0,
+            "Coordinates nearest the Reflect and Wrap overflow boundaries"
+            & " must remain accepted");
+      end;
+   end Border_Interpolate_Overflow_Boundaries;
+
+   procedure Border_Interpolate_Int32_Maximum (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Kinds : constant array (Positive range <>) of OpenCV.Core.Border_Kind :=
+        (OpenCV.Core.Constant_Border,
+         OpenCV.Core.Replicate,
+         OpenCV.Core.Reflect,
+         OpenCV.Core.Reflect_101,
+         OpenCV.Core.Wrap);
+   begin
+      for Kind of Kinds loop
+         declare
+            Interpolation : constant OpenCV.Core.Border_Interpolation_Result :=
+              OpenCV.Core.Border_Interpolate
+                (OpenCV.Core.Point_Coordinate'Last, 8, Kind);
+         begin
+            AUnit.Assertions.Assert
+              ((if Kind = OpenCV.Core.Constant_Border
+                then Interpolation.Uses_Constant
+                else
+                  not Interpolation.Uses_Constant
+                  and then Interpolation.Index < 8),
+               "INT32_MAX must safely produce its documented border result");
+         end;
+      end loop;
+   end Border_Interpolate_Int32_Maximum;
 
    procedure HConcat_UInt8_Mapping_And_Array_Order
      (Test : in out Mat_Test_Fixture)
@@ -6139,6 +6384,26 @@ package body Mat_Transform_Tests is
       Copy_Make_Border_Region : constant Caller.Test_Method :=
         Copy_Make_Border_Region_Isolation_Lifetime_Empty_And_Validation'Access;
    begin
+      Result.Add_Test
+        (Caller.Create
+           ("Border_Interpolate in-range coordinates",
+            Border_Interpolate_In_Range_Coordinates'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Border_Interpolate extrapolation mappings",
+            Border_Interpolate_Extrapolation_Mappings'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Border_Interpolate constant and length one",
+            Border_Interpolate_Constant_And_Length_One'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Border_Interpolate overflow boundaries",
+            Border_Interpolate_Overflow_Boundaries'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Border_Interpolate INT32_MAX",
+            Border_Interpolate_Int32_Maximum'Access));
       Result.Add_Test
         (Caller.Create
            ("Transpose rectangular UInt8 exact mapping",

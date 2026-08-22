@@ -327,6 +327,35 @@ bool to_opencv_border_kind(int32_t border_kind, int &opencv_border_kind) noexcep
     }
 }
 
+opencv_core_status validate_border_interpolate_arithmetic(
+    int32_t position, int32_t length, int32_t border_kind) noexcept {
+    if (position >= 0 && position < length) {
+        return OPENCV_CORE_OK;
+    }
+
+    if ((border_kind == OPENCV_CORE_BORDER_REFLECT ||
+         border_kind == OPENCV_CORE_BORDER_REFLECT_101) &&
+        position == std::numeric_limits<int32_t>::min()) {
+        // ABI safety: OpenCV 4.10 evaluates -p for an out-of-range negative
+        // reflected coordinate. Negating INT32_MIN is signed overflow.
+        return invalid_argument(
+            "reflect border interpolation would negate INT32_MIN");
+    }
+
+    if (border_kind == OPENCV_CORE_BORDER_WRAP && position < 0) {
+        const int64_t first_subtraction =
+            static_cast<int64_t>(position) - static_cast<int64_t>(length);
+        // ABI safety: OpenCV 4.10 evaluates p - len before adding 1. This
+        // must be representable before the shim calls OpenCV.
+        if (first_subtraction < std::numeric_limits<int32_t>::min()) {
+            return invalid_argument(
+                "wrap border interpolation would overflow p - length");
+        }
+    }
+
+    return OPENCV_CORE_OK;
+}
+
 bool to_opencv_compare_kind(int32_t comparison_kind,
                             int &opencv_compare_kind) noexcept {
     switch (comparison_kind) {
@@ -1282,6 +1311,41 @@ opencv_core_mat_sort_indices(const opencv_core_mat_handle *source, uint8_t axis,
         cv::Mat indices;
         cv::sortIdx(source->value, indices, flags);
         *out_mat = new opencv_core_mat_handle(indices);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status opencv_core_border_interpolate(int32_t position,
+                                                   int32_t length,
+                                                   int32_t border_kind,
+                                                   int32_t *out_index) {
+    clear_error();
+
+    if (out_index == nullptr) {
+        return invalid_argument("out_index must not be null");
+    }
+
+    *out_index = -1;
+
+    if (length <= 0) {
+        return invalid_argument("length must be positive");
+    }
+
+    int opencv_border_kind = 0;
+    if (!to_opencv_border_kind(border_kind, opencv_border_kind)) {
+        return invalid_argument("border kind is not supported");
+    }
+
+    const opencv_core_status arithmetic_status =
+        validate_border_interpolate_arithmetic(position, length, border_kind);
+    if (arithmetic_status != OPENCV_CORE_OK) {
+        return arithmetic_status;
+    }
+
+    try {
+        *out_index = cv::borderInterpolate(position, length, opencv_border_kind);
         return OPENCV_CORE_OK;
     } catch (...) {
         return translate_current_exception();

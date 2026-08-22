@@ -246,6 +246,16 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_copy_make_border";
 
+   function Border_Interpolate
+     (Position : C_Int32;
+      Length   : C_Int32;
+      Kind     : C_Int32;
+      Index    : access C_Int32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_border_interpolate";
+
    function Mat_Rotate
      (Source : Mat_Handle; Kind : C_Int32; Result : access Mat_Handle)
       return Status

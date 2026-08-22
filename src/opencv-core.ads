@@ -86,6 +86,19 @@ package OpenCV.Core is
 
    type Point_Coordinate is new Interfaces.Integer_32;
 
+   --  A border interpolation either selects a zero-based source coordinate or
+   --  indicates that an out-of-range Constant_Border coordinate has no donor.
+   type Border_Interpolation_Result (Uses_Constant : Boolean := False) is
+   record
+      case Uses_Constant is
+         when False =>
+            Index : Size_Coordinate;
+
+         when True =>
+            null;
+      end case;
+   end record;
+
    --  A zero-based half-open index interval: Start <= index < Stop.
    type Index_Range is record
       Start : Size_Coordinate := 0;
@@ -522,6 +535,19 @@ package OpenCV.Core is
       Kind     : Border_Kind;
       Value    : Scalar := (others => 0.0);
       Isolated : Boolean := False) return Mat;
+
+   --  Maps a zero-based one-dimensional Position to a source coordinate for a
+   --  source Length. Length must be positive. In-range coordinates map to
+   --  themselves. Replicate clamps, Reflect repeats the edge, Reflect_101
+   --  does not repeat the edge, and Wrap is periodic. An out-of-range
+   --  Constant_Border coordinate has no donor and returns Uses_Constant True;
+   --  OpenCV's -1 sentinel is not exposed. This computes only a coordinate;
+   --  it neither reads a Mat nor copies pixels. Extreme coordinates that would
+   --  overflow OpenCV 4.10 signed arithmetic raise OpenCV_Error.
+   function Border_Interpolate
+     (Position : Point_Coordinate; Length : Positive; Kind : Border_Kind)
+      return Border_Interpolation_Result;
+
    --  Separates Self into one independent single-channel Mat per channel.
    --  Results use channel indices 0 .. Self.Channels - 1, preserve Self's
    --  depth and dimensions, and do not share pixel storage with Self. Empty

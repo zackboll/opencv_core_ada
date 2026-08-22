@@ -100,6 +100,16 @@ typedef struct {
 #define OPENCV_CORE_BORDER_REFLECT_101 ((int32_t)3)
 #define OPENCV_CORE_BORDER_WRAP ((int32_t)4)
 
+/*
+ * Maps a zero-based one-dimensional coordinate through a stable border kind.
+ * On success, out_index is a source coordinate or -1 for an out-of-range
+ * constant border coordinate.
+ */
+opencv_core_status opencv_core_border_interpolate(int32_t position,
+                                                  int32_t length,
+                                                  int32_t border_kind,
+                                                  int32_t *out_index);
+
 /* Stable rotation identifiers, translated explicitly to cv::RotateFlags. */
 #define OPENCV_CORE_ROTATE_90_CLOCKWISE ((int32_t)0)
 #define OPENCV_CORE_ROTATE_180 ((int32_t)1)
