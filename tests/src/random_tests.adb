@@ -15,6 +15,7 @@ package body Random_Tests is
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
    use type OpenCV.Core.Float32_Vec3.Vector;
+   use type OpenCV.Core.Mat_Size;
 
    use Mat_Test_Support;
 
@@ -283,6 +284,348 @@ package body Random_Tests is
          & " parent storage");
    end Uniform_Fill_Supports_Non_Continuous_Regions;
 
+   procedure Shuffle_Deterministic_Reseeding (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      A, B  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 32, (OpenCV.Core.UInt8, 1));
+      Equal : Boolean := True;
+   begin
+      for Column in 0 .. 31 loop
+         OpenCV.Core.UInt8_Access.Set
+           (A, 0, Column, Interfaces.Unsigned_8 (Column));
+         OpenCV.Core.UInt8_Access.Set
+           (B, 0, Column, Interfaces.Unsigned_8 (Column));
+      end loop;
+      OpenCV.Core.Set_Random_Seed (1_234);
+      A.Shuffle;
+      OpenCV.Core.Set_Random_Seed (1_234);
+      B.Shuffle;
+      for Column in 0 .. 31 loop
+         Equal :=
+           Equal
+           and then OpenCV.Core.UInt8_Access.Get (A, 0, Column)
+                    = OpenCV.Core.UInt8_Access.Get (B, 0, Column);
+      end loop;
+      AUnit.Assertions.Assert
+        (Equal, "Shuffle must replay after reseeding the default RNG");
+   end Shuffle_Deterministic_Reseeding;
+
+   procedure Shuffle_Advances_Random_Sequence (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      A, B          : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 32, (OpenCV.Core.UInt8, 1));
+      Any_Different : Boolean := False;
+   begin
+      for Column in 0 .. 31 loop
+         OpenCV.Core.UInt8_Access.Set
+           (A, 0, Column, Interfaces.Unsigned_8 (Column));
+         OpenCV.Core.UInt8_Access.Set
+           (B, 0, Column, Interfaces.Unsigned_8 (Column));
+      end loop;
+      OpenCV.Core.Set_Random_Seed (5_678);
+      A.Shuffle;
+      B.Shuffle;
+      for Column in 0 .. 31 loop
+         Any_Different :=
+           Any_Different
+           or else OpenCV.Core.UInt8_Access.Get (A, 0, Column)
+                   /= OpenCV.Core.UInt8_Access.Get (B, 0, Column);
+      end loop;
+      AUnit.Assertions.Assert
+        (Any_Different,
+         "Shuffle calls with a fixed seed must advance the default RNG");
+   end Shuffle_Advances_Random_Sequence;
+
+   procedure Shuffle_Row_Vector_Preserves_Permutation
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Vector : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 8, (OpenCV.Core.UInt8, 1));
+      Seen   : array (1 .. 8) of Boolean := (others => False);
+      Valid  : Boolean := True;
+   begin
+      for Column in 0 .. 7 loop
+         OpenCV.Core.UInt8_Access.Set
+           (Vector, 0, Column, Interfaces.Unsigned_8 (Column + 1));
+      end loop;
+      OpenCV.Core.Set_Random_Seed (99);
+      Vector.Shuffle;
+      for Column in 0 .. 7 loop
+         declare
+            Value : constant Natural :=
+              Natural (OpenCV.Core.UInt8_Access.Get (Vector, 0, Column));
+         begin
+            Valid :=
+              Valid and then Value in Seen'Range and then not Seen (Value);
+            if Value in Seen'Range then
+               Seen (Value) := True;
+            end if;
+         end;
+      end loop;
+      for Value in Seen'Range loop
+         Valid := Valid and then Seen (Value);
+      end loop;
+      AUnit.Assertions.Assert
+        (Valid
+         and then Vector.Rows = 1
+         and then Vector.Columns = 8
+         and then Vector.Depth = OpenCV.Core.UInt8
+         and then Vector.Channels = 1,
+         "Shuffle must preserve a row vector's complete-value permutation and"
+         & " metadata");
+   end Shuffle_Row_Vector_Preserves_Permutation;
+
+   procedure Shuffle_Column_Vector (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Vector : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (8, 1, (OpenCV.Core.UInt8, 1));
+      Seen   : array (1 .. 8) of Boolean := (others => False);
+      Valid  : Boolean := True;
+   begin
+      for Row in 0 .. 7 loop
+         OpenCV.Core.UInt8_Access.Set
+           (Vector, Row, 0, Interfaces.Unsigned_8 (Row + 1));
+      end loop;
+      OpenCV.Core.Set_Random_Seed (100);
+      Vector.Shuffle;
+      for Row in 0 .. 7 loop
+         declare
+            Value : constant Natural :=
+              Natural (OpenCV.Core.UInt8_Access.Get (Vector, Row, 0));
+         begin
+            Valid :=
+              Valid and then Value in Seen'Range and then not Seen (Value);
+            if Value in Seen'Range then
+               Seen (Value) := True;
+            end if;
+         end;
+      end loop;
+      AUnit.Assertions.Assert
+        (Valid and then Vector.Rows = 8 and then Vector.Columns = 1,
+         "Shuffle must accept and permute a column vector");
+   end Shuffle_Column_Vector;
+
+   procedure Shuffle_Non_Continuous_Column_Region
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (8, 2, (OpenCV.Core.UInt8, 1));
+      Region : OpenCV.Core.Mat := Parent.Column_View (0);
+      Seen   : array (1 .. 8) of Boolean := (others => False);
+      Valid  : Boolean := True;
+   begin
+      for Row in 0 .. 7 loop
+         OpenCV.Core.UInt8_Access.Set
+           (Parent, Row, 0, Interfaces.Unsigned_8 (Row + 1));
+         OpenCV.Core.UInt8_Access.Set (Parent, Row, 1, 200);
+      end loop;
+      OpenCV.Core.Set_Random_Seed (101);
+      Region.Shuffle;
+      for Row in 0 .. 7 loop
+         declare
+            Value : constant Natural :=
+              Natural (OpenCV.Core.UInt8_Access.Get (Region, Row, 0));
+         begin
+            Valid :=
+              Valid
+              and then Value in Seen'Range
+              and then not Seen (Value)
+              and then OpenCV.Core.UInt8_Access.Get (Parent, Row, 0)
+                       = Interfaces.Unsigned_8 (Value)
+              and then OpenCV.Core.UInt8_Access.Get (Parent, Row, 1) = 200;
+            if Value in Seen'Range then
+               Seen (Value) := True;
+            end if;
+         end;
+      end loop;
+      AUnit.Assertions.Assert
+        (Valid
+         and then not Region.Is_Continuous
+         and then Region.Rows = 8
+         and then Region.Columns = 1
+         and then Region.Is_Submatrix,
+         "Shuffle must update only a non-continuous column Region in parent"
+         & " storage");
+   end Shuffle_Non_Continuous_Column_Region;
+
+   procedure Shuffle_Preserves_Multi_Channel_Elements
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Vector : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 8, (OpenCV.Core.Float32, 3));
+      Seen   : array (1 .. 8) of Boolean := (others => False);
+      Valid  : Boolean := True;
+   begin
+      for Column in 0 .. 7 loop
+         OpenCV.Core.Float32_Vec3_Access.Set
+           (Vector,
+            0,
+            Column,
+            (Interfaces.IEEE_Float_32 (Column + 1),
+             Interfaces.IEEE_Float_32 (Column + 101),
+             Interfaces.IEEE_Float_32 (Column + 201)));
+      end loop;
+      OpenCV.Core.Set_Random_Seed (102);
+      Vector.Shuffle;
+      for Column in 0 .. 7 loop
+         declare
+            Value : constant OpenCV.Core.Float32_Vec3.Vector :=
+              OpenCV.Core.Float32_Vec3_Access.Get (Vector, 0, Column);
+            Index : constant Natural := Natural (Integer (Value (0)));
+         begin
+            Valid :=
+              Valid
+              and then Index in Seen'Range
+              and then not Seen (Index)
+              and then Value (1) = Interfaces.IEEE_Float_32 (Index + 100)
+              and then Value (2) = Interfaces.IEEE_Float_32 (Index + 200);
+            if Index in Seen'Range then
+               Seen (Index) := True;
+            end if;
+         end;
+      end loop;
+      AUnit.Assertions.Assert
+        (Valid, "Shuffle must move all channels of each element together");
+   end Shuffle_Preserves_Multi_Channel_Elements;
+
+   procedure Shuffle_Supports_Float16 (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Vector : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 8, (OpenCV.Core.Float16, 1));
+   begin
+      Vector.Set_To (OpenCV.Core.Make_Scalar (2.0));
+      Vector.Shuffle;
+      AUnit.Assertions.Assert
+        (Vector.Rows = 1
+         and then Vector.Columns = 8
+         and then Vector.Depth = OpenCV.Core.Float16
+         and then Vector.Channels = 1,
+         "Shuffle must support Float16 elements with size two");
+   end Shuffle_Supports_Float16;
+
+   procedure Shuffle_Representative_Dispatch_Sizes
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      One_Byte          : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 1));
+      Two_Bytes         : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt16, 1));
+      Three_Bytes       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 3));
+      Four_Bytes        : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
+      Eight_Bytes       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float64, 1));
+      Twelve_Bytes      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 3));
+      Sixteen_Bytes     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float64, 2));
+      Twenty_Four_Bytes : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float64, 3));
+      Thirty_Two_Bytes  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float64, 4));
+   begin
+      One_Byte.Shuffle;
+      Two_Bytes.Shuffle;
+      Three_Bytes.Shuffle;
+      Four_Bytes.Shuffle;
+      Eight_Bytes.Shuffle;
+      Twelve_Bytes.Shuffle;
+      Sixteen_Bytes.Shuffle;
+      Twenty_Four_Bytes.Shuffle;
+      Thirty_Two_Bytes.Shuffle;
+      AUnit.Assertions.Assert
+        (One_Byte.Element_Size = 1
+         and then Two_Bytes.Element_Size = 2
+         and then Three_Bytes.Element_Size = 3
+         and then Four_Bytes.Element_Size = 4
+         and then Eight_Bytes.Element_Size = 8
+         and then Twelve_Bytes.Element_Size = 12
+         and then Sixteen_Bytes.Element_Size = 16
+         and then Twenty_Four_Bytes.Element_Size = 24
+         and then Thirty_Two_Bytes.Element_Size = 32,
+         "Shuffle must support representative OpenCV dispatcher element"
+         & " sizes");
+   end Shuffle_Representative_Dispatch_Sizes;
+
+   procedure Shuffle_Rejects_Unsupported_Element_Sizes
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Five_Bytes  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 5));
+      Forty_Bytes : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float64, 5));
+      procedure Shuffle_Five_Bytes is
+      begin
+         Five_Bytes.Shuffle;
+      end Shuffle_Five_Bytes;
+      procedure Shuffle_Forty_Bytes is
+      begin
+         Forty_Bytes.Shuffle;
+      end Shuffle_Forty_Bytes;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Shuffle_Five_Bytes'Access,
+         "Shuffle must reject unsupported complete element size five");
+      Assert_Raises_OpenCV_Error
+        (Shuffle_Forty_Bytes'Access,
+         "Shuffle must reject complete element sizes over 32");
+   end Shuffle_Rejects_Unsupported_Element_Sizes;
+
+   procedure Shuffle_Rejects_Empty_Mats (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Empty, Typed_Empty : OpenCV.Core.Mat;
+      procedure Shuffle_Empty is
+      begin
+         Empty.Shuffle;
+      end Shuffle_Empty;
+      procedure Shuffle_Typed_Empty is
+      begin
+         Typed_Empty.Shuffle;
+      end Shuffle_Typed_Empty;
+   begin
+      Typed_Empty := OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 1));
+      Assert_Raises_OpenCV_Error
+        (Shuffle_Empty'Access, "Shuffle must reject a default empty Mat");
+      Assert_Raises_OpenCV_Error
+        (Shuffle_Typed_Empty'Access, "Shuffle must reject a typed empty Mat");
+   end Shuffle_Rejects_Empty_Mats;
+
+   procedure Shuffle_Rejects_Non_Vector_Mat (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Matrix : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.UInt8, 1));
+      procedure Shuffle_Matrix is
+      begin
+         Matrix.Shuffle;
+      end Shuffle_Matrix;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Shuffle_Matrix'Access,
+         "Shuffle must reject a non-vector two-dimensional Mat");
+   end Shuffle_Rejects_Non_Vector_Mat;
+
+   procedure Shuffle_Accepts_Single_Element_Vector
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Vector : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+   begin
+      OpenCV.Core.UInt8_Access.Set (Vector, 0, 0, 42);
+      Vector.Shuffle;
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Vector, 0, 0) = 42,
+         "Shuffle must accept a single-element vector without changing it");
+   end Shuffle_Accepts_Single_Element_Vector;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -316,6 +659,51 @@ package body Random_Tests is
         (Caller.Create
            ("Uniform fill supports non-continuous Regions",
             Uniform_Fill_Supports_Non_Continuous_Regions'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Shuffle deterministic reseeding",
+            Shuffle_Deterministic_Reseeding'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Shuffle advances random sequence",
+            Shuffle_Advances_Random_Sequence'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Shuffle row vector preserves permutation",
+            Shuffle_Row_Vector_Preserves_Permutation'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Shuffle column vector", Shuffle_Column_Vector'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Shuffle non-continuous column Region",
+            Shuffle_Non_Continuous_Column_Region'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Shuffle preserves multi-channel elements",
+            Shuffle_Preserves_Multi_Channel_Elements'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Shuffle Float16 support", Shuffle_Supports_Float16'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Shuffle representative dispatcher sizes",
+            Shuffle_Representative_Dispatch_Sizes'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Shuffle rejects unsupported element sizes",
+            Shuffle_Rejects_Unsupported_Element_Sizes'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Shuffle rejects empty Mats", Shuffle_Rejects_Empty_Mats'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Shuffle rejects non-vector Mat",
+            Shuffle_Rejects_Non_Vector_Mat'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Shuffle accepts single element",
+            Shuffle_Accepts_Single_Element_Vector'Access));
       return Result'Access;
    end Suite;
 

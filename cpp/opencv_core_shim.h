@@ -914,6 +914,12 @@ opencv_core_mat_fill_normal(opencv_core_mat_handle *destination,
                             const opencv_core_scalar *mean,
                             const opencv_core_scalar *standard_deviation);
 
+/* Shuffles a non-empty 2-D row or column vector in place using the calling
+ * thread's OpenCV default RNG. Complete elements must have a dispatcher-
+ * supported size: 1, 2, 3, 4, 6, 8, 12, 16, 24, or 32 bytes. */
+opencv_core_status
+opencv_core_mat_shuffle(opencv_core_mat_handle *destination);
+
 /*
  * Sets source elements selected by mask to value. Mask must be a same-sized
  * single-channel UInt8 Mat; any nonzero value selects the complete element.

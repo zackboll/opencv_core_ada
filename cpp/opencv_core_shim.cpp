@@ -3733,6 +3733,60 @@ opencv_core_mat_fill_normal(opencv_core_mat_handle *destination,
 }
 
 opencv_core_status
+opencv_core_mat_shuffle(opencv_core_mat_handle *destination) {
+    clear_error();
+
+    if (destination == nullptr) {
+        return invalid_argument("destination Mat handle must not be null");
+    }
+
+    try {
+        const cv::Mat &mat = destination->value;
+        // ABI safety: OpenCV randShuffle_ evaluates rng % total(), so an empty
+        // Mat would perform a modulo by zero.
+        if (mat.empty()) {
+            return invalid_argument("destination Mat must not be empty");
+        }
+        // ABI safety: randShuffle_'s non-continuous path asserts dims <= 2
+        // before using rows and cols for its address calculations.
+        if (mat.dims != 2) {
+            return invalid_argument("destination Mat must be two-dimensional");
+        }
+        // ABI safety: restricting to a row or column vector ensures total() is
+        // nonzero and no greater than INT_MAX before randShuffle_ narrows it to
+        // unsigned and uses it as a modulo divisor.
+        if (mat.rows != 1 && mat.cols != 1) {
+            return invalid_argument("destination Mat must be a row or column vector");
+        }
+
+        const size_t element_size = mat.elemSize();
+        // ABI safety: OpenCV indexes a fixed 32-entry dispatch table by
+        // elemSize() and asserts that the selected function is non-null.
+        switch (element_size) {
+        case 1:
+        case 2:
+        case 3:
+        case 4:
+        case 6:
+        case 8:
+        case 12:
+        case 16:
+        case 24:
+        case 32:
+            break;
+        default:
+            return invalid_argument(
+                "destination Mat element size is not supported by randShuffle");
+        }
+
+        cv::randShuffle(destination->value, 1.0, nullptr);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_set_to_masked(opencv_core_mat_handle *mat,
                               const opencv_core_scalar *value,
                               const opencv_core_mat_handle *mask) {

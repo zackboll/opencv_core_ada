@@ -829,6 +829,9 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_fill_normal";
 
+   function Mat_Shuffle (Destination : Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_shuffle";
+
    function Mat_Set_To_Masked
      (Self : Mat_Handle; Value : access Scalar; Mask : Mat_Handle)
       return Status

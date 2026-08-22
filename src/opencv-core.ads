@@ -942,6 +942,16 @@ package OpenCV.Core is
    --  Regions are supported and remain Regions.
    procedure Fill_Normal
      (Self : in out Mat; Mean : Scalar; Standard_Deviation : Scalar);
+   --  Randomly permutes Self in place using the calling thread's OpenCV
+   --  default RNG, which advances. Set_Random_Seed makes it reproducible
+   --  on that thread. Self must be a non-empty 2-D row or column vector.
+   --  Complete Mat elements are moved as units, so multi-channel elements keep
+   --  their channels together. Valid non-contiguous vector Regions are
+   --  supported and retain their shared storage. OpenCV 4.10 supports complete
+   --  element sizes of only 1, 2, 3, 4, 6, 8, 12, 16, 24, and 32 bytes.
+   --  The order may remain unchanged by chance. Iteration_Factor is not
+   --  exposed because OpenCV 4.10's randShuffle implementation ignores it.
+   procedure Shuffle (Self : in out Mat);
    function Sum (Self : Mat) return Scalar;
    --  Returns the per-channel sum of Self's main diagonal. Rectangular and
    --  empty Mats are accepted. Self must have at most four channels, matching

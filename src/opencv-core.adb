@@ -3196,6 +3196,46 @@ package body OpenCV.Core is
       Raise_On_Error (Result, "Normal random fill");
    end Fill_Normal;
 
+   function Shuffle_Element_Size (Self : Mat) return Mat_Size is
+      Channel_Bytes : constant Mat_Size :=
+        (case Self.Depth is
+           when UInt8 | Int8             => 1,
+           when UInt16 | Int16 | Float16 => 2,
+           when Int32 | Float32          => 4,
+           when Float64                  => 8);
+   begin
+      return Channel_Bytes * Mat_Size (Self.Channels);
+   end Shuffle_Element_Size;
+
+   procedure Validate_Shuffle_Destination (Self : Mat) is
+      Element_Bytes : Mat_Size;
+   begin
+      if Self.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Shuffle requires a non-empty Mat");
+      end if;
+
+      if Self.Rows /= 1 and then Self.Columns /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Shuffle requires a row or column vector");
+      end if;
+
+      Element_Bytes := Shuffle_Element_Size (Self);
+      if Element_Bytes not in 1 | 2 | 3 | 4 | 6 | 8 | 12 | 16 | 24 | 32 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Shuffle does not support this complete Mat element size");
+      end if;
+   end Validate_Shuffle_Destination;
+
+   procedure Shuffle (Self : in out Mat) is
+      Result : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Shuffle_Destination (Self);
+      Result := OpenCV.Internal.C_API.Mat_Shuffle (Self.Handle);
+      Raise_On_Error (Result, "Mat shuffle");
+   end Shuffle;
+
    function Sum (Self : Mat) return Scalar is
       C_Result : aliased OpenCV.Internal.C_API.Scalar :=
         (Component_0 => 0.0,
