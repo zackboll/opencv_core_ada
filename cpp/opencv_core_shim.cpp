@@ -3848,6 +3848,14 @@ opencv_core_mat_solve_least_squares(
         const cv::Mat &a = coefficients->value;
         const cv::Mat &b = right_hand_side->value;
 
+        // ABI safety: OpenCV 4.10 cv::solve DECOMP_SVD passes B to
+        // SVBkSb with m = A.rows. SVBkSbImpl_ then reads m RHS rows;
+        // a shorter B would cause reads beyond its row range.
+        if (b.rows != a.rows) {
+            return invalid_argument(
+                "right-hand side must have the same number of rows as coefficients");
+        }
+
         // ABI safety: OpenCV 4.10 SVBkSbImpl_ clears the packed solution with
         // x[i * ldx + j], where ldx is B.cols. N * K must fit signed int
         // before that index expression is evaluated.
