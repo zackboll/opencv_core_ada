@@ -1334,6 +1334,247 @@ package body Mat_Access_Tests is
          "The Mat must remain usable after a borrowed-row callback exception");
    end Float32_Borrowed_Row_Propagates_Callback_Exception;
 
+   procedure UInt8_Borrowed_Writable_Row_Is_Zero_Copy
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Alias : OpenCV.Core.Mat;
+
+      procedure Mutate
+        (Data : aliased in out OpenCV.Core.UInt8_Row_Access.Row_Array) is
+      begin
+         AUnit.Assertions.Assert
+           (Data'First = 0 and then Data'Last = 2 and then Data'Length = 3,
+            "A writable borrowed UInt8 row must use zero-based columns");
+
+         Data (1) := 42;
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Access.Get (Image, Row => 1, Column => 1) = 42,
+            "A write through the borrowed row must be immediately visible"
+            & " through Get");
+
+         OpenCV.Core.UInt8_Access.Set
+           (Alias, Row => 1, Column => 2, Value => 200);
+         AUnit.Assertions.Assert
+           (Data (2) = 200,
+            "A write through a shallow alias must be immediately visible"
+            & " through the borrowed row");
+      end Mutate;
+   begin
+      OpenCV.Core.UInt8_Access.Set (Image, Row => 1, Column => 0, Value => 1);
+      OpenCV.Core.UInt8_Access.Set (Image, Row => 1, Column => 1, Value => 2);
+      OpenCV.Core.UInt8_Access.Set (Image, Row => 1, Column => 2, Value => 3);
+      Alias := Image;
+
+      OpenCV.Core.UInt8_Row_Access.With_Writable_Row
+        (Image, Row => 1, Process => Mutate'Access);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Image, Row => 1, Column => 0) = 1
+         and then OpenCV.Core.UInt8_Access.Get (Image, Row => 1, Column => 1)
+                  = 42
+         and then OpenCV.Core.UInt8_Access.Get (Image, Row => 1, Column => 2)
+                  = 200,
+         "Writable borrowed-row mutations must remain after Process returns");
+   end UInt8_Borrowed_Writable_Row_Is_Zero_Copy;
+
+   procedure UInt8_Borrowed_Read_Only_Row_Matches_Mat
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 4,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+
+      procedure Inspect (Data : aliased OpenCV.Core.UInt8_Row_Access.Row_Array)
+      is
+      begin
+         AUnit.Assertions.Assert
+           (Data'First = 0 and then Data'Last = 3 and then Data'Length = 4,
+            "A read-only borrowed UInt8 row must use zero-based columns");
+         AUnit.Assertions.Assert
+           (Data (0) = 5
+            and then Data (1) = 15
+            and then Data (2) = 25
+            and then Data (3) = 35,
+            "A read-only borrowed UInt8 row must match the Mat values");
+      end Inspect;
+   begin
+      OpenCV.Core.UInt8_Access.Set (Image, Row => 0, Column => 0, Value => 5);
+      OpenCV.Core.UInt8_Access.Set (Image, Row => 0, Column => 1, Value => 15);
+      OpenCV.Core.UInt8_Access.Set (Image, Row => 0, Column => 2, Value => 25);
+      OpenCV.Core.UInt8_Access.Set (Image, Row => 0, Column => 3, Value => 35);
+
+      OpenCV.Core.UInt8_Row_Access.With_Read_Only_Row
+        (Image, Row => 0, Process => Inspect'Access);
+   end UInt8_Borrowed_Read_Only_Row_Matches_Mat;
+
+   procedure UInt8_Borrowed_Row_Handles_Non_Continuous_Region
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 4,
+           Columns      => 6,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      View   : OpenCV.Core.Mat :=
+        Parent.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+
+      procedure Mutate
+        (Data : aliased in out OpenCV.Core.UInt8_Row_Access.Row_Array) is
+      begin
+         AUnit.Assertions.Assert
+           (Data'First = 0 and then Data'Last = 2 and then Data'Length = 3,
+            "A borrowed Region row must be indexed relative to the Region");
+         Data (0) := 11;
+         Data (2) := 13;
+      end Mutate;
+   begin
+      Parent.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      AUnit.Assertions.Assert
+        (not View.Is_Continuous,
+         "A partial-width multi-row Region must be non-continuous");
+
+      OpenCV.Core.UInt8_Row_Access.With_Writable_Row
+        (View, Row => 0, Process => Mutate'Access);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Parent, Row => 1, Column => 1) = 11
+         and then OpenCV.Core.UInt8_Access.Get (Parent, Row => 1, Column => 3)
+                  = 13,
+         "Borrowed Region writes must mutate the corresponding parent"
+         & " elements");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Parent, Row => 1, Column => 0) = 1
+         and then OpenCV.Core.UInt8_Access.Get (Parent, Row => 1, Column => 4)
+                  = 1
+         and then OpenCV.Core.UInt8_Access.Get (Parent, Row => 1, Column => 2)
+                  = 1,
+         "Borrowed Region writes must not expose or mutate parent padding");
+   end UInt8_Borrowed_Row_Handles_Non_Continuous_Region;
+
+   procedure UInt8_Borrowed_Row_Rejects_Invalid_Mats_And_Indices
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Float32_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      RGB_Image     : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      Valid_Image   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Invoked       : Boolean := False;
+
+      procedure Mark_Read
+        (Data : aliased OpenCV.Core.UInt8_Row_Access.Row_Array)
+      is
+         pragma Unreferenced (Data);
+      begin
+         Invoked := True;
+      end Mark_Read;
+
+      procedure Mark_Write
+        (Data : aliased in out OpenCV.Core.UInt8_Row_Access.Row_Array)
+      is
+         pragma Unreferenced (Data);
+      begin
+         Invoked := True;
+      end Mark_Write;
+
+      procedure Read_Float32 is
+      begin
+         OpenCV.Core.UInt8_Row_Access.With_Read_Only_Row
+           (Float32_Image, Row => 0, Process => Mark_Read'Access);
+      end Read_Float32;
+
+      procedure Read_Multi_Channel is
+      begin
+         OpenCV.Core.UInt8_Row_Access.With_Read_Only_Row
+           (RGB_Image, Row => 0, Process => Mark_Read'Access);
+      end Read_Multi_Channel;
+
+      procedure Write_Past_Last is
+      begin
+         OpenCV.Core.UInt8_Row_Access.With_Writable_Row
+           (Valid_Image, Row => 1, Process => Mark_Write'Access);
+      end Write_Past_Last;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Read_Float32'Access,
+         "UInt8 borrowed-row access must reject a Float32 Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_Multi_Channel'Access,
+         "UInt8 borrowed-row access must reject a multi-channel Mat");
+      Assert_Raises_OpenCV_Error
+        (Write_Past_Last'Access,
+         "UInt8 borrowed-row access must reject a row equal to Rows");
+      AUnit.Assertions.Assert
+        (not Invoked, "Borrowed-row validation must not invoke the callback");
+   end UInt8_Borrowed_Row_Rejects_Invalid_Mats_And_Indices;
+
+   procedure UInt8_Borrowed_Row_Propagates_Callback_Exception
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Raised  : Boolean := False;
+      Message : Ada.Exceptions.Exception_Id := Ada.Exceptions.Null_Id;
+
+      procedure Mutate
+        (Data : aliased in out OpenCV.Core.UInt8_Row_Access.Row_Array) is
+      begin
+         Data (0) := 9;
+         raise Borrowed_Row_Callback_Error;
+      end Mutate;
+   begin
+      OpenCV.Core.UInt8_Access.Set (Image, Row => 0, Column => 0, Value => 1);
+      OpenCV.Core.UInt8_Access.Set (Image, Row => 0, Column => 1, Value => 2);
+
+      begin
+         OpenCV.Core.UInt8_Row_Access.With_Writable_Row
+           (Image, Row => 0, Process => Mutate'Access);
+      exception
+         when Error : Borrowed_Row_Callback_Error =>
+            Raised := True;
+            Message := Ada.Exceptions.Exception_Identity (Error);
+      end;
+
+      AUnit.Assertions.Assert
+        (Raised and then Message = Borrowed_Row_Callback_Error'Identity,
+         "A callback exception must propagate unchanged");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Image, Row => 0, Column => 0) = 9
+         and then OpenCV.Core.UInt8_Access.Get (Image, Row => 0, Column => 1)
+                  = 2,
+         "Writes completed before a callback exception must remain visible");
+
+      OpenCV.Core.UInt8_Access.Set (Image, Row => 0, Column => 1, Value => 4);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Image, Row => 0, Column => 1) = 4,
+         "The Mat must remain usable after a borrowed-row callback exception");
+   end UInt8_Borrowed_Row_Propagates_Callback_Exception;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -1439,6 +1680,26 @@ package body Mat_Access_Tests is
         (Caller.Create
            ("Float32 borrowed row propagates callback exceptions",
             Float32_Borrowed_Row_Propagates_Callback_Exception'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt8 borrowed writable row is zero-copy",
+            UInt8_Borrowed_Writable_Row_Is_Zero_Copy'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt8 borrowed read-only row matches Mat",
+            UInt8_Borrowed_Read_Only_Row_Matches_Mat'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt8 borrowed row handles non-continuous Regions",
+            UInt8_Borrowed_Row_Handles_Non_Continuous_Region'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt8 borrowed row rejects invalid Mats and indices",
+            UInt8_Borrowed_Row_Rejects_Invalid_Mats_And_Indices'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt8 borrowed row propagates callback exceptions",
+            UInt8_Borrowed_Row_Propagates_Callback_Exception'Access));
       return Result'Access;
    end Suite;
 
