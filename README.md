@@ -2,46 +2,53 @@
 
 A thick, idiomatic Ada binding for the **OpenCV Core** module.
 
-`opencvcore_ada` provides an Ada-facing API over OpenCV Core data structures,
-array operations, numerical routines, linear algebra, and persistence without
-exposing the C++ ABI to Ada applications. The binding uses a stable C ABI shim
-between Ada and C++, preserves OpenCV ownership and numerical behavior where
-practical, and represents common OpenCV concepts with Ada controlled types,
-strong enums, records, overloads, generics, ranges, discriminated results, and
-exceptions.
+The project exposes OpenCV Core through Ada-controlled resources, strong types,
+records, overloads, discriminated results, generics, scoped zero-copy access,
+and Ada exceptions while keeping the C++ ABI behind a small stable C interface.
+It is intentionally an Ada API over OpenCV rather than a mechanical translation
+of the C++ headers.
 
-> **Project status:** active development, `0.1.0-dev`.
+> **Version:** `0.1.0`
 >
-> **Current verification baseline:** **683 registered AUnit tests** across
-> **11 test suites**, warning-free builds enforced with `-Werror`, plus targeted
-> **SPARK / GNATprove** proof for signed-32-bit dimensional product safety.
+> **Development status:** active, pre-1.0 API.
 >
-> **Current scope:** substantial 2-D dense `Mat` coverage, including ownership
-> and views, typed access, conversion and arithmetic, masks, channel
-> manipulation, element-wise mathematics, reductions/statistics, sorting,
-> matrix rearrangement, covariance, symmetric eigen decomposition, PCA,
-> compact SVD, SVD back-substitution, pseudoinverse, reciprocal condition
-> number, vector transforms, and XML/YAML/JSON persistence to disk or memory.
+> **Current development baseline:** **908 registered AUnit tests across 20
+> suites**, Ada/C++ warning-free builds enforced with `-Werror`, and targeted
+> SPARK/GNATprove proof for pure-Ada safety arithmetic.
 >
-> The API is pre-1.0 and may still evolve as larger OpenCV Core families are
-> added.
+> **Scope:** OpenCV **Core** only. Higher-level modules such as `imgproc`,
+> `imgcodecs`, `highgui`, `videoio`, `features2d`, `calib3d`, and `dnn` belong
+> in separate Ada crates that can depend on this Core binding.
+
+## Project names
+
+Several related names appear in the repository:
+
+| Purpose | Name |
+| --- | --- |
+| GitHub repository | `opencv_core_ada` |
+| Alire crate | `opencv_core` |
+| GPR project | `OpenCV_Core` |
+| Ada API root | `OpenCV.Core` |
+| Built library name | `opencv_core_ada` |
 
 ## Contents
 
 - [Goals and scope](#goals-and-scope)
 - [Architecture](#architecture)
-- [Safety and validation boundary](#safety-and-validation-boundary)
 - [Requirements](#requirements)
 - [Building](#building)
 - [Running the tests](#running-the-tests)
-- [SPARK and GNATprove](#spark-and-gnatprove)
 - [Quick start](#quick-start)
-- [Ownership, views, and copies](#ownership-views-and-copies)
-- [Typed access](#typed-access)
+- [Ownership, views, and zero-copy access](#ownership-views-and-zero-copy-access)
+- [Typed access matrix](#typed-access-matrix)
 - [Public API overview](#public-api-overview)
 - [Linear algebra and decomposition](#linear-algebra-and-decomposition)
+- [Spectral transforms](#spectral-transforms)
+- [Random numbers, clustering, and nearest neighbors](#random-numbers-clustering-and-nearest-neighbors)
 - [Persistence](#persistence)
-- [Current milestone status](#current-milestone-status)
+- [Safety and validation boundary](#safety-and-validation-boundary)
+- [SPARK and GNATprove](#spark-and-gnatprove)
 - [Known limitations](#known-limitations)
 - [Project layout](#project-layout)
 - [Development approach](#development-approach)
@@ -53,182 +60,129 @@ exceptions.
 
 ## Goals and scope
 
-The project is designed around several principles:
+The project is designed around the following principles:
 
-- Provide an **idiomatic Ada API**, rather than mechanically translating the
-  C++ interface.
+- Provide an **idiomatic Ada API** rather than reproducing C++ syntax.
 - Keep C++ implementation details behind a stable **`extern "C"` ABI**.
-- Never expose `cv::Mat`, `cv::FileStorage`, C++ references, templates, STL
-  containers, exceptions, or `std::string` directly across the ABI.
-- Represent OpenCV resources with Ada controlled types and preserve OpenCV
-  reference-counted ownership semantics.
-- Use strong Ada types, enums, records, overloads, discriminated result types,
-  generics, ranges, and exceptions where they improve safety and readability.
-- Preserve important OpenCV numerical behavior, including saturation,
-  rounding, non-contiguous matrices, masks, IEEE floating-point edge cases,
-  and source-version-specific behavior where it materially affects safety or
-  results.
+- Never expose `cv::Mat`, C++ references, templates, STL containers,
+  `std::string`, C++ exceptions, raw C status codes, or `Interfaces.C` types in
+  the normal public Ada API.
+- Represent OpenCV resources with Ada controlled types and preserve OpenCV's
+  reference-counted ownership semantics where that is the correct model.
+- Prefer strong Ada enums, records, subtypes, discriminated result types,
+  generics, overloads, and exceptions over integer flags and output-parameter
+  conventions.
+- Preserve important OpenCV behavior such as saturation, rounding,
+  non-contiguous Regions, multi-channel layouts, floating-point edge cases,
+  and source-version-specific numerical behavior where it affects correctness
+  or safety.
 - Build features vertically:
 
   ```text
-  public Ada API -> thin Ada interop -> C ABI/C++ shim -> OpenCV -> AUnit tests
+  public Ada API
+       -> thin private Ada C interop
+       -> stable C ABI / C++ shim
+       -> OpenCV Core
+       -> focused AUnit coverage
   ```
 
-- Keep the public library independent from test/development dependencies such
-  as AUnit, GNATprove, and GNATcov.
+- Keep AUnit, GNATprove, GNATcov, formatting tools, and other development-only
+  dependencies out of the public crate.
 - Use SPARK selectively for small pure-Ada safety properties where formal proof
-  adds value, without attempting to prove OpenCV or foreign-resource ownership.
-- Prefer explicit Ada abstractions over C++-specific encodings such as integer
-  mode constants, output-parameter APIs, and STL collections.
-- Use authoritative OpenCV declarations and source when exact behavior differs
-  from a high-level description.
+  gives a concrete guarantee.
+- Inspect authoritative OpenCV declarations and source when exact behavior or
+  safety differs from a high-level API description.
 
-This crate is intentionally focused on **OpenCV Core**. Higher-level modules
-such as `imgproc`, `imgcodecs`, `highgui`, `videoio`, `features2d`, `calib3d`,
-and `dnn` are expected to live in separate Ada crates that depend on
-`opencvcore_ada`.
-
-Literal symbol-for-symbol coverage of every internal implementation surface
-under OpenCV Core is not a goal. The target is broad coverage of portable,
-user-facing Core functionality with a coherent Ada design.
+Literal symbol-for-symbol coverage of every internal OpenCV Core implementation
+surface is not a goal. The target is broad coverage of portable, user-facing
+Core functionality with a coherent Ada design.
 
 ---
 
 ## Architecture
 
-The binding is intentionally layered:
+The binding is deliberately layered:
 
 ```text
 Ada application
      |
      v
-+----------------------------------+
-| Thick Ada API                    |
-| OpenCV.Core                      |
-| OpenCV.Core.Persistence          |
-| strong types / exceptions        |
-+----------------------------------+
++-------------------------------------------+
+| Thick Ada API                             |
+| OpenCV.Core / child packages              |
+| controlled types, strong enums, records   |
+| exceptions, generics, scoped callbacks    |
++-------------------------------------------+
      |
      v
-+----------------------------------+
-| Thin Ada interop                 |
-| OpenCV.Internal.C_API            |
-| fixed ABI types                  |
-+----------------------------------+
++-------------------------------------------+
+| Thin private Ada interop                  |
+| OpenCV.Internal.C_API                     |
+| fixed-width C ABI types                   |
++-------------------------------------------+
      |
      v
-+----------------------------------+
-| C++ shim / stable C ABI          |
-| extern "C"                       |
-| opaque Mat/FileStorage handles   |
-+----------------------------------+
++-------------------------------------------+
+| C++ shim / stable C ABI                   |
+| extern "C"                                |
+| opaque handles, exception containment     |
++-------------------------------------------+
      |
      v
-+----------------------------------+
-| OpenCV Core                      |
-| cv::Mat / cv::FileStorage / cv::*|
-+----------------------------------+
++-------------------------------------------+
+| OpenCV Core                               |
+| cv::Mat / cv::FileStorage / cv::*         |
++-------------------------------------------+
 ```
 
-### Thick Ada API
+### Thick Ada layer
 
-The public layer is intentionally Ada-shaped:
+The public layer is Ada-shaped:
 
-- `Mat` is a tagged controlled type with OpenCV-style shallow assignment.
-- `File_Storage` is a limited controlled type with exclusive ownership.
-- OpenCV integer flags are represented by strong Ada enums where practical.
-- Multiple-output OpenCV operations return Ada records instead of exposing
-  output parameters.
-- Normal semantic failures either raise `OpenCV_Error` or use a discriminated
-  result type when failure is part of the normal mathematical result.
-- `Interfaces.C`, raw opaque handles, and C++ implementation details remain
-  private.
+- `Mat` is a tagged controlled type.
+- ordinary `Mat` assignment is shallow, matching `cv::Mat` header semantics;
+- `Clone` is the explicit deep-copy operation;
+- `File_Storage` is a limited controlled type with exclusive ownership;
+- normal failures raise `OpenCV_Error`, while mathematically meaningful
+  success/failure states use discriminated result types where appropriate;
+- multi-result OpenCV operations return Ada records instead of exposing output
+  parameters;
+- typed data access is exposed through dedicated child packages rather than
+  raw pointers.
 
 ### Thin Ada interop
 
-`OpenCV.Internal.C_API` defines the fixed-width C ABI contract used by the
-thick Ada layer. It is an implementation detail, not the normal application
-API.
+`OpenCV.Internal.C_API` defines the fixed C ABI used by the thick layer. It is
+an implementation detail, not the normal application interface.
 
 ### C++ shim
 
 The shim:
 
 - exports only C-compatible functions;
-- uses opaque handles for `cv::Mat` and `cv::FileStorage`;
+- uses opaque handles for C++ objects;
 - uses fixed-width integers and simple C-compatible records;
 - validates raw ABI and memory-safety conditions;
-- initializes caller-visible outputs before operations that may fail;
+- initializes caller-visible outputs before work that may fail;
 - catches OpenCV, standard C++, and unknown exceptions;
-- translates failures into stable status codes plus diagnostic text;
-- never allows a C++ exception to cross into Ada;
-- never passes C++ objects, references, STL types, templates, or `std::string`
-  ownership across the boundary.
-
-C++ containers may be used **inside** the shim when OpenCV requires them, but
-they do not cross the ABI.
-
----
-
-## Safety and validation boundary
-
-The project deliberately separates **public semantic validation** from
-**raw ABI safety**.
-
-### Ada layer
-
-The thick Ada API normally validates caller-facing semantic rules such as:
-
-- shape compatibility;
-- depth and channel restrictions;
-- row/column bounds;
-- mode restrictions;
-- non-empty requirements;
-- allowed enum-like choices;
-- persistence names and strings that cannot be represented safely by the
-  underlying OpenCV 4.10 interface.
-
-### C++ shim
-
-The shim defensively validates conditions that a raw C caller could violate and
-that are needed to keep the C++ call safe, including:
-
-- null handles and output pointers;
-- raw enum decoding;
-- pointer/count and row-buffer sizes;
-- signed arithmetic that could overflow before OpenCV validates an argument;
-- output initialization and failure atomicity;
-- ownership publication;
-- exception containment.
-
-A semantic-looking duplicate check belongs in C++ only when it has a concrete
-ABI/memory-safety reason.
-
-### Warnings are errors
-
-The public project compiles:
-
-- Ada with `-Werror`;
-- C++17 with `-Wall -Wextra -Wpedantic -Werror`.
-
-The test project also compiles Ada with `-Werror`.
-
-Warnings are treated as issues rather than routinely suppressed.
+- converts failures into stable status codes and diagnostic text;
+- never allows a C++ exception or C++ object lifetime to cross directly into
+  Ada.
 
 ---
 
 ## Requirements
 
-The build currently expects:
+A normal build requires:
 
 - an Ada toolchain supported by Alire;
 - **Alire**;
 - a C++17 compiler;
 - **pkg-config**;
-- OpenCV development files providing the `opencv4` pkg-config package;
+- OpenCV 4.x development files exposing the `opencv4` pkg-config package;
 - the OpenCV Core library (`opencv_core`).
 
-The project compiles the shim as C++17 and links against:
+The project links against:
 
 ```text
 opencv_core
@@ -241,41 +195,38 @@ OpenCV include and library paths are discovered by:
 scripts/configure_opencv.sh
 ```
 
-using the `opencv4` pkg-config package.
+using `pkg-config opencv4`.
 
-The binding targets the OpenCV 4.x Core API, with detailed feature semantics
-and safety boundaries checked against **OpenCV 4.10** where implementation
-details matter. Compatibility across every OpenCV 4.x release has not yet been
-characterized release by release.
+The binding targets the OpenCV 4.x Core API. Source-level safety and semantic
+reviews currently use **OpenCV 4.10** as the reference where implementation
+details matter. Compatibility is not yet characterized release-by-release for
+every OpenCV 4.x version.
 
 ---
 
 ## Building
 
-Clone the repository and build with Alire:
+Clone and build:
 
 ```sh
-git clone https://github.com/zackboll/opencvcore_ada.git
-cd opencvcore_ada
+git clone https://github.com/zackboll/opencv_core_ada.git
+cd opencv_core_ada
 alr build
 ```
 
-The Alire pre-build action runs:
-
-```text
-scripts/configure_opencv.sh
-```
-
-which uses `pkg-config` to generate the local OpenCV GPR configuration.
+The Alire pre-build action runs `scripts/configure_opencv.sh`, which creates the
+local OpenCV GPR configuration from `pkg-config`.
 
 If configuration fails, verify that OpenCV is visible:
 
 ```sh
 pkg-config --exists opencv4
+pkg-config --cflags opencv4
+pkg-config --libs opencv4
 ```
 
-The library supports normal GPR library kinds through
-`OPENCVCORE_ADA_LIBRARY_TYPE` / `LIBRARY_TYPE`:
+The GPR project supports the standard library kinds through
+`OPENCV_CORE_LIBRARY_TYPE` (falling back to `LIBRARY_TYPE`):
 
 ```text
 static        (default)
@@ -283,11 +234,20 @@ static-pic
 relocatable
 ```
 
+For example:
+
+```sh
+OPENCV_CORE_LIBRARY_TYPE=relocatable alr build
+```
+
+Both Ada and C++ are compiled with warnings promoted to errors. C++ is compiled
+as C++17 with `-Wall -Wextra -Wpedantic -Werror`.
+
 ---
 
 ## Running the tests
 
-Tests are maintained in a separate Alire crate under `tests/`:
+Tests live in a separate Alire crate under `tests/`:
 
 ```sh
 alr -C tests build
@@ -297,14 +257,15 @@ alr -C tests run
 The test crate depends on:
 
 - AUnit `^26.0.0`;
-- the local `opencvcore_ada` crate;
+- the local `opencv_core` crate;
 - GNATprove `^16.1.0`;
 - GNATcov `^26.2.1`.
 
-These development dependencies are intentionally **not** dependencies of the
-public library crate.
+These are intentionally not dependencies of the public library crate.
 
-The current test tree contains 11 suites:
+### Current test organization
+
+The current master suite registers **20 test suites**:
 
 - `Mat_Basic_Tests`
 - `Mat_Access_Tests`
@@ -314,90 +275,36 @@ The current test tree contains 11 suites:
 - `Mat_Channel_Tests`
 - `Mat_Mask_Tests`
 - `Mat_Reduction_Tests`
+- `Mat_Least_Squares_Tests`
+- `Linear_Program_Tests`
+- `Mat_Arg_Reduction_Tests`
 - `Mat_Range_Tests`
 - `Mat_Transform_Tests`
 - `Persistence_Tests`
+- `Cubic_Tests`
+- `Polynomial_Tests`
+- `K_Means_Tests`
+- `K_Nearest_Neighbor_Tests`
+- `Random_Tests`
+- `Linear_Discriminant_Analysis_Tests`
 
-Current registration baseline:
+Current development registration baseline:
 
 ```text
-683 AUnit tests
+908 AUnit tests
 ```
 
-New operations routinely test:
-
-- ordinary behavior;
-- invalid input;
-- shape/depth/channel compatibility;
-- empty Mats;
-- non-contiguous Regions;
-- shallow versus independent ownership;
-- source/result lifetime;
-- raw-ABI failure atomicity where applicable;
-- OpenCV-specific numerical and implementation boundaries;
-- persistence missing-versus-empty semantics;
-- disk and memory persistence modes.
+Depending on the operation, tests cover ordinary behavior, invalid input,
+shape/depth/channel compatibility, empty Mats, non-contiguous Regions,
+shallow-versus-independent ownership, callback lifetimes, arbitrary Ada array
+lower bounds, failure atomicity, and OpenCV-version-specific numerical
+boundaries.
 
 ---
 
-## SPARK and GNATprove
+## Quick start
 
-Formal verification is used selectively where it proves a concrete property
-inside the Ada layer.
-
-The current proof boundary is:
-
-```text
-OpenCV.Internal.Safe_Arithmetic
-```
-
-with `SPARK_Mode => On`.
-
-The first proved production helper is:
-
-```ada
-function Product_Exceeds_Signed_Int32
-  (Left, Right : Natural) return Boolean
-with
-  Global => null,
-  Post =>
-    Product_Exceeds_Signed_Int32'Result =
-      (Long_Long_Integer (Left) * Long_Long_Integer (Right)
-         > 2_147_483_647);
-```
-
-Its implementation uses division rather than evaluating the potentially
-overflowing `Natural` product. The helper is used by dimensional guards in SVD
-back-substitution and pseudoinverse handling.
-
-The intended proof strategy is **small proof islands**, not a wholesale
-conversion of the foreign-resource layer to SPARK:
-
-```text
-OpenCV / C++ numerical implementation
-              |
-              v
-        tested + reviewed
-
-C ABI / controlled ownership
-              |
-              v
-        tested + reviewed
-
-pure Ada safety arithmetic
-              |
-              v
-        SPARK / GNATprove
-```
-
-GNATprove is provided by the `tests` Alire environment and is not a dependency
-of the public crate.
-
----
-
-# Quick start
-
-## Create and access a matrix
+### Create and access a matrix
 
 ```ada
 with Ada.Text_IO;
@@ -416,22 +323,17 @@ procedure Example is
    Value : UInt8_Value;
 begin
    OpenCV.Core.UInt8_Access.Set
-     (Image,
-      Row    => 10,
-      Column => 20,
-      Value  => 255);
+     (Image, Row => 10, Column => 20, Value => 255);
 
    Value :=
      OpenCV.Core.UInt8_Access.Get
-       (Image,
-        Row    => 10,
-        Column => 20);
+       (Image, Row => 10, Column => 20);
 
    Ada.Text_IO.Put_Line (UInt8_Value'Image (Value));
 end Example;
 ```
 
-## Create from `Size`
+### Create from `Size`
 
 ```ada
 Image : Mat :=
@@ -442,10 +344,9 @@ Image : Mat :=
 Dims : constant Size := Image.Dimensions;
 ```
 
-`Dimensions.Width` corresponds to `Columns`; `Dimensions.Height` corresponds
-to `Rows`.
+`Size.Width` maps to columns and `Size.Height` maps to rows.
 
-## Use a Region
+### Create a shared Region
 
 ```ada
 ROI : Mat :=
@@ -456,149 +357,233 @@ ROI : Mat :=
       Height => 100));
 ```
 
-A Region has its own `Mat` header but shares storage with its parent.
+A Region has its own `Mat` header but shares the parent's storage.
 
-## Compute a compact SVD
-
-```ada
-use OpenCV.Core;
-
-Basis : constant Singular_Value_Decomposition_Result :=
-  Singular_Value_Decomposition (A);
-
---  For A with shape M x N:
---    Basis.Singular_Values : R x 1
---    Basis.U               : M x R
---    Basis.V_Transpose     : R x N
---  where R = min (M, N).
-```
-
-## Compute a pseudoinverse
+### Borrow a row without copying
 
 ```ada
-A_Plus : constant Mat := Pseudo_Inverse (A);
-```
+with OpenCV.Core.Float32_Row_Access;
 
-`Pseudo_Inverse` supports square, tall, wide, and rank-deficient
-single-channel Float32/Float64 matrices.
-
-## Persist named values to YAML
-
-```ada
-with OpenCV.Core.Persistence;
-
-declare
-   package Persistence renames OpenCV.Core.Persistence;
-
-   Storage : Persistence.File_Storage :=
-     Persistence.Open ("calibration.yml", Persistence.Write_Only);
+procedure Inspect_Row
+  (Data : aliased OpenCV.Core.Float32_Row_Access.Row_Array)
+is
 begin
-   Storage.Write ("Frame_Count", 120);
-   Storage.Write ("RMS_Error", 0.18);
-   Storage.Write ("Camera_Name", "Front Camera");
-   Storage.Write ("Camera_Matrix", Camera_Matrix);
-end;
+   -- Data (0) is column 0 of the borrowed row.
+   null;
+end Inspect_Row;
+
+OpenCV.Core.Float32_Row_Access.With_Read_Only_Row
+  (Image   => Image,
+   Row     => 0,
+   Process => Inspect_Row'Access);
 ```
 
-`File_Storage` closes automatically when finalized.
+The callback is the lifetime boundary. The row directly aliases `Mat` storage
+and no pixel values are copied.
 
-## Serialize entirely in memory
+### Wrap caller-owned storage in a temporary `Mat`
 
 ```ada
-with OpenCV.Core.Persistence;
+with OpenCV.Core;
+with OpenCV.Core.UInt8_Access;
+with OpenCV.Core.UInt8_Mat_View;
 
-declare
-   package Persistence renames OpenCV.Core.Persistence;
+procedure External_Buffer_Example is
+   Data : aliased OpenCV.Core.UInt8_Mat_View.Buffer_Array :=
+     (11 => 10,
+      12 => 20,
+      13 => 30,
+      14 => 40,
+      15 => 50,
+      16 => 60);
 
-   Writer : Persistence.File_Storage :=
-     Persistence.Create_Memory (Persistence.JSON);
-begin
-   Writer.Write ("Name", "Front Camera");
-   Writer.Write ("Matrix", Camera_Matrix);
-
-   declare
-      Text   : constant String := Writer.Close_And_Get_Text;
-      Reader : constant Persistence.File_Storage :=
-        Persistence.Open_Memory (Text);
-      Matrix : constant OpenCV.Core.Mat :=
-        Reader.Read_Mat ("Matrix");
+   procedure Process (Image : in out OpenCV.Core.Mat) is
    begin
-      null;
-   end;
-end;
+      OpenCV.Core.UInt8_Access.Set
+        (Image, Row => 1, Column => 0, Value => 200);
+      -- Data (14) is now 200 immediately. There is no copy-back phase.
+   end Process;
+begin
+   OpenCV.Core.UInt8_Mat_View.With_Writable_Mat_View
+     (Data, Rows => 2, Columns => 3, Process => Process'Access);
+end External_Buffer_Example;
 ```
 
-`Close_And_Get_Text` consumes and closes the memory writer.
+`Data'Length` must equal `Rows * Columns`. The Ada lower bound is arbitrary.
+The temporary `Mat` does not own the caller's storage.
 
 ---
 
-# Ownership, views, and copies
+## Ownership, views, and zero-copy access
 
 `OpenCV.Core.Mat` is a tagged private Ada controlled type.
 
-## Assignment is shallow
-
-Ordinary Ada assignment follows OpenCV's reference-counted `cv::Mat`
-semantics:
+### Ordinary assignment is shallow
 
 ```ada
 B := A;
 ```
 
-`B` receives a distinct matrix header sharing the same underlying pixel
-storage with `A`.
+`B` receives a distinct `cv::Mat` header sharing the same OpenCV-owned storage
+with `A`. Mutations through either alias are visible through the other.
 
-Mutating shared storage through either alias is visible through the other.
-
-## `Clone` is deep
-
-Use `Clone` when independent storage is required:
+### `Clone` is deep
 
 ```ada
 B := A.Clone;
 ```
 
-## Shared-storage views
+The clone owns independent pixel storage.
 
-The following operations create distinct headers sharing storage where OpenCV
-defines a no-copy view:
+### Shared-storage views
+
+The public API includes no-copy views such as:
 
 - `Region`
 - `Row_View`
 - `Column_View`
+- row-range and column-range view overloads
 - `Reshape`
 - `Diagonal_View`
 
-Views remain valid after the source header is finalized because OpenCV
-reference counting retains the underlying allocation.
+For ordinary OpenCV-owned Mats, these headers retain the shared allocation by
+normal OpenCV reference counting.
 
-## Independent-result operations
+### Copied row access
 
-Operations that compute new values generally return independently owned
-storage. Examples include:
+The UInt8, Float32, UInt8 Vec3, and Float32 Vec3 row packages provide
+`Read_Row` / `Write_Row` APIs. Caller arrays may use arbitrary lower bounds;
+values map in iteration order to matrix columns.
 
-- arithmetic;
-- conversion and element-wise mathematics;
-- `Transpose`, `Flip`, `Rotate`, `Repeat`;
-- sorting;
-- `Copy_Make_Border`;
-- channel extraction/splitting/merging;
-- concatenation;
-- `Diagonal_Matrix`;
-- matrix multiplication;
-- covariance;
-- eigen, PCA, and SVD outputs;
-- pseudoinverse;
-- per-element transforms;
-- reductions that return a `Mat`.
+These are copy-based APIs and are useful when the caller wants an ordinary Ada
+array with no borrowed lifetime.
 
-Mutating an independent result does not mutate its inputs.
+### Scoped zero-copy row borrowing
+
+The same four row-access families provide:
+
+```text
+With_Read_Only_Row
+With_Writable_Row
+```
+
+The callback receives a zero-based array that directly overlays one logical
+OpenCV row. Row borrowing works with non-contiguous 2-D Regions because only
+the active logical row is exposed; inter-row padding is never exposed.
+
+A shallow `Mat` lease is retained during the callback so the underlying OpenCV
+allocation cannot disappear merely because another header is rebound or
+finalized. The lease is a lifetime mechanism, not thread synchronization.
+
+### Scoped continuous whole-buffer borrowing
+
+The four matching buffer-access packages provide:
+
+```text
+With_Read_Only_Buffer
+With_Writable_Buffer
+```
+
+The callback receives a flat zero-based row-major array of `Image.Total`
+elements. Nonempty Mats must be continuous. Continuous Regions are accepted.
+There is no per-row copy and no write-back phase.
+
+### Caller-owned buffer -> temporary `Mat`
+
+The four Mat-view packages provide the reverse zero-copy direction:
+
+```text
+OpenCV.Core.UInt8_Mat_View
+OpenCV.Core.Float32_Mat_View
+OpenCV.Core.UInt8_Vec3_Mat_View
+OpenCV.Core.Float32_Vec3_Mat_View
+```
+
+`With_Writable_Mat_View` creates a callback-scoped `cv::Mat` header over the
+actual caller-owned Ada array. The public buffer formal is explicitly
+`aliased in out`, so the native header directly denotes the caller's storage.
+
+Important lifetime rule: a temporary external-buffer Mat may not create a
+shallow alias that could outlive the callback. Ordinary `Mat` assignment and
+no-copy view operations are therefore rejected for these temporary external
+views. `Clone` remains allowed because it creates independent OpenCV-owned
+storage that can safely outlive the callback.
+
+The external-data `Mat` header is destroyed at callback exit, including during
+exception unwinding; the caller's Ada array is never freed by OpenCV.
 
 ---
 
-# Typed access
+## Typed access matrix
 
-The public depth model includes:
+Direct typed access currently concentrates on four common layouts:
+
+| Layout | Element Get/Set | Copied row | Borrowed row | Continuous buffer borrow | Caller buffer -> `Mat` |
+| --- | --- | --- | --- | --- | --- |
+| UInt8 C1 | `UInt8_Access` | `UInt8_Row_Access` | `UInt8_Row_Access` | `UInt8_Buffer_Access` | `UInt8_Mat_View` |
+| Float32 C1 | `Float32_Access` | `Float32_Row_Access` | `Float32_Row_Access` | `Float32_Buffer_Access` | `Float32_Mat_View` |
+| UInt8 C3 | `UInt8_Vec3_Access` | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Buffer_Access` | `UInt8_Vec3_Mat_View` |
+| Float32 C3 | `Float32_Vec3_Access` | `Float32_Vec3_Row_Access` | `Float32_Vec3_Row_Access` | `Float32_Vec3_Buffer_Access` | `Float32_Vec3_Mat_View` |
+
+For Vec3 APIs, **one Ada vector is one complete OpenCV element/pixel**, not one
+scalar channel:
+
+- UInt8 Vec3: 24 bits / 3 bytes per element, native alignment 1;
+- Float32 Vec3: 96 bits / 12 bytes per element, native scalar alignment 4.
+
+The predefined Vec3 packages are component-oriented and do not impose RGB,
+BGR, XYZ, or any other semantic channel interpretation.
+
+Generic pure-Ada value abstractions are also provided:
+
+```ada
+generic
+   type Element_Type is private;
+   Length : Positive;
+package OpenCV.Core.Vectors;
+```
+
+and:
+
+```ada
+generic
+   type Element_Type is private;
+   Row_Count : Positive;
+   Column_Count : Positive;
+package OpenCV.Core.Fixed_Matrices;
+```
+
+A predefined Float32 3x3 fixed matrix and copy conversions to/from `Mat` are
+included. C++ `cv::Matx` objects do not cross the ABI.
+
+---
+
+## Public API overview
+
+The following is a practical overview of the current public surface. Exact
+shape, depth, channel, continuity, and numerical restrictions are documented
+on the Ada declarations and covered by tests.
+
+### Core types
+
+Major public abstractions include:
+
+- `Mat`, `Mat_Type`, `Depth_Type`, `Channel_Count`, `Mat_Size`
+- `Size`, `Point`, `Point_Array`, `Rect`, `Index_Range`, `Scalar`
+- `Mat_Array`
+- `Random_Number_Generator`
+- `Min_Max_Result`, `Mean_Std_Dev_Result`, `Range_Check_Result`
+- `Inversion_Result`, `Solve_Result`, `Linear_Program_Result`
+- `Polar_Coordinates`, `Cartesian_Coordinates`
+- `Covariance_Result`, `Eigen_Decomposition_Result`
+- `Principal_Component_Analysis_Result`
+- `Linear_Discriminant_Analysis_Result`
+- `Singular_Value_Decomposition_Result`
+- `K_Means_Result`, `Nearest_Neighbor_Result`
+- cubic and polynomial solution result types
+- channel routing records and arrays.
+
+The public depth enumeration contains:
 
 ```text
 UInt8
@@ -611,136 +596,20 @@ Float64
 Float16
 ```
 
-Direct typed element and copied-row access currently focuses on **UInt8** and
-**Float32**.
+### Creation, shape, metadata, and views
 
-## Scalar access
+Creation and structure:
 
-Available scalar typed access includes:
-
-- UInt8 `Get` / `Set`;
-- Float32 `Get` / `Set`;
-- Float32 non-finite classification.
-
-## Vec3 access
-
-Three-component UInt8 and Float32 vector packages and accessors are provided:
-
-```ada
-with OpenCV.Core.UInt8_Vec3;
-with OpenCV.Core.UInt8_Vec3_Access;
-
-Pixel : OpenCV.Core.UInt8_Vec3.Vector;
-
-OpenCV.Core.UInt8_Vec3_Access.Set
-  (Image,
-   Row    => 0,
-   Column => 0,
-   Value  => (10, 20, 30));
-
-Pixel := OpenCV.Core.UInt8_Vec3_Access.Get (Image, 0, 0);
-```
-
-The predefined Vec3 types are component-oriented. They do not impose RGB,
-BGR, or another semantic interpretation.
-
-## Copied row access
-
-Safe copied-row APIs avoid exposing raw OpenCV data pointers in public Ada
-code.
-
-Current row-access families include:
-
-- UInt8 single-channel;
-- Float32 single-channel;
-- UInt8 Vec3;
-- Float32 Vec3.
-
-Ada arrays may use arbitrary lower bounds; their ordered values map to matrix
-columns `0 .. Columns - 1`.
-
-## Generic value types
-
-A generic zero-based vector abstraction is provided:
-
-```ada
-generic
-   type Element_Type is private;
-   Length : Positive;
-package OpenCV.Core.Vectors;
-```
-
-A pure-Ada fixed-matrix generic is also provided:
-
-```ada
-generic
-   type Element_Type is private;
-   Row_Count : Positive;
-   Column_Count : Positive;
-package OpenCV.Core.Fixed_Matrices;
-```
-
-A predefined Float32 3x3 fixed matrix and copy conversion to/from `Mat` are
-available. The C++ `cv::Matx` object itself is not exposed through the ABI.
-
----
-
-# Public API overview
-
-This section summarizes the current public `OpenCV.Core` surface. Exact
-depth/channel restrictions are documented on individual declarations and
-covered by tests.
-
-## Core types and result types
-
-Public abstractions include:
-
-- `Mat`
-- `Mat_Type`
-- `Depth_Type`
-- `Channel_Count`
-- `Mat_Size`
-- `Size`
-- `Point`
-- `Point_Array`
-- `Rect`
-- `Index_Range`
-- `Scalar`
-- `Mat_Array`
-- `Min_Max_Result`
-- `Mean_Std_Dev_Result`
-- `Range_Check_Result`
-- `Inversion_Result`
-- `Solve_Result`
-- `Polar_Coordinates`
-- `Cartesian_Coordinates`
-- `Covariance_Result`
-- `Eigen_Decomposition_Result`
-- `Principal_Component_Analysis_Result`
-- `Singular_Value_Decomposition_Result`
-- channel-routing records and arrays.
-
-Strong enums include:
-
-- normalization;
-- comparison;
-- flipping;
-- border modes;
-- rotation;
-- reduction axes and kinds;
-- angle units;
-- sorting axes/orders;
-- transposed-product orientation;
-- symmetry source;
-- sample orientation;
-- covariance scaling.
-
-## Creation, shape, and metadata
-
-Creation:
-
-- `Create (Rows, Columns, Element_Type)`
-- `Create (Dimensions, Element_Type)`
+- `Create`
+- `Clone`
+- `Copy_To`
+- masked `Copy_To`
+- `Region`
+- `Row_View`
+- `Column_View`
+- range views
+- `Reshape`
+- `Diagonal_View`
 - `Diagonal_Matrix`
 
 Metadata:
@@ -757,38 +626,22 @@ Metadata:
 - `Is_Continuous`
 - `Is_Submatrix`
 
-## Views and copies
-
-Shared-storage operations:
-
-- `Region`
-- `Row_View`
-- `Column_View`
-- `Reshape`
-- `Diagonal_View`
-
-Copy/independent operations:
-
-- `Clone`
-- `Copy_To`
-- masked `Copy_To`
-
-`Index_Range` uses half-open semantics:
+`Index_Range` is half-open:
 
 ```text
 Start <= index < Stop
 ```
 
-## Conversion and element-wise mathematics
+### Conversion and element-wise mathematics
 
-Conversions and mapping:
+Conversion/mapping:
 
 - `Convert_To`
 - `Convert_Scale_Abs`
 - `Apply_LUT`
 - `Normalize`
 
-Mathematical functions:
+Element-wise mathematics and coordinate conversion:
 
 - `Sqrt`
 - `Exp`
@@ -799,13 +652,9 @@ Mathematical functions:
 - `Cart_To_Polar`
 - `Polar_To_Cart`
 
-`Magnitude`, `Phase`, and polar/cartesian routines operate component-wise on
-matching Float32/Float64 Mats and preserve multi-channel layouts where
-supported.
+### Arithmetic
 
-## Arithmetic
-
-Current explicit Mat/Mat operations include:
+Explicit Mat/Mat operations include:
 
 - `Add`
 - `Subtract`
@@ -817,14 +666,11 @@ Current explicit Mat/Mat operations include:
 - `Add_Weighted`
 - `Scale_Add`
 
-These remain intentionally distinct from algebraic `Matrix_Multiply`.
+Algebraic multiplication is deliberately separate as `Matrix_Multiply`.
 
-The first-generation arithmetic API favors explicit operations with controlled
-compatibility rules rather than reproducing the entire C++ operator matrix.
+### Masks and selection
 
-## Masks and selection
-
-Mask-producing/selection operations include:
+Mask production and selection include:
 
 - `In_Range`
 - `Compare`
@@ -836,44 +682,42 @@ Masked consumers include:
 
 - `Copy_To`
 - `Set_To`
-- bitwise operations;
+- bitwise operations
 - `Mean`
 - `Mean_Std_Dev`
 - `Norm`
 - `Min_Max_Loc`
 
-The common mask contract is an UInt8, single-channel Mat with the same 2-D
-shape as the source. Any nonzero mask value selects the complete element.
+The common mask model is a same-shape UInt8 C1 Mat; any nonzero mask value
+selects the complete source element.
 
-## Bitwise operations
+### Bitwise operations
 
-Available unmasked and masked forms include:
+Available masked/unmasked families include:
 
 - `Bitwise_And`
 - `Bitwise_Or`
 - `Bitwise_Xor`
 - `Bitwise_Not`
 
-OpenCV's stored-bit behavior is preserved for floating-point Mats.
+OpenCV's stored-bit interpretation is preserved for floating-point Mats.
 
-## Channel manipulation
+### Channel manipulation
 
-The public channel workflow includes:
+Current channel operations include:
 
 - `Split`
 - `Merge`
 - `Extract_Channel`
 - `Insert_Channel`
 - `Mix_Channels`
-- `Mat_Array`
 - `Channel_Route`
-- `Channel_Route_Array`
-- explicit zero-fill routing.
+- explicit zero-fill routing
 
-Collection operations honor Ada array iteration order rather than assuming a
-zero lower bound.
+Collection APIs respect Ada array iteration order instead of assuming lower
+bound zero.
 
-## Matrix layout and rearrangement
+### Layout, rearrangement, and borders
 
 Implemented operations include:
 
@@ -886,409 +730,236 @@ Implemented operations include:
 - `Diagonal_View`
 - `Diagonal_Matrix`
 - `Copy_Make_Border`
+- `Border_Interpolate`
 
-`Copy_Make_Border` exposes typed Ada border kinds and supports Region-isolation
-semantics without leaking OpenCV integer flags.
+Border modes use strong Ada values rather than exposing OpenCV integer flags.
+`Border_Interpolate` returns an Ada discriminated result for constant-border
+coordinates instead of exposing OpenCV's `-1` sentinel.
 
-## Sorting
+### Sorting, reductions, and statistics
 
-Implemented sorting operations:
+Sorting:
 
 - `Sort`
 - `Sort_Indices`
-
-Axes and order are strong Ada enums:
-
-```text
-Each_Row
-Each_Column
-
-Ascending
-Descending
-```
-
-`Sort_Indices` returns zero-based original row/column indices in an
-independently owned Int32 Mat.
-
-## Reductions and statistics
 
 Scalar/statistical operations include:
 
 - `Sum`
 - `Trace`
 - `Mean`
-- masked `Mean`
 - `Mean_Std_Dev`
-- masked `Mean_Std_Dev`
 - `Norm`
-- masked `Norm`
 - `Min_Max_Loc`
-- masked `Min_Max_Loc`
 - `Count_Non_Zero`
 - `Has_Non_Zero`
 - `Find_Non_Zero`
 - `Dot_Product`
 - `Mahalanobis_Distance`
 - `Covariance`
+- `Peak_Signal_To_Noise_Ratio`
 
-Axis-based `Reduce` supports:
+Axis reduction:
 
-- `Sum`
-- `Average`
-- `Maximum`
-- `Minimum`
-- `Sum_Of_Squares`
+- `Reduce` with Sum, Average, Maximum, Minimum, and Sum of Squares
+- explicit output-depth overloads
+- `Arg_Minimum`
+- `Arg_Maximum`
+- first/last equal-extremum selection through `Extremum_Occurrence`
 
-with an overload for explicit output depth.
-
-`Covariance` supports samples stored by rows or by columns and returns both the
-covariance matrix and the OpenCV-computed mean. `By_Sample_Count` uses
-OpenCV's `1/N` scaling; it is not the unbiased `1/(N-1)` convention.
-
-## Range and non-finite handling
-
-Implemented validation/mutation operations:
+Range/non-finite operations:
 
 - `Check_Range`
 - bounded `Check_Range`
 - `Patch_NaNs`
 
-`Check_Range` returns a discriminated `Range_Check_Result`. When invalid,
-`First_Invalid` uses:
+### In-place initialization and symmetry
 
-```text
-Point.X = column
-Point.Y = row
-```
-
-and Region coordinates are relative to the Region.
-
-`Patch_NaNs` is an in-place Float32 operation matching OpenCV's depth
-restriction. It patches NaNs but does not remove infinities.
-
-## Matrix initialization and symmetry
-
-Implemented in-place operations:
-
+- `Set_To`
 - `Set_Identity`
 - `Complete_Symmetry`
 
-`Set_Identity` works for rectangular Mats and preserves their shape and type.
+### Per-element transforms
 
-`Complete_Symmetry` uses `Symmetry_Source` to express whether the upper or
-lower triangle is authoritative instead of exposing OpenCV's Boolean flag.
+- `Transform`
+- `Perspective_Transform`
 
-## Per-element vector transforms
+These transform channel vectors stored at each element. They are not image
+resampling/warping operations; those belong in an `imgproc` binding.
 
-`Transform` applies an MxN linear or Mx(N+1) affine coefficient matrix to the
-channel vector at every Mat element.
+### Polynomial and optimization helpers
 
-`Perspective_Transform` applies homogeneous 2-D/3-D vector transformations:
+The current Core slice also includes:
 
-- C2 source -> 3x3 transform matrix
-- C3 source -> 4x4 transform matrix
+- `Solve_Cubic`
+- `Solve_Polynomial`
+- `Solve_Linear_Program`
 
-These transform channel/vector values at each element. They do not perform
-image resampling or warping; those operations belong in an `imgproc` binding.
+These APIs use Ada result types to represent mathematically meaningful status
+rather than exposing raw OpenCV integer return conventions.
 
 ---
 
-# Linear algebra and decomposition
+## Linear algebra and decomposition
 
-Current linear-algebra coverage includes:
+Dense linear-algebra coverage is substantial.
+
+### Basic algebra
 
 - `Trace`
 - `Determinant`
 - LU `Invert`
 - LU `Solve`
+- `Solve_Least_Squares` using SVD
 - `Dot_Product`
 - `Cross_Product`
 - `Mahalanobis_Distance`
 - `Matrix_Multiply`
 - `Matrix_Multiply_Add`
 - centered and uncentered `Transposed_Product`
-- `Covariance`
-- `Eigen_Decomposition`
-- `Principal_Component_Analysis`
-- `PCA_Project`
-- `PCA_Back_Project`
-- `Singular_Value_Decomposition`
-- `SVD_Back_Substitute`
-- `Pseudo_Inverse`
-- `Reciprocal_Condition_Number`
 - `Set_Identity`
 - `Complete_Symmetry`
 
-## Determinant, LU inversion, and LU solving
+`Multiply` remains element-wise. `Matrix_Multiply` is algebraic multiplication.
 
-`Determinant` supports non-empty square single-channel Float32/Float64 Mats.
+### Covariance and eigen decomposition
 
-`Invert` currently means ordinary **DECOMP_LU** inversion:
+- `Covariance`
+- symmetric `Eigen_Decomposition`
+- `Non_Symmetric_Eigen_Decomposition`
 
-```ada
-Result : Inversion_Result := Matrix.Invert;
+The symmetric API requires a caller-supplied real symmetric matrix. The
+non-symmetric API follows OpenCV's real-eigenvalue assumptions rather than
+inventing complex-eigenvalue behavior.
 
-if Result.Invertible then
-   --  Result.Inverse is available here.
-   null;
-end if;
-```
+### PCA
 
-A singular matrix returns `Invertible => False`; singularity is not represented
-as an exception.
+- `Principal_Component_Analysis`
+- explicit component-count selection
+- retained-variance selection
+- `PCA_Project`
+- `PCA_Back_Project`
 
-`Solve` currently means **DECOMP_LU** solving:
+Both row-oriented and column-oriented sample layouts are represented explicitly
+through `Sample_Orientation`.
 
-```ada
-Result : Solve_Result := A.Solve (B);
+### LDA
 
-if Result.Solved then
-   --  Result.Solution is available here.
-   null;
-end if;
-```
+- `Linear_Discriminant_Analysis`
+- explicit component-count overload
+- `LDA_Project`
+- `LDA_Reconstruct`
 
-A singular coefficient matrix returns `Solved => False`.
+LDA uses a dedicated result record and keeps OpenCV's basis representation
+behind an Ada-friendly API.
 
-Least-squares, minimum-norm, and rank-deficient solving are available through
-the SVD APIs rather than being silently folded into the LU operations.
+### SVD family
 
-## Dot and cross products
+- compact `Singular_Value_Decomposition`
+- `SVD_Back_Substitute`
+- `SVD_Solve_Zero`
+- `Pseudo_Inverse`
+- `Reciprocal_Condition_Number`
 
-`Dot_Product` sums corresponding element/channel products and returns
-`Long_Float`. It is not matrix multiplication and does not reinterpret C2 as a
-complex inner product.
+`SVD_Solve_Zero` exposes OpenCV's null-space solve behavior while handling wide
+matrices with the full right-singular basis where required.
 
-`Cross_Product` implements the 3-D vector cross product for one vector encoded
-as:
+### LU versus SVD APIs
 
-- `3x1 C1`;
-- `1x3 C1`; or
-- `1x1 C3`.
-
-Float32 and Float64 are supported.
-
-## Algebraic matrix multiplication
-
-`Matrix_Multiply` performs algebraic multiplication through OpenCV GEMM
-semantics:
-
-```ada
-C : Mat := Matrix_Multiply (A, B);
-```
-
-It is deliberately separate from element-wise `Multiply`.
-
-Float32/Float64 single-channel real matrices are supported, along with
-two-channel complex matrices where channel 0 is the real part and channel 1 is
-the imaginary part.
-
-`Matrix_Multiply_Add` exposes:
-
-```text
-Product_Scale * Left * Right + Addend_Scale * Addend
-```
-
-without exposing raw GEMM bit flags.
-
-## Transposed products
-
-`Transposed_Product` supports both orientations:
-
-```text
-Scale * Self'T * Self
-Scale * Self * Self'T
-```
-
-and centered forms:
-
-```text
-Scale * (Self - Offset)'T * (Self - Offset)
-Scale * (Self - Offset) * (Self - Offset)'T
-```
-
-The centered overloads preserve OpenCV's useful offset broadcasting while
-presenting it with an Ada-friendly `Offset` formal.
-
-## Covariance
-
-`Covariance` is an explicit statistical API over OpenCV
-`calcCovarMatrix`.
-
-With `Samples_Are_Rows`, an `M x N` matrix represents `M` observations of
-`N` features and returns:
-
-```text
-Mean        : 1 x N
-Covariance  : N x N
-```
-
-With `Samples_Are_Columns`, the dimensions are transposed accordingly.
-
-The default `By_Sample_Count` scaling is OpenCV's population-style `1/N`
-factor, not unbiased `1/(N-1)` covariance.
-
-## Symmetric eigen decomposition
-
-`Eigen_Decomposition` wraps OpenCV's real symmetric eigensolver.
-
-For an `N x N` source:
-
-```text
-Eigenvalues  : N x 1
-Eigenvectors : N x N, one eigenvector per row
-```
-
-Important contract points:
-
-- source must be Float32 or Float64, non-empty, square, and single-channel;
-- symmetry is a caller precondition; the binding does not invent a floating
-  tolerance that OpenCV itself does not use;
-- eigenvector sign is mathematically arbitrary;
-- repeated eigenspaces do not have a unique basis;
-- the current OpenCV 4.10 safety boundary limits `N` to **8,460** because the
-  fallback eigensolver forms an internal iteration bound using signed integer
-  arithmetic.
-
-## Non-symmetric eigen decomposition
-
-`Non_Symmetric_Eigen_Decomposition` wraps OpenCV 4.10
-`eigenNonSymmetric`, rather than the symmetric `eigen` operation used by
-`Eigen_Decomposition`. It accepts non-empty square Float32 or Float64
-single-channel matrices and supports non-contiguous Regions.
-
-OpenCV assumes every eigenvalue is real. This is a caller precondition; the
-binding does not invent a numerical test for it. OpenCV 4.10 sorts the returned
-eigenvalues in descending order and keeps each corresponding eigenvector in the
-same row. As with the symmetric operation, eigenvector sign is arbitrary and a
-repeated-eigenvalue eigenspace need not have a unique basis. The OpenCV 4.10
-general eigensolver has no counterpart to the symmetric operation's 8,460
-signed-iteration-bound limit. Its separately derived ABI-safety limit is
-`N <= INT_MAX / 1000` because its convergence loop computes `1000 * N` in a
-signed `int`.
-
-## Principal component analysis
-
-`Principal_Component_Analysis` supports:
-
-- all available components;
-- an explicit component count;
-- OpenCV's retained-variance selection.
-
-The result contains:
-
-```text
-Mean
-Eigenvalues
-Eigenvectors
-```
-
-with one principal direction per row of `Eigenvectors`.
-
-`PCA_Project` projects samples through an existing basis without recomputing
-PCA.
-
-`PCA_Back_Project` reconstructs feature-space samples from principal
-coordinates.
-
-Both row-oriented and column-oriented sample layouts are supported with an
-explicit `Sample_Orientation`.
-
-OpenCV 4.10's retained-variance behavior is preserved, including its
-strict-`>` cumulative-energy selection and minimum-two-component behavior. The
-same **8,460** safety boundary applies where the OpenCV 4.10 eigensolver path
-can overflow its signed iteration bound.
-
-## Compact SVD
-
-`Singular_Value_Decomposition` computes OpenCV's default compact/economy SVD.
-
-For source `A` with shape `M x N` and:
-
-```text
-R = min (M, N)
-```
-
-the result is:
-
-```text
-Singular_Values : R x 1
-U               : M x R
-V_Transpose     : R x N
-```
-
-The decomposition represents:
-
-```text
-A ~= U * diag(Singular_Values) * V_Transpose
-```
-
-Rank-deficient matrices and zero singular values are valid.
-
-## SVD back-substitution
-
-`SVD_Back_Substitute` reuses an existing compact SVD basis:
-
-```text
-X ~= V * diag(W)^+ * U'T * B
-```
-
-This supports:
-
-- ordinary full-rank square solving;
-- overdetermined least-squares solving;
-- underdetermined minimum-norm solving;
-- rank-deficient bases according to OpenCV 4.10's internal threshold.
-
-There is intentionally no caller-configurable tolerance in this first API.
-
-## Moore-Penrose pseudoinverse
-
-`Pseudo_Inverse` returns an independent `N x M` result for an `M x N` source.
-
-It supports:
-
-- square matrices;
-- tall matrices;
-- wide matrices;
-- rank-deficient matrices;
-- the zero matrix.
-
-Numerical rank follows OpenCV 4.10 SVD back-substitution behavior. This is
-deliberately distinct from LU `Invert`.
-
-## Reciprocal condition number
-
-`Reciprocal_Condition_Number` returns the mathematical 2-norm reciprocal
-condition number based on the singular values OpenCV actually computes:
-
-```text
-rcond(A) = sigma_min / sigma_max
-```
-
-If the largest singular value is exactly zero, the result is `0.0`.
-
-The operation is distinct from:
-
-- OpenCV `invert(DECOMP_SVD)`'s return metric;
-- the rank threshold used by pseudoinverse / SVD back-substitution.
+`Invert` and `Solve` deliberately remain LU-specific. Least-squares,
+rank-deficient pseudo-solving, minimum-norm behavior, pseudoinverse, condition
+number, and null-space solving are separate explicit APIs instead of being
+hidden behind a C++ decomposition flag.
 
 ---
 
-# Persistence
+## Spectral transforms
 
-Persistence is provided by the child package:
+The current spectral slice includes full-complex DFT support and orthonormal
+DCT support:
+
+- `Discrete_Fourier_Transform`
+- `Inverse_Discrete_Fourier_Transform`
+- `Inverse_Real_Discrete_Fourier_Transform`
+- `Discrete_Cosine_Transform`
+- `Inverse_Discrete_Cosine_Transform`
+- `Multiply_Spectra`
+- `Optimal_DFT_Size`
+
+The forward DFT returns a full two-channel complex representation. The normal
+inverse DFT is scaled, so a forward/inverse round trip approximately recovers
+the source without an extra caller scale factor. `Inverse_Real_Discrete_Fourier_Transform`
+provides the real-output path for conjugate-symmetric spectra.
+
+`Multiply_Spectra` distinguishes ordinary spectral multiplication from
+conjugate-right multiplication with `Spectrum_Multiplication_Kind`.
+
+This first API intentionally does not expose packed CCS storage, `DFT_ROWS`, or
+an in-place transform interface.
+
+---
+
+## Random numbers, clustering, and nearest neighbors
+
+### RNG
+
+The API supports both OpenCV's thread-local default RNG and caller-owned RNG
+state:
+
+- `Set_Random_Seed`
+- `Make_Random_Number_Generator`
+- `Next_Random`
+- `Uniform_Random`
+- `Fill_Uniform`
+- `Fill_Normal`
+- `Shuffle`
+
+`Fill_Uniform`, `Fill_Normal`, and `Shuffle` have overloads using an explicit
+caller-owned generator, allowing deterministic sequences without mutating the
+calling thread's default OpenCV RNG state.
+
+The RNG is deterministic pseudorandom state, not a cryptographic RNG.
+
+### K-means
+
+`K_Means` supports:
+
+- random centers;
+- k-means++ centers;
+- configurable count+epsilon criteria;
+- multiple attempts;
+- an overload using caller-supplied initial labels.
+
+The result record contains independently owned labels, centers, and compactness.
+
+### K-nearest neighbors / batch distance
+
+`K_Nearest_Neighbors` exposes a focused nearest-neighbor slice over OpenCV
+batch-distance behavior. Supported distance kinds include:
+
+- L1
+- L2
+- squared L2
+- Hamming
+- Hamming2
+
+The result contains independent distance and zero-based candidate-index Mats.
+
+---
+
+## Persistence
+
+Persistence is provided by:
 
 ```ada
 OpenCV.Core.Persistence
 ```
 
-using a limited controlled `File_Storage` abstraction over
-`cv::FileStorage`.
+through a limited controlled `File_Storage` abstraction over `cv::FileStorage`.
 
-## Supported formats
+### Formats and backends
 
-The current public formats are:
+Supported formats:
 
 ```text
 XML
@@ -1296,9 +967,7 @@ YAML
 JSON
 ```
 
-### Disk
-
-Disk format is selected from the filename extension:
+Disk `Open` selects the format from the filename extension:
 
 ```text
 .xml
@@ -1307,662 +976,347 @@ Disk format is selected from the filename extension:
 .json
 ```
 
-Example:
+Memory writers select the format explicitly with `Create_Memory`; memory
+readers use `Open_Memory`, letting OpenCV detect the serialized format.
 
-```ada
-Storage : File_Storage := Open ("data.yml", Write_Only);
-```
+### Supported values
 
-### Memory
-
-Memory writers use an explicit strong Ada `Storage_Format`:
-
-```ada
-Storage : File_Storage := Create_Memory (JSON);
-```
-
-`Close_And_Get_Text` finalizes the writer and returns the serialized document
-as an independent Ada `String`.
-
-Memory readers use:
-
-```ada
-Storage : File_Storage := Open_Memory (Text);
-```
-
-OpenCV 4.10 auto-detects OpenCV FileStorage XML/YAML/JSON documents from their
-contents.
-
-## Named value types
-
-The current top-level named persistence API supports:
+Named and sequence values currently include:
 
 - `Mat`
 - `Integer`
 - `Long_Float`
 - `String`
 
-Write overloads share the same API for disk and memory backends.
+### Nested mappings and sequences
 
-Reads use explicit names:
+The current persistence API supports hierarchy without exposing `FileNode`:
 
-- `Read_Mat`
-- `Read_Integer`
-- `Read_Real`
-- `Read_String`
+Writing:
 
-## Type policy
+- named and unnamed `Begin_Map`
+- named and unnamed `Begin_Sequence`
+- `End_Structure`
+- named `Write`
+- sequence `Append`
 
-The Ada API deliberately avoids surprising lossy conversions:
+Reading:
+
+- named/indexed `Enter_Map`
+- named/indexed `Enter_Sequence`
+- `Leave_Structure`
+- `Sequence_Length`
+- named/indexed `Read_Mat`
+- named/indexed `Read_Integer`
+- named/indexed `Read_Real`
+- named/indexed `Read_String`
+
+Example:
+
+```ada
+with OpenCV.Core.Persistence;
+
+declare
+   package P renames OpenCV.Core.Persistence;
+   Storage : P.File_Storage := P.Create_Memory (P.JSON);
+begin
+   Storage.Begin_Map ("Camera");
+   Storage.Write ("Name", "Front Camera");
+
+   Storage.Begin_Sequence ("Distortion");
+   Storage.Append (0.1);
+   Storage.Append (-0.05);
+   Storage.Append (0.001);
+   Storage.End_Structure;
+
+   Storage.End_Structure;
+
+   declare
+      Text : constant String := Storage.Close_And_Get_Text;
+   begin
+      null;
+   end;
+end;
+```
+
+The implicit FileStorage root is a mapping. Hierarchy is navigated by the
+controlled `File_Storage` object itself; no public `FileNode` lifetime is
+exposed.
+
+### Type policy
+
+The API avoids surprising lossy conversions:
 
 ```text
 integer node -> Read_Integer    allowed
 real node    -> Read_Integer    rejected
 
 real node    -> Read_Real       allowed
-integer node -> Read_Real       allowed, exact widening
+integer node -> Read_Real       allowed by widening
 
 string node  -> Read_String     allowed
 other node   -> Read_String     rejected
 ```
 
-A missing name raises `OpenCV_Error`.
+Missing nodes raise `OpenCV_Error`; actual stored zero, empty string, empty Mat,
+empty map, and empty sequence remain distinguishable from absence.
 
-Actually stored values such as:
+### OpenCV 4.10 persistence restrictions
 
-```text
-0
-0.0
-""
-empty Mat
-```
-
-remain distinguishable from a missing node.
-
-## OpenCV 4.10 persistence safety notes
-
-### Signed minimum integer
-
-OpenCV 4.10 formats integer nodes through an internal `abs(int)` path, so the
-single value:
-
-```text
--2_147_483_648
-```
-
-cannot safely be written.
-
-The supported `Write(Integer)` range is therefore:
+OpenCV 4.10 formats integer nodes through an internal `abs(int)` path, so
+`Write(Integer)` rejects `-2_147_483_648`. The supported write range is:
 
 ```text
 -2_147_483_647 .. 2_147_483_647
 ```
 
-The Ada layer and raw C ABI both reject the unsafe minimum before it reaches
-OpenCV.
-
-This is an OpenCV 4.10 writer limitation, not an Ada or file-format
-limitation. `Read_Integer` remains able to return a preexisting signed-32-bit
-minimum node when OpenCV successfully parses one.
-
-### Embedded NUL
-
-OpenCV 4.10 persistence emitters and memory-read handling use NUL-terminated
-strings / `strlen`.
-
-Accordingly the current public API rejects embedded NUL in:
-
-- filenames;
-- node names;
-- persisted String values;
-- memory documents passed to `Open_Memory`.
-
-### Memory output ownership
-
-`releaseAndGetString()` is a one-shot OpenCV operation that closes the writer.
-The shim calls it once, caches the returned C++ string internally, and exposes
-the bytes through a caller-owned query/copy buffer ABI.
-
-No C++ string ownership crosses into Ada.
-
-## Persistence not yet exposed
-
-The current persistence slice intentionally does **not** yet expose:
-
-- public `File_Node`;
-- `FileNodeIterator`;
-- nested maps;
-- nested sequences;
-- append mode;
-- Base64;
-- comments;
-- gzip controls;
-- raw `readRaw` / `writeRaw`;
-- explicit disk format override.
-
-Nested maps and sequences are the natural next expansion while keeping
-`FileNode` private until its lifetime model provides enough public value.
+Embedded NUL is rejected in filenames, node names, String values, and memory
+input because the corresponding OpenCV 4.10 paths use NUL-terminated handling.
 
 ---
 
-# Current milestone status
+## Safety and validation boundary
 
-The roadmap tracks portable, user-facing OpenCV Core functionality rather than
-every internal/backend symbol.
+The project separates **public semantic validation** from **raw ABI safety**.
 
-## Milestone 0 — binding foundation
+### Ada layer
 
-- [x] stable `extern "C"` shim
-- [x] opaque `cv::Mat` handles
-- [x] opaque `cv::FileStorage` handles
-- [x] C++ exception containment
-- [x] Ada controlled lifetime
-- [x] shallow `Mat` assignment semantics
-- [x] explicit deep copy with `Clone`
-- [x] checked metadata conversion
-- [x] 2-D ROI/view lifetime
-- [x] non-contiguous Mat handling
-- [x] UInt8 / Float32 typed access
-- [x] Vec3 access pattern
-- [x] bulk copied-row access
-- [x] generic vector abstraction
-- [x] generic fixed-matrix abstraction
-- [x] common mask contract
-- [x] separate development/test crate
-- [x] warning-free `-Werror` policy
-- [x] first targeted SPARK/GNATprove production proof
-- [x] vertically integrated AUnit workflow
+The thick API normally validates caller-facing rules such as:
 
-**Status: complete as the current architectural foundation.**
+- shape compatibility;
+- depth and channel restrictions;
+- index and Region bounds;
+- continuity requirements for whole-buffer borrowing;
+- legal enum/mode combinations;
+- non-empty requirements;
+- exact caller-buffer shape for external views;
+- string restrictions that cannot safely cross the underlying OpenCV 4.10
+  interface.
 
-## Milestone 1 — masks and selection
+### C++ shim
 
-- [x] `In_Range`
-- [x] `Compare`
-- [x] `Count_Non_Zero`
-- [x] `Has_Non_Zero`
-- [x] `Find_Non_Zero`
-- [x] `Copy_To`
-- [x] masked `Copy_To`
-- [x] masked `Set_To`
-- [x] masked bitwise operations
-- [x] masked `Mean`
-- [x] masked `Mean_Std_Dev`
-- [x] masked `Norm`
-- [x] masked `Min_Max_Loc`
+The shim defensively validates conditions a raw C caller could violate and
+conditions needed to keep the C++ call safe:
 
-**Status: complete for the planned basic mask production/consumption
-workflow.**
+- null handles and output pointers;
+- fixed ABI enum decoding;
+- pointer/count and byte-count relationships;
+- signed arithmetic before OpenCV receives arguments;
+- pointer alignment for external Mat storage;
+- failure-atomic handle publication;
+- C++ exception containment.
 
-## Milestone 2 — channel manipulation
+### Source-backed OpenCV 4.10 boundaries
 
-- [x] `Mat_Array`
-- [x] `Split`
-- [x] `Merge`
-- [x] `Extract_Channel`
-- [x] `Insert_Channel`
-- [x] `Channel_Route` / `Channel_Route_Array`
-- [x] explicit zero-fill routing
-- [x] `Mix_Channels`
+Where OpenCV's implementation contains signed intermediate arithmetic or other
+source-level hazards, the binding establishes an Ada/C-ABI boundary before the
+native call instead of relying on undefined behavior.
 
-**Status: complete for the planned channel-manipulation workflow.**
+Examples in the current codebase include:
 
-## Milestone 3 — 2-D layout and rearrangement
+- signed product guards around SVD/pseudoinverse and related workspaces;
+- the symmetric eigen/PCA/LDA safety limit associated with the OpenCV 4.10
+  fallback eigensolver;
+- separate non-symmetric-eigen iteration arithmetic guards;
+- DFT/DCT dimension and work-buffer arithmetic checks;
+- persistence `INT_MIN` and embedded-NUL restrictions;
+- exact external-buffer byte-count and alignment checks;
+- prevention of shallow aliases escaping callback-scoped external-buffer Mats.
 
-- [x] `Transpose`
-- [x] `Flip`
-- [x] `Rotate`
-- [x] `Repeat`
-- [x] `HConcat`
-- [x] `VConcat`
-- [x] `Diagonal_View`
-- [x] `Diagonal_Matrix`
-- [x] `Copy_Make_Border`
-- [ ] additional stride/step metadata where it provides public value
-- [ ] ROI location/adjustment helpers if a clear Ada use case emerges
-
-N-dimensional variants remain deferred until an N-D public `Mat` model is
-designed.
-
-**Status: planned 2-D rearrangement coverage is largely complete.**
-
-## Milestone 4 — everyday arithmetic
-
-Implemented:
-
-- [x] Mat/Mat `Add`
-- [x] Mat/Mat `Subtract`
-- [x] Mat/Mat element-wise `Multiply`
-- [x] Mat/Mat element-wise `Divide`
-- [x] Mat/Mat `Abs_Diff`
-- [x] `Minimum`
-- [x] `Maximum`
-- [x] `Add_Weighted`
-- [x] `Scale_Add`
-- [x] `Convert_To`
-- [x] `Convert_Scale_Abs`
-- [x] `Normalize`
-- [x] `Apply_LUT`
-
-Potential future expansion:
-
-- [ ] Mat/Scalar arithmetic families
-- [ ] Scalar/Mat asymmetric subtraction/division
-- [ ] Scalar bitwise variants
-- [ ] masked arithmetic
-- [ ] explicit result depth where OpenCV supports it
-- [ ] deliberate mixed-depth arithmetic policy
-- [ ] configurable scale for additional multiply/divide forms
-
-Overload growth should remain deliberate rather than mechanically mirroring
-the C++ API.
-
-## Milestone 5 — element-wise mathematics and coordinates
-
-- [x] `Sqrt`
-- [x] `Exp`
-- [x] `Log`
-- [x] `Pow`
-- [x] `Magnitude`
-- [x] `Phase`
-- [x] `Cart_To_Polar`
-- [x] `Polar_To_Cart`
-
-**Status: the planned first mathematical-function family is complete.**
-
-## Milestone 6 — reductions, statistics, and range handling
-
-Implemented:
-
-- [x] `Sum`
-- [x] `Trace`
-- [x] `Mean`
-- [x] masked `Mean`
-- [x] `Mean_Std_Dev`
-- [x] masked `Mean_Std_Dev`
-- [x] `Norm`
-- [x] masked `Norm`
-- [x] `Min_Max_Loc`
-- [x] masked `Min_Max_Loc`
-- [x] `Count_Non_Zero`
-- [x] `Has_Non_Zero`
-- [x] `Find_Non_Zero`
-- [x] `Reduce` with Sum/Average/Maximum/Minimum/Sum_Of_Squares
-- [x] explicit `Reduce` output depth
-- [x] `Check_Range`
-- [x] `Patch_NaNs`
-- [x] `Dot_Product`
-- [x] `Mahalanobis_Distance`
-- [x] `Covariance`
-
-Remaining candidates:
-
-- [ ] two-Mat norm / distance overloads
-- [ ] relative norm support
-- [ ] additional norm kinds where useful
-- [ ] `Min_Max_Idx`
-- [ ] arg-min / arg-max reduction APIs
-- [ ] PSNR
-
-## Milestone 7 — linear algebra and decomposition
-
-Implemented:
-
-- [x] `Cross_Product`
-- [x] `Dot_Product`
-- [x] `Trace`
-- [x] `Determinant`
-- [x] LU `Invert`
-- [x] LU `Solve`
-- [x] algebraic `Matrix_Multiply`
-- [x] weighted `Matrix_Multiply_Add`
-- [x] uncentered `Transposed_Product`
-- [x] centered `Transposed_Product`
-- [x] `Set_Identity`
-- [x] `Complete_Symmetry`
-- [x] `Mahalanobis_Distance`
-- [x] `Covariance`
-- [x] symmetric `Eigen_Decomposition`
-- [x] `Principal_Component_Analysis`
-- [x] PCA retained-variance selection
-- [x] `PCA_Project`
-- [x] `PCA_Back_Project`
-- [x] compact `Singular_Value_Decomposition`
-- [x] `SVD_Back_Substitute`
-- [x] `Pseudo_Inverse`
-- [x] `Reciprocal_Condition_Number`
-
-Future candidates:
-
-- [ ] non-symmetric eigen decomposition
-- [ ] `SVD::solveZ` / null-space solving
-- [ ] additional `Solve` decomposition modes
-- [ ] additional `Invert` decomposition modes
-- [ ] LDA
-- [ ] cubic solving
-- [ ] polynomial solving
-
-**Status: advanced dense linear algebra now has substantial coverage.**
-
-## Milestone 8 — vector transforms
-
-- [x] `Transform` for per-element linear/affine channel vectors
-- [x] `Perspective_Transform` for C2/C3 floating vectors
-
-Image resampling/warping is intentionally outside this Core crate and belongs
-in an `imgproc` binding.
-
-## Milestone 9 — spectral operations
-
-Future scope:
-
-- [ ] DFT
-- [ ] inverse DFT
-- [ ] DCT
-- [ ] inverse DCT
-- [ ] spectrum multiplication
-- [ ] optimal DFT size
-
-OpenCV flag sets should be represented with strong Ada options rather than raw
-C++ constants.
-
-## Milestone 10 — sorting, RNG, and algorithms
-
-Implemented:
-
-- [x] `Sort`
-- [x] `Sort_Indices`
-
-Future candidates:
-
-- [ ] random generator abstraction
-- [ ] uniform random fill
-- [ ] normal random fill
-- [ ] random shuffle
-- [ ] random seed support
-- [ ] batch distance
-- [ ] K-means
-- [ ] partitioning if useful
-
-The overloaded C++ RNG API should be redesigned as an Ada-friendly abstraction
-rather than mechanically exposed.
-
-## Milestone 11 — persistence
-
-Implemented:
-
-- [x] `OpenCV.Core.Persistence`
-- [x] controlled `File_Storage`
-- [x] XML disk persistence
-- [x] YAML disk persistence
-- [x] JSON disk persistence
-- [x] named `Mat` read/write
-- [x] named `Integer` read/write
-- [x] named `Long_Float` read/write
-- [x] named `String` read/write
-- [x] strict node-type read policy
-- [x] missing-node versus empty/zero distinction
-- [x] non-contiguous `Mat` persistence
-- [x] in-memory XML serialization/deserialization
-- [x] in-memory YAML serialization/deserialization
-- [x] in-memory JSON serialization/deserialization
-- [x] consuming `Close_And_Get_Text`
-- [x] independent returned-value lifetime
-- [x] raw-ABI lifetime and output-buffer safety
-
-Future persistence scope:
-
-- [ ] nested mappings
-- [ ] nested sequences
-- [ ] public `File_Node` if a robust Ada lifetime model justifies it
-- [ ] `FileNodeIterator` only if it adds sufficient value
-- [ ] append mode
-- [ ] Base64
-- [ ] comments
-- [ ] gzip controls
-- [ ] raw persistence APIs
-
-**Status: top-level named persistence to disk and memory is complete for the
-current value types.**
-
-## Milestone 12 — advanced matrix structures
-
-Potential later scope:
-
-- [ ] broader predefined Vec/Matx families
-- [ ] typed access for remaining depths
-- [ ] N-dimensional `Mat`
-- [ ] N-dimensional reshape/views
-- [ ] `SparseMat`
-- [ ] external/shared-buffer Mat construction
-- [ ] `UMat` if a concrete use case requires it
-- [ ] async Core APIs if a concrete use case requires them
-
-These areas require more substantial architectural decisions.
+This policy deliberately uses authoritative OpenCV source when the nominal API
+signature does not fully describe a safe calling domain.
 
 ---
 
-# Known limitations
+## SPARK and GNATprove
 
-Current intentional limitations include:
+Formal verification is focused on small pure-Ada safety helpers rather than
+foreign-resource ownership or OpenCV numerical algorithms.
 
-1. **The public dense `Mat` model is primarily 2-D.**  
-   N-dimensional Mat support has not yet been designed as an idiomatic Ada
-   abstraction.
-
-2. **No public `SparseMat` or `UMat` layer.**
-
-3. **Typed direct access does not cover every depth.**  
-   Public typed element/row access currently concentrates on UInt8 and
-   Float32, including Vec3 forms.
-
-4. **Scalar-valued APIs represent at most four components.**  
-   Operations returning `Scalar` validate channel limits instead of silently
-   losing data.
-
-5. **OpenCV depth restrictions are preserved.**  
-   Several mathematical/sorting operations reject Float16, while other APIs
-   such as `Set_Identity` can accept it.
-
-6. **Arithmetic overloads are intentionally conservative.**  
-   The public API does not reproduce the large Mat/Scalar, mixed-depth, and
-   masked overload matrix from C++.
-
-7. **`Invert` and `Solve` remain LU-specific.**  
-   SVD-based least-squares, minimum-norm, pseudoinverse, and condition-number
-   functionality is exposed through separate explicit APIs rather than hidden
-   behind a decomposition-mode integer.
-
-8. **Eigen decomposition is currently symmetric-only.**  
-   `Eigen_Decomposition` assumes a real symmetric caller-supplied matrix.
-
-9. **Some OpenCV 4.10 safety boundaries are intentionally stricter than the
-   nominal OpenCV signature.**  
-   The symmetric eigen/PCA path is limited to dimensions at most 8,460 where
-   OpenCV 4.10 otherwise forms an unsafe signed integer iteration bound.
-   SVD/pseudoinverse paths also guard signed-index products identified in the
-   OpenCV 4.10 implementation.
-
-10. **No general `cv::MatExpr` equivalent.**  
-    The Ada interface uses explicit operations.
-
-11. **No raw public pixel pointers.**  
-    Safe typed access and copied-row APIs are preferred over leaking OpenCV
-    memory-layout details.
-
-12. **No public raw OpenCV flag integers.**  
-    Current wrapped modes use strong Ada enums or deliberately narrower APIs.
-
-13. **Persistence currently exposes top-level named values, not a general
-    hierarchical node API.**  
-    Maps, sequences, `FileNode`, append, Base64, comments, and raw persistence
-    remain future work.
-
-14. **OpenCV 4.10 persistence has explicit safety restrictions.**  
-    `Write(Integer)` cannot write `-2_147_483_648`, and embedded NUL is rejected
-    in persistence strings/names/documents because OpenCV 4.10 uses
-    NUL-terminated handling internally.
-
-15. **No spectral or RNG family yet.**  
-    DFT/DCT, spectrum operations, RNG, K-means, and related algorithms remain
-    roadmap items.
-
-16. **OpenCV 4.x compatibility is not characterized release by release.**
-
-17. **The API is pre-1.0.**  
-    Public signatures may evolve as hierarchical persistence, spectral,
-    broader typed access, N-dimensional arrays, and advanced structures are
-    added.
-
----
-
-# Project layout
+The current proof island is:
 
 ```text
-opencvcore_ada/
+OpenCV.Internal.Safe_Arithmetic
+```
+
+with `SPARK_Mode => On`.
+
+It currently contains proved contracts for:
+
+- `Product_Exceeds_Signed_Int32`
+- `Fits_Signed_Int32`
+- `To_Signed_Int32`
+
+This supports safe dimensional and ABI conversions without trying to prove the
+C++ library itself.
+
+GNATprove is supplied by the separate `tests` Alire environment.
+
+---
+
+## Known limitations
+
+The current limitations are intentional and help keep the public API coherent:
+
+1. **The dense public `Mat` model is primarily 2-D.**  
+   N-dimensional Mat construction, reshape, and views are not yet exposed as a
+   complete Ada model.
+
+2. **No public `SparseMat` or `UMat` abstraction.**
+
+3. **Typed direct/zero-copy access is focused on UInt8 and Float32 C1/C3.**  
+   Other OpenCV depths are available to general Mat operations but do not yet
+   have the same typed Get/Set, row, buffer-borrow, and external-view families.
+
+4. **External caller-buffer views are currently writable, tightly packed,
+   callback-scoped 2-D views.**  
+   A general strided external-buffer API and a separate read-only external Mat
+   abstraction are not yet exposed.
+
+5. **Whole-buffer borrowing requires a continuous nonempty Mat.**  
+   Use row borrowing for non-contiguous 2-D Regions.
+
+6. **Scalar-valued APIs represent at most four components.**  
+   Operations returning `Scalar` validate channel limits rather than silently
+   discarding channels.
+
+7. **Arithmetic overloads are intentionally conservative.**  
+   The public API does not mirror the full C++ Mat/Scalar, masked, mixed-depth,
+   and expression-template overload matrix.
+
+8. **`Invert` and ordinary `Solve` are LU-specific.**  
+   Least-squares, SVD back-substitution, null-space solving, pseudoinverse, and
+   condition-number behavior are exposed as separate explicit APIs.
+
+9. **No general public `cv::MatExpr` equivalent.**  
+   The Ada interface favors explicit operations and explicit ownership.
+
+10. **No raw public pixel pointers or `System.Address` API.**  
+    Zero-copy use cases are expressed through callback-scoped typed views.
+
+11. **No public raw OpenCV integer mode flags.**  
+    Wrapped modes use strong Ada types or deliberately narrower operations.
+
+12. **Persistence still hides `FileNode`.**  
+    Nested maps and sequences are supported, but map-key enumeration, public
+    FileNode iterators, file append mode, Base64, comments, gzip controls,
+    FLOW formatting, and raw persistence APIs are not part of the current
+    slice.
+
+13. **The spectral API is deliberately focused.**  
+    Full-complex DFT/DCT workflows are supported, but packed CCS, `DFT_ROWS`,
+    and in-place transform APIs are not exposed.
+
+14. **OpenCV 4.x compatibility is not characterized release-by-release.**  
+    OpenCV 4.10 is the current source-level reference for subtle safety and
+    semantic boundaries.
+
+15. **The API is pre-1.0.**  
+    Names and overloads may still evolve as N-D matrices, broader typed access,
+    strided external buffers, additional persistence features, and future
+    cross-module integration are designed.
+
+---
+
+## Project layout
+
+```text
+opencv_core_ada/
 ├── .clinerules/
 │   ├── 01-architecture.md
 │   ├── 02-ada-design.md
 │   ├── 03-cpp-interop.md
 │   ├── 04-testing.md
 │   ├── 05-quality.md
-│   └── 06-agent-workflow.md
+│   ├── 06-agent-workflow.md
+│   └── hooks/
 ├── alire.toml
-├── opencvcore_ada.gpr
+├── opencv_core.gpr
 ├── LICENSE
 ├── README.md
-├── config/
-│   ├── opencvcore_ada_config.gpr
-│   └── opencvcore_ada_opencv.gpr        # generated/configured locally
 ├── cpp/
 │   ├── opencv_core_shim.cpp
 │   └── opencv_core_shim.h
 ├── scripts/
 │   └── configure_opencv.sh
 ├── src/
+│   ├── opencv.ads
 │   ├── opencv-core.ads
 │   ├── opencv-core.adb
 │   ├── opencv-core-persistence.ads
 │   ├── opencv-core-persistence.adb
-│   ├── opencv-core-*_access.*           # typed element access
-│   ├── opencv-core-*_row_access.*       # copied row access
-│   ├── opencv-core-*_vec3*              # predefined Vec3 support
+│   ├── opencv-core-*_access.*
+│   ├── opencv-core-*_row_access.*
+│   ├── opencv-core-*_buffer_access.*
+│   ├── opencv-core-*_mat_view.*
+│   ├── opencv-core-*_vec3*
 │   ├── opencv-core-vectors.ads
 │   ├── opencv-core-fixed_matrices.ads
-│   ├── opencv-core-float32_matx3x3.ads
-│   ├── opencv-core-float32_matx3x3_conversions.*
+│   ├── opencv-core-float32_matx3x3*
 │   └── internal/
-│       ├── opencv-internal-c_api.ads
-│       ├── opencv-internal-c_api.adb
-│       ├── opencv-internal-safe_arithmetic.ads
-│       ├── opencv-internal-safe_arithmetic.adb
-│       └── opencv-core-internal-typed_access.*
+│       ├── opencv-internal-c_api.*
+│       ├── opencv-internal-safe_arithmetic.*
+│       ├── opencv-core-internal-row_data.*
+│       ├── opencv-core-internal-typed_access.*
+│       ├── opencv-core-internal-typed_row_borrowing.*
+│       ├── opencv-core-internal-typed_continuous_borrowing.*
+│       └── opencv-core-internal-typed_external_mat_view.*
 └── tests/
     ├── alire.toml
     ├── tests.gpr
     └── src/
         ├── tests.adb
         ├── mat_tests.*
-        ├── mat_basic_tests.*
-        ├── mat_access_tests.*
-        ├── mat_view_tests.*
-        ├── mat_conversion_tests.*
-        ├── mat_arithmetic_tests.*
-        ├── mat_channel_tests.*
-        ├── mat_mask_tests.*
-        ├── mat_reduction_tests.*
-        ├── mat_range_tests.*
-        ├── mat_transform_tests.*
-        └── persistence_tests.*
+        ├── mat_*_tests.*
+        ├── persistence_tests.*
+        ├── cubic_tests.*
+        ├── polynomial_tests.*
+        ├── k_means_tests.*
+        ├── k_nearest_neighbor_tests.*
+        ├── random_tests.*
+        └── linear_discriminant_analysis_tests.*
 ```
 
+`config/opencv_core_install.gpr` is generated locally by
+`scripts/configure_opencv.sh` and is not a hand-maintained public interface.
+
 ---
 
-# Development approach
+## Development approach
 
-New features generally follow this sequence:
+New vertically integrated features generally follow this sequence:
 
 1. Inspect authoritative OpenCV declarations, implementation source, and tests
-   for the exact target behavior.
-2. Inspect existing repository conventions.
-3. Decide the thick Ada API and deliberate restrictions.
-4. Identify which validation belongs in Ada and which checks are required at
-   the raw C ABI for memory/overflow safety.
-5. Add only the required stable C ABI surface.
+   for the target operation.
+2. Inspect existing repository conventions and nearby Ada abstractions.
+3. Design the public thick Ada API and its deliberate restrictions.
+4. Separate public semantic validation from raw C ABI/memory-safety validation.
+5. Add only the C ABI surface actually required.
 6. Implement the C++ shim with exception containment and failure-atomic output
-   handling.
+   publication.
 7. Add/update the thin Ada import.
 8. Implement the thick Ada operation.
-9. Add focused AUnit coverage.
-10. Include non-contiguous Region cases where applicable.
-11. Include ownership/independence/view lifetime tests where applicable.
-12. Include invalid-input and source-version boundary behavior.
-13. Format modified Ada sources with the repository's Ada formatting workflow.
-14. Build the public crate warning-free.
-15. Build and run the complete tests crate warning-free.
-16. Run targeted GNATprove when a SPARK proof boundary is modified.
-17. Inspect the final diff and keep it focused.
+9. Add focused AUnit coverage, including non-contiguous Regions and ownership
+   cases where relevant.
+10. Build the public crate with warnings as errors.
+11. Build and run the complete tests crate.
+12. Run targeted GNATprove when a SPARK proof boundary changes.
+13. Inspect the final diff and keep the change vertically focused.
 
-Important public API decisions should be made deliberately rather than
-discovered accidentally through a mechanical translation of the C++ API.
+For typed zero-copy work, additional rules apply:
 
-## Source-backed safety review
-
-When an OpenCV implementation contains signed indexing, raw pointer access, or
-other operations whose safety depends on preconditions, the binding reviews
-the actual OpenCV 4.10 source and establishes a safe boundary before calling
-it.
-
-Examples already reflected in the public implementation include:
-
-- signed product guards around SVD/pseudoinverse indexing;
-- the 8,460 eigen/PCA dimension boundary;
-- the OpenCV 4.10 FileStorage `INT_MIN` write restriction;
-- string/NUL restrictions where OpenCV uses `strlen`;
-- failure-atomic opaque-handle publication.
-
-## Development dependency policy
-
-Testing, proof, coverage, formatting, and other development-only tools must not
-be added as dependencies of the public `opencvcore_ada` crate merely to make
-them available to development workflows.
-
-Use the separate `tests` Alire environment for development tooling that belongs
-there.
+- prove the Ada element representation before overlaying native storage;
+- keep raw addresses internal;
+- use callback-scoped lifetimes;
+- retain OpenCV storage with a controlled lease while borrowed;
+- require explicit `aliased` formals where caller-owned Ada storage is passed
+  directly to native code;
+- prohibit shallow escape from temporary external-buffer Mats;
+- never silently fall back to copying when an API is documented as zero-copy.
 
 ---
 
-# Testing expectations for new operations
-
-Depending on the operation, tests should consider:
-
-- ordinary UInt8 behavior;
-- Float32 behavior;
-- Float64 behavior where supported;
-- signed integer behavior;
-- integer saturation and rounding;
-- Vec3/multi-channel behavior;
-- empty Mat behavior;
-- non-contiguous Region input;
-- shallow aliases versus independent storage;
-- source/result lifetime;
-- arbitrary Ada array lower bounds for collection APIs;
-- mismatched rows/columns;
-- mismatched depth/channel count;
-- mask type and dimensions;
-- NaN and infinity where OpenCV naturally produces them;
-- exact OpenCV boundary semantics;
-- result-handle failure atomicity for newly allocated Mats;
-- caller-buffer capacity and ownership for returned strings;
-- persistence missing-versus-empty semantics;
-- disk versus memory storage state transitions.
-
-Installed/target OpenCV declarations and source are authoritative. Tests should
-not assume C++ behavior from memory when it can be inspected directly.
-
----
-
-# Contributing
+## Contributing
 
 Contributions should preserve the central abstraction boundary:
 
@@ -1970,7 +1324,7 @@ Contributions should preserve the central abstraction boundary:
 idiomatic Ada
     |
     v
-thin fixed ABI
+thin fixed C ABI
     |
     v
 C++ shim
@@ -1981,46 +1335,42 @@ OpenCV Core
 
 Please avoid:
 
-- exposing `Interfaces.C` types in the normal public API;
+- exposing `Interfaces.C`, status codes, raw handles, or raw pointers in the
+  normal public API;
 - passing C++ objects through Ada;
-- reproducing C++ overloads without considering Ada ergonomics;
-- exposing raw OpenCV integer mode flags when a strong Ada type is suitable;
-- adding raw pointers to the public API;
-- silently changing ownership semantics;
-- introducing test/development dependencies into the public library crate;
-- manually reimplementing OpenCV algorithms when a corresponding Core
+- mechanically reproducing C++ overloads without considering Ada ergonomics;
+- exposing raw OpenCV integer flags when a strong Ada type is suitable;
+- silently changing shallow/deep ownership semantics;
+- adding test/proof/coverage tooling to the public crate merely for development
+  convenience;
+- manually reimplementing an OpenCV algorithm when a corresponding Core
   primitive exists;
 - suppressing warnings simply to make a build pass;
-- broad unrelated cleanup in otherwise focused feature commits.
+- broad unrelated cleanup in otherwise focused feature changes.
 
 Small, vertically complete features with focused tests are preferred over large
 partially integrated batches.
 
-Formal proof should also stay focused: prove small pure-Ada safety properties
-when it produces a concrete guarantee, rather than adding contracts
-decoratively.
-
 ---
 
-# Versioning
+## Versioning
 
-The crate is currently:
+The Alire crate version is currently:
 
 ```text
-0.1.0-dev
+0.1.0
 ```
 
-The API should be considered experimental until a 1.0 release.
-
-Before 1.0, names and overloads may evolve as hierarchical persistence,
-spectral operations, broader typed access, N-dimensional arrays, and advanced
-matrix structures reveal better Ada abstractions.
+The API should still be considered experimental until 1.0. Public names and
+some overloads may evolve as broader typed access, N-dimensional matrices,
+strided external storage, persistence extensions, and cross-module integration
+reveal better Ada abstractions.
 
 ---
 
-# License
+## License
 
-`opencvcore_ada` is licensed under the **Apache License 2.0**.
+`opencv_core_ada` is licensed under the **Apache License 2.0**.
 
 See `LICENSE` for the full license text.
 
@@ -2030,38 +1380,36 @@ OpenCV is a separate project with its own license and copyright holders.
 
 ## Summary
 
-`opencvcore_ada` now provides a substantial, tested Ada foundation for OpenCV
-Core, including:
+`opencv_core_ada` now provides a broad Ada foundation for OpenCV Core with:
 
-- controlled `Mat` ownership and shared-storage views;
-- typed UInt8/Float32 and Vec3 access;
-- safe copied-row access;
-- conversions and element-wise mathematics;
-- arithmetic and bitwise operations;
-- mask production and consumption;
-- channel splitting/merging/routing;
-- 2-D layout, border, concatenation, and sorting operations;
-- scalar and axis reductions;
-- range checking and NaN patching;
-- determinant and explicit LU inversion/solving;
-- dot and 3-D cross products;
-- real/complex matrix multiplication;
-- centered and uncentered transposed products;
-- covariance and Mahalanobis distance;
-- symmetric eigen decomposition;
-- PCA basis construction, projection, back-projection, and retained-variance
-  selection;
-- compact SVD and SVD back-substitution;
-- Moore-Penrose pseudoinverse;
-- reciprocal 2-norm condition number;
-- per-element linear/affine and perspective vector transforms;
-- XML/YAML/JSON persistence for Mat/scalar/string values on disk and in memory;
-- a first targeted SPARK/GNATprove production proof;
-- a stable error-isolated C++ interoperability layer;
-- warning-free builds enforced with `-Werror`;
-- 683 registered AUnit tests in the current development baseline.
+- controlled `Mat` ownership, shallow aliases, Regions, ranges, reshape, and
+  explicit deep cloning;
+- typed UInt8/Float32 C1 and C3 element access;
+- copied rows plus scoped zero-copy row and continuous-buffer borrowing;
+- callback-scoped zero-copy `Mat` views over caller-owned UInt8/Float32 C1/C3
+  buffers with explicit lifetime protection;
+- conversions, arithmetic, masks, bitwise operations, channel routing, sorting,
+  rearrangement, borders, reductions, arg-reductions, statistics, PSNR, and
+  range handling;
+- element-wise mathematics, coordinate transforms, per-element linear and
+  perspective transforms;
+- DFT, inverse DFT, real inverse DFT, DCT, inverse DCT, spectral multiplication,
+  and optimal transform-size selection;
+- deterministic default/caller-owned RNG workflows, uniform/normal fills,
+  shuffle, K-means, and K-nearest neighbors;
+- determinant, LU solve/invert, least squares, GEMM, covariance, symmetric and
+  non-symmetric eigen decomposition, PCA, LDA, compact SVD, SVD back-substitution,
+  null-space solving, pseudoinverse, and reciprocal condition number;
+- cubic and polynomial solving plus continuous linear programming;
+- XML/YAML/JSON FileStorage persistence on disk and in memory, including nested
+  maps and sequences while keeping `FileNode` private;
+- source-backed OpenCV 4.10 safety boundaries, a stable error-isolated C++ ABI,
+  warning-free builds, and targeted SPARK proof;
+- **908 registered AUnit tests across 20 suites** in the current development
+  baseline.
 
-The cross-language architecture is established. Remaining work is primarily
-coverage expansion: hierarchical persistence, spectral operations, RNG and
-algorithms, broader typed access, generalized decomposition modes,
-N-dimensional arrays, and advanced matrix structures.
+The cross-language architecture and the first complete typed zero-copy matrix
+are established. Future work can focus on genuinely new capabilities such as
+broader typed layouts, strided external buffers, N-dimensional matrices,
+advanced structures, and cross-module integration rather than repeating the
+same ownership patterns for the currently supported UInt8/Float32 C1/C3 cases.
