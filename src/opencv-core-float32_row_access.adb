@@ -1,33 +1,25 @@
 with Ada.Exceptions;
-with OpenCV.Core.Internal.Row_Data;
 with OpenCV.Core.Internal.Typed_Access;
+with OpenCV.Core.Internal.Typed_Row_Borrowing;
 with OpenCV.Internal.C_API;
-with System;
-with System.Address_To_Access_Conversions;
 
 package body OpenCV.Core.Float32_Row_Access is
 
-   use type OpenCV.Internal.C_API.C_UInt64;
-
-   pragma
-     Compile_Time_Error
-       (Float32_Value'Size /= 32,
-        "Float32_Value must be IEEE binary32 for zero-copy Mat row views");
-   pragma
-     Compile_Time_Error
-       (Float32_Value'Alignment < 4,
-        "Float32_Value alignment is incompatible with OpenCV CV_32F rows");
-   pragma
-     Compile_Time_Error
-       (Row_Array'Component_Size /= 32,
-        "Float32 Row_Array must be tightly packed IEEE binary32 elements");
+   package Borrowing is new
+     OpenCV.Core.Internal.Typed_Row_Borrowing
+       (Element_Type          => Float32_Value,
+        Row_Array             => Row_Array,
+        Required_Depth        => Float32,
+        Required_Channels     => 1,
+        Expected_Element_Bits => 32,
+        Type_Name             => "Float32");
 
    procedure Raise_Invalid_Access (Message : String) is
    begin
       Ada.Exceptions.Raise_Exception (OpenCV_Error'Identity, Message);
    end Raise_Invalid_Access;
 
-   procedure Validate_Borrow (Image : Mat; Row : Natural) is
+   procedure Validate (Image : Mat; Row : Natural; Length : Natural) is
    begin
       if Image.Depth /= Float32 then
          Raise_Invalid_Access ("Float32 row access requires a Float32 Mat");
@@ -38,14 +30,8 @@ package body OpenCV.Core.Float32_Row_Access is
 
       elsif Row >= Image.Rows then
          Raise_Invalid_Access ("Mat row index is outside the valid range");
-      end if;
-   end Validate_Borrow;
 
-   procedure Validate (Image : Mat; Row : Natural; Length : Natural) is
-   begin
-      Validate_Borrow (Image, Row);
-
-      if Length /= Image.Columns then
+      elsif Length /= Image.Columns then
          Raise_Invalid_Access
            ("typed Mat row access requires one value per Mat column");
       end if;
@@ -82,133 +68,20 @@ package body OpenCV.Core.Float32_Row_Access is
         (Image, Integer (Row), Buffer);
    end Write_Row;
 
-   function Expected_Logical_Row_Bytes
-     (Column_Count : Natural) return OpenCV.Internal.C_API.C_UInt64
-   is
-      Element_Bytes : constant OpenCV.Internal.C_API.C_UInt64 :=
-        OpenCV.Internal.C_API.C_UInt64 (Float32_Value'Size / 8);
-      Columns       : constant OpenCV.Internal.C_API.C_UInt64 :=
-        OpenCV.Internal.C_API.C_UInt64 (Column_Count);
-   begin
-      if Column_Count /= 0
-        and then Columns > OpenCV.Internal.C_API.C_UInt64'Last / Element_Bytes
-      then
-         Raise_Invalid_Access
-           ("Float32 row byte count exceeds the representable range");
-      end if;
-
-      return Columns * Element_Bytes;
-   end Expected_Logical_Row_Bytes;
-
-   procedure Check_Borrowed_Row
-     (Borrowed     : OpenCV.Core.Internal.Row_Data.Borrowed_Row;
-      Column_Count : Natural)
-   is
-      use type System.Address;
-   begin
-      if Borrowed.Byte_Count /= Expected_Logical_Row_Bytes (Column_Count) then
-         Raise_Invalid_Access
-           ("borrowed Float32 row byte count does not match Mat columns");
-      end if;
-
-      if Column_Count /= 0 and then Borrowed.Address = System.Null_Address then
-         Raise_Invalid_Access ("borrowed Float32 row has no storage");
-      end if;
-   end Check_Borrowed_Row;
-
    procedure With_Read_Only_Row
      (Image   : Mat;
       Row     : Natural;
-      Process : not null access procedure (Data : aliased Row_Array))
-   is
-      Lease : constant Mat := Image;
+      Process : not null access procedure (Data : aliased Row_Array)) is
    begin
-      Validate_Borrow (Lease, Row);
-
-      declare
-         Column_Count : constant Natural := Lease.Columns;
-         Borrowed     : constant OpenCV.Core.Internal.Row_Data.Borrowed_Row :=
-           OpenCV.Core.Internal.Row_Data.Borrow_Row (Lease, Row);
-      begin
-         Check_Borrowed_Row (Borrowed, Column_Count);
-
-         if Column_Count = 0 then
-            declare
-               Empty : aliased constant Row_Array := (1 .. 0 => 0.0);
-            begin
-               Process (Empty);
-            end;
-            return;
-         end if;
-
-         declare
-            subtype Current_Row is Row_Array (0 .. Column_Count - 1);
-            package Row_Conversions is new
-              System.Address_To_Access_Conversions (Current_Row);
-            use type Row_Conversions.Object_Pointer;
-
-            Data : constant Row_Conversions.Object_Pointer :=
-              Row_Conversions.To_Pointer (Borrowed.Address);
-         begin
-            if Data = null then
-               Raise_Invalid_Access ("borrowed Float32 row has no storage");
-            end if;
-
-            declare
-               View : constant access constant Row_Array :=
-                 Data.all'Unrestricted_Access;
-            begin
-               Process (View.all);
-            end;
-         end;
-      end;
+      Borrowing.With_Read_Only_Row (Image, Row, Process);
    end With_Read_Only_Row;
 
    procedure With_Writable_Row
      (Image   : in out Mat;
       Row     : Natural;
-      Process : not null access procedure (Data : aliased in out Row_Array))
-   is
-      Lease : constant Mat := Image;
+      Process : not null access procedure (Data : aliased in out Row_Array)) is
    begin
-      Validate_Borrow (Lease, Row);
-
-      declare
-         Column_Count : constant Natural := Lease.Columns;
-         Borrowed     : constant OpenCV.Core.Internal.Row_Data.Borrowed_Row :=
-           OpenCV.Core.Internal.Row_Data.Borrow_Row (Lease, Row);
-      begin
-         Check_Borrowed_Row (Borrowed, Column_Count);
-
-         if Column_Count = 0 then
-            declare
-               Empty : aliased Row_Array := (1 .. 0 => 0.0);
-            begin
-               Process (Empty);
-            end;
-            return;
-         end if;
-
-         declare
-            subtype Current_Row is Row_Array (0 .. Column_Count - 1);
-            package Row_Conversions is new
-              System.Address_To_Access_Conversions (Current_Row);
-            use type Row_Conversions.Object_Pointer;
-            Data : constant Row_Conversions.Object_Pointer :=
-              Row_Conversions.To_Pointer (Borrowed.Address);
-         begin
-            if Data = null then
-               Raise_Invalid_Access ("borrowed Float32 row has no storage");
-            end if;
-
-            declare
-               View : constant access Row_Array :=
-                 Data.all'Unrestricted_Access;
-            begin
-               Process (View.all);
-            end;
-         end;
-      end;
+      Borrowing.With_Writable_Row (Image, Row, Process);
    end With_Writable_Row;
 
 end OpenCV.Core.Float32_Row_Access;
