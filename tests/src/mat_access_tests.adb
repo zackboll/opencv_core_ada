@@ -4,6 +4,7 @@ with Ada.Exceptions;
 with Interfaces;
 with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
+with OpenCV.Core.Float32_Buffer_Access;
 with OpenCV.Core.Float32_Row_Access;
 with OpenCV.Core.Float32_Vec3;
 with OpenCV.Core.Float32_Vec3_Access;
@@ -2165,6 +2166,334 @@ package body Mat_Access_Tests is
          "The Mat must remain usable after a borrowed-row callback exception");
    end Float32_Vec3_Borrowed_Row_Propagates_Callback_Exception;
 
+   procedure Float32_Borrowed_Writable_Buffer_Is_Zero_Copy
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Alias : OpenCV.Core.Mat;
+
+      procedure Mutate
+        (Data : aliased in out OpenCV.Core.Float32_Buffer_Access.Buffer_Array)
+      is
+      begin
+         AUnit.Assertions.Assert
+           (Data'First = 0 and then Data'Last = 5 and then Data'Length = 6,
+            "A writable borrowed Float32 buffer must be a flat zero-based"
+            & " array of Total elements");
+
+         Data (2) := 12.5;
+         Data (3) := -7.25;
+         AUnit.Assertions.Assert
+           (Approximately_Equal
+              (Long_Float
+                 (OpenCV.Core.Float32_Access.Get
+                    (Image, Row => 0, Column => 2)),
+               12.5)
+            and then Approximately_Equal
+                       (Long_Float
+                          (OpenCV.Core.Float32_Access.Get
+                             (Image, Row => 1, Column => 0)),
+                        -7.25),
+            "Writes across a row boundary must be immediately visible"
+            & " through Get");
+
+         OpenCV.Core.Float32_Access.Set
+           (Alias, Row => 1, Column => 2, Value => 9.875);
+         AUnit.Assertions.Assert
+           (Approximately_Equal (Long_Float (Data (5)), 9.875),
+            "A write through a shallow alias must be immediately visible"
+            & " through the borrowed buffer");
+      end Mutate;
+   begin
+      AUnit.Assertions.Assert
+        (Image.Is_Continuous,
+         "A newly allocated Float32 Mat must be continuous");
+      OpenCV.Core.Float32_Access.Set
+        (Image, Row => 0, Column => 0, Value => 1.0);
+      OpenCV.Core.Float32_Access.Set
+        (Image, Row => 0, Column => 1, Value => 2.0);
+      OpenCV.Core.Float32_Access.Set
+        (Image, Row => 0, Column => 2, Value => 3.0);
+      OpenCV.Core.Float32_Access.Set
+        (Image, Row => 1, Column => 0, Value => 4.0);
+      OpenCV.Core.Float32_Access.Set
+        (Image, Row => 1, Column => 1, Value => 5.0);
+      OpenCV.Core.Float32_Access.Set
+        (Image, Row => 1, Column => 2, Value => 6.0);
+      Alias := Image;
+
+      OpenCV.Core.Float32_Buffer_Access.With_Writable_Buffer
+        (Image, Process => Mutate'Access);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float
+              (OpenCV.Core.Float32_Access.Get (Image, Row => 0, Column => 2)),
+            12.5)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get
+                          (Image, Row => 1, Column => 0)),
+                     -7.25)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get
+                          (Image, Row => 1, Column => 2)),
+                     9.875),
+         "Writable borrowed-buffer mutations must remain after Process"
+         & " returns");
+   end Float32_Borrowed_Writable_Buffer_Is_Zero_Copy;
+
+   procedure Float32_Borrowed_Read_Only_Buffer_Matches_Mat
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+
+      procedure Inspect
+        (Data : aliased OpenCV.Core.Float32_Buffer_Access.Buffer_Array) is
+      begin
+         AUnit.Assertions.Assert
+           (Data'First = 0 and then Data'Last = 5 and then Data'Length = 6,
+            "A read-only borrowed Float32 buffer must be a flat zero-based"
+            & " array of Total elements");
+         AUnit.Assertions.Assert
+           (Approximately_Equal (Long_Float (Data (0)), 0.5)
+            and then Approximately_Equal (Long_Float (Data (1)), -1.5)
+            and then Approximately_Equal (Long_Float (Data (2)), 2.25)
+            and then Approximately_Equal (Long_Float (Data (3)), -3.75)
+            and then Approximately_Equal (Long_Float (Data (4)), 4.125)
+            and then Approximately_Equal (Long_Float (Data (5)), 5.0),
+            "A read-only borrowed Float32 buffer must match row-major Mat"
+            & " values");
+      end Inspect;
+   begin
+      OpenCV.Core.Float32_Access.Set
+        (Image, Row => 0, Column => 0, Value => 0.5);
+      OpenCV.Core.Float32_Access.Set
+        (Image, Row => 0, Column => 1, Value => -1.5);
+      OpenCV.Core.Float32_Access.Set
+        (Image, Row => 0, Column => 2, Value => 2.25);
+      OpenCV.Core.Float32_Access.Set
+        (Image, Row => 1, Column => 0, Value => -3.75);
+      OpenCV.Core.Float32_Access.Set
+        (Image, Row => 1, Column => 1, Value => 4.125);
+      OpenCV.Core.Float32_Access.Set
+        (Image, Row => 1, Column => 2, Value => 5.0);
+
+      OpenCV.Core.Float32_Buffer_Access.With_Read_Only_Buffer
+        (Image, Process => Inspect'Access);
+   end Float32_Borrowed_Read_Only_Buffer_Matches_Mat;
+
+   procedure Float32_Borrowed_Buffer_Accepts_Continuous_Region
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 4,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      View   : OpenCV.Core.Mat :=
+        Parent.Region ((X => 0, Y => 1, Width => 3, Height => 2));
+
+      procedure Mutate
+        (Data : aliased in out OpenCV.Core.Float32_Buffer_Access.Buffer_Array)
+      is
+      begin
+         AUnit.Assertions.Assert
+           (Data'First = 0 and then Data'Last = 5 and then Data'Length = 6,
+            "A borrowed continuous Region buffer must expose Region.Total"
+            & " elements");
+         Data (2) := 21.5;
+         Data (3) := -22.25;
+      end Mutate;
+   begin
+      Parent.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      AUnit.Assertions.Assert
+        (View.Is_Continuous,
+         "A full-width multi-row Region of a continuous parent must be"
+         & " continuous");
+      AUnit.Assertions.Assert
+        (View.Is_Submatrix,
+         "The continuous Region test must exercise a submatrix");
+
+      OpenCV.Core.Float32_Buffer_Access.With_Writable_Buffer
+        (View, Process => Mutate'Access);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float
+              (OpenCV.Core.Float32_Access.Get (Parent, Row => 1, Column => 2)),
+            21.5)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get
+                          (Parent, Row => 2, Column => 0)),
+                     -22.25),
+         "Borrowed continuous Region writes must mutate corresponding parent"
+         & " elements");
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float
+              (OpenCV.Core.Float32_Access.Get (Parent, Row => 0, Column => 0)),
+            1.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get
+                          (Parent, Row => 3, Column => 2)),
+                     1.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get
+                          (Parent, Row => 1, Column => 1)),
+                     1.0),
+         "Borrowed continuous Region writes must not mutate rows outside the"
+         & " Region");
+   end Float32_Borrowed_Buffer_Accepts_Continuous_Region;
+
+   procedure Float32_Borrowed_Buffer_Rejects_Invalid_Mats
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      UInt8_Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      C3_Image      : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 3));
+      Parent        : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 4,
+           Columns      => 6,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Noncontinuous : constant OpenCV.Core.Mat :=
+        Parent.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+      Invoked       : Boolean := False;
+
+      procedure Mark_Read
+        (Data : aliased OpenCV.Core.Float32_Buffer_Access.Buffer_Array)
+      is
+         pragma Unreferenced (Data);
+      begin
+         Invoked := True;
+      end Mark_Read;
+
+      procedure Read_UInt8 is
+      begin
+         OpenCV.Core.Float32_Buffer_Access.With_Read_Only_Buffer
+           (UInt8_Image, Process => Mark_Read'Access);
+      end Read_UInt8;
+
+      procedure Read_C3 is
+      begin
+         OpenCV.Core.Float32_Buffer_Access.With_Read_Only_Buffer
+           (C3_Image, Process => Mark_Read'Access);
+      end Read_C3;
+
+      procedure Read_Noncontinuous is
+      begin
+         OpenCV.Core.Float32_Buffer_Access.With_Read_Only_Buffer
+           (Noncontinuous, Process => Mark_Read'Access);
+      end Read_Noncontinuous;
+   begin
+      Parent.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      AUnit.Assertions.Assert
+        (not Noncontinuous.Is_Continuous,
+         "A partial-width multi-row Region must be non-continuous");
+
+      Assert_Raises_OpenCV_Error
+        (Read_UInt8'Access,
+         "Float32 buffer access must reject a UInt8 C1 Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_C3'Access, "Float32 buffer access must reject a Float32 C3 Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_Noncontinuous'Access,
+         "Float32 buffer access must reject a non-continuous Mat");
+      AUnit.Assertions.Assert
+        (not Invoked,
+         "Borrowed-buffer validation must not invoke the" & " callback");
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float
+              (OpenCV.Core.Float32_Access.Get (Parent, Row => 1, Column => 1)),
+            1.0),
+         "Rejected non-continuous buffer access must not mutate the parent");
+   end Float32_Borrowed_Buffer_Rejects_Invalid_Mats;
+
+   procedure Float32_Borrowed_Buffer_Propagates_Callback_Exception
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Raised  : Boolean := False;
+      Message : Ada.Exceptions.Exception_Id := Ada.Exceptions.Null_Id;
+
+      procedure Mutate
+        (Data : aliased in out OpenCV.Core.Float32_Buffer_Access.Buffer_Array)
+      is
+      begin
+         Data (2) := 9.25;
+         raise Borrowed_Row_Callback_Error;
+      end Mutate;
+   begin
+      OpenCV.Core.Float32_Access.Set
+        (Image, Row => 0, Column => 0, Value => 1.0);
+      OpenCV.Core.Float32_Access.Set
+        (Image, Row => 1, Column => 0, Value => 2.0);
+
+      begin
+         OpenCV.Core.Float32_Buffer_Access.With_Writable_Buffer
+           (Image, Process => Mutate'Access);
+      exception
+         when Error : Borrowed_Row_Callback_Error =>
+            Raised := True;
+            Message := Ada.Exceptions.Exception_Identity (Error);
+      end;
+
+      AUnit.Assertions.Assert
+        (Raised and then Message = Borrowed_Row_Callback_Error'Identity,
+         "A callback exception must propagate unchanged");
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float
+              (OpenCV.Core.Float32_Access.Get (Image, Row => 1, Column => 0)),
+            9.25)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get
+                          (Image, Row => 0, Column => 0)),
+                     1.0),
+         "Writes completed before a callback exception must remain visible");
+
+      OpenCV.Core.Float32_Access.Set
+        (Image, Row => 0, Column => 1, Value => 4.5);
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float
+              (OpenCV.Core.Float32_Access.Get (Image, Row => 0, Column => 1)),
+            4.5),
+         "The Mat must remain usable after a borrowed-buffer callback"
+         & " exception");
+   end Float32_Borrowed_Buffer_Propagates_Callback_Exception;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -2331,6 +2660,26 @@ package body Mat_Access_Tests is
         (Caller.Create
            ("Float32 Vec3 borrowed row propagates callback exceptions",
             Float32_Vec3_Borrowed_Row_Propagates_Callback_Exception'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 borrowed writable buffer is zero-copy",
+            Float32_Borrowed_Writable_Buffer_Is_Zero_Copy'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 borrowed read-only buffer matches Mat",
+            Float32_Borrowed_Read_Only_Buffer_Matches_Mat'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 borrowed buffer accepts continuous Regions",
+            Float32_Borrowed_Buffer_Accepts_Continuous_Region'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 borrowed buffer rejects invalid Mats",
+            Float32_Borrowed_Buffer_Rejects_Invalid_Mats'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 borrowed buffer propagates callback exceptions",
+            Float32_Borrowed_Buffer_Propagates_Callback_Exception'Access));
       return Result'Access;
    end Suite;
 
