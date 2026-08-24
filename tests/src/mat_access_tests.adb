@@ -10,6 +10,7 @@ with OpenCV.Core.Float32_Row_Access;
 with OpenCV.Core.Float32_Vec3;
 with OpenCV.Core.Float32_Vec3_Access;
 with OpenCV.Core.Float32_Vec3_Buffer_Access;
+with OpenCV.Core.Float32_Vec3_Mat_View;
 with OpenCV.Core.Float32_Vec3_Row_Access;
 with OpenCV.Core.UInt8_Access;
 with OpenCV.Core.UInt8_Buffer_Access;
@@ -18,6 +19,7 @@ with OpenCV.Core.UInt8_Row_Access;
 with OpenCV.Core.UInt8_Vec3;
 with OpenCV.Core.UInt8_Vec3_Access;
 with OpenCV.Core.UInt8_Vec3_Buffer_Access;
+with OpenCV.Core.UInt8_Vec3_Mat_View;
 with OpenCV.Core.UInt8_Vec3_Row_Access;
 with Mat_Test_Support;
 
@@ -3405,6 +3407,266 @@ package body Mat_Access_Tests is
          & " exception");
    end Float32_Vec3_Borrowed_Buffer_Propagates_Callback_Exception;
 
+   procedure UInt8_Vec3_External_Mat_View_Is_Zero_Copy
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Data : aliased OpenCV.Core.UInt8_Vec3_Mat_View.Buffer_Array :=
+        (11 => (1, 2, 3),
+         12 => (4, 5, 6),
+         13 => (7, 8, 9),
+         14 => (10, 20, 30),
+         15 => (40, 50, 60),
+         16 => (70, 80, 90));
+
+      procedure Process (Image : in out OpenCV.Core.Mat) is
+      begin
+         AUnit.Assertions.Assert
+           (Image.Rows = 2
+            and then Image.Columns = 3
+            and then Image.Depth = OpenCV.Core.UInt8
+            and then Image.Channels = 3
+            and then Natural (Image.Total) = 6
+            and then Image.Is_Continuous,
+            "UInt8 Vec3 external view metadata must describe six pixels");
+         Data (13) := (21, 22, 23);
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Vec3_Access.Get (Image, 0, 2) = (21, 22, 23),
+            "UInt8 Vec3 Data-to-Mat aliasing must cross the row boundary");
+         OpenCV.Core.UInt8_Vec3_Access.Set (Image, 1, 0, (31, 32, 33));
+         AUnit.Assertions.Assert
+           (Data (14) = (31, 32, 33),
+            "UInt8 Vec3 Mat-to-Data aliasing must cross the row boundary");
+         Image.Set_To (OpenCV.Core.Make_Scalar (100.0, 110.0, 120.0));
+      end Process;
+   begin
+      OpenCV.Core.UInt8_Vec3_Mat_View.With_Writable_Mat_View
+        (Data, Rows => 2, Columns => 3, Process => Process'Access);
+      AUnit.Assertions.Assert
+        (Data (11) = (100, 110, 120) and then Data (16) = (100, 110, 120),
+         "UInt8 Vec3 Set_To must directly update caller storage");
+   end UInt8_Vec3_External_Mat_View_Is_Zero_Copy;
+
+   procedure Float32_Vec3_External_Mat_View_Is_Zero_Copy
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Data : aliased OpenCV.Core.Float32_Vec3_Mat_View.Buffer_Array :=
+        (21 => (0.5, -1.5, 2.5),
+         22 => (1.25, 0.0, -3.75),
+         23 => (-4.5, 5.125, 6.0),
+         24 => (7.875, -8.25, 9.5),
+         25 => (-10.0, 11.125, 12.25),
+         26 => (13.5, 14.75, -15.875));
+
+      procedure Process (Image : in out OpenCV.Core.Mat) is
+      begin
+         AUnit.Assertions.Assert
+           (Image.Rows = 2
+            and then Image.Columns = 3
+            and then Image.Depth = OpenCV.Core.Float32
+            and then Image.Channels = 3
+            and then Natural (Image.Total) = 6
+            and then Image.Is_Continuous,
+            "Float32 Vec3 external view metadata must describe six pixels");
+         Data (23) := (1.25, -2.5, 3.75);
+         AUnit.Assertions.Assert
+           (Vec3_Approximately_Equal
+              (OpenCV.Core.Float32_Vec3_Access.Get (Image, 0, 2),
+               (1.25, -2.5, 3.75)),
+            "Float32 Vec3 Data-to-Mat aliasing must cross the row boundary");
+         OpenCV.Core.Float32_Vec3_Access.Set
+           (Image, 1, 0, (-4.5, 5.125, 6.75));
+         AUnit.Assertions.Assert
+           (Vec3_Approximately_Equal (Data (24), (-4.5, 5.125, 6.75)),
+            "Float32 Vec3 Mat-to-Data aliasing must cross the row boundary");
+         Image.Set_To (OpenCV.Core.Make_Scalar (7.25, -8.5, 9.75));
+      end Process;
+   begin
+      OpenCV.Core.Float32_Vec3_Mat_View.With_Writable_Mat_View
+        (Data, Rows => 2, Columns => 3, Process => Process'Access);
+      AUnit.Assertions.Assert
+        (Vec3_Approximately_Equal (Data (21), (7.25, -8.5, 9.75))
+         and then Vec3_Approximately_Equal (Data (26), (7.25, -8.5, 9.75)),
+         "Float32 Vec3 Set_To must directly update caller storage");
+   end Float32_Vec3_External_Mat_View_Is_Zero_Copy;
+
+   procedure Vec3_External_Mat_Views_Reject_Invalid_Shape
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      UInt8_Data : aliased OpenCV.Core.UInt8_Vec3_Mat_View.Buffer_Array :=
+        (1 .. 5 => (1, 2, 3));
+      Float_Data : aliased OpenCV.Core.Float32_Vec3_Mat_View.Buffer_Array :=
+        (1 .. 7 => (1.0, 2.0, 3.0));
+      Invoked    : Boolean := False;
+      procedure Process (Image : in out OpenCV.Core.Mat) is
+         pragma Unreferenced (Image);
+      begin
+         Invoked := True;
+      end Process;
+      procedure Bad_UInt8 is
+      begin
+         OpenCV.Core.UInt8_Vec3_Mat_View.With_Writable_Mat_View
+           (UInt8_Data, 2, 3, Process'Access);
+      end Bad_UInt8;
+      procedure Bad_Float32 is
+      begin
+         OpenCV.Core.Float32_Vec3_Mat_View.With_Writable_Mat_View
+           (Float_Data, 2, 3, Process'Access);
+      end Bad_Float32;
+   begin
+      Assert_Raises_OpenCV_Error (Bad_UInt8'Access, "UInt8 Vec3 shape");
+      Assert_Raises_OpenCV_Error (Bad_Float32'Access, "Float32 Vec3 shape");
+      AUnit.Assertions.Assert
+        (not Invoked
+         and then UInt8_Data (1) = (1, 2, 3)
+         and then Vec3_Approximately_Equal (Float_Data (1), (1.0, 2.0, 3.0)),
+         "Invalid Vec3 view shapes must not invoke or modify caller storage");
+   end Vec3_External_Mat_Views_Reject_Invalid_Shape;
+
+   procedure UInt8_Vec3_External_Mat_View_Permits_Independent_Clone
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Data  : aliased OpenCV.Core.UInt8_Vec3_Mat_View.Buffer_Array :=
+        (1 => (1, 2, 3), 2 .. 6 => (4, 5, 6));
+      Saved : OpenCV.Core.Mat;
+      procedure Capture (Image : in out OpenCV.Core.Mat) is
+      begin
+         Saved := Image.Clone;
+      end Capture;
+   begin
+      OpenCV.Core.UInt8_Vec3_Mat_View.With_Writable_Mat_View
+        (Data, 2, 3, Capture'Access);
+      Data (1) := (9, 9, 9);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Vec3_Access.Get (Saved, 0, 0) = (1, 2, 3),
+         "UInt8 Vec3 Clone must retain original caller pixel");
+      OpenCV.Core.UInt8_Vec3_Access.Set (Saved, 0, 0, (8, 8, 8));
+      AUnit.Assertions.Assert
+        (Data (1) = (9, 9, 9), "UInt8 Vec3 Clone must be independent");
+   end UInt8_Vec3_External_Mat_View_Permits_Independent_Clone;
+
+   procedure Float32_Vec3_External_Mat_View_Permits_Independent_Clone
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Data  : aliased OpenCV.Core.Float32_Vec3_Mat_View.Buffer_Array :=
+        (1 => (1.25, -2.5, 3.75), 2 .. 6 => (4.0, 5.0, 6.0));
+      Saved : OpenCV.Core.Mat;
+      procedure Capture (Image : in out OpenCV.Core.Mat) is
+      begin
+         Saved := Image.Clone;
+      end Capture;
+   begin
+      OpenCV.Core.Float32_Vec3_Mat_View.With_Writable_Mat_View
+        (Data, 2, 3, Capture'Access);
+      Data (1) := (9.0, 9.0, 9.0);
+      AUnit.Assertions.Assert
+        (Vec3_Approximately_Equal
+           (OpenCV.Core.Float32_Vec3_Access.Get (Saved, 0, 0),
+            (1.25, -2.5, 3.75)),
+         "Float32 Vec3 Clone must retain original caller pixel");
+      OpenCV.Core.Float32_Vec3_Access.Set (Saved, 0, 0, (8.0, 8.0, 8.0));
+      AUnit.Assertions.Assert
+        (Vec3_Approximately_Equal (Data (1), (9.0, 9.0, 9.0)),
+         "Float32 Vec3 Clone must be independent");
+   end Float32_Vec3_External_Mat_View_Permits_Independent_Clone;
+
+   procedure Vec3_External_Mat_Views_Reject_Shallow_Escape
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      UInt8_Data : aliased OpenCV.Core.UInt8_Vec3_Mat_View.Buffer_Array :=
+        (1 .. 6 => (1, 2, 3));
+      Float_Data : aliased OpenCV.Core.Float32_Vec3_Mat_View.Buffer_Array :=
+        (1 .. 6 => (1.0, 2.0, 3.0));
+      procedure UInt8_Process (Image : in out OpenCV.Core.Mat) is
+         procedure Escape is
+            Copy : OpenCV.Core.Mat;
+            pragma Unreferenced (Copy);
+         begin
+            Copy := Image;
+         end Escape;
+      begin
+         Assert_Raises_OpenCV_Error (Escape'Access, "UInt8 Vec3 assignment");
+         OpenCV.Core.UInt8_Vec3_Access.Set (Image, 0, 0, (7, 8, 9));
+      end UInt8_Process;
+      procedure Float32_Process (Image : in out OpenCV.Core.Mat) is
+         procedure Escape is
+            View : OpenCV.Core.Mat;
+            pragma Unreferenced (View);
+         begin
+            View := Image.Region ((X => 0, Y => 0, Width => 1, Height => 1));
+         end Escape;
+      begin
+         Assert_Raises_OpenCV_Error (Escape'Access, "Float32 Vec3 Region");
+         OpenCV.Core.Float32_Vec3_Access.Set (Image, 0, 0, (7.0, 8.0, 9.0));
+      end Float32_Process;
+   begin
+      OpenCV.Core.UInt8_Vec3_Mat_View.With_Writable_Mat_View
+        (UInt8_Data, 2, 3, UInt8_Process'Access);
+      OpenCV.Core.Float32_Vec3_Mat_View.With_Writable_Mat_View
+        (Float_Data, 2, 3, Float32_Process'Access);
+      AUnit.Assertions.Assert
+        (UInt8_Data (1) = (7, 8, 9)
+         and then Vec3_Approximately_Equal (Float_Data (1), (7.0, 8.0, 9.0)),
+         "Temporary Vec3 views must remain usable after rejected escapes");
+   end Vec3_External_Mat_Views_Reject_Shallow_Escape;
+
+   procedure Vec3_External_Mat_Views_Propagate_Callback_Exceptions
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      UInt8_Data : aliased OpenCV.Core.UInt8_Vec3_Mat_View.Buffer_Array :=
+        (1 .. 6 => (1, 2, 3));
+      Float_Data : aliased OpenCV.Core.Float32_Vec3_Mat_View.Buffer_Array :=
+        (1 .. 6 => (1.0, 2.0, 3.0));
+      Raised     : Boolean := False;
+      Identity   : Ada.Exceptions.Exception_Id := Ada.Exceptions.Null_Id;
+      procedure UInt8_Process (Image : in out OpenCV.Core.Mat) is
+      begin
+         OpenCV.Core.UInt8_Vec3_Access.Set (Image, 0, 0, (77, 88, 99));
+         raise Borrowed_Row_Callback_Error;
+      end UInt8_Process;
+      procedure Float32_Process (Image : in out OpenCV.Core.Mat) is
+      begin
+         OpenCV.Core.Float32_Vec3_Access.Set (Image, 0, 0, (7.75, -8.5, 9.25));
+         raise Borrowed_Row_Callback_Error;
+      end Float32_Process;
+   begin
+      begin
+         OpenCV.Core.UInt8_Vec3_Mat_View.With_Writable_Mat_View
+           (UInt8_Data, 2, 3, UInt8_Process'Access);
+      exception
+         when Error : Borrowed_Row_Callback_Error =>
+            Raised := True;
+            Identity := Ada.Exceptions.Exception_Identity (Error);
+      end;
+      AUnit.Assertions.Assert
+        (Raised
+         and then Identity = Borrowed_Row_Callback_Error'Identity
+         and then UInt8_Data (1) = (77, 88, 99),
+         "UInt8 Vec3 callback exception and write must be preserved");
+      Raised := False;
+      Identity := Ada.Exceptions.Null_Id;
+      begin
+         OpenCV.Core.Float32_Vec3_Mat_View.With_Writable_Mat_View
+           (Float_Data, 2, 3, Float32_Process'Access);
+      exception
+         when Error : Borrowed_Row_Callback_Error =>
+            Raised := True;
+            Identity := Ada.Exceptions.Exception_Identity (Error);
+      end;
+      AUnit.Assertions.Assert
+        (Raised
+         and then Identity = Borrowed_Row_Callback_Error'Identity
+         and then Vec3_Approximately_Equal
+                    (Float_Data (1), (7.75, -8.5, 9.25)),
+         "Float32 Vec3 callback exception and write must be preserved");
+   end Vec3_External_Mat_Views_Propagate_Callback_Exceptions;
+
    procedure Float32_External_Buffer_Mat_View_Is_Zero_Copy
      (Test : in out Mat_Test_Fixture)
    is
@@ -4055,8 +4317,7 @@ package body Mat_Access_Tests is
       Result.Add_Test
         (Caller.Create
            ("Float32 Vec3 borrowed row rejects invalid Mats and indices",
-            Float32_Vec3_Borrowed_Row_Rejects_Invalid_Mats_And_Indices
-              'Access));
+            Float32_Vec3_Borrowed_Row_Rejects_Invalid_Mats_And_Indices'Access));
       Result.Add_Test
         (Caller.Create
            ("Float32 Vec3 borrowed row propagates callback exceptions",
@@ -4112,8 +4373,7 @@ package body Mat_Access_Tests is
       Result.Add_Test
         (Caller.Create
            ("UInt8 Vec3 borrowed buffer accepts continuous offset Region",
-            UInt8_Vec3_Borrowed_Buffer_Accepts_Continuous_Offset_Region
-              'Access));
+            UInt8_Vec3_Borrowed_Buffer_Accepts_Continuous_Offset_Region'Access));
       Result.Add_Test
         (Caller.Create
            ("UInt8 Vec3 borrowed buffer rejects invalid Mats",
@@ -4133,8 +4393,7 @@ package body Mat_Access_Tests is
       Result.Add_Test
         (Caller.Create
            ("Float32 Vec3 borrowed buffer accepts continuous offset Region",
-            Float32_Vec3_Borrowed_Buffer_Accepts_Continuous_Offset_Region
-              'Access));
+            Float32_Vec3_Borrowed_Buffer_Accepts_Continuous_Offset_Region'Access));
       Result.Add_Test
         (Caller.Create
            ("Float32 Vec3 borrowed buffer rejects invalid Mats",
@@ -4142,12 +4401,39 @@ package body Mat_Access_Tests is
       Result.Add_Test
         (Caller.Create
            ("Float32 Vec3 borrowed buffer propagates callback exceptions",
-            Float32_Vec3_Borrowed_Buffer_Propagates_Callback_Exception
-              'Access));
+            Float32_Vec3_Borrowed_Buffer_Propagates_Callback_Exception'Access));
       Result.Add_Test
         (Caller.Create
            ("Float32 external buffer Mat view is zero-copy",
             Float32_External_Buffer_Mat_View_Is_Zero_Copy'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt8 Vec3 external Mat view is zero-copy",
+            UInt8_Vec3_External_Mat_View_Is_Zero_Copy'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 Vec3 external Mat view is zero-copy",
+            Float32_Vec3_External_Mat_View_Is_Zero_Copy'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Vec3 external Mat views reject invalid shape",
+            Vec3_External_Mat_Views_Reject_Invalid_Shape'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Vec3 external Mat views reject shallow escape",
+            Vec3_External_Mat_Views_Reject_Shallow_Escape'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt8 Vec3 external Mat view permits independent Clone",
+            UInt8_Vec3_External_Mat_View_Permits_Independent_Clone'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 Vec3 external Mat view permits independent Clone",
+            Float32_Vec3_External_Mat_View_Permits_Independent_Clone'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Vec3 external Mat views propagate callback exceptions",
+            Vec3_External_Mat_Views_Propagate_Callback_Exceptions'Access));
       Result.Add_Test
         (Caller.Create
            ("Float32 external buffer Mat view rejects invalid shape",
@@ -4159,13 +4445,11 @@ package body Mat_Access_Tests is
       Result.Add_Test
         (Caller.Create
            ("Float32 external buffer Mat view permits independent Clone",
-            Float32_External_Buffer_Mat_View_Permits_Independent_Clone
-              'Access));
+            Float32_External_Buffer_Mat_View_Permits_Independent_Clone'Access));
       Result.Add_Test
         (Caller.Create
            ("Float32 external buffer Mat view propagates callback exceptions",
-            Float32_External_Buffer_Mat_View_Propagates_Callback_Exception
-              'Access));
+            Float32_External_Buffer_Mat_View_Propagates_Callback_Exception'Access));
       Result.Add_Test
         (Caller.Create
            ("UInt8 external buffer Mat view is zero-copy",
@@ -4185,8 +4469,7 @@ package body Mat_Access_Tests is
       Result.Add_Test
         (Caller.Create
            ("UInt8 external buffer Mat view propagates callback exceptions",
-            UInt8_External_Buffer_Mat_View_Propagates_Callback_Exception
-              'Access));
+            UInt8_External_Buffer_Mat_View_Propagates_Callback_Exception'Access));
       return Result'Access;
    end Suite;
 
