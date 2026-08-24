@@ -1575,6 +1575,285 @@ package body Mat_Access_Tests is
          "The Mat must remain usable after a borrowed-row callback exception");
    end UInt8_Borrowed_Row_Propagates_Callback_Exception;
 
+   procedure UInt8_Vec3_Borrowed_Writable_Row_Is_Zero_Copy
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      Alias : OpenCV.Core.Mat;
+
+      procedure Mutate
+        (Data : aliased in out OpenCV.Core.UInt8_Vec3_Row_Access.Row_Array) is
+      begin
+         AUnit.Assertions.Assert
+           (Data'First = 0 and then Data'Last = 2 and then Data'Length = 3,
+            "A writable borrowed UInt8 Vec3 row must use zero-based columns");
+
+         Data (1) := (10, 20, 30);
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Vec3_Access.Get (Image, Row => 1, Column => 1)
+            = (10, 20, 30),
+            "A write through the borrowed Vec3 row must be immediately"
+            & " visible through Get");
+
+         OpenCV.Core.UInt8_Vec3_Access.Set
+           (Alias, Row => 1, Column => 2, Value => (100, 110, 120));
+         AUnit.Assertions.Assert
+           (Data (2) = (100, 110, 120),
+            "A write through a shallow alias must be immediately visible"
+            & " through the borrowed Vec3 row");
+      end Mutate;
+   begin
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Image, Row => 1, Column => 0, Value => (1, 2, 3));
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Image, Row => 1, Column => 1, Value => (4, 5, 6));
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Image, Row => 1, Column => 2, Value => (7, 8, 9));
+      Alias := Image;
+
+      OpenCV.Core.UInt8_Vec3_Row_Access.With_Writable_Row
+        (Image, Row => 1, Process => Mutate'Access);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Vec3_Access.Get (Image, Row => 1, Column => 0)
+         = (1, 2, 3)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get
+                    (Image, Row => 1, Column => 1)
+                  = (10, 20, 30)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get
+                    (Image, Row => 1, Column => 2)
+                  = (100, 110, 120),
+         "Writable borrowed Vec3 mutations must remain after Process returns");
+   end UInt8_Vec3_Borrowed_Writable_Row_Is_Zero_Copy;
+
+   procedure UInt8_Vec3_Borrowed_Read_Only_Row_Matches_Mat
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 4,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+
+      procedure Inspect
+        (Data : aliased OpenCV.Core.UInt8_Vec3_Row_Access.Row_Array) is
+      begin
+         AUnit.Assertions.Assert
+           (Data'First = 0 and then Data'Last = 3 and then Data'Length = 4,
+            "A read-only borrowed UInt8 Vec3 row must use zero-based columns");
+         AUnit.Assertions.Assert
+           (Data (0) = (5, 6, 7)
+            and then Data (1) = (15, 16, 17)
+            and then Data (2) = (25, 26, 27)
+            and then Data (3) = (35, 36, 37),
+            "A read-only borrowed UInt8 Vec3 row must match the Mat values");
+      end Inspect;
+   begin
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Image, Row => 0, Column => 0, Value => (5, 6, 7));
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Image, Row => 0, Column => 1, Value => (15, 16, 17));
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Image, Row => 0, Column => 2, Value => (25, 26, 27));
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Image, Row => 0, Column => 3, Value => (35, 36, 37));
+
+      OpenCV.Core.UInt8_Vec3_Row_Access.With_Read_Only_Row
+        (Image, Row => 0, Process => Inspect'Access);
+   end UInt8_Vec3_Borrowed_Read_Only_Row_Matches_Mat;
+
+   procedure UInt8_Vec3_Borrowed_Row_Handles_Non_Continuous_Region
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 4,
+           Columns      => 6,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      View   : OpenCV.Core.Mat :=
+        Parent.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+
+      procedure Mutate
+        (Data : aliased in out OpenCV.Core.UInt8_Vec3_Row_Access.Row_Array) is
+      begin
+         AUnit.Assertions.Assert
+           (Data'First = 0 and then Data'Last = 2 and then Data'Length = 3,
+            "A borrowed Vec3 Region row must be indexed relative to the"
+            & " Region");
+         Data (0) := (11, 12, 13);
+         Data (2) := (31, 32, 33);
+      end Mutate;
+   begin
+      Parent.Set_To (OpenCV.Core.Make_Scalar (1.0, 2.0, 3.0));
+      AUnit.Assertions.Assert
+        (not View.Is_Continuous,
+         "A partial-width multi-row Vec3 Region must be non-continuous");
+
+      OpenCV.Core.UInt8_Vec3_Row_Access.With_Writable_Row
+        (View, Row => 0, Process => Mutate'Access);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Vec3_Access.Get (Parent, Row => 1, Column => 1)
+         = (11, 12, 13)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get
+                    (Parent, Row => 1, Column => 3)
+                  = (31, 32, 33),
+         "Borrowed Vec3 Region writes must mutate the corresponding parent"
+         & " pixels");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Vec3_Access.Get (Parent, Row => 1, Column => 0)
+         = (1, 2, 3)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get
+                    (Parent, Row => 1, Column => 4)
+                  = (1, 2, 3)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get
+                    (Parent, Row => 1, Column => 2)
+                  = (1, 2, 3),
+         "Borrowed Vec3 Region writes must not expose or mutate parent"
+         & " padding");
+   end UInt8_Vec3_Borrowed_Row_Handles_Non_Continuous_Region;
+
+   procedure UInt8_Vec3_Borrowed_Row_Rejects_Invalid_Mats_And_Indices
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Float32_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 3));
+      C1_Image      : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      C2_Image      : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 2));
+      Valid_Image   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      Invoked       : Boolean := False;
+
+      procedure Mark_Read
+        (Data : aliased OpenCV.Core.UInt8_Vec3_Row_Access.Row_Array)
+      is
+         pragma Unreferenced (Data);
+      begin
+         Invoked := True;
+      end Mark_Read;
+
+      procedure Mark_Write
+        (Data : aliased in out OpenCV.Core.UInt8_Vec3_Row_Access.Row_Array)
+      is
+         pragma Unreferenced (Data);
+      begin
+         Invoked := True;
+      end Mark_Write;
+
+      procedure Read_Float32 is
+      begin
+         OpenCV.Core.UInt8_Vec3_Row_Access.With_Read_Only_Row
+           (Float32_Image, Row => 0, Process => Mark_Read'Access);
+      end Read_Float32;
+
+      procedure Read_C1 is
+      begin
+         OpenCV.Core.UInt8_Vec3_Row_Access.With_Read_Only_Row
+           (C1_Image, Row => 0, Process => Mark_Read'Access);
+      end Read_C1;
+
+      procedure Read_C2 is
+      begin
+         OpenCV.Core.UInt8_Vec3_Row_Access.With_Read_Only_Row
+           (C2_Image, Row => 0, Process => Mark_Read'Access);
+      end Read_C2;
+
+      procedure Write_Past_Last is
+      begin
+         OpenCV.Core.UInt8_Vec3_Row_Access.With_Writable_Row
+           (Valid_Image, Row => 1, Process => Mark_Write'Access);
+      end Write_Past_Last;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Read_Float32'Access,
+         "UInt8 Vec3 borrowed-row access must reject a Float32 C3 Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_C1'Access,
+         "UInt8 Vec3 borrowed-row access must reject a UInt8 C1 Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_C2'Access,
+         "UInt8 Vec3 borrowed-row access must reject a UInt8 C2 Mat");
+      Assert_Raises_OpenCV_Error
+        (Write_Past_Last'Access,
+         "UInt8 Vec3 borrowed-row access must reject a row equal to Rows");
+      AUnit.Assertions.Assert
+        (not Invoked, "Borrowed-row validation must not invoke the callback");
+   end UInt8_Vec3_Borrowed_Row_Rejects_Invalid_Mats_And_Indices;
+
+   procedure UInt8_Vec3_Borrowed_Row_Propagates_Callback_Exception
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      Raised  : Boolean := False;
+      Message : Ada.Exceptions.Exception_Id := Ada.Exceptions.Null_Id;
+
+      procedure Mutate
+        (Data : aliased in out OpenCV.Core.UInt8_Vec3_Row_Access.Row_Array) is
+      begin
+         Data (0) := (9, 10, 11);
+         raise Borrowed_Row_Callback_Error;
+      end Mutate;
+   begin
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Image, Row => 0, Column => 0, Value => (1, 2, 3));
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Image, Row => 0, Column => 1, Value => (4, 5, 6));
+
+      begin
+         OpenCV.Core.UInt8_Vec3_Row_Access.With_Writable_Row
+           (Image, Row => 0, Process => Mutate'Access);
+      exception
+         when Error : Borrowed_Row_Callback_Error =>
+            Raised := True;
+            Message := Ada.Exceptions.Exception_Identity (Error);
+      end;
+
+      AUnit.Assertions.Assert
+        (Raised and then Message = Borrowed_Row_Callback_Error'Identity,
+         "A callback exception must propagate unchanged");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Vec3_Access.Get (Image, Row => 0, Column => 0)
+         = (9, 10, 11)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get
+                    (Image, Row => 0, Column => 1)
+                  = (4, 5, 6),
+         "Writes completed before a callback exception must remain visible");
+
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Image, Row => 0, Column => 1, Value => (40, 50, 60));
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Vec3_Access.Get (Image, Row => 0, Column => 1)
+         = (40, 50, 60),
+         "The Mat must remain usable after a borrowed-row callback exception");
+   end UInt8_Vec3_Borrowed_Row_Propagates_Callback_Exception;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -1700,6 +1979,26 @@ package body Mat_Access_Tests is
         (Caller.Create
            ("UInt8 borrowed row propagates callback exceptions",
             UInt8_Borrowed_Row_Propagates_Callback_Exception'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt8 Vec3 borrowed writable row is zero-copy",
+            UInt8_Vec3_Borrowed_Writable_Row_Is_Zero_Copy'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt8 Vec3 borrowed read-only row matches Mat",
+            UInt8_Vec3_Borrowed_Read_Only_Row_Matches_Mat'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt8 Vec3 borrowed row handles non-continuous Regions",
+            UInt8_Vec3_Borrowed_Row_Handles_Non_Continuous_Region'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt8 Vec3 borrowed row rejects invalid Mats and indices",
+            UInt8_Vec3_Borrowed_Row_Rejects_Invalid_Mats_And_Indices'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt8 Vec3 borrowed row propagates callback exceptions",
+            UInt8_Vec3_Borrowed_Row_Propagates_Callback_Exception'Access));
       return Result'Access;
    end Suite;
 
