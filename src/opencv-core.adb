@@ -3171,17 +3171,25 @@ package body OpenCV.Core is
       Ada.Exceptions.Raise_Exception (OpenCV_Error'Identity, Message);
    end Raise_Invalid_Random_Argument;
 
-   function Is_Finite_C_Double (Value : Long_Float) return Boolean
-   is (Value'Valid
-       and then Value = Value
-       and then Value >= Long_Float (OpenCV.Internal.C_API.C_Double'First)
-       and then Value <= Long_Float (OpenCV.Internal.C_API.C_Double'Last));
+   function Is_Finite_C_Double (Value : Long_Float) return Boolean is
+      pragma Suppress (Validity_Check);
+   begin
+      --  Nonfinite bounds must be rejected as OpenCV_Error, so validity
+      --  checks cannot fire before 'Valid is tested.
+      return
+        Value'Valid
+        and then Value = Value
+        and then Value >= Long_Float (OpenCV.Internal.C_API.C_Double'First)
+        and then Value <= Long_Float (OpenCV.Internal.C_API.C_Double'Last);
+   end Is_Finite_C_Double;
 
    procedure Validate_Uniform_Random_Bounds
      (Lower_Bound : Long_Float;
       Upper_Bound : Long_Float;
       C_Lower     : out OpenCV.Internal.C_API.C_Double;
-      C_Upper     : out OpenCV.Internal.C_API.C_Double) is
+      C_Upper     : out OpenCV.Internal.C_API.C_Double)
+   is
+      pragma Suppress (Validity_Check);
    begin
       if not Is_Finite_C_Double (Lower_Bound)
         or else not Is_Finite_C_Double (Upper_Bound)
@@ -3230,6 +3238,7 @@ package body OpenCV.Core is
       Upper_Bound : Long_Float;
       Value       : out Long_Float)
    is
+      pragma Suppress (Validity_Check);
       C_Lower : OpenCV.Internal.C_API.C_Double;
       C_Upper : OpenCV.Internal.C_API.C_Double;
       C_State : aliased OpenCV.Internal.C_API.C_UInt64 :=

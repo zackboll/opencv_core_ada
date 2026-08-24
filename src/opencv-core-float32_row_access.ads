@@ -10,8 +10,11 @@ package OpenCV.Core.Float32_Row_Access is
 
    --  Invokes Process with a zero-copy view of one Float32 C1 Mat row.
    --  Data directly aliases native OpenCV storage for that logical row;
-   --  no pixel values are copied. The ordinary lifetime of the view is
-   --  the callback. Data is indexed with zero-based Mat columns:
+   --  no pixel values are copied. The explicitly aliased callback
+   --  formal guarantees that Data is passed by reference and directly
+   --  denotes the borrowed Mat row for the duration of Process. The
+   --  ordinary lifetime of the view is the callback. Data is indexed
+   --  with zero-based Mat columns:
    --  Data'First = 0, Data'Last = Image.Columns - 1, and Data'Length =
    --  Image.Columns. Only the active row elements are exposed, never
    --  inter-row padding. Non-contiguous Regions are supported because
@@ -28,7 +31,7 @@ package OpenCV.Core.Float32_Row_Access is
    procedure With_Read_Only_Row
      (Image   : Mat;
       Row     : Natural;
-      Process : not null access procedure (Data : Row_Array));
+      Process : not null access procedure (Data : aliased Row_Array));
 
    --  As With_Read_Only_Row, except Process receives an in-out view.
    --  Writes through Data mutate the actual Mat storage immediately.
@@ -40,6 +43,6 @@ package OpenCV.Core.Float32_Row_Access is
    procedure With_Writable_Row
      (Image   : in out Mat;
       Row     : Natural;
-      Process : not null access procedure (Data : in out Row_Array));
+      Process : not null access procedure (Data : aliased in out Row_Array));
 
 end OpenCV.Core.Float32_Row_Access;

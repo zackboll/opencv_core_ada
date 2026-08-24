@@ -1057,8 +1057,8 @@ package body Mat_Access_Tests is
            Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
       Alias : OpenCV.Core.Mat;
 
-      procedure Mutate (Data : in out OpenCV.Core.Float32_Row_Access.Row_Array)
-      is
+      procedure Mutate
+        (Data : aliased in out OpenCV.Core.Float32_Row_Access.Row_Array) is
       begin
          AUnit.Assertions.Assert
            (Data'First = 0 and then Data'Last = 2 and then Data'Length = 3,
@@ -1121,7 +1121,8 @@ package body Mat_Access_Tests is
            Columns      => 4,
            Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
 
-      procedure Inspect (Data : OpenCV.Core.Float32_Row_Access.Row_Array) is
+      procedure Inspect
+        (Data : aliased OpenCV.Core.Float32_Row_Access.Row_Array) is
       begin
          AUnit.Assertions.Assert
            (Data'First = 0 and then Data'Last = 3 and then Data'Length = 4,
@@ -1159,8 +1160,8 @@ package body Mat_Access_Tests is
       View   : OpenCV.Core.Mat :=
         Parent.Region ((X => 1, Y => 1, Width => 3, Height => 2));
 
-      procedure Mutate (Data : in out OpenCV.Core.Float32_Row_Access.Row_Array)
-      is
+      procedure Mutate
+        (Data : aliased in out OpenCV.Core.Float32_Row_Access.Row_Array) is
       begin
          AUnit.Assertions.Assert
            (Data'First = 0 and then Data'Last = 2 and then Data'Length = 3,
@@ -1228,14 +1229,16 @@ package body Mat_Access_Tests is
            Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
       Invoked     : Boolean := False;
 
-      procedure Mark_Read (Data : OpenCV.Core.Float32_Row_Access.Row_Array) is
+      procedure Mark_Read
+        (Data : aliased OpenCV.Core.Float32_Row_Access.Row_Array)
+      is
          pragma Unreferenced (Data);
       begin
          Invoked := True;
       end Mark_Read;
 
       procedure Mark_Write
-        (Data : in out OpenCV.Core.Float32_Row_Access.Row_Array)
+        (Data : aliased in out OpenCV.Core.Float32_Row_Access.Row_Array)
       is
          pragma Unreferenced (Data);
       begin
@@ -1285,8 +1288,8 @@ package body Mat_Access_Tests is
       Raised  : Boolean := False;
       Message : Ada.Exceptions.Exception_Id := Ada.Exceptions.Null_Id;
 
-      procedure Mutate (Data : in out OpenCV.Core.Float32_Row_Access.Row_Array)
-      is
+      procedure Mutate
+        (Data : aliased in out OpenCV.Core.Float32_Row_Access.Row_Array) is
       begin
          Data (0) := 9.0;
          raise Borrowed_Row_Callback_Error;

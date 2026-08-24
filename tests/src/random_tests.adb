@@ -1086,12 +1086,18 @@ package body Random_Tests is
       pragma Unreferenced (Test);
       G1, G2            : OpenCV.Core.Random_Number_Generator :=
         OpenCV.Core.Make_Random_Number_Generator (6_543);
-      One, Zero         : OpenCV.Core.Mat :=
-        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
       Positive_Infinity : Long_Float;
       Not_A_Number      : Long_Float;
       Value             : Long_Float;
       Next_1, Next_2    : Interfaces.Unsigned_32;
+
+      function Quotient (Numerator, Denominator : Long_Float) return Long_Float
+      is
+         pragma Suppress (Validity_Check);
+      begin
+         return Numerator / Denominator;
+      end Quotient;
+
       procedure Infinite_Bound is
       begin
          OpenCV.Core.Uniform_Random (G1, Positive_Infinity, 1.0, Value);
@@ -1101,12 +1107,8 @@ package body Random_Tests is
          OpenCV.Core.Uniform_Random (G1, Not_A_Number, 1.0, Value);
       end NaN_Bound;
    begin
-      One.Set_To (OpenCV.Core.Make_Scalar (1.0));
-      Zero.Set_To (OpenCV.Core.Make_Scalar (0.0));
-      Positive_Infinity :=
-        Long_Float (OpenCV.Core.Float32_Access.Get (One.Divide (Zero), 0, 0));
-      Not_A_Number :=
-        Long_Float (OpenCV.Core.Float32_Access.Get (Zero.Divide (Zero), 0, 0));
+      Positive_Infinity := Quotient (1.0, 0.0);
+      Not_A_Number := Quotient (0.0, 0.0);
       Assert_Raises_OpenCV_Error
         (Infinite_Bound'Access, "scalar uniform must reject infinity");
       Assert_Raises_OpenCV_Error

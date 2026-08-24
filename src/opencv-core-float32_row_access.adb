@@ -119,7 +119,7 @@ package body OpenCV.Core.Float32_Row_Access is
    procedure With_Read_Only_Row
      (Image   : Mat;
       Row     : Natural;
-      Process : not null access procedure (Data : Row_Array))
+      Process : not null access procedure (Data : aliased Row_Array))
    is
       Lease : constant Mat := Image;
    begin
@@ -134,7 +134,7 @@ package body OpenCV.Core.Float32_Row_Access is
 
          if Column_Count = 0 then
             declare
-               Empty : constant Row_Array (1 .. 0) := (others => 0.0);
+               Empty : aliased constant Row_Array := (1 .. 0 => 0.0);
             begin
                Process (Empty);
             end;
@@ -154,7 +154,12 @@ package body OpenCV.Core.Float32_Row_Access is
                Raise_Invalid_Access ("borrowed Float32 row has no storage");
             end if;
 
-            Process (Data.all);
+            declare
+               View : constant access constant Row_Array :=
+                 Data.all'Unrestricted_Access;
+            begin
+               Process (View.all);
+            end;
          end;
       end;
    end With_Read_Only_Row;
@@ -162,7 +167,7 @@ package body OpenCV.Core.Float32_Row_Access is
    procedure With_Writable_Row
      (Image   : in out Mat;
       Row     : Natural;
-      Process : not null access procedure (Data : in out Row_Array))
+      Process : not null access procedure (Data : aliased in out Row_Array))
    is
       Lease : constant Mat := Image;
    begin
@@ -177,7 +182,7 @@ package body OpenCV.Core.Float32_Row_Access is
 
          if Column_Count = 0 then
             declare
-               Empty : Row_Array (1 .. 0);
+               Empty : aliased Row_Array := (1 .. 0 => 0.0);
             begin
                Process (Empty);
             end;
@@ -196,7 +201,12 @@ package body OpenCV.Core.Float32_Row_Access is
                Raise_Invalid_Access ("borrowed Float32 row has no storage");
             end if;
 
-            Process (Data.all);
+            declare
+               View : constant access Row_Array :=
+                 Data.all'Unrestricted_Access;
+            begin
+               Process (View.all);
+            end;
          end;
       end;
    end With_Writable_Row;
