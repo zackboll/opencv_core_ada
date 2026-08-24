@@ -18,6 +18,7 @@
 
 struct opencv_core_mat_handle {
     cv::Mat value;
+    bool temporary_external_view = false;
 
     opencv_core_mat_handle() = default;
 
@@ -292,6 +293,15 @@ bool solve_svd_strides_fit_int(int m, int n, int nb, size_t esz,
 opencv_core_status invalid_argument(const char *message) noexcept {
     set_error(message);
     return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
+}
+
+opencv_core_status reject_temporary_external_view(
+    const opencv_core_mat_handle *source) noexcept {
+    if (source != nullptr && source->temporary_external_view) {
+        return invalid_argument(
+            "temporary external-buffer Mat views cannot create shallow aliases");
+    }
+    return OPENCV_CORE_OK;
 }
 
 bool to_opencv_norm(int32_t norm_kind, int &opencv_norm) noexcept {
@@ -884,6 +894,77 @@ opencv_core_mat_create_2d(int32_t rows, int32_t columns, int32_t depth,
 }
 
 opencv_core_status
+opencv_core_mat_create_external_2d(int32_t rows, int32_t columns,
+                                   int32_t depth, int32_t channels,
+                                   void *data, uint64_t byte_count,
+                                   opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (rows < 1 || columns < 1) {
+        return invalid_argument(
+            "external Mat view rows and columns must be positive");
+    }
+
+    // ABI safety: CV_MAKETYPE encodes (channels-1) into a bit field. Values
+    // outside 1 .. CV_CN_MAX produce a wrapped or truncated type before
+    // OpenCV sees the request.
+    if (channels < 1 || channels > OPENCV_CORE_MAX_CHANNELS) {
+        return invalid_argument("channels must be in the range 1 .. 512");
+    }
+
+    int opencv_depth = 0;
+    if (!to_opencv_depth(depth, opencv_depth)) {
+        return invalid_argument("depth is not a supported depth identifier");
+    }
+
+    if (data == nullptr) {
+        return invalid_argument("external Mat view data must not be null");
+    }
+
+    const size_t scalar_alignment = CV_ELEM_SIZE1(opencv_depth);
+    if (scalar_alignment == 0 ||
+        (reinterpret_cast<uintptr_t>(data) % scalar_alignment) != 0) {
+        return invalid_argument(
+            "external Mat view data is not aligned for the selected depth");
+    }
+
+    try {
+        const int type = CV_MAKETYPE(opencv_depth, channels);
+        const size_t element_size = CV_ELEM_SIZE(type);
+        size_t expected_bytes = 0;
+        if (!checked_size_mul(static_cast<size_t>(rows),
+                              static_cast<size_t>(columns),
+                              &expected_bytes) ||
+            !checked_size_mul(expected_bytes, element_size, &expected_bytes)) {
+            return invalid_argument(
+                "external Mat view byte count exceeds the native size range");
+        }
+
+        if (byte_count != static_cast<uint64_t>(expected_bytes)) {
+            return invalid_argument(
+                "external Mat view byte count must equal"
+                " rows * columns * elemSize()");
+        }
+
+        std::unique_ptr<opencv_core_mat_handle> handle(
+            new opencv_core_mat_handle(
+                cv::Mat(static_cast<int>(rows), static_cast<int>(columns), type,
+                        data, cv::Mat::AUTO_STEP)));
+        handle->temporary_external_view = true;
+        *out_mat = handle.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_copy(const opencv_core_mat_handle *source,
                      opencv_core_mat_handle **out_mat) {
     clear_error();
@@ -896,6 +977,10 @@ opencv_core_mat_copy(const opencv_core_mat_handle *source,
 
     if (source == nullptr) {
         return invalid_argument("source Mat handle must not be null");
+    }
+
+    if (reject_temporary_external_view(source) != OPENCV_CORE_OK) {
+        return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
     }
 
     try {
@@ -2676,6 +2761,10 @@ opencv_core_mat_region(const opencv_core_mat_handle *source, int32_t x,
         return invalid_argument("source Mat handle must not be null");
     }
 
+    if (reject_temporary_external_view(source) != OPENCV_CORE_OK) {
+        return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
+    }
+
     try {
         // ABI safety: OpenCV's Rect Mat constructor adjusts the data pointer
         // using roi.x/roi.y before its complete ROI bounds assertion. Validate
@@ -2724,6 +2813,10 @@ opencv_core_mat_row_view(const opencv_core_mat_handle *source, int32_t row,
         return invalid_argument("source Mat handle must not be null");
     }
 
+    if (reject_temporary_external_view(source) != OPENCV_CORE_OK) {
+        return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
+    }
+
     try {
         // ABI safety: OpenCV Mat::row constructs Range(y, y + 1). y == INT_MAX
         // overflows signed int before OpenCV's Range assertion.
@@ -2753,6 +2846,10 @@ opencv_core_mat_column_view(const opencv_core_mat_handle *source,
 
     if (source == nullptr) {
         return invalid_argument("source Mat handle must not be null");
+    }
+
+    if (reject_temporary_external_view(source) != OPENCV_CORE_OK) {
+        return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
     }
 
     try {
@@ -2786,6 +2883,10 @@ opencv_core_mat_row_range_view(const opencv_core_mat_handle *source,
         return invalid_argument("source Mat handle must not be null");
     }
 
+    if (reject_temporary_external_view(source) != OPENCV_CORE_OK) {
+        return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
+    }
+
     try {
         *out_mat = new opencv_core_mat_handle(
             source->value.rowRange(static_cast<int>(start),
@@ -2812,6 +2913,10 @@ opencv_core_mat_column_range_view(const opencv_core_mat_handle *source,
         return invalid_argument("source Mat handle must not be null");
     }
 
+    if (reject_temporary_external_view(source) != OPENCV_CORE_OK) {
+        return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
+    }
+
     try {
         *out_mat = new opencv_core_mat_handle(
             source->value.colRange(static_cast<int>(start),
@@ -2835,6 +2940,10 @@ opencv_core_mat_reshape(const opencv_core_mat_handle *source, int32_t channels,
 
     if (source == nullptr) {
         return invalid_argument("source Mat handle must not be null");
+    }
+
+    if (reject_temporary_external_view(source) != OPENCV_CORE_OK) {
+        return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
     }
 
     // ABI safety: reshape writes (channels-1) into the Mat channel bit field.
@@ -2923,6 +3032,10 @@ opencv_core_mat_diagonal_view(const opencv_core_mat_handle *source,
 
     if (source == nullptr) {
         return invalid_argument("source Mat handle must not be null");
+    }
+
+    if (reject_temporary_external_view(source) != OPENCV_CORE_OK) {
+        return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
     }
 
     try {

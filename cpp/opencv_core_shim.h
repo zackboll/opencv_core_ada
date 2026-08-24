@@ -191,6 +191,22 @@ opencv_core_mat_create_2d(int32_t rows, int32_t columns, int32_t depth,
                           int32_t channels,
                           opencv_core_mat_handle **out_mat);
 
+/*
+ * Creates a temporary 2-D Mat header over caller-owned storage. The header
+ * does not allocate, copy, or own the supplied buffer. rows and columns must
+ * be positive. byte_count must equal rows * columns * elemSize() for the
+ * selected depth and channel count. data must be non-null and aligned to
+ * the selected scalar depth. The resulting handle is a temporary
+ * external-buffer view: operations that would publish another header
+ * sharing that storage are rejected. clone() remains allowed because it
+ * allocates independent storage.
+ */
+opencv_core_status
+opencv_core_mat_create_external_2d(int32_t rows, int32_t columns,
+                                   int32_t depth, int32_t channels,
+                                   void *data, uint64_t byte_count,
+                                   opencv_core_mat_handle **out_mat);
+
 opencv_core_status
 opencv_core_mat_copy(const opencv_core_mat_handle *source,
                      opencv_core_mat_handle **out_mat);

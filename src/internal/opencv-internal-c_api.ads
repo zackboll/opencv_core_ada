@@ -163,6 +163,18 @@ package OpenCV.Internal.C_API is
       Channels : C_Int32;
       Result   : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_create_2d";
+   function Mat_Create_External_2D
+      (Rows       : C_Int32;
+       Columns    : C_Int32;
+       Depth      : C_Int32;
+       Channels   : C_Int32;
+       Data       : System.Address;
+       Byte_Count : C_UInt64;
+       Result     : access Mat_Handle) return Status
+    with
+      Import,
+      Convention    => C,
+      External_Name => "opencv_core_mat_create_external_2d";
 
    function Mat_Copy
      (Source : Mat_Handle; Result : access Mat_Handle) return Status

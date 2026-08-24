@@ -5,6 +5,7 @@ with Interfaces;
 with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
 with OpenCV.Core.Float32_Buffer_Access;
+with OpenCV.Core.Float32_Mat_View;
 with OpenCV.Core.Float32_Row_Access;
 with OpenCV.Core.Float32_Vec3;
 with OpenCV.Core.Float32_Vec3_Access;
@@ -24,6 +25,7 @@ package body Mat_Access_Tests is
    use type Ada.Exceptions.Exception_Id;
    use type Interfaces.IEEE_Float_32;
    use type Interfaces.Unsigned_8;
+   use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
    use type OpenCV.Core.UInt8_Row_Access.Row_Array;
    use type OpenCV.Core.UInt8_Vec3.Vector;
@@ -3402,6 +3404,309 @@ package body Mat_Access_Tests is
          & " exception");
    end Float32_Vec3_Borrowed_Buffer_Propagates_Callback_Exception;
 
+   procedure Float32_External_Buffer_Mat_View_Is_Zero_Copy
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Data : aliased OpenCV.Core.Float32_Mat_View.Buffer_Array (5 .. 10) :=
+        (0.5, -1.5, 2.25, -3.75, 4.125, 5.0);
+
+      procedure Mutate (Image : in out OpenCV.Core.Mat) is
+      begin
+         AUnit.Assertions.Assert
+           (Image.Rows = 2
+            and then Image.Columns = 3
+            and then Image.Depth = OpenCV.Core.Float32
+            and then Image.Channels = 1
+            and then Natural (Image.Total) = 6
+            and then Image.Is_Continuous,
+            "An external Float32 C1 view must report the requested Mat"
+            & " metadata");
+
+         Data (7) := 12.5;
+         AUnit.Assertions.Assert
+           (Approximately_Equal
+              (Long_Float
+                 (OpenCV.Core.Float32_Access.Get
+                    (Image, Row => 0, Column => 2)),
+               12.5),
+            "A write through Data must be immediately visible through Get");
+
+         OpenCV.Core.Float32_Access.Set
+           (Image, Row => 1, Column => 0, Value => -7.25);
+         AUnit.Assertions.Assert
+           (Approximately_Equal (Long_Float (Data (8)), -7.25),
+            "A write through Set must be immediately visible through Data");
+
+         Image.Set_To (OpenCV.Core.Make_Scalar (3.5));
+         AUnit.Assertions.Assert
+           (Approximately_Equal (Long_Float (Data (5)), 3.5)
+            and then Approximately_Equal (Long_Float (Data (10)), 3.5),
+            "An in-place OpenCV write must mutate the caller-owned buffer");
+      end Mutate;
+   begin
+      OpenCV.Core.Float32_Mat_View.With_Writable_Mat_View
+        (Data, Rows => 2, Columns => 3, Process => Mutate'Access);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Long_Float (Data (5)), 3.5)
+         and then Approximately_Equal (Long_Float (Data (8)), 3.5)
+         and then Approximately_Equal (Long_Float (Data (10)), 3.5),
+         "Mutations through the temporary view must remain in Data after"
+         & " Process returns");
+   end Float32_External_Buffer_Mat_View_Is_Zero_Copy;
+
+   procedure Float32_External_Buffer_Mat_View_Rejects_Invalid_Shape
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Data    : aliased OpenCV.Core.Float32_Mat_View.Buffer_Array (1 .. 5) :=
+        (1.0, 2.0, 3.0, 4.0, 5.0);
+      Invoked : Boolean := False;
+
+      procedure Mark (Image : in out OpenCV.Core.Mat) is
+         pragma Unreferenced (Image);
+      begin
+         Invoked := True;
+      end Mark;
+
+      procedure Attempt is
+      begin
+         OpenCV.Core.Float32_Mat_View.With_Writable_Mat_View
+           (Data, Rows => 2, Columns => 3, Process => Mark'Access);
+      end Attempt;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Attempt'Access,
+         "Float32 external Mat view must reject a mismatched buffer length");
+      AUnit.Assertions.Assert
+        (not Invoked, "Invalid-shape validation must not invoke the callback");
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Long_Float (Data (1)), 1.0)
+         and then Approximately_Equal (Long_Float (Data (5)), 5.0),
+         "Rejected external Mat view construction must not mutate Data");
+   end Float32_External_Buffer_Mat_View_Rejects_Invalid_Shape;
+
+   procedure Float32_External_Buffer_Mat_View_Rejects_Shallow_Escape
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Data  : aliased OpenCV.Core.Float32_Mat_View.Buffer_Array (0 .. 5) :=
+        (1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+      Owned : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+
+      procedure Probe (Image : in out OpenCV.Core.Mat) is
+         procedure Assign_Copy is
+            Copy : OpenCV.Core.Mat;
+            pragma Unreferenced (Copy);
+         begin
+            begin
+               Copy := Image;
+            exception
+               when Program_Error =>
+                  raise OpenCV.OpenCV_Error;
+            end;
+         end Assign_Copy;
+
+         procedure Take_Region is
+            View : OpenCV.Core.Mat;
+            pragma Unreferenced (View);
+         begin
+            View := Image.Region ((X => 0, Y => 0, Width => 2, Height => 1));
+         end Take_Region;
+
+         procedure Take_Row is
+            View : OpenCV.Core.Mat;
+            pragma Unreferenced (View);
+         begin
+            View := Image.Row_View (0);
+         end Take_Row;
+
+         procedure Take_Column is
+            View : OpenCV.Core.Mat;
+            pragma Unreferenced (View);
+         begin
+            View := Image.Column_View (1);
+         end Take_Column;
+
+         procedure Take_Row_Range is
+            View : OpenCV.Core.Mat;
+            pragma Unreferenced (View);
+         begin
+            View := Image.Row_View ((Start => 0, Stop => 1));
+         end Take_Row_Range;
+
+         procedure Take_Column_Range is
+            View : OpenCV.Core.Mat;
+            pragma Unreferenced (View);
+         begin
+            View := Image.Column_View ((Start => 1, Stop => 3));
+         end Take_Column_Range;
+
+         procedure Take_Reshape is
+            View : OpenCV.Core.Mat;
+            pragma Unreferenced (View);
+         begin
+            View := Image.Reshape (1);
+         end Take_Reshape;
+
+         procedure Take_Reshape_Rows is
+            View : OpenCV.Core.Mat;
+            pragma Unreferenced (View);
+         begin
+            View := Image.Reshape (1, 3);
+         end Take_Reshape_Rows;
+
+         procedure Take_Diagonal is
+            View : OpenCV.Core.Mat;
+            pragma Unreferenced (View);
+         begin
+            View := Image.Diagonal_View (0);
+         end Take_Diagonal;
+      begin
+         Assert_Raises_OpenCV_Error
+           (Assign_Copy'Access,
+            "Temporary external views must reject ordinary Mat assignment");
+         Assert_Raises_OpenCV_Error
+           (Take_Region'Access, "Temporary external views must reject Region");
+         Assert_Raises_OpenCV_Error
+           (Take_Row'Access, "Temporary external views must reject Row_View");
+         Assert_Raises_OpenCV_Error
+           (Take_Column'Access,
+            "Temporary external views must reject Column_View");
+         Assert_Raises_OpenCV_Error
+           (Take_Row_Range'Access,
+            "Temporary external views must reject a row-range view");
+         Assert_Raises_OpenCV_Error
+           (Take_Column_Range'Access,
+            "Temporary external views must reject a column-range view");
+         Assert_Raises_OpenCV_Error
+           (Take_Reshape'Access,
+            "Temporary external views must reject Reshape");
+         Assert_Raises_OpenCV_Error
+           (Take_Reshape_Rows'Access,
+            "Temporary external views must reject a row-changing Reshape");
+         Assert_Raises_OpenCV_Error
+           (Take_Diagonal'Access,
+            "Temporary external views must reject Diagonal_View");
+
+         AUnit.Assertions.Assert
+           (Approximately_Equal
+              (Long_Float
+                 (OpenCV.Core.Float32_Access.Get
+                    (Image, Row => 0, Column => 0)),
+               1.0),
+            "Rejected shallow-escape attempts must leave the temporary Mat"
+            & " usable");
+      end Probe;
+   begin
+      declare
+         Alias : constant OpenCV.Core.Mat := Owned;
+      begin
+         OpenCV.Core.Float32_Access.Set
+           (Owned, Row => 0, Column => 0, Value => 9.0);
+         AUnit.Assertions.Assert
+           (Approximately_Equal
+              (Long_Float
+                 (OpenCV.Core.Float32_Access.Get
+                    (Alias, Row => 0, Column => 0)),
+               9.0),
+            "Ordinary OpenCV-owned Mats must retain shallow assignment");
+         declare
+            View : constant OpenCV.Core.Mat :=
+              Owned.Region ((X => 0, Y => 0, Width => 1, Height => 1));
+         begin
+            AUnit.Assertions.Assert
+              (Approximately_Equal
+                 (Long_Float
+                    (OpenCV.Core.Float32_Access.Get
+                       (View, Row => 0, Column => 0)),
+                  9.0),
+               "Ordinary OpenCV-owned Mats must retain Region views");
+         end;
+      end;
+
+      OpenCV.Core.Float32_Mat_View.With_Writable_Mat_View
+        (Data, Rows => 2, Columns => 3, Process => Probe'Access);
+   end Float32_External_Buffer_Mat_View_Rejects_Shallow_Escape;
+
+   procedure Float32_External_Buffer_Mat_View_Permits_Independent_Clone
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Data  : aliased OpenCV.Core.Float32_Mat_View.Buffer_Array (2 .. 7) :=
+        (1.25, -2.5, 3.75, -4.5, 5.125, 6.0);
+      Saved : OpenCV.Core.Mat;
+
+      procedure Capture (Image : in out OpenCV.Core.Mat) is
+      begin
+         Saved := Image.Clone;
+         AUnit.Assertions.Assert
+           (Saved.Rows = 2
+            and then Saved.Columns = 3
+            and then Saved.Depth = OpenCV.Core.Float32
+            and then Saved.Channels = 1,
+            "Clone of an external view must preserve Mat metadata");
+      end Capture;
+   begin
+      OpenCV.Core.Float32_Mat_View.With_Writable_Mat_View
+        (Data, Rows => 2, Columns => 3, Process => Capture'Access);
+
+      Data (2) := 99.0;
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float
+              (OpenCV.Core.Float32_Access.Get (Saved, Row => 0, Column => 0)),
+            1.25),
+         "A cloned external view must retain the pre-mutation value");
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Long_Float (Data (2)), 99.0),
+         "Mutating Data after Process must not change the independent clone");
+   end Float32_External_Buffer_Mat_View_Permits_Independent_Clone;
+
+   procedure Float32_External_Buffer_Mat_View_Propagates_Callback_Exception
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Data    : aliased OpenCV.Core.Float32_Mat_View.Buffer_Array (4 .. 7) :=
+        (1.0, 2.0, 3.0, 4.0);
+      Raised  : Boolean := False;
+      Message : Ada.Exceptions.Exception_Id := Ada.Exceptions.Null_Id;
+
+      procedure Mutate (Image : in out OpenCV.Core.Mat) is
+      begin
+         OpenCV.Core.Float32_Access.Set
+           (Image, Row => 1, Column => 0, Value => 9.25);
+         raise Borrowed_Row_Callback_Error;
+      end Mutate;
+   begin
+      begin
+         OpenCV.Core.Float32_Mat_View.With_Writable_Mat_View
+           (Data, Rows => 2, Columns => 2, Process => Mutate'Access);
+      exception
+         when Error : Borrowed_Row_Callback_Error =>
+            Raised := True;
+            Message := Ada.Exceptions.Exception_Identity (Error);
+      end;
+
+      AUnit.Assertions.Assert
+        (Raised and then Message = Borrowed_Row_Callback_Error'Identity,
+         "A callback exception must propagate unchanged");
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Long_Float (Data (6)), 9.25)
+         and then Approximately_Equal (Long_Float (Data (4)), 1.0),
+         "Writes completed before a callback exception must remain in Data");
+
+      Data (5) := 8.0;
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Long_Float (Data (5)), 8.0),
+         "Data must remain caller-owned after a callback exception");
+   end Float32_External_Buffer_Mat_View_Propagates_Callback_Exception;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -3650,6 +3955,28 @@ package body Mat_Access_Tests is
         (Caller.Create
            ("Float32 Vec3 borrowed buffer propagates callback exceptions",
             Float32_Vec3_Borrowed_Buffer_Propagates_Callback_Exception
+              'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 external buffer Mat view is zero-copy",
+            Float32_External_Buffer_Mat_View_Is_Zero_Copy'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 external buffer Mat view rejects invalid shape",
+            Float32_External_Buffer_Mat_View_Rejects_Invalid_Shape'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 external buffer Mat view rejects shallow escape",
+            Float32_External_Buffer_Mat_View_Rejects_Shallow_Escape'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 external buffer Mat view permits independent Clone",
+            Float32_External_Buffer_Mat_View_Permits_Independent_Clone
+              'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 external buffer Mat view propagates callback exceptions",
+            Float32_External_Buffer_Mat_View_Propagates_Callback_Exception
               'Access));
       return Result'Access;
    end Suite;
