@@ -1,8 +1,41 @@
 with Ada.Exceptions;
 with OpenCV.Core.Internal.Typed_Access;
+with OpenCV.Core.Internal.Typed_Row_Borrowing;
 with OpenCV.Internal.C_API;
 
 package body OpenCV.Core.Float32_Vec3_Row_Access is
+
+   pragma
+     Compile_Time_Error
+       (OpenCV.Core.Float32_Vec3.Vector'Size /= 96,
+        "Float32 Vec3 Vector must be exactly 96 bits for zero-copy C3 rows");
+   pragma
+     Compile_Time_Error
+       (OpenCV.Core.Float32_Vec3.Vector'Component_Size /= 32,
+        "Float32 Vec3 components must be tightly packed 32-bit channels");
+   pragma
+     Compile_Time_Error
+       (Row_Array'Component_Size /= 96,
+        "Float32 Vec3 Row_Array must be tightly packed 96-bit pixels");
+   pragma
+     Compile_Time_Error
+       (OpenCV.Core.Float32_Vec3.Vector'Alignment > 4,
+        "Float32 Vec3 Vector alignment is stricter than CV_32FC3 guarantees");
+   pragma
+     Compile_Time_Error
+       (OpenCV.Core.Float32_Vec3.Component_Index'First /= 0
+          or else OpenCV.Core.Float32_Vec3.Component_Index'Last /= 2,
+        "Float32 Vec3 components must be indexed 0 .. 2");
+
+   package Borrowing is new
+     OpenCV.Core.Internal.Typed_Row_Borrowing
+       (Element_Type             => OpenCV.Core.Float32_Vec3.Vector,
+        Row_Array                => Row_Array,
+        Required_Depth           => Float32,
+        Required_Channels        => 3,
+        Expected_Element_Bits    => 96,
+        Native_Element_Alignment => 4,
+        Type_Name                => "Float32 Vec3");
 
    Scalars_Per_Element : constant Natural := 3;
 
@@ -87,5 +120,21 @@ package body OpenCV.Core.Float32_Vec3_Row_Access is
            (Image, Integer (Row), Buffer);
       end;
    end Write_Row;
+
+   procedure With_Read_Only_Row
+     (Image   : Mat;
+      Row     : Natural;
+      Process : not null access procedure (Data : aliased Row_Array)) is
+   begin
+      Borrowing.With_Read_Only_Row (Image, Row, Process);
+   end With_Read_Only_Row;
+
+   procedure With_Writable_Row
+     (Image   : in out Mat;
+      Row     : Natural;
+      Process : not null access procedure (Data : aliased in out Row_Array)) is
+   begin
+      Borrowing.With_Writable_Row (Image, Row, Process);
+   end With_Writable_Row;
 
 end OpenCV.Core.Float32_Vec3_Row_Access;
