@@ -11,7 +11,7 @@ package OpenCV.Core.Internal.Typed_External_Mat_View is
    --  Invokes Process with a temporary Mat whose pixels alias Data.
    --  The Mat header does not own Data and is valid only during Process.
    procedure With_Writable_Mat_View
-     (Data    : in out Buffer_Array;
+     (Data    : aliased in out Buffer_Array;
       Rows    : Positive;
       Columns : Positive;
       Process : not null access procedure (Image : in out Mat));

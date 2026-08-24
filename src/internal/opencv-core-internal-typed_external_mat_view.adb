@@ -78,21 +78,22 @@ package body OpenCV.Core.Internal.Typed_External_Mat_View is
         and then Elements > OpenCV.Internal.C_API.C_UInt64'Last / Element_Bytes
       then
          Raise_Invalid_View
-           (Type_Name & " external Mat view byte count exceeds the"
+           (Type_Name
+            & " external Mat view byte count exceeds the"
             & " representable range");
       end if;
 
       return Elements * Element_Bytes;
    end Expected_Byte_Count;
 
-   function Expected_Element_Count
-     (Rows, Columns : Positive) return Natural is
+   function Expected_Element_Count (Rows, Columns : Positive) return Natural is
    begin
       if not OpenCV.Internal.Safe_Arithmetic.Fits_Signed_Int32
                (Long_Long_Integer (Rows))
       then
          Raise_Invalid_View
-           (Type_Name & " external Mat view row count exceeds the native"
+           (Type_Name
+            & " external Mat view row count exceeds the native"
             & " dimension range");
       end if;
 
@@ -116,7 +117,7 @@ package body OpenCV.Core.Internal.Typed_External_Mat_View is
    end Expected_Element_Count;
 
    procedure With_Writable_Mat_View
-     (Data    : in out Buffer_Array;
+     (Data    : aliased in out Buffer_Array;
       Rows    : Positive;
       Columns : Positive;
       Process : not null access procedure (Image : in out Mat))

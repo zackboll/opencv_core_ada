@@ -13,11 +13,10 @@ package body OpenCV.Core.Float32_Mat_View is
         Type_Name                => "Float32");
 
    procedure With_Writable_Mat_View
-     (Data    : in out Buffer_Array;
+     (Data    : aliased in out Buffer_Array;
       Rows    : Positive;
       Columns : Positive;
-      Process : not null access procedure (Image : in out Mat))
-   is
+      Process : not null access procedure (Image : in out Mat)) is
    begin
       Viewing.With_Writable_Mat_View (Data, Rows, Columns, Process);
    end With_Writable_Mat_View;

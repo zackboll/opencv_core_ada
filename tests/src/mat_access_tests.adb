@@ -3408,8 +3408,8 @@ package body Mat_Access_Tests is
      (Test : in out Mat_Test_Fixture)
    is
       pragma Unreferenced (Test);
-      Data : aliased OpenCV.Core.Float32_Mat_View.Buffer_Array (5 .. 10) :=
-        (0.5, -1.5, 2.25, -3.75, 4.125, 5.0);
+      Data : aliased OpenCV.Core.Float32_Mat_View.Buffer_Array :=
+        (5 => 0.5, 6 => -1.5, 7 => 2.25, 8 => -3.75, 9 => 4.125, 10 => 5.0);
 
       procedure Mutate (Image : in out OpenCV.Core.Mat) is
       begin
@@ -3460,8 +3460,8 @@ package body Mat_Access_Tests is
      (Test : in out Mat_Test_Fixture)
    is
       pragma Unreferenced (Test);
-      Data    : aliased OpenCV.Core.Float32_Mat_View.Buffer_Array (1 .. 5) :=
-        (1.0, 2.0, 3.0, 4.0, 5.0);
+      Data    : aliased OpenCV.Core.Float32_Mat_View.Buffer_Array :=
+        (1 => 1.0, 2 => 2.0, 3 => 3.0, 4 => 4.0, 5 => 5.0);
       Invoked : Boolean := False;
 
       procedure Mark (Image : in out OpenCV.Core.Mat) is
@@ -3491,7 +3491,7 @@ package body Mat_Access_Tests is
      (Test : in out Mat_Test_Fixture)
    is
       pragma Unreferenced (Test);
-      Data  : aliased OpenCV.Core.Float32_Mat_View.Buffer_Array (0 .. 5) :=
+      Data  : aliased OpenCV.Core.Float32_Mat_View.Buffer_Array :=
         (1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
       Owned : OpenCV.Core.Mat :=
         OpenCV.Core.Create
@@ -3638,8 +3638,8 @@ package body Mat_Access_Tests is
      (Test : in out Mat_Test_Fixture)
    is
       pragma Unreferenced (Test);
-      Data  : aliased OpenCV.Core.Float32_Mat_View.Buffer_Array (2 .. 7) :=
-        (1.25, -2.5, 3.75, -4.5, 5.125, 6.0);
+      Data  : aliased OpenCV.Core.Float32_Mat_View.Buffer_Array :=
+        (2 => 1.25, 3 => -2.5, 4 => 3.75, 5 => -4.5, 6 => 5.125, 7 => 6.0);
       Saved : OpenCV.Core.Mat;
 
       procedure Capture (Image : in out OpenCV.Core.Mat) is
@@ -3672,8 +3672,8 @@ package body Mat_Access_Tests is
      (Test : in out Mat_Test_Fixture)
    is
       pragma Unreferenced (Test);
-      Data    : aliased OpenCV.Core.Float32_Mat_View.Buffer_Array (4 .. 7) :=
-        (1.0, 2.0, 3.0, 4.0);
+      Data    : aliased OpenCV.Core.Float32_Mat_View.Buffer_Array :=
+        (4 => 1.0, 5 => 2.0, 6 => 3.0, 7 => 4.0);
       Raised  : Boolean := False;
       Message : Ada.Exceptions.Exception_Id := Ada.Exceptions.Null_Id;
 

@@ -12,9 +12,10 @@ package OpenCV.Core.Float32_Mat_View is
    --  Process returns. Clone is the supported way to keep an
    --  independent Mat. Writes through Image immediately modify Data,
    --  and writes through Data immediately affect Image. The temporary
-   --  cv::Mat header does not own Data and does not copy it.
+   --  cv::Mat header does not own Data and does not copy it. The aliased
+   --  formal passes Data by reference, so Image denotes caller-owned storage.
    procedure With_Writable_Mat_View
-     (Data    : in out Buffer_Array;
+     (Data    : aliased in out Buffer_Array;
       Rows    : Positive;
       Columns : Positive;
       Process : not null access procedure (Image : in out Mat));
