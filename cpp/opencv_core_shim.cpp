@@ -3464,7 +3464,75 @@ opencv_core_mat_write_float32_row(opencv_core_mat_handle *mat, int32_t row,
         return translate_current_exception();
     }
 }
- 
+
+opencv_core_status
+opencv_core_mat_borrow_row_data(opencv_core_mat_handle *mat, int32_t row,
+                                void **out_data, uint64_t *out_byte_count) {
+    clear_error();
+
+    if (out_data != nullptr) {
+        *out_data = nullptr;
+    }
+    if (out_byte_count != nullptr) {
+        *out_byte_count = 0;
+    }
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    if (out_data == nullptr) {
+        return invalid_argument("out_data must not be null");
+    }
+
+    if (out_byte_count == nullptr) {
+        return invalid_argument("out_byte_count must not be null");
+    }
+
+    if (row < 0) {
+        return invalid_argument("row must not be negative");
+    }
+
+    try {
+        // ABI safety: the shim itself forms a row pointer and reports
+        // columns * elemSize() bytes. A non-2-D Mat, a missing data
+        // pointer, or an out-of-range row would make that pointer
+        // arithmetic undefined.
+        if (mat->value.dims != 2) {
+            return invalid_argument("Mat must be two-dimensional");
+        }
+
+        if (row >= mat->value.rows) {
+            return invalid_argument("row is outside Mat bounds");
+        }
+
+        if (mat->value.data == nullptr) {
+            return invalid_argument("Mat has no row storage");
+        }
+
+        const size_t columns = static_cast<size_t>(mat->value.cols);
+        const size_t element_size = mat->value.elemSize();
+        size_t logical_row_bytes = 0;
+        if (!checked_size_mul(columns, element_size, &logical_row_bytes)) {
+            return invalid_argument(
+                "row byte count exceeds the native size range");
+        }
+
+        uint64_t abi_byte_count = 0;
+        if (!size_to_abi(logical_row_bytes, abi_byte_count)) {
+            return invalid_argument("row byte count exceeds the C ABI size range");
+        }
+
+        *out_data = mat->value.ptr(static_cast<int>(row));
+        *out_byte_count = abi_byte_count;
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        *out_data = nullptr;
+        *out_byte_count = 0;
+        return translate_current_exception();
+    }
+}
+
 opencv_core_status
 opencv_core_mat_read_uint8_vec3_row(const opencv_core_mat_handle *mat,
                                     int32_t row, uint8_t *data,

@@ -747,6 +747,16 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_write_float32_row";
 
+   function Mat_Borrow_Row_Data
+     (Self           : Mat_Handle;
+      Row            : C_Int32;
+      Data           : access System.Address;
+      Out_Byte_Count : access C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_borrow_row_data";
+
    function Mat_Get_UInt8_Vec3
      (Self   : Mat_Handle;
       Row    : C_Int32;

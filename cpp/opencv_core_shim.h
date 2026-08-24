@@ -874,7 +874,20 @@ opencv_core_mat_write_float32_row(opencv_core_mat_handle *mat,
                                   uint64_t element_count);
 
 /*
+ * Borrow the start of one logical 2-D Mat row without copying pixels.
+ * out_data is the address of the first active element of that row.
+ * out_byte_count is columns * elemSize(), never the possibly padded
+ * step[0] stride. The returned address is valid only while the caller's
+ * Mat handle (or another header sharing the same storage) remains alive.
+ * The Mat header is not mutated and no pixel storage is allocated.
+ */
+opencv_core_status
+opencv_core_mat_borrow_row_data(opencv_core_mat_handle *mat, int32_t row,
+                                void **out_data, uint64_t *out_byte_count);
+
+/*
  * Read or write one element of a two-dimensional, exactly three-channel Mat.
+
  * Row, column, and component numbering are zero-based. The ABI Vec structs
  * are converted explicitly to/from cv::Vec; their layouts are independent.
  */
