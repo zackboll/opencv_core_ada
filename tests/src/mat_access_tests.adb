@@ -3584,10 +3584,13 @@ package body Mat_Access_Tests is
         (1 .. 6 => (1.0, 2.0, 3.0));
       procedure UInt8_Process (Image : in out OpenCV.Core.Mat) is
          procedure Escape is
-            Copy : OpenCV.Core.Mat;
-            pragma Unreferenced (Copy);
          begin
-            Copy := Image;
+            declare
+               Copy : OpenCV.Core.Mat := Image;
+               pragma Unreferenced (Copy);
+            begin
+               null;
+            end;
          end Escape;
       begin
          Assert_Raises_OpenCV_Error (Escape'Access, "UInt8 Vec3 assignment");
@@ -3595,10 +3598,14 @@ package body Mat_Access_Tests is
       end UInt8_Process;
       procedure Float32_Process (Image : in out OpenCV.Core.Mat) is
          procedure Escape is
-            View : OpenCV.Core.Mat;
-            pragma Unreferenced (View);
          begin
-            View := Image.Region ((X => 0, Y => 0, Width => 1, Height => 1));
+            declare
+               View : constant OpenCV.Core.Mat :=
+                 Image.Region ((X => 0, Y => 0, Width => 1, Height => 1));
+               pragma Unreferenced (View);
+            begin
+               null;
+            end;
          end Escape;
       begin
          Assert_Raises_OpenCV_Error (Escape'Access, "Float32 Vec3 Region");
@@ -4161,6 +4168,21 @@ package body Mat_Access_Tests is
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
 
+   procedure F32_V3_Row_Invalid (Test : in out Mat_Test_Fixture)
+   renames Float32_Vec3_Borrowed_Row_Rejects_Invalid_Mats_And_Indices;
+   procedure U8_V3_Buffer_Offset (Test : in out Mat_Test_Fixture)
+   renames UInt8_Vec3_Borrowed_Buffer_Accepts_Continuous_Offset_Region;
+   procedure F32_V3_Buffer_Exception (Test : in out Mat_Test_Fixture)
+   renames Float32_Vec3_Borrowed_Buffer_Propagates_Callback_Exception;
+   procedure F32_V3_Buffer_Offset (Test : in out Mat_Test_Fixture)
+   renames Float32_Vec3_Borrowed_Buffer_Accepts_Continuous_Offset_Region;
+   procedure F32_View_Clone (Test : in out Mat_Test_Fixture)
+   renames Float32_External_Buffer_Mat_View_Permits_Independent_Clone;
+   procedure F32_View_Exception (Test : in out Mat_Test_Fixture)
+   renames Float32_External_Buffer_Mat_View_Propagates_Callback_Exception;
+   procedure U8_View_Exception (Test : in out Mat_Test_Fixture)
+   renames UInt8_External_Buffer_Mat_View_Propagates_Callback_Exception;
+
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
       Result.Add_Test
@@ -4317,7 +4339,7 @@ package body Mat_Access_Tests is
       Result.Add_Test
         (Caller.Create
            ("Float32 Vec3 borrowed row rejects invalid Mats and indices",
-            Float32_Vec3_Borrowed_Row_Rejects_Invalid_Mats_And_Indices'Access));
+            F32_V3_Row_Invalid'Access));
       Result.Add_Test
         (Caller.Create
            ("Float32 Vec3 borrowed row propagates callback exceptions",
@@ -4373,7 +4395,7 @@ package body Mat_Access_Tests is
       Result.Add_Test
         (Caller.Create
            ("UInt8 Vec3 borrowed buffer accepts continuous offset Region",
-            UInt8_Vec3_Borrowed_Buffer_Accepts_Continuous_Offset_Region'Access));
+            U8_V3_Buffer_Offset'Access));
       Result.Add_Test
         (Caller.Create
            ("UInt8 Vec3 borrowed buffer rejects invalid Mats",
@@ -4393,7 +4415,7 @@ package body Mat_Access_Tests is
       Result.Add_Test
         (Caller.Create
            ("Float32 Vec3 borrowed buffer accepts continuous offset Region",
-            Float32_Vec3_Borrowed_Buffer_Accepts_Continuous_Offset_Region'Access));
+            F32_V3_Buffer_Offset'Access));
       Result.Add_Test
         (Caller.Create
            ("Float32 Vec3 borrowed buffer rejects invalid Mats",
@@ -4401,7 +4423,7 @@ package body Mat_Access_Tests is
       Result.Add_Test
         (Caller.Create
            ("Float32 Vec3 borrowed buffer propagates callback exceptions",
-            Float32_Vec3_Borrowed_Buffer_Propagates_Callback_Exception'Access));
+            F32_V3_Buffer_Exception'Access));
       Result.Add_Test
         (Caller.Create
            ("Float32 external buffer Mat view is zero-copy",
@@ -4445,11 +4467,11 @@ package body Mat_Access_Tests is
       Result.Add_Test
         (Caller.Create
            ("Float32 external buffer Mat view permits independent Clone",
-            Float32_External_Buffer_Mat_View_Permits_Independent_Clone'Access));
+            F32_View_Clone'Access));
       Result.Add_Test
         (Caller.Create
            ("Float32 external buffer Mat view propagates callback exceptions",
-            Float32_External_Buffer_Mat_View_Propagates_Callback_Exception'Access));
+            F32_View_Exception'Access));
       Result.Add_Test
         (Caller.Create
            ("UInt8 external buffer Mat view is zero-copy",
@@ -4469,7 +4491,7 @@ package body Mat_Access_Tests is
       Result.Add_Test
         (Caller.Create
            ("UInt8 external buffer Mat view propagates callback exceptions",
-            UInt8_External_Buffer_Mat_View_Propagates_Callback_Exception'Access));
+            U8_View_Exception'Access));
       return Result'Access;
    end Suite;
 
