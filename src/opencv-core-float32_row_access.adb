@@ -7,12 +7,13 @@ package body OpenCV.Core.Float32_Row_Access is
 
    package Borrowing is new
      OpenCV.Core.Internal.Typed_Row_Borrowing
-       (Element_Type          => Float32_Value,
-        Row_Array             => Row_Array,
-        Required_Depth        => Float32,
-        Required_Channels     => 1,
-        Expected_Element_Bits => 32,
-        Type_Name             => "Float32");
+       (Element_Type             => Float32_Value,
+        Row_Array                => Row_Array,
+        Required_Depth           => Float32,
+        Required_Channels        => 1,
+        Expected_Element_Bits    => 32,
+        Native_Element_Alignment => 4,
+        Type_Name                => "Float32");
 
    procedure Raise_Invalid_Access (Message : String) is
    begin

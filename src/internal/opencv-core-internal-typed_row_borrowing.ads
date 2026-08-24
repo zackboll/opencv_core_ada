@@ -4,6 +4,7 @@ generic
    Required_Depth : Depth_Type;
    Required_Channels : Channel_Count;
    Expected_Element_Bits : Positive;
+   Native_Element_Alignment : Positive;
    Type_Name : String;
 package OpenCV.Core.Internal.Typed_Row_Borrowing is
 

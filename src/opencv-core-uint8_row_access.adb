@@ -7,12 +7,13 @@ package body OpenCV.Core.UInt8_Row_Access is
 
    package Borrowing is new
      OpenCV.Core.Internal.Typed_Row_Borrowing
-       (Element_Type          => UInt8_Value,
-        Row_Array             => Row_Array,
-        Required_Depth        => UInt8,
-        Required_Channels     => 1,
-        Expected_Element_Bits => 8,
-        Type_Name             => "UInt8");
+       (Element_Type             => UInt8_Value,
+        Row_Array                => Row_Array,
+        Required_Depth           => UInt8,
+        Required_Channels        => 1,
+        Expected_Element_Bits    => 8,
+        Native_Element_Alignment => 1,
+        Type_Name                => "UInt8");
 
    procedure Raise_Invalid_Access (Message : String) is
    begin

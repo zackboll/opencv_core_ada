@@ -20,6 +20,11 @@ package body OpenCV.Core.Internal.Typed_Row_Borrowing is
      Compile_Time_Error
        (Row_Array'Component_Size /= Expected_Element_Bits,
         "typed row array component size does not match Expected_Element_Bits");
+   pragma
+     Compile_Time_Error
+       (Element_Type'Alignment > Native_Element_Alignment,
+        "typed row element requires stricter alignment than native Mat "
+          & "storage guarantees");
 
    Element_Bytes : constant OpenCV.Internal.C_API.C_UInt64 :=
      OpenCV.Internal.C_API.C_UInt64
