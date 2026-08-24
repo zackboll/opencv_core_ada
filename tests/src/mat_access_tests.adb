@@ -14,6 +14,7 @@ with OpenCV.Core.UInt8_Buffer_Access;
 with OpenCV.Core.UInt8_Row_Access;
 with OpenCV.Core.UInt8_Vec3;
 with OpenCV.Core.UInt8_Vec3_Access;
+with OpenCV.Core.UInt8_Vec3_Buffer_Access;
 with OpenCV.Core.UInt8_Vec3_Row_Access;
 with Mat_Test_Support;
 
@@ -2763,6 +2764,312 @@ package body Mat_Access_Tests is
          & " exception");
    end UInt8_Borrowed_Buffer_Propagates_Callback_Exception;
 
+   procedure UInt8_Vec3_Borrowed_Writable_Buffer_Is_Zero_Copy
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      Alias : OpenCV.Core.Mat;
+
+      procedure Mutate
+        (Data :
+           aliased in out OpenCV.Core.UInt8_Vec3_Buffer_Access.Buffer_Array) is
+      begin
+         AUnit.Assertions.Assert
+           (Data'First = 0 and then Data'Last = 5 and then Data'Length = 6,
+            "A writable borrowed UInt8 Vec3 buffer must be a flat"
+            & " zero-based array of Total pixels");
+
+         Data (2) := (10, 20, 30);
+         Data (3) := (40, 50, 60);
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Vec3_Access.Get (Image, Row => 0, Column => 2)
+            = (10, 20, 30)
+            and then OpenCV.Core.UInt8_Vec3_Access.Get
+                       (Image, Row => 1, Column => 0)
+                     = (40, 50, 60),
+            "Writes of complete pixels across a row boundary must be"
+            & " immediately visible through Get");
+
+         OpenCV.Core.UInt8_Vec3_Access.Set
+           (Alias, Row => 1, Column => 2, Value => (100, 110, 120));
+         AUnit.Assertions.Assert
+           (Data (5) = (100, 110, 120),
+            "A write through a shallow alias must be immediately visible"
+            & " through the borrowed Vec3 buffer");
+      end Mutate;
+   begin
+      AUnit.Assertions.Assert
+        (Image.Is_Continuous,
+         "A newly allocated UInt8 C3 Mat must be continuous");
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Image, Row => 0, Column => 0, Value => (1, 2, 3));
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Image, Row => 0, Column => 1, Value => (4, 5, 6));
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Image, Row => 0, Column => 2, Value => (7, 8, 9));
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Image, Row => 1, Column => 0, Value => (10, 20, 30));
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Image, Row => 1, Column => 1, Value => (40, 50, 60));
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Image, Row => 1, Column => 2, Value => (70, 80, 90));
+      Alias := Image;
+
+      OpenCV.Core.UInt8_Vec3_Buffer_Access.With_Writable_Buffer
+        (Image, Process => Mutate'Access);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Vec3_Access.Get (Image, Row => 0, Column => 2)
+         = (10, 20, 30)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get
+                    (Image, Row => 1, Column => 0)
+                  = (40, 50, 60)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get
+                    (Image, Row => 1, Column => 2)
+                  = (100, 110, 120),
+         "Writable borrowed Vec3 buffer mutations must remain after"
+         & " Process returns");
+   end UInt8_Vec3_Borrowed_Writable_Buffer_Is_Zero_Copy;
+
+   procedure UInt8_Vec3_Borrowed_Read_Only_Buffer_Matches_Mat
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+
+      procedure Inspect
+        (Data : aliased OpenCV.Core.UInt8_Vec3_Buffer_Access.Buffer_Array) is
+      begin
+         AUnit.Assertions.Assert
+           (Data'First = 0 and then Data'Last = 5 and then Data'Length = 6,
+            "A read-only borrowed UInt8 Vec3 buffer must be a flat"
+            & " zero-based array of Total pixels");
+         AUnit.Assertions.Assert
+           (Data (0) = (1, 2, 3)
+            and then Data (1) = (4, 5, 6)
+            and then Data (2) = (7, 8, 9)
+            and then Data (3) = (10, 20, 30)
+            and then Data (4) = (40, 50, 60)
+            and then Data (5) = (70, 80, 90),
+            "A read-only borrowed UInt8 Vec3 buffer must match row-major"
+            & " Mat pixels");
+      end Inspect;
+   begin
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Image, Row => 0, Column => 0, Value => (1, 2, 3));
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Image, Row => 0, Column => 1, Value => (4, 5, 6));
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Image, Row => 0, Column => 2, Value => (7, 8, 9));
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Image, Row => 1, Column => 0, Value => (10, 20, 30));
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Image, Row => 1, Column => 1, Value => (40, 50, 60));
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Image, Row => 1, Column => 2, Value => (70, 80, 90));
+
+      OpenCV.Core.UInt8_Vec3_Buffer_Access.With_Read_Only_Buffer
+        (Image, Process => Inspect'Access);
+   end UInt8_Vec3_Borrowed_Read_Only_Buffer_Matches_Mat;
+
+   procedure UInt8_Vec3_Borrowed_Buffer_Accepts_Continuous_Offset_Region
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 3,
+           Columns      => 5,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      View   : OpenCV.Core.Mat :=
+        Parent.Region ((X => 1, Y => 1, Width => 3, Height => 1));
+
+      procedure Mutate
+        (Data :
+           aliased in out OpenCV.Core.UInt8_Vec3_Buffer_Access.Buffer_Array) is
+      begin
+         AUnit.Assertions.Assert
+           (Data'First = 0 and then Data'Last = 2 and then Data'Length = 3,
+            "A borrowed continuous offset Region buffer must expose"
+            & " Region.Total pixels");
+         Data (0) := (11, 12, 13);
+         Data (2) := (31, 32, 33);
+      end Mutate;
+   begin
+      Parent.Set_To (OpenCV.Core.Make_Scalar (1.0, 2.0, 3.0));
+      AUnit.Assertions.Assert
+        (View.Is_Submatrix,
+         "The continuous offset Region test must exercise a submatrix");
+      AUnit.Assertions.Assert
+        (View.Is_Continuous,
+         "A single-row partial-width Region of a continuous parent must"
+         & " be continuous");
+
+      OpenCV.Core.UInt8_Vec3_Buffer_Access.With_Writable_Buffer
+        (View, Process => Mutate'Access);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Vec3_Access.Get (Parent, Row => 1, Column => 1)
+         = (11, 12, 13)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get
+                    (Parent, Row => 1, Column => 3)
+                  = (31, 32, 33)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get
+                    (Parent, Row => 1, Column => 2)
+                  = (1, 2, 3),
+         "Borrowed continuous offset Region writes must mutate the"
+         & " corresponding parent pixels");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Vec3_Access.Get (Parent, Row => 1, Column => 0)
+         = (1, 2, 3)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get
+                    (Parent, Row => 1, Column => 4)
+                  = (1, 2, 3)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get
+                    (Parent, Row => 0, Column => 1)
+                  = (1, 2, 3)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get
+                    (Parent, Row => 2, Column => 1)
+                  = (1, 2, 3),
+         "Borrowed continuous offset Region writes must not mutate pixels"
+         & " outside the Region");
+   end UInt8_Vec3_Borrowed_Buffer_Accepts_Continuous_Offset_Region;
+
+   procedure UInt8_Vec3_Borrowed_Buffer_Rejects_Invalid_Mats
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Float32_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 3));
+      C1_Image      : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Parent        : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 4,
+           Columns      => 6,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      Noncontinuous : constant OpenCV.Core.Mat :=
+        Parent.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+      Invoked       : Boolean := False;
+
+      procedure Mark_Read
+        (Data : aliased OpenCV.Core.UInt8_Vec3_Buffer_Access.Buffer_Array)
+      is
+         pragma Unreferenced (Data);
+      begin
+         Invoked := True;
+      end Mark_Read;
+
+      procedure Read_Float32 is
+      begin
+         OpenCV.Core.UInt8_Vec3_Buffer_Access.With_Read_Only_Buffer
+           (Float32_Image, Process => Mark_Read'Access);
+      end Read_Float32;
+
+      procedure Read_C1 is
+      begin
+         OpenCV.Core.UInt8_Vec3_Buffer_Access.With_Read_Only_Buffer
+           (C1_Image, Process => Mark_Read'Access);
+      end Read_C1;
+
+      procedure Read_Noncontinuous is
+      begin
+         OpenCV.Core.UInt8_Vec3_Buffer_Access.With_Read_Only_Buffer
+           (Noncontinuous, Process => Mark_Read'Access);
+      end Read_Noncontinuous;
+   begin
+      Parent.Set_To (OpenCV.Core.Make_Scalar (1.0, 2.0, 3.0));
+      AUnit.Assertions.Assert
+        (not Noncontinuous.Is_Continuous,
+         "A partial-width multi-row Vec3 Region must be non-continuous");
+
+      Assert_Raises_OpenCV_Error
+        (Read_Float32'Access,
+         "UInt8 Vec3 buffer access must reject a Float32 C3 Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_C1'Access,
+         "UInt8 Vec3 buffer access must reject a UInt8 C1 Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_Noncontinuous'Access,
+         "UInt8 Vec3 buffer access must reject a non-continuous Mat");
+      AUnit.Assertions.Assert
+        (not Invoked,
+         "Borrowed-buffer validation must not invoke the" & " callback");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Vec3_Access.Get (Parent, Row => 1, Column => 1)
+         = (1, 2, 3),
+         "Rejected non-continuous buffer access must not mutate the parent");
+   end UInt8_Vec3_Borrowed_Buffer_Rejects_Invalid_Mats;
+
+   procedure UInt8_Vec3_Borrowed_Buffer_Propagates_Callback_Exception
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      Raised  : Boolean := False;
+      Message : Ada.Exceptions.Exception_Id := Ada.Exceptions.Null_Id;
+
+      procedure Mutate
+        (Data :
+           aliased in out OpenCV.Core.UInt8_Vec3_Buffer_Access.Buffer_Array) is
+      begin
+         Data (2) := (77, 88, 99);
+         raise Borrowed_Row_Callback_Error;
+      end Mutate;
+   begin
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Image, Row => 0, Column => 0, Value => (1, 2, 3));
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Image, Row => 1, Column => 0, Value => (4, 5, 6));
+
+      begin
+         OpenCV.Core.UInt8_Vec3_Buffer_Access.With_Writable_Buffer
+           (Image, Process => Mutate'Access);
+      exception
+         when Error : Borrowed_Row_Callback_Error =>
+            Raised := True;
+            Message := Ada.Exceptions.Exception_Identity (Error);
+      end;
+
+      AUnit.Assertions.Assert
+        (Raised and then Message = Borrowed_Row_Callback_Error'Identity,
+         "A callback exception must propagate unchanged");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Vec3_Access.Get (Image, Row => 1, Column => 0)
+         = (77, 88, 99)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get
+                    (Image, Row => 0, Column => 0)
+                  = (1, 2, 3),
+         "Writes completed before a callback exception must remain visible");
+
+      OpenCV.Core.UInt8_Vec3_Access.Set
+        (Image, Row => 0, Column => 1, Value => (7, 8, 9));
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Vec3_Access.Get (Image, Row => 0, Column => 1)
+         = (7, 8, 9),
+         "The Mat must remain usable after a borrowed-buffer callback"
+         & " exception");
+   end UInt8_Vec3_Borrowed_Buffer_Propagates_Callback_Exception;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -2969,6 +3276,27 @@ package body Mat_Access_Tests is
         (Caller.Create
            ("UInt8 borrowed buffer propagates callback exceptions",
             UInt8_Borrowed_Buffer_Propagates_Callback_Exception'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt8 Vec3 borrowed writable buffer is zero-copy",
+            UInt8_Vec3_Borrowed_Writable_Buffer_Is_Zero_Copy'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt8 Vec3 borrowed read-only buffer matches Mat",
+            UInt8_Vec3_Borrowed_Read_Only_Buffer_Matches_Mat'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt8 Vec3 borrowed buffer accepts continuous offset Region",
+            UInt8_Vec3_Borrowed_Buffer_Accepts_Continuous_Offset_Region
+              'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt8 Vec3 borrowed buffer rejects invalid Mats",
+            UInt8_Vec3_Borrowed_Buffer_Rejects_Invalid_Mats'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt8 Vec3 borrowed buffer propagates callback exceptions",
+            UInt8_Vec3_Borrowed_Buffer_Propagates_Callback_Exception'Access));
       return Result'Access;
    end Suite;
 
