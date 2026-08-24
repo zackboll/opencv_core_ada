@@ -20,4 +20,19 @@ package OpenCV.Core.Float32_Mat_View is
       Columns : Positive;
       Process : not null access procedure (Image : in out Mat));
 
+   --  Invokes Process with a temporary writable Mat that aliases Data using
+   --  Row_Stride_Elements complete Float32 elements between logical rows.
+   --  Image (Row, Column) is Data (Data'First + Row *
+   --  Row_Stride_Elements + Column). Row_Stride_Elements must be at least
+   --  Columns, and Data'Length must be at least (Rows - 1) *
+   --  Row_Stride_Elements + Columns. Data may include row padding and
+   --  trailing storage, neither of which is part of Image. The lifetime,
+   --  aliasing, and escape rules are the same as With_Writable_Mat_View.
+   procedure With_Writable_Mat_View
+     (Data                : aliased in out Buffer_Array;
+      Rows                : Positive;
+      Columns             : Positive;
+      Row_Stride_Elements : Positive;
+      Process             : not null access procedure (Image : in out Mat));
+
 end OpenCV.Core.Float32_Mat_View;

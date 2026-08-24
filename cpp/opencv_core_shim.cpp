@@ -964,6 +964,94 @@ opencv_core_mat_create_external_2d(int32_t rows, int32_t columns,
     }
 }
 
+opencv_core_status opencv_core_mat_create_external_2d_strided(
+    int32_t rows, int32_t columns, int32_t depth, int32_t channels,
+    void *data, uint64_t byte_count, uint64_t row_stride_bytes,
+    opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (rows < 1 || columns < 1) {
+        return invalid_argument(
+            "external strided Mat view rows and columns must be positive");
+    }
+
+    // ABI safety: CV_MAKETYPE encodes (channels-1) into a bit field. Values
+    // outside 1 .. CV_CN_MAX produce a wrapped or truncated type before
+    // OpenCV sees the request.
+    if (channels < 1 || channels > OPENCV_CORE_MAX_CHANNELS) {
+        return invalid_argument("channels must be in the range 1 .. 512");
+    }
+
+    int opencv_depth = 0;
+    if (!to_opencv_depth(depth, opencv_depth)) {
+        return invalid_argument("depth is not a supported depth identifier");
+    }
+
+    try {
+        const int type = CV_MAKETYPE(opencv_depth, channels);
+        const size_t element_size = CV_ELEM_SIZE(type);
+        const size_t scalar_size = CV_ELEM_SIZE1(opencv_depth);
+        size_t logical_row_bytes = 0;
+        if (!checked_size_mul(static_cast<size_t>(columns), element_size,
+                              &logical_row_bytes)) {
+            return invalid_argument(
+                "external strided Mat view logical row exceeds native size range");
+        }
+        if (row_stride_bytes > std::numeric_limits<size_t>::max()) {
+            return invalid_argument(
+                "external strided Mat view row stride exceeds native size range");
+        }
+        const size_t row_stride = static_cast<size_t>(row_stride_bytes);
+        if (row_stride < logical_row_bytes) {
+            return invalid_argument(
+                "external strided Mat view row stride is smaller than a logical row");
+        }
+        if (scalar_size == 0 || row_stride % scalar_size != 0) {
+            return invalid_argument(
+                "external strided Mat view row stride is incompatible with scalar size");
+        }
+        size_t preceding_rows_bytes = 0;
+        size_t required_span_bytes = 0;
+        if (!checked_size_mul(static_cast<size_t>(rows - 1), row_stride,
+                              &preceding_rows_bytes) ||
+            !checked_size_add(preceding_rows_bytes, logical_row_bytes,
+                              &required_span_bytes)) {
+            return invalid_argument(
+                "external strided Mat view required span exceeds native size range");
+        }
+        if (byte_count < static_cast<uint64_t>(required_span_bytes)) {
+            return invalid_argument(
+                "external strided Mat view byte count is smaller than required span");
+        }
+        if (data == nullptr) {
+            return invalid_argument("external strided Mat view data must not be null");
+        }
+
+        const size_t scalar_alignment = CV_ELEM_SIZE1(opencv_depth);
+        if (scalar_alignment == 0 ||
+            (reinterpret_cast<uintptr_t>(data) % scalar_alignment) != 0) {
+            return invalid_argument(
+                "external strided Mat view data is not aligned for the selected depth");
+        }
+
+        std::unique_ptr<opencv_core_mat_handle> handle(
+            new opencv_core_mat_handle(cv::Mat(
+                static_cast<int>(rows), static_cast<int>(columns), type, data,
+                row_stride)));
+        handle->temporary_external_view = true;
+        *out_mat = handle.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
 opencv_core_status
 opencv_core_mat_copy(const opencv_core_mat_handle *source,
                      opencv_core_mat_handle **out_mat) {

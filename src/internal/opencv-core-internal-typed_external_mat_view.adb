@@ -154,4 +154,78 @@ package body OpenCV.Core.Internal.Typed_External_Mat_View is
       Process (Image);
    end With_Writable_Mat_View;
 
+   procedure With_Writable_Strided_Mat_View
+     (Data                : aliased in out Buffer_Array;
+      Rows                : Positive;
+      Columns             : Positive;
+      Row_Stride_Elements : Positive;
+      Process             : not null access procedure (Image : in out Mat))
+   is
+      Required_Element_Span : Natural;
+      Byte_Count            : OpenCV.Internal.C_API.C_UInt64;
+      Row_Stride_Bytes      : OpenCV.Internal.C_API.C_UInt64;
+      Image                 : Mat;
+      New_Handle            : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status                : OpenCV.Internal.C_API.Status;
+   begin
+      --  Also validates that Rows and Columns fit the native signed range.
+      declare
+         Unused_Element_Count : constant Natural :=
+           Expected_Element_Count (Rows, Columns);
+         pragma Unreferenced (Unused_Element_Count);
+      begin
+         null;
+      end;
+
+      if Row_Stride_Elements < Columns then
+         Raise_Invalid_View
+           (Type_Name
+            & " strided external Mat view row stride must be at least"
+            & " Columns");
+      end if;
+
+      if Rows > 1 and then Row_Stride_Elements > Natural'Last / (Rows - 1) then
+         Raise_Invalid_View
+           (Type_Name
+            & " strided external Mat view required element span exceeds the"
+            & " representable range");
+      end if;
+      Required_Element_Span := (Rows - 1) * Row_Stride_Elements;
+      if Columns > Natural'Last - Required_Element_Span then
+         Raise_Invalid_View
+           (Type_Name
+            & " strided external Mat view required element span exceeds the"
+            & " representable range");
+      end if;
+      Required_Element_Span := Required_Element_Span + Columns;
+
+      if Data'Length < Required_Element_Span then
+         Raise_Invalid_View
+           (Type_Name
+            & " strided external Mat view requires sufficient Data storage");
+      end if;
+
+      Row_Stride_Bytes := Expected_Byte_Count (Row_Stride_Elements);
+      Byte_Count := Expected_Byte_Count (Data'Length);
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_Create_External_2D_Strided
+          (Rows             => OpenCV.Internal.C_API.C_Int32 (Rows),
+           Columns          => OpenCV.Internal.C_API.C_Int32 (Columns),
+           Depth            => To_C_Depth (Required_Depth),
+           Channels         =>
+             OpenCV.Internal.C_API.C_Int32 (Required_Channels),
+           Data             => Data (Data'First)'Address,
+           Byte_Count       => Byte_Count,
+           Row_Stride_Bytes => Row_Stride_Bytes,
+           Result           => New_Handle'Access);
+      Raise_On_Error
+        (Status, Type_Name & " strided external Mat view construction");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Image.Handle);
+      Image.Handle := New_Handle;
+      Process (Image);
+   end With_Writable_Strided_Mat_View;
+
 end OpenCV.Core.Internal.Typed_External_Mat_View;

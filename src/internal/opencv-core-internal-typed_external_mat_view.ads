@@ -16,4 +16,13 @@ package OpenCV.Core.Internal.Typed_External_Mat_View is
       Columns : Positive;
       Process : not null access procedure (Image : in out Mat));
 
+   --  Invokes Process with a temporary Mat whose logical rows alias Data at
+   --  Row_Stride_Elements complete Buffer_Array elements apart.
+   procedure With_Writable_Strided_Mat_View
+     (Data                : aliased in out Buffer_Array;
+      Rows                : Positive;
+      Columns             : Positive;
+      Row_Stride_Elements : Positive;
+      Process             : not null access procedure (Image : in out Mat));
+
 end OpenCV.Core.Internal.Typed_External_Mat_View;

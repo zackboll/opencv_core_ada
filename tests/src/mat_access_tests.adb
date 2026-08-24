@@ -3977,6 +3977,225 @@ package body Mat_Access_Tests is
          "Data must remain caller-owned after a callback exception");
    end Float32_External_Buffer_Mat_View_Propagates_Callback_Exception;
 
+   procedure Float32_External_Strided_Mat_View_Is_Zero_Copy
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Data : aliased OpenCV.Core.Float32_Mat_View.Buffer_Array :=
+        (10 .. 27 => 1.0);
+      procedure Process (Image : in out OpenCV.Core.Mat) is
+      begin
+         AUnit.Assertions.Assert
+           (Image.Rows = 3
+            and then Image.Columns = 4
+            and then Image.Depth = OpenCV.Core.Float32
+            and then Image.Channels = 1
+            and then Natural (Image.Total) = 12
+            and then not Image.Is_Continuous,
+            "A padded external Float32 view must be non-continuous");
+         Data (18) := 42.5;
+         AUnit.Assertions.Assert
+           (Approximately_Equal
+              (Long_Float
+                 (OpenCV.Core.Float32_Access.Get
+                    (Image, Row => 1, Column => 2)),
+               42.5),
+            "A non-first logical row must observe Data writes");
+         OpenCV.Core.Float32_Access.Set (Image, 2, 3, -7.25);
+         AUnit.Assertions.Assert
+           (Approximately_Equal (Long_Float (Data (25)), -7.25),
+            "The final logical Mat element must alias Data");
+         Image.Set_To (OpenCV.Core.Make_Scalar (3.5));
+         AUnit.Assertions.Assert
+           (Approximately_Equal (Long_Float (Data (10)), 3.5)
+            and then Approximately_Equal (Long_Float (Data (16)), 3.5)
+            and then Approximately_Equal (Long_Float (Data (25)), 3.5)
+            and then Approximately_Equal (Long_Float (Data (14)), 101.0)
+            and then Approximately_Equal (Long_Float (Data (15)), 102.0)
+            and then Approximately_Equal (Long_Float (Data (20)), 103.0)
+            and then Approximately_Equal (Long_Float (Data (21)), 104.0)
+            and then Approximately_Equal (Long_Float (Data (26)), 105.0)
+            and then Approximately_Equal (Long_Float (Data (27)), 106.0),
+            "Set_To must change logical pixels without changing padding");
+      end Process;
+   begin
+      Data (14) := 101.0;
+      Data (15) := 102.0;
+      Data (20) := 103.0;
+      Data (21) := 104.0;
+      Data (26) := 105.0;
+      Data (27) := 106.0;
+      OpenCV.Core.Float32_Mat_View.With_Writable_Mat_View
+        (Data, 3, 4, 6, Process'Access);
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Long_Float (Data (10)), 3.5)
+         and then Approximately_Equal (Long_Float (Data (16)), 3.5)
+         and then Approximately_Equal (Long_Float (Data (25)), 3.5)
+         and then Approximately_Equal (Long_Float (Data (14)), 101.0)
+         and then Approximately_Equal (Long_Float (Data (15)), 102.0)
+         and then Approximately_Equal (Long_Float (Data (20)), 103.0)
+         and then Approximately_Equal (Long_Float (Data (21)), 104.0)
+         and then Approximately_Equal (Long_Float (Data (26)), 105.0)
+         and then Approximately_Equal (Long_Float (Data (27)), 106.0),
+         "Padded storage must retain only logical Mat writes after Process");
+   end Float32_External_Strided_Mat_View_Is_Zero_Copy;
+
+   procedure Float32_External_Strided_Mat_View_Accepts_Tight_Stride
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Data : aliased OpenCV.Core.Float32_Mat_View.Buffer_Array :=
+        (1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+      procedure Process (Image : in out OpenCV.Core.Mat) is
+      begin
+         AUnit.Assertions.Assert
+           (Image.Is_Continuous, "A tight explicit stride must be continuous");
+         Data (4) := 42.0;
+         AUnit.Assertions.Assert
+           (Approximately_Equal
+              (Long_Float
+                 (OpenCV.Core.Float32_Access.Get
+                    (Image, Row => 1, Column => 1)),
+               42.0),
+            "Tight strided view must observe Data writes");
+         OpenCV.Core.Float32_Access.Set (Image, 0, 2, -3.5);
+      end Process;
+   begin
+      OpenCV.Core.Float32_Mat_View.With_Writable_Mat_View
+        (Data, 2, 3, 3, Process'Access);
+      AUnit.Assertions.Assert
+        (Approximately_Equal (Long_Float (Data (2)), -3.5),
+         "Tight strided view writes must update Data");
+   end Float32_External_Strided_Mat_View_Accepts_Tight_Stride;
+
+   procedure Float32_External_Strided_Mat_View_Rejects_Invalid_Layout
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Short_Stride : aliased OpenCV.Core.Float32_Mat_View.Buffer_Array :=
+        (1 .. 12 => 1.0);
+      Short_Data   : aliased OpenCV.Core.Float32_Mat_View.Buffer_Array :=
+        (1 .. 15 => 2.0);
+      Invoked      : Boolean := False;
+      procedure Mark (Image : in out OpenCV.Core.Mat) is
+         pragma Unreferenced (Image);
+      begin
+         Invoked := True;
+      end Mark;
+      procedure Attempt_Short_Stride is
+      begin
+         OpenCV.Core.Float32_Mat_View.With_Writable_Mat_View
+           (Short_Stride, 3, 4, 3, Mark'Access);
+      end Attempt_Short_Stride;
+      procedure Attempt_Short_Data is
+      begin
+         OpenCV.Core.Float32_Mat_View.With_Writable_Mat_View
+           (Short_Data, 3, 4, 6, Mark'Access);
+      end Attempt_Short_Data;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Attempt_Short_Stride'Access,
+         "A stride smaller than Columns is invalid");
+      Assert_Raises_OpenCV_Error
+        (Attempt_Short_Data'Access, "Insufficient strided storage is invalid");
+      AUnit.Assertions.Assert
+        (not Invoked
+         and then Approximately_Equal (Long_Float (Short_Stride (1)), 1.0)
+         and then Approximately_Equal (Long_Float (Short_Data (15)), 2.0),
+         "Rejected strided layouts must not invoke Process or mutate Data");
+   end Float32_External_Strided_Mat_View_Rejects_Invalid_Layout;
+
+   procedure Float32_External_Strided_Mat_View_Enforces_Lifetime
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Data  : aliased OpenCV.Core.Float32_Mat_View.Buffer_Array :=
+        (10 .. 27 => 1.0);
+      Saved : OpenCV.Core.Mat;
+      procedure Process (Image : in out OpenCV.Core.Mat) is
+         procedure Assign_Copy is
+            Copy : OpenCV.Core.Mat;
+            pragma Unreferenced (Copy);
+         begin
+            begin
+               Copy := Image;
+            exception
+               when Program_Error =>
+                  raise OpenCV.OpenCV_Error;
+            end;
+         end Assign_Copy;
+      begin
+         Assert_Raises_OpenCV_Error
+           (Assign_Copy'Access,
+            "A strided temporary external view must reject shallow copies");
+         OpenCV.Core.Float32_Access.Set (Image, 1, 1, 8.5);
+         Saved := Image.Clone;
+      end Process;
+   begin
+      Data (14) := 91.0;
+      Data (15) := 92.0;
+      Data (20) := 93.0;
+      Data (21) := 94.0;
+      Data (26) := 95.0;
+      Data (27) := 96.0;
+      OpenCV.Core.Float32_Mat_View.With_Writable_Mat_View
+        (Data, 3, 4, 6, Process'Access);
+      Data (17) := 99.0;
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float
+              (OpenCV.Core.Float32_Access.Get (Saved, Row => 1, Column => 1)),
+            8.5),
+         "Clone must retain strided view data independently");
+      OpenCV.Core.Float32_Access.Set (Saved, 2, 3, -4.0);
+      AUnit.Assertions.Assert
+        (not Approximately_Equal (Long_Float (Data (25)), -4.0)
+         and then Approximately_Equal (Long_Float (Data (14)), 91.0)
+         and then Approximately_Equal (Long_Float (Data (27)), 96.0),
+         "Mutating a clone must not affect caller storage or padding");
+   end Float32_External_Strided_Mat_View_Enforces_Lifetime;
+
+   procedure Float32_External_Strided_Mat_View_Propagates_Callback_Exception
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Data     : aliased OpenCV.Core.Float32_Mat_View.Buffer_Array :=
+        (10 .. 21 => 1.0);
+      Raised   : Boolean := False;
+      Identity : Ada.Exceptions.Exception_Id := Ada.Exceptions.Null_Id;
+      procedure Process (Image : in out OpenCV.Core.Mat) is
+      begin
+         OpenCV.Core.Float32_Access.Set (Image, 1, 2, 9.25);
+         raise Borrowed_Row_Callback_Error;
+      end Process;
+   begin
+      Data (14) := 71.0;
+      Data (15) := 72.0;
+      Data (20) := 73.0;
+      Data (21) := 74.0;
+      begin
+         OpenCV.Core.Float32_Mat_View.With_Writable_Mat_View
+           (Data, 2, 4, 6, Process'Access);
+      exception
+         when Error : Borrowed_Row_Callback_Error =>
+            Raised := True;
+            Identity := Ada.Exceptions.Exception_Identity (Error);
+      end;
+      AUnit.Assertions.Assert
+        (Raised
+         and then Identity = Borrowed_Row_Callback_Error'Identity
+         and then Approximately_Equal (Long_Float (Data (18)), 9.25)
+         and then Approximately_Equal (Long_Float (Data (14)), 71.0)
+         and then Approximately_Equal (Long_Float (Data (15)), 72.0)
+         and then Approximately_Equal (Long_Float (Data (20)), 73.0)
+         and then Approximately_Equal (Long_Float (Data (21)), 74.0),
+         "Callback exceptions, writes, and padding must be preserved");
+      Data (10) := -1.0;
+   end Float32_External_Strided_Mat_View_Propagates_Callback_Exception;
+
+   procedure Strided_Callback_Exception_Test (Test : in out Mat_Test_Fixture)
+   renames Float32_External_Strided_Mat_View_Propagates_Callback_Exception;
+
    procedure UInt8_External_Buffer_Mat_View_Is_Zero_Copy
      (Test : in out Mat_Test_Fixture)
    is
@@ -4428,6 +4647,27 @@ package body Mat_Access_Tests is
         (Caller.Create
            ("Float32 external buffer Mat view is zero-copy",
             Float32_External_Buffer_Mat_View_Is_Zero_Copy'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 external strided Mat view is zero-copy",
+            Float32_External_Strided_Mat_View_Is_Zero_Copy'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 external strided Mat view accepts tight stride",
+            Float32_External_Strided_Mat_View_Accepts_Tight_Stride'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 external strided Mat view rejects invalid layout",
+            Float32_External_Strided_Mat_View_Rejects_Invalid_Layout'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 external strided Mat view enforces lifetime",
+            Float32_External_Strided_Mat_View_Enforces_Lifetime'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 external strided Mat view propagates callback"
+            & " exceptions",
+            Strided_Callback_Exception_Test'Access));
       Result.Add_Test
         (Caller.Create
            ("UInt8 Vec3 external Mat view is zero-copy",
