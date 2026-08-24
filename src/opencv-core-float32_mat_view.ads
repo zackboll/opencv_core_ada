@@ -24,9 +24,10 @@ package OpenCV.Core.Float32_Mat_View is
    --  Row_Stride_Elements complete Float32 elements between logical rows.
    --  Image (Row, Column) is Data (Data'First + Row *
    --  Row_Stride_Elements + Column). Row_Stride_Elements must be at least
-   --  Columns, and Data'Length must be at least (Rows - 1) *
-   --  Row_Stride_Elements + Columns. Data may include row padding and
-   --  trailing storage, neither of which is part of Image. The lifetime,
+   --  Columns, and Data'Length must be at least Rows * Row_Stride_Elements.
+   --  Data must own a complete stride for every row, including padding after
+   --  the final logical row. Padding and trailing storage are not part of
+   --  Image. The lifetime,
    --  aliasing, and escape rules are the same as With_Writable_Mat_View.
    procedure With_Writable_Mat_View
      (Data                : aliased in out Buffer_Array;

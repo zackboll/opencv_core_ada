@@ -161,13 +161,13 @@ package body OpenCV.Core.Internal.Typed_External_Mat_View is
       Row_Stride_Elements : Positive;
       Process             : not null access procedure (Image : in out Mat))
    is
-      Required_Element_Span : Natural;
-      Byte_Count            : OpenCV.Internal.C_API.C_UInt64;
-      Row_Stride_Bytes      : OpenCV.Internal.C_API.C_UInt64;
-      Image                 : Mat;
-      New_Handle            : aliased OpenCV.Internal.C_API.Mat_Handle :=
+      Required_Element_Capacity : Natural;
+      Byte_Count                : OpenCV.Internal.C_API.C_UInt64;
+      Row_Stride_Bytes          : OpenCV.Internal.C_API.C_UInt64;
+      Image                     : Mat;
+      New_Handle                : aliased OpenCV.Internal.C_API.Mat_Handle :=
         OpenCV.Internal.C_API.Null_Mat_Handle;
-      Status                : OpenCV.Internal.C_API.Status;
+      Status                    : OpenCV.Internal.C_API.Status;
    begin
       --  Also validates that Rows and Columns fit the native signed range.
       declare
@@ -185,25 +185,20 @@ package body OpenCV.Core.Internal.Typed_External_Mat_View is
             & " Columns");
       end if;
 
-      if Rows > 1 and then Row_Stride_Elements > Natural'Last / (Rows - 1) then
+      if Row_Stride_Elements > Natural'Last / Rows then
          Raise_Invalid_View
            (Type_Name
-            & " strided external Mat view required element span exceeds the"
+            & " strided external Mat view required element capacity exceeds"
+            & " the"
             & " representable range");
       end if;
-      Required_Element_Span := (Rows - 1) * Row_Stride_Elements;
-      if Columns > Natural'Last - Required_Element_Span then
-         Raise_Invalid_View
-           (Type_Name
-            & " strided external Mat view required element span exceeds the"
-            & " representable range");
-      end if;
-      Required_Element_Span := Required_Element_Span + Columns;
+      Required_Element_Capacity := Rows * Row_Stride_Elements;
 
-      if Data'Length < Required_Element_Span then
+      if Data'Length < Required_Element_Capacity then
          Raise_Invalid_View
            (Type_Name
-            & " strided external Mat view requires sufficient Data storage");
+            & " strided external Mat view requires Data storage for complete"
+            & " row strides");
       end if;
 
       Row_Stride_Bytes := Expected_Byte_Count (Row_Stride_Elements);

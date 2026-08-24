@@ -4072,11 +4072,11 @@ package body Mat_Access_Tests is
      (Test : in out Mat_Test_Fixture)
    is
       pragma Unreferenced (Test);
-      Short_Stride : aliased OpenCV.Core.Float32_Mat_View.Buffer_Array :=
-        (1 .. 12 => 1.0);
-      Short_Data   : aliased OpenCV.Core.Float32_Mat_View.Buffer_Array :=
-        (1 .. 15 => 2.0);
-      Invoked      : Boolean := False;
+      Short_Stride          :
+        aliased OpenCV.Core.Float32_Mat_View.Buffer_Array := (1 .. 12 => 1.0);
+      Missing_Final_Padding :
+        aliased OpenCV.Core.Float32_Mat_View.Buffer_Array := (1 .. 16 => 2.0);
+      Invoked               : Boolean := False;
       procedure Mark (Image : in out OpenCV.Core.Mat) is
          pragma Unreferenced (Image);
       begin
@@ -4087,21 +4087,23 @@ package body Mat_Access_Tests is
          OpenCV.Core.Float32_Mat_View.With_Writable_Mat_View
            (Short_Stride, 3, 4, 3, Mark'Access);
       end Attempt_Short_Stride;
-      procedure Attempt_Short_Data is
+      procedure Attempt_Missing_Final_Padding is
       begin
          OpenCV.Core.Float32_Mat_View.With_Writable_Mat_View
-           (Short_Data, 3, 4, 6, Mark'Access);
-      end Attempt_Short_Data;
+           (Missing_Final_Padding, 3, 4, 6, Mark'Access);
+      end Attempt_Missing_Final_Padding;
    begin
       Assert_Raises_OpenCV_Error
         (Attempt_Short_Stride'Access,
          "A stride smaller than Columns is invalid");
       Assert_Raises_OpenCV_Error
-        (Attempt_Short_Data'Access, "Insufficient strided storage is invalid");
+        (Attempt_Missing_Final_Padding'Access,
+         "Storage missing final-row padding is invalid");
       AUnit.Assertions.Assert
         (not Invoked
          and then Approximately_Equal (Long_Float (Short_Stride (1)), 1.0)
-         and then Approximately_Equal (Long_Float (Short_Data (15)), 2.0),
+         and then Approximately_Equal
+                    (Long_Float (Missing_Final_Padding (16)), 2.0),
          "Rejected strided layouts must not invoke Process or mutate Data");
    end Float32_External_Strided_Mat_View_Rejects_Invalid_Layout;
 
