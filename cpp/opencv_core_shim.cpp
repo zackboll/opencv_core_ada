@@ -1830,9 +1830,24 @@ opencv_core_mat_reduce(const opencv_core_mat_handle *source, int32_t axis,
     }
 
     try {
+        // OpenCV compatibility: OpenCV 5 cv::reduce dest construction for a
+        // genuine default Mat (dims == 0) yields a typed 0x0 and skips the
+        // kernel/dtype lookup that OpenCV 4.x performed after creating the
+        // 1 x cols / rows x 1 empty result. After axis, kind, and output-depth
+        // identifier validation, reduce a typed 0x0 header with the source
+        // type so dest shape and dtype checks follow the two-dimensional empty
+        // path. Typed 0x0 sources keep the native path. Do not alias the
+        // source header.
+        const cv::Mat *reduce_source = &source->value;
+        cv::Mat typed_empty;
+        if (is_default_empty_mat(source->value)) {
+            typed_empty = cv::Mat(0, 0, source->value.type());
+            reduce_source = &typed_empty;
+        }
+
         cv::Mat reduced;
 #if CV_VERSION_MAJOR > 4 || (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 8)
-        cv::reduce(source->value, reduced, opencv_axis, opencv_kind,
+        cv::reduce(*reduce_source, reduced, opencv_axis, opencv_kind,
                    opencv_depth);
 #else
         if (reduction_kind == OPENCV_CORE_REDUCE_SUM_OF_SQUARES) {
@@ -1840,9 +1855,9 @@ opencv_core_mat_reduce(const opencv_core_mat_handle *source, int32_t axis,
             // src.mul(src) then REDUCE_SUM is not equivalent: integer
             // multiply saturates/overflows in the source type first.
             const int dest_depth = opencv_depth < 0
-                                       ? source->value.depth()
+                                       ? reduce_source->depth()
                                        : opencv_depth;
-            const int src_depth = source->value.depth();
+            const int src_depth = reduce_source->depth();
             // Match OpenCV 4.10 REDUCE_SUM / REDUCE_SUM2 dest-type pairs.
             const bool supported =
                 (src_depth == CV_8U &&
@@ -1861,9 +1876,9 @@ opencv_core_mat_reduce(const opencv_core_mat_handle *source, int32_t axis,
                          "formats");
             }
             const int dest_type =
-                CV_MAKETYPE(dest_depth, source->value.channels());
+                CV_MAKETYPE(dest_depth, reduce_source->channels());
             cv::Mat promoted;
-            source->value.convertTo(promoted, dest_type);
+            reduce_source->convertTo(promoted, dest_type);
             cv::Mat squares;
             cv::multiply(promoted, promoted, squares);
             // REDUCE_SUM accepts same-type floating sources, but not
@@ -1882,7 +1897,7 @@ opencv_core_mat_reduce(const opencv_core_mat_handle *source, int32_t axis,
                 reduced64.convertTo(reduced, dest_type);
             }
         } else {
-            cv::reduce(source->value, reduced, opencv_axis, opencv_kind,
+            cv::reduce(*reduce_source, reduced, opencv_axis, opencv_kind,
                        opencv_depth);
         }
 #endif
