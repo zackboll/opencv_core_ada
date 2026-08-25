@@ -4448,6 +4448,16 @@ opencv_core_mat_trace(const opencv_core_mat_handle *mat,
     }
 
     try {
+        // ABI safety: OpenCV 5 cv::trace extracts the main diagonal through
+        // Mat::diag(), which asserts dims == 2. A default-constructed
+        // cv::Mat() has dims == 0, so that path aborts instead of returning
+        // an exception. The Ada contract accepts this empty case as a zero
+        // Scalar. Returning here keeps the abort off the ABI path without
+        // changing default Mat construction.
+        if (mat->value.empty()) {
+            return OPENCV_CORE_OK;
+        }
+
         *out_trace = from_opencv_scalar(cv::trace(mat->value));
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -7076,6 +7086,17 @@ opencv_core_mat_set_identity(opencv_core_mat_handle *mat,
     }
 
     try {
+        // ABI safety: OpenCV 5 cv::setIdentity writes the main diagonal
+        // through Mat::diag(), which asserts dims == 2. A default-constructed
+        // cv::Mat() has dims == 0, so that path aborts instead of returning
+        // an exception. The Ada contract treats default and typed empty Mats
+        // as successful no-ops that preserve metadata. Returning here keeps
+        // the abort off the ABI path without changing default Mat
+        // construction.
+        if (mat->value.empty()) {
+            return OPENCV_CORE_OK;
+        }
+
         cv::setIdentity(mat->value, to_opencv_scalar(*value));
         return OPENCV_CORE_OK;
     } catch (...) {

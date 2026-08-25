@@ -1025,7 +1025,8 @@ opencv_core_mat_sum(const opencv_core_mat_handle *mat,
 /*
  * Computes the per-channel sum of the main diagonal. Source must have at
  * most four channels so its complete result fits opencv_core_scalar. Empty
- * and rectangular Mats are accepted.
+ * and rectangular Mats are accepted. A default empty Mat returns a zero
+ * Scalar without invoking OpenCV's trace implementation.
  */
 opencv_core_status
 opencv_core_mat_trace(const opencv_core_mat_handle *mat,
@@ -1798,7 +1799,8 @@ opencv_core_mat_complete_symmetry(opencv_core_mat_handle *mat,
  * min(rows, columns) receives value converted by OpenCV's Scalar
  * conversion. All eight public depths are accepted, including CV_16F.
  * Channel count must be 1 through 4. Continuity is not required.
- * A typed empty Mat is a no-op that preserves its metadata.
+ * A typed empty Mat is a no-op that preserves its metadata. A default
+ * empty Mat is also a successful no-op.
  */
 opencv_core_status
 opencv_core_mat_set_identity(opencv_core_mat_handle *mat,

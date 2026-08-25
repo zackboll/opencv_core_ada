@@ -2,7 +2,6 @@
 
 set -eu
 
-package=opencv4
 output=config/opencv_core_install.gpr
 
 if ! command -v pkg-config >/dev/null 2>&1; then
@@ -10,8 +9,17 @@ if ! command -v pkg-config >/dev/null 2>&1; then
     exit 1
 fi
 
-if ! pkg-config --exists "$package"; then
-    echo "error: pkg-config package '$package' was not found" >&2
+package=
+for candidate in opencv5 opencv4 opencv
+do
+    if pkg-config --exists "$candidate"; then
+        package=$candidate
+        break
+    fi
+done
+
+if [ -z "$package" ]; then
+    echo "error: pkg-config package was not found (tried opencv5, opencv4, opencv)" >&2
     exit 1
 fi
 
