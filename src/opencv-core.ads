@@ -384,16 +384,15 @@ package OpenCV.Core is
    --  non-empty C1 Float32 or Float64 M x (N + 1) Mat (M >= 1), with A in its
    --  first N columns and b in its last column. Input depths may differ, but
    --  every coefficient must be finite. Constraint_Tolerance is finite and
-    --  Constraint_Tolerance is finite and nonnegative. On OpenCV 4.8+ it is
-    --  passed as constr_eps. OpenCV 4.6 accepts only 0.0 and the 1.0E-12
-    --  default; any other tolerance raises OpenCV_Error. Numerical_Loss is
-    --  produced only when the linked OpenCV reports SOLVELP_LOST.
-
-   --  nonnegative. Unique_Optimum and Multiple_Optima contain one arbitrary
-   --  optimum as an independently owned N x 1 Float64 C1 Solution; Unbounded,
-   --  Infeasible, and Numerical_Loss contain no Solution. Inputs are unchanged
-   --  and non-contiguous Regions are supported. This is maximization only; a
-   --  caller may negate c when its minimization fits this formulation.
+   --  nonnegative. On OpenCV 4.8+ it is passed as constr_eps. OpenCV 4.6
+   --  accepts only 0.0 and the 1.0E-12 default; any other tolerance raises
+   --  OpenCV_Error. Numerical_Loss is produced only when the linked OpenCV
+   --  reports SOLVELP_LOST. Unique_Optimum and Multiple_Optima contain one
+   --  arbitrary optimum as an independently owned N x 1 Float64 C1 Solution;
+   --  Unbounded, Infeasible, and Numerical_Loss contain no Solution. Inputs
+   --  are unchanged and non-contiguous Regions are supported. This is
+   --  maximization only; a caller may negate c when its minimization fits
+   --  this formulation.
    function Solve_Linear_Program
      (Objective            : Mat;
       Constraints          : Mat;

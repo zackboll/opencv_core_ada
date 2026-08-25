@@ -321,13 +321,15 @@ bool to_opencv_norm(int32_t norm_kind, int &opencv_norm) noexcept {
 }
 
 cv::Mat source_for_norm(const cv::Mat &source) {
-    // OpenCV 4.6's single-source cv::norm has no CV_16F kernel.
-    // Newer OpenCV converts CV_16F to CV_32F internally before the
-    // same L1/L2/Inf kernels. Convert here so both versions produce
-    // the same absolute-norm results. convertTo is lossless for values
-    // representable in Float16, preserves channel count, and leaves
-    // the borrowed source unchanged. An empty CV_16F Mat stays empty
-    // and still returns zero.
+#if CV_VERSION_MAJOR > 4 || (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 8)
+    return source;
+#else
+    // OpenCV < 4.8 single-source cv::norm has no CV_16F kernel.
+    // Convert to CV_32F so absolute-norm results match later versions
+    // that convert internally before the same L1/L2/Inf kernels.
+    // convertTo is lossless for values representable in Float16,
+    // preserves channel count, and leaves the borrowed source unchanged.
+    // An empty CV_16F Mat stays empty and still returns zero.
     if (source.depth() != CV_16F) {
         return source;
     }
@@ -335,6 +337,7 @@ cv::Mat source_for_norm(const cv::Mat &source) {
     cv::Mat converted;
     source.convertTo(converted, CV_32F);
     return converted;
+#endif
 }
 
 bool to_opencv_normalize_kind(int32_t normalize_kind,
@@ -1741,10 +1744,10 @@ opencv_core_mat_reduce(const opencv_core_mat_handle *source, int32_t axis,
         opencv_kind = cv::REDUCE_MIN;
         break;
     case OPENCV_CORE_REDUCE_SUM_OF_SQUARES:
-#if CV_VERSION_MAJOR > 4 || (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 10)
+#if CV_VERSION_MAJOR > 4 || (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 8)
         opencv_kind = cv::REDUCE_SUM2;
 #else
-        // OpenCV 4.6 has no REDUCE_SUM2. Emulate below after dest depth
+        // OpenCV < 4.8 has no REDUCE_SUM2. Emulate below after dest depth
         // is resolved. Keep a distinct kind so the later path can see it.
         opencv_kind = OPENCV_CORE_REDUCE_SUM_OF_SQUARES;
 #endif
@@ -1761,7 +1764,7 @@ opencv_core_mat_reduce(const opencv_core_mat_handle *source, int32_t axis,
 
     try {
         cv::Mat reduced;
-#if CV_VERSION_MAJOR > 4 || (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 10)
+#if CV_VERSION_MAJOR > 4 || (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 8)
         cv::reduce(source->value, reduced, opencv_axis, opencv_kind,
                    opencv_depth);
 #else

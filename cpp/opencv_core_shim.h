@@ -1665,8 +1665,9 @@ opencv_core_mat_mean_std_dev_masked(
 
 /*
  * Computes the requested absolute norm over every scalar component of mat.
- * Empty Mats return zero according to OpenCV semantics. CV_16F sources are
- * converted to CV_32F before cv::norm so OpenCV 4.6 matches later versions.
+ * Empty Mats return zero according to OpenCV semantics. OpenCV < 4.8
+ * converts CV_16F sources to CV_32F before cv::norm; OpenCV 4.8+
+ * passes CV_16F through to native cv::norm.
  */
 opencv_core_status
 opencv_core_mat_norm(const opencv_core_mat_handle *mat, int32_t norm_kind,
@@ -1676,9 +1677,9 @@ opencv_core_mat_norm(const opencv_core_mat_handle *mat, int32_t norm_kind,
  * Computes the requested absolute norm over source elements selected by mask.
  * Mask must be a same-sized single-channel UInt8 Mat; any nonzero value
  * selects the complete source element, including every channel. Empty sources
- * and all-zero masks return zero according to OpenCV semantics. CV_16F
- * sources are converted to CV_32F before cv::norm so OpenCV 4.6 matches
- * later versions.
+ * and all-zero masks return zero according to OpenCV semantics. OpenCV
+ * < 4.8 converts CV_16F sources to CV_32F before cv::norm; OpenCV 4.8+
+ * passes CV_16F through to native cv::norm.
  */
 opencv_core_status
 opencv_core_mat_norm_masked(const opencv_core_mat_handle *mat,
