@@ -1537,6 +1537,16 @@ opencv_core_mat_sort(const opencv_core_mat_handle *source, uint8_t axis,
     }
 
     try {
+        // OpenCV compatibility: OpenCV 5 cv::sort uses createSameSize, which
+        // can construct a 0-D scalar destination for a default-constructed
+        // source (dims == 0) rather than preserving default-empty metadata.
+        // After Ada type validation and ABI flag checks, a default-empty
+        // source produces an independently owned default-empty result. Typed
+        // 0x0 Mats keep the native path.
+        if (is_default_empty_mat(source->value)) {
+            return make_empty_like(source->value, out_mat);
+        }
+
         int flags = (axis == 0 ? cv::SORT_EVERY_ROW : cv::SORT_EVERY_COLUMN) |
                     (descending == 0 ? cv::SORT_ASCENDING : cv::SORT_DESCENDING);
         cv::Mat sorted;
@@ -1570,6 +1580,14 @@ opencv_core_mat_sort_indices(const opencv_core_mat_handle *source, uint8_t axis,
 
     if (descending != 0 && descending != 1) {
         return invalid_argument("descending must be 0 or 1");
+    }
+
+    // OpenCV compatibility: OpenCV 5 sortIdx accepts a default-constructed
+    // 0-D source and produces a result. The established binding contract
+    // continues to reject a default empty Mat.
+    if (is_default_empty_mat(source->value)) {
+        return invalid_argument(
+            "Sort_Indices does not accept a default empty Mat");
     }
 
     try {
