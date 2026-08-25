@@ -3605,7 +3605,15 @@ opencv_core_mat_element_size(const opencv_core_mat_handle *mat,
     }
 
     try {
-        if (!size_to_abi(mat->value.elemSize(), *out_element_size)) {
+        // OpenCV compatibility: OpenCV 5 derives elemSize() from type flags,
+        // so a genuine default cv::Mat() (CV_8UC1, dims == 0) reports 1 byte.
+        // OpenCV 4.x and the Ada contract report 0 for that case. Typed empty
+        // Mats (dims == 2) keep the size implied by their actual type.
+        size_t element_size = 0;
+        if (!is_default_empty_mat(mat->value)) {
+            element_size = mat->value.elemSize();
+        }
+        if (!size_to_abi(element_size, *out_element_size)) {
             return invalid_argument(
                 "Mat element size exceeds the C ABI size range");
         }

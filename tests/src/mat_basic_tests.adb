@@ -492,11 +492,43 @@ package body Mat_Basic_Tests is
          "The installed OpenCV default Mat should not be a submatrix");
    end Empty_Mat_Reports_Authoritative_Storage_Metadata;
 
+   procedure Default_And_Typed_Empty_Mats_Report_Distinct_Element_Sizes
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Default_Empty : OpenCV.Core.Mat;
+      Empty_UInt8   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.UInt8, 1));
+      Empty_Float32 : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 1));
+      Empty_Vec3    : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 3));
+   begin
+      AUnit.Assertions.Assert
+        (Default_Empty.Is_Empty
+         and then Default_Empty.Rows = 0
+         and then Default_Empty.Columns = 0
+         and then Default_Empty.Element_Size = 0,
+         "A genuine default Mat should report zero element bytes");
+      AUnit.Assertions.Assert
+        (Empty_UInt8.Is_Empty and then Empty_UInt8.Element_Size = 1,
+         "A typed empty UInt8 C1 Mat should report a one-byte element");
+      AUnit.Assertions.Assert
+        (Empty_Float32.Is_Empty and then Empty_Float32.Element_Size = 4,
+         "A typed empty Float32 C1 Mat should report a four-byte element");
+      AUnit.Assertions.Assert
+        (Empty_Vec3.Is_Empty and then Empty_Vec3.Element_Size = 12,
+         "A typed empty Float32 C3 Mat should report a twelve-byte element");
+   end Default_And_Typed_Empty_Mats_Report_Distinct_Element_Sizes;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
+      Typed_Empty_Sizes : constant Caller.Test_Method :=
+        Default_And_Typed_Empty_Mats_Report_Distinct_Element_Sizes'Access;
+
    begin
       Result.Add_Test
         (Caller.Create
@@ -569,6 +601,11 @@ package body Mat_Basic_Tests is
         (Caller.Create
            ("Empty Mat reports authoritative storage metadata",
             Empty_Mat_Reports_Authoritative_Storage_Metadata'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Default and typed empty Mats report distinct element sizes",
+            Typed_Empty_Sizes));
+
       return Result'Access;
    end Suite;
 
