@@ -853,6 +853,22 @@ opencv_core_status copy_file_node_string(const cv::FileNode &node,
     return OPENCV_CORE_OK;
 }
 
+// A default Ada Mat is a genuine cv::Mat() (dims == 0, empty()). Typed
+// Create(0, 0, ...) Mats have dims == 2 and are not this case.
+bool is_default_empty_mat(const cv::Mat &mat) noexcept {
+    return mat.empty() && mat.dims == 0;
+}
+
+// OpenCV 5 elementwise output creation can turn a default-empty source into a
+// 0-D scalar destination (total() == 1) and then fail in getContinuousSize2D.
+// Return an independently owned default-empty result instead of entering that
+// path. Do not alias the source header.
+opencv_core_status
+make_default_empty_mat(opencv_core_mat_handle **out_mat) {
+    *out_mat = new opencv_core_mat_handle();
+    return OPENCV_CORE_OK;
+}
+
 } // namespace
 
 extern "C" {
@@ -2209,6 +2225,16 @@ opencv_core_mat_pow(const opencv_core_mat_handle *source, double power,
     }
 
     try {
+        // ABI safety: OpenCV 5 cv::pow creates a 0-D scalar destination for a
+        // default-constructed source (dims == 0, total() == 0). The later
+        // getContinuousSize2D check then throws because the source total is 0
+        // while the destination total is 1. The Ada contract accepts a
+        // default-empty source for an already-validated integer power as an
+        // independently owned empty result.
+        if (is_default_empty_mat(source->value)) {
+            return make_default_empty_mat(out_mat);
+        }
+
         cv::Mat transformed;
         cv::pow(source->value, power, transformed);
         *out_mat = new opencv_core_mat_handle(transformed);
@@ -2476,6 +2502,16 @@ opencv_core_mat_multiply(const opencv_core_mat_handle *left,
     }
 
     try {
+        // ABI safety: OpenCV 5 cv::multiply creates a 0-D scalar destination
+        // for default-constructed operands (dims == 0). getContinuousSize2D
+        // then throws because source total() == 0 while destination total()
+        // == 1. After Ada compatibility checks, two default-empty operands
+        // produce an independently owned empty result.
+        if (is_default_empty_mat(left->value) &&
+            is_default_empty_mat(right->value)) {
+            return make_default_empty_mat(out_mat);
+        }
+
         cv::Mat product;
         cv::multiply(left->value, right->value, product, 1.0, -1);
         *out_mat = new opencv_core_mat_handle(product);
@@ -2502,6 +2538,16 @@ opencv_core_mat_divide(const opencv_core_mat_handle *left,
     }
 
     try {
+        // ABI safety: OpenCV 5 cv::divide still reaches getContinuousSize2D
+        // for some empty-header combinations after output creation turns a
+        // default-constructed operand (dims == 0) into a 0-D scalar
+        // destination. After Ada compatibility checks, two default-empty
+        // operands produce an independently owned empty result.
+        if (is_default_empty_mat(left->value) &&
+            is_default_empty_mat(right->value)) {
+            return make_default_empty_mat(out_mat);
+        }
+
         cv::Mat quotient;
         cv::divide(left->value, right->value, quotient, 1.0, -1);
         *out_mat = new opencv_core_mat_handle(quotient);
@@ -2607,6 +2653,16 @@ opencv_core_mat_minimum(const opencv_core_mat_handle *left,
     }
 
     try {
+        // ABI safety: OpenCV 5 cv::min creates a 0-D scalar destination for
+        // default-constructed operands (dims == 0). getContinuousSize2D then
+        // throws because source and destination totals do not match. After
+        // Ada compatibility checks, two default-empty operands produce an
+        // independently owned empty result.
+        if (is_default_empty_mat(left->value) &&
+            is_default_empty_mat(right->value)) {
+            return make_default_empty_mat(out_mat);
+        }
+
         cv::Mat result;
         cv::min(left->value, right->value, result);
         *out_mat = new opencv_core_mat_handle(result);
@@ -2633,6 +2689,16 @@ opencv_core_mat_maximum(const opencv_core_mat_handle *left,
     }
 
     try {
+        // ABI safety: OpenCV 5 cv::max creates a 0-D scalar destination for
+        // default-constructed operands (dims == 0). getContinuousSize2D then
+        // throws because source and destination totals do not match. After
+        // Ada compatibility checks, two default-empty operands produce an
+        // independently owned empty result.
+        if (is_default_empty_mat(left->value) &&
+            is_default_empty_mat(right->value)) {
+            return make_default_empty_mat(out_mat);
+        }
+
         cv::Mat result;
         cv::max(left->value, right->value, result);
         *out_mat = new opencv_core_mat_handle(result);
@@ -2659,6 +2725,16 @@ opencv_core_mat_bitwise_and(const opencv_core_mat_handle *left,
     }
 
     try {
+        // ABI safety: OpenCV 5 bitwise operations create a 0-D scalar
+        // destination for default-constructed operands (dims == 0).
+        // getContinuousSize2D then throws because source and destination
+        // totals do not match. After Ada compatibility checks, two
+        // default-empty operands produce an independently owned empty result.
+        if (is_default_empty_mat(left->value) &&
+            is_default_empty_mat(right->value)) {
+            return make_default_empty_mat(out_mat);
+        }
+
         cv::Mat result;
         cv::bitwise_and(left->value, right->value, result);
         *out_mat = new opencv_core_mat_handle(result);
@@ -2685,6 +2761,16 @@ opencv_core_mat_bitwise_or(const opencv_core_mat_handle *left,
     }
 
     try {
+        // ABI safety: OpenCV 5 bitwise operations create a 0-D scalar
+        // destination for default-constructed operands (dims == 0).
+        // getContinuousSize2D then throws because source and destination
+        // totals do not match. After Ada compatibility checks, two
+        // default-empty operands produce an independently owned empty result.
+        if (is_default_empty_mat(left->value) &&
+            is_default_empty_mat(right->value)) {
+            return make_default_empty_mat(out_mat);
+        }
+
         cv::Mat result;
         cv::bitwise_or(left->value, right->value, result);
         *out_mat = new opencv_core_mat_handle(result);
@@ -2711,6 +2797,16 @@ opencv_core_mat_bitwise_xor(const opencv_core_mat_handle *left,
     }
 
     try {
+        // ABI safety: OpenCV 5 bitwise operations create a 0-D scalar
+        // destination for default-constructed operands (dims == 0).
+        // getContinuousSize2D then throws because source and destination
+        // totals do not match. After Ada compatibility checks, two
+        // default-empty operands produce an independently owned empty result.
+        if (is_default_empty_mat(left->value) &&
+            is_default_empty_mat(right->value)) {
+            return make_default_empty_mat(out_mat);
+        }
+
         cv::Mat result;
         cv::bitwise_xor(left->value, right->value, result);
         *out_mat = new opencv_core_mat_handle(result);
@@ -2736,6 +2832,15 @@ opencv_core_mat_bitwise_not(const opencv_core_mat_handle *source,
     }
 
     try {
+        // ABI safety: OpenCV 5 cv::bitwise_not creates a 0-D scalar
+        // destination for a default-constructed source (dims == 0).
+        // getContinuousSize2D then throws because source and destination
+        // totals do not match. The Ada contract accepts this empty case as
+        // an independently owned empty result.
+        if (is_default_empty_mat(source->value)) {
+            return make_default_empty_mat(out_mat);
+        }
+
         cv::Mat result;
         cv::bitwise_not(source->value, result);
         *out_mat = new opencv_core_mat_handle(result);
@@ -2763,6 +2868,18 @@ opencv_core_mat_bitwise_and_masked(const opencv_core_mat_handle *left,
     }
 
     try {
+        // ABI safety: OpenCV 5 masked bitwise operations create a 0-D scalar
+        // destination for default-constructed operands (dims == 0).
+        // getContinuousSize2D then throws because source and destination
+        // totals do not match. After Ada compatibility and mask checks, a
+        // default-empty source, operand, and mask produce an independently
+        // owned empty result.
+        if (is_default_empty_mat(left->value) &&
+            is_default_empty_mat(right->value) &&
+            is_default_empty_mat(mask->value)) {
+            return make_default_empty_mat(out_mat);
+        }
+
         cv::Mat result;
         cv::bitwise_and(left->value, right->value, result, mask->value);
         *out_mat = new opencv_core_mat_handle(result);
@@ -2790,6 +2907,18 @@ opencv_core_mat_bitwise_or_masked(const opencv_core_mat_handle *left,
     }
 
     try {
+        // ABI safety: OpenCV 5 masked bitwise operations create a 0-D scalar
+        // destination for default-constructed operands (dims == 0).
+        // getContinuousSize2D then throws because source and destination
+        // totals do not match. After Ada compatibility and mask checks, a
+        // default-empty source, operand, and mask produce an independently
+        // owned empty result.
+        if (is_default_empty_mat(left->value) &&
+            is_default_empty_mat(right->value) &&
+            is_default_empty_mat(mask->value)) {
+            return make_default_empty_mat(out_mat);
+        }
+
         cv::Mat result;
         cv::bitwise_or(left->value, right->value, result, mask->value);
         *out_mat = new opencv_core_mat_handle(result);
@@ -2817,6 +2946,18 @@ opencv_core_mat_bitwise_xor_masked(const opencv_core_mat_handle *left,
     }
 
     try {
+        // ABI safety: OpenCV 5 masked bitwise operations create a 0-D scalar
+        // destination for default-constructed operands (dims == 0).
+        // getContinuousSize2D then throws because source and destination
+        // totals do not match. After Ada compatibility and mask checks, a
+        // default-empty source, operand, and mask produce an independently
+        // owned empty result.
+        if (is_default_empty_mat(left->value) &&
+            is_default_empty_mat(right->value) &&
+            is_default_empty_mat(mask->value)) {
+            return make_default_empty_mat(out_mat);
+        }
+
         cv::Mat result;
         cv::bitwise_xor(left->value, right->value, result, mask->value);
         *out_mat = new opencv_core_mat_handle(result);
@@ -2843,6 +2984,16 @@ opencv_core_mat_bitwise_not_masked(const opencv_core_mat_handle *source,
     }
 
     try {
+        // ABI safety: OpenCV 5 masked bitwise_not creates a 0-D scalar
+        // destination for a default-constructed source (dims == 0).
+        // getContinuousSize2D then throws because source and destination
+        // totals do not match. After Ada mask checks, a default-empty source
+        // and mask produce an independently owned empty result.
+        if (is_default_empty_mat(source->value) &&
+            is_default_empty_mat(mask->value)) {
+            return make_default_empty_mat(out_mat);
+        }
+
         cv::Mat result;
         cv::bitwise_not(source->value, result, mask->value);
         *out_mat = new opencv_core_mat_handle(result);
