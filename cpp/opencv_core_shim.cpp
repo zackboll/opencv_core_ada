@@ -6712,7 +6712,11 @@ opencv_core_mat_has_non_zero(const opencv_core_mat_handle *mat,
     }
 
     try {
+#if CV_VERSION_MAJOR > 4 || (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 8)
+        *out_result = cv::hasNonZero(mat->value) ? 1 : 0;
+#else
         *out_result = cv::countNonZero(mat->value) != 0 ? 1 : 0;
+#endif
         return OPENCV_CORE_OK;
     } catch (...) {
         return translate_current_exception();
