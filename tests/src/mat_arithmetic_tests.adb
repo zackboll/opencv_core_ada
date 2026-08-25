@@ -1161,6 +1161,56 @@ package body Mat_Arithmetic_Tests is
         (Bad_Channels'Access, "Maximum must reject mismatched channel counts");
    end Mat_Minimum_And_Maximum_Handle_Empty_And_Compatibility;
 
+   procedure Mat_Mixed_Empty_Representations_Remain_Empty
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Default_Empty       : OpenCV.Core.Mat;
+      Typed_Empty         : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.UInt8, 1));
+      Default_Times_Typed : constant OpenCV.Core.Mat :=
+        Default_Empty.Multiply (Typed_Empty);
+      Typed_Times_Default : constant OpenCV.Core.Mat :=
+        Typed_Empty.Multiply (Default_Empty);
+      Default_Over_Typed  : constant OpenCV.Core.Mat :=
+        Default_Empty.Divide (Typed_Empty);
+      Typed_Over_Default  : constant OpenCV.Core.Mat :=
+        Typed_Empty.Divide (Default_Empty);
+      Default_Min_Typed   : constant OpenCV.Core.Mat :=
+        Default_Empty.Minimum (Typed_Empty);
+      Typed_Min_Default   : constant OpenCV.Core.Mat :=
+        Typed_Empty.Minimum (Default_Empty);
+      Default_Max_Typed   : constant OpenCV.Core.Mat :=
+        Default_Empty.Maximum (Typed_Empty);
+      Typed_Max_Default   : constant OpenCV.Core.Mat :=
+        Typed_Empty.Maximum (Default_Empty);
+
+      function Is_Compatible_Empty (Image : OpenCV.Core.Mat) return Boolean
+      is (Image.Is_Empty
+          and then Image.Rows = 0
+          and then Image.Columns = 0
+          and then Image.Depth = OpenCV.Core.UInt8
+          and then Image.Channels = 1);
+   begin
+      AUnit.Assertions.Assert
+        (Is_Compatible_Empty (Default_Times_Typed)
+         and then Is_Compatible_Empty (Typed_Times_Default),
+         "Multiply must accept mixed default-empty and typed 0x0 UInt8 C1"
+         & " operands as an empty result");
+      AUnit.Assertions.Assert
+        (Is_Compatible_Empty (Default_Over_Typed)
+         and then Is_Compatible_Empty (Typed_Over_Default),
+         "Divide must accept mixed default-empty and typed 0x0 UInt8 C1"
+         & " operands as an empty result");
+      AUnit.Assertions.Assert
+        (Is_Compatible_Empty (Default_Min_Typed)
+         and then Is_Compatible_Empty (Typed_Min_Default)
+         and then Is_Compatible_Empty (Default_Max_Typed)
+         and then Is_Compatible_Empty (Typed_Max_Default),
+         "Minimum and Maximum must accept mixed default-empty and typed 0x0"
+         & " UInt8 C1 operands as an empty result");
+   end Mat_Mixed_Empty_Representations_Remain_Empty;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -1289,6 +1339,10 @@ package body Mat_Arithmetic_Tests is
         (Caller.Create
            ("Mat Minimum and Maximum handle empty and compatibility",
             Mat_Minimum_And_Maximum_Handle_Empty_And_Compatibility'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat mixed empty representations remain empty",
+            Mat_Mixed_Empty_Representations_Remain_Empty'Access));
       return Result'Access;
    end Suite;
 

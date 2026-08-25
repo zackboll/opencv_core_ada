@@ -291,6 +291,50 @@ package body Mat_Mask_Tests is
         (Wrong_Columns'Access, "Mask must reject wrong columns");
    end Masked_Bitwise_Invalid_Masks_And_Empty;
 
+   procedure Bitwise_Mixed_Empty_Representations_Remain_Empty
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Default_Empty          : OpenCV.Core.Mat;
+      Typed_Empty            : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.UInt8, 1));
+      Default_And_Typed      : constant OpenCV.Core.Mat :=
+        Default_Empty.Bitwise_And (Typed_Empty);
+      Typed_And_Default      : constant OpenCV.Core.Mat :=
+        Typed_Empty.Bitwise_And (Default_Empty);
+      Default_Or_Typed       : constant OpenCV.Core.Mat :=
+        Default_Empty.Bitwise_Or (Typed_Empty);
+      Typed_Xor_Default      : constant OpenCV.Core.Mat :=
+        Typed_Empty.Bitwise_Xor (Default_Empty);
+      Default_Not_Typed_Mask : constant OpenCV.Core.Mat :=
+        Default_Empty.Bitwise_Not (Typed_Empty);
+      Typed_Not_Default_Mask : constant OpenCV.Core.Mat :=
+        Typed_Empty.Bitwise_Not (Default_Empty);
+      Mixed_Masked_And       : constant OpenCV.Core.Mat :=
+        Default_Empty.Bitwise_And (Typed_Empty, Typed_Empty);
+
+      function Is_Compatible_Empty (Image : OpenCV.Core.Mat) return Boolean
+      is (Image.Is_Empty
+          and then Image.Rows = 0
+          and then Image.Columns = 0
+          and then Image.Depth = OpenCV.Core.UInt8
+          and then Image.Channels = 1);
+   begin
+      AUnit.Assertions.Assert
+        (Is_Compatible_Empty (Default_And_Typed)
+         and then Is_Compatible_Empty (Typed_And_Default)
+         and then Is_Compatible_Empty (Default_Or_Typed)
+         and then Is_Compatible_Empty (Typed_Xor_Default),
+         "Bitwise AND, OR, and XOR must accept mixed default-empty and"
+         & " typed 0x0 UInt8 C1 operands as an empty result");
+      AUnit.Assertions.Assert
+        (Is_Compatible_Empty (Default_Not_Typed_Mask)
+         and then Is_Compatible_Empty (Typed_Not_Default_Mask)
+         and then Is_Compatible_Empty (Mixed_Masked_And),
+         "Masked bitwise operations must accept mixed default-empty and"
+         & " typed 0x0 UInt8 C1 operands and masks as an empty result");
+   end Bitwise_Mixed_Empty_Representations_Remain_Empty;
+
    procedure In_Range_Uses_Inclusive_UInt8_Bounds_And_Mask_Contract
      (Test : in out Mat_Test_Fixture)
    is
@@ -1057,6 +1101,10 @@ package body Mat_Mask_Tests is
         (Caller.Create
            ("Masked bitwise operations reject invalid masks and handle empty",
             Masked_Bitwise_Invalid_Masks_And_Empty'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Bitwise mixed empty representations remain empty",
+            Bitwise_Mixed_Empty_Representations_Remain_Empty'Access));
       Result.Add_Test
         (Caller.Create
            ("In_Range uses inclusive UInt8 bounds and mask contract",
