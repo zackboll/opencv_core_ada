@@ -335,6 +335,35 @@ package body Mat_Mask_Tests is
          & " typed 0x0 UInt8 C1 operands and masks as an empty result");
    end Bitwise_Mixed_Empty_Representations_Remain_Empty;
 
+   procedure Masked_Bitwise_Mixed_Empty_Preserves_Typed_Metadata
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Typed_Float32_C3 : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 3));
+      Default_Mask     : OpenCV.Core.Mat;
+      Not_Result       : constant OpenCV.Core.Mat :=
+        Typed_Float32_C3.Bitwise_Not (Default_Mask);
+      And_Result       : constant OpenCV.Core.Mat :=
+        Typed_Float32_C3.Bitwise_And (Typed_Float32_C3, Default_Mask);
+
+      function Is_Empty_Float32_C3 (Image : OpenCV.Core.Mat) return Boolean
+      is (Image.Is_Empty
+          and then Image.Rows = 0
+          and then Image.Columns = 0
+          and then Image.Depth = OpenCV.Core.Float32
+          and then Image.Channels = 3);
+   begin
+      AUnit.Assertions.Assert
+        (Is_Empty_Float32_C3 (Not_Result),
+         "Masked Bitwise_Not of typed empty Float32 C3 with a default empty"
+         & " mask must remain empty Float32 C3");
+      AUnit.Assertions.Assert
+        (Is_Empty_Float32_C3 (And_Result),
+         "Masked Bitwise_And of typed empty Float32 C3 operands with a"
+         & " default empty mask must remain empty Float32 C3");
+   end Masked_Bitwise_Mixed_Empty_Preserves_Typed_Metadata;
+
    procedure In_Range_Uses_Inclusive_UInt8_Bounds_And_Mask_Contract
      (Test : in out Mat_Test_Fixture)
    is
@@ -1105,6 +1134,11 @@ package body Mat_Mask_Tests is
         (Caller.Create
            ("Bitwise mixed empty representations remain empty",
             Bitwise_Mixed_Empty_Representations_Remain_Empty'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Masked bitwise mixed empty preserves typed metadata",
+            Masked_Bitwise_Mixed_Empty_Preserves_Typed_Metadata'Access));
+
       Result.Add_Test
         (Caller.Create
            ("In_Range uses inclusive UInt8 bounds and mask contract",
