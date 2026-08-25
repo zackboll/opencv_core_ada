@@ -1131,13 +1131,19 @@ opencv_core_mat_solve_least_squares(
     opencv_core_mat_handle **out_solution);
 
 /*
- * Solves OpenCV 4.10's continuous maximization linear program. Objective and
+ * Solves OpenCV's continuous maximization linear program. Objective and
  * constraints are borrowed and unchanged. On successful execution,
  * out_lp_status receives one OPENCV_CORE_LP_* identifier. Unique and multiple
  * optima publish an independently owned Float64 column solution; unbounded,
  * infeasible, and numerical-loss results leave out_solution null. Both output
  * pointers must be non-null and are initialized to INFEASIBLE and null before
  * work. The public Ada layer owns mathematical input validation.
+ *
+ * constraint_tolerance is the OpenCV 4.8+ constr_eps argument. OpenCV 4.6
+ * has no such parameter and no SOLVELP_LOST result: the default 1e-12 and
+ * exact-zero values are accepted and the 3-argument solver is used;
+ * any other tolerance is rejected. OPENCV_CORE_LP_NUMERICAL_LOSS is
+ * produced only when the linked OpenCV reports SOLVELP_LOST.
  */
 opencv_core_status
 opencv_core_solve_linear_program(
@@ -1659,7 +1665,8 @@ opencv_core_mat_mean_std_dev_masked(
 
 /*
  * Computes the requested absolute norm over every scalar component of mat.
- * Empty Mats return zero according to OpenCV semantics.
+ * Empty Mats return zero according to OpenCV semantics. CV_16F sources are
+ * converted to CV_32F before cv::norm so OpenCV 4.6 matches later versions.
  */
 opencv_core_status
 opencv_core_mat_norm(const opencv_core_mat_handle *mat, int32_t norm_kind,
@@ -1669,7 +1676,9 @@ opencv_core_mat_norm(const opencv_core_mat_handle *mat, int32_t norm_kind,
  * Computes the requested absolute norm over source elements selected by mask.
  * Mask must be a same-sized single-channel UInt8 Mat; any nonzero value
  * selects the complete source element, including every channel. Empty sources
- * and all-zero masks return zero according to OpenCV semantics.
+ * and all-zero masks return zero according to OpenCV semantics. CV_16F
+ * sources are converted to CV_32F before cv::norm so OpenCV 4.6 matches
+ * later versions.
  */
 opencv_core_status
 opencv_core_mat_norm_masked(const opencv_core_mat_handle *mat,

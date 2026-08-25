@@ -251,6 +251,14 @@ package body Mat_Reduction_Tests is
          pragma Unreferenced (Result);
       end Default_Sum;
 
+      procedure Default_Sum_Of_Squares is
+         Result : constant OpenCV.Core.Mat :=
+           UInt8_Source.Reduce
+             (OpenCV.Core.Across_Rows, OpenCV.Core.Sum_Of_Squares);
+      begin
+         pragma Unreferenced (Result);
+      end Default_Sum_Of_Squares;
+
       procedure Converted_Maximum is
          Result : constant OpenCV.Core.Mat :=
            UInt8_Source.Reduce
@@ -274,9 +282,75 @@ package body Mat_Reduction_Tests is
          "Default UInt8 Sum must expose OpenCV's unsupported dtype"
          & " combination");
       Assert_Raises_OpenCV_Error
+        (Default_Sum_Of_Squares'Access,
+         "Default UInt8 Sum_Of_Squares must expose OpenCV's unsupported dtype"
+         & " combination");
+      Assert_Raises_OpenCV_Error
         (Converted_Maximum'Access,
          "Maximum must reject output-depth conversion before entering OpenCV");
    end Reduce_Handles_Empty_And_Invalid_Depth_Combinations;
+
+   procedure Reduce_Sum_Of_Squares_Promotes_Integer_Sources_Before_Multiply
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source           : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
+      As_Int32         : OpenCV.Core.Mat;
+      As_Float32       : OpenCV.Core.Mat;
+      Int32_As_Float32 : OpenCV.Core.Mat;
+   begin
+      --  200*200 and 16*16 both leave the UInt8 range. Native REDUCE_SUM2
+      --  promotes to the destination type first, so the squares are 40000
+      --  and 256. Multiplying in UInt8 first saturates to 255 (or wraps)
+      --  and then reduces to a different pair.
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 0, 200);
+      OpenCV.Core.UInt8_Access.Set (Source, 1, 0, 200);
+      OpenCV.Core.UInt8_Access.Set (Source, 0, 1, 16);
+      OpenCV.Core.UInt8_Access.Set (Source, 1, 1, 1);
+      As_Int32 :=
+        Source.Reduce
+          (OpenCV.Core.Across_Rows,
+           OpenCV.Core.Sum_Of_Squares,
+           OpenCV.Core.Int32);
+      As_Float32 :=
+        Source.Reduce
+          (OpenCV.Core.Across_Rows,
+           OpenCV.Core.Sum_Of_Squares,
+           OpenCV.Core.Float32);
+      Int32_As_Float32 := As_Int32.Convert_To (OpenCV.Core.Float32);
+
+      AUnit.Assertions.Assert
+        (As_Int32.Rows = 1
+         and then As_Int32.Columns = 2
+         and then As_Int32.Depth = OpenCV.Core.Int32
+         and then As_Int32.Channels = 1,
+         "UInt8 Sum_Of_Squares must accept the REDUCE_SUM2 Int32 dest type");
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float
+              (OpenCV.Core.Float32_Access.Get (Int32_As_Float32, 0, 0)),
+            80_000.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get
+                          (Int32_As_Float32, 0, 1)),
+                     257.0),
+         "UInt8 Sum_Of_Squares to Int32 must square after dest promotion");
+      AUnit.Assertions.Assert
+        (As_Float32.Rows = 1
+         and then As_Float32.Columns = 2
+         and then As_Float32.Depth = OpenCV.Core.Float32
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (As_Float32, 0, 0)),
+                     80_000.0)
+         and then Approximately_Equal
+                    (Long_Float
+                       (OpenCV.Core.Float32_Access.Get (As_Float32, 0, 1)),
+                     257.0),
+         "UInt8 Sum_Of_Squares to Float32 must square after dest promotion");
+   end Reduce_Sum_Of_Squares_Promotes_Integer_Sources_Before_Multiply;
 
    procedure Trace_Supports_Float32_And_Multiple_Channels
      (Test : in out Mat_Test_Fixture)
@@ -12570,6 +12644,11 @@ package body Mat_Reduction_Tests is
         (Caller.Create
            ("Reduce handles empty and invalid depth combinations",
             Reduce_Handles_Empty_And_Invalid_Depth_Combinations'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Reduce Sum_Of_Squares promotes integer sources before multiply",
+            Reduce_Sum_Of_Squares_Promotes_Integer_Sources_Before_Multiply'
+              Access));
       Result.Add_Test
         (Caller.Create
            ("Float32 Norm computes L1, L2, and Infinity",

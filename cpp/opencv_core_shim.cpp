@@ -320,6 +320,23 @@ bool to_opencv_norm(int32_t norm_kind, int &opencv_norm) noexcept {
     }
 }
 
+cv::Mat source_for_norm(const cv::Mat &source) {
+    // OpenCV 4.6's single-source cv::norm has no CV_16F kernel.
+    // Newer OpenCV converts CV_16F to CV_32F internally before the
+    // same L1/L2/Inf kernels. Convert here so both versions produce
+    // the same absolute-norm results. convertTo is lossless for values
+    // representable in Float16, preserves channel count, and leaves
+    // the borrowed source unchanged. An empty CV_16F Mat stays empty
+    // and still returns zero.
+    if (source.depth() != CV_16F) {
+        return source;
+    }
+
+    cv::Mat converted;
+    source.convertTo(converted, CV_32F);
+    return converted;
+}
+
 bool to_opencv_normalize_kind(int32_t normalize_kind,
                               int &opencv_normalize_kind) noexcept {
     switch (normalize_kind) {
@@ -1724,7 +1741,13 @@ opencv_core_mat_reduce(const opencv_core_mat_handle *source, int32_t axis,
         opencv_kind = cv::REDUCE_MIN;
         break;
     case OPENCV_CORE_REDUCE_SUM_OF_SQUARES:
+#if CV_VERSION_MAJOR > 4 || (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 10)
         opencv_kind = cv::REDUCE_SUM2;
+#else
+        // OpenCV 4.6 has no REDUCE_SUM2. Emulate below after dest depth
+        // is resolved. Keep a distinct kind so the later path can see it.
+        opencv_kind = OPENCV_CORE_REDUCE_SUM_OF_SQUARES;
+#endif
         break;
     default:
         return invalid_argument("reduction kind is not supported");
@@ -1738,8 +1761,61 @@ opencv_core_mat_reduce(const opencv_core_mat_handle *source, int32_t axis,
 
     try {
         cv::Mat reduced;
+#if CV_VERSION_MAJOR > 4 || (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 10)
         cv::reduce(source->value, reduced, opencv_axis, opencv_kind,
                    opencv_depth);
+#else
+        if (reduction_kind == OPENCV_CORE_REDUCE_SUM_OF_SQUARES) {
+            // REDUCE_SUM2 squares after promoting to the destination type.
+            // src.mul(src) then REDUCE_SUM is not equivalent: integer
+            // multiply saturates/overflows in the source type first.
+            const int dest_depth = opencv_depth < 0
+                                       ? source->value.depth()
+                                       : opencv_depth;
+            const int src_depth = source->value.depth();
+            // Match OpenCV 4.10 REDUCE_SUM / REDUCE_SUM2 dest-type pairs.
+            const bool supported =
+                (src_depth == CV_8U &&
+                 (dest_depth == CV_32S || dest_depth == CV_32F ||
+                  dest_depth == CV_64F)) ||
+                (src_depth == CV_16U &&
+                 (dest_depth == CV_32F || dest_depth == CV_64F)) ||
+                (src_depth == CV_16S &&
+                 (dest_depth == CV_32F || dest_depth == CV_64F)) ||
+                (src_depth == CV_32F &&
+                 (dest_depth == CV_32F || dest_depth == CV_64F)) ||
+                (src_depth == CV_64F && dest_depth == CV_64F);
+            if (!supported) {
+                CV_Error(cv::Error::StsUnsupportedFormat,
+                         "Unsupported combination of input and output array "
+                         "formats");
+            }
+            const int dest_type =
+                CV_MAKETYPE(dest_depth, source->value.channels());
+            cv::Mat promoted;
+            source->value.convertTo(promoted, dest_type);
+            cv::Mat squares;
+            cv::multiply(promoted, promoted, squares);
+            // REDUCE_SUM accepts same-type floating sources, but not
+            // Int32->Int32. Square in dest type, then accumulate in a
+            // REDUCE_SUM-legal depth and convert back when needed.
+            if (dest_depth == CV_32F || dest_depth == CV_64F) {
+                cv::reduce(squares, reduced, opencv_axis, cv::REDUCE_SUM,
+                           dest_depth);
+            } else {
+                cv::Mat squares64;
+                squares.convertTo(squares64,
+                                  CV_MAKETYPE(CV_64F, squares.channels()));
+                cv::Mat reduced64;
+                cv::reduce(squares64, reduced64, opencv_axis, cv::REDUCE_SUM,
+                           CV_64F);
+                reduced64.convertTo(reduced, dest_type);
+            }
+        } else {
+            cv::reduce(source->value, reduced, opencv_axis, opencv_kind,
+                       opencv_depth);
+        }
+#endif
         *out_mat = new opencv_core_mat_handle(reduced);
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -4718,8 +4794,25 @@ opencv_core_solve_linear_program(
         c.convertTo(objective64, CV_64FC1);
         a_and_b.convertTo(constraints64, CV_64FC1);
         cv::Mat solution;
+#if CV_VERSION_MAJOR > 4 || (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 8)
         const int native_status =
-            cv::solveLP(objective64, constraints64, solution, constraint_tolerance);
+            cv::solveLP(objective64, constraints64, solution,
+                        constraint_tolerance);
+#else
+        // OpenCV 4.6 has only the 3-argument solveLP and no caller-visible
+        // constraint tolerance. The Ada default 1e-12 is the later 3-argument
+        // OpenCV default; 4.6 uses exact (zero-slack) comparisons internally.
+        // Accept the default and exact-zero requests, but do not pretend a
+        // custom nonzero tolerance is honored.
+        if (constraint_tolerance != 0.0 &&
+            constraint_tolerance != 1e-12) {
+            return invalid_argument(
+                "constraint_tolerance other than 0 or the 1e-12 default is "
+                "not supported by this OpenCV version");
+        }
+        const int native_status =
+            cv::solveLP(objective64, constraints64, solution);
+#endif
         switch (native_status) {
         case cv::SOLVELP_SINGLE:
         case cv::SOLVELP_MULTI: {
@@ -4737,9 +4830,11 @@ opencv_core_solve_linear_program(
         case cv::SOLVELP_UNFEASIBLE:
             *out_lp_status = OPENCV_CORE_LP_INFEASIBLE;
             return OPENCV_CORE_OK;
+#if CV_VERSION_MAJOR > 4 || (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 8)
         case cv::SOLVELP_LOST:
             *out_lp_status = OPENCV_CORE_LP_NUMERICAL_LOSS;
             return OPENCV_CORE_OK;
+#endif
         default:
             return invalid_argument("OpenCV solveLP returned an unknown result");
         }
@@ -6415,7 +6510,7 @@ opencv_core_mat_norm(const opencv_core_mat_handle *mat, int32_t norm_kind,
     }
 
     try {
-        *out_norm = cv::norm(mat->value, opencv_norm);
+        *out_norm = cv::norm(source_for_norm(mat->value), opencv_norm);
         return OPENCV_CORE_OK;
     } catch (...) {
         return translate_current_exception();
@@ -6444,7 +6539,8 @@ opencv_core_mat_norm_masked(const opencv_core_mat_handle *mat,
     }
 
     try {
-        *out_norm = cv::norm(mat->value, opencv_norm, mask->value);
+        *out_norm = cv::norm(source_for_norm(mat->value), opencv_norm,
+                             mask->value);
         return OPENCV_CORE_OK;
     } catch (...) {
         return translate_current_exception();
@@ -6616,7 +6712,7 @@ opencv_core_mat_has_non_zero(const opencv_core_mat_handle *mat,
     }
 
     try {
-        *out_result = cv::hasNonZero(mat->value) ? 1 : 0;
+        *out_result = cv::countNonZero(mat->value) != 0 ? 1 : 0;
         return OPENCV_CORE_OK;
     } catch (...) {
         return translate_current_exception();

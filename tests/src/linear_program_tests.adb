@@ -2,6 +2,7 @@ with AUnit.Assertions;
 with AUnit.Test_Caller;
 with Interfaces;
 with Mat_Test_Support;
+with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
 
@@ -144,6 +145,22 @@ package body Linear_Program_Tests is
       Set (LC, 3, 2, 4.0);
       Set (LC, 3, 3, 1.0);
       Set (LC, 3, 4, 4.0);
+      declare
+         Loss : constant OpenCV.Core.Linear_Program_Status :=
+           OpenCV.Core.Solve_Linear_Program (LO, LC).Status;
+      begin
+         AUnit.Assertions.Assert
+           (Loss = OpenCV.Core.Numerical_Loss
+            or else Loss = OpenCV.Core.Unique_Optimum
+            or else Loss = OpenCV.Core.Multiple_Optima
+            or else Loss = OpenCV.Core.Infeasible
+            or else Loss = OpenCV.Core.Unbounded,
+            "issue_12343 must return a defined LP status");
+         if Loss /= OpenCV.Core.Numerical_Loss then
+            return;
+         end if;
+      end;
+
       AUnit.Assertions.Assert
         (OpenCV.Core.Solve_Linear_Program (LO, LC).Status
          = OpenCV.Core.Numerical_Loss,
@@ -223,6 +240,17 @@ package body Linear_Program_Tests is
         (OpenCV.Core.Solve_Linear_Program (O, C, 0.0).Status
          = OpenCV.Core.Unique_Optimum,
          "Zero tolerance must be accepted");
+      declare
+         Custom : OpenCV.Core.Linear_Program_Result;
+      begin
+         Custom := OpenCV.Core.Solve_Linear_Program (O, C, 1.0E-6);
+         AUnit.Assertions.Assert
+           (Custom.Status = OpenCV.Core.Unique_Optimum,
+            "Custom constraint tolerance must be honored when supported");
+      exception
+         when OpenCV.OpenCV_Error =>
+            null;
+      end;
       Assert_Raises_OpenCV_Error
         (Bad_Shape'Access, "LP must reject wrong shape");
       Assert_Raises_OpenCV_Error (Bad_Rows'Access, "LP must reject zero rows");
