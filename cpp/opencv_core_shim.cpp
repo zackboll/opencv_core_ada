@@ -915,6 +915,100 @@ make_empty_like(const cv::Mat &source, opencv_core_mat_handle **out_mat) {
     return OPENCV_CORE_OK;
 }
 
+#if !(CV_VERSION_MAJOR > 4 || (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 6) || \
+      (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR == 5 && CV_VERSION_REVISION >= 5))
+template <typename T>
+void reduce_arg_extremum_apply(const cv::Mat &src, cv::Mat &dst, int axis,
+                               bool minimum, bool last_index) {
+    const T *src_ptr = src.ptr<T>();
+    int32_t *dst_ptr = dst.ptr<int32_t>();
+
+    const size_t outer_size = src.total(0, axis);
+    const auto mid_size = static_cast<size_t>(src.size[axis]);
+    const size_t outer_step = src.total(axis);
+    const size_t dst_step = dst.total(axis);
+    const size_t mid_step = src.total(axis + 1);
+
+    for (size_t outer = 0; outer < outer_size; ++outer) {
+        const size_t outer_offset = outer * outer_step;
+        const size_t dst_offset = outer * dst_step;
+        for (size_t mid = 0; mid != mid_size; ++mid) {
+            const size_t src_offset = outer_offset + mid * mid_step;
+            for (size_t inner = 0; inner < mid_step; ++inner) {
+                int32_t &index = dst_ptr[dst_offset + inner];
+                const size_t prev =
+                    outer_offset + static_cast<size_t>(index) * mid_step + inner;
+                const size_t curr = src_offset + inner;
+                const T current = src_ptr[curr];
+                const T previous = src_ptr[prev];
+                const bool better =
+                    minimum ? (last_index ? current <= previous
+                                          : current < previous)
+                            : (last_index ? current >= previous
+                                          : current > previous);
+                if (better) {
+                    index = static_cast<int32_t>(mid);
+                }
+            }
+        }
+    }
+}
+
+// OpenCV 4.5.5 introduced cv::reduceArgMin / cv::reduceArgMax. Earlier
+// versions have no equivalent API. This 2-D fallback follows the 4.10
+// reduceMinMax algorithm: CV_32SC1 output with the reduced axis size set
+// to 1, first/last-tie selection, continuous-storage indexing, and
+// BadDepth for Float16 / unknown depths.
+void reduce_arg_extremum_fallback(const cv::Mat &source, cv::Mat &result,
+                                  int axis, bool last_index, bool minimum) {
+    CV_Assert(source.channels() == 1);
+
+    const int out_rows = axis == 0 ? 1 : source.rows;
+    const int out_cols = axis == 1 ? 1 : source.cols;
+    result.create(out_rows, out_cols, CV_32SC1);
+    result.setTo(cv::Scalar::all(0));
+
+    cv::Mat src_mat = source;
+    if (!src_mat.isContinuous()) {
+        src_mat = src_mat.clone();
+    }
+
+    switch (src_mat.depth()) {
+    case CV_8U:
+        reduce_arg_extremum_apply<uint8_t>(src_mat, result, axis, minimum,
+                                           last_index);
+        break;
+    case CV_8S:
+        reduce_arg_extremum_apply<int8_t>(src_mat, result, axis, minimum,
+                                          last_index);
+        break;
+    case CV_16U:
+        reduce_arg_extremum_apply<uint16_t>(src_mat, result, axis, minimum,
+                                            last_index);
+        break;
+    case CV_16S:
+        reduce_arg_extremum_apply<int16_t>(src_mat, result, axis, minimum,
+                                           last_index);
+        break;
+    case CV_32S:
+        reduce_arg_extremum_apply<int32_t>(src_mat, result, axis, minimum,
+                                           last_index);
+        break;
+    case CV_32F:
+        reduce_arg_extremum_apply<float>(src_mat, result, axis, minimum,
+                                         last_index);
+        break;
+    case CV_64F:
+        reduce_arg_extremum_apply<double>(src_mat, result, axis, minimum,
+                                          last_index);
+        break;
+    case CV_16F:
+    default:
+        CV_Error(cv::Error::BadDepth, "Unsupported matrix type.");
+    }
+}
+#endif
+
 } // namespace
 
 extern "C" {
@@ -1962,6 +2056,8 @@ opencv_core_status reduce_arg_extremum(const opencv_core_mat_handle *source,
 
     try {
         cv::Mat result;
+#if CV_VERSION_MAJOR > 4 || (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 6) || \
+    (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR == 5 && CV_VERSION_REVISION >= 5)
         if (minimum) {
             cv::reduceArgMin(source->value, result, opencv_axis,
                              last_index != 0);
@@ -1969,6 +2065,10 @@ opencv_core_status reduce_arg_extremum(const opencv_core_mat_handle *source,
             cv::reduceArgMax(source->value, result, opencv_axis,
                              last_index != 0);
         }
+#else
+        reduce_arg_extremum_fallback(source->value, result, opencv_axis,
+                                     last_index != 0, minimum);
+#endif
         std::unique_ptr<opencv_core_mat_handle> handle(
             new opencv_core_mat_handle(result));
         *out_mat = handle.release();
