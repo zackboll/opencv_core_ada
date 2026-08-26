@@ -499,6 +499,21 @@ from_opencv_vec3(const cv::Vec<float, 3> &value) noexcept {
     return {value[0], value[1], value[2]};
 }
 
+template <typename T, int cn>
+void assign_vec(cv::Vec<T, cn> &dest, const cv::Vec<T, cn> &source) {
+#if CV_VERSION_MAJOR > 4 || (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 2)
+    dest = source;
+#else
+    // OpenCV 4.1 Vec has a user-provided copy constructor but no copy
+    // assignment operator. The implicit operator= is deprecated
+    // (-Wdeprecated-copy) and is an error under this crate's -Werror
+    // C++ flags. Copy components instead of using the implicit operator=.
+    for (int index = 0; index < cn; ++index) {
+        dest[index] = source[index];
+    }
+#endif
+}
+
 bool size_to_abi(std::size_t value, uint64_t &result) noexcept {
     if constexpr (std::numeric_limits<std::size_t>::max() >
                   std::numeric_limits<uint64_t>::max()) {
@@ -4206,9 +4221,9 @@ opencv_core_mat_write_uint8_vec3_row(opencv_core_mat_handle *mat, int32_t row,
         for (std::size_t column = 0;
              column < static_cast<std::size_t>(element_count); ++column) {
             const std::size_t offset = column * 3;
-            row_data[column] =
-                cv::Vec<uint8_t, 3>(data[offset], data[offset + 1],
-                                    data[offset + 2]);
+            assign_vec(row_data[column],
+                       cv::Vec<uint8_t, 3>(data[offset], data[offset + 1],
+                                           data[offset + 2]));
         }
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -4274,9 +4289,9 @@ opencv_core_mat_write_float32_vec3_row(opencv_core_mat_handle *mat,
         for (std::size_t column = 0;
              column < static_cast<std::size_t>(element_count); ++column) {
             const std::size_t offset = column * 3;
-            row_data[column] =
-                cv::Vec<float, 3>(data[offset], data[offset + 1],
-                                  data[offset + 2]);
+            assign_vec(row_data[column],
+                       cv::Vec<float, 3>(data[offset], data[offset + 1],
+                                         data[offset + 2]));
         }
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -4341,9 +4356,9 @@ opencv_core_mat_set_uint8_vec3(opencv_core_mat_handle *mat, int32_t row,
             return status;
         }
 
-        mat->value.at<cv::Vec<uint8_t, 3>>(static_cast<int>(row),
-                                             static_cast<int>(column)) =
-            to_opencv_vec3(*value);
+        assign_vec(mat->value.at<cv::Vec<uint8_t, 3>>(static_cast<int>(row),
+                                                      static_cast<int>(column)),
+                   to_opencv_vec3(*value));
         return OPENCV_CORE_OK;
     } catch (...) {
         return translate_current_exception();
@@ -4407,9 +4422,9 @@ opencv_core_mat_set_float32_vec3(opencv_core_mat_handle *mat, int32_t row,
             return status;
         }
 
-        mat->value.at<cv::Vec<float, 3>>(static_cast<int>(row),
-                                          static_cast<int>(column)) =
-            to_opencv_vec3(*value);
+        assign_vec(mat->value.at<cv::Vec<float, 3>>(static_cast<int>(row),
+                                                    static_cast<int>(column)),
+                   to_opencv_vec3(*value));
         return OPENCV_CORE_OK;
     } catch (...) {
         return translate_current_exception();
