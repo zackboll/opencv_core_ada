@@ -33,8 +33,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
       - name: Build compatibility image
-        run: docker build -t "${{ matrix.image }}" "${{ matrix.container_dir }}"
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.container_dir }}
+          file: ${{ matrix.container_dir }}/Dockerfile
+          load: true
+          tags: ${{ matrix.image }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
 
       - name: Verify OpenCV version
         run: |
