@@ -192,73 +192,83 @@ package body OpenCV.Core.Persistence is
 
    function Open (Filename : String; Mode : Storage_Mode) return File_Storage
    is
-      New_Handle : aliased OpenCV.Internal.C_API.File_Storage_Handle :=
-        OpenCV.Internal.C_API.Null_File_Storage_Handle;
-      Status     : OpenCV.Internal.C_API.Status;
    begin
-      Validate_Filename (Filename);
-
-      declare
-         C_Filename : constant Interfaces.C.char_array :=
-           Interfaces.C.To_C (Filename);
-      begin
-         Status :=
-           OpenCV.Internal.C_API.File_Storage_Open
-             (Filename => C_Filename,
-              Mode     => To_C_Mode (Mode),
-              Result   => New_Handle'Access);
-      end;
-
-      Raise_On_Error (Status, "File_Storage open");
-
       return Result : File_Storage do
-         Result.Handle := New_Handle;
-         Result.Mode := Mode;
-         Result.Backend := Disk;
-         Result.Opened := True;
+         Validate_Filename (Filename);
+
+         declare
+            New_Handle : aliased OpenCV.Internal.C_API.File_Storage_Handle :=
+              OpenCV.Internal.C_API.Null_File_Storage_Handle;
+            Status     : OpenCV.Internal.C_API.Status;
+         begin
+            declare
+               C_Filename : constant Interfaces.C.char_array :=
+                 Interfaces.C.To_C (Filename);
+            begin
+               Status :=
+                 OpenCV.Internal.C_API.File_Storage_Open
+                   (Filename => C_Filename,
+                    Mode     => To_C_Mode (Mode),
+                    Result   => New_Handle'Access);
+            end;
+
+            Raise_On_Error (Status, "File_Storage open");
+
+            Result.Handle := New_Handle;
+            Result.Mode := Mode;
+            Result.Backend := Disk;
+            Result.Opened := True;
+         end;
       end return;
    end Open;
 
    function Create_Memory (Format : Storage_Format) return File_Storage is
-      New_Handle : aliased OpenCV.Internal.C_API.File_Storage_Handle :=
-        OpenCV.Internal.C_API.Null_File_Storage_Handle;
-      Status     : OpenCV.Internal.C_API.Status;
    begin
-      Status :=
-        OpenCV.Internal.C_API.File_Storage_Open_Memory_Write
-          (Format => To_C_Format (Format), Result => New_Handle'Access);
-      Raise_On_Error (Status, "File_Storage create memory");
-
       return Result : File_Storage do
-         Result.Handle := New_Handle;
-         Result.Mode := Write_Only;
-         Result.Backend := Memory;
-         Result.Opened := True;
+         declare
+            New_Handle : aliased OpenCV.Internal.C_API.File_Storage_Handle :=
+              OpenCV.Internal.C_API.Null_File_Storage_Handle;
+            Status     : OpenCV.Internal.C_API.Status;
+         begin
+            Status :=
+              OpenCV.Internal.C_API.File_Storage_Open_Memory_Write
+                (Format => To_C_Format (Format), Result => New_Handle'Access);
+            Raise_On_Error (Status, "File_Storage create memory");
+
+            Result.Handle := New_Handle;
+            Result.Mode := Write_Only;
+            Result.Backend := Memory;
+            Result.Opened := True;
+         end;
       end return;
    end Create_Memory;
 
    function Open_Memory (Text : String) return File_Storage is
-      New_Handle : aliased OpenCV.Internal.C_API.File_Storage_Handle :=
-        OpenCV.Internal.C_API.Null_File_Storage_Handle;
-      Status     : OpenCV.Internal.C_API.Status;
    begin
-      Validate_Memory_Text (Text);
-
-      declare
-         C_Text : constant Interfaces.C.char_array := Interfaces.C.To_C (Text);
-      begin
-         Status :=
-           OpenCV.Internal.C_API.File_Storage_Open_Memory_Read
-             (Text => C_Text, Result => New_Handle'Access);
-      end;
-
-      Raise_On_Error (Status, "File_Storage open memory");
-
       return Result : File_Storage do
-         Result.Handle := New_Handle;
-         Result.Mode := Read_Only;
-         Result.Backend := Memory;
-         Result.Opened := True;
+         Validate_Memory_Text (Text);
+
+         declare
+            New_Handle : aliased OpenCV.Internal.C_API.File_Storage_Handle :=
+              OpenCV.Internal.C_API.Null_File_Storage_Handle;
+            Status     : OpenCV.Internal.C_API.Status;
+         begin
+            declare
+               C_Text : constant Interfaces.C.char_array :=
+                 Interfaces.C.To_C (Text);
+            begin
+               Status :=
+                 OpenCV.Internal.C_API.File_Storage_Open_Memory_Read
+                   (Text => C_Text, Result => New_Handle'Access);
+            end;
+
+            Raise_On_Error (Status, "File_Storage open memory");
+
+            Result.Handle := New_Handle;
+            Result.Mode := Read_Only;
+            Result.Backend := Memory;
+            Result.Opened := True;
+         end;
       end return;
    end Open_Memory;
 
