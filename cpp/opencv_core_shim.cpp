@@ -762,13 +762,26 @@ cv::FileNode current_read_context(
     return storage.read_context_stack.back();
 }
 
+void assign_file_node(cv::FileNode &dest, const cv::FileNode &source) {
+#if CV_VERSION_MAJOR > 4 || (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 2)
+    dest = source;
+#else
+    // OpenCV 4.1 FileNode has a user-provided copy constructor but no
+    // copy assignment operator. The implicit operator= is deprecated
+    // (-Wdeprecated-copy) and is an error under this crate's -Werror
+    // C++ flags. Reconstruct through the copy constructor instead.
+    dest.~FileNode();
+    new (&dest) cv::FileNode(source);
+#endif
+}
+
 opencv_core_status lookup_named_node(
     const opencv_core_file_storage_handle &storage, const char *name,
     cv::FileNode &node) {
-    node = cv::FileNode();
+    assign_file_node(node, cv::FileNode());
 
     if (storage.read_context_stack.empty()) {
-        node = storage.value[name];
+        assign_file_node(node, storage.value[name]);
     } else {
         const cv::FileNode &context = storage.read_context_stack.back();
         if (!context.isMap()) {
@@ -776,7 +789,7 @@ opencv_core_status lookup_named_node(
                 "named lookup requires a mapping read context");
         }
 
-        node = context[name];
+        assign_file_node(node, context[name]);
     }
 
     if (node.empty()) {
@@ -789,7 +802,7 @@ opencv_core_status lookup_named_node(
 opencv_core_status lookup_indexed_node(
     const opencv_core_file_storage_handle &storage, uint64_t index,
     cv::FileNode &node) {
-    node = cv::FileNode();
+    assign_file_node(node, cv::FileNode());
 
     if (storage.read_context_stack.empty()) {
         return invalid_argument(
@@ -814,7 +827,7 @@ opencv_core_status lookup_indexed_node(
         return invalid_argument("sequence index exceeds OpenCV int range");
     }
 
-    node = context[static_cast<int>(index)];
+    assign_file_node(node, context[static_cast<int>(index)]);
     if (node.empty()) {
         return invalid_argument("indexed file node is missing");
     }
