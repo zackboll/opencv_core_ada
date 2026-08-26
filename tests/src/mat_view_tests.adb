@@ -596,6 +596,7 @@ package body Mat_View_Tests is
       View   : OpenCV.Core.Mat;
       Copy   : OpenCV.Core.Mat;
    begin
+      Source.Set_To (OpenCV.Core.Make_Scalar (0.0));
       View := Source.Reshape (Channels => 3);
       OpenCV.Core.UInt8_Vec3_Access.Set
         (View, Row => 0, Column => 1, Value => (10, 20, 30));
@@ -606,6 +607,7 @@ package body Mat_View_Tests is
          "Writes through a reshape view must be visible through its source");
 
       OpenCV.Core.UInt8_Access.Set (Source, Row => 0, Column => 1, Value => 7);
+
       AUnit.Assertions.Assert
         (OpenCV.Core.UInt8_Vec3_Access.Get (View, Row => 0, Column => 0)
          = (0, 7, 0),

@@ -8903,13 +8903,14 @@ package body Mat_Reduction_Tests is
       pragma Unreferenced (Test);
       Empty_Source : OpenCV.Core.Mat;
       Empty_Result : OpenCV.Core.Mat;
-      Zero_Source  : constant OpenCV.Core.Mat :=
+      Zero_Source  : OpenCV.Core.Mat :=
         OpenCV.Core.Create
           (Rows         => 1,
            Columns      => 2,
            Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
       Zero_Result  : OpenCV.Core.Mat;
    begin
+      Zero_Source.Set_To (OpenCV.Core.Make_Scalar (0.0));
       Empty_Result := Empty_Source.Normalize;
       Zero_Result :=
         Zero_Source.Normalize (Kind => OpenCV.Core.L2, Alpha => 5.0);
