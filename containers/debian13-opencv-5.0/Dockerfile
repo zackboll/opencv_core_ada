@@ -22,8 +22,6 @@ RUN apt-get update && \
         curl \
         file \
         git \
-        gnat \
-        gprbuild \
         jq \
         less \
         ninja-build \
@@ -43,6 +41,10 @@ RUN curl -L \
     && unzip /tmp/alire.zip -d /tmp/alire \
     && install -m 0755 /tmp/alire/bin/alr /usr/local/bin/alr \
     && rm -rf /tmp/alire /tmp/alire.zip
+
+RUN alr -n --force toolchain --select \
+        gnat_native=16.1.0 \
+        gprbuild=26.0.1
 
 #
 # GNATformat for Cline/development use.

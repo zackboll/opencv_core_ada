@@ -8,8 +8,6 @@ RUN apt-get update && \
         ca-certificates \
         curl \
         git \
-        gnat \
-        gprbuild \
         libopencv-dev \
         pkg-config \
         unzip \
@@ -27,6 +25,10 @@ RUN curl -L \
     && unzip /tmp/alire.zip -d /tmp/alire \
     && install -m 0755 /tmp/alire/bin/alr /usr/local/bin/alr \
     && rm -rf /tmp/alire /tmp/alire.zip
+
+RUN alr -n --force toolchain --select \
+        gnat_native=16.1.0 \
+        gprbuild=26.0.1
 
 WORKDIR /workspace
 
