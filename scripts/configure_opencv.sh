@@ -24,10 +24,15 @@ if [ -z "$package" ]; then
 fi
 
 include_dir=$(pkg-config --variable=includedir "$package")
+
+if [ -z "$include_dir" ]; then
+    include_dir=$(pkg-config --variable=includedir_new "$package")
+fi
+
 library_dir=$(pkg-config --variable=libdir "$package")
 
 if [ -z "$include_dir" ] || [ -z "$library_dir" ]; then
-    echo "error: '$package' does not define includedir and libdir" >&2
+    echo "error: '$package' does not define a usable include directory and libdir" >&2
     exit 1
 fi
 
