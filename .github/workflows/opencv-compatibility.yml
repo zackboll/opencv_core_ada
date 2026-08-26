@@ -15,6 +15,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - name: OpenCV 4.1
+            container_dir: containers/debian12-opencv-4.1
+            image: opencv-core-ci-4.1
+
           - name: OpenCV 4.6
             container_dir: containers/debian12-opencv-4.6
             image: opencv-core-ci-4.6
