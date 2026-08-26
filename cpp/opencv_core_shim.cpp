@@ -8002,8 +8002,17 @@ opencv_core_file_storage_begin_structure(
         // OpenCV has already entered the structure.
         storage->write_structure_stack.reserve(
             storage->write_structure_stack.size() + 1);
+#if CV_VERSION_MAJOR > 4 || (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 4)
         storage->value.startWriteStruct(name,
                                         to_opencv_file_node_flags(decoded));
+#else
+        // OpenCV < 4.4 requires an explicit typeName; 4.4 made it default
+        // to String(). Passing an empty name matches that later default
+        // and does not emit a typed structure.
+        storage->value.startWriteStruct(name,
+                                        to_opencv_file_node_flags(decoded),
+                                        cv::String());
+#endif
         storage->write_structure_stack.push_back(decoded);
         return OPENCV_CORE_OK;
     } catch (...) {
