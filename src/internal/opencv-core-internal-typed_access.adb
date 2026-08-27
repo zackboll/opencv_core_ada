@@ -77,6 +77,144 @@ package body OpenCV.Core.Internal.Typed_Access is
    begin
       Raise_On_Error (Status, "Float32 typed Mat write");
    end Set_Float32;
+   procedure Fill_C_Indices
+     (Indices : Index_Array;
+      Result  : in out OpenCV.Internal.C_API.C_Int32_Array)
+   is
+      Position : Natural := Result'First;
+   begin
+      for Index_Value of Indices loop
+         Result (Position) := OpenCV.Internal.C_API.C_Int32 (Index_Value);
+         Position := Position + 1;
+      end loop;
+   end Fill_C_Indices;
+
+   function Get_UInt8 (Image : Mat; Indices : Index_Array) return UInt8_Value
+   is
+      Result : aliased OpenCV.Internal.C_API.C_UInt8 := 0;
+      Status : OpenCV.Internal.C_API.Status;
+   begin
+      if Indices'Length = 0 then
+         Status :=
+           OpenCV.Internal.C_API.Mat_Get_UInt8_ND
+             (Self            => Image.Handle,
+              Dimension_Count => 0,
+              Indices         => null,
+              Result          => Result'Access);
+      else
+         declare
+            C_Indices :
+              OpenCV.Internal.C_API.C_Int32_Array (0 .. Indices'Length - 1);
+         begin
+            Fill_C_Indices (Indices, C_Indices);
+            Status :=
+              OpenCV.Internal.C_API.Mat_Get_UInt8_ND
+                (Self            => Image.Handle,
+                 Dimension_Count =>
+                   OpenCV.Internal.C_API.C_Int32 (Indices'Length),
+                 Indices         => C_Indices (C_Indices'First)'Access,
+                 Result          => Result'Access);
+         end;
+      end if;
+
+      Raise_On_Error (Status, "UInt8 typed Mat N-dimensional read");
+      return UInt8_Value (Result);
+   end Get_UInt8;
+
+   procedure Set_UInt8
+     (Image : in out Mat; Indices : Index_Array; Value : UInt8_Value)
+   is
+      Status : OpenCV.Internal.C_API.Status;
+   begin
+      if Indices'Length = 0 then
+         Status :=
+           OpenCV.Internal.C_API.Mat_Set_UInt8_ND
+             (Self            => Image.Handle,
+              Dimension_Count => 0,
+              Indices         => null,
+              Value           => OpenCV.Internal.C_API.C_UInt8 (Value));
+      else
+         declare
+            C_Indices :
+              OpenCV.Internal.C_API.C_Int32_Array (0 .. Indices'Length - 1);
+         begin
+            Fill_C_Indices (Indices, C_Indices);
+            Status :=
+              OpenCV.Internal.C_API.Mat_Set_UInt8_ND
+                (Self            => Image.Handle,
+                 Dimension_Count =>
+                   OpenCV.Internal.C_API.C_Int32 (Indices'Length),
+                 Indices         => C_Indices (C_Indices'First)'Access,
+                 Value           => OpenCV.Internal.C_API.C_UInt8 (Value));
+         end;
+      end if;
+
+      Raise_On_Error (Status, "UInt8 typed Mat N-dimensional write");
+   end Set_UInt8;
+
+   function Get_Float32
+     (Image : Mat; Indices : Index_Array) return Float32_Value
+   is
+      Result : aliased OpenCV.Internal.C_API.C_Float32 := 0.0;
+      Status : OpenCV.Internal.C_API.Status;
+   begin
+      if Indices'Length = 0 then
+         Status :=
+           OpenCV.Internal.C_API.Mat_Get_Float32_ND
+             (Self            => Image.Handle,
+              Dimension_Count => 0,
+              Indices         => null,
+              Result          => Result'Access);
+      else
+         declare
+            C_Indices :
+              OpenCV.Internal.C_API.C_Int32_Array (0 .. Indices'Length - 1);
+         begin
+            Fill_C_Indices (Indices, C_Indices);
+            Status :=
+              OpenCV.Internal.C_API.Mat_Get_Float32_ND
+                (Self            => Image.Handle,
+                 Dimension_Count =>
+                   OpenCV.Internal.C_API.C_Int32 (Indices'Length),
+                 Indices         => C_Indices (C_Indices'First)'Access,
+                 Result          => Result'Access);
+         end;
+      end if;
+
+      Raise_On_Error (Status, "Float32 typed Mat N-dimensional read");
+      return Float32_Value (Result);
+   end Get_Float32;
+
+   procedure Set_Float32
+     (Image : in out Mat; Indices : Index_Array; Value : Float32_Value)
+   is
+      Status : OpenCV.Internal.C_API.Status;
+   begin
+      if Indices'Length = 0 then
+         Status :=
+           OpenCV.Internal.C_API.Mat_Set_Float32_ND
+             (Self            => Image.Handle,
+              Dimension_Count => 0,
+              Indices         => null,
+              Value           => OpenCV.Internal.C_API.C_Float32 (Value));
+      else
+         declare
+            C_Indices :
+              OpenCV.Internal.C_API.C_Int32_Array (0 .. Indices'Length - 1);
+         begin
+            Fill_C_Indices (Indices, C_Indices);
+            Status :=
+              OpenCV.Internal.C_API.Mat_Set_Float32_ND
+                (Self            => Image.Handle,
+                 Dimension_Count =>
+                   OpenCV.Internal.C_API.C_Int32 (Indices'Length),
+                 Indices         => C_Indices (C_Indices'First)'Access,
+                 Value           => OpenCV.Internal.C_API.C_Float32 (Value));
+         end;
+      end if;
+
+      Raise_On_Error (Status, "Float32 typed Mat N-dimensional write");
+   end Set_Float32;
 
    function Address_Of (Data : UInt8_Row_Buffer) return System.Address is
    begin

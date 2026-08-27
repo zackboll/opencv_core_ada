@@ -4384,6 +4384,334 @@ package body Mat_Access_Tests is
         (Data (42) = 8,
          "Data must remain caller-owned after a callback exception");
    end UInt8_External_Buffer_Mat_View_Propagates_Callback_Exception;
+   procedure UInt8_N_Dimensional_Typed_Element_Access
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape        => (2, 3, 4),
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (7.0));
+      OpenCV.Core.UInt8_Access.Set (Image, Indices => (1, 2, 3), Value => 42);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Image, Indices => (1, 2, 3)) = 42,
+         "UInt8 N-D Get should return the written 3-D element");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Image, Indices => (1, 2, 2)) = 7,
+         "A nearby 3-D element should remain at the initialized value");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Image, Indices => (0, 0, 0)) = 7,
+         "An unrelated 3-D element should remain at the initialized value");
+   end UInt8_N_Dimensional_Typed_Element_Access;
+
+   procedure Float32_N_Dimensional_Typed_Element_Access
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape        => (2, 3, 4, 5),
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.Float32_Access.Set
+        (Image, Indices => (0, 0, 0, 0), Value => 1.25);
+      OpenCV.Core.Float32_Access.Set
+        (Image, Indices => (1, 1, 2, 3), Value => -2.5);
+      OpenCV.Core.Float32_Access.Set
+        (Image, Indices => (1, 2, 3, 4), Value => 3.75);
+
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float
+              (OpenCV.Core.Float32_Access.Get
+                 (Image, Indices => (0, 0, 0, 0))),
+            1.25),
+         "Float32 N-D Get should preserve the origin coordinate");
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float
+              (OpenCV.Core.Float32_Access.Get
+                 (Image, Indices => (1, 1, 2, 3))),
+            -2.5),
+         "Float32 N-D Get should preserve an interior coordinate");
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float
+              (OpenCV.Core.Float32_Access.Get
+                 (Image, Indices => (1, 2, 3, 4))),
+            3.75),
+         "Float32 N-D Get should preserve the maximum valid coordinate");
+   end Float32_N_Dimensional_Typed_Element_Access;
+
+   procedure N_Dimensional_Index_Array_Uses_Iteration_Order
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape        => (2, 3, 4),
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Indices : constant OpenCV.Core.Index_Array (3 .. 5) := (1, 2, 3);
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.UInt8_Access.Set (Image, Indices => Indices, Value => 9);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Image, Indices => (1, 2, 3)) = 9,
+         "A non-1 lower bound must still address OpenCV coordinate [1][2][3]");
+   end N_Dimensional_Index_Array_Uses_Iteration_Order;
+
+   procedure N_Dimensional_Typed_Access_Rejects_Dimensionality_Mismatch
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape        => (2, 3, 4),
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+
+      procedure Read_Two_Indices is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Access.Get (Image, Indices => (1, 2)) = 0,
+            "A 2-index 3-D read unexpectedly succeeded");
+      end Read_Two_Indices;
+
+      procedure Read_Four_Indices is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Access.Get (Image, Indices => (1, 2, 3, 0)) = 0,
+            "A 4-index 3-D read unexpectedly succeeded");
+      end Read_Four_Indices;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Read_Two_Indices'Access,
+         "N-D access must reject fewer indices than Dimension_Count");
+      Assert_Raises_OpenCV_Error
+        (Read_Four_Indices'Access,
+         "N-D access must reject more indices than Dimension_Count");
+   end N_Dimensional_Typed_Access_Rejects_Dimensionality_Mismatch;
+   procedure N_Dimensional_Typed_Access_Rejects_Out_Of_Range_Indices
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape        => (2, 3, 4),
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+
+      procedure Read_First_Axis_Extent is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Access.Get (Image, Indices => (2, 0, 0)) = 0,
+            "An index equal to extent 1 unexpectedly succeeded");
+      end Read_First_Axis_Extent;
+
+      procedure Read_Second_Axis_Extent is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Access.Get (Image, Indices => (0, 3, 0)) = 0,
+            "An index equal to extent 2 unexpectedly succeeded");
+      end Read_Second_Axis_Extent;
+
+      procedure Read_Third_Axis_Extent is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Access.Get (Image, Indices => (0, 0, 4)) = 0,
+            "An index equal to extent 3 unexpectedly succeeded");
+      end Read_Third_Axis_Extent;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Read_First_Axis_Extent'Access,
+         "N-D access must reject an index equal to the first extent");
+      Assert_Raises_OpenCV_Error
+        (Read_Second_Axis_Extent'Access,
+         "N-D access must reject an index equal to the second extent");
+      Assert_Raises_OpenCV_Error
+        (Read_Third_Axis_Extent'Access,
+         "N-D access must reject an index equal to the third extent");
+   end N_Dimensional_Typed_Access_Rejects_Out_Of_Range_Indices;
+
+   procedure N_Dimensional_Typed_Access_Rejects_Incompatible_Type
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      UInt8_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape        => (2, 3, 4),
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Float_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape        => (2, 3, 4),
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      Multi_UInt8 : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape        => (2, 3, 4),
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+      Multi_Float : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape        => (2, 3, 4),
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 3));
+
+      procedure Read_UInt8_From_Float is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Access.Get (Float_Image, Indices => (0, 0, 0))
+            = 0,
+            "An incompatible UInt8 N-D read unexpectedly succeeded");
+      end Read_UInt8_From_Float;
+
+      procedure Read_Float32_From_UInt8 is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float32_Access.Get (UInt8_Image, Indices => (0, 0, 0))
+            = 0.0,
+            "An incompatible Float32 N-D read unexpectedly succeeded");
+      end Read_Float32_From_UInt8;
+
+      procedure Read_UInt8_Multi_Channel is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Access.Get (Multi_UInt8, Indices => (0, 0, 0))
+            = 0,
+            "A multi-channel UInt8 N-D read unexpectedly succeeded");
+      end Read_UInt8_Multi_Channel;
+
+      procedure Read_Float32_Multi_Channel is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float32_Access.Get (Multi_Float, Indices => (0, 0, 0))
+            = 0.0,
+            "A multi-channel Float32 N-D read unexpectedly succeeded");
+      end Read_Float32_Multi_Channel;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Read_UInt8_From_Float'Access,
+         "UInt8 N-D access must reject a Float32 Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_Float32_From_UInt8'Access,
+         "Float32 N-D access must reject a UInt8 Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_UInt8_Multi_Channel'Access,
+         "UInt8 N-D access must reject a multi-channel Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_Float32_Multi_Channel'Access,
+         "Float32 N-D access must reject a multi-channel Mat");
+   end N_Dimensional_Typed_Access_Rejects_Incompatible_Type;
+   procedure N_Dimensional_Typed_Access_Rejects_Default_Empty
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Default_Empty : OpenCV.Core.Mat;
+      Empty_Indices : constant OpenCV.Core.Index_Array (1 .. 0) :=
+        (others => 0);
+
+      procedure Read_Default is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Access.Get
+              (Default_Empty, Indices => Empty_Indices)
+            = 0,
+            "A default empty N-D read unexpectedly succeeded");
+      end Read_Default;
+
+      procedure Write_Default is
+      begin
+         OpenCV.Core.UInt8_Access.Set
+           (Default_Empty, Indices => Empty_Indices, Value => 1);
+      end Write_Default;
+
+      procedure Read_Default_With_Indices is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float32_Access.Get (Default_Empty, Indices => (0, 0))
+            = 0.0,
+            "A default empty Float32 N-D read unexpectedly succeeded");
+      end Read_Default_With_Indices;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Read_Default'Access,
+         "N-D Get on a default Mat must raise OpenCV_Error");
+      Assert_Raises_OpenCV_Error
+        (Write_Default'Access,
+         "N-D Set on a default Mat must raise OpenCV_Error");
+      Assert_Raises_OpenCV_Error
+        (Read_Default_With_Indices'Access,
+         "N-D access must reject a default Mat even with extra indices");
+   end N_Dimensional_Typed_Access_Rejects_Default_Empty;
+
+   procedure Two_Dimensional_And_N_Dimensional_Access_Share_Storage
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 5,
+           Columns      => 7,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.UInt8_Access.Set (Image, Row => 3, Column => 5, Value => 42);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Image, Indices => (1 => 3, 2 => 5))
+         = 42,
+         "N-D Get must address the same element as 2-D Set");
+
+      OpenCV.Core.UInt8_Access.Set
+        (Image, Indices => (1 => 3, 2 => 5), Value => 17);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Image, Row => 3, Column => 5) = 17,
+         "2-D Get must address the same element as N-D Set");
+   end Two_Dimensional_And_N_Dimensional_Access_Share_Storage;
+
+   procedure N_Dimensional_Clone_Isolates_Typed_Element_Writes
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape        => (2, 3, 4),
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Copy   : OpenCV.Core.Mat;
+   begin
+      Source.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.UInt8_Access.Set (Source, Indices => (1, 2, 3), Value => 10);
+      Copy := Source.Clone;
+      OpenCV.Core.UInt8_Access.Set (Source, Indices => (1, 2, 3), Value => 99);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Source, Indices => (1, 2, 3)) = 99,
+         "The source should reflect its N-D typed element write");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Copy, Indices => (1, 2, 3)) = 10,
+         "A clone must retain the original N-D typed element value");
+   end N_Dimensional_Clone_Isolates_Typed_Element_Writes;
+
+   procedure N_Dimensional_Assignment_Shares_Typed_Element_Writes
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape        => (2, 3, 4),
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Shallow_Copy : OpenCV.Core.Mat;
+   begin
+      Source.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Shallow_Copy := Source;
+      OpenCV.Core.UInt8_Access.Set (Source, Indices => (1, 2, 3), Value => 21);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Shallow_Copy, Indices => (1, 2, 3))
+         = 21,
+         "Ordinary Mat assignment should share N-D typed element writes");
+   end N_Dimensional_Assignment_Shares_Typed_Element_Writes;
 
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
@@ -4403,6 +4731,8 @@ package body Mat_Access_Tests is
    renames Float32_External_Buffer_Mat_View_Propagates_Callback_Exception;
    procedure U8_View_Exception (Test : in out Mat_Test_Fixture)
    renames UInt8_External_Buffer_Mat_View_Propagates_Callback_Exception;
+   procedure ND_Dim_Mismatch (Test : in out Mat_Test_Fixture)
+   renames N_Dimensional_Typed_Access_Rejects_Dimensionality_Mismatch;
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
@@ -4429,6 +4759,47 @@ package body Mat_Access_Tests is
         (Caller.Create
            ("Clone isolates typed element writes",
             Clone_Isolates_Typed_Element_Writes'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt8 N-D typed element access",
+            UInt8_N_Dimensional_Typed_Element_Access'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 N-D typed element access",
+            Float32_N_Dimensional_Typed_Element_Access'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("N-D Index_Array uses iteration order",
+            N_Dimensional_Index_Array_Uses_Iteration_Order'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("N-D typed access rejects dimensionality mismatch",
+            ND_Dim_Mismatch'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("N-D typed access rejects out-of-range indices",
+            N_Dimensional_Typed_Access_Rejects_Out_Of_Range_Indices'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("N-D typed access rejects incompatible type",
+            N_Dimensional_Typed_Access_Rejects_Incompatible_Type'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("N-D typed access rejects default empty",
+            N_Dimensional_Typed_Access_Rejects_Default_Empty'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("2-D and N-D access share storage",
+            Two_Dimensional_And_N_Dimensional_Access_Share_Storage'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("N-D clone isolates typed element writes",
+            N_Dimensional_Clone_Isolates_Typed_Element_Writes'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("N-D assignment shares typed element writes",
+            N_Dimensional_Assignment_Shares_Typed_Element_Writes'Access));
+
       Result.Add_Test
         (Caller.Create
            ("UInt8 Vec3 typed element access",

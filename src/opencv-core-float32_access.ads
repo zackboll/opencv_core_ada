@@ -13,4 +13,12 @@ package OpenCV.Core.Float32_Access is
    procedure Set
      (Image : in out Mat; Row, Column : Integer; Value : Float32_Value);
 
+   --  Zero-based N-dimensional access. Indices'Length must equal
+   --  Image.Dimension_Count. Iteration order maps to OpenCV dimensions
+   --  regardless of the array's index bounds.
+   function Get (Image : Mat; Indices : Index_Array) return Float32_Value;
+
+   procedure Set
+     (Image : in out Mat; Indices : Index_Array; Value : Float32_Value);
+
 end OpenCV.Core.Float32_Access;

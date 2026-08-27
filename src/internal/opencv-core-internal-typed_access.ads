@@ -8,6 +8,16 @@ package OpenCV.Core.Internal.Typed_Access is
 
    procedure Set_UInt8
      (Image : in out Mat; Row, Column : Integer; Value : UInt8_Value);
+   function Get_UInt8 (Image : Mat; Indices : Index_Array) return UInt8_Value;
+
+   procedure Set_UInt8
+     (Image : in out Mat; Indices : Index_Array; Value : UInt8_Value);
+
+   function Get_Float32
+     (Image : Mat; Indices : Index_Array) return Float32_Value;
+
+   procedure Set_Float32
+     (Image : in out Mat; Indices : Index_Array; Value : Float32_Value);
 
    function Get_Float32
      (Image : Mat; Row, Column : Integer) return Float32_Value;

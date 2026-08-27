@@ -661,6 +661,74 @@ opencv_core_status validate_typed_at(const cv::Mat &mat, int32_t row,
     return OPENCV_CORE_OK;
 }
  
+// ABI safety: Mat::at<T>(const int*) and Mat::ptr(const int*) rely on
+// CV_DbgAssert and then perform unchecked pointer arithmetic over
+// mat.dims index slots. Release OpenCV builds cannot be relied upon to
+// reject a raw ABI caller safely.
+opencv_core_status prepare_nd_typed_at(const cv::Mat &mat, int32_t ndims,
+                                       const int32_t *indices,
+                                       int opencv_indices[],
+                                       std::size_t expected_elem_size) {
+    if (ndims < 0) {
+        return invalid_argument("dimension count must not be negative");
+    }
+
+    // ABI safety: the shim copies indices into a 32-slot stack array that
+    // matches OpenCV's established Mat dimensionality limit.
+    if (ndims > maximum_mat_dimensions) {
+        return invalid_argument(
+            "dimension count exceeds OpenCV's 32-dimension limit");
+    }
+
+    if (ndims > 0 && indices == nullptr) {
+        return invalid_argument(
+            "indices must not be null when ndims is positive");
+    }
+
+    // ABI safety: Mat::ptr(const int*) asserts dims >= 1 and then
+    // dereferences the addressed storage.
+    if (mat.dims < 1) {
+        return invalid_argument("Mat must have at least one dimension");
+    }
+
+    // ABI safety: Mat::ptr(const int*) iterates 0 .. mat.dims-1 over idx.
+    // A smaller ndims would read past the supplied indices buffer.
+    if (ndims != mat.dims) {
+        return invalid_argument("index count must equal Mat dimension count");
+    }
+
+    // ABI safety: Mat::at<T> dereferences data after pointer arithmetic.
+    if (mat.data == nullptr) {
+        return invalid_argument("Mat storage must not be null");
+    }
+
+    // ABI safety: Mat::at<T> interprets expected_elem_size bytes at the
+    // addressed location. A smaller stored element would read or write
+    // outside that element.
+    if (mat.elemSize() != expected_elem_size) {
+        return invalid_argument(
+            "Mat element size does not match the accessor type");
+    }
+
+    for (int32_t index = 0; index < ndims; ++index) {
+        if (indices[index] < 0) {
+            return invalid_argument("indices must not be negative");
+        }
+
+        // ABI safety: Mat::ptr(const int*) performs unchecked
+        // idx[i] * step[i] arithmetic. An out-of-range index would
+        // address outside Mat storage.
+        if (indices[index] >= mat.size[static_cast<int>(index)]) {
+            return invalid_argument("index is outside Mat bounds");
+        }
+
+        opencv_indices[index] = static_cast<int>(indices[index]);
+    }
+
+    return OPENCV_CORE_OK;
+}
+
+
 bool from_opencv_depth(int opencv_depth, int32_t &depth) noexcept {
     switch (opencv_depth) {
     case CV_8U:
@@ -4106,6 +4174,119 @@ opencv_core_mat_set_float32(opencv_core_mat_handle *mat, int32_t row,
 
         mat->value.at<float>(static_cast<int>(row),
                              static_cast<int>(column)) = value;
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_get_uint8_nd(const opencv_core_mat_handle *mat, int32_t ndims,
+                             const int32_t *indices, uint8_t *out_value) {
+    clear_error();
+
+    if (out_value == nullptr) {
+        return invalid_argument("out_value must not be null");
+    }
+
+    *out_value = 0;
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        int opencv_indices[maximum_mat_dimensions];
+        const opencv_core_status status =
+            prepare_nd_typed_at(mat->value, ndims, indices, opencv_indices,
+                                sizeof(uint8_t));
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        *out_value = mat->value.at<uint8_t>(opencv_indices);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_set_uint8_nd(opencv_core_mat_handle *mat, int32_t ndims,
+                             const int32_t *indices, uint8_t value) {
+    clear_error();
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        int opencv_indices[maximum_mat_dimensions];
+        const opencv_core_status status =
+            prepare_nd_typed_at(mat->value, ndims, indices, opencv_indices,
+                                sizeof(uint8_t));
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        mat->value.at<uint8_t>(opencv_indices) = value;
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_get_float32_nd(const opencv_core_mat_handle *mat,
+                               int32_t ndims, const int32_t *indices,
+                               float *out_value) {
+    clear_error();
+
+    if (out_value == nullptr) {
+        return invalid_argument("out_value must not be null");
+    }
+
+    *out_value = 0.0F;
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        int opencv_indices[maximum_mat_dimensions];
+        const opencv_core_status status =
+            prepare_nd_typed_at(mat->value, ndims, indices, opencv_indices,
+                                sizeof(float));
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        *out_value = mat->value.at<float>(opencv_indices);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_set_float32_nd(opencv_core_mat_handle *mat, int32_t ndims,
+                               const int32_t *indices, float value) {
+    clear_error();
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        int opencv_indices[maximum_mat_dimensions];
+        const opencv_core_status status =
+            prepare_nd_typed_at(mat->value, ndims, indices, opencv_indices,
+                                sizeof(float));
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        mat->value.at<float>(opencv_indices) = value;
         return OPENCV_CORE_OK;
     } catch (...) {
         return translate_current_exception();

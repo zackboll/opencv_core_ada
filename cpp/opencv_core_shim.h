@@ -905,6 +905,31 @@ opencv_core_mat_set_float32(opencv_core_mat_handle *mat, int32_t row,
                             int32_t column, float value);
 
 /*
+ * Read or write one element of a single-channel Mat using N-dimensional
+ * zero-based indices. ndims is the number of values in indices, in iteration
+ * order. indices must be non-null when ndims is positive. These functions
+ * validate ABI-safe handle, pointer, index-count, and index-range conditions
+ * before using OpenCV's unchecked N-D accessors.
+ */
+opencv_core_status
+opencv_core_mat_get_uint8_nd(const opencv_core_mat_handle *mat, int32_t ndims,
+                             const int32_t *indices, uint8_t *out_value);
+
+opencv_core_status
+opencv_core_mat_set_uint8_nd(opencv_core_mat_handle *mat, int32_t ndims,
+                             const int32_t *indices, uint8_t value);
+
+opencv_core_status
+opencv_core_mat_get_float32_nd(const opencv_core_mat_handle *mat,
+                               int32_t ndims, const int32_t *indices,
+                               float *out_value);
+
+opencv_core_status
+opencv_core_mat_set_float32_nd(opencv_core_mat_handle *mat, int32_t ndims,
+                               const int32_t *indices, float value);
+
+
+/*
  * Copy one complete row of a two-dimensional, single-channel Mat. The caller
  * supplies exactly mat columns elements. Each row may be copied independently;
  * whole-Mat continuity is not required.

@@ -113,6 +113,9 @@ package OpenCV.Core is
    --  N-dimensional Mat shape. Iteration order maps directly to OpenCV
    --  dimensions regardless of the array's index bounds.
    type Dimension_Array is array (Positive range <>) of Size_Coordinate;
+   --  Zero-based N-dimensional Mat indices. Iteration order maps directly
+   --  to OpenCV dimensions regardless of the array's index bounds.
+   type Index_Array is array (Positive range <>) of Size_Coordinate;
 
    type Point is record
       X : Point_Coordinate := 0;

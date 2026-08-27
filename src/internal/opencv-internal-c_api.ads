@@ -752,6 +752,45 @@ package OpenCV.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_core_mat_set_float32";
+   function Mat_Get_UInt8_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Result          : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_uint8_nd";
+
+   function Mat_Set_UInt8_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Value           : C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_uint8_nd";
+
+   function Mat_Get_Float32_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Result          : access C_Float32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_float32_nd";
+
+   function Mat_Set_Float32_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Value           : C_Float32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_float32_nd";
 
    function Mat_Read_UInt8_Row
      (Self          : Mat_Handle;
