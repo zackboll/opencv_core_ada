@@ -1083,6 +1083,380 @@ package body Mat_View_Tests is
          "A diagonal matrix must remain valid after source finalization");
    end Diagonal_Matrix_Handles_Boundaries_And_Lifetime;
 
+   procedure Fill_UInt8_Cube (Image : in out OpenCV.Core.Mat) is
+   begin
+      for D1 in 0 .. Integer (Image.Extent (1)) - 1 loop
+         for D2 in 0 .. Integer (Image.Extent (2)) - 1 loop
+            for D3 in 0 .. Integer (Image.Extent (3)) - 1 loop
+               OpenCV.Core.UInt8_Access.Set
+                 (Image,
+                  Indices =>
+                    (OpenCV.Core.Size_Coordinate (D1),
+                     OpenCV.Core.Size_Coordinate (D2),
+                     OpenCV.Core.Size_Coordinate (D3)),
+                  Value   => Interfaces.Unsigned_8 (D1 * 30 + D2 * 6 + D3));
+            end loop;
+         end loop;
+      end loop;
+   end Fill_UInt8_Cube;
+
+   procedure Three_Dimensional_Slice_Has_Metadata_And_Shares_Data
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape        => (4, 5, 6),
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      View   : OpenCV.Core.Mat;
+   begin
+      Fill_UInt8_Cube (Source);
+      View :=
+        Source.Slice
+          ((1 => (Start => 1, Stop => 4),
+            2 => (Start => 2, Stop => 5),
+            3 => (Start => 1, Stop => 3)));
+
+      AUnit.Assertions.Assert
+        (View.Dimension_Count = 3, "A 3-D slice must retain three dimensions");
+      AUnit.Assertions.Assert
+        (View.Extent (1) = 3
+         and then View.Extent (2) = 3
+         and then View.Extent (3) = 2,
+         "A 3-D slice must report Stop - Start extents");
+      AUnit.Assertions.Assert
+        (View.Depth = OpenCV.Core.UInt8 and then View.Channels = 1,
+         "A 3-D slice must preserve source element type");
+      AUnit.Assertions.Assert
+        (View.Total = 18, "A 3 x 3 x 2 slice must contain 18 elements");
+      AUnit.Assertions.Assert
+        (View.Is_Submatrix, "A proper N-D slice must be a submatrix");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (View, Indices => (0, 0, 0)) = 43
+         and then OpenCV.Core.UInt8_Access.Get (Source, Indices => (1, 2, 1))
+                  = 43,
+         "Slice local (0,0,0) must map to source (1,2,1)");
+
+      OpenCV.Core.UInt8_Access.Set (View, Indices => (0, 0, 0), Value => 200);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Source, Indices => (1, 2, 1)) = 200,
+         "A write through Slice must modify the source at the Start offset");
+
+      OpenCV.Core.UInt8_Access.Set
+        (Source, Indices => (2, 4, 2), Value => 201);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (View, Indices => (1, 2, 1)) = 201,
+         "A write through Source must be visible through Slice");
+   end Three_Dimensional_Slice_Has_Metadata_And_Shares_Data;
+
+   procedure Slice_Clone_Owns_Independent_Storage
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape        => (4, 5, 6),
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      View   : OpenCV.Core.Mat;
+      Copy   : OpenCV.Core.Mat;
+   begin
+      Fill_UInt8_Cube (Source);
+      View :=
+        Source.Slice
+          ((1 => (Start => 1, Stop => 4),
+            2 => (Start => 2, Stop => 5),
+            3 => (Start => 1, Stop => 3)));
+      Copy := View.Clone;
+      OpenCV.Core.UInt8_Access.Set (View, Indices => (0, 0, 0), Value => 9);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Copy, Indices => (0, 0, 0)) = 43,
+         "Clone of a Slice must retain the previous independent value");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Source, Indices => (1, 2, 1)) = 9,
+         "Mutating Slice after Clone must still share with Source");
+   end Slice_Clone_Owns_Independent_Storage;
+
+   procedure Slice_Index_Range_Array_Uses_Iteration_Order
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape        => (4, 5, 6),
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Ranges : constant OpenCV.Core.Index_Range_Array (3 .. 5) :=
+        ((Start => 1, Stop => 4),
+         (Start => 2, Stop => 5),
+         (Start => 1, Stop => 3));
+      View   : OpenCV.Core.Mat;
+   begin
+      Fill_UInt8_Cube (Source);
+      View := Source.Slice (Ranges);
+      AUnit.Assertions.Assert
+        (View.Extent (1) = 3
+         and then View.Extent (2) = 3
+         and then View.Extent (3) = 2
+         and then OpenCV.Core.UInt8_Access.Get (View, Indices => (0, 0, 0))
+                  = 43,
+         "Slice must map Index_Range_Array iteration order to dimensions");
+   end Slice_Index_Range_Array_Uses_Iteration_Order;
+
+   procedure Full_Range_Slice_Shares_Storage (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape        => (4, 5, 6),
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      View   : OpenCV.Core.Mat;
+   begin
+      Fill_UInt8_Cube (Source);
+      View :=
+        Source.Slice
+          ((1 => (Start => 0, Stop => Source.Extent (1)),
+            2 => (Start => 0, Stop => Source.Extent (2)),
+            3 => (Start => 0, Stop => Source.Extent (3))));
+      AUnit.Assertions.Assert
+        (View.Dimension_Count = Source.Dimension_Count
+         and then View.Extent (1) = Source.Extent (1)
+         and then View.Extent (2) = Source.Extent (2)
+         and then View.Extent (3) = Source.Extent (3)
+         and then View.Total = Source.Total,
+         "A full-range slice must preserve source shape");
+      OpenCV.Core.UInt8_Access.Set (View, Indices => (3, 4, 5), Value => 250);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Source, Indices => (3, 4, 5)) = 250,
+         "A full-range slice must share source storage rather than copy");
+   end Full_Range_Slice_Shares_Storage;
+
+   procedure Nested_Slice_Accumulates_Offsets (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape        => (4, 5, 6),
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Inner  : OpenCV.Core.Mat;
+      Nested : OpenCV.Core.Mat;
+   begin
+      Fill_UInt8_Cube (Source);
+      Inner :=
+        Source.Slice
+          ((1 => (Start => 1, Stop => 4),
+            2 => (Start => 2, Stop => 5),
+            3 => (Start => 1, Stop => 3)));
+      Nested :=
+        Inner.Slice
+          ((1 => (Start => 1, Stop => 3),
+            2 => (Start => 0, Stop => 2),
+            3 => (Start => 0, Stop => 2)));
+      AUnit.Assertions.Assert
+        (Nested.Extent (1) = 2
+         and then Nested.Extent (2) = 2
+         and then Nested.Extent (3) = 2,
+         "A nested slice must report the inner extents");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Nested, Indices => (0, 0, 0)) = 73
+         and then OpenCV.Core.UInt8_Access.Get (Source, Indices => (2, 2, 1))
+                  = 73,
+         "Nested local (0,0,0) must map to accumulated source (2,2,1)");
+      OpenCV.Core.UInt8_Access.Set
+        (Nested, Indices => (0, 0, 0), Value => 211);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Source, Indices => (2, 2, 1)) = 211,
+         "A nested slice write must reach the original source");
+   end Nested_Slice_Accumulates_Offsets;
+
+   procedure Two_Dimensional_Slice_Matches_Source_Get_Set
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 4,
+           Columns      => 5,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      View   : OpenCV.Core.Mat;
+   begin
+      for Row in 0 .. 3 loop
+         for Column in 0 .. 4 loop
+            OpenCV.Core.UInt8_Access.Set
+              (Source, Row, Column, Interfaces.Unsigned_8 (Row * 10 + Column));
+         end loop;
+      end loop;
+
+      View :=
+        Source.Slice
+          ((1 => (Start => 1, Stop => 3), 2 => (Start => 2, Stop => 5)));
+      AUnit.Assertions.Assert
+        (View.Dimension_Count = 2
+         and then View.Rows = 2
+         and then View.Columns = 3
+         and then OpenCV.Core.UInt8_Access.Get (View, 0, 0) = 12
+         and then OpenCV.Core.UInt8_Access.Get (Source, 1, 2) = 12,
+         "A 2-D Slice must select the equivalent source region");
+      OpenCV.Core.UInt8_Access.Set (View, 1, 2, 99);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Source, 2, 4) = 99,
+         "A 2-D Slice write must modify the corresponding source cell");
+   end Two_Dimensional_Slice_Matches_Source_Get_Set;
+
+   procedure Slice_Rejects_Dimensionality_Mismatch
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape        => (4, 5, 6),
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+
+      procedure Two_Ranges is
+         Ignored : constant OpenCV.Core.Mat :=
+           Source.Slice
+             ((1 => (Start => 0, Stop => 1), 2 => (Start => 0, Stop => 1)));
+      begin
+         pragma Unreferenced (Ignored);
+      end Two_Ranges;
+
+      procedure Four_Ranges is
+         Ignored : constant OpenCV.Core.Mat :=
+           Source.Slice
+             ((1 => (Start => 0, Stop => 1),
+               2 => (Start => 0, Stop => 1),
+               3 => (Start => 0, Stop => 1),
+               4 => (Start => 0, Stop => 1)));
+      begin
+         pragma Unreferenced (Ignored);
+      end Four_Ranges;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Two_Ranges'Access, "Slice must reject fewer ranges than dimensions");
+      Assert_Raises_OpenCV_Error
+        (Four_Ranges'Access, "Slice must reject more ranges than dimensions");
+   end Slice_Rejects_Dimensionality_Mismatch;
+
+   procedure Slice_Rejects_Invalid_Bounds (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape        => (4, 5, 6),
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+
+      procedure Start_After_Stop is
+         Ignored : constant OpenCV.Core.Mat :=
+           Source.Slice
+             ((1 => (Start => 2, Stop => 1),
+               2 => (Start => 0, Stop => 1),
+               3 => (Start => 0, Stop => 1)));
+      begin
+         pragma Unreferenced (Ignored);
+      end Start_After_Stop;
+
+      procedure Stop_Past_Extent is
+         Ignored : constant OpenCV.Core.Mat :=
+           Source.Slice
+             ((1 => (Start => 0, Stop => 1),
+               2 => (Start => 0, Stop => 6),
+               3 => (Start => 0, Stop => 1)));
+      begin
+         pragma Unreferenced (Ignored);
+      end Stop_Past_Extent;
+
+      procedure Empty_Range is
+         Ignored : constant OpenCV.Core.Mat :=
+           Source.Slice
+             ((1 => (Start => 1, Stop => 1),
+               2 => (Start => 0, Stop => 1),
+               3 => (Start => 0, Stop => 1)));
+      begin
+         pragma Unreferenced (Ignored);
+      end Empty_Range;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Start_After_Stop'Access,
+         "Slice must reject a range whose start exceeds its stop");
+      Assert_Raises_OpenCV_Error
+        (Stop_Past_Extent'Access,
+         "Slice must reject a range whose stop exceeds the axis extent");
+      Assert_Raises_OpenCV_Error
+        (Empty_Range'Access, "Slice must reject empty Start = Stop ranges");
+   end Slice_Rejects_Invalid_Bounds;
+
+   procedure Slice_Rejects_Default_Mat (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Default_Empty : OpenCV.Core.Mat;
+
+      procedure Slice_Default is
+         Ignored : constant OpenCV.Core.Mat :=
+           Default_Empty.Slice ((1 => (Start => 0, Stop => 1)));
+      begin
+         pragma Unreferenced (Ignored);
+      end Slice_Default;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Slice_Default'Access, "Slice must reject a genuine default Mat");
+   end Slice_Rejects_Default_Mat;
+
+   procedure Slice_Survives_Source_Finalization
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Retained : OpenCV.Core.Mat;
+   begin
+      declare
+         Source : OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Shape        => (4, 5, 6),
+              Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      begin
+         Fill_UInt8_Cube (Source);
+         Retained :=
+           Source.Slice
+             ((1 => (Start => 1, Stop => 4),
+               2 => (Start => 2, Stop => 5),
+               3 => (Start => 1, Stop => 3)));
+      end;
+
+      AUnit.Assertions.Assert
+        (Retained.Dimension_Count = 3
+         and then Retained.Extent (1) = 3
+         and then OpenCV.Core.UInt8_Access.Get (Retained, Indices => (0, 0, 0))
+                  = 43,
+         "A Slice must remain valid after its source header is finalized");
+   end Slice_Survives_Source_Finalization;
+
+   procedure Float32_Slice_Shares_Typed_Access (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape        => (3, 4, 5),
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+      View   : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float32_Access.Set
+        (Source, Indices => (1, 2, 3), Value => 1.5);
+      View :=
+        Source.Slice
+          ((1 => (Start => 1, Stop => 3),
+            2 => (Start => 1, Stop => 4),
+            3 => (Start => 2, Stop => 5)));
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float
+              (OpenCV.Core.Float32_Access.Get (View, Indices => (0, 1, 1))),
+            1.5),
+         "A Float32 slice must read the corresponding source element");
+      OpenCV.Core.Float32_Access.Set
+        (View, Indices => (0, 1, 1), Value => -2.25);
+      AUnit.Assertions.Assert
+        (Approximately_Equal
+           (Long_Float
+              (OpenCV.Core.Float32_Access.Get (Source, Indices => (1, 2, 3))),
+            -2.25),
+         "A Float32 slice write must share storage with its source");
+   end Float32_Slice_Shares_Typed_Access;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -1189,7 +1563,51 @@ package body Mat_View_Tests is
         (Caller.Create
            ("Diagonal matrix handles boundaries and lifetime",
             Diagonal_Matrix_Handles_Boundaries_And_Lifetime'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Three-dimensional slice has metadata and shares data",
+            Three_Dimensional_Slice_Has_Metadata_And_Shares_Data'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Slice Clone owns independent storage",
+            Slice_Clone_Owns_Independent_Storage'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Slice Index_Range_Array uses iteration order",
+            Slice_Index_Range_Array_Uses_Iteration_Order'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Full-range slice shares storage",
+            Full_Range_Slice_Shares_Storage'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Nested slice accumulates offsets",
+            Nested_Slice_Accumulates_Offsets'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Two-dimensional slice matches source Get/Set",
+            Two_Dimensional_Slice_Matches_Source_Get_Set'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Slice rejects dimensionality mismatch",
+            Slice_Rejects_Dimensionality_Mismatch'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Slice rejects invalid bounds",
+            Slice_Rejects_Invalid_Bounds'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Slice rejects default Mat", Slice_Rejects_Default_Mat'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Slice survives source finalization",
+            Slice_Survives_Source_Finalization'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32 slice shares typed access",
+            Float32_Slice_Shares_Typed_Access'Access));
       return Result'Access;
+
    end Suite;
 
 end Mat_View_Tests;

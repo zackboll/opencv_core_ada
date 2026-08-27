@@ -790,6 +790,18 @@ opencv_core_mat_column_range_view(const opencv_core_mat_handle *source,
                                   opencv_core_mat_handle **out_mat);
 
 /*
+ * Creates a distinct Mat header for the indicated N-dimensional half-open
+ * ranges. The header shares source storage through OpenCV reference counting
+ * and does not copy data. ndims is the number of values in starts and stops,
+ * in iteration order. starts and stops must be non-null when ndims is
+ * positive. Range start is inclusive and range stop is exclusive.
+ */
+opencv_core_status
+opencv_core_mat_slice_nd(const opencv_core_mat_handle *source, int32_t ndims,
+                         const int32_t *starts, const int32_t *stops,
+                         opencv_core_mat_handle **out_mat);
+
+/*
  * Creates a distinct two-dimensional Mat header by invoking Mat::reshape.
  * channels must be in 1 .. OPENCV_CORE_MAX_CHANNELS. A rows value of zero
  * preserves the source row count; otherwise it is the requested positive row

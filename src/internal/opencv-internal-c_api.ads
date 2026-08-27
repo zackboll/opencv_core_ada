@@ -628,6 +628,14 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_column_range_view";
 
+   function Mat_Slice_ND
+     (Source          : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Starts          : access C_Int32;
+      Stops           : access C_Int32;
+      Result          : access Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_slice_nd";
+
    function Mat_Reshape
      (Source   : Mat_Handle;
       Channels : C_Int32;

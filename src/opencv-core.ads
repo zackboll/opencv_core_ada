@@ -116,6 +116,9 @@ package OpenCV.Core is
    --  Zero-based N-dimensional Mat indices. Iteration order maps directly
    --  to OpenCV dimensions regardless of the array's index bounds.
    type Index_Array is array (Positive range <>) of Size_Coordinate;
+   --  N-dimensional Mat index ranges. Iteration order maps directly to
+   --  OpenCV dimensions regardless of the array's index bounds.
+   type Index_Range_Array is array (Positive range <>) of Index_Range;
 
    type Point is record
       X : Point_Coordinate := 0;
@@ -1040,6 +1043,15 @@ package OpenCV.Core is
    function Row_View (Self : Mat; Rows : Index_Range) return Mat;
    function Column_View (Self : Mat; Column : Size_Coordinate) return Mat;
    function Column_View (Self : Mat; Columns : Index_Range) return Mat;
+
+   --  Creates a distinct Mat header sharing Self's storage for the selected
+   --  N-dimensional half-open ranges. Exactly one range is required for every
+   --  dimension. Iteration order maps to OpenCV dimensions regardless of the
+   --  array's index bounds. Empty ranges (Start = Stop) are rejected because
+   --  OpenCV's N-D range constructor does not accept them consistently from
+   --  4.1 through 5.0. The result keeps Self's depth, channel count, and
+   --  dimension count; each extent becomes Stop - Start.
+   function Slice (Self : Mat; Ranges : Index_Range_Array) return Mat;
 
    --  Sets the calling thread's OpenCV default RNG state. Reseeding that
    --  thread with the same Seed restarts its sequence. Fill_Uniform,

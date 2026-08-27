@@ -18,7 +18,7 @@ translation of the C++ headers.
 >
 > **Development status:** active, pre-1.0 API.
 >
-> **Current test baseline:** 918 AUnit tests, with Ada and C++ warnings promoted
+> **Current test baseline:** 948 AUnit tests, with Ada and C++ warnings promoted
 > to errors. GitHub Actions exercises the full test suite against four OpenCV
 > compatibility targets.
 >
@@ -306,7 +306,7 @@ The test crate carries development-only dependencies such as AUnit, GNATprove,
 and GNATcov. They are intentionally not dependencies of the public library
 crate.
 
-At the time of this README update, the full suite contains **918 AUnit tests**.
+At the time of this README update, the full suite contains **948 AUnit tests**.
 Coverage includes ordinary behavior, invalid input, shape/depth/channel
 compatibility, empty Mats, non-contiguous Regions, shallow-versus-independent
 ownership, callback lifetimes, arbitrary Ada array lower bounds, failure
@@ -484,6 +484,7 @@ The public API includes no-copy views such as:
 - `Row_View`
 - `Column_View`
 - row-range and column-range view overloads
+- `Slice`
 - `Reshape`
 - `Diagonal_View`
 
@@ -620,7 +621,7 @@ the Ada declarations and covered by tests.
 Major public abstractions include:
 
 - `Mat`, `Mat_Type`, `Depth_Type`, `Channel_Count`, `Mat_Size`
-- `Size`, `Point`, `Point_Array`, `Rect`, `Index_Range`, `Scalar`
+- `Size`, `Point`, `Point_Array`, `Rect`, `Index_Range`, `Index_Range_Array`, `Scalar`
 - `Mat_Array`
 - `Random_Number_Generator`
 - `Min_Max_Result`, `Mean_Std_Dev_Result`, `Range_Check_Result`
@@ -659,6 +660,7 @@ Creation and structure:
 - `Row_View`
 - `Column_View`
 - range views
+- `Slice`
 - `Reshape`
 - `Diagonal_View`
 - `Diagonal_Matrix`
@@ -1207,8 +1209,9 @@ GNATprove is supplied by the separate `tests` Alire environment.
 The current limitations are intentional and help keep the public API coherent:
 
 1. **The dense public `Mat` model is primarily 2-D.**  
-   N-dimensional Mat construction, reshape, and views are not yet exposed as a
-   complete Ada model.
+   N-dimensional construction, UInt8/Float32 C1 Get/Set, and `Slice` views are
+   available. N-D reshape and dimension-dropping scalar indexing are not yet
+   exposed as a complete Ada model.
 
 2. **No public `SparseMat` or `UMat` abstraction.**
 

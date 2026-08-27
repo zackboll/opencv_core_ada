@@ -3573,9 +3573,93 @@ opencv_core_mat_column_range_view(const opencv_core_mat_handle *source,
 }
 
 opencv_core_status
+opencv_core_mat_slice_nd(const opencv_core_mat_handle *source, int32_t ndims,
+                         const int32_t *starts, const int32_t *stops,
+                         opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (source == nullptr) {
+        return invalid_argument("source Mat handle must not be null");
+    }
+
+    if (reject_temporary_external_view(source) != OPENCV_CORE_OK) {
+        return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
+    }
+
+    if (ndims < 0) {
+        return invalid_argument("dimension count must not be negative");
+    }
+
+    // ABI safety: the shim copies ranges into a 32-slot stack array that
+    // matches OpenCV's established Mat dimensionality limit. A larger ndims
+    // would overflow that storage.
+    if (ndims > maximum_mat_dimensions) {
+        return invalid_argument(
+            "dimension count exceeds OpenCV's 32-dimension limit");
+    }
+
+    if (ndims > 0 && (starts == nullptr || stops == nullptr)) {
+        return invalid_argument(
+            "starts and stops must not be null when ndims is positive");
+    }
+
+    try {
+        // ABI safety: OpenCV's Range* constructor indexes ranges[0 .. dims-1]
+        // and Mat size/step tables of that length. A mismatched ndims would
+        // read past the supplied arrays or past Mat dimension storage.
+        if (ndims != source->value.dims) {
+            return invalid_argument(
+                "range count must equal Mat dimension count");
+        }
+
+        cv::Range opencv_ranges[maximum_mat_dimensions];
+        for (int32_t index = 0; index < ndims; ++index) {
+            if (starts[index] < 0 || stops[index] < 0) {
+                return invalid_argument("slice ranges must not be negative");
+            }
+
+            // ABI safety: OpenCV writes size[i] = end - start and then
+            // performs data += start * step[i]. start > stop produces a
+            // negative size before later accessors can reject it.
+            if (starts[index] > stops[index]) {
+                return invalid_argument(
+                    "slice range start must not exceed its stop");
+            }
+
+            const int extent = source->value.size[static_cast<int>(index)];
+            // ABI safety: OpenCV's N-D Range constructor performs
+            // data += start * step[i] after asserting end <= size[i].
+            // A stop past the native extent would form a view whose later
+            // unchecked access addresses storage outside the source Mat.
+            if (stops[index] > extent) {
+                return invalid_argument(
+                    "slice range stop is outside Mat bounds");
+            }
+
+            opencv_ranges[index] =
+                cv::Range(static_cast<int>(starts[index]),
+                          static_cast<int>(stops[index]));
+        }
+
+        *out_mat = new opencv_core_mat_handle(
+            cv::Mat(source->value, opencv_ranges));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_reshape(const opencv_core_mat_handle *source, int32_t channels,
                         int32_t rows, opencv_core_mat_handle **out_mat) {
     clear_error();
+
 
     if (out_mat == nullptr) {
         return invalid_argument("out_mat must not be null");

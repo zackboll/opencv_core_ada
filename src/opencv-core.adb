@@ -3248,6 +3248,71 @@ package body OpenCV.Core is
       return Result;
    end Column_View;
 
+   function Slice (Self : Mat; Ranges : Index_Range_Array) return Mat is
+      Source_Dims : constant Natural := Self.Dimension_Count;
+   begin
+      if Source_Dims = 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat slice requires a Mat with at least one dimension");
+      end if;
+
+      if Ranges'Length /= Source_Dims then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat slice requires one range for every dimension");
+      end if;
+
+      declare
+         Starts     :
+           OpenCV.Internal.C_API.C_Int32_Array (0 .. Source_Dims - 1);
+         Stops      :
+           OpenCV.Internal.C_API.C_Int32_Array (0 .. Source_Dims - 1);
+         Position   : Natural := 0;
+         Result     : Mat;
+         New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+           OpenCV.Internal.C_API.Null_Mat_Handle;
+         Status     : OpenCV.Internal.C_API.Status;
+      begin
+         for Selected of Ranges loop
+            if Selected.Start > Selected.Stop then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  "Mat slice range start must not exceed its stop");
+            end if;
+
+            if Selected.Start = Selected.Stop then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity, "Mat slice ranges must be nonempty");
+            end if;
+
+            if Selected.Stop > Self.Extent (Position + 1) then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  "Mat slice range stop is outside source bounds");
+            end if;
+
+            Starts (Position) :=
+              OpenCV.Internal.C_API.C_Int32 (Selected.Start);
+            Stops (Position) := OpenCV.Internal.C_API.C_Int32 (Selected.Stop);
+            Position := Position + 1;
+         end loop;
+
+         Status :=
+           OpenCV.Internal.C_API.Mat_Slice_ND
+             (Source          => Self.Handle,
+              Dimension_Count => OpenCV.Internal.C_API.C_Int32 (Source_Dims),
+              Starts          => Starts (Starts'First)'Access,
+              Stops           => Stops (Stops'First)'Access,
+              Result          => New_Handle'Access);
+         Raise_On_Error (Status, "Mat slice creation");
+
+         OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+         Result.Handle := New_Handle;
+         return Result;
+      end;
+   end Slice;
+
    procedure Set_Random_Seed (Seed : Interfaces.Integer_32) is
       Result : constant OpenCV.Internal.C_API.Status :=
         OpenCV.Internal.C_API.Set_RNG_Seed
