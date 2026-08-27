@@ -192,6 +192,16 @@ opencv_core_mat_create_2d(int32_t rows, int32_t columns, int32_t depth,
                           opencv_core_mat_handle **out_mat);
 
 /*
+ * Creates an N-dimensional Mat. ndims is the number of extents in sizes, in
+ * iteration order. sizes must be non-null when ndims is positive. Depth and
+ * channel identifiers follow the stable C ABI, not OpenCV packed type codes.
+ */
+opencv_core_status
+opencv_core_mat_create_nd(int32_t ndims, const int32_t *sizes, int32_t depth,
+                          int32_t channels,
+                          opencv_core_mat_handle **out_mat);
+
+/*
  * Creates a temporary 2-D Mat header over caller-owned storage. The header
  * does not allocate, copy, or own the supplied buffer. rows and columns must
  * be positive. byte_count must equal rows * columns * elemSize() for the
@@ -822,6 +832,19 @@ opencv_core_mat_rows(const opencv_core_mat_handle *mat, int32_t *out_rows);
 opencv_core_status
 opencv_core_mat_columns(const opencv_core_mat_handle *mat,
                         int32_t *out_columns);
+
+opencv_core_status
+opencv_core_mat_dimension_count(const opencv_core_mat_handle *mat,
+                                int32_t *out_dims);
+
+/*
+ * Returns the extent of a zero-based OpenCV dimension. axis 0 is the first
+ * OpenCV dimension. The value is a nonnegative size, never OpenCV's 2-D
+ * rows/cols sentinel.
+ */
+opencv_core_status
+opencv_core_mat_extent(const opencv_core_mat_handle *mat, int32_t axis,
+                       int32_t *out_extent);
 
 opencv_core_status
 opencv_core_mat_channels(const opencv_core_mat_handle *mat,

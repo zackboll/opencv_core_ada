@@ -110,6 +110,10 @@ package OpenCV.Core is
       Height : Size_Coordinate := 0;
    end record;
 
+   --  N-dimensional Mat shape. Iteration order maps directly to OpenCV
+   --  dimensions regardless of the array's index bounds.
+   type Dimension_Array is array (Positive range <>) of Size_Coordinate;
+
    type Point is record
       X : Point_Coordinate := 0;
       Y : Point_Coordinate := 0;
@@ -465,6 +469,13 @@ package OpenCV.Core is
    with Pre => Rows <= 2_147_483_647 and then Columns <= 2_147_483_647;
 
    function Create (Dimensions : Size; Element_Type : Mat_Type) return Mat;
+
+   --  Creates a genuine N-dimensional Mat. Dimension order follows Ada
+   --  iteration order. At least two dimensions are required because OpenCV
+   --  promotes a 1-D request to 2-D. Each extent must be nonzero, and the
+   --  dimension count must not exceed OpenCV's 32-dimension limit.
+   function Create
+     (Shape : Dimension_Array; Element_Type : Mat_Type) return Mat;
 
    --  Creates an independent square matrix with Diagonal on its main diagonal
    --  and zero in every off-diagonal element. Diagonal must be a row or column
@@ -999,6 +1010,14 @@ package OpenCV.Core is
    function Is_Empty (Self : Mat) return Boolean;
    function Rows (Self : Mat) return Natural;
    function Columns (Self : Mat) return Natural;
+
+   --  Returns OpenCV's Mat.dims. A genuine default empty Mat reports 0. A
+   --  typed 2-D Mat, including Create (0, 0, ...), reports 2.
+   function Dimension_Count (Self : Mat) return Natural;
+
+   --  Returns the extent of 1-based Axis. Axis 1 is OpenCV dimension 0.
+   --  Raises OpenCV_Error when Axis is greater than Dimension_Count.
+   function Extent (Self : Mat; Axis : Positive) return Size_Coordinate;
 
    --  Composed from the established column and row queries: Width = Columns,
    --  Height = Rows.  No separate C ABI accessor is required.

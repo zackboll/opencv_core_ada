@@ -1085,6 +1085,71 @@ opencv_core_mat_create_2d(int32_t rows, int32_t columns, int32_t depth,
 }
 
 opencv_core_status
+opencv_core_mat_create_nd(int32_t ndims, const int32_t *sizes, int32_t depth,
+                          int32_t channels,
+                          opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (ndims < 0) {
+        return invalid_argument("dimension count must not be negative");
+    }
+
+    // ABI safety: OpenCV stores N-D extents in a CV_MAX_DIM (32) array and
+    // indexes the caller sizes pointer for 0 .. ndims-1. A larger ndims
+    // would overflow that storage or read past the supplied sizes buffer.
+    if (ndims > CV_MAX_DIM) {
+        return invalid_argument(
+            "dimension count exceeds OpenCV's 32-dimension limit");
+    }
+
+    if (ndims > 0 && sizes == nullptr) {
+        return invalid_argument("sizes must not be null when ndims is positive");
+    }
+
+    // ABI safety: CV_MAKETYPE encodes (channels-1) into a bit field. Values
+    // outside 1 .. CV_CN_MAX produce a wrapped or truncated type before
+    // OpenCV sees the request.
+    if (channels < 1 || channels > OPENCV_CORE_MAX_CHANNELS) {
+        return invalid_argument("channels must be in the range 1 .. 512");
+    }
+
+    int opencv_depth = 0;
+    if (!to_opencv_depth(depth, opencv_depth)) {
+        return invalid_argument("depth is not a supported depth identifier");
+    }
+
+    int opencv_sizes[CV_MAX_DIM];
+    for (int32_t index = 0; index < ndims; ++index) {
+        // ABI safety: OpenCV's N-D constructor takes const int* sizes and
+        // uses them for allocation arithmetic. A negative extent is not a
+        // valid size and would produce undefined allocation behavior.
+        if (sizes[index] < 0) {
+            return invalid_argument("dimension extents must not be negative");
+        }
+        opencv_sizes[index] = static_cast<int>(sizes[index]);
+    }
+
+    try {
+        if (ndims == 0) {
+            *out_mat = new opencv_core_mat_handle();
+        } else {
+            const int type = CV_MAKETYPE(opencv_depth, channels);
+            *out_mat = new opencv_core_mat_handle(
+                cv::Mat(static_cast<int>(ndims), opencv_sizes, type));
+        }
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_create_external_2d(int32_t rows, int32_t columns,
                                    int32_t depth, int32_t channels,
                                    void *data, uint64_t byte_count,
@@ -3640,6 +3705,68 @@ opencv_core_mat_columns(const opencv_core_mat_handle *mat,
 
     try {
         *out_columns = static_cast<int32_t>(mat->value.cols);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_dimension_count(const opencv_core_mat_handle *mat,
+                                int32_t *out_dims) {
+    clear_error();
+
+    if (out_dims == nullptr) {
+        return invalid_argument("out_dims must not be null");
+    }
+
+    *out_dims = 0;
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        *out_dims = static_cast<int32_t>(mat->value.dims);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_extent(const opencv_core_mat_handle *mat, int32_t axis,
+                       int32_t *out_extent) {
+    clear_error();
+
+    if (out_extent == nullptr) {
+        return invalid_argument("out_extent must not be null");
+    }
+
+    *out_extent = 0;
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    if (axis < 0) {
+        return invalid_argument("axis must not be negative");
+    }
+
+    try {
+        // ABI safety: MatSize::operator[] is an unchecked index into the Mat
+        // dimension array. An out-of-range axis would read outside that
+        // storage.
+        if (axis >= mat->value.dims) {
+            return invalid_argument("axis is outside the Mat dimension range");
+        }
+
+        const int extent = mat->value.size[static_cast<int>(axis)];
+        if (extent < 0) {
+            return invalid_argument("Mat extent is negative");
+        }
+
+        *out_extent = static_cast<int32_t>(extent);
         return OPENCV_CORE_OK;
     } catch (...) {
         return translate_current_exception();

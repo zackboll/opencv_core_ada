@@ -163,18 +163,27 @@ package OpenCV.Internal.C_API is
       Channels : C_Int32;
       Result   : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_create_2d";
+
+   function Mat_Create_ND
+     (Dimension_Count : C_Int32;
+      Sizes           : access C_Int32;
+      Depth           : C_Int32;
+      Channels        : C_Int32;
+      Result          : access Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_create_nd";
+
    function Mat_Create_External_2D
-      (Rows       : C_Int32;
-       Columns    : C_Int32;
-       Depth      : C_Int32;
-       Channels   : C_Int32;
-       Data       : System.Address;
-       Byte_Count : C_UInt64;
-       Result     : access Mat_Handle) return Status
-    with
-      Import,
-      Convention    => C,
-      External_Name => "opencv_core_mat_create_external_2d";
+     (Rows       : C_Int32;
+      Columns    : C_Int32;
+      Depth      : C_Int32;
+      Channels   : C_Int32;
+      Data       : System.Address;
+      Byte_Count : C_UInt64;
+      Result     : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_create_external_2d";
 
    function Mat_Create_External_2D_Strided
      (Rows             : C_Int32;
@@ -654,6 +663,17 @@ package OpenCV.Internal.C_API is
    function Mat_Columns
      (Self : Mat_Handle; Result : access C_Int32) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_columns";
+
+   function Mat_Dimension_Count
+     (Self : Mat_Handle; Result : access C_Int32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_dimension_count";
+
+   function Mat_Extent
+     (Self : Mat_Handle; Axis : C_Int32; Result : access C_Int32) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_extent";
 
    function Mat_Channels
      (Self : Mat_Handle; Result : access C_Int32) return Status

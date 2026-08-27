@@ -280,6 +280,60 @@ package body OpenCV.Core is
           Columns      => Natural (Dimensions.Width),
           Element_Type => Element_Type));
 
+   function Create
+     (Shape : Dimension_Array; Element_Type : Mat_Type) return Mat
+   is
+      Maximum_OpenCV_Dimensions : constant := 32;
+   begin
+      if Shape'Length < 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "N-dimensional Mat construction requires at least two dimensions");
+      end if;
+
+      if Shape'Length > Maximum_OpenCV_Dimensions then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "N-dimensional Mat construction exceeds OpenCV's 32-dimension"
+            & " limit");
+      end if;
+
+      declare
+         Sizes      :
+           OpenCV.Internal.C_API.C_Int32_Array (0 .. Shape'Length - 1);
+         Position   : Natural := 0;
+         Result     : Mat;
+         New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+           OpenCV.Internal.C_API.Null_Mat_Handle;
+         Status     : OpenCV.Internal.C_API.Status;
+      begin
+         for Extent_Value of Shape loop
+            if Extent_Value = 0 then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  "N-dimensional Mat extents must be nonzero");
+            end if;
+
+            Sizes (Position) := OpenCV.Internal.C_API.C_Int32 (Extent_Value);
+            Position := Position + 1;
+         end loop;
+
+         Status :=
+           OpenCV.Internal.C_API.Mat_Create_ND
+             (Dimension_Count => OpenCV.Internal.C_API.C_Int32 (Shape'Length),
+              Sizes           => Sizes (Sizes'First)'Access,
+              Depth           => To_C_Depth (Element_Type.Depth),
+              Channels        =>
+                OpenCV.Internal.C_API.C_Int32 (Element_Type.Channels),
+              Result          => New_Handle'Access);
+         Raise_On_Error (Status, "N-dimensional Mat construction");
+
+         OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+         Result.Handle := New_Handle;
+         return Result;
+      end;
+   end Create;
+
    procedure Validate_Arithmetic_Compatibility (Left, Right : Mat) is
    begin
       if Left.Rows /= Right.Rows then
@@ -2851,6 +2905,11 @@ package body OpenCV.Core is
         OpenCV.Internal.C_API.Mat_Rows (Self.Handle, Value'Access);
    begin
       Raise_On_Error (Result, "Mat rows query");
+      if Value < 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat rows are only defined for two-dimensional Mats");
+      end if;
       return Natural (Value);
    end Rows;
 
@@ -2860,8 +2919,51 @@ package body OpenCV.Core is
         OpenCV.Internal.C_API.Mat_Columns (Self.Handle, Value'Access);
    begin
       Raise_On_Error (Result, "Mat columns query");
+      if Value < 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat columns are only defined for two-dimensional Mats");
+      end if;
       return Natural (Value);
    end Columns;
+
+   function Dimension_Count (Self : Mat) return Natural is
+      Value  : aliased OpenCV.Internal.C_API.C_Int32 := 0;
+      Result : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Dimension_Count (Self.Handle, Value'Access);
+   begin
+      Raise_On_Error (Result, "Mat dimension count query");
+      if Value < 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat dimension count query returned a negative value");
+      end if;
+      return Natural (Value);
+   end Dimension_Count;
+
+   function Extent (Self : Mat; Axis : Positive) return Size_Coordinate is
+      Value  : aliased OpenCV.Internal.C_API.C_Int32 := 0;
+      Result : OpenCV.Internal.C_API.Status;
+   begin
+      if Axis > Self.Dimension_Count then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat extent axis is outside the Mat dimension range");
+      end if;
+
+      Result :=
+        OpenCV.Internal.C_API.Mat_Extent
+          (Self.Handle,
+           OpenCV.Internal.C_API.C_Int32 (Axis - 1),
+           Value'Access);
+      Raise_On_Error (Result, "Mat extent query");
+      if Value < 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat extent query returned a negative size");
+      end if;
+      return Size_Coordinate (Value);
+   end Extent;
 
    function Dimensions (Self : Mat) return Size
    is (Size'

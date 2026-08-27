@@ -521,6 +521,270 @@ package body Mat_Basic_Tests is
          "A typed empty Float32 C3 Mat should report a twelve-byte element");
    end Default_And_Typed_Empty_Mats_Report_Distinct_Element_Sizes;
 
+   procedure Three_Dimensional_Float32_Mat_Has_Requested_Shape
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape        => (2, 3, 4),
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+   begin
+      AUnit.Assertions.Assert
+        (not Image.Is_Empty, "A 3-D Mat should not be empty");
+      AUnit.Assertions.Assert
+        (Image.Dimension_Count = 3,
+         "A 2 x 3 x 4 Mat should have 3 dimensions");
+      AUnit.Assertions.Assert
+        (Image.Extent (1) = 2, "Extent 1 should be the first Ada dimension");
+      AUnit.Assertions.Assert
+        (Image.Extent (2) = 3, "Extent 2 should be the second Ada dimension");
+      AUnit.Assertions.Assert
+        (Image.Extent (3) = 4, "Extent 3 should be the third Ada dimension");
+      AUnit.Assertions.Assert
+        (Image.Total = 24, "A 2 x 3 x 4 Mat should contain 24 elements");
+      AUnit.Assertions.Assert
+        (Image.Depth = OpenCV.Core.Float32, "Depth should remain Float32");
+      AUnit.Assertions.Assert
+        (Image.Channels = 1, "A C1 3-D Mat should report one channel");
+      AUnit.Assertions.Assert
+        (Image.Element_Size = 4, "Float32 C1 elements should be 4 bytes");
+      AUnit.Assertions.Assert
+        (Image.Channel_Size = 4, "Float32 channels should be 4 bytes");
+      AUnit.Assertions.Assert
+        (Image.Is_Continuous, "A newly created 3-D Mat should be continuous");
+   end Three_Dimensional_Float32_Mat_Has_Requested_Shape;
+
+   procedure Four_Dimensional_UInt8_Mat_Has_Requested_Shape
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape        => (2, 3, 4, 5),
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
+   begin
+      AUnit.Assertions.Assert
+        (Image.Dimension_Count = 4, "A 4-D Mat should report 4 dimensions");
+      AUnit.Assertions.Assert (Image.Extent (1) = 2, "Extent 1 should be 2");
+      AUnit.Assertions.Assert (Image.Extent (2) = 3, "Extent 2 should be 3");
+      AUnit.Assertions.Assert (Image.Extent (3) = 4, "Extent 3 should be 4");
+      AUnit.Assertions.Assert (Image.Extent (4) = 5, "Extent 4 should be 5");
+      AUnit.Assertions.Assert
+        (Image.Total = 120, "A 2 x 3 x 4 x 5 Mat should contain 120 elements");
+      AUnit.Assertions.Assert
+        (Image.Channels = 3, "A C3 4-D Mat should report three channels");
+      AUnit.Assertions.Assert
+        (Image.Element_Size = 3, "UInt8 C3 elements should be 3 bytes");
+      AUnit.Assertions.Assert
+        (Image.Channel_Size = 1, "UInt8 channels should be 1 byte");
+   end Four_Dimensional_UInt8_Mat_Has_Requested_Shape;
+
+   procedure Dimension_Array_Uses_Iteration_Order_Not_Index_Origin
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Shape : constant OpenCV.Core.Dimension_Array (3 .. 5) := (2, 3, 4);
+      Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape, (Depth => OpenCV.Core.UInt8, Channels => 1));
+   begin
+      AUnit.Assertions.Assert
+        (Image.Dimension_Count = 3,
+         "A non-1 lower bound must not change dimension count");
+      AUnit.Assertions.Assert
+        (Image.Extent (1) = 2,
+         "The first iterated extent must become OpenCV dimension 0");
+      AUnit.Assertions.Assert
+        (Image.Extent (2) = 3,
+         "The second iterated extent must become OpenCV dimension 1");
+      AUnit.Assertions.Assert
+        (Image.Extent (3) = 4,
+         "The third iterated extent must become OpenCV dimension 2");
+   end Dimension_Array_Uses_Iteration_Order_Not_Index_Origin;
+
+   procedure Two_Dimensional_Create_Reports_Matching_Extents
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 7,
+           Columns      => 11,
+           Element_Type => (Depth => OpenCV.Core.Int16, Channels => 2));
+   begin
+      AUnit.Assertions.Assert
+        (Image.Dimension_Count = 2, "A 2-D Create result should have 2 dims");
+      AUnit.Assertions.Assert
+        (Image.Extent (1) = OpenCV.Core.Size_Coordinate (Image.Rows),
+         "Extent 1 must match Rows for a 2-D Mat");
+      AUnit.Assertions.Assert
+        (Image.Extent (2) = OpenCV.Core.Size_Coordinate (Image.Columns),
+         "Extent 2 must match Columns for a 2-D Mat");
+   end Two_Dimensional_Create_Reports_Matching_Extents;
+
+   procedure Extent_Rejects_Axis_Past_Dimension_Count
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape        => (2, 3, 4),
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+
+      procedure Query_Past_Last is
+         Unused : OpenCV.Core.Size_Coordinate;
+      begin
+         Unused := Image.Extent (4);
+      end Query_Past_Last;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Query_Past_Last'Access,
+         "Extent must raise OpenCV_Error for an axis past Dimension_Count");
+   end Extent_Rejects_Axis_Past_Dimension_Count;
+
+   procedure Clone_Preserves_N_Dimensional_Shape_And_Independent_Storage
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape        => (2, 3, 4),
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Copy   : OpenCV.Core.Mat;
+      Total  : OpenCV.Core.Scalar;
+   begin
+      Source.Set_To (OpenCV.Core.Make_Scalar (2.0));
+      Copy := Source.Clone;
+
+      AUnit.Assertions.Assert
+        (Copy.Dimension_Count = Source.Dimension_Count,
+         "A clone should preserve dimension count");
+      AUnit.Assertions.Assert
+        (Copy.Extent (1) = Source.Extent (1)
+         and then Copy.Extent (2) = Source.Extent (2)
+         and then Copy.Extent (3) = Source.Extent (3),
+         "A clone should preserve N-D extents");
+      AUnit.Assertions.Assert
+        (Copy.Total = Source.Total
+         and then Copy.Depth = Source.Depth
+         and then Copy.Channels = Source.Channels
+         and then Copy.Element_Size = Source.Element_Size,
+         "A clone should preserve N-D metadata");
+
+      Total := Copy.Sum;
+      AUnit.Assertions.Assert
+        (Total.Component_0 = 48.0, "The clone should copy the source values");
+
+      Source.Set_To (OpenCV.Core.Make_Scalar (5.0));
+      Total := Copy.Sum;
+      AUnit.Assertions.Assert
+        (Total.Component_0 = 48.0,
+         "A clone should own independent OpenCV storage");
+   end Clone_Preserves_N_Dimensional_Shape_And_Independent_Storage;
+
+   procedure Default_Empty_Mat_Has_Zero_Dimension_Count
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Default_Empty : OpenCV.Core.Mat;
+      Typed_Empty   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.UInt8, 1));
+
+      procedure Query_Default_Extent is
+         Unused : OpenCV.Core.Size_Coordinate;
+      begin
+         Unused := Default_Empty.Extent (1);
+      end Query_Default_Extent;
+   begin
+      AUnit.Assertions.Assert
+        (Default_Empty.Is_Empty and then Default_Empty.Dimension_Count = 0,
+         "A genuine default Mat must keep OpenCV's dims == 0 empty header");
+      AUnit.Assertions.Assert
+        (Typed_Empty.Is_Empty and then Typed_Empty.Dimension_Count = 2,
+         "A typed 0x0 Mat must remain a 2-D empty Mat");
+      AUnit.Assertions.Assert
+        (Typed_Empty.Extent (1) = 0 and then Typed_Empty.Extent (2) = 0,
+         "A typed 0x0 Mat should report zero row and column extents");
+      Assert_Raises_OpenCV_Error
+        (Query_Default_Extent'Access,
+         "Extent on a default empty Mat must raise OpenCV_Error");
+   end Default_Empty_Mat_Has_Zero_Dimension_Count;
+
+   procedure N_Dimensional_Create_Rejects_Unsafe_Shapes
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+
+      procedure Create_One_Dimension is
+         Unused : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Shape        => (1 => 4),
+              Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      begin
+         null;
+      end Create_One_Dimension;
+
+      procedure Create_Zero_Extent is
+         Unused : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Shape        => (2, 0, 4),
+              Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      begin
+         null;
+      end Create_Zero_Extent;
+
+      procedure Create_Too_Many_Dimensions is
+         Shape  : constant OpenCV.Core.Dimension_Array (1 .. 33) :=
+           (others => 1);
+         Unused : OpenCV.Core.Mat;
+      begin
+         Unused :=
+           OpenCV.Core.Create
+             (Shape, (Depth => OpenCV.Core.UInt8, Channels => 1));
+      end Create_Too_Many_Dimensions;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Create_One_Dimension'Access,
+         "N-D Create must reject a 1-D shape that OpenCV would promote");
+      Assert_Raises_OpenCV_Error
+        (Create_Zero_Extent'Access, "N-D Create must reject a zero extent");
+      Assert_Raises_OpenCV_Error
+        (Create_Too_Many_Dimensions'Access,
+         "N-D Create must reject more than 32 dimensions");
+   end N_Dimensional_Create_Rejects_Unsafe_Shapes;
+
+   procedure Rows_And_Columns_Reject_N_Dimensional_Mats
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape        => (2, 3, 4),
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+
+      procedure Query_Rows is
+         Unused : Natural;
+      begin
+         Unused := Image.Rows;
+      end Query_Rows;
+
+      procedure Query_Columns is
+         Unused : Natural;
+      begin
+         Unused := Image.Columns;
+      end Query_Columns;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Query_Rows'Access,
+         "Rows must raise OpenCV_Error for an N-D Mat instead of converting"
+         & " OpenCV's -1 sentinel");
+      Assert_Raises_OpenCV_Error
+        (Query_Columns'Access,
+         "Columns must raise OpenCV_Error for an N-D Mat instead of converting"
+         & " OpenCV's -1 sentinel");
+   end Rows_And_Columns_Reject_N_Dimensional_Mats;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -605,6 +869,43 @@ package body Mat_Basic_Tests is
         (Caller.Create
            ("Default and typed empty Mats report distinct element sizes",
             Typed_Empty_Sizes));
+      Result.Add_Test
+        (Caller.Create
+           ("3-D Float32 Mat has requested shape",
+            Three_Dimensional_Float32_Mat_Has_Requested_Shape'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("4-D UInt8 Mat has requested shape",
+            Four_Dimensional_UInt8_Mat_Has_Requested_Shape'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Dimension_Array uses iteration order not index origin",
+            Dimension_Array_Uses_Iteration_Order_Not_Index_Origin'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("2-D Create reports matching extents",
+            Two_Dimensional_Create_Reports_Matching_Extents'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Extent rejects axis past Dimension_Count",
+            Extent_Rejects_Axis_Past_Dimension_Count'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Clone preserves N-D shape and independent storage",
+            Clone_Preserves_N_Dimensional_Shape_And_Independent_Storage'
+              Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Default empty Mat has zero dimension count",
+            Default_Empty_Mat_Has_Zero_Dimension_Count'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("N-D Create rejects unsafe shapes",
+            N_Dimensional_Create_Rejects_Unsafe_Shapes'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Rows and Columns reject N-D Mats",
+            Rows_And_Columns_Reject_N_Dimensional_Mats'Access));
 
       return Result'Access;
    end Suite;
