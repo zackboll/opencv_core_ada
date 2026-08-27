@@ -499,6 +499,7 @@ package body Mat_Access_Tests is
       Readback : OpenCV.Core.UInt8_Row_Access.Row_Array (5 .. 8);
       From_Set : OpenCV.Core.UInt8_Row_Access.Row_Array (10 .. 13);
    begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
       OpenCV.Core.UInt8_Row_Access.Write_Row
         (Image, Row => 1, Data => Written);
       OpenCV.Core.UInt8_Row_Access.Read_Row
