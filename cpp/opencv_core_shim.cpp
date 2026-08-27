@@ -50,6 +50,9 @@ namespace {
 
 constexpr std::size_t error_message_capacity = 1024;
 constexpr int maximum_jacobi_dimension = 8460;
+// OpenCV's established Mat dimensionality limit across 4.1 through 5.0.
+// CV_MAX_DIM is not a stable C++ API symbol on 4.1/4.6 (C API only).
+constexpr int maximum_mat_dimensions = 32;
 thread_local char last_error_message[error_message_capacity] = "";
 
 void clear_error() noexcept {
@@ -1100,10 +1103,10 @@ opencv_core_mat_create_nd(int32_t ndims, const int32_t *sizes, int32_t depth,
         return invalid_argument("dimension count must not be negative");
     }
 
-    // ABI safety: OpenCV stores N-D extents in a CV_MAX_DIM (32) array and
+    // ABI safety: OpenCV stores N-D extents in a 32-slot dimension array and
     // indexes the caller sizes pointer for 0 .. ndims-1. A larger ndims
     // would overflow that storage or read past the supplied sizes buffer.
-    if (ndims > CV_MAX_DIM) {
+    if (ndims > maximum_mat_dimensions) {
         return invalid_argument(
             "dimension count exceeds OpenCV's 32-dimension limit");
     }
@@ -1124,7 +1127,7 @@ opencv_core_mat_create_nd(int32_t ndims, const int32_t *sizes, int32_t depth,
         return invalid_argument("depth is not a supported depth identifier");
     }
 
-    int opencv_sizes[CV_MAX_DIM];
+    int opencv_sizes[maximum_mat_dimensions];
     for (int32_t index = 0; index < ndims; ++index) {
         // ABI safety: OpenCV's N-D constructor takes const int* sizes and
         // uses them for allocation arithmetic. A negative extent is not a
