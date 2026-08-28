@@ -23,10 +23,16 @@ project Tests is
    package Linker is
       --  opencv_core.gpr Linker'Driver is not inherited by this main.
       --  Keep GNAT gcc as the Darwin link driver so the Ada runtime is
-      --  linked normally while -lc++ comes from opencv_core Linker_Options.
+      --  linked normally. A static opencv_core archive does not encode
+      --  its OpenCV/C++ runtime requirements, so apply the generated
+      --  install switches to this executable as well.
       case OpenCV_Core_Install.Use_Apple_Clang is
          when "True" =>
             for Driver use "gcc";
+            for Linker_Options use
+              (OpenCV_Core_Install.Library_Search_Switch,
+               "-lopencv_core",
+               OpenCV_Core_Install.Cxx_Runtime_Switch);
          when "False" =>
             null;
       end case;
