@@ -126,3 +126,83 @@ jobs:
 
       - name: Run test suite
         run: alr -C tests run
+
+  alire-ubuntu-lts:
+    name: Alire Ubuntu LTS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Alire
+        env:
+          ALIRE_VERSION: "2.1.1"
+        run: |
+          curl -L \
+            -o /tmp/alire.zip \
+            "https://github.com/alire-project/alire/releases/download/v${ALIRE_VERSION}/alr-${ALIRE_VERSION}-bin-x86_64-linux.zip"
+          unzip /tmp/alire.zip -d /tmp/alire
+          mkdir -p "$PWD/alire_install/bin"
+          install -m 0755 /tmp/alire/bin/alr "$PWD/alire_install/bin/alr"
+          rm -rf /tmp/alire /tmp/alire.zip
+          "$PWD/alire_install/bin/alr" version
+
+      - name: Pull Alire Ubuntu LTS image
+        run: docker pull ghcr.io/alire-project/docker/gnat:ubuntu-lts
+
+      - name: Run test suite in Alire Ubuntu LTS image
+        run: |
+          docker run --rm \
+            -e DEBIAN_FRONTEND=noninteractive \
+            -v "$PWD:/workspace" \
+            -v "$PWD/alire_install/bin/alr:/usr/bin/alr:ro" \
+            -w /workspace \
+            ghcr.io/alire-project/docker/gnat:ubuntu-lts \
+            /bin/bash -c '
+              set -eu
+
+              echo "=== Environment ==="
+              cat /etc/os-release
+              uname -a
+              uname -m
+
+              gcc --version || true
+              g++ --version || true
+              gnat --version || true
+              gprbuild --version || true
+              pkg-config --version || echo "pkg-config is not installed yet"
+
+              echo "=== Alire ==="
+              command -v alr
+              alr version
+
+              echo "=== Install OpenCV development package ==="
+              apt-get update
+              apt-get install -y --no-install-recommends \
+                libopencv-dev \
+                pkg-config
+
+              echo "=== OpenCV pkg-config ==="
+              pkg-config --version
+              if pkg-config --exists opencv5; then
+                opencv_pkg=opencv5
+              elif pkg-config --exists opencv4; then
+                opencv_pkg=opencv4
+              elif pkg-config --exists opencv; then
+                opencv_pkg=opencv
+              else
+                echo "error: no OpenCV pkg-config package found" >&2
+                exit 1
+              fi
+              echo "OpenCV pkg-config package: ${opencv_pkg}"
+              pkg-config --modversion "${opencv_pkg}"
+              pkg-config --cflags "${opencv_pkg}"
+              pkg-config --libs "${opencv_pkg}"
+
+              echo "=== Build and test ==="
+              alr -n toolchain --disable-assistant
+              alr -n build
+              alr -n -C tests run
+            '
+
