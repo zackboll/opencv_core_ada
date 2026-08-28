@@ -540,6 +540,35 @@ jobs:
           path: ${{ runner.temp }}/opencv-test-run.log
           if-no-files-found: error
 
+      - name: Capture macOS crash backtrace
+        if: ${{ always() && steps.tests.outcome == 'failure' }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          {
+            echo "=== LLDB location ==="
+            xcrun --find lldb
+            echo
+            echo "=== LLDB crash backtrace ==="
+            xcrun lldb --batch \
+              -o "breakpoint set --name abort" \
+              -o run \
+              -o "thread backtrace all" \
+              -- tests/bin/tests
+          } > "$RUNNER_TEMP/opencv-test-crash-backtrace.log" 2>&1
+          status=$?
+          cat "$RUNNER_TEMP/opencv-test-crash-backtrace.log"
+          exit "$status"
+
+      - name: Upload macOS crash backtrace
+        if: ${{ always() && steps.tests.outcome == 'failure' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-test-crash-backtrace
+          path: ${{ runner.temp }}/opencv-test-crash-backtrace.log
+          if-no-files-found: error
+
       - name: Capture actual test build/link command
         if: always()
         continue-on-error: true
