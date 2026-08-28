@@ -314,7 +314,9 @@ jobs:
               shim_obj=$(find . -name opencv_core_shim.o | head -n 1 || true)
               if [ -n "${shim_obj}" ]; then
                 echo "Found: ${shim_obj}"
-                readelf -r "${shim_obj}" || true
+                file "${shim_obj}"
+                readelf -h "${shim_obj}" | grep -E 'Class:|Data:|Type:|Machine:' || true
+                readelf -rW "${shim_obj}" | grep -E 'R_X86_64_32|R_X86_64_32S|R_X86_64_PC32' || true
               else
                 echo "opencv_core_shim.o not found"
               fi
