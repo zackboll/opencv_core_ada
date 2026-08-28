@@ -524,9 +524,21 @@ jobs:
       - name: Run test suite
         id: tests
         if: ${{ always() && steps.root-build.outcome == 'success' }}
+        shell: bash
         run: |
-          set -eu
-          alr -n -C tests run
+          set +e
+          alr -n -C tests run > "$RUNNER_TEMP/opencv-test-run.log" 2>&1
+          status=$?
+          cat "$RUNNER_TEMP/opencv-test-run.log"
+          exit "$status"
+
+      - name: Upload macOS test run diagnostics
+        if: ${{ always() && steps.root-build.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-test-run-diagnostics
+          path: ${{ runner.temp }}/opencv-test-run.log
+          if-no-files-found: error
 
       - name: Capture actual test build/link command
         if: always()
