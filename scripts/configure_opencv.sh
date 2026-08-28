@@ -42,22 +42,29 @@ fi
 cxx_runtime_switch="-lstdc++"
 cxx_driver="g++"
 use_apple_clang="False"
+macos_sdk_root=""
 sysname=$(uname -s)
 
 if [ "$sysname" = "Darwin" ]; then
     use_apple_clang="True"
     cxx_runtime_switch="-lc++"
-    if command -v xcrun >/dev/null 2>&1; then
-        cxx_driver=$(xcrun --find clang++)
-    elif command -v clang++ >/dev/null 2>&1; then
-        cxx_driver=$(command -v clang++)
-    else
+    if ! command -v xcrun >/dev/null 2>&1; then
+        echo "error: xcrun is required to locate Apple clang++ and the macOS SDK" >&2
+        exit 1
+    fi
+    cxx_driver=$(xcrun --find clang++)
+    if [ -z "$cxx_driver" ]; then
         echo "error: Apple clang++ is required to compile the OpenCV C++ shim on macOS" >&2
+        exit 1
+    fi
+    macos_sdk_root=$(xcrun --sdk macosx --show-sdk-path)
+    if [ -z "$macos_sdk_root" ]; then
+        echo "error: could not resolve the macOS SDK path via xcrun --sdk macosx --show-sdk-path" >&2
         exit 1
     fi
 fi
 
-case "$include_dir$library_dir$cxx_driver" in
+case "$include_dir$library_dir$cxx_driver$macos_sdk_root" in
     *\"*)
         echo "error: OpenCV paths containing double quotes are unsupported" >&2
         exit 1
@@ -75,5 +82,6 @@ abstract project OpenCV_Core_Install is
    Library_Search_Switch := "-L${library_dir}";
    Cxx_Runtime_Switch := "${cxx_runtime_switch}";
    Cxx_Driver := "${cxx_driver}";
+   MacOS_SDK_Root := "${macos_sdk_root}";
 end OpenCV_Core_Install;
 EOF

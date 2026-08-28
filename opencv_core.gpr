@@ -45,7 +45,12 @@ project OpenCV_Core is
       case OpenCV_Core_Install.Use_Apple_Clang is
          when "True" =>
             for Driver ("C++") use OpenCV_Core_Install.Cxx_Driver;
-            for Leading_Required_Switches ("C++") use ("-c", "-x", "c++");
+            for Leading_Required_Switches ("C++") use
+              ("-c",
+               "-x",
+               "c++",
+               "-isysroot",
+               OpenCV_Core_Install.MacOS_SDK_Root);
             for Include_Switches ("C++") use ("-I");
             for Dependency_Switches ("C++") use ("-MMD", "-MF", "");
          when "False" =>
