@@ -436,11 +436,10 @@ jobs:
           cat opencv_core.gpr
 
           echo "=== Languages / library kind / C++ switches / linker options ==="
-          grep -n -A8 -E 'Languages|Library_Type|Library_Kind|Default_Switches|"C\+\+"|Linker_Options|-lstdc\+\+' opencv_core.gpr
+          grep -n -A12 -E 'Languages|Library_Type|Library_Kind|Default_Switches|"C\+\+"|Linker_Options|Use_Apple_Clang|Cxx_Driver|Cxx_Runtime|-lstdc\+\+|-lc\+\+|clang' opencv_core.gpr
 
       - name: Build current source
         id: root-build
-        continue-on-error: true
         run: |
           set -eu
           alr -n build
@@ -525,7 +524,6 @@ jobs:
       - name: Run test suite
         id: tests
         if: ${{ always() && steps.root-build.outcome == 'success' }}
-        continue-on-error: true
         run: |
           set -eu
           alr -n -C tests run
@@ -538,199 +536,17 @@ jobs:
           echo "=== Verbose GPRbuild for failed tests crate ==="
           alr -n -C tests build -- -v
 
-      - name: Discover mixed GNAT Ada + Apple clang++ configuration
-        id: mixed-gprconfig
-        if: always()
-        continue-on-error: true
-        run: |
-          set -eu
-
-          MIXED_CGPR="${RUNNER_TEMP}/opencv-macos-clang.cgpr"
-          echo "MIXED_CGPR=${MIXED_CGPR}" >> "$GITHUB_ENV"
-
-          echo "=== gprconfig version ==="
-          alr exec -- gprconfig --version
-
-          echo "=== gprconfig help ==="
-          alr exec -- gprconfig --help || true
-
-          echo "=== PATH inside Alire environment ==="
-          alr exec -- printenv PATH
-
-          echo "=== host PATH ==="
-          printenv PATH || true
-
-          echo "=== compilers visible to Alire ==="
-          alr exec -- which gnat || true
-          alr exec -- which gcc || true
-          alr exec -- which g++ || true
-          alr exec -- which clang++ || true
-          alr exec -- which gprconfig || true
-
-          echo "=== Apple clang++ ==="
-          clang_pp="$(xcrun --find clang++)"
-          echo "xcrun --find clang++: ${clang_pp}"
-          xcrun clang++ --version
-          clang_dir="$(dirname "${clang_pp}")"
-          echo "clang++ directory: ${clang_dir}"
-          echo "MIXED_CLANGXX=${clang_pp}" >> "$GITHUB_ENV"
-          echo "MIXED_CLANG_DIR=${clang_dir}" >> "$GITHUB_ENV"
-
-          echo "=== gprconfig known compilers ==="
-          alr exec -- gprconfig --show-known-compilers || true
-
-          echo "=== gprconfig discovered compilers ==="
-          alr exec -- gprconfig --mi-show-compilers || true
-
-          echo "=== generate mixed Ada GNAT + C++ CLANG-C++ configuration ==="
-          echo "output: ${MIXED_CGPR}"
-          echo "command:"
-          echo "  alr exec -- gprconfig --batch \\"
-          echo "    --config=language:ada \\"
-          echo "    --config=language:c++,path:${clang_dir},name:CLANG-C++ \\"
-          echo "    -o ${MIXED_CGPR}"
-
-          alr exec -- gprconfig --batch \
-            --config=language:ada \
-            --config=language:c++,path:"${clang_dir}",name:CLANG-C++ \
-            -o "${MIXED_CGPR}"
-
-          if [ ! -f "${MIXED_CGPR}" ]; then
-            echo "error: mixed configuration was not generated: ${MIXED_CGPR}" >&2
-            exit 1
-          fi
-
-          echo "generated ${MIXED_CGPR}"
-          ls -l "${MIXED_CGPR}"
-
-      - name: Inspect generated mixed configuration
-        if: ${{ always() && steps.mixed-gprconfig.outcome == 'success' }}
-        continue-on-error: true
-        run: |
-          set -eu
-          MIXED_CGPR="${MIXED_CGPR:-${RUNNER_TEMP}/opencv-macos-clang.cgpr}"
-
-          echo "=== generated cgpr path ==="
-          ls -l "${MIXED_CGPR}"
-
-          echo "=== Compiler / Binder / Linker excerpts ==="
-          grep -n -E \
-            'package Compiler|package Binder|package Linker|for Driver|Leading_Required_Switches|Required_Switches|Shared_Library_Minimum_Switches|Bindfile_Option_Substitution|Library_Encapsulated_Options' \
-            "${MIXED_CGPR}" || true
-
-          echo "=== GCC-specific switches in generated cgpr ==="
-          echo "-specs= count: $(grep -c -- '-specs=' "${MIXED_CGPR}" || true)"
-          echo "-static-libgcc count: $(grep -c -- '-static-libgcc' "${MIXED_CGPR}" || true)"
-          echo "-shared-libgcc count: $(grep -c -- '-shared-libgcc' "${MIXED_CGPR}" || true)"
-          grep -n -E -- '-specs=|-static-libgcc|-shared-libgcc' "${MIXED_CGPR}" || true
-
-          echo "=== Driver assignments ==="
-          grep -n -E 'for Driver' "${MIXED_CGPR}" || true
-
-          echo "=== generated cgpr line count ==="
-          wc -l "${MIXED_CGPR}"
-
-          echo "=== generated cgpr (complete) ==="
-          cat "${MIXED_CGPR}"
-
-      - name: Experimental mixed-configuration root build
-        id: mixed-root-build
-        if: ${{ always() && steps.mixed-gprconfig.outcome == 'success' }}
-        continue-on-error: true
-        run: |
-          set -eu
-          MIXED_CGPR="${MIXED_CGPR:-${RUNNER_TEMP}/opencv-macos-clang.cgpr}"
-
-          echo "=== clean library build artifacts for mixed recompile ==="
-          rm -rf obj lib
-
-          echo "=== mixed root build ==="
-          echo "alr -n build -- --config=${MIXED_CGPR} -v"
-          mixed_root_log="${RUNNER_TEMP}/mixed-root-build.log"
-          set +e
-          alr -n build -- --config="${MIXED_CGPR}" -v 2>&1 | tee "${mixed_root_log}"
-          status="${PIPESTATUS[0]}"
-          set -e
-
-          echo "=== compiler invocations involving opencv_core_shim.cpp ==="
-          grep -E 'opencv_core_shim\.cpp|clang\+\+|/g\+\+' "${mixed_root_log}" || true
-
-          echo "=== GCC-only switches on mixed root build command lines ==="
-          grep -n -E -- '-specs=|-static-libgcc|-shared-libgcc' "${mixed_root_log}" || true
-
-          exit "${status}"
-
-      - name: Inspect mixed-build C++ shim object
-        if: ${{ always() && steps.mixed-root-build.outcome != 'skipped' }}
+      - name: Inspect linked test executable
+        if: ${{ always() && steps.tests.outcome == 'success' }}
         continue-on-error: true
         run: |
           set +e
           set +o pipefail
 
-          echo "=== mixed-build opencv_core_shim.o ==="
-          shim_obj="$(find . -name opencv_core_shim.o | head -n 1)"
-          if [ -z "${shim_obj}" ]; then
-            echo "opencv_core_shim.o not found after mixed root build"
-            find . -name '*shim*' -print | head -n 50
-            exit 0
-          fi
+          echo "=== generated OpenCV install configuration ==="
+          cat config/opencv_core_install.gpr
 
-          echo "Found: ${shim_obj}"
-          ls -l "${shim_obj}"
-          file "${shim_obj}"
-
-          echo "=== nm undefined symbols (FileStorage / FileNode / error / basic_string) ==="
-          nm -u "${shim_obj}" 2>/dev/null | grep -E 'FileStorage|FileNode|basic_string|__cxx11|__1|error' || true
-          echo "=== nm all matching symbols ==="
-          nm "${shim_obj}" 2>/dev/null | grep -E 'FileStorage|FileNode|basic_string|__cxx11|__1|cv::error|error' || true
-          echo "=== demangled matching symbols ==="
-          nm "${shim_obj}" 2>/dev/null | grep -E 'FileStorage|FileNode|basic_string|__cxx11|__1' | c++filt || true
-
-          echo "=== mixed-build std::__cxx11 vs std::__1 ==="
-          echo "std::__cxx11 count: $(nm "${shim_obj}" 2>/dev/null | grep -c '__cxx11' || true)"
-          echo "std::__1 count: $(nm "${shim_obj}" 2>/dev/null | grep -c '__1' || true)"
-
-      - name: Experimental mixed-configuration tests build and run
-        id: mixed-tests
-        if: ${{ always() && steps.mixed-root-build.outcome == 'success' }}
-        continue-on-error: true
-        run: |
-          set -eu
-          MIXED_CGPR="${MIXED_CGPR:-${RUNNER_TEMP}/opencv-macos-clang.cgpr}"
-
-          echo "=== clean tests build artifacts for mixed link ==="
-          rm -rf tests/obj tests/bin
-
-          echo "=== mixed tests build ==="
-          echo "alr -n -C tests build -- --config=${MIXED_CGPR} -v"
-          mixed_tests_log="${RUNNER_TEMP}/mixed-tests-build.log"
-          set +e
-          alr -n -C tests build -- --config="${MIXED_CGPR}" -v 2>&1 | tee "${mixed_tests_log}"
-          status="${PIPESTATUS[0]}"
-          set -e
-
-          echo "=== linker / compiler invocations from mixed tests build ==="
-          grep -E 'clang\+\+|/g\+\+| -o |libstdc\+\+|libc\+\+' "${mixed_tests_log}" || true
-
-          echo "=== GCC-only and C++ runtime switches on mixed tests build ==="
-          grep -n -E -- '-specs=|-static-libgcc|-shared-libgcc|-lstdc\+\+|-lc\+\+' "${mixed_tests_log}" || true
-
-          if [ "${status}" -ne 0 ]; then
-            exit "${status}"
-          fi
-
-          echo "=== mixed tests run ==="
-          echo "alr -n -C tests run --skip-build"
-          alr -n -C tests run --skip-build
-
-      - name: Inspect mixed-build test executable
-        if: ${{ always() && steps.mixed-tests.outcome != 'skipped' }}
-        continue-on-error: true
-        run: |
-          set +e
-          set +o pipefail
-
-          echo "=== mixed-build test executable ==="
+          echo "=== test executable ==="
           test_exe=""
           for candidate in tests/bin/tests tests/bin/test; do
             if [ -e "${candidate}" ]; then
@@ -738,14 +554,10 @@ jobs:
               break
             fi
           done
-          if [ -z "${test_exe}" ]; then
-            test_exe="$(find tests/bin -type f -perm -111 2>/dev/null | head -n 1)"
-          fi
 
           if [ -z "${test_exe}" ]; then
-            echo "mixed-build test executable not found"
-            ls -l tests/bin 2>/dev/null || true
-            find tests -name 'tests' -print | head -n 20
+            echo "test executable not found"
+            ls -l tests/bin
             exit 0
           fi
 
@@ -761,25 +573,4 @@ jobs:
           otool -L "${test_exe}" | grep -E 'libc\+\+' || true
           echo "libstdc++ lines:"
           otool -L "${test_exe}" | grep -E 'libstdc\+\+' || true
-
-      - name: Report mixed-configuration experiment outcomes
-        if: always()
-        run: |
-          echo "mixed-gprconfig outcome: ${{ steps.mixed-gprconfig.outcome }}"
-          echo "mixed-root-build outcome: ${{ steps.mixed-root-build.outcome }}"
-          echo "mixed-tests outcome: ${{ steps.mixed-tests.outcome }}"
-          echo "baseline root-build outcome: ${{ steps.root-build.outcome }}"
-          echo "baseline tests outcome: ${{ steps.tests.outcome }}"
-
-      - name: Fail job if build or tests failed
-        if: ${{ always() && (steps.root-build.outcome != 'success' || steps.tests.outcome == 'failure') }}
-        run: |
-          echo "macOS ARM64 compatibility job failed."
-          echo "root-build outcome: ${{ steps.root-build.outcome }}"
-          echo "tests outcome: ${{ steps.tests.outcome }}"
-          echo "mixed-gprconfig outcome: ${{ steps.mixed-gprconfig.outcome }}"
-          echo "mixed-root-build outcome: ${{ steps.mixed-root-build.outcome }}"
-          echo "mixed-tests outcome: ${{ steps.mixed-tests.outcome }}"
-          exit 1
-
 

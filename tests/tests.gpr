@@ -1,6 +1,7 @@
 with "config/tests_config.gpr";
 with "aunit";
 with "opencv_core";
+with "../config/opencv_core_install.gpr";
 
 project Tests is
 
@@ -18,6 +19,18 @@ project Tests is
    package Binder is
       for Switches ("Ada") use ("-Es"); --  Symbolic traceback
    end Binder;
+
+   package Linker is
+      --  opencv_core.gpr Linker'Driver is not inherited by this main.
+      --  Keep GNAT gcc as the Darwin link driver so the Ada runtime is
+      --  linked normally while -lc++ comes from opencv_core Linker_Options.
+      case OpenCV_Core_Install.Use_Apple_Clang is
+         when "True" =>
+            for Driver use "gcc";
+         when "False" =>
+            null;
+      end case;
+   end Linker;
 
    package Install is
       for Artifacts (".") use ("share");

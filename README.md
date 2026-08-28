@@ -239,8 +239,13 @@ The project links against:
 
 ```text
 opencv_core
-libstdc++
+libstdc++   (Linux)
+libc++      (macOS)
 ```
+
+On macOS the C++ shim is compiled with Apple `clang++` and linked against
+`libc++` so it matches Homebrew OpenCV. Ada remains on the GNAT toolchain.
+Linux continues to compile C++ with `g++` and link `libstdc++`.
 
 The compatibility containers currently use Alire 2.1.1, GNAT 16.1.0, and
 GPRbuild 26.0.1. Those pinned versions make CI reproducible; they are not a

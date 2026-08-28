@@ -30,6 +30,25 @@ project OpenCV_Core is
          "-Wpedantic",
          "-Werror",
          OpenCV_Core_Install.Include_Switch);
+
+      --  Homebrew OpenCV on macOS is built with Apple clang++ / libc++.
+      --  Compile the C++ shim with that driver so Ada stays on GNAT while
+      --  C++ objects match the OpenCV ABI.
+      --
+      --  Do not use a mixed gprconfig cgpr for this: Apple clang++ reports
+      --  arm64-apple-darwin while GNAT reports aarch64-apple-darwin, and
+      --  Alire's generated config cannot consume that mixed-target file.
+      --  Override the C++ driver in this project instead, and disable the
+      --  GCC-only include-spec machinery that clang++ rejects.
+      case OpenCV_Core_Install.Use_Apple_Clang is
+         when "True" =>
+            for Driver ("C++") use OpenCV_Core_Install.Cxx_Driver;
+            for Leading_Required_Switches ("C++") use ("-c", "-x", "c++");
+            for Include_Switches_Via_Spec ("C++") use ();
+            for Dependency_Switches ("C++") use ("-MMD", "-MF", "");
+         when "False" =>
+            null;
+      end case;
    end Compiler;
 
    package Binder is
@@ -37,10 +56,22 @@ project OpenCV_Core is
    end Binder;
 
    package Linker is
+      --  Keep GNAT gcc as the Darwin link driver so the Ada runtime is
+      --  linked with GNAT's usual options. clang++ compiled the shim;
+      --  Cxx_Runtime_Switch supplies -lc++ for those objects and for
+      --  Homebrew OpenCV. Linux keeps the default C++ link driver and
+      --  -lstdc++.
+      case OpenCV_Core_Install.Use_Apple_Clang is
+         when "True" =>
+            for Driver use "gcc";
+         when "False" =>
+            null;
+      end case;
+
       for Linker_Options use
         (OpenCV_Core_Install.Library_Search_Switch,
          "-lopencv_core",
-         "-lstdc++");
+         OpenCV_Core_Install.Cxx_Runtime_Switch);
    end Linker;
 
    package Install is
