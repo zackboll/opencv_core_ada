@@ -222,131 +222,84 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout opencv_core_ada
         uses: actions/checkout@v4
 
-      - name: Install Alire
-        env:
-          ALIRE_VERSION: "2.1.1"
-        run: |
-          curl -L \
-            -o /tmp/alire.zip \
-            "https://github.com/alire-project/alire/releases/download/v${ALIRE_VERSION}/alr-${ALIRE_VERSION}-bin-x86_64-linux.zip"
-          unzip /tmp/alire.zip -d /tmp/alire
-          mkdir -p "$PWD/alire_install/bin"
-          install -m 0755 /tmp/alire/bin/alr "$PWD/alire_install/bin/alr"
-          rm -rf /tmp/alire /tmp/alire.zip
-          "$PWD/alire_install/bin/alr" version
+      - name: Check out alire-index PR #2071 merge ref
+        uses: actions/checkout@v4
+        with:
+          repository: alire-project/alire-index
+          ref: refs/pull/2071/merge
+          fetch-depth: 0
+          path: alire-index
 
-      - name: Pull Alire Fedora Latest image
-        run: docker pull ghcr.io/alire-project/docker/gnat:fedora-latest
+      - name: Check out alire-index-checks
+        uses: actions/checkout@v4
+        with:
+          repository: alire-project/alire-index-checks
+          ref: stable-1.4.0
+          path: alire-index/alire-index-checks
 
-      - name: Run test suite in Alire Fedora Latest image
+      - name: Set up Alire 2.1.1
+        uses: alire-project/setup-alire@latest
+        with:
+          version: 2.1.1
+          toolchain: --disable-assistant
+
+      - name: Diagnose Alire-index checkout
+        working-directory: alire-index
         run: |
+          set -eu
+          echo "=== Alire-index git status ==="
+          git status
+          echo "=== Alire-index recent history ==="
+          git log -3 --oneline --decorate
+          echo "=== HEAD / HEAD~1 ==="
+          git rev-parse HEAD
+          git rev-parse HEAD~1
+          echo "=== git diff --name-only HEAD~1 ==="
+          git diff --name-only HEAD~1
+          echo "=== opencv_core-0.1.0 origin ==="
+          sed -n '/^\[origin\]/,$p' index/op/opencv_core/opencv_core-0.1.0.toml
+          echo "=== Fedora OpenCV external mapping ==="
+          cat index/op/opencv/opencv-external.toml
+          echo "=== Alire version ==="
+          command -v alr
+          alr version
+          ls -l "${GITHUB_WORKSPACE}/alire_install/bin/alr"
+
+      - name: Diagnose Fedora container
+        run: |
+          set -eu
           docker run --rm \
-            -v "$PWD:/workspace" \
-            -v "$PWD/alire_install/bin/alr:/usr/bin/alr:ro" \
-            -w /workspace \
             ghcr.io/alire-project/docker/gnat:fedora-latest \
             /bin/bash -c '
-              set -eu
-
-              echo "=== Environment ==="
+              set +e
+              echo "=== Fedora environment (no package changes) ==="
               cat /etc/os-release
               uname -a
               uname -m
-
-              dnf --version
-              gcc --version || true
-              g++ --version || true
-              gnat --version || true
-              gprbuild --version || true
-              command -v pkg-config >/dev/null && pkg-config --version || echo "pkg-config is not installed yet"
-
-              echo "=== Fedora compiler/linker defaults (diagnostic only) ==="
-              gcc -v
-              g++ -v
-              echo | gcc -dM -E -x c - | grep -E "__PIC__|__PIE__" || true
-              gcc -Q --help=target 2>/dev/null | grep -E "[[:space:]]-f(pie|PIE|pic|PIC)" || true
-              gcc -Q --help=common 2>/dev/null | grep -E "[[:space:]]-f(pie|PIE|pic|PIC)" || true
-
-              echo "=== Alire ==="
-              command -v alr
-              alr_ver="$(alr version)"
-              echo "${alr_ver}"
-              case "${alr_ver}" in
-                *2.1.1*) ;;
-                *)
-                  echo "error: expected Alire 2.1.1" >&2
-                  exit 1
-                  ;;
-              esac
-
-              echo "=== Install OpenCV development package ==="
-              dnf -y install opencv-devel
-              if ! command -v pkg-config >/dev/null 2>&1; then
-                echo "pkg-config missing; installing pkgconf-pkg-config"
-                dnf -y install pkgconf-pkg-config
-              fi
-
-              echo "=== OpenCV pkg-config ==="
-              pkg-config --version
-              if pkg-config --exists opencv5; then
-                opencv_pkg=opencv5
-              elif pkg-config --exists opencv4; then
-                opencv_pkg=opencv4
-              elif pkg-config --exists opencv; then
-                opencv_pkg=opencv
-              else
-                echo "error: no OpenCV pkg-config package found" >&2
-                exit 1
-              fi
-              echo "OpenCV pkg-config package: ${opencv_pkg}"
-              pkg-config --modversion "${opencv_pkg}"
-              pkg-config --cflags "${opencv_pkg}"
-              pkg-config --libs "${opencv_pkg}"
-              rpm -q opencv-devel || true
-
-              echo "=== Select Alire toolchain ==="
-              alr -n --force toolchain --select \
-                gnat_native=16.1.0 \
-                gprbuild=26.0.1
-              alr toolchain
-
-              echo "=== Compiler visible inside Alire environment ==="
-              alr exec -- which gnat
-              alr exec -- gnat --version
-              alr exec -- which gprbuild
-              alr exec -- gprbuild --version
-
-              echo "=== Build library ==="
-              alr -n build
-
-              echo "=== opencv_core_shim.o compile evidence (no flag changes) ==="
-              find . -name opencv_core_shim.o -print | while IFS= read -r obj; do
-                echo "--- ${obj} ---"
-                file "${obj}" || true
-                readelf -h "${obj}" || true
-                readelf -r "${obj}" | grep -E "R_X86_64_32|R_X86_64_PC32|R_X86_64_PLT32|GOTPCREL" || true
-              done
-
-              echo "=== Build and run tests ==="
-              set +e
-              alr -n -C tests run
-              test_status=$?
-              set -e
-
-              if [ "${test_status}" -ne 0 ]; then
-                echo "=== Post-failure link diagnostics (no flag changes) ==="
-                find . -name opencv_core_shim.o -print 2>/dev/null | while IFS= read -r obj; do
-                  echo "--- ${obj} ---"
-                  readelf -h "${obj}" || true
-                  readelf -r "${obj}" | grep -E "R_X86_64_32|R_X86_64_PC32|GOTPCREL" || true
-                done
-                echo "Look above for gprbuild/ld output showing how tests were linked."
-              fi
-
-              exit "${test_status}"
+              echo "DISTTAG=${DISTTAG:-}"
+              echo "FBR=${FBR:-}"
+              echo "FGC=${FGC:-}"
+              printenv | grep -E "^(DISTTAG|FBR|FGC)=" || true
+              gcc --version
+              g++ --version
+              gnat --version
+              gprbuild --version
+              echo "=== opencv-devel before Alire resolution ==="
+              rpm -q opencv-devel
+              exit 0
             '
+
+      - name: Test crate with upstream gh-build-crate.sh
+        uses: mosteo-actions/docker-run@v2
+        with:
+          image: ghcr.io/alire-project/docker/gnat:fedora-latest
+          host-dir: ${{ github.workspace }}/alire-index
+          guest-dir: ${{ github.workspace }}/alire-index
+          command: alire-index-checks/scripts/gh-build-crate.sh
+          params: >-
+            -v ${{ github.workspace }}/alire_install/bin/alr:/usr/bin/alr
 
 
