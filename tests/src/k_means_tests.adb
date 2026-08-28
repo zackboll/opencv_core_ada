@@ -324,11 +324,12 @@ package body K_Means_Tests is
       pragma Unreferenced (Test);
       Samples        : OpenCV.Core.Mat :=
         OpenCV.Core.Create (4, 1, (OpenCV.Core.Float32, 1));
-      Source         : constant OpenCV.Core.Mat :=
+      Source         : OpenCV.Core.Mat :=
         OpenCV.Core.Create (4, 1, (OpenCV.Core.UInt8, 1));
       Initial_Labels : OpenCV.Core.Mat;
       First, Second  : OpenCV.Core.K_Means_Result;
    begin
+      Source.Set_To (OpenCV.Core.Make_Scalar (0.0));
       for Row in 0 .. 3 loop
          OpenCV.Core.Float32_Access.Set
            (Samples, Row, 0, (if Row < 2 then 0.0 else 10.0));

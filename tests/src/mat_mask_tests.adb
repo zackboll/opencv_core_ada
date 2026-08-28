@@ -722,12 +722,13 @@ package body Mat_Mask_Tests is
      (Test : in out Mat_Test_Fixture)
    is
       pragma Unreferenced (Test);
-      Image : constant OpenCV.Core.Mat :=
+      Image : OpenCV.Core.Mat :=
         OpenCV.Core.Create
           (Rows         => 2,
            Columns      => 3,
            Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
    begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
       AUnit.Assertions.Assert
         (not Image.Has_Non_Zero,
          "Has_Non_Zero must return False for an all-zero matrix");
@@ -773,6 +774,7 @@ package body Mat_Mask_Tests is
       Image : OpenCV.Core.Mat :=
         OpenCV.Core.Create (3, 4, (OpenCV.Core.UInt8, 1));
    begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
       declare
          Empty : constant OpenCV.Core.Point_Array := Image.Find_Non_Zero;
       begin
