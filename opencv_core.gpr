@@ -38,13 +38,15 @@ project OpenCV_Core is
       --  Do not use a mixed gprconfig cgpr for this: Apple clang++ reports
       --  arm64-apple-darwin while GNAT reports aarch64-apple-darwin, and
       --  Alire's generated config cannot consume that mixed-target file.
-      --  Override the C++ driver in this project instead, and disable the
-      --  GCC-only include-spec machinery that clang++ rejects.
+      --  Override the C++ driver in this project instead. Configure ordinary
+      --  -I include switches so GPRbuild does not fall through to the
+      --  inherited GCC Include_Switches_Via_Spec mechanism that clang++
+      --  rejects.
       case OpenCV_Core_Install.Use_Apple_Clang is
          when "True" =>
             for Driver ("C++") use OpenCV_Core_Install.Cxx_Driver;
             for Leading_Required_Switches ("C++") use ("-c", "-x", "c++");
-            for Include_Switches_Via_Spec ("C++") use ();
+            for Include_Switches ("C++") use ("-I");
             for Dependency_Switches ("C++") use ("-MMD", "-MF", "");
          when "False" =>
             null;
