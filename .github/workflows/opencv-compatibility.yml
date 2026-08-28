@@ -325,4 +325,225 @@ jobs:
               alr -n -C tests run
             '
 
+  macos-arm64:
+    name: OpenCV macOS ARM64
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Report source and runner
+        run: |
+          set -eu
+          echo "=== Source being tested ==="
+          git rev-parse HEAD
+          git log -1 --oneline
+          echo "=== Runner ==="
+          uname -a
+          uname -m
+          sw_vers
+
+      - name: Set up Alire
+        uses: alire-project/setup-alire@latest
+        with:
+          version: "2.1.1"
+          toolchain: "gnat_native gprbuild"
+
+      - name: Select and prove Ada toolchain
+        run: |
+          set -eu
+          alr -n --force toolchain --select \
+            gnat_native=16.1.0 \
+            gprbuild=26.0.1
+
+          echo "=== Alire ==="
+          alr version
+          alr toolchain
+
+          echo "=== Compiler visible inside Alire environment ==="
+          alr exec -- which gnat
+          alr exec -- gnat --version
+          alr exec -- which gprbuild
+          alr exec -- gprbuild --version
+
+          echo "=== C++ compiler inside Alire environment ==="
+          alr exec -- which g++ || true
+          alr exec -- g++ --version || true
+
+          echo "=== Apple clang++ ==="
+          xcrun --find clang++ || true
+          xcrun clang++ --version || true
+
+      - name: Install Homebrew OpenCV
+        run: |
+          set -eu
+          brew install opencv
+
+          echo "=== Homebrew prefixes ==="
+          brew --prefix
+          brew --prefix opencv
+
+          echo "=== Homebrew OpenCV info ==="
+          brew info opencv
+
+      - name: Report Homebrew OpenCV and pkg-config
+        run: |
+          set -eu
+          opencv_prefix="$(brew --prefix opencv)"
+          brew_pkgconfig="$(brew --prefix)/lib/pkgconfig"
+          opencv_pkgconfig="${opencv_prefix}/lib/pkgconfig"
+
+          if [ -d "${brew_pkgconfig}" ]; then
+            export PKG_CONFIG_PATH="${brew_pkgconfig}${PKG_CONFIG_PATH:+:${PKG_CONFIG_PATH}}"
+          fi
+          if [ -d "${opencv_pkgconfig}" ]; then
+            export PKG_CONFIG_PATH="${opencv_pkgconfig}${PKG_CONFIG_PATH:+:${PKG_CONFIG_PATH}}"
+          fi
+
+          echo "PKG_CONFIG_PATH=${PKG_CONFIG_PATH:-}"
+          echo "PKG_CONFIG_PATH=${PKG_CONFIG_PATH:-}" >> "$GITHUB_ENV"
+
+          echo "=== pkg-config ==="
+          pkg-config --version
+
+          if pkg-config --exists opencv5; then
+            opencv_pkg=opencv5
+          elif pkg-config --exists opencv4; then
+            opencv_pkg=opencv4
+          elif pkg-config --exists opencv; then
+            opencv_pkg=opencv
+          else
+            echo "error: no OpenCV pkg-config package found" >&2
+            echo "tried opencv5, opencv4, opencv" >&2
+            pkg-config --list-all | grep -i opencv || true
+            exit 1
+          fi
+
+          echo "selected OpenCV pkg-config package: ${opencv_pkg}"
+          echo "OPENCV_PKG=${opencv_pkg}" >> "$GITHUB_ENV"
+          pkg-config --modversion "${opencv_pkg}"
+          pkg-config --cflags "${opencv_pkg}"
+          pkg-config --libs "${opencv_pkg}"
+
+          echo "=== Homebrew OpenCV libraries ==="
+          ls -l "${opencv_prefix}/lib"
+
+      - name: Inspect current project configuration
+        run: |
+          set -eu
+          echo "=== opencv_core.gpr ==="
+          cat opencv_core.gpr
+
+          echo "=== Languages / library kind / C++ switches / linker options ==="
+          grep -n -A8 -E 'Languages|Library_Type|Library_Kind|Default_Switches|"C\+\+"|Linker_Options|-lstdc\+\+' opencv_core.gpr
+
+      - name: Build current source
+        id: root-build
+        continue-on-error: true
+        run: |
+          set -eu
+          alr -n build
+
+      - name: Capture C++ ABI evidence
+        if: always()
+        continue-on-error: true
+        run: |
+          set +e
+          set +o pipefail
+          opencv_prefix="$(brew --prefix opencv 2>/dev/null || true)"
+          echo "=== Homebrew OpenCV core library ==="
+          echo "opencv prefix: ${opencv_prefix}"
+
+          core_lib=""
+          for candidate in \
+            "${opencv_prefix}/lib/libopencv_core.dylib" \
+            "${opencv_prefix}/lib"/libopencv_core.*.dylib
+          do
+            if [ -e "${candidate}" ]; then
+              core_lib="${candidate}"
+              break
+            fi
+          done
+
+          if [ -z "${core_lib}" ]; then
+            echo "libopencv_core*.dylib not found under ${opencv_prefix}/lib"
+            ls -l "${opencv_prefix}/lib" 2>/dev/null || true
+          else
+            echo "Found: ${core_lib}"
+            ls -l "${core_lib}"
+            file "${core_lib}"
+            echo "=== otool -L ==="
+            otool -L "${core_lib}"
+            echo "=== lipo -info ==="
+            lipo -info "${core_lib}" 2>/dev/null || true
+
+            echo "=== nm FileStorage / FileNode (defined globals, nm -gU) ==="
+            nm -gU "${core_lib}" 2>/dev/null | grep -E 'FileStorage|FileNode' | c++filt || true
+            echo "=== nm FileStorage / FileNode (nm -g) ==="
+            nm -g "${core_lib}" 2>/dev/null | grep -E 'FileStorage|FileNode' | c++filt || true
+            echo "=== nm std string ABI spelling in FileStorage / FileNode ==="
+            nm -g "${core_lib}" 2>/dev/null | grep -E 'FileStorage|FileNode' | grep -E '__cxx11|__1|basic_string' | c++filt || true
+          fi
+
+      - name: Inspect C++ shim object
+        if: always()
+        continue-on-error: true
+        run: |
+          set +e
+          set +o pipefail
+          echo "=== opencv_core_shim.o ==="
+          shim_obj="$(find . -name opencv_core_shim.o | head -n 1)"
+          if [ -z "${shim_obj}" ]; then
+            echo "opencv_core_shim.o not found"
+            find . -name '*shim*' -print | head -n 50
+          else
+            echo "Found: ${shim_obj}"
+            ls -l "${shim_obj}"
+            file "${shim_obj}"
+
+            echo "=== nm undefined symbols (FileStorage / FileNode / basic_string) ==="
+            nm -u "${shim_obj}" 2>/dev/null | grep -E 'FileStorage|FileNode|basic_string|__cxx11|__1' || true
+            echo "=== nm all matching symbols ==="
+            nm "${shim_obj}" 2>/dev/null | grep -E 'FileStorage|FileNode|basic_string|__cxx11|__1' || true
+            echo "=== demangled matching symbols ==="
+            nm "${shim_obj}" 2>/dev/null | grep -E 'FileStorage|FileNode|basic_string|__cxx11|__1' | c++filt || true
+
+            echo "=== std::__cxx11 vs std::__1 references in shim object ==="
+            echo "std::__cxx11 count: $(nm "${shim_obj}" 2>/dev/null | grep -c '__cxx11' || true)"
+            echo "std::__1 count: $(nm "${shim_obj}" 2>/dev/null | grep -c '__1' || true)"
+          fi
+
+      - name: Capture actual build/link command
+        if: ${{ always() && steps.root-build.outcome != 'success' }}
+        continue-on-error: true
+        run: |
+          set +e
+          echo "=== Verbose GPRbuild for failed root build ==="
+          alr -n build -- -v
+
+      - name: Run test suite
+        id: tests
+        if: ${{ always() && steps.root-build.outcome == 'success' }}
+        continue-on-error: true
+        run: |
+          set -eu
+          alr -n -C tests run
+
+      - name: Capture actual test build/link command
+        if: ${{ always() && steps.tests.outcome == 'failure' }}
+        continue-on-error: true
+        run: |
+          set +e
+          echo "=== Verbose GPRbuild for failed tests crate ==="
+          alr -n -C tests build -- -v
+
+      - name: Fail job if build or tests failed
+        if: ${{ always() && (steps.root-build.outcome != 'success' || steps.tests.outcome == 'failure') }}
+        run: |
+          echo "macOS ARM64 compatibility job failed."
+          echo "root-build outcome: ${{ steps.root-build.outcome }}"
+          echo "tests outcome: ${{ steps.tests.outcome }}"
+          exit 1
+
 
