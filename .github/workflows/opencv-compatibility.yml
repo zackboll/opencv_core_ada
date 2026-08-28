@@ -200,8 +200,19 @@ jobs:
               pkg-config --cflags "${opencv_pkg}"
               pkg-config --libs "${opencv_pkg}"
 
+              echo "=== Select Alire toolchain ==="
+              alr -n --force toolchain --select \
+                gnat_native=16.1.0 \
+                gprbuild=26.0.1
+              alr toolchain
+
+              echo "=== Compiler visible inside Alire environment ==="
+              alr exec -- which gnat
+              alr exec -- gnat --version
+              alr exec -- which gprbuild
+              alr exec -- gprbuild --version
+
               echo "=== Build and test ==="
-              alr -n toolchain --disable-assistant
               alr -n build
               alr -n -C tests run
             '
