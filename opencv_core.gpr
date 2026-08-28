@@ -14,7 +14,9 @@ project OpenCV_Core is
 
    type Library_Type_Type is ("relocatable", "static", "static-pic");
    Library_Type : Library_Type_Type :=
-     external ("OPENCV_CORE_LIBRARY_TYPE", external ("LIBRARY_TYPE", "static"));
+     external
+       ("OPENCV_CORE_LIBRARY_TYPE",
+        external ("LIBRARY_TYPE", "static-pic"));
    for Library_Kind use Library_Type;
 
    package Compiler is

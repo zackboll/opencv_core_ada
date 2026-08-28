@@ -281,8 +281,8 @@ The GPR project supports the standard library kinds through
 `OPENCV_CORE_LIBRARY_TYPE` (falling back to `LIBRARY_TYPE`):
 
 ```text
-static        (default)
-static-pic
+static-pic    (default)
+static
 relocatable
 ```
 
