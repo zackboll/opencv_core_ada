@@ -251,6 +251,8 @@ jobs:
             /bin/bash -c '
               set -eu
 
+              git config --global --add safe.directory /workspace
+
               echo "=== Source being tested ==="
               git rev-parse HEAD
               git log -1 --oneline
