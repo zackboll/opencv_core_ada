@@ -23,14 +23,6 @@ project OpenCV_Core is
       for Default_Switches ("Ada") use
          OpenCV_Core_Config.Ada_Compiler_Switches & ("-Werror");
 
-      for Default_Switches ("C++") use
-         ("-std=c++17",
-         "-Wall",
-         "-Wextra",
-         "-Wpedantic",
-         "-Werror",
-         OpenCV_Core_Install.Include_Switch);
-
       --  Homebrew OpenCV on macOS is built with Apple clang++ / libc++.
       --  Compile the C++ shim with that driver so Ada stays on GNAT while
       --  C++ objects match the OpenCV ABI.
@@ -42,8 +34,20 @@ project OpenCV_Core is
       --  -I include switches so GPRbuild does not fall through to the
       --  inherited GCC Include_Switches_Via_Spec mechanism that clang++
       --  rejects.
+      --
+      --  Homebrew OpenCV headers use C11 _Atomic through CV_XADD. Apple
+      --  clang++ emits -Wc11-extensions for that; keep -Werror but do not
+      --  fail the build on this OpenCV-header diagnostic.
       case OpenCV_Core_Install.Use_Apple_Clang is
          when "True" =>
+            for Default_Switches ("C++") use
+               ("-std=c++17",
+                "-Wall",
+                "-Wextra",
+                "-Wpedantic",
+                "-Werror",
+                "-Wno-error=c11-extensions",
+                OpenCV_Core_Install.Include_Switch);
             for Driver ("C++") use OpenCV_Core_Install.Cxx_Driver;
             for Leading_Required_Switches ("C++") use
               ("-c",
@@ -54,7 +58,13 @@ project OpenCV_Core is
             for Include_Switches ("C++") use ("-I");
             for Dependency_Switches ("C++") use ("-MMD", "-MF", "");
          when "False" =>
-            null;
+            for Default_Switches ("C++") use
+               ("-std=c++17",
+                "-Wall",
+                "-Wextra",
+                "-Wpedantic",
+                "-Werror",
+                OpenCV_Core_Install.Include_Switch);
       end case;
    end Compiler;
 
