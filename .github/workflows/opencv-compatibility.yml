@@ -222,23 +222,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout opencv_core_ada
-        uses: actions/checkout@v4
-
       - name: Check out alire-index PR #2071 merge ref
         uses: actions/checkout@v4
         with:
           repository: alire-project/alire-index
           ref: refs/pull/2071/merge
           fetch-depth: 0
-          path: alire-index
 
       - name: Check out alire-index-checks
         uses: actions/checkout@v4
         with:
           repository: alire-project/alire-index-checks
           ref: stable-1.4.0
-          path: alire-index/alire-index-checks
+          path: alire-index-checks
 
       - name: Set up Alire 2.1.1
         uses: alire-project/setup-alire@latest
@@ -247,9 +243,10 @@ jobs:
           toolchain: --disable-assistant
 
       - name: Diagnose Alire-index checkout
-        working-directory: alire-index
         run: |
           set -eu
+          echo "=== Workspace ==="
+          pwd
           echo "=== Alire-index git status ==="
           git status
           echo "=== Alire-index recent history ==="
@@ -263,6 +260,9 @@ jobs:
           sed -n '/^\[origin\]/,$p' index/op/opencv_core/opencv_core-0.1.0.toml
           echo "=== Fedora OpenCV external mapping ==="
           cat index/op/opencv/opencv-external.toml
+          echo "=== gh-build-crate.sh ==="
+          test -f alire-index-checks/scripts/gh-build-crate.sh
+          ls -l alire-index-checks/scripts/gh-build-crate.sh
           echo "=== Alire version ==="
           command -v alr
           alr version
@@ -296,8 +296,6 @@ jobs:
         uses: mosteo-actions/docker-run@v2
         with:
           image: ghcr.io/alire-project/docker/gnat:fedora-latest
-          host-dir: ${{ github.workspace }}/alire-index
-          guest-dir: ${{ github.workspace }}/alire-index
           command: alire-index-checks/scripts/gh-build-crate.sh
           params: >-
             -v ${{ github.workspace }}/alire_install/bin/alr:/usr/bin/alr
