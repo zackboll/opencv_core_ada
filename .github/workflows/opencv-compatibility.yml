@@ -77,3 +77,52 @@ jobs:
             -w /workspace \
             "${{ matrix.image }}" \
             alr -C tests run
+
+  ubuntu-arm64:
+    name: OpenCV Ubuntu 24.04 ARM64
+    runs-on: ubuntu-24.04-arm
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install OpenCV Core and build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            ca-certificates \
+            curl \
+            git \
+            libopencv-core-dev \
+            pkg-config \
+            unzip
+
+      - name: Report architecture and OpenCV version
+        run: |
+          uname -m
+          pkg-config --modversion opencv5 2>/dev/null || \
+          pkg-config --modversion opencv4 2>/dev/null || \
+          pkg-config --modversion opencv
+
+      - name: Install Alire
+        env:
+          ALIRE_VERSION: "2.1.1"
+        run: |
+          curl -L \
+            -o /tmp/alire.zip \
+            "https://github.com/alire-project/alire/releases/download/v${ALIRE_VERSION}/alr-${ALIRE_VERSION}-bin-aarch64-linux.zip"
+          unzip /tmp/alire.zip -d /tmp/alire
+          sudo install -m 0755 /tmp/alire/bin/alr /usr/local/bin/alr
+          rm -rf /tmp/alire /tmp/alire.zip
+          alr --version
+
+      - name: Select Ada toolchain
+        run: |
+          alr -n --force toolchain --select \
+            gnat_native=16.1.0 \
+            gprbuild=26.0.1
+          alr toolchain
+
+      - name: Run test suite
+        run: alr -C tests run

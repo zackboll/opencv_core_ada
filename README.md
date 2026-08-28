@@ -20,7 +20,7 @@ translation of the C++ headers.
 >
 > **Current test baseline:** 948 AUnit tests, with Ada and C++ warnings promoted
 > to errors. GitHub Actions exercises the full test suite against four OpenCV
-> compatibility targets.
+> compatibility targets, plus a native Ubuntu 24.04 ARM64 job.
 >
 > **Scope:** OpenCV **Core** only. Higher-level modules such as `imgproc`,
 > `imgcodecs`, `highgui`, `videoio`, `features2d`, `calib3d`, and `dnn` belong
@@ -125,6 +125,10 @@ GitHub Actions currently tests these representative targets:
 These are **validation points, not an exhaustive list of supported releases**.
 Intermediate releases within the supported range are not all individually run
 in CI.
+
+GitHub Actions also runs the same public test path natively on Ubuntu 24.04
+ARM64 against the distribution OpenCV packages. That job is for architecture
+portability, not another OpenCV-version matrix entry.
 
 Version differences are isolated in the configuration and C++ shim layers.
 Depending on the linked OpenCV release, the shim may use a native API, a
@@ -313,8 +317,9 @@ ownership, callback lifetimes, arbitrary Ada array lower bounds, failure
 atomicity, persistence, numerical boundary behavior, and version compatibility.
 
 The `OpenCV Compatibility` GitHub Actions workflow runs the same test suite
-against all four compatibility targets listed above. `fail-fast` is disabled so
-a failure on one target does not hide the state of the others.
+against all four compatibility targets listed above, and on native Ubuntu 24.04
+ARM64. `fail-fast` is disabled so a failure on one target does not hide the
+state of the others.
 
 ---
 
@@ -1259,7 +1264,8 @@ The current limitations are intentional and help keep the public API coherent:
     and in-place transform APIs are not exposed.
 
 14. **The supported OpenCV range is not exhaustively tested release-by-release.**  
-    CI validates four representative targets across 4.1-5.0. Compatibility
+    CI validates four representative OpenCV-version targets across 4.1-5.0, plus
+    native Ubuntu 24.04 ARM64 against distribution OpenCV. Compatibility
     fixes are kept below the public Ada API, but an untested intermediate
     release may still expose an undiscovered upstream difference.
 
