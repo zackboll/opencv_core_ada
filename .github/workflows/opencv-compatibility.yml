@@ -222,82 +222,103 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out alire-index PR #2071 merge ref
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          repository: alire-project/alire-index
-          ref: refs/pull/2071/merge
-          fetch-depth: 0
 
-      - name: Check out alire-index-checks
-        uses: actions/checkout@v4
-        with:
-          repository: alire-project/alire-index-checks
-          ref: stable-1.4.0
-          path: alire-index-checks
-
-      - name: Set up Alire 2.1.1
-        uses: alire-project/setup-alire@latest
-        with:
-          version: 2.1.1
-          toolchain: --disable-assistant
-
-      - name: Diagnose Alire-index checkout
+      - name: Install Alire
+        env:
+          ALIRE_VERSION: "2.1.1"
         run: |
-          set -eu
-          echo "=== Workspace ==="
-          pwd
-          echo "=== Alire-index git status ==="
-          git status
-          echo "=== Alire-index recent history ==="
-          git log -3 --oneline --decorate
-          echo "=== HEAD / HEAD~1 ==="
-          git rev-parse HEAD
-          git rev-parse HEAD~1
-          echo "=== git diff --name-only HEAD~1 ==="
-          git diff --name-only HEAD~1
-          echo "=== opencv_core-0.1.0 origin ==="
-          sed -n '/^\[origin\]/,$p' index/op/opencv_core/opencv_core-0.1.0.toml
-          echo "=== Fedora OpenCV external mapping ==="
-          cat index/op/opencv/opencv-external.toml
-          echo "=== gh-build-crate.sh ==="
-          test -f alire-index-checks/scripts/gh-build-crate.sh
-          ls -l alire-index-checks/scripts/gh-build-crate.sh
-          echo "=== Alire version ==="
-          command -v alr
-          alr version
-          ls -l "${GITHUB_WORKSPACE}/alire_install/bin/alr"
+          curl -L \
+            -o /tmp/alire.zip \
+            "https://github.com/alire-project/alire/releases/download/v${ALIRE_VERSION}/alr-${ALIRE_VERSION}-bin-x86_64-linux.zip"
+          unzip /tmp/alire.zip -d /tmp/alire
+          mkdir -p "$PWD/alire_install/bin"
+          install -m 0755 /tmp/alire/bin/alr "$PWD/alire_install/bin/alr"
+          rm -rf /tmp/alire /tmp/alire.zip
+          "$PWD/alire_install/bin/alr" version
 
-      - name: Diagnose Fedora container
+      - name: Pull Alire Fedora Latest image
+        run: docker pull ghcr.io/alire-project/docker/gnat:fedora-latest
+
+      - name: Run test suite in Alire Fedora Latest image
         run: |
-          set -eu
           docker run --rm \
+            -v "$PWD:/workspace" \
+            -v "$PWD/alire_install/bin/alr:/usr/bin/alr:ro" \
+            -w /workspace \
             ghcr.io/alire-project/docker/gnat:fedora-latest \
             /bin/bash -c '
-              set +e
-              echo "=== Fedora environment (no package changes) ==="
+              set -eu
+
+              echo "=== Source being tested ==="
+              git rev-parse HEAD
+              git log -1 --oneline
+              grep -n -A5 -B2 "Library_Type" opencv_core.gpr
+
+              echo "=== Environment ==="
               cat /etc/os-release
               uname -a
               uname -m
-              echo "DISTTAG=${DISTTAG:-}"
-              echo "FBR=${FBR:-}"
-              echo "FGC=${FGC:-}"
-              printenv | grep -E "^(DISTTAG|FBR|FGC)=" || true
-              gcc --version
-              g++ --version
-              gnat --version
-              gprbuild --version
-              echo "=== opencv-devel before Alire resolution ==="
-              rpm -q opencv-devel
-              exit 0
-            '
 
-      - name: Test crate with upstream gh-build-crate.sh
-        uses: mosteo-actions/docker-run@v2
-        with:
-          image: ghcr.io/alire-project/docker/gnat:fedora-latest
-          command: alire-index-checks/scripts/gh-build-crate.sh
-          params: >-
-            -v ${{ github.workspace }}/alire_install/bin/alr:/usr/bin/alr
+              gcc --version || true
+              g++ --version || true
+              gnat --version || true
+              gprbuild --version || true
+
+              echo "=== Alire ==="
+              command -v alr
+              alr version
+
+              echo "=== Install OpenCV development package ==="
+              dnf install -y \
+                opencv-devel \
+                pkgconf-pkg-config \
+                git
+
+              echo "=== OpenCV pkg-config ==="
+              pkg-config --version
+              if pkg-config --exists opencv5; then
+                opencv_pkg=opencv5
+              elif pkg-config --exists opencv4; then
+                opencv_pkg=opencv4
+              elif pkg-config --exists opencv; then
+                opencv_pkg=opencv
+              else
+                echo "error: no OpenCV pkg-config package found" >&2
+                exit 1
+              fi
+              echo "OpenCV pkg-config package: ${opencv_pkg}"
+              pkg-config --modversion "${opencv_pkg}"
+              pkg-config --cflags "${opencv_pkg}"
+              pkg-config --libs "${opencv_pkg}"
+
+              echo "=== Select Alire toolchain ==="
+              alr -n --force toolchain --select \
+                gnat_native=16.1.0 \
+                gprbuild=26.0.1
+              alr toolchain
+
+              echo "=== Compiler visible inside Alire environment ==="
+              alr exec -- which gnat
+              alr exec -- gnat --version
+              alr exec -- which gprbuild
+              alr exec -- gprbuild --version
+
+              echo "=== Build ==="
+              alr -n build
+
+              echo "=== PIC diagnostic ==="
+              shim_obj=$(find . -name opencv_core_shim.o | head -n 1 || true)
+              if [ -n "${shim_obj}" ]; then
+                echo "Found: ${shim_obj}"
+                readelf -r "${shim_obj}" || true
+              else
+                echo "opencv_core_shim.o not found"
+              fi
+
+              echo "=== Test ==="
+              alr -n -C tests run
+            '
 
 
