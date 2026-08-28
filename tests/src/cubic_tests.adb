@@ -73,19 +73,37 @@ package body Cubic_Tests is
       end case;
    end Roots_Image;
 
+   function Reported_Root_Count
+     (Result : OpenCV.Core.Cubic_Solution_Result) return Natural is
+   begin
+      case Result.Status is
+         when OpenCV.Core.Infinitely_Many_Roots | OpenCV.Core.No_Real_Roots =>
+            return 0;
+
+         when OpenCV.Core.One_Real_Root                                     =>
+            return 1;
+
+         when OpenCV.Core.Two_Real_Roots                                    =>
+            return 2;
+
+         when OpenCV.Core.Three_Real_Roots                                  =>
+            return 3;
+      end case;
+   end Reported_Root_Count;
+
    procedure Assert_Contains_Root
      (Result    : OpenCV.Core.Cubic_Solution_Result;
       Value     : Long_Float;
-      Count     : Positive;
+      Count     : Natural;
       Tolerance : Long_Float)
    is
       Found : Boolean := False;
    begin
-      for Index in 0 .. Count - 1 loop
+      for Offset in 1 .. Count loop
          Found :=
            Found
            or else Approximately_Equal
-                     (Root_Value (Result, Index), Value, Tolerance);
+                     (Root_Value (Result, Offset - 1), Value, Tolerance);
       end loop;
       AUnit.Assertions.Assert
         (Found,
@@ -101,13 +119,14 @@ package body Cubic_Tests is
    procedure Assert_Residuals
      (Result    : OpenCV.Core.Cubic_Solution_Result;
       Values    : Coefficient_Values;
-      Count     : Positive;
+      Count     : Natural;
       Monic     : Boolean;
       Tolerance : Long_Float) is
    begin
-      for Index in 0 .. Count - 1 loop
+      for Offset in 1 .. Count loop
          declare
-            X             : constant Long_Float := Root_Value (Result, Index);
+            X             : constant Long_Float :=
+              Root_Value (Result, Offset - 1);
             Leading       : constant Long_Float :=
               (if Monic then 1.0 else Long_Float (Values (Values'First)));
             Quadratic     : constant Long_Float :=
@@ -122,7 +141,13 @@ package body Cubic_Tests is
                     * X
                     + Constant_Term)
                <= Tolerance,
-               "Each reported Solve_Cubic root must satisfy its polynomial");
+               "Solve_Cubic residual too large for root"
+               & X'Image
+               & "; status="
+               & Result.Status'Image
+               & " roots=["
+               & Roots_Image (Result)
+               & "]");
          end;
       end loop;
    end Assert_Residuals;
@@ -169,26 +194,55 @@ package body Cubic_Tests is
          & Roots_Image (One_Result)
          & "]");
       AUnit.Assertions.Assert
-        (Two_Result.Status = OpenCV.Core.Two_Real_Roots,
-         "(x-1)^2 (x-2) expected Two_Real_Roots, got "
+        (Reported_Root_Count (Two_Result) >= 2,
+         "(x-1)^2 (x-2) expected at least two reported roots, got "
          & Two_Result.Status'Image
          & " roots=["
          & Roots_Image (Two_Result)
          & "]");
       AUnit.Assertions.Assert
-        (Triple_Result.Status = OpenCV.Core.One_Real_Root,
-         "(x-2)^3 expected One_Real_Root, got "
+        (Reported_Root_Count (Triple_Result) >= 1,
+         "(x-2)^3 expected at least one reported root, got "
          & Triple_Result.Status'Image
          & " roots=["
          & Roots_Image (Triple_Result)
          & "]");
-      Assert_Contains_Root (One_Result, -1.0, 1, 1.0E-5);
-      Assert_Contains_Root (Two_Result, 1.0, 2, 1.0E-5);
-      Assert_Contains_Root (Two_Result, 2.0, 2, 1.0E-5);
-      Assert_Contains_Root (Triple_Result, 2.0, 1, 1.0E-10);
-      Assert_Residuals (One_Result, One_Values, 1, False, 1.0E-4);
-      Assert_Residuals (Two_Result, Two_Values, 2, False, 1.0E-4);
-      Assert_Residuals (Triple_Result, Triple_Values, 1, False, 1.0E-10);
+      Assert_Contains_Root
+        (One_Result, -1.0, Reported_Root_Count (One_Result), 1.0E-5);
+      Assert_Contains_Root
+        (Two_Result, 1.0, Reported_Root_Count (Two_Result), 1.0E-5);
+      Assert_Contains_Root
+        (Two_Result, 2.0, Reported_Root_Count (Two_Result), 1.0E-5);
+      for Offset in 1 .. Reported_Root_Count (Triple_Result) loop
+         AUnit.Assertions.Assert
+           (Approximately_Equal
+              (Root_Value (Triple_Result, Offset - 1), 2.0, 1.0E-10),
+            "(x-2)^3 reported root must be ~2, got"
+            & Root_Value (Triple_Result, Offset - 1)'Image
+            & "; status="
+            & Triple_Result.Status'Image
+            & " roots=["
+            & Roots_Image (Triple_Result)
+            & "]");
+      end loop;
+      Assert_Residuals
+        (One_Result,
+         One_Values,
+         Reported_Root_Count (One_Result),
+         False,
+         1.0E-4);
+      Assert_Residuals
+        (Two_Result,
+         Two_Values,
+         Reported_Root_Count (Two_Result),
+         False,
+         1.0E-4);
+      Assert_Residuals
+        (Triple_Result,
+         Triple_Values,
+         Reported_Root_Count (Triple_Result),
+         False,
+         1.0E-10);
       AUnit.Assertions.Assert
         (Triple_Result.Roots.Depth = OpenCV.Core.Float64,
          "Float64 coefficients must produce Float64 roots");

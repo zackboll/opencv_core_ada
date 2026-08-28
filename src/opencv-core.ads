@@ -382,9 +382,13 @@ package OpenCV.Core is
    --  columns. The independently owned Float32 or Float64 C1 result has
    --  shape N x K. A and B must be non-empty, single-channel, Float32 or
    --  Float64, and have the same depth. Rank-deficient A is accepted and
-   --  receives OpenCV's SVD pseudo-solution using its internal singular-value
-   --  threshold. Inputs are unchanged, the result owns independent storage,
-   --  and non-contiguous Regions are supported. Numerical rounding and SVD
+   --  receives a least-squares/pseudo-solution from OpenCV's SVD path and
+   --  internal singular-value threshold. That solution is not uniquely
+   --  specified: when infinitely many exact solutions exist, the particular
+   --  vector may differ across architectures and OpenCV versions, and is
+   --  not guaranteed to be the Moore-Penrose minimum-norm result. Inputs
+   --  are unchanged, the result owns independent storage, and
+   --  non-contiguous Regions are supported. Numerical rounding and SVD
    --  singular-value thresholding apply.
    function Solve_Least_Squares (Self : Mat; Right_Hand_Side : Mat) return Mat;
 
@@ -409,8 +413,11 @@ package OpenCV.Core is
       Constraint_Tolerance : Long_Float := 1.0E-12)
       return Linear_Program_Result;
 
-   --  The mathematical real-root result of Solve_Cubic: infinitely many
-   --  roots, no real roots, or one, two, or three distinct real roots.
+   --  OpenCV cv::solveCubic's reported real-root count: infinitely many
+   --  roots, no real roots, or one, two, or three reported real roots.
+   --  For repeated-root polynomials the count is not an architecture-
+   --  independent number of mathematically distinct roots; OpenCV may
+   --  return a duplicate repeated root as an extra reported value.
    type Cubic_Root_Status is
      (Infinitely_Many_Roots,
       No_Real_Roots,
@@ -419,10 +426,11 @@ package OpenCV.Core is
       Three_Real_Roots);
 
    --  Discriminated result of Solve_Cubic. Roots exists only when Status
-   --  denotes a finite positive count of distinct real roots. It is an
+   --  denotes a finite positive count of reported real roots. It is an
    --  independently owned 3 x 1 single-channel Mat with the coefficient
    --  depth; only its leading one, two, or three entries selected by Status
-   --  are mathematically valid. OpenCV does not guarantee root ordering.
+   --  are valid to inspect. OpenCV does not guarantee root ordering, and
+   --  repeated-root cases may include duplicate values.
    type Cubic_Solution_Result (Status : Cubic_Root_Status := No_Real_Roots) is
    record
       case Status is
@@ -1159,17 +1167,19 @@ package OpenCV.Core is
    --  accepted. This is not a least-squares or pseudo-solution API.
    --  Numerical rounding is inherent in floating-point solution.
    function Solve (Self : Mat; Right_Hand_Side : Mat) return Solve_Result;
-   --  Finds distinct real roots with OpenCV 4.10 cv::solveCubic, unlike Solve
+   --  Finds real roots with OpenCV 4.10 cv::solveCubic, unlike Solve
    --  which solves a linear system. Coefficients must be a non-empty,
    --  single-channel Float32 or Float64 vector of shape 1 x 3, 3 x 1, 1 x 4,
    --  or 4 x 1. Three coefficients represent x**3 + A*x**2 + B*x + C = 0;
    --  four represent A*x**3 + B*x**2 + C*x + D = 0. A zero leading A in the
    --  four-coefficient form is valid and reduces the equation to quadratic,
-   --  linear, or constant. Status describes the mathematical root result;
-   --  Roots is present only for a finite positive count, is independently
-   --  owned, has the coefficient depth, and has only the Status-selected
-   --  leading entries valid. Root ordering is not guaranteed. Coefficients
-   --  are unchanged, and non-contiguous Regions are accepted.
+   --  linear, or constant. Status is OpenCV's reported root count rather
+   --  than a guaranteed count of mathematically distinct roots; repeated-
+   --  root polynomials may report a duplicate value. Roots is present only
+   --  for a finite positive count, is independently owned, has the
+   --  coefficient depth, and has only the Status-selected leading entries
+   --  valid to inspect. Root ordering is not guaranteed. Coefficients are
+   --  unchanged, and non-contiguous Regions are accepted.
    function Solve_Cubic (Coefficients : Mat) return Cubic_Solution_Result;
    function Solve_Polynomial
      (Coefficients : Mat; Maximum_Iterations : Positive := 300)

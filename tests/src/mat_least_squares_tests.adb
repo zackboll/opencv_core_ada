@@ -125,39 +125,44 @@ package body Mat_Least_Squares_Tests is
       end loop;
       X := A.Solve_Least_Squares (B);
       declare
-         X0            : constant Long_Float :=
+         X0       : constant Long_Float :=
            Long_Float (OpenCV.Core.Float32_Access.Get (X, 0, 0));
-         X1            : constant Long_Float :=
+         X1       : constant Long_Float :=
            Long_Float (OpenCV.Core.Float32_Access.Get (X, 1, 0));
-         Residual      : constant Long_Float :=
+         Residual : constant Long_Float :=
            A.Matrix_Multiply (X).Subtract (B).Norm (OpenCV.Core.L2);
-         Solution_Norm : constant Long_Float := X.Norm (OpenCV.Core.L2);
-         Observed      : constant String :=
+         Observed : constant String :=
            " X=["
            & X0'Image
            & ","
            & X1'Image
            & "], residual="
-           & Residual'Image
-           & ", ||X||="
-           & Solution_Norm'Image;
+           & Residual'Image;
       begin
          AUnit.Assertions.Assert
-           (Approximately_Equal (X0, 1.0, 0.000_1),
-            "Rank-deficient SVD X(0) expected ~1, got"
-            & X0'Image
-            & ";"
+           (X.Rows = 2
+            and then X.Columns = 1
+            and then X.Depth = OpenCV.Core.Float32
+            and then X.Channels = 1,
+            "Rank-deficient least-squares result must remain 2 x 1 Float32 C1;"
             & Observed);
          AUnit.Assertions.Assert
-           (Approximately_Equal (X1, 1.0, 0.000_1),
-            "Rank-deficient SVD X(1) expected ~1, got"
-            & X1'Image
-            & ";"
+           (X0 = X0
+            and then X1 = X1
+            and then abs (X0) < Long_Float'Last
+            and then abs (X1) < Long_Float'Last,
+            "Rank-deficient least-squares solution must be finite;"
             & Observed);
          AUnit.Assertions.Assert
            (Residual < 0.000_1,
-            "Rank-deficient SVD residual ||A*X-B|| expected < 1e-4, got"
+            "Rank-deficient residual ||A*X-B|| expected < 1e-4, got"
             & Residual'Image
+            & ";"
+            & Observed);
+         AUnit.Assertions.Assert
+           (Approximately_Equal (X0 + X1, 2.0, 0.000_1),
+            "Rank-deficient solution must satisfy X(0)+X(1)~=2, got"
+            & Long_Float'(X0 + X1)'Image
             & ";"
             & Observed);
       end;

@@ -1180,10 +1180,12 @@ opencv_core_mat_solve(const opencv_core_mat_handle *coefficients,
                       opencv_core_mat_handle **out_solution);
 
 /*
- * Computes OpenCV 4.10's DECOMP_SVD pseudo-solution minimizing A * X - B.
- * Inputs are borrowed and unchanged. The independently owned solution has
- * coefficients.cols rows and right_hand_side.cols columns. It is published
- * only after success; *out_solution is initialized to null on entry.
+ * Computes a DECOMP_SVD least-squares/pseudo-solution minimizing A * X - B.
+ * When infinitely many exact solutions exist, OpenCV does not uniquely
+ * specify the particular vector. Inputs are borrowed and unchanged. The
+ * independently owned solution has coefficients.cols rows and
+ * right_hand_side.cols columns. It is published only after success;
+ * *out_solution is initialized to null on entry.
  */
 opencv_core_status
 opencv_core_mat_solve_least_squares(
@@ -1218,8 +1220,10 @@ opencv_core_solve_linear_program(
  * Finds real roots with cv::solveCubic. coefficients is borrowed. out_root_count
  * and out_roots must be non-null; they are initialized to zero and null before
  * work. The opencv_core_status reports execution success or failure.
- * On success, out_root_count is cv::solveCubic's mathematical -1/0/1/2/3 result;
- * a positive count publishes an independently owned 3 x 1 roots handle, while
+ * On success, out_root_count is cv::solveCubic's -1/0/1/2/3 result. That count
+ * is OpenCV's reported root count, not a guaranteed number of mathematically
+ * distinct roots; repeated-root polynomials may include a duplicate value.
+ * A positive count publishes an independently owned 3 x 1 roots handle, while
  * counts at most zero leave out_roots null. On failure outputs remain safe.
  */
 opencv_core_status

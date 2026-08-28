@@ -921,10 +921,12 @@ behind an Ada-friendly API.
 
 ### LU versus SVD APIs
 
-`Invert` and `Solve` deliberately remain LU-specific. Least-squares,
-rank-deficient pseudo-solving, minimum-norm behavior, pseudoinverse, condition
-number, and null-space solving are separate explicit APIs instead of being
-hidden behind a C++ decomposition flag.
+`Invert` and `Solve` deliberately remain LU-specific. Least-squares and
+rank-deficient SVD pseudo-solutions, SVD back substitution, pseudoinverse,
+condition number, and null-space solving are separate explicit APIs instead of
+being hidden behind a C++ decomposition flag. Rank-deficient
+`Solve_Least_Squares` is a residual-minimizing `cv::solve(DECOMP_SVD)` result,
+not a uniquely specified Moore-Penrose minimum-norm vector.
 
 ---
 
