@@ -124,19 +124,43 @@ package body Mat_Least_Squares_Tests is
            (B, Row, 0, OpenCV.Core.Float32_Value (2 * (Row + 1)));
       end loop;
       X := A.Solve_Least_Squares (B);
-      AUnit.Assertions.Assert
-        (Approximately_Equal
-           (Long_Float (OpenCV.Core.Float32_Access.Get (X, 0, 0)),
-            1.0,
-            0.000_1)
-         and then Approximately_Equal
-                    (Long_Float (OpenCV.Core.Float32_Access.Get (X, 1, 0)),
-                     1.0,
-                     0.000_1)
-         and then A.Matrix_Multiply (X).Subtract (B).Norm (OpenCV.Core.L2)
-                  < 0.000_1,
-         "Rank-deficient least squares must return OpenCV's SVD"
-         & " pseudo-solution");
+      declare
+         X0            : constant Long_Float :=
+           Long_Float (OpenCV.Core.Float32_Access.Get (X, 0, 0));
+         X1            : constant Long_Float :=
+           Long_Float (OpenCV.Core.Float32_Access.Get (X, 1, 0));
+         Residual      : constant Long_Float :=
+           A.Matrix_Multiply (X).Subtract (B).Norm (OpenCV.Core.L2);
+         Solution_Norm : constant Long_Float := X.Norm (OpenCV.Core.L2);
+         Observed      : constant String :=
+           " X=["
+           & X0'Image
+           & ","
+           & X1'Image
+           & "], residual="
+           & Residual'Image
+           & ", ||X||="
+           & Solution_Norm'Image;
+      begin
+         AUnit.Assertions.Assert
+           (Approximately_Equal (X0, 1.0, 0.000_1),
+            "Rank-deficient SVD X(0) expected ~1, got"
+            & X0'Image
+            & ";"
+            & Observed);
+         AUnit.Assertions.Assert
+           (Approximately_Equal (X1, 1.0, 0.000_1),
+            "Rank-deficient SVD X(1) expected ~1, got"
+            & X1'Image
+            & ";"
+            & Observed);
+         AUnit.Assertions.Assert
+           (Residual < 0.000_1,
+            "Rank-deficient SVD residual ||A*X-B|| expected < 1e-4, got"
+            & Residual'Image
+            & ";"
+            & Observed);
+      end;
    end Rank_Deficient_Returns_Pseudo_Solution;
 
    procedure Square_And_Float64_Agree_With_Solve

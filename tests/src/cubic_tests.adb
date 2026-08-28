@@ -47,6 +47,32 @@ package body Cubic_Tests is
       return Long_Float (OpenCV.Core.Float32_Access.Get (Roots, Index, 0));
    end Root_Value;
 
+   function Roots_Image
+     (Result : OpenCV.Core.Cubic_Solution_Result) return String is
+   begin
+      case Result.Status is
+         when OpenCV.Core.Infinitely_Many_Roots | OpenCV.Core.No_Real_Roots =>
+            return "(none)";
+
+         when OpenCV.Core.One_Real_Root                                     =>
+            return Root_Value (Result, 0)'Image;
+
+         when OpenCV.Core.Two_Real_Roots                                    =>
+            return
+              Root_Value (Result, 0)'Image
+              & ","
+              & Root_Value (Result, 1)'Image;
+
+         when OpenCV.Core.Three_Real_Roots                                  =>
+            return
+              Root_Value (Result, 0)'Image
+              & ","
+              & Root_Value (Result, 1)'Image
+              & ","
+              & Root_Value (Result, 2)'Image;
+      end case;
+   end Roots_Image;
+
    procedure Assert_Contains_Root
      (Result    : OpenCV.Core.Cubic_Solution_Result;
       Value     : Long_Float;
@@ -62,7 +88,14 @@ package body Cubic_Tests is
                      (Root_Value (Result, Index), Value, Tolerance);
       end loop;
       AUnit.Assertions.Assert
-        (Found, "Solve_Cubic must report each expected root");
+        (Found,
+         "Solve_Cubic must report expected root"
+         & Value'Image
+         & "; status="
+         & Result.Status'Image
+         & " roots=["
+         & Roots_Image (Result)
+         & "]");
    end Assert_Contains_Root;
 
    procedure Assert_Residuals
@@ -129,10 +162,26 @@ package body Cubic_Tests is
           (Coefficients (Triple_Values).Convert_To (OpenCV.Core.Float64));
    begin
       AUnit.Assertions.Assert
-        (One_Result.Status = OpenCV.Core.One_Real_Root
-         and then Two_Result.Status = OpenCV.Core.Two_Real_Roots
-         and then Triple_Result.Status = OpenCV.Core.One_Real_Root,
-         "Solve_Cubic must report distinct real-root counts");
+        (One_Result.Status = OpenCV.Core.One_Real_Root,
+         "x^3 + 1 expected One_Real_Root, got "
+         & One_Result.Status'Image
+         & " roots=["
+         & Roots_Image (One_Result)
+         & "]");
+      AUnit.Assertions.Assert
+        (Two_Result.Status = OpenCV.Core.Two_Real_Roots,
+         "(x-1)^2 (x-2) expected Two_Real_Roots, got "
+         & Two_Result.Status'Image
+         & " roots=["
+         & Roots_Image (Two_Result)
+         & "]");
+      AUnit.Assertions.Assert
+        (Triple_Result.Status = OpenCV.Core.One_Real_Root,
+         "(x-2)^3 expected One_Real_Root, got "
+         & Triple_Result.Status'Image
+         & " roots=["
+         & Roots_Image (Triple_Result)
+         & "]");
       Assert_Contains_Root (One_Result, -1.0, 1, 1.0E-5);
       Assert_Contains_Root (Two_Result, 1.0, 2, 1.0E-5);
       Assert_Contains_Root (Two_Result, 2.0, 2, 1.0E-5);
