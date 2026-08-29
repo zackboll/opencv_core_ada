@@ -1,0 +1,99 @@
+with "config/opencv_core_config.gpr";
+with "config/opencv_core_install.gpr";
+
+project OpenCV_Core_Shim is
+
+   for Library_Name use "opencv_core_shim";
+
+   for Languages use ("C++");
+   for Source_Dirs use ("cpp/");
+   for Object_Dir use "obj/shim/" & OpenCV_Core_Config.Build_Profile;
+   for Create_Missing_Dirs use "True";
+   for Library_Dir use "lib";
+
+   --  macOS: Apple-clang-linked dylib so OpenCV exceptions unwind inside
+   --  the shim. Linux: static PIC archive; no extra runtime .so.
+   case OpenCV_Core_Install.Use_Apple_Clang is
+      when "True" =>
+         for Library_Kind use "relocatable";
+      when "False" =>
+         for Library_Kind use "static-pic";
+   end case;
+
+   package Compiler is
+      --  Homebrew OpenCV on macOS is built with Apple clang++ / libc++.
+      --  Compile the C++ shim with that driver so Ada stays on GNAT while
+      --  C++ objects match the OpenCV ABI.
+      --
+      --  Do not use a mixed gprconfig cgpr for this: Apple clang++ reports
+      --  arm64-apple-darwin while GNAT reports aarch64-apple-darwin, and
+      --  Alire's generated config cannot consume that mixed-target file.
+      --  Override the C++ driver in this project instead. Configure ordinary
+      --  -I include switches so GPRbuild does not fall through to the
+      --  inherited GCC Include_Switches_Via_Spec mechanism that clang++
+      --  rejects.
+      --
+      --  Homebrew OpenCV headers use C11 _Atomic through CV_XADD. Apple
+      --  clang++ emits -Wc11-extensions for that; keep -Werror but do not
+      --  fail the build on this OpenCV-header diagnostic.
+      case OpenCV_Core_Install.Use_Apple_Clang is
+         when "True" =>
+            for Default_Switches ("C++") use
+               ("-std=c++17",
+                "-Wall",
+                "-Wextra",
+                "-Wpedantic",
+                "-Werror",
+                "-Wno-error=c11-extensions",
+                OpenCV_Core_Install.Include_Switch);
+            for Driver ("C++") use OpenCV_Core_Install.Cxx_Driver;
+            for Leading_Required_Switches ("C++") use
+              ("-c",
+               "-x",
+               "c++",
+               "-isysroot",
+               OpenCV_Core_Install.MacOS_SDK_Root);
+            for Include_Switches ("C++") use ("-I");
+            for Dependency_Switches ("C++") use ("-MMD", "-MF", "");
+         when "False" =>
+            for Default_Switches ("C++") use
+               ("-std=c++17",
+                "-Wall",
+                "-Wextra",
+                "-Wpedantic",
+                "-Werror",
+                OpenCV_Core_Install.Include_Switch);
+      end case;
+   end Compiler;
+
+   --  Link the macOS dylib with Apple clang++, not GNAT gcc. The dylib
+   --  owns Homebrew OpenCV and libc++. Do not change GNAT unwind behavior.
+   case OpenCV_Core_Install.Use_Apple_Clang is
+      when "True" =>
+         for Library_GCC use OpenCV_Core_Install.Cxx_Driver;
+         for Library_Options use
+           ("-isysroot",
+            OpenCV_Core_Install.MacOS_SDK_Root,
+            OpenCV_Core_Install.Library_Search_Switch,
+            "-lopencv_core",
+            OpenCV_Core_Install.Cxx_Runtime_Switch);
+      when "False" =>
+         null;
+   end case;
+
+   package Linker is
+      --  Linux static consumers need OpenCV and libstdc++ at final link.
+      --  macOS consumers only need the shim dylib; OpenCV/libc++ stay
+      --  inside that image.
+      case OpenCV_Core_Install.Use_Apple_Clang is
+         when "True" =>
+            null;
+         when "False" =>
+            for Linker_Options use
+              (OpenCV_Core_Install.Library_Search_Switch,
+               "-lopencv_core",
+               OpenCV_Core_Install.Cxx_Runtime_Switch);
+      end case;
+   end Linker;
+
+end OpenCV_Core_Shim;
