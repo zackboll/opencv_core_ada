@@ -66,16 +66,16 @@ project OpenCV_Core_Shim is
       end case;
    end Compiler;
 
-   --  macOS dylib owns Homebrew OpenCV and libc++. Do not change GNAT
-   --  unwind behavior. The Apple clang++ driver is set in package Linker.
+   --  macOS: Apple clang++ links the shim dylib and supplies libc++.
+   --  The dylib still owns the OpenCV/libc++ C++ boundary.
+   --  Do not change GNAT unwind behavior.
    case OpenCV_Core_Install.Use_Apple_Clang is
       when "True" =>
          for Library_Options use
            ("-isysroot",
             OpenCV_Core_Install.MacOS_SDK_Root,
             OpenCV_Core_Install.Library_Search_Switch,
-            "-lopencv_core",
-            OpenCV_Core_Install.Cxx_Runtime_Switch);
+            "-lopencv_core");
       when "False" =>
          null;
    end case;
