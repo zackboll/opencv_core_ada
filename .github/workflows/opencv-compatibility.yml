@@ -1158,6 +1158,80 @@ jobs:
               echo
             fi
 
+            echo "=== K: build Apple clang++ shim dylib ==="
+            k_shim_dylib="$RUNNER_TEMP/libopencv_core_shim_diag.dylib"
+            "${clang_cxx}" \
+              -dynamiclib \
+              -std=c++17 \
+              -Wall \
+              -Wextra \
+              -Wpedantic \
+              -Werror \
+              -Wno-error=c11-extensions \
+              -isysroot "${macos_sdk_root}" \
+              -I"${opencv_include}" \
+              -Icpp \
+              cpp/opencv_core_shim.cpp \
+              -L"${opencv_prefix}/lib" \
+              -lopencv_core \
+              -Wl,-rpath,"${opencv_prefix}/lib" \
+              -Wl,-install_name,@rpath/libopencv_core_shim_diag.dylib \
+              -o "${k_shim_dylib}"
+            k_dylib_build_status=$?
+            echo "K Apple shim dylib build exit=${k_dylib_build_status}"
+            echo
+
+            k_link_status=255
+            k_run_status=255
+            k_dylib_unwind_status=255
+            k_exec_unwind_status=255
+
+            if [ "${k_dylib_build_status}" -eq 0 ]; then
+              echo "=== K: shim dylib dependencies ==="
+              otool -L "${k_shim_dylib}"
+              echo
+
+              echo "=== K: shim dylib Mach-O load commands and sections ==="
+              otool -l "${k_shim_dylib}"
+              echo
+
+              if [ -n "${i_llvm_objdump}" ]; then
+                echo "=== K: shim dylib llvm-objdump unwind info ==="
+                "${i_llvm_objdump}" --unwind-info "${k_shim_dylib}"
+                k_dylib_unwind_status=$?
+                echo "K shim dylib unwind inspection exit=${k_dylib_unwind_status}"
+                echo
+              else
+                echo "=== K: shim dylib llvm-objdump unwind info skipped ==="
+                echo "llvm-objdump not found"
+                echo
+              fi
+
+              echo "=== K: link driver to shim dylib with normal GNAT gcc ==="
+              "${gnat_gcc}" \
+                -v \
+                "${driver_obj}" \
+                -L"$RUNNER_TEMP" \
+                -lopencv_core_shim_diag \
+                -Wl,-rpath,"$RUNNER_TEMP" \
+                -o "$RUNNER_TEMP/shim-exception-gnat-dylib"
+              k_link_status=$?
+              echo "K GNAT default link exit=${k_link_status}"
+
+              if [ "${k_link_status}" -eq 0 ]; then
+                "$RUNNER_TEMP/shim-exception-gnat-dylib"
+                k_run_status=$?
+                echo "K GNAT default run exit=${k_run_status}"
+              else
+                k_run_status=255
+              fi
+              echo
+            else
+              echo "=== K skipped ==="
+              echo "Apple clang++ shim dylib build failed"
+              echo
+            fi
+
             echo "=== Summary ==="
             echo "clang++ link=${clang_link_status} run=${clang_run_status}"
             echo "GNAT gcc link=${gnat_link_status} run=${gnat_run_status}"
@@ -1175,6 +1249,9 @@ jobs:
             echo "J clang++ DWARF-only shim compile=${j_compile_status}"
             echo "J GNAT default link=${j_link_status} run=${j_run_status}"
             echo "J shim DWARF inspection=${j_shim_dwarf_status}"
+            echo "K Apple shim dylib build=${k_dylib_build_status}"
+            echo "K GNAT default link=${k_link_status} run=${k_run_status}"
+            echo "K shim dylib unwind inspection=${k_dylib_unwind_status}"
 
             echo "=== Apple clang++ verbose link ==="
             "${clang_cxx}" \
@@ -1412,6 +1489,32 @@ jobs:
               echo
             fi
 
+            if [ "${k_link_status}" -eq 0 ]; then
+              echo "=== K: executable dependencies ==="
+              otool -L "$RUNNER_TEMP/shim-exception-gnat-dylib"
+              echo
+
+              echo "=== K: executable Mach-O load commands and sections ==="
+              otool -l "$RUNNER_TEMP/shim-exception-gnat-dylib"
+              echo
+
+              if [ -n "${llvm_objdump}" ]; then
+                echo "=== K: executable llvm-objdump unwind info ==="
+                "${llvm_objdump}" --unwind-info "$RUNNER_TEMP/shim-exception-gnat-dylib"
+                k_exec_unwind_status=$?
+                echo "K executable unwind inspection exit=${k_exec_unwind_status}"
+                echo
+              else
+                echo "=== K: executable llvm-objdump unwind info skipped ==="
+                echo "llvm-objdump not found"
+                echo
+              fi
+            else
+              echo "=== K executable Mach-O inspection skipped ==="
+              echo "K did not link"
+              echo
+            fi
+
             echo "clang++ verbose link=${clang_verbose_link_status}"
             echo "GNAT gcc verbose link=${gnat_verbose_link_status}"
             echo "A unwind dump=${a_unwind_status}"
@@ -1423,6 +1526,7 @@ jobs:
             echo "I final DWARF inspection=${i_final_dwarf_status}"
             echo "J unwind dump=${j_unwind_status}"
             echo "J final DWARF inspection=${j_final_dwarf_status}"
+            echo "K executable unwind inspection=${k_exec_unwind_status}"
           } > "$RUNNER_TEMP/opencv-shim-link-comparison.log" 2>&1
 
           status=$?
