@@ -643,11 +643,13 @@ jobs:
             clang_cxx="$(xcrun --find clang++)"
             gnat_gcc="$(alr exec -- which gcc 2>/dev/null | tail -n 1)"
             opencv_prefix="$(brew --prefix opencv)"
+            macos_sdk_root="$(xcrun --sdk macosx --show-sdk-path)"
 
             echo "clang: ${clang_c}"
             echo "clang++: ${clang_cxx}"
             echo "GNAT gcc: ${gnat_gcc}"
             echo "OpenCV: ${opencv_prefix}"
+            echo "macOS SDK: ${macos_sdk_root}"
             echo
 
             driver="$RUNNER_TEMP/opencv-shim-exception-driver.c"
@@ -743,6 +745,7 @@ jobs:
 
             echo "=== Compile common C driver object ==="
             "${clang_c}" \
+              -isysroot "${macos_sdk_root}" \
               -Icpp \
               -c "${driver}" \
               -o "${driver_obj}"
@@ -759,6 +762,7 @@ jobs:
 
             echo "=== A: link with Apple clang++ ==="
             "${clang_cxx}" \
+              -isysroot "${macos_sdk_root}" \
               "${driver_obj}" \
               "${common_archive}" \
               -L"${opencv_prefix}/lib" \
