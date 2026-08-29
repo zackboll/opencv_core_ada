@@ -944,7 +944,129 @@ jobs:
             echo "error: MinGW CRT unresolved symbols reappeared" >&2
             exit 1
           fi
-          alr -n -C tests run
+
+      - name: Diagnose MinGW runtime DLL collision
+        if: ${{ always() && steps.tests.outcome == 'success' }}
+        run: |
+          set -eu
+          echo "=== Alire execution PATH ==="
+          alr exec -- sh -c 'printf "%s\n" "$PATH"'
+
+          echo "=== where.exe libgcc_s_seh-1.dll ==="
+          alr exec -- where.exe libgcc_s_seh-1.dll || true
+          echo "=== where.exe libstdc++-6.dll ==="
+          alr exec -- where.exe libstdc++-6.dll || true
+          echo "=== where.exe libopencv_core-500.dll ==="
+          alr exec -- where.exe libopencv_core-500.dll || true
+
+          gnat_gpp=$(alr exec -- which g++)
+          gnat_bin=$(alr exec -- sh -c 'cygpath -m "$(dirname "$(which g++)")"')
+          echo "g++=${gnat_gpp}"
+          echo "GNAT bin=${gnat_bin}"
+
+          msys_bin=$(alr exec -- sh -c 'cygpath -m /mingw64/bin')
+          echo "MSYS2 MinGW64 bin=${msys_bin}"
+
+          gnat_gcc="${gnat_bin}/libgcc_s_seh-1.dll"
+          gnat_std="${gnat_bin}/libstdc++-6.dll"
+          msys_gcc="${msys_bin}/libgcc_s_seh-1.dll"
+          msys_std="${msys_bin}/libstdc++-6.dll"
+          msys_cv="${msys_bin}/libopencv_core-500.dll"
+
+          for f in "${gnat_gcc}" "${gnat_std}" "${msys_gcc}" "${msys_std}" "${msys_cv}"; do
+            echo "=== exists ${f} ==="
+            if [ ! -f "${f}" ]; then
+              echo "error: missing ${f}" >&2
+              exit 1
+            fi
+            ls -l "${f}"
+          done
+
+          hash_file() {
+            if command -v sha256sum >/dev/null 2>&1; then
+              sha256sum "$1"
+            else
+              certutil.exe -hashfile "$1" SHA256
+            fi
+          }
+
+          echo "=== SHA-256 GNAT runtime ==="
+          hash_file "${gnat_gcc}"
+          hash_file "${gnat_std}"
+          echo "=== SHA-256 MSYS2 runtime ==="
+          hash_file "${msys_gcc}"
+          hash_file "${msys_std}"
+
+          cleanup_staged() {
+            rm -f tests/bin/libgcc_s_seh-1.dll "tests/bin/libstdc++-6.dll"
+          }
+          trap cleanup_staged EXIT
+          cleanup_staged
+
+          gnat_status=1
+          msys_status=1
+          set +e
+
+          echo "=== GNAT runtime forced ==="
+          cp "${gnat_gcc}" tests/bin/libgcc_s_seh-1.dll
+          cp "${gnat_std}" "tests/bin/libstdc++-6.dll"
+          ls -l tests/bin/libgcc_s_seh-1.dll "tests/bin/libstdc++-6.dll"
+          gnat_log="${RUNNER_TEMP:-$PWD}/opencv-core-windows-gnat-runtime.log"
+          alr -n -C tests run >"${gnat_log}" 2>&1
+          gnat_status=$?
+          echo "GNAT runtime forced exit status=${gnat_status}"
+          cat "${gnat_log}"
+          if grep -F '__gnat_personality_seh0' "${gnat_log}" >/dev/null 2>&1; then
+            echo "GNAT runtime forced: __gnat_personality_seh0 crash observed"
+          else
+            echo "GNAT runtime forced: __gnat_personality_seh0 not observed"
+          fi
+          cleanup_staged
+
+          echo "=== MSYS2 runtime forced ==="
+          cp "${msys_gcc}" tests/bin/libgcc_s_seh-1.dll
+          cp "${msys_std}" "tests/bin/libstdc++-6.dll"
+          ls -l tests/bin/libgcc_s_seh-1.dll "tests/bin/libstdc++-6.dll"
+          msys_log="${RUNNER_TEMP:-$PWD}/opencv-core-windows-msys2-runtime.log"
+          alr -n -C tests run >"${msys_log}" 2>&1
+          msys_status=$?
+          echo "MSYS2 runtime forced exit status=${msys_status}"
+          cat "${msys_log}"
+          if grep -F '__gnat_personality_seh0' "${msys_log}" >/dev/null 2>&1; then
+            echo "MSYS2 runtime forced: __gnat_personality_seh0 crash observed"
+          else
+            echo "MSYS2 runtime forced: __gnat_personality_seh0 not observed"
+          fi
+          cleanup_staged
+
+          set -e
+          echo "=== A/B summary ==="
+          echo "GNAT runtime forced status=${gnat_status}"
+          echo "MSYS2 runtime forced status=${msys_status}"
+
+          gnat_pass=1
+          msys_pass=1
+          if grep -F 'Total Tests Run:   948' "${gnat_log}" >/dev/null 2>&1 \
+             && grep -F 'Successful Tests:  948' "${gnat_log}" >/dev/null 2>&1 \
+             && grep -F 'Failed Assertions: 0' "${gnat_log}" >/dev/null 2>&1 \
+             && grep -F 'Unexpected Errors: 0' "${gnat_log}" >/dev/null 2>&1 \
+             && [ "${gnat_status}" -eq 0 ]; then
+            gnat_pass=0
+            echo "GNAT runtime forced -> 948/948"
+          fi
+          if grep -F 'Total Tests Run:   948' "${msys_log}" >/dev/null 2>&1 \
+             && grep -F 'Successful Tests:  948' "${msys_log}" >/dev/null 2>&1 \
+             && grep -F 'Failed Assertions: 0' "${msys_log}" >/dev/null 2>&1 \
+             && grep -F 'Unexpected Errors: 0' "${msys_log}" >/dev/null 2>&1 \
+             && [ "${msys_status}" -eq 0 ]; then
+            msys_pass=0
+            echo "MSYS2 runtime forced -> 948/948"
+          fi
+          if [ "${gnat_pass}" -ne 0 ] && [ "${msys_pass}" -ne 0 ]; then
+            echo "error: neither GNAT nor MSYS2 forced runtime produced a clean test run" >&2
+            exit 1
+          fi
+
 
       - name: Report Windows runtime diagnostics
         if: ${{ always() && steps.root-build.outcome == 'success' }}
