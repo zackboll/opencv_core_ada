@@ -52,11 +52,10 @@ project OpenCV_Core_Shim is
       --  clang++ emits -Wc11-extensions for that; keep -Werror but do not
       --  fail the build on this OpenCV-header diagnostic.
       --
-      --  Windows shared-shim mode uses the MSYS2 MinGW64 g++ that packaged
-      --  OpenCV. CI supplies a mixed .cgpr so Ada stays on GNAT 16.1 while
-      --  C++ compiler configuration belongs to that MSYS2 compiler. Keep
-      --  only project-specific C++ switches here; do not restate GPRconfig
-      --  compile/dependency mechanics.
+      --  Windows shared-shim mode is compiled and linked outside GPRbuild
+      --  with the MSYS2 MinGW64 g++ that packaged OpenCV. This project
+      --  then treats that DLL as Externally_Built, so GNAT does not
+      --  compile or link the C++ shim.
       case OpenCV_Core_Install.Use_Apple_Clang is
          when "True" =>
             for Default_Switches ("C++") use
@@ -121,7 +120,8 @@ project OpenCV_Core_Shim is
 
    package Linker is
       --  Link the macOS dylib with Apple clang++, not GNAT gcc.
-      --  Link the Windows shim DLL with MSYS2 g++, not GNAT g++.
+      --  Windows: CI already linked the shim DLL with MSYS2 g++; this
+      --  project does not relink it.
       --  Linux static consumers need OpenCV and libstdc++ at final link.
       --  Windows consumers link only the shim DLL; OpenCV and the C++
       --  runtime stay inside that image.

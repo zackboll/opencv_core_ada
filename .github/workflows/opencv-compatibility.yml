@@ -938,123 +938,6 @@ jobs:
             exit 1
           fi
 
-      - name: Generate mixed Ada/C++ GPR configuration
-        id: mixed-config
-        run: |
-          set -eu
-          cgpr="${RUNNER_TEMP}/opencv-core-windows-mixed.cgpr"
-          echo "skipping mixed GPR configuration; shim is built independently with MSYS2 g++"
-          exit 0
-          gprconfig_log="${RUNNER_TEMP}/opencv-core-windows-gprconfig.log"
-
-          gnat_gcc=$(alr exec -- which gcc)
-          if [ -z "${gnat_gcc}" ]; then
-            echo "error: could not resolve the Alire GNAT gcc" >&2
-            exit 1
-          fi
-          gnat_bin=$(dirname "${gnat_gcc}")
-          if command -v cygpath >/dev/null 2>&1; then
-            gnat_bin=$(cygpath -m "${gnat_bin}")
-          fi
-          echo "=== GNAT Ada compiler bin ==="
-          printf '%s\n' "${gnat_bin}"
-          alr exec -- gcc --version | head -n 2
-
-          libdir=$(alr exec -- x86_64-w64-mingw32-pkg-config --variable=libdir opencv5)
-          if [ -z "${libdir}" ]; then
-            echo "error: could not resolve OpenCV libdir for MSYS2 g++" >&2
-            exit 1
-          fi
-          msys_bin="$(dirname "${libdir}")/bin"
-          if command -v cygpath >/dev/null 2>&1; then
-            msys_bin=$(cygpath -m "${msys_bin}")
-          fi
-          echo "=== MSYS2 C++ compiler bin ==="
-          printf '%s\n' "${msys_bin}"
-          if [ ! -f "${msys_bin}/g++.exe" ] && [ ! -f "${msys_bin}/g++" ]; then
-            echo "error: MSYS2 g++ was not found in ${msys_bin}" >&2
-            exit 1
-          fi
-          case "${msys_bin}" in
-            *gnat_native*)
-              echo "error: MSYS2 compiler bin resolved to GNAT: ${msys_bin}" >&2
-              exit 1
-              ;;
-            *msys64*mingw64*bin*|*mingw64*bin*)
-              ;;
-            *)
-              echo "error: MSYS2 compiler bin is not mingw64/bin: ${msys_bin}" >&2
-              exit 1
-              ;;
-          esac
-          "${msys_bin}/g++.exe" --version | head -n 2
-
-          echo "=== gprconfig command ==="
-          echo "gprconfig --batch --target=x86_64-w64-mingw32 --config=language:Ada,path:${gnat_bin} --config=language:C++,path:${msys_bin} -o ${cgpr}"
-          set +e
-          alr exec -- gprconfig --batch --target=x86_64-w64-mingw32 \
-            --config="language:Ada,path:${gnat_bin}" \
-            --config="language:C++,path:${msys_bin}" \
-            -o "${cgpr}" >"${gprconfig_log}" 2>&1
-          status=$?
-          set -e
-          echo "=== gprconfig output ==="
-          cat "${gprconfig_log}"
-          if [ "${status}" -ne 0 ]; then
-            echo "error: gprconfig refused to generate a mixed Ada/C++ configuration" >&2
-            exit 1
-          fi
-          if [ ! -f "${cgpr}" ]; then
-            echo "error: mixed configuration was not written: ${cgpr}" >&2
-            exit 1
-          fi
-
-          echo "=== Generated mixed configuration ==="
-          cat "${cgpr}"
-
-          if grep -E 'Driver[[:space:]]*\("C\+\+"\)' "${cgpr}" | grep -F 'gnat_native'; then
-            echo "error: mixed .cgpr still selects GNAT g++ for C++" >&2
-            exit 1
-          fi
-          if ! grep -E 'Driver[[:space:]]*\("C\+\+"\)' "${cgpr}" | grep -F 'mingw64'; then
-            echo "error: mixed .cgpr did not select MSYS2 MinGW64 g++ for C++" >&2
-            exit 1
-          fi
-          if ! grep -E 'Driver[[:space:]]*\("Ada"\)' "${cgpr}" | grep -E 'gnat_native|gnat'; then
-            echo "error: mixed .cgpr did not select the Alire GNAT Ada compiler" >&2
-            exit 1
-          fi
-
-          echo "=== Replace C++ Include_Switches_Via_Spec with ordinary -I ==="
-          expected='for Include_Switches_Via_Spec ("C++") use ("cc1plus", "-I");'
-          if ! grep -Fq "${expected}" "${cgpr}"; then
-            echo "error: generated .cgpr does not contain expected C++ Include_Switches_Via_Spec" >&2
-            exit 1
-          fi
-          matches=$(grep -F -c "${expected}" "${cgpr}")
-          if [ "${matches}" -ne 1 ]; then
-            echo "error: expected exactly one C++ Include_Switches_Via_Spec declaration, found ${matches}" >&2
-            exit 1
-          fi
-          cgpr_tmp="${cgpr}.new"
-          sed 's/for Include_Switches_Via_Spec ("C++") use ("cc1plus", "-I");/for Include_Switches ("C++") use ("-I");/' "${cgpr}" >"${cgpr_tmp}"
-          mv "${cgpr_tmp}" "${cgpr}"
-
-          echo "=== Mixed configuration after C++ include adjustment ==="
-          cat "${cgpr}"
-
-          if ! grep -Fq 'for Include_Switches ("C++") use ("-I");' "${cgpr}"; then
-            echo "error: transformed .cgpr does not contain ordinary C++ Include_Switches" >&2
-            exit 1
-          fi
-          if grep -Fq 'Include_Switches_Via_Spec ("C++")' "${cgpr}"; then
-            echo "error: transformed .cgpr still contains C++ Include_Switches_Via_Spec" >&2
-            exit 1
-          fi
-
-          echo "OPENCV_CORE_MIXED_CGPR=${cgpr}" >> "${GITHUB_ENV}"
-          echo "mixed_cgpr=${cgpr}" >> "${GITHUB_OUTPUT}"
-
       - name: Build current source
         id: root-build
         run: |
@@ -1072,9 +955,13 @@ jobs:
             echo "error: Ada GPRbuild still compiled opencv_core_shim.cpp" >&2
             exit 1
           fi
-          if grep -F 'g++' "${log}" | grep -Fv 'skipping mixed GPR configuration'; then
+          # Informational configure lines such as
+          # "Windows C++ driver: .../g++.exe" are not compiler invocations.
+          # Match g++ only when it appears as a command followed by switches.
+          gpp_cmds=$(grep -E 'g\+\+(\.exe)?"?[[:space:]]+-' "${log}" || true)
+          if [ -n "${gpp_cmds}" ]; then
             echo "error: Ada GPRbuild still invoked g++" >&2
-            grep -F 'g++' "${log}" || true
+            printf '%s\n' "${gpp_cmds}"
             exit 1
           fi
           echo "=== Ada compiler fragments ==="
