@@ -859,6 +859,14 @@ jobs:
             echo "error: generated GPR did not select -lstdc++" >&2
             exit 1
           fi
+          if ! grep -F 'Use_Direct_OpenCV_Link : Direct_OpenCV_Link_Kind := "True";' config/opencv_core_install.gpr; then
+            echo "error: generated GPR did not enable direct OpenCV Core linking" >&2
+            exit 1
+          fi
+          if ! grep -E 'OpenCV_Core_Link_Option := "[^"]*mingw64[/\\]lib[/\\]libopencv_core\.dll\.a";' config/opencv_core_install.gpr; then
+            echo "error: generated GPR did not select the MinGW64 OpenCV Core import library" >&2
+            exit 1
+          fi
           if ! grep -E 'mingw64' config/opencv_core_install.gpr; then
             echo "error: generated GPR did not point at the MinGW64 OpenCV installation" >&2
             exit 1
@@ -871,6 +879,17 @@ jobs:
             echo "error: generated GPR did not select mingw64/lib" >&2
             exit 1
           fi
+
+          import_library=$(sed -n 's/.*OpenCV_Core_Link_Option := "\(.*\)";/\1/p' config/opencv_core_install.gpr)
+          echo "OpenCV_Core_Link_Option=${import_library}"
+          if [ ! -f "${import_library}" ]; then
+            echo "error: generated OpenCV Core import library does not exist: ${import_library}" >&2
+            alr exec -- pacman -Ql mingw-w64-x86_64-opencv | grep 'libopencv_core\.dll\.a$' || true
+            exit 1
+          fi
+          echo "=== OpenCV Core import library ==="
+          ls -l "${import_library}"
+          alr exec -- pacman -Ql mingw-w64-x86_64-opencv | grep 'libopencv_core\.dll\.a$'
 
       - name: Verify shim library architecture
         if: ${{ always() && steps.root-build.outcome == 'success' }}
@@ -905,6 +924,26 @@ jobs:
           set -eu
           echo "PKG_CONFIG=${PKG_CONFIG:-<unset>}"
           echo "PKG_CONFIG_PATH=${PKG_CONFIG_PATH:-<unset>}"
+          log="${RUNNER_TEMP:-$PWD}/opencv-core-windows-test-build.log"
+          if ! alr -n -C tests build -- -v >"${log}" 2>&1; then
+            echo "=== Test build failed ==="
+            cat "${log}"
+            exit 1
+          fi
+          echo "=== Final link command fragments ==="
+          grep -E 'gcc(\.exe)? |g\+\+(\.exe)? |ld(\.exe)? |libopencv_core\.dll\.a|-lstdc\+\+' "${log}" | tail -n 80
+          if grep -E 'gcc(\.exe)? .*-o ' "${log}" | grep -E -- '-L[^[:space:]]*msys64[/\\]mingw64[/\\]lib([[:space:]]|$)'; then
+            echo "error: final test link still searches MSYS2 mingw64/lib" >&2
+            exit 1
+          fi
+          if ! grep -E 'mingw64[/\\]lib[/\\]libopencv_core\.dll\.a' "${log}"; then
+            echo "error: final test link did not consume the OpenCV Core import library" >&2
+            exit 1
+          fi
+          if grep -E '_gnu_exception_handler|__mingw_oldexcpt_handler|__mingw_initltssuo_force|__mingw_initltsdyn_force|__mingw_initltsdrot_force' "${log}"; then
+            echo "error: MinGW CRT unresolved symbols reappeared" >&2
+            exit 1
+          fi
           alr -n -C tests run
 
       - name: Report Windows runtime diagnostics

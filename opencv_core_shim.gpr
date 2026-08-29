@@ -75,7 +75,7 @@ project OpenCV_Core_Shim is
            ("-isysroot",
             OpenCV_Core_Install.MacOS_SDK_Root,
             OpenCV_Core_Install.Library_Search_Switch,
-            "-lopencv_core");
+            OpenCV_Core_Install.OpenCV_Core_Link_Option);
       when "False" =>
          null;
    end case;
@@ -83,16 +83,25 @@ project OpenCV_Core_Shim is
    package Linker is
       --  Link the macOS dylib with Apple clang++, not GNAT gcc.
       --  Linux static consumers need OpenCV and libstdc++ at final link.
+      --  Windows links the OpenCV Core import library by absolute path so
+      --  MSYS2 mingw64/lib cannot shadow GNAT's MinGW CRT. Keep -lstdc++.
       --  macOS consumers only need the shim dylib; OpenCV/libc++ stay
       --  inside that image.
       case OpenCV_Core_Install.Use_Apple_Clang is
          when "True" =>
             for Driver use OpenCV_Core_Install.Cxx_Driver;
          when "False" =>
-            for Linker_Options use
-              (OpenCV_Core_Install.Library_Search_Switch,
-               "-lopencv_core",
-               OpenCV_Core_Install.Cxx_Runtime_Switch);
+            case OpenCV_Core_Install.Use_Direct_OpenCV_Link is
+               when "True" =>
+                  for Linker_Options use
+                    (OpenCV_Core_Install.OpenCV_Core_Link_Option,
+                     OpenCV_Core_Install.Cxx_Runtime_Switch);
+               when "False" =>
+                  for Linker_Options use
+                    (OpenCV_Core_Install.Library_Search_Switch,
+                     OpenCV_Core_Install.OpenCV_Core_Link_Option,
+                     OpenCV_Core_Install.Cxx_Runtime_Switch);
+            end case;
       end case;
    end Linker;
 
