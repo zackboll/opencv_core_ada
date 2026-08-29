@@ -1114,13 +1114,9 @@ jobs:
           set -eu
           echo "PKG_CONFIG=${PKG_CONFIG:-<unset>}"
           echo "PKG_CONFIG_PATH=${PKG_CONFIG_PATH:-<unset>}"
-          echo "=== Alire execution PATH ==="
+          echo "=== Alire execution PATH (informational; tests.exe is not launched by alr run) ==="
           alr_path=$(alr exec -- sh -c 'printf "%s" "$PATH"')
           printf '%s\n' "${alr_path}"
-          if ! printf '%s' "${alr_path}" | grep -E '(^|[:;])[^:;]*[/\\]lib([:;]|$)'; then
-            echo "error: Alire PATH does not expose the crate lib directory" >&2
-            exit 1
-          fi
 
           log="${RUNNER_TEMP:-$PWD}/opencv-core-windows-test-build.log"
           echo "TESTS_WINDOWS_STATIC_ADA_RUNTIME=${TESTS_WINDOWS_STATIC_ADA_RUNTIME:-<unset>}"
@@ -1307,16 +1303,29 @@ jobs:
 
           path_lib="${lib_dir}"
           path_runtime="${runtime_dir}"
+          test_exe_win="${test_exe}"
           if command -v cygpath >/dev/null 2>&1; then
-            path_lib=$(cygpath -u "${lib_dir}")
-            path_runtime=$(cygpath -u "${runtime_dir}")
+            path_lib=$(cygpath -w "${lib_dir}")
+            path_runtime=$(cygpath -w "${runtime_dir}")
+            test_exe_win=$(cygpath -w "${test_exe}")
           fi
-          export PATH="${path_lib}:${path_runtime}:${PATH}"
-          echo "=== Execution PATH ==="
-          printf '%s\n' "${PATH}"
-
+          echo "=== Executable path ==="
+          printf '%s\n' "${test_exe}"
+          printf '%s\n' "${test_exe_win}"
+          echo "=== Windows PATH prefixes for tests.exe ==="
+          printf '%s\n' "${path_lib}"
+          printf '%s\n' "${path_runtime}"
+          echo "=== Windows DLL resolution ==="
+          set +e
+          MSYS_NO_PATHCONV=1 cmd.exe //c "set \"PATH=${path_lib};${path_runtime};%PATH%\" & echo PATH=%PATH% & where libopencv_core_shim.dll & where libgcc_s_seh-1.dll & where libstdc++-6.dll & where libopencv_core-500.dll"
+          set -e
           echo "=== Direct AUnit execution ==="
-          "${test_exe}"
+          set +e
+          MSYS_NO_PATHCONV=1 cmd.exe //c "set \"PATH=${path_lib};${path_runtime};%PATH%\" & \"${test_exe_win}\""
+          status=$?
+          set -e
+          echo "tests.exe exit code=${status}"
+          exit "${status}"
 
       - name: Report Windows runtime diagnostics
         if: ${{ always() && steps.root-build.outcome == 'success' }}
