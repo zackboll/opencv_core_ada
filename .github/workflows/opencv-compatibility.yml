@@ -1255,24 +1255,24 @@ jobs:
             echo
 
             python3 - "${original_specs}" "${compact_specs}" <<'PY'
-from pathlib import Path
-import sys
+          from pathlib import Path
+          import sys
 
-src = Path(sys.argv[1])
-dst = Path(sys.argv[2])
+          src = Path(sys.argv[1])
+          dst = Path(sys.argv[2])
 
-text = src.read_text()
+          text = src.read_text()
 
-needle = "%:version-compare(>= 10.6 mmacosx-version-min= -no_compact_unwind)"
-count = text.count(needle)
+          needle = "%:version-compare(>= 10.6 mmacosx-version-min= -no_compact_unwind)"
+          count = text.count(needle)
 
-print(f"no_compact_unwind spec occurrences={count}")
+          print(f"no_compact_unwind spec occurrences={count}")
 
-if count != 1:
-    raise SystemExit(42)
+          if count != 1:
+              raise SystemExit(42)
 
-dst.write_text(text.replace(needle, "", 1))
-PY
+          dst.write_text(text.replace(needle, "", 1))
+          PY
             spec_edit_status=$?
             echo "custom specs edit exit=${spec_edit_status}"
             echo
