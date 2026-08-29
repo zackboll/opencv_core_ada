@@ -631,6 +631,214 @@ jobs:
           path: ${{ runner.temp }}/opencv-cxx-runtime.log
           if-no-files-found: error
 
+      - name: Compare macOS shim exception links
+        if: ${{ always() && steps.tests.outcome == 'failure' }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          {
+            echo "=== Tool locations ==="
+            clang_c="$(xcrun --find clang)"
+            clang_cxx="$(xcrun --find clang++)"
+            gnat_gcc="$(alr exec -- which gcc 2>/dev/null | tail -n 1)"
+            opencv_prefix="$(brew --prefix opencv)"
+
+            echo "clang: ${clang_c}"
+            echo "clang++: ${clang_cxx}"
+            echo "GNAT gcc: ${gnat_gcc}"
+            echo "OpenCV: ${opencv_prefix}"
+            echo
+
+            driver="$RUNNER_TEMP/opencv-shim-exception-driver.c"
+            driver_obj="$RUNNER_TEMP/opencv-shim-exception-driver.o"
+
+            cat > "${driver}" <<'EOF'
+          #include "opencv_core_shim.h"
+
+          #include <stddef.h>
+          #include <stdint.h>
+          #include <stdio.h>
+
+          int main(void)
+          {
+              opencv_core_mat_handle *source = NULL;
+              opencv_core_mat_handle *view = NULL;
+              opencv_core_mat_handle *reshaped = NULL;
+              opencv_core_status status;
+              uint8_t is_continuous = 1;
+              int result = 1;
+
+              status = opencv_core_mat_create_2d(
+                  4, 5,
+                  OPENCV_CORE_DEPTH_UINT8,
+                  1,
+                  &source);
+
+              if (status != OPENCV_CORE_OK) {
+                  printf("create status=%d error=%s\n",
+                         (int)status,
+                         opencv_core_last_error_message());
+                  goto cleanup;
+              }
+
+              status = opencv_core_mat_region(
+                  source,
+                  1, 1,
+                  3, 2,
+                  &view);
+
+              if (status != OPENCV_CORE_OK) {
+                  printf("region status=%d error=%s\n",
+                         (int)status,
+                         opencv_core_last_error_message());
+                  goto cleanup;
+              }
+
+              status = opencv_core_mat_is_continuous(
+                  view,
+                  &is_continuous);
+
+              if (status != OPENCV_CORE_OK) {
+                  printf("is_continuous status=%d error=%s\n",
+                         (int)status,
+                         opencv_core_last_error_message());
+                  goto cleanup;
+              }
+
+              printf("view is_continuous=%u\n",
+                     (unsigned)is_continuous);
+              printf("calling opencv_core_mat_reshape...\n");
+              fflush(stdout);
+
+              status = opencv_core_mat_reshape(
+                  view,
+                  1,
+                  1,
+                  &reshaped);
+
+              printf("reshape returned status=%d\n",
+                     (int)status);
+              printf("last error=%s\n",
+                     opencv_core_last_error_message());
+
+              if (is_continuous == 0 &&
+                  status == OPENCV_CORE_ERROR_OPENCV) {
+                  result = 0;
+              }
+
+          cleanup:
+              opencv_core_mat_destroy(reshaped);
+              opencv_core_mat_destroy(view);
+              opencv_core_mat_destroy(source);
+
+              printf("driver result=%d\n", result);
+              return result;
+          }
+          EOF
+
+            echo "=== Driver source ==="
+            cat "${driver}"
+            echo
+
+            echo "=== Compile common C driver object ==="
+            "${clang_c}" \
+              -Icpp \
+              -c "${driver}" \
+              -o "${driver_obj}"
+            compile_status=$?
+            echo "compile exit=${compile_status}"
+            echo
+
+            if [ "${compile_status}" -ne 0 ]; then
+              echo "Driver compilation failed; skipping link comparisons."
+              exit "${compile_status}"
+            fi
+
+            common_archive="lib/libopencv_core_ada.a"
+
+            echo "=== A: link with Apple clang++ ==="
+            "${clang_cxx}" \
+              "${driver_obj}" \
+              "${common_archive}" \
+              -L"${opencv_prefix}/lib" \
+              -lopencv_core \
+              -lc++ \
+              -Wl,-rpath,"${opencv_prefix}/lib" \
+              -o "$RUNNER_TEMP/shim-exception-clang"
+            clang_link_status=$?
+            echo "clang++ link exit=${clang_link_status}"
+
+            if [ "${clang_link_status}" -eq 0 ]; then
+              "$RUNNER_TEMP/shim-exception-clang"
+              clang_run_status=$?
+              echo "clang++ linked run exit=${clang_run_status}"
+            else
+              clang_run_status=255
+            fi
+            echo
+
+            echo "=== B: link with GNAT gcc ==="
+            "${gnat_gcc}" \
+              "${driver_obj}" \
+              "${common_archive}" \
+              -L"${opencv_prefix}/lib" \
+              -lopencv_core \
+              -lc++ \
+              -Wl,-rpath,"${opencv_prefix}/lib" \
+              -o "$RUNNER_TEMP/shim-exception-gnat"
+            gnat_link_status=$?
+            echo "GNAT gcc link exit=${gnat_link_status}"
+
+            if [ "${gnat_link_status}" -eq 0 ]; then
+              "$RUNNER_TEMP/shim-exception-gnat"
+              gnat_run_status=$?
+              echo "GNAT gcc linked run exit=${gnat_run_status}"
+            else
+              gnat_run_status=255
+            fi
+            echo
+
+            echo "=== C: link with GNAT gcc + -static-libgcc ==="
+            "${gnat_gcc}" \
+              "${driver_obj}" \
+              "${common_archive}" \
+              -L"${opencv_prefix}/lib" \
+              -lopencv_core \
+              -lc++ \
+              -static-libgcc \
+              -Wl,-rpath,"${opencv_prefix}/lib" \
+              -o "$RUNNER_TEMP/shim-exception-gnat-static-libgcc"
+            gnat_static_link_status=$?
+            echo "GNAT gcc + -static-libgcc link exit=${gnat_static_link_status}"
+
+            if [ "${gnat_static_link_status}" -eq 0 ]; then
+              "$RUNNER_TEMP/shim-exception-gnat-static-libgcc"
+              gnat_static_run_status=$?
+              echo "GNAT gcc + -static-libgcc linked run exit=${gnat_static_run_status}"
+            else
+              gnat_static_run_status=255
+            fi
+            echo
+
+            echo "=== Summary ==="
+            echo "clang++ link=${clang_link_status} run=${clang_run_status}"
+            echo "GNAT gcc link=${gnat_link_status} run=${gnat_run_status}"
+            echo "GNAT gcc static-libgcc link=${gnat_static_link_status} run=${gnat_static_run_status}"
+          } > "$RUNNER_TEMP/opencv-shim-link-comparison.log" 2>&1
+
+          status=$?
+          cat "$RUNNER_TEMP/opencv-shim-link-comparison.log"
+          exit "$status"
+
+      - name: Upload macOS shim link comparison
+        if: ${{ always() && steps.tests.outcome == 'failure' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-shim-link-comparison
+          path: ${{ runner.temp }}/opencv-shim-link-comparison.log
+          if-no-files-found: error
+
       - name: Capture actual test build/link command
         if: always()
         continue-on-error: true
