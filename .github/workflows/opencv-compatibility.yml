@@ -847,11 +847,34 @@ jobs:
             fi
             echo
 
+            echo "=== E: link with GNAT gcc + classic Apple linker ==="
+            "${gnat_gcc}" \
+              "${driver_obj}" \
+              "${common_archive}" \
+              -L"${opencv_prefix}/lib" \
+              -lopencv_core \
+              -lc++ \
+              -Wl,-rpath,"${opencv_prefix}/lib" \
+              -Wl,-ld_classic \
+              -o "$RUNNER_TEMP/shim-exception-gnat-classic"
+            gnat_classic_link_status=$?
+            echo "GNAT gcc + ld_classic link exit=${gnat_classic_link_status}"
+
+            if [ "${gnat_classic_link_status}" -eq 0 ]; then
+              "$RUNNER_TEMP/shim-exception-gnat-classic"
+              gnat_classic_run_status=$?
+              echo "GNAT gcc + ld_classic linked run exit=${gnat_classic_run_status}"
+            else
+              gnat_classic_run_status=255
+            fi
+            echo
+
             echo "=== Summary ==="
             echo "clang++ link=${clang_link_status} run=${clang_run_status}"
             echo "GNAT gcc link=${gnat_link_status} run=${gnat_run_status}"
             echo "GNAT gcc static-libgcc link=${gnat_static_link_status} run=${gnat_static_run_status}"
             echo "GNAT gcc + SDK link=${gnat_sdk_link_status} run=${gnat_sdk_run_status}"
+            echo "GNAT gcc + ld_classic link=${gnat_classic_link_status} run=${gnat_classic_run_status}"
           } > "$RUNNER_TEMP/opencv-shim-link-comparison.log" 2>&1
 
           status=$?
