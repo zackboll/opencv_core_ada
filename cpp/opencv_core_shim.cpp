@@ -2555,14 +2555,13 @@ opencv_core_mat_pow(const opencv_core_mat_handle *source, double power,
     }
 
     try {
-        // ABI safety: OpenCV 5 cv::pow creates a 0-D scalar destination for a
-        // default-constructed source (dims == 0, total() == 0). The later
-        // getContinuousSize2D check then throws because the source total is 0
-        // while the destination total is 1. The Ada contract accepts a
-        // default-empty source for an already-validated integer power as an
-        // independently owned empty result.
-        if (is_default_empty_mat(source->value)) {
-            return make_default_empty_mat(out_mat);
+        // Empty Pow has no elements to transform. OpenCV 5 arithmetic backends
+        // can fail on empty matrices; Homebrew OpenCV 5 ARM64 demonstrated this
+        // through the KleidiCV HAL. Handle accepted empty input locally.
+        // make_empty_like preserves default-empty versus typed-empty
+        // representation and returns an independently owned result.
+        if (source->value.empty()) {
+            return make_empty_like(source->value, out_mat);
         }
 
         cv::Mat transformed;
