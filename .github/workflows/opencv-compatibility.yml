@@ -574,7 +574,7 @@ jobs:
       - name: Install MacPorts OpenCV
         run: |
           set -eu
-          port -N install opencv4
+          sudo port -N install opencv4
 
       - name: Report MacPorts OpenCV and pkg-config
         run: |
