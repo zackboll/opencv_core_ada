@@ -497,3 +497,189 @@ jobs:
             echo "error: test executable depends on a diagnostic shim dylib" >&2
             exit 1
           fi
+
+  macos-arm64-macports:
+    name: OpenCV macOS ARM64 (MacPorts)
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Report source and runner
+        run: |
+          set -eu
+          echo "=== Source being tested ==="
+          git rev-parse HEAD
+          git log -1 --oneline
+          echo "=== Runner ==="
+          uname -a
+          uname -m
+          sw_vers
+
+      - name: Set up Alire
+        uses: alire-project/setup-alire@latest
+        with:
+          version: "2.1.1"
+          toolchain: "gnat_native gprbuild"
+
+      - name: Select and prove Ada toolchain
+        run: |
+          set -eu
+          alr -n --force toolchain --select \
+            gnat_native=16.1.0 \
+            gprbuild=26.0.1
+
+          echo "=== Alire ==="
+          alr version
+          alr toolchain
+
+          echo "=== Compiler visible inside Alire environment ==="
+          alr exec -- which gnat
+          alr exec -- gnat --version
+          alr exec -- which gprbuild
+          alr exec -- gprbuild --version
+
+          echo "=== C++ compiler inside Alire environment ==="
+          alr exec -- which g++ || true
+          alr exec -- g++ --version || true
+
+          echo "=== Apple clang++ ==="
+          xcrun --find clang++ || true
+          xcrun clang++ --version || true
+
+      - name: Disable Homebrew
+        run: rm -f $(which brew)
+        shell: bash
+
+      - name: Set up MacPorts
+        uses: melusina-org/setup-macports@v1
+
+      - name: Verify Alire detects MacPorts
+        run: |
+          set -eu
+          echo "=== Alire platform ==="
+          alr version
+          if ! alr version | grep -q 'distribution:[[:space:]]*MACPORTS'; then
+            echo "error: Alire did not report distribution: MACPORTS" >&2
+            exit 1
+          fi
+
+      - name: Install MacPorts OpenCV
+        run: |
+          set -eu
+          port -N install opencv4
+
+      - name: Report MacPorts OpenCV and pkg-config
+        run: |
+          set -eu
+          echo "=== MacPorts ==="
+          port version
+          port installed opencv4
+
+          echo "=== pkg-config ==="
+          command -v pkg-config
+          pkg-config --version
+
+          echo "=== MacPorts opencv4 pkg-config files ==="
+          port contents opencv4 | grep -E 'pkgconfig|\.pc$' || true
+
+          echo "PKG_CONFIG_PATH is not exported by this job"
+          echo "PKG_CONFIG_PATH=${PKG_CONFIG_PATH:-<unset>}"
+
+      - name: Build current source
+        id: root-build
+        run: |
+          set -eu
+          unset PKG_CONFIG_PATH
+          echo "PKG_CONFIG_PATH=${PKG_CONFIG_PATH:-<unset>}"
+          alr -n build
+
+      - name: Verify generated OpenCV configuration
+        if: ${{ always() && steps.root-build.outcome == 'success' }}
+        run: |
+          set -eu
+          echo "=== Generated config/opencv_core_install.gpr ==="
+          cat config/opencv_core_install.gpr
+
+          if ! grep -F '/opt/local/include/opencv4' config/opencv_core_install.gpr; then
+            echo "error: generated GPR did not select MacPorts include path" >&2
+            exit 1
+          fi
+          if ! grep -F '/opt/local/lib/opencv4' config/opencv_core_install.gpr; then
+            echo "error: generated GPR did not select MacPorts library path" >&2
+            exit 1
+          fi
+          if ! grep -F 'Use_Apple_Clang : Apple_Clang_Kind := "True";' config/opencv_core_install.gpr; then
+            echo "error: generated GPR did not enable Apple clang++" >&2
+            exit 1
+          fi
+
+      - name: Run test suite
+        id: tests
+        if: ${{ always() && steps.root-build.outcome == 'success' }}
+        run: |
+          set -eu
+          unset PKG_CONFIG_PATH
+          echo "PKG_CONFIG_PATH=${PKG_CONFIG_PATH:-<unset>}"
+          alr -n -C tests run
+
+      - name: Verify shim library architecture
+        if: ${{ always() && steps.root-build.outcome == 'success' }}
+        run: |
+          set -eu
+          echo "=== Ada archive must not contain the C++ shim ==="
+          if [ ! -f lib/libopencv_core_ada.a ]; then
+            echo "error: lib/libopencv_core_ada.a is missing" >&2
+            exit 1
+          fi
+          shim_count=$(ar -t lib/libopencv_core_ada.a | grep -c '^opencv_core_shim\.o$' || true)
+          echo "opencv_core_shim.o count in libopencv_core_ada.a=${shim_count}"
+          if [ "${shim_count}" -ne 0 ]; then
+            echo "error: libopencv_core_ada.a still contains opencv_core_shim.o" >&2
+            ar -t lib/libopencv_core_ada.a
+            exit 1
+          fi
+
+          echo "=== Production shim dylib ==="
+          shim_dylib=""
+          for candidate in lib/libopencv_core_shim.dylib lib/libopencv_core_shim.*.dylib; do
+            if [ -e "${candidate}" ]; then
+              shim_dylib="${candidate}"
+              break
+            fi
+          done
+          if [ -z "${shim_dylib}" ]; then
+            echo "error: production libopencv_core_shim*.dylib is missing" >&2
+            ls -l lib
+            exit 1
+          fi
+          echo "Found: ${shim_dylib}"
+          otool -L "${shim_dylib}"
+
+          echo "=== Shim dylib must use MacPorts OpenCV and libc++, not Homebrew or libstdc++ ==="
+          otool -L "${shim_dylib}" | grep -E '/opt/local/lib/opencv4/libopencv_core'
+          otool -L "${shim_dylib}" | grep -F '/usr/lib/libc++.1.dylib'
+          if otool -L "${shim_dylib}" | grep -E '/opt/homebrew'; then
+            echo "error: shim dylib depends on Homebrew" >&2
+            exit 1
+          fi
+          if otool -L "${shim_dylib}" | grep -E 'libstdc\+\+'; then
+            echo "error: shim dylib depends on libstdc++" >&2
+            exit 1
+          fi
+
+          echo "=== Test executable depends on production shim dylib ==="
+          test_exe="tests/bin/tests"
+          if [ ! -e "${test_exe}" ]; then
+            echo "error: ${test_exe} is missing" >&2
+            ls -l tests/bin
+            exit 1
+          fi
+          otool -L "${test_exe}"
+          otool -L "${test_exe}" | grep libopencv_core_shim
+          if otool -L "${test_exe}" | grep -E 'libopencv_core_shim_diag|libopencv_core_shim_ada_diag'; then
+            echo "error: test executable depends on a diagnostic shim dylib" >&2
+            exit 1
+          fi
+

@@ -18,6 +18,28 @@ do
     fi
 done
 
+# MacPorts installs opencv4 pkg-config metadata under
+# <prefix>/lib/opencv4/pkgconfig rather than the normal
+# <prefix>/lib/pkgconfig directory. Only search that location when the
+# usual lookup failed; pkg-config remains authoritative afterwards.
+if [ -z "$package" ]; then
+    if [ "$(uname -s)" = "Darwin" ] && command -v port >/dev/null 2>&1; then
+        macports_prefix=$(dirname "$(dirname "$(command -v port)")")
+        macports_pkgconfig="${macports_prefix}/lib/opencv4/pkgconfig"
+        if [ -d "$macports_pkgconfig" ]; then
+            PKG_CONFIG_PATH="${macports_pkgconfig}${PKG_CONFIG_PATH:+:${PKG_CONFIG_PATH}}"
+            export PKG_CONFIG_PATH
+            for candidate in opencv5 opencv4 opencv
+            do
+                if pkg-config --exists "$candidate"; then
+                    package=$candidate
+                    break
+                fi
+            done
+        fi
+    fi
+fi
+
 if [ -z "$package" ]; then
     echo "error: pkg-config package was not found (tried opencv5, opencv4, opencv)" >&2
     exit 1
@@ -36,9 +58,9 @@ if [ -z "$include_dir" ] || [ -z "$library_dir" ]; then
     exit 1
 fi
 
-# Homebrew OpenCV on macOS is built with Apple clang++ and libc++. The C++
-# shim must use that same compiler and runtime. Linux OpenCV uses g++ and
-# libstdc++, which remains the default.
+# macOS OpenCV from Homebrew or MacPorts is built with Apple clang++ and
+# libc++. The C++ shim must use that same compiler and runtime. Linux
+# OpenCV uses g++ and libstdc++, which remains the default.
 cxx_runtime_switch="-lstdc++"
 cxx_driver="g++"
 use_apple_clang="False"
