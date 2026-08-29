@@ -825,10 +825,33 @@ jobs:
             fi
             echo
 
+            echo "=== D: link with GNAT gcc + macOS SDK ==="
+            "${gnat_gcc}" \
+              -isysroot "${macos_sdk_root}" \
+              "${driver_obj}" \
+              "${common_archive}" \
+              -L"${opencv_prefix}/lib" \
+              -lopencv_core \
+              -lc++ \
+              -Wl,-rpath,"${opencv_prefix}/lib" \
+              -o "$RUNNER_TEMP/shim-exception-gnat-sdk"
+            gnat_sdk_link_status=$?
+            echo "GNAT gcc + SDK link exit=${gnat_sdk_link_status}"
+
+            if [ "${gnat_sdk_link_status}" -eq 0 ]; then
+              "$RUNNER_TEMP/shim-exception-gnat-sdk"
+              gnat_sdk_run_status=$?
+              echo "GNAT gcc + SDK linked run exit=${gnat_sdk_run_status}"
+            else
+              gnat_sdk_run_status=255
+            fi
+            echo
+
             echo "=== Summary ==="
             echo "clang++ link=${clang_link_status} run=${clang_run_status}"
             echo "GNAT gcc link=${gnat_link_status} run=${gnat_run_status}"
             echo "GNAT gcc static-libgcc link=${gnat_static_link_status} run=${gnat_static_run_status}"
+            echo "GNAT gcc + SDK link=${gnat_sdk_link_status} run=${gnat_sdk_run_status}"
           } > "$RUNNER_TEMP/opencv-shim-link-comparison.log" 2>&1
 
           status=$?
