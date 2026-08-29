@@ -835,6 +835,94 @@ jobs:
           echo "PKG_CONFIG=${PKG_CONFIG:-<unset>}"
           echo "PKG_CONFIG_PATH=${PKG_CONFIG_PATH:-<unset>}"
 
+      - name: Generate mixed Ada/C++ GPR configuration
+        id: mixed-config
+        run: |
+          set -eu
+          cgpr="${RUNNER_TEMP}/opencv-core-windows-mixed.cgpr"
+          gprconfig_log="${RUNNER_TEMP}/opencv-core-windows-gprconfig.log"
+
+          gnat_gcc=$(alr exec -- which gcc)
+          if [ -z "${gnat_gcc}" ]; then
+            echo "error: could not resolve the Alire GNAT gcc" >&2
+            exit 1
+          fi
+          gnat_bin=$(dirname "${gnat_gcc}")
+          if command -v cygpath >/dev/null 2>&1; then
+            gnat_bin=$(cygpath -m "${gnat_bin}")
+          fi
+          echo "=== GNAT Ada compiler bin ==="
+          printf '%s\n' "${gnat_bin}"
+          alr exec -- gcc --version | head -n 2
+
+          libdir=$(alr exec -- x86_64-w64-mingw32-pkg-config --variable=libdir opencv5)
+          if [ -z "${libdir}" ]; then
+            echo "error: could not resolve OpenCV libdir for MSYS2 g++" >&2
+            exit 1
+          fi
+          msys_bin="$(dirname "${libdir}")/bin"
+          if command -v cygpath >/dev/null 2>&1; then
+            msys_bin=$(cygpath -m "${msys_bin}")
+          fi
+          echo "=== MSYS2 C++ compiler bin ==="
+          printf '%s\n' "${msys_bin}"
+          if [ ! -f "${msys_bin}/g++.exe" ] && [ ! -f "${msys_bin}/g++" ]; then
+            echo "error: MSYS2 g++ was not found in ${msys_bin}" >&2
+            exit 1
+          fi
+          case "${msys_bin}" in
+            *gnat_native*)
+              echo "error: MSYS2 compiler bin resolved to GNAT: ${msys_bin}" >&2
+              exit 1
+              ;;
+            *msys64*mingw64*bin*|*mingw64*bin*)
+              ;;
+            *)
+              echo "error: MSYS2 compiler bin is not mingw64/bin: ${msys_bin}" >&2
+              exit 1
+              ;;
+          esac
+          "${msys_bin}/g++.exe" --version | head -n 2
+
+          echo "=== gprconfig command ==="
+          echo "gprconfig --batch --target=x86_64-w64-mingw32 --config=language:Ada,path:${gnat_bin} --config=language:C++,path:${msys_bin} -o ${cgpr}"
+          set +e
+          alr exec -- gprconfig --batch --target=x86_64-w64-mingw32 \
+            --config="language:Ada,path:${gnat_bin}" \
+            --config="language:C++,path:${msys_bin}" \
+            -o "${cgpr}" >"${gprconfig_log}" 2>&1
+          status=$?
+          set -e
+          echo "=== gprconfig output ==="
+          cat "${gprconfig_log}"
+          if [ "${status}" -ne 0 ]; then
+            echo "error: gprconfig refused to generate a mixed Ada/C++ configuration" >&2
+            exit 1
+          fi
+          if [ ! -f "${cgpr}" ]; then
+            echo "error: mixed configuration was not written: ${cgpr}" >&2
+            exit 1
+          fi
+
+          echo "=== Generated mixed configuration ==="
+          cat "${cgpr}"
+
+          if grep -E 'Driver[[:space:]]*\("C\+\+"\)' "${cgpr}" | grep -F 'gnat_native'; then
+            echo "error: mixed .cgpr still selects GNAT g++ for C++" >&2
+            exit 1
+          fi
+          if ! grep -E 'Driver[[:space:]]*\("C\+\+"\)' "${cgpr}" | grep -F 'mingw64'; then
+            echo "error: mixed .cgpr did not select MSYS2 MinGW64 g++ for C++" >&2
+            exit 1
+          fi
+          if ! grep -E 'Driver[[:space:]]*\("Ada"\)' "${cgpr}" | grep -E 'gnat_native|gnat'; then
+            echo "error: mixed .cgpr did not select the Alire GNAT Ada compiler" >&2
+            exit 1
+          fi
+
+          echo "OPENCV_CORE_MIXED_CGPR=${cgpr}" >> "${GITHUB_ENV}"
+          echo "mixed_cgpr=${cgpr}" >> "${GITHUB_OUTPUT}"
+
       - name: Build current source
         id: root-build
         run: |
@@ -842,7 +930,13 @@ jobs:
           echo "PKG_CONFIG=${PKG_CONFIG:-<unset>}"
           echo "PKG_CONFIG_PATH=${PKG_CONFIG_PATH:-<unset>}"
           log="${RUNNER_TEMP:-$PWD}/opencv-core-windows-root-build.log"
-          if ! alr -n build -- -v >"${log}" 2>&1; then
+          mixed_cgpr="${OPENCV_CORE_MIXED_CGPR:-}"
+          if [ -z "${mixed_cgpr}" ] || [ ! -f "${mixed_cgpr}" ]; then
+            echo "error: mixed GPR configuration is missing: ${mixed_cgpr:-<unset>}" >&2
+            exit 1
+          fi
+          echo "using mixed config ${mixed_cgpr}"
+          if ! alr -n build -- --config="${mixed_cgpr}" -v >"${log}" 2>&1; then
             echo "=== Root build failed ==="
             cat "${log}"
             exit 1
@@ -860,6 +954,14 @@ jobs:
           fi
           if ! printf '%s\n' "${compile_cmd}" | grep -F 'mingw64'; then
             echo "error: shim compile did not use MSYS2 MinGW64 g++" >&2
+            exit 1
+          fi
+          if printf '%s\n' "${compile_cmd}" | grep -F -- '-c -x c++ -c -x c++'; then
+            echo "error: shim compile still has duplicated -c -x c++" >&2
+            exit 1
+          fi
+          if printf '%s\n' "${compile_cmd}" | grep -F -- '-MMD -MF -MMD -MF'; then
+            echo "error: shim compile still has duplicated -MMD -MF" >&2
             exit 1
           fi
           echo "=== Shim DLL link command ==="
@@ -1035,7 +1137,13 @@ jobs:
 
           log="${RUNNER_TEMP:-$PWD}/opencv-core-windows-test-build.log"
           echo "TESTS_WINDOWS_STATIC_ADA_RUNTIME=${TESTS_WINDOWS_STATIC_ADA_RUNTIME:-<unset>}"
-          if ! alr -n -C tests build -- -v -XTESTS_WINDOWS_STATIC_ADA_RUNTIME=True >"${log}" 2>&1; then
+          mixed_cgpr="${OPENCV_CORE_MIXED_CGPR:-}"
+          if [ -z "${mixed_cgpr}" ] || [ ! -f "${mixed_cgpr}" ]; then
+            echo "error: mixed GPR configuration is missing: ${mixed_cgpr:-<unset>}" >&2
+            exit 1
+          fi
+          echo "using mixed config ${mixed_cgpr}"
+          if ! alr -n -C tests build -- -v -XTESTS_WINDOWS_STATIC_ADA_RUNTIME=True --config="${mixed_cgpr}" >"${log}" 2>&1; then
             echo "=== Test build failed ==="
             cat "${log}"
             exit 1

@@ -44,8 +44,10 @@ project OpenCV_Core_Shim is
       --  fail the build on this OpenCV-header diagnostic.
       --
       --  Windows shared-shim mode uses the MSYS2 MinGW64 g++ that packaged
-      --  OpenCV. That compiler is outside the GNAT GPR toolchain, so the
-      --  same explicit driver / -I / -MMD override is required.
+      --  OpenCV. CI supplies a mixed .cgpr so Ada stays on GNAT 16.1 while
+      --  C++ compiler configuration belongs to that MSYS2 compiler. Keep
+      --  only project-specific C++ switches here; do not restate GPRconfig
+      --  compile/dependency mechanics.
       case OpenCV_Core_Install.Use_Apple_Clang is
          when "True" =>
             for Default_Switches ("C++") use
@@ -76,12 +78,6 @@ project OpenCV_Core_Shim is
                       "-Werror",
                       OpenCV_Core_Install.Include_Switch);
                   for Driver ("C++") use OpenCV_Core_Install.Cxx_Driver;
-                  for Leading_Required_Switches ("C++") use
-                    ("-c",
-                     "-x",
-                     "c++");
-                  for Include_Switches ("C++") use ("-I");
-                  for Dependency_Switches ("C++") use ("-MMD", "-MF", "");
                when "False" =>
                   for Default_Switches ("C++") use
                      ("-std=c++17",
