@@ -1716,6 +1716,337 @@ jobs:
           path: ${{ runner.temp }}/opencv-ada-compact-unwind.log
           if-no-files-found: error
 
+      - name: Compare real Ada tests with Apple-clang shim dylib
+        id: ada-shim-dylib
+        if: ${{ always() && steps.root-build.outcome == 'success' }}
+        shell: bash
+        run: |
+          set +e
+          (
+            echo "=== Tool locations ==="
+            clang_cxx="$(xcrun --find clang++)"
+            gnat_gcc="$(alr -n -C tests exec -- which gcc 2>/dev/null | tail -n 1)"
+            opencv_prefix="$(brew --prefix opencv)"
+            macos_sdk_root="$(xcrun --sdk macosx --show-sdk-path)"
+            llvm_objdump="$(xcrun --find llvm-objdump 2>/dev/null || true)"
+            opencv_include="$(pkg-config --variable=includedir opencv5 2>/dev/null)"
+            if [ -z "${opencv_include}" ]; then
+              opencv_include="$(pkg-config --variable=includedir opencv4 2>/dev/null)"
+            fi
+            if [ -z "${opencv_include}" ]; then
+              opencv_include="$(pkg-config --variable=includedir opencv 2>/dev/null)"
+            fi
+            if [ -z "${opencv_include}" ]; then
+              opencv_include="${opencv_prefix}/include"
+            fi
+            echo "clang++: ${clang_cxx}"
+            echo "GNAT gcc: ${gnat_gcc}"
+            echo "OpenCV: ${opencv_prefix}"
+            echo "OpenCV include: ${opencv_include}"
+            echo "macOS SDK: ${macos_sdk_root}"
+            echo "llvm-objdump: ${llvm_objdump}"
+            echo
+
+            working_archive="lib/libopencv_core_ada.a"
+            original_archive="$RUNNER_TEMP/libopencv_core_ada.original.a"
+            ada_shim_dylib="$RUNNER_TEMP/libopencv_core_shim_ada_diag.dylib"
+            ada_link_log="$RUNNER_TEMP/opencv-ada-shim-dylib-link.log"
+            ada_run_log="$RUNNER_TEMP/opencv-ada-shim-dylib-run.log"
+
+            ada_dylib_build_status=255
+            ada_archive_shim_count_before=255
+            ada_archive_shim_count_after_removal=255
+            ada_archive_shim_count_after_link=255
+            ada_archive_shim_count_restored=255
+            ada_archive_restore_status=255
+            ada_test_link_status=255
+            ada_test_run_status=255
+            ada_dylib_dep_status=255
+            ada_no_compact_unwind=255
+            ada_total_tests="n/a"
+            ada_successful_tests="n/a"
+            archive_saved=0
+            archive_restored=0
+
+            print_ada_shim_summary() {
+              echo "=== Summary ==="
+              echo "Ada dylib build=${ada_dylib_build_status}"
+              echo "Ada archive shim count before=${ada_archive_shim_count_before}"
+              echo "Ada archive shim count after removal=${ada_archive_shim_count_after_removal}"
+              echo "Ada test link=${ada_test_link_status}"
+              echo "Ada archive shim count after link=${ada_archive_shim_count_after_link}"
+              echo "Ada test dependency on shim dylib=${ada_dylib_dep_status}"
+              echo "Ada GNAT default no_compact_unwind=${ada_no_compact_unwind}"
+              echo "Ada test run=${ada_test_run_status}"
+              echo "Ada total tests=${ada_total_tests}"
+              echo "Ada successful tests=${ada_successful_tests}"
+              echo "Ada archive restore=${ada_archive_restore_status}"
+              echo "Ada archive shim count restored=${ada_archive_shim_count_restored}"
+            }
+
+            restore_original_archive() {
+              if [ "${archive_restored}" -eq 1 ]; then
+                echo "=== Archive restore already completed ==="
+                return 0
+              fi
+              if [ "${archive_saved}" -ne 1 ]; then
+                echo "=== Archive restore skipped ==="
+                echo "original archive was not saved"
+                return 0
+              fi
+              echo "=== Restore original libopencv_core_ada.a ==="
+              cp "${original_archive}" "${working_archive}"
+              ada_archive_restore_status=$?
+              echo "Ada archive restore exit=${ada_archive_restore_status}"
+              if [ "${ada_archive_restore_status}" -eq 0 ]; then
+                ranlib "${working_archive}"
+                archive_restored=1
+                echo "=== Archive members after restoration ==="
+                ar -t "${working_archive}"
+                echo
+                ada_archive_shim_count_restored=$(ar -t "${working_archive}" | grep -c '^opencv_core_shim\.o$' || true)
+                echo "Ada archive shim count restored=${ada_archive_shim_count_restored}"
+              fi
+              echo
+            }
+
+            trap restore_original_archive EXIT
+
+            echo "=== K-equivalent Apple clang++ shim dylib for real Ada tests ==="
+            "${clang_cxx}" \
+              -dynamiclib \
+              -std=c++17 \
+              -Wall \
+              -Wextra \
+              -Wpedantic \
+              -Werror \
+              -Wno-error=c11-extensions \
+              -isysroot "${macos_sdk_root}" \
+              -I"${opencv_include}" \
+              -Icpp \
+              cpp/opencv_core_shim.cpp \
+              -L"${opencv_prefix}/lib" \
+              -lopencv_core \
+              -Wl,-rpath,"${opencv_prefix}/lib" \
+              -Wl,-install_name,@rpath/libopencv_core_shim_ada_diag.dylib \
+              -o "${ada_shim_dylib}"
+            ada_dylib_build_status=$?
+            echo "Ada dylib build exit=${ada_dylib_build_status}"
+            echo
+
+            if [ "${ada_dylib_build_status}" -ne 0 ]; then
+              echo "=== Ada shim-dylib experiment stopped ==="
+              echo "diagnostic dylib build failed"
+              echo
+              print_ada_shim_summary
+              exit "${ada_dylib_build_status}"
+            fi
+
+            echo "=== Diagnostic shim dylib dependencies ==="
+            otool -L "${ada_shim_dylib}"
+            echo
+
+            echo "=== Diagnostic shim dylib Mach-O load commands and sections ==="
+            otool -l "${ada_shim_dylib}"
+            echo
+
+            if [ -n "${llvm_objdump}" ]; then
+              echo "=== Diagnostic shim dylib llvm-objdump unwind info ==="
+              "${llvm_objdump}" --unwind-info "${ada_shim_dylib}"
+              echo
+            else
+              echo "=== Diagnostic shim dylib llvm-objdump unwind info skipped ==="
+              echo "llvm-objdump not found"
+              echo
+            fi
+
+            echo "=== Diagnostic shim dylib exported symbols ==="
+            nm -gU "${ada_shim_dylib}"
+            echo
+            echo "=== Diagnostic shim dylib opencv_core_mat_reshape ==="
+            nm -gU "${ada_shim_dylib}" | grep opencv_core_mat_reshape || true
+            echo
+
+            echo "=== Original archive members ==="
+            ar -t "${working_archive}"
+            echo
+            ada_archive_shim_count_before=$(ar -t "${working_archive}" | grep -c '^opencv_core_shim\.o$' || true)
+            echo "Ada archive shim count before=${ada_archive_shim_count_before}"
+            echo
+
+            echo "=== Original archive opencv_core_mat_reshape ==="
+            nm -g "${working_archive}" | grep opencv_core_mat_reshape || true
+            echo
+
+            if [ "${ada_archive_shim_count_before}" -ne 1 ]; then
+              echo "=== Ada shim-dylib experiment stopped ==="
+              echo "expected exactly one opencv_core_shim.o archive member"
+              echo
+              print_ada_shim_summary
+              exit 42
+            fi
+
+            echo "=== Preserve original archive ==="
+            cp "${working_archive}" "${original_archive}"
+            archive_saved=1
+            echo "saved ${original_archive}"
+            echo
+
+            echo "=== Remove static C++ shim from working archive ==="
+            ar -d "${working_archive}" opencv_core_shim.o
+            echo "ar -d exit=$?"
+            ranlib "${working_archive}"
+            echo "ranlib exit=$?"
+            echo
+
+            echo "=== Archive members after removal ==="
+            ar -t "${working_archive}"
+            echo
+            ada_archive_shim_count_after_removal=$(ar -t "${working_archive}" | grep -c '^opencv_core_shim\.o$' || true)
+            echo "Ada archive shim count after removal=${ada_archive_shim_count_after_removal}"
+            echo
+
+            if [ "${ada_archive_shim_count_after_removal}" -ne 0 ]; then
+              echo "=== Ada shim-dylib experiment stopped ==="
+              echo "opencv_core_shim.o remained after archive edit"
+              echo
+              restore_original_archive
+              trap - EXIT
+              print_ada_shim_summary
+              exit 43
+            fi
+
+            echo "=== Remove existing tests executable to force relink ==="
+            rm -f tests/bin/tests tests/bin/test
+            echo
+
+            echo "=== Relink real tests against Apple-clang shim dylib ==="
+            alr -n -C tests build -- \
+              -v \
+              -largs \
+              "-L${RUNNER_TEMP}" \
+              -lopencv_core_shim_ada_diag \
+              "-Wl,-rpath,${RUNNER_TEMP}" \
+              > "${ada_link_log}" 2>&1
+            ada_test_link_status=$?
+            cat "${ada_link_log}"
+            echo "Ada test link exit=${ada_test_link_status}"
+            echo
+
+            echo "=== GNAT/collect2 -no_compact_unwind evidence ==="
+            grep -F -- "-no_compact_unwind" "${ada_link_log}"
+            ada_no_compact_unwind=$?
+            echo "Ada GNAT default no_compact_unwind grep exit=${ada_no_compact_unwind}"
+            echo
+
+            echo "=== Final link includes diagnostic shim dylib ==="
+            grep -F -- "-lopencv_core_shim_ada_diag" "${ada_link_log}" || true
+            echo
+
+            echo "=== Archive members after GPRbuild ==="
+            ar -t "${working_archive}"
+            echo
+            ada_archive_shim_count_after_link=$(ar -t "${working_archive}" | grep -c '^opencv_core_shim\.o$' || true)
+            echo "Ada archive shim count after link=${ada_archive_shim_count_after_link}"
+            echo
+
+            if [ "${ada_archive_shim_count_after_link}" -ne 0 ]; then
+              echo "=== Ada shim-dylib experiment stopped ==="
+              echo "GPRbuild restored opencv_core_shim.o; experiment contaminated"
+              echo
+              restore_original_archive
+              trap - EXIT
+              print_ada_shim_summary
+              exit 44
+            fi
+
+            if [ "${ada_test_link_status}" -ne 0 ]; then
+              echo "=== Ada shim-dylib experiment stopped ==="
+              echo "real test relink failed"
+              echo
+              restore_original_archive
+              trap - EXIT
+              print_ada_shim_summary
+              exit "${ada_test_link_status}"
+            fi
+
+            test_exe="tests/bin/tests"
+            if [ ! -e "${test_exe}" ]; then
+              echo "=== Ada shim-dylib experiment stopped ==="
+              echo "test executable not found"
+              ls -l tests/bin
+              echo
+              restore_original_archive
+              trap - EXIT
+              print_ada_shim_summary
+              exit 255
+            fi
+
+            echo "=== Real Ada test executable dependencies ==="
+            otool -L "${test_exe}"
+            echo
+            otool -L "${test_exe}" | grep libopencv_core_shim_ada_diag
+            ada_dylib_dep_status=$?
+            echo "Ada test dependency on shim dylib grep exit=${ada_dylib_dep_status}"
+            echo
+
+            echo "=== Real Ada test executable Mach-O load commands and sections ==="
+            otool -l "${test_exe}"
+            echo
+
+            if [ -n "${llvm_objdump}" ]; then
+              echo "=== Real Ada test executable llvm-objdump unwind info ==="
+              "${llvm_objdump}" --unwind-info "${test_exe}"
+              echo
+            else
+              echo "=== Real Ada test executable llvm-objdump unwind info skipped ==="
+              echo "llvm-objdump not found"
+              echo
+            fi
+
+            if [ "${ada_dylib_dep_status}" -ne 0 ]; then
+              echo "=== Ada shim-dylib experiment stopped ==="
+              echo "test executable does not depend on diagnostic shim dylib"
+              echo
+              restore_original_archive
+              trap - EXIT
+              print_ada_shim_summary
+              exit 45
+            fi
+
+            echo "=== Run real AUnit tests executable directly ==="
+            "${test_exe}" > "${ada_run_log}" 2>&1
+            ada_test_run_status=$?
+            cat "${ada_run_log}"
+            echo "Ada test run exit=${ada_test_run_status}"
+            echo
+
+            ada_total_tests=$(grep -F "Total Tests Run:" "${ada_run_log}" | tail -n 1)
+            ada_successful_tests=$(grep -F "Successful Tests:" "${ada_run_log}" | tail -n 1)
+            if [ -z "${ada_total_tests}" ]; then
+              ada_total_tests="n/a"
+            fi
+            if [ -z "${ada_successful_tests}" ]; then
+              ada_successful_tests="n/a"
+            fi
+
+            restore_original_archive
+            trap - EXIT
+            print_ada_shim_summary
+            exit "${ada_test_run_status}"
+          ) > "$RUNNER_TEMP/opencv-ada-shim-dylib.log" 2>&1
+          status=$?
+          cat "$RUNNER_TEMP/opencv-ada-shim-dylib.log"
+          exit "$status"
+
+      - name: Upload macOS Ada shim-dylib diagnostics
+        if: ${{ always() && steps.root-build.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-ada-shim-dylib-diagnostics
+          path: ${{ runner.temp }}/opencv-ada-shim-dylib.log
+          if-no-files-found: error
+
       - name: Inspect linked test executable
         if: ${{ always() && steps.tests.outcome == 'success' }}
         continue-on-error: true
