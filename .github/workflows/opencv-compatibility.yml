@@ -555,6 +555,12 @@ jobs:
       - name: Set up MacPorts
         uses: melusina-org/setup-macports@v1
 
+      - name: Configure MacPorts for Quartz
+        run: |
+          set -eu
+          echo '-x11 +no_x11 +quartz' >> /opt/local/etc/macports/variants.conf
+          cat /opt/local/etc/macports/variants.conf
+
       - name: Verify Alire detects MacPorts
         run: |
           set -eu
