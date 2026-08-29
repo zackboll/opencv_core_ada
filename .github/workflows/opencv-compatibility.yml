@@ -896,6 +896,73 @@ jobs:
             fi
             echo
 
+            original_specs="$RUNNER_TEMP/gnat-original.specs"
+            compact_specs="$RUNNER_TEMP/gnat-compact.specs"
+
+            echo "=== GNAT GCC Darwin specs ==="
+            "${gnat_gcc}" -dumpspecs > "${original_specs}"
+            grep -n "no_compact_unwind" "${original_specs}" || true
+            echo
+
+            python3 - "${original_specs}" "${compact_specs}" <<'PY'
+from pathlib import Path
+import sys
+
+src = Path(sys.argv[1])
+dst = Path(sys.argv[2])
+
+text = src.read_text()
+
+needle = "%:version-compare(>= 10.6 mmacosx-version-min= -no_compact_unwind)"
+count = text.count(needle)
+
+print(f"no_compact_unwind spec occurrences={count}")
+
+if count != 1:
+    raise SystemExit(42)
+
+dst.write_text(text.replace(needle, "", 1))
+PY
+            spec_edit_status=$?
+            echo "custom specs edit exit=${spec_edit_status}"
+            echo
+
+            gnat_specs_link_status=255
+            gnat_specs_run_status=255
+
+            if [ "${spec_edit_status}" -eq 0 ]; then
+              echo "=== Modified GNAT GCC specs no_compact_unwind matches ==="
+              grep -n "no_compact_unwind" "${compact_specs}" || true
+              echo
+
+              echo "=== G: GNAT gcc with no-compact-unwind spec removed ==="
+              "${gnat_gcc}" \
+                -v \
+                -specs="${compact_specs}" \
+                "${driver_obj}" \
+                "${common_archive}" \
+                -L"${opencv_prefix}/lib" \
+                -lopencv_core \
+                -lc++ \
+                -Wl,-rpath,"${opencv_prefix}/lib" \
+                -o "$RUNNER_TEMP/shim-exception-gnat-specs"
+              gnat_specs_link_status=$?
+              echo "GNAT gcc custom-specs link exit=${gnat_specs_link_status}"
+
+              if [ "${gnat_specs_link_status}" -eq 0 ]; then
+                "$RUNNER_TEMP/shim-exception-gnat-specs"
+                gnat_specs_run_status=$?
+                echo "GNAT gcc custom-specs run exit=${gnat_specs_run_status}"
+              else
+                gnat_specs_run_status=255
+              fi
+              echo
+            else
+              echo "=== G skipped ==="
+              echo "custom specs occurrence count was not exactly 1"
+              echo
+            fi
+
             echo "=== Summary ==="
             echo "clang++ link=${clang_link_status} run=${clang_run_status}"
             echo "GNAT gcc link=${gnat_link_status} run=${gnat_run_status}"
@@ -903,6 +970,8 @@ jobs:
             echo "GNAT gcc + SDK link=${gnat_sdk_link_status} run=${gnat_sdk_run_status}"
             echo "GNAT gcc + ld_classic link=${gnat_classic_link_status} run=${gnat_classic_run_status}"
             echo "GNAT gcc compact-unwind candidate link=${gnat_compact_link_status} run=${gnat_compact_run_status}"
+            echo "GNAT gcc custom-specs compact-unwind link=${gnat_specs_link_status} run=${gnat_specs_run_status}"
+            echo "custom specs edit=${spec_edit_status}"
 
             echo "=== Apple clang++ verbose link ==="
             "${clang_cxx}" \
@@ -1016,11 +1085,41 @@ jobs:
               echo
             fi
 
+            g_unwind_status=255
+            if [ "${gnat_specs_link_status}" -eq 0 ]; then
+              echo "=== G: dependencies ==="
+              otool -L "$RUNNER_TEMP/shim-exception-gnat-specs"
+              echo
+
+              echo "=== G: Mach-O load commands and sections ==="
+              otool -l "$RUNNER_TEMP/shim-exception-gnat-specs"
+              echo
+
+              if [ -n "${llvm_objdump}" ]; then
+                echo "=== G: llvm-objdump unwind info ==="
+                "${llvm_objdump}" \
+                  --unwind-info \
+                  "$RUNNER_TEMP/shim-exception-gnat-specs"
+                g_unwind_status=$?
+                echo "G unwind dump exit=${g_unwind_status}"
+                echo
+              else
+                echo "=== G: llvm-objdump unwind info skipped ==="
+                echo "llvm-objdump not found"
+                echo
+              fi
+            else
+              echo "=== G Mach-O inspection skipped ==="
+              echo "G did not link"
+              echo
+            fi
+
             echo "clang++ verbose link=${clang_verbose_link_status}"
             echo "GNAT gcc verbose link=${gnat_verbose_link_status}"
             echo "A unwind dump=${a_unwind_status}"
             echo "B unwind dump=${b_unwind_status}"
             echo "F unwind dump=${f_unwind_status}"
+            echo "G unwind dump=${g_unwind_status}"
           } > "$RUNNER_TEMP/opencv-shim-link-comparison.log" 2>&1
 
           status=$?
