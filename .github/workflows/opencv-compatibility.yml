@@ -789,10 +789,11 @@ jobs:
           set -eu
           alr exec -- pacman -Sy --noconfirm --needed \
             mingw-w64-x86_64-opencv \
-            mingw-w64-x86_64-pkg-config
+            mingw-w64-x86_64-pkg-config \
+            mingw-w64-x86_64-gcc
 
           echo "=== Installed MSYS2 packages ==="
-          alr exec -- pacman -Q mingw-w64-x86_64-opencv mingw-w64-x86_64-pkg-config
+          alr exec -- pacman -Q mingw-w64-x86_64-opencv mingw-w64-x86_64-pkg-config mingw-w64-x86_64-gcc
 
       - name: Demonstrate pkg-config collision
         run: |
@@ -840,7 +841,42 @@ jobs:
           set -eu
           echo "PKG_CONFIG=${PKG_CONFIG:-<unset>}"
           echo "PKG_CONFIG_PATH=${PKG_CONFIG_PATH:-<unset>}"
-          alr -n build
+          log="${RUNNER_TEMP:-$PWD}/opencv-core-windows-root-build.log"
+          if ! alr -n build -- -v >"${log}" 2>&1; then
+            echo "=== Root build failed ==="
+            cat "${log}"
+            exit 1
+          fi
+          echo "=== Shim C++ compile command ==="
+          compile_cmd=$(grep -F 'opencv_core_shim.cpp' "${log}" | grep -F 'g++' | tail -n 1 || true)
+          printf '%s\n' "${compile_cmd}"
+          if [ -z "${compile_cmd}" ]; then
+            echo "error: could not extract the opencv_core_shim.cpp compile command" >&2
+            exit 1
+          fi
+          if printf '%s\n' "${compile_cmd}" | grep -F 'gnat_native'; then
+            echo "error: shim compile still uses GNAT g++" >&2
+            exit 1
+          fi
+          if ! printf '%s\n' "${compile_cmd}" | grep -F 'mingw64'; then
+            echo "error: shim compile did not use MSYS2 MinGW64 g++" >&2
+            exit 1
+          fi
+          echo "=== Shim DLL link command ==="
+          shim_link_cmd=$(grep -F 'opencv_core_shim.dll' "${log}" | grep -F 'g++' | tail -n 1 || true)
+          printf '%s\n' "${shim_link_cmd}"
+          if [ -z "${shim_link_cmd}" ]; then
+            echo "error: could not extract the libopencv_core_shim.dll link command" >&2
+            exit 1
+          fi
+          if printf '%s\n' "${shim_link_cmd}" | grep -F 'gnat_native'; then
+            echo "error: shim DLL link still uses GNAT g++" >&2
+            exit 1
+          fi
+          if ! printf '%s\n' "${shim_link_cmd}" | grep -F 'mingw64'; then
+            echo "error: shim DLL link did not use MSYS2 MinGW64 g++" >&2
+            exit 1
+          fi
 
       - name: Verify generated OpenCV configuration
         if: ${{ always() && steps.root-build.outcome == 'success' }}
@@ -853,10 +889,28 @@ jobs:
             echo "error: generated GPR did not keep Use_Apple_Clang False" >&2
             exit 1
           fi
-          if ! grep -F 'Cxx_Driver := "g++";' config/opencv_core_install.gpr; then
-            echo "error: generated GPR did not select g++" >&2
+          cxx_driver=$(sed -n 's/.*Cxx_Driver := "\(.*\)";/\1/p' config/opencv_core_install.gpr)
+          echo "Cxx_Driver=${cxx_driver}"
+          case "${cxx_driver}" in
+            *gnat_native*)
+              echo "error: generated GPR selected GNAT g++: ${cxx_driver}" >&2
+              exit 1
+              ;;
+            *mingw64*g++*)
+              echo "generated GPR selected MSYS2 MinGW64 g++"
+              ;;
+            *)
+              echo "error: generated GPR did not select MSYS2 MinGW64 g++: ${cxx_driver}" >&2
+              exit 1
+              ;;
+          esac
+          if [ ! -f "${cxx_driver}" ]; then
+            echo "error: generated C++ driver does not exist: ${cxx_driver}" >&2
             exit 1
           fi
+          echo "=== MSYS2 C++ compiler ==="
+          ls -l "${cxx_driver}"
+          "${cxx_driver}" --version
           if ! grep -F 'Cxx_Runtime_Switch := "-lstdc++";' config/opencv_core_install.gpr; then
             echo "error: generated GPR did not select -lstdc++" >&2
             exit 1
@@ -952,6 +1006,14 @@ jobs:
           alr exec -- "${dump}" -p "${shim_dll}" | grep -i 'DLL Name' || true
           if ! alr exec -- "${dump}" -p "${shim_dll}" | grep -qi 'libopencv_core-500.dll'; then
             echo "error: shim DLL does not reference libopencv_core-500.dll" >&2
+            exit 1
+          fi
+          if ! alr exec -- "${dump}" -p "${shim_dll}" | grep -qi 'libgcc_s_seh-1.dll'; then
+            echo "error: shim DLL does not import libgcc_s_seh-1.dll" >&2
+            exit 1
+          fi
+          if ! alr exec -- "${dump}" -p "${shim_dll}" | grep -qi 'libstdc++-6.dll'; then
+            echo "error: shim DLL does not import libstdc++-6.dll" >&2
             exit 1
           fi
 
@@ -1108,7 +1170,64 @@ jobs:
             exit 1
           fi
 
-          alr -n -C tests run --skip-build
+          cxx_driver=$(sed -n 's/.*Cxx_Driver := "\(.*\)";/\1/p' config/opencv_core_install.gpr)
+          runtime_dir=$(dirname "${cxx_driver}")
+          lib_dir="${PWD}/lib"
+          echo "=== MSYS2 runtime directory ==="
+          printf '%s\n' "${runtime_dir}"
+          case "${runtime_dir}" in
+            *mingw64*bin*)
+              ;;
+            *)
+              echo "error: runtime directory is not MSYS2 mingw64/bin: ${runtime_dir}" >&2
+              exit 1
+              ;;
+          esac
+          if [ ! -d "${runtime_dir}" ]; then
+            echo "error: MSYS2 runtime directory does not exist: ${runtime_dir}" >&2
+            exit 1
+          fi
+
+          echo "=== MSYS2 runtime DLLs ==="
+          for name in libgcc_s_seh-1.dll libstdc++-6.dll libopencv_core-500.dll; do
+            candidate="${runtime_dir}/${name}"
+            if [ -f "${candidate}" ]; then
+              ls -l "${candidate}"
+              sha256sum "${candidate}" || true
+            else
+              echo "error: missing MSYS2 runtime DLL: ${candidate}" >&2
+              exit 1
+            fi
+          done
+
+          echo "=== GNAT runtime DLL copies for comparison ==="
+          gnat_gcc=$(alr exec -- which gcc || true)
+          if [ -n "${gnat_gcc}" ]; then
+            gnat_bin=$(dirname "${gnat_gcc}")
+            echo "GNAT bin=${gnat_bin}"
+            for name in libgcc_s_seh-1.dll libstdc++-6.dll; do
+              candidate="${gnat_bin}/${name}"
+              if [ -f "${candidate}" ]; then
+                ls -l "${candidate}"
+                sha256sum "${candidate}" || true
+              else
+                echo "absent: ${candidate}"
+              fi
+            done
+          fi
+
+          path_lib="${lib_dir}"
+          path_runtime="${runtime_dir}"
+          if command -v cygpath >/dev/null 2>&1; then
+            path_lib=$(cygpath -u "${lib_dir}")
+            path_runtime=$(cygpath -u "${runtime_dir}")
+          fi
+          export PATH="${path_lib}:${path_runtime}:${PATH}"
+          echo "=== Execution PATH ==="
+          printf '%s\n' "${PATH}"
+
+          echo "=== Direct AUnit execution ==="
+          "${test_exe}"
 
       - name: Report Windows runtime diagnostics
         if: ${{ always() && steps.root-build.outcome == 'success' }}

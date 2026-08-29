@@ -115,6 +115,31 @@ case "$sysname" in
         opencv_core_link_option="$opencv_core_import_library"
         use_direct_opencv_link="True"
         use_windows_shared_shim="True"
+
+        # Compile and link the shim with the same MSYS2 MinGW64 g++ that
+        # packaged OpenCV, not GNAT-FSF g++ from PATH.
+        mingw_prefix=$(dirname "$library_dir")
+        cxx_candidate="${mingw_prefix}/bin/g++.exe"
+        if [ ! -f "$cxx_candidate" ]; then
+            cxx_candidate="${mingw_prefix}/bin/g++"
+        fi
+        if [ ! -f "$cxx_candidate" ]; then
+            echo "error: MSYS2 MinGW64 g++ was not found at ${mingw_prefix}/bin/g++.exe" >&2
+            echo "error: install mingw-w64-x86_64-gcc in the same prefix as OpenCV" >&2
+            exit 1
+        fi
+        if ! command -v cygpath >/dev/null 2>&1; then
+            echo "error: cygpath is required to record a GPR-compatible MSYS2 g++ path" >&2
+            exit 1
+        fi
+        cxx_driver=$(cygpath -m "$cxx_candidate")
+        case "$cxx_driver" in
+            *gnat_native*)
+                echo "error: C++ driver resolved to the GNAT toolchain: $cxx_driver" >&2
+                exit 1
+                ;;
+        esac
+        echo "Windows C++ driver: $cxx_driver"
         ;;
 esac
 

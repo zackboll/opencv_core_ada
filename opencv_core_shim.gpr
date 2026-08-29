@@ -42,6 +42,10 @@ project OpenCV_Core_Shim is
       --  Homebrew OpenCV headers use C11 _Atomic through CV_XADD. Apple
       --  clang++ emits -Wc11-extensions for that; keep -Werror but do not
       --  fail the build on this OpenCV-header diagnostic.
+      --
+      --  Windows shared-shim mode uses the MSYS2 MinGW64 g++ that packaged
+      --  OpenCV. That compiler is outside the GNAT GPR toolchain, so the
+      --  same explicit driver / -I / -MMD override is required.
       case OpenCV_Core_Install.Use_Apple_Clang is
          when "True" =>
             for Default_Switches ("C++") use
@@ -62,13 +66,31 @@ project OpenCV_Core_Shim is
             for Include_Switches ("C++") use ("-I");
             for Dependency_Switches ("C++") use ("-MMD", "-MF", "");
          when "False" =>
-            for Default_Switches ("C++") use
-               ("-std=c++17",
-                "-Wall",
-                "-Wextra",
-                "-Wpedantic",
-                "-Werror",
-                OpenCV_Core_Install.Include_Switch);
+            case OpenCV_Core_Install.Use_Windows_Shared_Shim is
+               when "True" =>
+                  for Default_Switches ("C++") use
+                     ("-std=c++17",
+                      "-Wall",
+                      "-Wextra",
+                      "-Wpedantic",
+                      "-Werror",
+                      OpenCV_Core_Install.Include_Switch);
+                  for Driver ("C++") use OpenCV_Core_Install.Cxx_Driver;
+                  for Leading_Required_Switches ("C++") use
+                    ("-c",
+                     "-x",
+                     "c++");
+                  for Include_Switches ("C++") use ("-I");
+                  for Dependency_Switches ("C++") use ("-MMD", "-MF", "");
+               when "False" =>
+                  for Default_Switches ("C++") use
+                     ("-std=c++17",
+                      "-Wall",
+                      "-Wextra",
+                      "-Wpedantic",
+                      "-Werror",
+                      OpenCV_Core_Install.Include_Switch);
+            end case;
       end case;
    end Compiler;
 
@@ -94,6 +116,7 @@ project OpenCV_Core_Shim is
 
    package Linker is
       --  Link the macOS dylib with Apple clang++, not GNAT gcc.
+      --  Link the Windows shim DLL with MSYS2 g++, not GNAT g++.
       --  Linux static consumers need OpenCV and libstdc++ at final link.
       --  Windows consumers link only the shim DLL; OpenCV and the C++
       --  runtime stay inside that image.
@@ -105,7 +128,7 @@ project OpenCV_Core_Shim is
          when "False" =>
             case OpenCV_Core_Install.Use_Windows_Shared_Shim is
                when "True" =>
-                  null;
+                  for Driver use OpenCV_Core_Install.Cxx_Driver;
                when "False" =>
                   for Linker_Options use
                     (OpenCV_Core_Install.Library_Search_Switch,
