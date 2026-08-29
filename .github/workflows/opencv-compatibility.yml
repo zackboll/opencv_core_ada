@@ -1285,8 +1285,22 @@ jobs:
             fi
           done
 
+          shim_dll=""
+          for candidate in lib/libopencv_core_shim.dll lib/opencv_core_shim.dll "${lib_dir}/libopencv_core_shim.dll"; do
+            if [ -f "${candidate}" ]; then
+              shim_dll="${candidate}"
+              break
+            fi
+          done
+          if [ -z "${shim_dll}" ]; then
+            echo "error: libopencv_core_shim.dll is missing before tests.exe launch" >&2
+            ls -l lib || true
+            exit 1
+          fi
+
           echo "=== GNAT runtime DLL copies for comparison ==="
           gnat_gcc=$(alr exec -- which gcc || true)
+          gnat_bin=""
           if [ -n "${gnat_gcc}" ]; then
             gnat_bin=$(dirname "${gnat_gcc}")
             echo "GNAT bin=${gnat_bin}"
@@ -1299,32 +1313,85 @@ jobs:
                 echo "absent: ${candidate}"
               fi
             done
+          else
+            echo "GNAT gcc was not found on PATH"
           fi
 
           path_lib="${lib_dir}"
           path_runtime="${runtime_dir}"
           test_exe_win="${test_exe}"
+          shim_dll_win="${shim_dll}"
           if command -v cygpath >/dev/null 2>&1; then
-            path_lib=$(cygpath -w "${lib_dir}")
-            path_runtime=$(cygpath -w "${runtime_dir}")
-            test_exe_win=$(cygpath -w "${test_exe}")
+            path_lib=$(cygpath -wa "${lib_dir}")
+            path_runtime=$(cygpath -wa "${runtime_dir}")
+            test_exe_win=$(cygpath -wa "${test_exe}")
+            shim_dll_win=$(cygpath -wa "${shim_dll}")
           fi
-          echo "=== Executable path ==="
-          printf '%s\n' "${test_exe}"
+
+          echo "=== Absolute tests.exe path ==="
           printf '%s\n' "${test_exe_win}"
-          echo "=== Windows PATH prefixes for tests.exe ==="
+          echo "=== Absolute libopencv_core_shim.dll path ==="
+          printf '%s\n' "${shim_dll_win}"
+          echo "=== MSYS2 mingw64/bin prepended to PATH ==="
+          printf '%s\n' "${path_runtime}"
+          echo "=== Shim directory prepended to PATH ==="
+          printf '%s\n' "${path_lib}"
+          echo "=== First PATH entries after constructing the test environment ==="
           printf '%s\n' "${path_lib}"
           printf '%s\n' "${path_runtime}"
-          echo "=== Windows DLL resolution ==="
+          echo "(followed by the previous Windows PATH)"
+
+          echo "=== tests.exe PE imports immediately before launch ==="
+          alr exec -- "${dump}" -p "${test_exe}" | grep -i 'DLL Name' || true
+
+          echo "=== libopencv_core_shim.dll PE imports immediately before launch ==="
+          alr exec -- "${dump}" -p "${shim_dll}" | grep -i 'DLL Name' || true
+
+          echo "=== Physical DLL candidates (MSYS2 vs GNAT vs shim dir) ==="
+          for name in libgcc_s_seh-1.dll libstdc++-6.dll libopencv_core-500.dll libopencv_core_shim.dll; do
+            echo "--- ${name} ---"
+            if [ -f "${runtime_dir}/${name}" ]; then
+              echo "MSYS2: ${runtime_dir}/${name}"
+              ls -l "${runtime_dir}/${name}"
+              sha256sum "${runtime_dir}/${name}" || true
+            else
+              echo "MSYS2: absent"
+            fi
+            if [ -n "${gnat_bin}" ] && [ -f "${gnat_bin}/${name}" ]; then
+              echo "GNAT: ${gnat_bin}/${name}"
+              ls -l "${gnat_bin}/${name}"
+              sha256sum "${gnat_bin}/${name}" || true
+            else
+              echo "GNAT: absent"
+            fi
+            if [ -f "${lib_dir}/${name}" ]; then
+              echo "shim-dir: ${lib_dir}/${name}"
+              ls -l "${lib_dir}/${name}"
+              sha256sum "${lib_dir}/${name}" || true
+            else
+              echo "shim-dir: absent"
+            fi
+          done
+
+          echo "=== Windows DLL resolution under the test PATH ==="
           set +e
-          MSYS_NO_PATHCONV=1 cmd.exe //c "set \"PATH=${path_lib};${path_runtime};%PATH%\" & echo PATH=%PATH% & where libopencv_core_shim.dll & where libgcc_s_seh-1.dll & where libstdc++-6.dll & where libopencv_core-500.dll"
+          MSYS_NO_PATHCONV=1 cmd.exe //v:on //c "set \"PATH=${path_lib};${path_runtime};%PATH%\" & echo PATH=%PATH% & echo --- where libopencv_core_shim.dll --- & where libopencv_core_shim.dll & echo --- where libgcc_s_seh-1.dll --- & where libgcc_s_seh-1.dll & echo --- where libstdc++-6.dll --- & where libstdc++-6.dll & echo --- where libopencv_core-500.dll --- & where libopencv_core-500.dll"
           set -e
+
           echo "=== Direct AUnit execution ==="
           set +e
-          MSYS_NO_PATHCONV=1 cmd.exe //c "set \"PATH=${path_lib};${path_runtime};%PATH%\" & \"${test_exe_win}\""
+          MSYS_NO_PATHCONV=1 cmd.exe //v:on //c "set \"PATH=${path_lib};${path_runtime};%PATH%\" & \"${test_exe_win}\" & echo tests.exe native ERRORLEVEL=!ERRORLEVEL! & exit /b !ERRORLEVEL!"
           status=$?
           set -e
-          echo "tests.exe exit code=${status}"
+          echo "tests.exe bash status=${status}"
+
+          if [ "${status}" -ne 0 ]; then
+            echo "=== Recent Windows Application Error events ==="
+            set +e
+            powershell.exe -NoProfile -Command "Get-WinEvent -FilterHashtable @{LogName='Application'; StartTime=(Get-Date).AddMinutes(-15)} -ErrorAction SilentlyContinue | Select-Object -First 20 TimeCreated, Id, ProviderName, Message | Format-List"
+            set -e
+          fi
+
           exit "${status}"
 
       - name: Report Windows runtime diagnostics
