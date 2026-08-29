@@ -820,8 +820,8 @@ jobs:
       - name: Verify OpenCV pkg-config metadata
         run: |
           set -eu
-          echo "=== opencv5.pc ==="
-          alr exec -- ls -l /mingw64/lib/pkgconfig/opencv5.pc
+          echo "=== OpenCV pkg-config metadata installed by MSYS2 ==="
+          alr exec -- pacman -Ql mingw-w64-x86_64-opencv | grep '/lib/pkgconfig/opencv5\.pc$'
 
           echo "=== x86_64-w64-mingw32-pkg-config opencv5 ==="
           alr exec -- x86_64-w64-mingw32-pkg-config --exists opencv5
