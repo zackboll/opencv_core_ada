@@ -5,8 +5,6 @@ project OpenCV_Core_Shim is
 
    for Library_Name use "opencv_core_shim";
 
-   for Languages use ("C++");
-   for Source_Dirs use ("cpp/");
    for Object_Dir use "obj/shim/" & OpenCV_Core_Config.Build_Profile;
    for Create_Missing_Dirs use "True";
    for Library_Dir use "lib";
@@ -14,14 +12,25 @@ project OpenCV_Core_Shim is
    --  macOS: Apple-clang-linked dylib so OpenCV exceptions unwind inside
    --  the shim. Windows: relocatable DLL so Ada and OpenCV no longer
    --  share a MinGW exception runtime. Linux: static PIC archive.
+   --
+   --  Windows CI compiles and links that DLL with MSYS2 g++ outside
+   --  GPRbuild, then treats it as an already-built shared library so
+   --  the Ada build never invokes a C++ compiler.
    case OpenCV_Core_Install.Use_Apple_Clang is
       when "True" =>
+         for Languages use ("C++");
+         for Source_Dirs use ("cpp/");
          for Library_Kind use "relocatable";
       when "False" =>
          case OpenCV_Core_Install.Use_Windows_Shared_Shim is
             when "True" =>
+               for Externally_Built use "True";
+               for Languages use ();
+               for Source_Dirs use ();
                for Library_Kind use "relocatable";
             when "False" =>
+               for Languages use ("C++");
+               for Source_Dirs use ("cpp/");
                for Library_Kind use "static-pic";
          end case;
    end case;
