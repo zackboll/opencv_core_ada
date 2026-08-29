@@ -1006,6 +1006,88 @@ jobs:
               echo
             fi
 
+            echo "=== I: compile Apple clang++ shim with -femit-dwarf-unwind=always ==="
+            dwarf_shim_obj="$RUNNER_TEMP/opencv_core_shim_dwarf.o"
+            i_llvm_objdump="$(xcrun --find llvm-objdump 2>/dev/null || true)"
+            opencv_include="$(pkg-config --variable=includedir opencv5 2>/dev/null)"
+            if [ -z "${opencv_include}" ]; then
+              opencv_include="$(pkg-config --variable=includedir opencv4 2>/dev/null)"
+            fi
+            if [ -z "${opencv_include}" ]; then
+              opencv_include="$(pkg-config --variable=includedir opencv 2>/dev/null)"
+            fi
+            if [ -z "${opencv_include}" ]; then
+              opencv_include="${opencv_prefix}/include"
+            fi
+            echo "OpenCV include: ${opencv_include}"
+            "${clang_cxx}" \
+              -c \
+              -x c++ \
+              -std=c++17 \
+              -Wall \
+              -Wextra \
+              -Wpedantic \
+              -Werror \
+              -Wno-error=c11-extensions \
+              -isysroot "${macos_sdk_root}" \
+              -I"${opencv_include}" \
+              -Icpp \
+              -femit-dwarf-unwind=always \
+              cpp/opencv_core_shim.cpp \
+              -o "${dwarf_shim_obj}"
+            i_compile_status=$?
+            echo "I clang++ DWARF shim compile exit=${i_compile_status}"
+            echo
+
+            i_link_status=255
+            i_run_status=255
+            i_shim_dwarf_status=255
+            i_final_dwarf_status=255
+
+            if [ "${i_compile_status}" -eq 0 ]; then
+              echo "=== I: alternate shim Mach-O load commands ==="
+              otool -l "${dwarf_shim_obj}"
+              echo
+
+              if [ -n "${i_llvm_objdump}" ]; then
+                echo "=== I: alternate shim llvm-objdump DWARF frames ==="
+                "${i_llvm_objdump}" --macho --dwarf=frames "${dwarf_shim_obj}"
+                i_shim_dwarf_status=$?
+                echo "I shim DWARF inspection exit=${i_shim_dwarf_status}"
+                echo
+              else
+                echo "=== I: alternate shim llvm-objdump DWARF frames skipped ==="
+                echo "llvm-objdump not found"
+                echo
+              fi
+
+              echo "=== I: link DWARF shim with normal GNAT gcc ==="
+              "${gnat_gcc}" \
+                -v \
+                "${driver_obj}" \
+                "${dwarf_shim_obj}" \
+                -L"${opencv_prefix}/lib" \
+                -lopencv_core \
+                -lc++ \
+                -Wl,-rpath,"${opencv_prefix}/lib" \
+                -o "$RUNNER_TEMP/shim-exception-gnat-dwarf"
+              i_link_status=$?
+              echo "I GNAT default link exit=${i_link_status}"
+
+              if [ "${i_link_status}" -eq 0 ]; then
+                "$RUNNER_TEMP/shim-exception-gnat-dwarf"
+                i_run_status=$?
+                echo "I GNAT default run exit=${i_run_status}"
+              else
+                i_run_status=255
+              fi
+              echo
+            else
+              echo "=== I skipped ==="
+              echo "alternate shim compilation failed"
+              echo
+            fi
+
             echo "=== Summary ==="
             echo "clang++ link=${clang_link_status} run=${clang_run_status}"
             echo "GNAT gcc link=${gnat_link_status} run=${gnat_run_status}"
@@ -1017,6 +1099,9 @@ jobs:
             echo "custom specs edit=${spec_edit_status}"
             echo "GNAT gcc custom-specs + syslibroot link=${gnat_specs_sysroot_link_status} run=${gnat_specs_sysroot_run_status}"
             echo "GNAT GCC sysroot=${gnat_sysroot}"
+            echo "I clang++ DWARF shim compile=${i_compile_status}"
+            echo "I GNAT default link=${i_link_status} run=${i_run_status}"
+            echo "I shim DWARF inspection=${i_shim_dwarf_status}"
 
             echo "=== Apple clang++ verbose link ==="
             "${clang_cxx}" \
@@ -1188,6 +1273,39 @@ jobs:
               echo
             fi
 
+            i_unwind_status=255
+            if [ "${i_link_status}" -eq 0 ]; then
+              echo "=== I: dependencies ==="
+              otool -L "$RUNNER_TEMP/shim-exception-gnat-dwarf"
+              echo
+
+              echo "=== I: Mach-O load commands and sections ==="
+              otool -l "$RUNNER_TEMP/shim-exception-gnat-dwarf"
+              echo
+
+              if [ -n "${llvm_objdump}" ]; then
+                echo "=== I: llvm-objdump unwind info ==="
+                "${llvm_objdump}" --unwind-info "$RUNNER_TEMP/shim-exception-gnat-dwarf"
+                i_unwind_status=$?
+                echo "I unwind dump exit=${i_unwind_status}"
+                echo
+
+                echo "=== I: llvm-objdump DWARF frames ==="
+                "${llvm_objdump}" --macho --dwarf=frames "$RUNNER_TEMP/shim-exception-gnat-dwarf"
+                i_final_dwarf_status=$?
+                echo "I final DWARF inspection exit=${i_final_dwarf_status}"
+                echo
+              else
+                echo "=== I: llvm-objdump inspections skipped ==="
+                echo "llvm-objdump not found"
+                echo
+              fi
+            else
+              echo "=== I Mach-O inspection skipped ==="
+              echo "I did not link"
+              echo
+            fi
+
             echo "clang++ verbose link=${clang_verbose_link_status}"
             echo "GNAT gcc verbose link=${gnat_verbose_link_status}"
             echo "A unwind dump=${a_unwind_status}"
@@ -1195,6 +1313,8 @@ jobs:
             echo "F unwind dump=${f_unwind_status}"
             echo "G unwind dump=${g_unwind_status}"
             echo "H unwind dump=${h_unwind_status}"
+            echo "I unwind dump=${i_unwind_status}"
+            echo "I final DWARF inspection=${i_final_dwarf_status}"
           } > "$RUNNER_TEMP/opencv-shim-link-comparison.log" 2>&1
 
           status=$?
