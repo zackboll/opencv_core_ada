@@ -36,9 +36,11 @@ project Tests is
          when "True" =>
             --  Communicate with C++ only through the shim DLL C ABI, so
             --  the executable can be linked with GNAT gcc. g++ injects
-            --  -shared-libgcc and defeats -static-libgcc.
+            --  -shared-libgcc and defeats -static-libgcc placed in
+            --  Switches. Trailing_Switches come after GPRbuild's
+            --  required linker switches, so -static-libgcc wins.
             for Driver use "gcc";
-            for Switches ("Ada") use ("-static-libgcc");
+            for Trailing_Switches ("Ada") use ("-static-libgcc");
          when "False" =>
             null;
       end case;

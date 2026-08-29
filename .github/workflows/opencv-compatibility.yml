@@ -1016,12 +1016,21 @@ jobs:
             echo "error: tests.exe link still receives ordinary -lstdc++" >&2
             exit 1
           fi
-          if printf '%s\n' "${link_cmd}" | grep -E -- '-shared-libgcc'; then
-            echo "error: tests.exe link still contains -shared-libgcc" >&2
+          if ! printf '%s\n' "${link_cmd}" | grep -F -- '-static-libgcc'; then
+            echo "error: tests.exe link does not contain -static-libgcc" >&2
             exit 1
           fi
-          if ! printf '%s\n' "${link_cmd}" | grep -E -- '-static-libgcc'; then
-            echo "error: tests.exe link does not contain -static-libgcc" >&2
+          suffix_after_static=$(printf '%s\n' "${link_cmd}" | sed 's/.*-static-libgcc//')
+          if printf '%s\n' "${suffix_after_static}" | grep -F -- '-shared-libgcc'; then
+            echo "error: -shared-libgcc appears after -static-libgcc on the tests.exe link" >&2
+            exit 1
+          fi
+          if ! printf '%s\n' "${link_cmd}" | grep -E -- 'libgnat\.a'; then
+            echo "error: tests.exe link did not use static libgnat.a" >&2
+            exit 1
+          fi
+          if ! printf '%s\n' "${link_cmd}" | grep -E -- 'libgnarl\.a'; then
+            echo "error: tests.exe link did not use static libgnarl.a" >&2
             exit 1
           fi
           if printf '%s\n' "${link_cmd}" | grep -E '(^|[[:space:]/\\])g\+\+(\.exe)?([[:space:]]|$)'; then
