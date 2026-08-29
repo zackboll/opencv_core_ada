@@ -689,3 +689,259 @@ jobs:
             exit 1
           fi
 
+
+  windows-x86_64-msys2:
+    name: OpenCV Windows x86_64 (MSYS2)
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Report source and runner
+        run: |
+          set -eu
+          echo "=== Source being tested ==="
+          git rev-parse HEAD
+          git log -1 --oneline
+          echo "=== Runner ==="
+          uname -a
+          uname -s
+          uname -m
+
+      - name: Set up Alire
+        uses: alire-project/setup-alire@latest
+        with:
+          version: "2.1.1"
+          toolchain: "gnat_native gprbuild"
+          msys2: true
+
+      - name: Select and prove Ada toolchain
+        run: |
+          set -eu
+          alr -n --force toolchain --select \
+            gnat_native=16.1.0 \
+            gprbuild=26.0.1
+
+          echo "=== Alire ==="
+          alr version
+          alr toolchain
+
+          echo "=== Platform detection ==="
+          uname -a
+          uname -s
+          uname -m
+
+          if ! alr version | grep -qi 'distribution:[[:space:]]*MSYS2'; then
+            echo "error: Alire did not report distribution: MSYS2" >&2
+            alr version
+            exit 1
+          fi
+          if ! alr version | grep -qi 'host-arch:[[:space:]]*X86_64'; then
+            echo "error: Alire did not report host-arch: X86_64" >&2
+            alr version
+            exit 1
+          fi
+          if ! alr version | grep -qi 'os:[[:space:]]*WINDOWS'; then
+            echo "error: Alire did not report os: WINDOWS" >&2
+            alr version
+            exit 1
+          fi
+
+          echo "=== Compiler visible inside Alire environment ==="
+          alr exec -- which gnat
+          alr exec -- gnat --version
+          alr exec -- which gprbuild
+          alr exec -- gprbuild --version
+          alr exec -- which g++ || true
+          alr exec -- g++ --version || true
+
+      - name: Verify Alire-managed MSYS2 pacman
+        run: |
+          set -eu
+          echo "=== pacman ==="
+          pacman_path=$(alr exec -- which pacman)
+          echo "pacman=${pacman_path}"
+          pacman_win=$(alr exec -- sh -c 'cygpath -w "$(which pacman)"' || true)
+          echo "pacman Windows path=${pacman_win:-<unavailable>}"
+          pacman_path_norm=$(printf '%s' "${pacman_win:-${pacman_path}}" | tr '\\' '/' | tr '[:upper:]' '[:lower:]')
+          case "${pacman_path_norm}" in
+            *alire*/*msys64*|*msys64*pacman*|/usr/bin/pacman*)
+              echo "pacman resolves to the Alire-managed MSYS2 installation"
+              ;;
+            *)
+              echo "error: pacman is not the Alire-managed MSYS2 pacman: ${pacman_path}" >&2
+              alr exec -- which pacman || true
+              alr settings --global || true
+              exit 1
+              ;;
+          esac
+          alr exec -- pacman --version
+
+      - name: Install OpenCV through Alire MSYS2
+        run: |
+          set -eu
+          alr exec -- pacman -Sy --noconfirm --needed \
+            mingw-w64-x86_64-opencv \
+            mingw-w64-x86_64-pkg-config
+
+          echo "=== Installed MSYS2 packages ==="
+          alr exec -- pacman -Q mingw-w64-x86_64-opencv mingw-w64-x86_64-pkg-config
+
+      - name: Demonstrate pkg-config collision
+        run: |
+          set -eu
+          echo "=== Generic pkg-config (may be Strawberry Perl) ==="
+          command -v pkg-config || true
+          where.exe pkg-config || true
+
+          echo "=== Target-prefixed MinGW pkg-config ==="
+          prefixed=$(alr exec -- which x86_64-w64-mingw32-pkg-config)
+          echo "x86_64-w64-mingw32-pkg-config=${prefixed}"
+          where.exe x86_64-w64-mingw32-pkg-config || true
+
+          prefixed_win=$(alr exec -- sh -c 'cygpath -w "$(which x86_64-w64-mingw32-pkg-config)"' || true)
+          echo "prefixed Windows path=${prefixed_win:-<unavailable>}"
+          prefixed_norm=$(printf '%s' "${prefixed_win:-${prefixed}}" | tr '\\' '/' | tr '[:upper:]' '[:lower:]')
+          case "${prefixed_norm}" in
+            *msys64*mingw64*|*mingw64/bin/x86_64-w64-mingw32-pkg-config*)
+              echo "target-prefixed pkg-config resolves to the MinGW64 tree"
+              ;;
+            *)
+              echo "error: x86_64-w64-mingw32-pkg-config is not the Alire MSYS2 MinGW64 executable: ${prefixed}" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Verify OpenCV pkg-config metadata
+        run: |
+          set -eu
+          echo "=== opencv5.pc ==="
+          alr exec -- ls -l /mingw64/lib/pkgconfig/opencv5.pc
+
+          echo "=== x86_64-w64-mingw32-pkg-config opencv5 ==="
+          alr exec -- x86_64-w64-mingw32-pkg-config --exists opencv5
+          alr exec -- x86_64-w64-mingw32-pkg-config --modversion opencv5
+          alr exec -- x86_64-w64-mingw32-pkg-config --cflags opencv5
+          alr exec -- x86_64-w64-mingw32-pkg-config --libs opencv5
+
+          echo "PKG_CONFIG=${PKG_CONFIG:-<unset>}"
+          echo "PKG_CONFIG_PATH=${PKG_CONFIG_PATH:-<unset>}"
+
+      - name: Build current source
+        id: root-build
+        run: |
+          set -eu
+          echo "PKG_CONFIG=${PKG_CONFIG:-<unset>}"
+          echo "PKG_CONFIG_PATH=${PKG_CONFIG_PATH:-<unset>}"
+          alr -n build
+
+      - name: Verify generated OpenCV configuration
+        if: ${{ always() && steps.root-build.outcome == 'success' }}
+        run: |
+          set -eu
+          echo "=== Generated config/opencv_core_install.gpr ==="
+          cat config/opencv_core_install.gpr
+
+          if ! grep -F 'Use_Apple_Clang : Apple_Clang_Kind := "False";' config/opencv_core_install.gpr; then
+            echo "error: generated GPR did not keep Use_Apple_Clang False" >&2
+            exit 1
+          fi
+          if ! grep -F 'Cxx_Driver := "g++";' config/opencv_core_install.gpr; then
+            echo "error: generated GPR did not select g++" >&2
+            exit 1
+          fi
+          if ! grep -F 'Cxx_Runtime_Switch := "-lstdc++";' config/opencv_core_install.gpr; then
+            echo "error: generated GPR did not select -lstdc++" >&2
+            exit 1
+          fi
+          if ! grep -E 'mingw64' config/opencv_core_install.gpr; then
+            echo "error: generated GPR did not point at the MinGW64 OpenCV installation" >&2
+            exit 1
+          fi
+          if ! grep -E 'include[/\\]opencv5' config/opencv_core_install.gpr; then
+            echo "error: generated GPR did not select mingw64/include/opencv5" >&2
+            exit 1
+          fi
+          if ! grep -E 'Library_Search_Switch := "-L[^"]*mingw64[^"]*lib' config/opencv_core_install.gpr; then
+            echo "error: generated GPR did not select mingw64/lib" >&2
+            exit 1
+          fi
+
+      - name: Verify shim library architecture
+        if: ${{ always() && steps.root-build.outcome == 'success' }}
+        run: |
+          set -eu
+          echo "=== Production shim archive ==="
+          if [ ! -f lib/libopencv_core_shim.a ]; then
+            echo "error: lib/libopencv_core_shim.a is missing" >&2
+            ls -l lib || true
+            exit 1
+          fi
+          ls -l lib/libopencv_core_shim.a
+
+          echo "=== Ada archive must not contain the C++ shim ==="
+          if [ ! -f lib/libopencv_core_ada.a ]; then
+            echo "error: lib/libopencv_core_ada.a is missing" >&2
+            ls -l lib || true
+            exit 1
+          fi
+          shim_count=$(alr exec -- ar -t lib/libopencv_core_ada.a | grep -c '^opencv_core_shim\.o$' || true)
+          echo "opencv_core_shim.o count in libopencv_core_ada.a=${shim_count}"
+          if [ "${shim_count}" -ne 0 ]; then
+            echo "error: libopencv_core_ada.a still contains opencv_core_shim.o" >&2
+            alr exec -- ar -t lib/libopencv_core_ada.a
+            exit 1
+          fi
+
+      - name: Run test suite
+        id: tests
+        if: ${{ always() && steps.root-build.outcome == 'success' }}
+        run: |
+          set -eu
+          echo "PKG_CONFIG=${PKG_CONFIG:-<unset>}"
+          echo "PKG_CONFIG_PATH=${PKG_CONFIG_PATH:-<unset>}"
+          alr -n -C tests run
+
+      - name: Report Windows runtime diagnostics
+        if: ${{ always() && steps.root-build.outcome == 'success' }}
+        run: |
+          set -eu
+          test_exe=""
+          for candidate in tests/bin/tests.exe tests/bin/tests; do
+            if [ -e "${candidate}" ]; then
+              test_exe="${candidate}"
+              break
+            fi
+          done
+          if [ -z "${test_exe}" ]; then
+            echo "test executable was not produced"
+            ls -l tests/bin || true
+            exit 0
+          fi
+
+          echo "=== Test executable ==="
+          ls -l "${test_exe}"
+
+          dump=""
+          if alr exec -- which objdump >/dev/null 2>&1; then
+            dump=objdump
+          elif alr exec -- which x86_64-w64-mingw32-objdump >/dev/null 2>&1; then
+            dump=x86_64-w64-mingw32-objdump
+          fi
+          if [ -z "${dump}" ]; then
+            echo "objdump is not available; skipping DLL diagnostics"
+            exit 0
+          fi
+
+          echo "=== DLL dependencies (${dump} -p) ==="
+          alr exec -- "${dump}" -p "${test_exe}" | grep -i 'DLL Name' || true
+          if ! alr exec -- "${dump}" -p "${test_exe}" | grep -qi 'opencv_core'; then
+            echo "warning: test executable does not reference an OpenCV Core DLL" >&2
+          fi
+
+

@@ -3,16 +3,29 @@
 set -eu
 
 output=config/opencv_core_install.gpr
+sysname=$(uname -s)
 
-if ! command -v pkg-config >/dev/null 2>&1; then
-    echo "error: pkg-config is required to locate OpenCV Core" >&2
+# Prefer the MinGW target-prefixed pkg-config on MSYS2/MinGW Windows.
+# The generic "pkg-config" name can resolve to Strawberry Perl's
+# pkg-config.bat, which does not see MSYS2 OpenCV metadata.
+pkg_config=pkg-config
+case "$sysname" in
+    MINGW*|MSYS*)
+        if command -v x86_64-w64-mingw32-pkg-config >/dev/null 2>&1; then
+            pkg_config=x86_64-w64-mingw32-pkg-config
+        fi
+        ;;
+esac
+
+if ! command -v "$pkg_config" >/dev/null 2>&1; then
+    echo "error: $pkg_config is required to locate OpenCV Core" >&2
     exit 1
 fi
 
 package=
 for candidate in opencv5 opencv4 opencv
 do
-    if pkg-config --exists "$candidate"; then
+    if "$pkg_config" --exists "$candidate"; then
         package=$candidate
         break
     fi
@@ -23,7 +36,7 @@ done
 # <prefix>/lib/pkgconfig directory. Only search that location when the
 # usual lookup failed; pkg-config remains authoritative afterwards.
 if [ -z "$package" ]; then
-    if [ "$(uname -s)" = "Darwin" ] && command -v port >/dev/null 2>&1; then
+    if [ "$sysname" = "Darwin" ] && command -v port >/dev/null 2>&1; then
         macports_prefix=$(dirname "$(dirname "$(command -v port)")")
         macports_pkgconfig="${macports_prefix}/lib/opencv4/pkgconfig"
         if [ -d "$macports_pkgconfig" ]; then
@@ -31,7 +44,7 @@ if [ -z "$package" ]; then
             export PKG_CONFIG_PATH
             for candidate in opencv5 opencv4 opencv
             do
-                if pkg-config --exists "$candidate"; then
+                if "$pkg_config" --exists "$candidate"; then
                     package=$candidate
                     break
                 fi
@@ -45,13 +58,13 @@ if [ -z "$package" ]; then
     exit 1
 fi
 
-include_dir=$(pkg-config --variable=includedir "$package")
+include_dir=$("$pkg_config" --variable=includedir "$package")
 
 if [ -z "$include_dir" ]; then
-    include_dir=$(pkg-config --variable=includedir_new "$package")
+    include_dir=$("$pkg_config" --variable=includedir_new "$package")
 fi
 
-library_dir=$(pkg-config --variable=libdir "$package")
+library_dir=$("$pkg_config" --variable=libdir "$package")
 
 if [ -z "$include_dir" ] || [ -z "$library_dir" ]; then
     echo "error: '$package' does not define a usable include directory and libdir" >&2
@@ -65,7 +78,6 @@ cxx_runtime_switch="-lstdc++"
 cxx_driver="g++"
 use_apple_clang="False"
 macos_sdk_root=""
-sysname=$(uname -s)
 
 if [ "$sysname" = "Darwin" ]; then
     use_apple_clang="True"
