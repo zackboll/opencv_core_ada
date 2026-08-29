@@ -569,6 +569,68 @@ jobs:
           path: ${{ runner.temp }}/opencv-test-crash-backtrace.log
           if-no-files-found: error
 
+      - name: Capture macOS C++ runtime diagnostics
+        if: ${{ always() && steps.tests.outcome == 'failure' }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          {
+            echo "=== Executable dynamic dependencies ==="
+            otool -L tests/bin/tests
+            echo
+
+            echo "=== OpenCV core dynamic dependencies ==="
+            opencv_prefix="$(brew --prefix opencv 2>/dev/null || true)"
+            opencv_core_dylib=""
+            for candidate in \
+              "${opencv_prefix}/lib/libopencv_core.dylib" \
+              "${opencv_prefix}/lib"/libopencv_core.*.dylib
+            do
+              if [ -e "${candidate}" ]; then
+                opencv_core_dylib="${candidate}"
+                break
+              fi
+            done
+            if [ -z "${opencv_core_dylib}" ]; then
+              echo "libopencv_core*.dylib not found under ${opencv_prefix}/lib"
+              ls -l "${opencv_prefix}/lib" 2>/dev/null || true
+            else
+              echo "Found: ${opencv_core_dylib}"
+              otool -L "${opencv_core_dylib}"
+            fi
+            echo
+
+            echo "=== Exception symbols in final executable ==="
+            nm -m tests/bin/tests | grep -E '(__gxx_personality_v0|_Unwind_|__cxa_)' || true
+            echo
+
+            echo "=== Exception symbols referenced by OpenCV Ada archive ==="
+            nm -u lib/libopencv_core_ada.a | grep -E '(__gxx_personality_v0|_Unwind_|__cxa_)' || true
+            echo
+
+            echo "=== LLDB runtime symbol ownership ==="
+            xcrun lldb --batch \
+              -o "breakpoint set --name abort" \
+              -o run \
+              -o "image lookup -n __gxx_personality_v0" \
+              -o "image lookup -n _Unwind_RaiseException" \
+              -o "image lookup -n __cxa_throw" \
+              -o "image lookup -n __cxa_begin_catch" \
+              -- tests/bin/tests
+          } > "$RUNNER_TEMP/opencv-cxx-runtime.log" 2>&1
+          status=$?
+          cat "$RUNNER_TEMP/opencv-cxx-runtime.log"
+          exit "$status"
+
+      - name: Upload macOS C++ runtime diagnostics
+        if: ${{ always() && steps.tests.outcome == 'failure' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-cxx-runtime-diagnostics
+          path: ${{ runner.temp }}/opencv-cxx-runtime.log
+          if-no-files-found: error
+
       - name: Capture actual test build/link command
         if: always()
         continue-on-error: true
