@@ -863,6 +863,10 @@ jobs:
             echo "error: generated GPR did not enable direct OpenCV Core linking" >&2
             exit 1
           fi
+          if ! grep -F 'Use_Windows_Shared_Shim : Windows_Shared_Shim_Kind := "True";' config/opencv_core_install.gpr; then
+            echo "error: generated GPR did not enable the Windows shared shim" >&2
+            exit 1
+          fi
           if ! grep -E 'OpenCV_Core_Link_Option := "[^"]*mingw64[/\\]lib[/\\]libopencv_core\.dll\.a";' config/opencv_core_install.gpr; then
             echo "error: generated GPR did not select the MinGW64 OpenCV Core import library" >&2
             exit 1
@@ -895,13 +899,47 @@ jobs:
         if: ${{ always() && steps.root-build.outcome == 'success' }}
         run: |
           set -eu
-          echo "=== Production shim archive ==="
-          if [ ! -f lib/libopencv_core_shim.a ]; then
-            echo "error: lib/libopencv_core_shim.a is missing" >&2
+          echo "=== Production shim artifacts ==="
+          ls -l lib || true
+
+          shim_dll=""
+          for candidate in lib/libopencv_core_shim.dll lib/opencv_core_shim.dll; do
+            if [ -f "${candidate}" ]; then
+              shim_dll="${candidate}"
+              break
+            fi
+          done
+          if [ -z "${shim_dll}" ]; then
+            echo "error: production opencv_core_shim DLL is missing" >&2
             ls -l lib || true
             exit 1
           fi
-          ls -l lib/libopencv_core_shim.a
+          echo "Found shim DLL: ${shim_dll}"
+
+          if [ -f lib/libopencv_core_shim.a ]; then
+            echo "error: Windows production shim is still a static archive" >&2
+            exit 1
+          fi
+
+          shim_implib=""
+          for candidate in \
+            lib/libopencv_core_shim.dll.a \
+            lib/opencv_core_shim.dll.a \
+            lib/libopencv_core_shim.lib \
+            lib/opencv_core_shim.lib
+          do
+            if [ -f "${candidate}" ]; then
+              shim_implib="${candidate}"
+              break
+            fi
+          done
+          if [ -z "${shim_implib}" ]; then
+            echo "error: production shim import library is missing" >&2
+            ls -l lib || true
+            exit 1
+          fi
+          echo "Found shim import library: ${shim_implib}"
+          ls -l "${shim_dll}" "${shim_implib}"
 
           echo "=== Ada archive must not contain the C++ shim ==="
           if [ ! -f lib/libopencv_core_ada.a ]; then
@@ -917,6 +955,24 @@ jobs:
             exit 1
           fi
 
+          dump=""
+          if alr exec -- which objdump >/dev/null 2>&1; then
+            dump=objdump
+          elif alr exec -- which x86_64-w64-mingw32-objdump >/dev/null 2>&1; then
+            dump=x86_64-w64-mingw32-objdump
+          fi
+          if [ -z "${dump}" ]; then
+            echo "error: objdump is required to inspect Windows PE dependencies" >&2
+            exit 1
+          fi
+          echo "=== Shim DLL dependencies (${dump} -p) ==="
+          alr exec -- "${dump}" -p "${shim_dll}" | grep -i 'DLL Name' || true
+          if ! alr exec -- "${dump}" -p "${shim_dll}" | grep -qi 'libopencv_core-500.dll'; then
+            echo "error: shim DLL does not reference libopencv_core-500.dll" >&2
+            exit 1
+          fi
+
+
       - name: Run test suite
         id: tests
         if: ${{ always() && steps.root-build.outcome == 'success' }}
@@ -924,6 +980,14 @@ jobs:
           set -eu
           echo "PKG_CONFIG=${PKG_CONFIG:-<unset>}"
           echo "PKG_CONFIG_PATH=${PKG_CONFIG_PATH:-<unset>}"
+          echo "=== Alire execution PATH ==="
+          alr_path=$(alr exec -- sh -c 'printf "%s" "$PATH"')
+          printf '%s\n' "${alr_path}"
+          if ! printf '%s' "${alr_path}" | grep -E '(^|[:;])[^:;]*[/\\]lib([:;]|$)'; then
+            echo "error: Alire PATH does not expose the crate lib directory" >&2
+            exit 1
+          fi
+
           log="${RUNNER_TEMP:-$PWD}/opencv-core-windows-test-build.log"
           if ! alr -n -C tests build -- -v >"${log}" 2>&1; then
             echo "=== Test build failed ==="
@@ -931,142 +995,32 @@ jobs:
             exit 1
           fi
           echo "=== Final link command fragments ==="
-          grep -E 'gcc(\.exe)? |g\+\+(\.exe)? |ld(\.exe)? |libopencv_core\.dll\.a|-lstdc\+\+' "${log}" | tail -n 80
+          grep -E 'gcc(\.exe)? |g\+\+(\.exe)? |ld(\.exe)? |opencv_core_shim|libopencv_core\.dll\.a|-lstdc\+\+|-static-libgcc|-static-libstdc\+\+' "${log}" | tail -n 80
           if grep -E 'gcc(\.exe)? .*-o ' "${log}" | grep -E -- '-L[^[:space:]]*msys64[/\\]mingw64[/\\]lib([[:space:]]|$)'; then
             echo "error: final test link still searches MSYS2 mingw64/lib" >&2
             exit 1
           fi
-          if ! grep -E 'mingw64[/\\]lib[/\\]libopencv_core\.dll\.a' "${log}"; then
-            echo "error: final test link did not consume the OpenCV Core import library" >&2
+          if grep -E 'gcc(\.exe)? .*-o ' "${log}" | grep -E 'libopencv_core\.dll\.a|-lopencv_core'; then
+            echo "error: final test link still consumes OpenCV Core directly" >&2
+            exit 1
+          fi
+          if grep -E 'gcc(\.exe)? .*-o ' "${log}" | grep -E -- '-lstdc\+\+'; then
+            echo "error: final test link still receives -lstdc++" >&2
+            exit 1
+          fi
+          if grep -E 'gcc(\.exe)? .*-o ' "${log}" | grep -E 'libopencv_core_shim\.a'; then
+            echo "error: final test link still consumes the static shim archive" >&2
+            exit 1
+          fi
+          if ! grep -E 'opencv_core_shim(\.dll)?\.a' "${log}"; then
+            echo "error: final test link did not consume the production shim import library" >&2
             exit 1
           fi
           if grep -E '_gnu_exception_handler|__mingw_oldexcpt_handler|__mingw_initltssuo_force|__mingw_initltsdyn_force|__mingw_initltsdrot_force' "${log}"; then
             echo "error: MinGW CRT unresolved symbols reappeared" >&2
             exit 1
           fi
-
-      - name: Diagnose MinGW runtime DLL collision
-        if: ${{ always() && steps.tests.outcome == 'success' }}
-        run: |
-          set -eu
-          echo "=== Alire execution PATH ==="
-          alr exec -- sh -c 'printf "%s\n" "$PATH"'
-
-          echo "=== where.exe libgcc_s_seh-1.dll ==="
-          alr exec -- where.exe libgcc_s_seh-1.dll || true
-          echo "=== where.exe libstdc++-6.dll ==="
-          alr exec -- where.exe libstdc++-6.dll || true
-          echo "=== where.exe libopencv_core-500.dll ==="
-          alr exec -- where.exe libopencv_core-500.dll || true
-
-          gnat_gpp=$(alr exec -- which g++)
-          gnat_bin=$(alr exec -- sh -c 'cygpath -m "$(dirname "$(which g++)")"')
-          echo "g++=${gnat_gpp}"
-          echo "GNAT bin=${gnat_bin}"
-
-          msys_bin=$(alr exec -- sh -c 'cygpath -m /mingw64/bin')
-          echo "MSYS2 MinGW64 bin=${msys_bin}"
-
-          gnat_gcc="${gnat_bin}/libgcc_s_seh-1.dll"
-          gnat_std="${gnat_bin}/libstdc++-6.dll"
-          msys_gcc="${msys_bin}/libgcc_s_seh-1.dll"
-          msys_std="${msys_bin}/libstdc++-6.dll"
-          msys_cv="${msys_bin}/libopencv_core-500.dll"
-
-          for f in "${gnat_gcc}" "${gnat_std}" "${msys_gcc}" "${msys_std}" "${msys_cv}"; do
-            echo "=== exists ${f} ==="
-            if [ ! -f "${f}" ]; then
-              echo "error: missing ${f}" >&2
-              exit 1
-            fi
-            ls -l "${f}"
-          done
-
-          hash_file() {
-            if command -v sha256sum >/dev/null 2>&1; then
-              sha256sum "$1"
-            else
-              certutil.exe -hashfile "$1" SHA256
-            fi
-          }
-
-          echo "=== SHA-256 GNAT runtime ==="
-          hash_file "${gnat_gcc}"
-          hash_file "${gnat_std}"
-          echo "=== SHA-256 MSYS2 runtime ==="
-          hash_file "${msys_gcc}"
-          hash_file "${msys_std}"
-
-          cleanup_staged() {
-            rm -f tests/bin/libgcc_s_seh-1.dll "tests/bin/libstdc++-6.dll"
-          }
-          trap cleanup_staged EXIT
-          cleanup_staged
-
-          gnat_status=1
-          msys_status=1
-          set +e
-
-          echo "=== GNAT runtime forced ==="
-          cp "${gnat_gcc}" tests/bin/libgcc_s_seh-1.dll
-          cp "${gnat_std}" "tests/bin/libstdc++-6.dll"
-          ls -l tests/bin/libgcc_s_seh-1.dll "tests/bin/libstdc++-6.dll"
-          gnat_log="${RUNNER_TEMP:-$PWD}/opencv-core-windows-gnat-runtime.log"
-          alr -n -C tests run >"${gnat_log}" 2>&1
-          gnat_status=$?
-          echo "GNAT runtime forced exit status=${gnat_status}"
-          cat "${gnat_log}"
-          if grep -F '__gnat_personality_seh0' "${gnat_log}" >/dev/null 2>&1; then
-            echo "GNAT runtime forced: __gnat_personality_seh0 crash observed"
-          else
-            echo "GNAT runtime forced: __gnat_personality_seh0 not observed"
-          fi
-          cleanup_staged
-
-          echo "=== MSYS2 runtime forced ==="
-          cp "${msys_gcc}" tests/bin/libgcc_s_seh-1.dll
-          cp "${msys_std}" "tests/bin/libstdc++-6.dll"
-          ls -l tests/bin/libgcc_s_seh-1.dll "tests/bin/libstdc++-6.dll"
-          msys_log="${RUNNER_TEMP:-$PWD}/opencv-core-windows-msys2-runtime.log"
-          alr -n -C tests run >"${msys_log}" 2>&1
-          msys_status=$?
-          echo "MSYS2 runtime forced exit status=${msys_status}"
-          cat "${msys_log}"
-          if grep -F '__gnat_personality_seh0' "${msys_log}" >/dev/null 2>&1; then
-            echo "MSYS2 runtime forced: __gnat_personality_seh0 crash observed"
-          else
-            echo "MSYS2 runtime forced: __gnat_personality_seh0 not observed"
-          fi
-          cleanup_staged
-
-          set -e
-          echo "=== A/B summary ==="
-          echo "GNAT runtime forced status=${gnat_status}"
-          echo "MSYS2 runtime forced status=${msys_status}"
-
-          gnat_pass=1
-          msys_pass=1
-          if grep -F 'Total Tests Run:   948' "${gnat_log}" >/dev/null 2>&1 \
-             && grep -F 'Successful Tests:  948' "${gnat_log}" >/dev/null 2>&1 \
-             && grep -F 'Failed Assertions: 0' "${gnat_log}" >/dev/null 2>&1 \
-             && grep -F 'Unexpected Errors: 0' "${gnat_log}" >/dev/null 2>&1 \
-             && [ "${gnat_status}" -eq 0 ]; then
-            gnat_pass=0
-            echo "GNAT runtime forced -> 948/948"
-          fi
-          if grep -F 'Total Tests Run:   948' "${msys_log}" >/dev/null 2>&1 \
-             && grep -F 'Successful Tests:  948' "${msys_log}" >/dev/null 2>&1 \
-             && grep -F 'Failed Assertions: 0' "${msys_log}" >/dev/null 2>&1 \
-             && grep -F 'Unexpected Errors: 0' "${msys_log}" >/dev/null 2>&1 \
-             && [ "${msys_status}" -eq 0 ]; then
-            msys_pass=0
-            echo "MSYS2 runtime forced -> 948/948"
-          fi
-          if [ "${gnat_pass}" -ne 0 ] && [ "${msys_pass}" -ne 0 ]; then
-            echo "error: neither GNAT nor MSYS2 forced runtime produced a clean test run" >&2
-            exit 1
-          fi
-
+          alr -n -C tests run
 
       - name: Report Windows runtime diagnostics
         if: ${{ always() && steps.root-build.outcome == 'success' }}
@@ -1080,9 +1034,9 @@ jobs:
             fi
           done
           if [ -z "${test_exe}" ]; then
-            echo "test executable was not produced"
+            echo "error: ${test_exe:-tests/bin/tests.exe} is missing" >&2
             ls -l tests/bin || true
-            exit 0
+            exit 1
           fi
 
           echo "=== Test executable ==="
@@ -1095,14 +1049,28 @@ jobs:
             dump=x86_64-w64-mingw32-objdump
           fi
           if [ -z "${dump}" ]; then
-            echo "objdump is not available; skipping DLL diagnostics"
-            exit 0
+            echo "error: objdump is required to inspect Windows PE dependencies" >&2
+            exit 1
           fi
 
           echo "=== DLL dependencies (${dump} -p) ==="
-          alr exec -- "${dump}" -p "${test_exe}" | grep -i 'DLL Name' || true
-          if ! alr exec -- "${dump}" -p "${test_exe}" | grep -qi 'opencv_core'; then
-            echo "warning: test executable does not reference an OpenCV Core DLL" >&2
+          deps=$(alr exec -- "${dump}" -p "${test_exe}" | grep -i 'DLL Name' || true)
+          echo "${deps}"
+          if ! printf '%s\n' "${deps}" | grep -qi 'opencv_core_shim'; then
+            echo "error: test executable does not depend on the production shim DLL" >&2
+            exit 1
+          fi
+          if printf '%s\n' "${deps}" | grep -qi 'libopencv_core-500.dll'; then
+            echo "error: test executable still depends directly on OpenCV Core" >&2
+            exit 1
+          fi
+          if printf '%s\n' "${deps}" | grep -qi 'libgcc_s_seh-1.dll'; then
+            echo "error: test executable still imports libgcc_s_seh-1.dll" >&2
+            exit 1
+          fi
+          if printf '%s\n' "${deps}" | grep -qi 'libstdc++-6.dll'; then
+            echo "error: test executable still imports libstdc++-6.dll" >&2
+            exit 1
           fi
 
 

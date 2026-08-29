@@ -99,11 +99,11 @@ if [ "$sysname" = "Darwin" ]; then
 fi
 
 # Linux and macOS keep -L<libdir> -lopencv_core. Windows links the OpenCV
-# Core import library by absolute path so the final Ada executable does
-# not search the whole MSYS2 mingw64/lib directory, which would shadow
-# GNAT's MinGW CRT.
+# Core import library by absolute path into the shim DLL so the Ada
+# executable does not search the whole MSYS2 mingw64/lib directory.
 opencv_core_link_option="-lopencv_core"
 use_direct_opencv_link="False"
+use_windows_shared_shim="False"
 
 case "$sysname" in
     MINGW*|MSYS*)
@@ -114,6 +114,7 @@ case "$sysname" in
         fi
         opencv_core_link_option="$opencv_core_import_library"
         use_direct_opencv_link="True"
+        use_windows_shared_shim="True"
         ;;
 esac
 
@@ -131,8 +132,10 @@ cat >"$output" <<EOF
 abstract project OpenCV_Core_Install is
    type Apple_Clang_Kind is ("True", "False");
    type Direct_OpenCV_Link_Kind is ("True", "False");
+   type Windows_Shared_Shim_Kind is ("True", "False");
    Use_Apple_Clang : Apple_Clang_Kind := "${use_apple_clang}";
    Use_Direct_OpenCV_Link : Direct_OpenCV_Link_Kind := "${use_direct_opencv_link}";
+   Use_Windows_Shared_Shim : Windows_Shared_Shim_Kind := "${use_windows_shared_shim}";
    Include_Switch := "-I${include_dir}";
    Library_Search_Switch := "-L${library_dir}";
    OpenCV_Core_Link_Option := "${opencv_core_link_option}";

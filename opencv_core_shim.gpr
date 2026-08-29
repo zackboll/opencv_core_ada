@@ -12,12 +12,18 @@ project OpenCV_Core_Shim is
    for Library_Dir use "lib";
 
    --  macOS: Apple-clang-linked dylib so OpenCV exceptions unwind inside
-   --  the shim. Linux: static PIC archive; no extra runtime .so.
+   --  the shim. Windows: relocatable DLL so Ada and OpenCV no longer
+   --  share a MinGW exception runtime. Linux: static PIC archive.
    case OpenCV_Core_Install.Use_Apple_Clang is
       when "True" =>
          for Library_Kind use "relocatable";
       when "False" =>
-         for Library_Kind use "static-pic";
+         case OpenCV_Core_Install.Use_Windows_Shared_Shim is
+            when "True" =>
+               for Library_Kind use "relocatable";
+            when "False" =>
+               for Library_Kind use "static-pic";
+         end case;
    end case;
 
    package Compiler is
@@ -67,7 +73,7 @@ project OpenCV_Core_Shim is
    end Compiler;
 
    --  macOS: Apple clang++ links the shim dylib and supplies libc++.
-   --  The dylib still owns the OpenCV/libc++ C++ boundary.
+   --  Windows: the relocatable shim DLL owns the OpenCV import library.
    --  Do not change GNAT unwind behavior.
    case OpenCV_Core_Install.Use_Apple_Clang is
       when "True" =>
@@ -77,25 +83,29 @@ project OpenCV_Core_Shim is
             OpenCV_Core_Install.Library_Search_Switch,
             OpenCV_Core_Install.OpenCV_Core_Link_Option);
       when "False" =>
-         null;
+         case OpenCV_Core_Install.Use_Windows_Shared_Shim is
+            when "True" =>
+               for Library_Options use
+                 (OpenCV_Core_Install.OpenCV_Core_Link_Option);
+            when "False" =>
+               null;
+         end case;
    end case;
 
    package Linker is
       --  Link the macOS dylib with Apple clang++, not GNAT gcc.
       --  Linux static consumers need OpenCV and libstdc++ at final link.
-      --  Windows links the OpenCV Core import library by absolute path so
-      --  MSYS2 mingw64/lib cannot shadow GNAT's MinGW CRT. Keep -lstdc++.
+      --  Windows consumers link only the shim DLL; OpenCV and the C++
+      --  runtime stay inside that image.
       --  macOS consumers only need the shim dylib; OpenCV/libc++ stay
       --  inside that image.
       case OpenCV_Core_Install.Use_Apple_Clang is
          when "True" =>
             for Driver use OpenCV_Core_Install.Cxx_Driver;
          when "False" =>
-            case OpenCV_Core_Install.Use_Direct_OpenCV_Link is
+            case OpenCV_Core_Install.Use_Windows_Shared_Shim is
                when "True" =>
-                  for Linker_Options use
-                    (OpenCV_Core_Install.OpenCV_Core_Link_Option,
-                     OpenCV_Core_Install.Cxx_Runtime_Switch);
+                  null;
                when "False" =>
                   for Linker_Options use
                     (OpenCV_Core_Install.Library_Search_Switch,

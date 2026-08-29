@@ -1,4 +1,5 @@
 with "config/opencv_core_config.gpr";
+with "config/opencv_core_install.gpr";
 with "opencv_core_shim.gpr";
 
 project OpenCV_Core is
@@ -27,6 +28,18 @@ project OpenCV_Core is
    package Binder is
       for Switches ("Ada") use ("-Es"); --  Symbolic traceback
    end Binder;
+
+   package Linker is
+      --  Windows Ada consumers must not dynamically import the MinGW
+      --  libgcc/libstdc++ DLLs also used by OpenCV. Keep Linux/macOS
+      --  consumers unchanged.
+      case OpenCV_Core_Install.Use_Windows_Shared_Shim is
+         when "True" =>
+            for Linker_Options use ("-static-libgcc", "-static-libstdc++");
+         when "False" =>
+            null;
+      end case;
+   end Linker;
 
    package Install is
       for Artifacts (".") use ("share");

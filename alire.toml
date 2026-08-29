@@ -17,3 +17,6 @@ command = ["sh", "scripts/configure_opencv.sh"]
 type = "test"
 directory = "tests"
 command = ["alr", "run"]
+
+[environment.'case(distribution)']
+msys2 = { PATH.prepend = "${CRATE_ROOT}/lib" }
