@@ -875,6 +875,94 @@ jobs:
             echo "GNAT gcc static-libgcc link=${gnat_static_link_status} run=${gnat_static_run_status}"
             echo "GNAT gcc + SDK link=${gnat_sdk_link_status} run=${gnat_sdk_run_status}"
             echo "GNAT gcc + ld_classic link=${gnat_classic_link_status} run=${gnat_classic_run_status}"
+
+            echo "=== Apple clang++ verbose link ==="
+            "${clang_cxx}" \
+              -v \
+              -isysroot "${macos_sdk_root}" \
+              "${driver_obj}" \
+              "${common_archive}" \
+              -L"${opencv_prefix}/lib" \
+              -lopencv_core \
+              -lc++ \
+              -Wl,-rpath,"${opencv_prefix}/lib" \
+              -o "$RUNNER_TEMP/shim-exception-clang-verbose"
+            clang_verbose_link_status=$?
+            echo "clang++ verbose link exit=${clang_verbose_link_status}"
+            echo
+
+            echo "=== GNAT gcc verbose link ==="
+            "${gnat_gcc}" \
+              -v \
+              "${driver_obj}" \
+              "${common_archive}" \
+              -L"${opencv_prefix}/lib" \
+              -lopencv_core \
+              -lc++ \
+              -Wl,-rpath,"${opencv_prefix}/lib" \
+              -o "$RUNNER_TEMP/shim-exception-gnat-verbose"
+            gnat_verbose_link_status=$?
+            echo "GNAT gcc verbose link exit=${gnat_verbose_link_status}"
+            echo
+
+            llvm_objdump="$(xcrun --find llvm-objdump 2>/dev/null || true)"
+
+            echo "=== Mach-O inspection tools ==="
+            echo "otool: $(command -v otool || true)"
+            echo "nm: $(command -v nm || true)"
+            echo "llvm-objdump: ${llvm_objdump}"
+            echo
+
+            echo "=== A: Mach-O file/dependencies ==="
+            file "$RUNNER_TEMP/shim-exception-clang"
+            otool -L "$RUNNER_TEMP/shim-exception-clang"
+            echo
+
+            echo "=== B: Mach-O file/dependencies ==="
+            file "$RUNNER_TEMP/shim-exception-gnat"
+            otool -L "$RUNNER_TEMP/shim-exception-gnat"
+            echo
+
+            echo "=== A: Mach-O load commands and sections ==="
+            otool -l "$RUNNER_TEMP/shim-exception-clang"
+            echo
+
+            echo "=== B: Mach-O load commands and sections ==="
+            otool -l "$RUNNER_TEMP/shim-exception-gnat"
+            echo
+
+            a_unwind_status=255
+            b_unwind_status=255
+            if [ -n "${llvm_objdump}" ]; then
+              echo "=== A: llvm-objdump unwind info ==="
+              "${llvm_objdump}" --unwind-info "$RUNNER_TEMP/shim-exception-clang"
+              a_unwind_status=$?
+              echo "A unwind dump exit=${a_unwind_status}"
+              echo
+
+              echo "=== B: llvm-objdump unwind info ==="
+              "${llvm_objdump}" --unwind-info "$RUNNER_TEMP/shim-exception-gnat"
+              b_unwind_status=$?
+              echo "B unwind dump exit=${b_unwind_status}"
+              echo
+            else
+              echo "=== llvm-objdump unwind info skipped ==="
+              echo "llvm-objdump not found"
+              echo
+            fi
+
+            echo "=== A: nm -m ==="
+            nm -m "$RUNNER_TEMP/shim-exception-clang"
+            echo
+
+            echo "=== B: nm -m ==="
+            nm -m "$RUNNER_TEMP/shim-exception-gnat"
+            echo
+
+            echo "clang++ verbose link=${clang_verbose_link_status}"
+            echo "GNAT gcc verbose link=${gnat_verbose_link_status}"
+            echo "A unwind dump=${a_unwind_status}"
+            echo "B unwind dump=${b_unwind_status}"
           } > "$RUNNER_TEMP/opencv-shim-link-comparison.log" 2>&1
 
           status=$?
