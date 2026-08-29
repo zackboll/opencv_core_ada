@@ -1228,6 +1228,162 @@ jobs:
           path: ${{ runner.temp }}/opencv-test-link.log
           if-no-files-found: error
 
+      - name: Compare real Ada tests with compact-unwind specs
+        id: ada-compact-unwind
+        if: ${{ always() && steps.root-build.outcome == 'success' }}
+        shell: bash
+        run: |
+          set +e
+          {
+            echo "=== Tool locations ==="
+            gnat_gcc="$(alr -n -C tests exec -- which gcc 2>/dev/null | tail -n 1)"
+            macos_sdk_root="$(xcrun --sdk macosx --show-sdk-path)"
+            gnat_sysroot="$("${gnat_gcc}" -print-sysroot 2>/dev/null)"
+            llvm_objdump="$(xcrun --find llvm-objdump 2>/dev/null || true)"
+            echo "GNAT gcc: ${gnat_gcc}"
+            echo "macOS SDK: ${macos_sdk_root}"
+            echo "GNAT GCC sysroot: ${gnat_sysroot}"
+            echo "llvm-objdump: ${llvm_objdump}"
+            echo
+
+            original_specs="$RUNNER_TEMP/gnat-ada-original.specs"
+            compact_specs="$RUNNER_TEMP/gnat-ada-compact.specs"
+
+            echo "=== GNAT GCC Darwin specs ==="
+            "${gnat_gcc}" -dumpspecs > "${original_specs}"
+            grep -n "no_compact_unwind" "${original_specs}" || true
+            echo
+
+            python3 - "${original_specs}" "${compact_specs}" <<'PY'
+from pathlib import Path
+import sys
+
+src = Path(sys.argv[1])
+dst = Path(sys.argv[2])
+
+text = src.read_text()
+
+needle = "%:version-compare(>= 10.6 mmacosx-version-min= -no_compact_unwind)"
+count = text.count(needle)
+
+print(f"no_compact_unwind spec occurrences={count}")
+
+if count != 1:
+    raise SystemExit(42)
+
+dst.write_text(text.replace(needle, "", 1))
+PY
+            spec_edit_status=$?
+            echo "custom specs edit exit=${spec_edit_status}"
+            echo
+
+            if [ "${spec_edit_status}" -ne 0 ]; then
+              echo "=== Ada compact-unwind experiment skipped ==="
+              echo "custom specs occurrence count was not exactly 1"
+              exit 42
+            fi
+
+            echo "=== Modified GNAT GCC specs no_compact_unwind matches ==="
+            grep -n "no_compact_unwind" "${compact_specs}" || true
+            echo
+
+            if [ -z "${macos_sdk_root}" ]; then
+              echo "=== Ada compact-unwind experiment skipped ==="
+              echo "macOS SDK root from xcrun is empty"
+              exit 255
+            fi
+
+            echo "=== Remove existing tests executable to force relink ==="
+            rm -f tests/bin/tests tests/bin/test
+            echo
+
+            echo "=== Build real tests executable with custom specs and SDK sysroot ==="
+            alr -n -C tests build -- \
+              -v \
+              -largs \
+              "-specs=${compact_specs}" \
+              "-Wl,-syslibroot,${macos_sdk_root}"
+            ada_link_status=$?
+            echo "Ada tests custom-specs link exit=${ada_link_status}"
+            echo
+
+            test_exe=""
+            for candidate in tests/bin/tests tests/bin/test; do
+              if [ -e "${candidate}" ]; then
+                test_exe="${candidate}"
+                break
+              fi
+            done
+
+            ada_run_status=255
+            ada_unwind_status=255
+
+            if [ "${ada_link_status}" -ne 0 ]; then
+              echo "=== Ada tests custom-specs run skipped ==="
+              echo "link failed"
+            elif [ -z "${test_exe}" ]; then
+              echo "=== Ada tests custom-specs run skipped ==="
+              echo "test executable not found"
+              ls -l tests/bin
+              ada_link_status=255
+            else
+              echo "=== Test executable ==="
+              echo "Found: ${test_exe}"
+              ls -l "${test_exe}"
+              file "${test_exe}"
+              echo
+
+              echo "=== Ada tests dependencies ==="
+              otool -L "${test_exe}"
+              echo
+
+              echo "=== Ada tests Mach-O load commands and sections ==="
+              otool -l "${test_exe}"
+              echo
+
+              if [ -n "${llvm_objdump}" ]; then
+                echo "=== Ada tests llvm-objdump unwind info ==="
+                "${llvm_objdump}" --unwind-info "${test_exe}"
+                ada_unwind_status=$?
+                echo "Ada tests unwind dump exit=${ada_unwind_status}"
+                echo
+              else
+                echo "=== Ada tests llvm-objdump unwind info skipped ==="
+                echo "llvm-objdump not found"
+                echo
+              fi
+
+              echo "=== Run real AUnit tests executable ==="
+              "${test_exe}"
+              ada_run_status=$?
+              echo "Ada tests custom-specs run exit=${ada_run_status}"
+              echo
+            fi
+
+            echo "=== Summary ==="
+            echo "custom specs edit=${spec_edit_status}"
+            echo "macOS SDK=${macos_sdk_root}"
+            echo "GNAT GCC sysroot=${gnat_sysroot}"
+            echo "Ada tests custom-specs link=${ada_link_status} run=${ada_run_status}"
+            echo "Ada tests unwind dump=${ada_unwind_status}"
+
+            if [ "${ada_link_status}" -ne 0 ]; then
+              exit "${ada_link_status}"
+            fi
+            exit "${ada_run_status}"
+          } > "$RUNNER_TEMP/opencv-ada-compact-unwind.log" 2>&1
+          status=$?
+          cat "$RUNNER_TEMP/opencv-ada-compact-unwind.log"
+          exit "$status"
+
+      - name: Upload macOS Ada compact-unwind diagnostics
+        if: ${{ always() && steps.root-build.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-ada-compact-unwind-diagnostics
+          path: ${{ runner.temp }}/opencv-ada-compact-unwind.log
+          if-no-files-found: error
+
       - name: Inspect linked test executable
         if: ${{ always() && steps.tests.outcome == 'success' }}
         continue-on-error: true
