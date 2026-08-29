@@ -920,6 +920,33 @@ jobs:
             exit 1
           fi
 
+          echo "=== Replace C++ Include_Switches_Via_Spec with ordinary -I ==="
+          expected='for Include_Switches_Via_Spec ("C++") use ("cc1plus", "-I");'
+          if ! grep -Fq "${expected}" "${cgpr}"; then
+            echo "error: generated .cgpr does not contain expected C++ Include_Switches_Via_Spec" >&2
+            exit 1
+          fi
+          matches=$(grep -F -c "${expected}" "${cgpr}")
+          if [ "${matches}" -ne 1 ]; then
+            echo "error: expected exactly one C++ Include_Switches_Via_Spec declaration, found ${matches}" >&2
+            exit 1
+          fi
+          cgpr_tmp="${cgpr}.new"
+          sed 's/for Include_Switches_Via_Spec ("C++") use ("cc1plus", "-I");/for Include_Switches ("C++") use ("-I");/' "${cgpr}" >"${cgpr_tmp}"
+          mv "${cgpr_tmp}" "${cgpr}"
+
+          echo "=== Mixed configuration after C++ include adjustment ==="
+          cat "${cgpr}"
+
+          if ! grep -Fq 'for Include_Switches ("C++") use ("-I");' "${cgpr}"; then
+            echo "error: transformed .cgpr does not contain ordinary C++ Include_Switches" >&2
+            exit 1
+          fi
+          if grep -Fq 'Include_Switches_Via_Spec ("C++")' "${cgpr}"; then
+            echo "error: transformed .cgpr still contains C++ Include_Switches_Via_Spec" >&2
+            exit 1
+          fi
+
           echo "OPENCV_CORE_MIXED_CGPR=${cgpr}" >> "${GITHUB_ENV}"
           echo "mixed_cgpr=${cgpr}" >> "${GITHUB_OUTPUT}"
 
@@ -939,6 +966,12 @@ jobs:
           if ! alr -n build -- --config="${mixed_cgpr}" -v >"${log}" 2>&1; then
             echo "=== Root build failed ==="
             cat "${log}"
+            compile_cmd=$(grep -F 'opencv_core_shim.cpp' "${log}" | grep -F 'g++' | tail -n 1 || true)
+            echo "=== Shim C++ compile command (failed build) ==="
+            printf '%s\n' "${compile_cmd}"
+            if grep -F 'stdlib.h: No such file or directory' "${log}"; then
+              echo "error: MSYS2 stdlib.h include failure remains after removing Include_Switches_Via_Spec" >&2
+            fi
             exit 1
           fi
           echo "=== Shim C++ compile command ==="
@@ -962,6 +995,14 @@ jobs:
           fi
           if printf '%s\n' "${compile_cmd}" | grep -F -- '-MMD -MF -MMD -MF'; then
             echo "error: shim compile still has duplicated -MMD -MF" >&2
+            exit 1
+          fi
+          if printf '%s\n' "${compile_cmd}" | grep -F -- '-specs='; then
+            echo "error: shim compile still uses a C++ -specs= include file" >&2
+            exit 1
+          fi
+          if printf '%s\n' "${compile_cmd}" | grep -F 'c++_spec_inc_path'; then
+            echo "error: shim compile still references c++_spec_inc_path" >&2
             exit 1
           fi
           echo "=== Shim DLL link command ==="
