@@ -1202,12 +1202,17 @@ jobs:
 
           path_lib="${lib_dir}"
           path_runtime="${runtime_dir}"
+          path_lib_posix="${lib_dir}"
+          path_runtime_posix="${runtime_dir}"
           shim_dll_win="${shim_dll}"
           if command -v cygpath >/dev/null 2>&1; then
             path_lib=$(cygpath -wa "${lib_dir}")
             path_runtime=$(cygpath -wa "${runtime_dir}")
+            path_lib_posix=$(cygpath -u "${lib_dir}")
+            path_runtime_posix=$(cygpath -u "${runtime_dir}")
             shim_dll_win=$(cygpath -wa "${shim_dll}")
           fi
+          windows_test_path="${path_lib_posix}:${path_runtime_posix}:${PATH}"
           echo "=== Absolute libopencv_core_shim.dll path ==="
           printf '%s\n' "${shim_dll_win}"
           echo "=== Effective runtime PATH prefixes ==="
@@ -1255,10 +1260,10 @@ jobs:
 
           set +e
           echo "=== Effective runtime PATH ==="
-          MSYS_NO_PATHCONV=1 cmd.exe /d /s /c "set \"PATH=${path_lib};${path_runtime};%PATH%\" && set PATH" || echo "warning: could not print the constructed Windows PATH"
+          printf '%s\n' "${windows_test_path}"
 
           echo "=== Direct windows_shim_smoke.exe execution ==="
-          MSYS_NO_PATHCONV=1 cmd.exe /d /s /c "set \"PATH=${path_lib};${path_runtime};%PATH%\" && \"${smoke_exe_win}\" && echo WINDOWS_SHIM_SMOKE_RAN"
+          PATH="${windows_test_path}" "${smoke_exe}"
           smokeExitCode=$?
           echo "WINDOWS_SHIM_SMOKE_EXIT_CODE=${smokeExitCode}"
 
@@ -1271,6 +1276,7 @@ jobs:
             echo "WINDOWS_SHIM_SMOKE_EXIT_CODE=${smokeExitCode}"
             exit "${smokeExitCode}"
           fi
+          echo "WINDOWS_SHIM_SMOKE_RAN"
           set -e
 
           log="${RUNNER_TEMP:-$PWD}/opencv-core-windows-test-build.log"
@@ -1413,7 +1419,7 @@ jobs:
 
           set +e
           echo "=== Direct tests.exe execution ==="
-          MSYS_NO_PATHCONV=1 cmd.exe /d /s /c "set \"PATH=${path_lib};${path_runtime};%PATH%\" && \"${test_exe_win}\""
+          PATH="${windows_test_path}" "${test_exe}"
           testExitCode=$?
           echo "TESTS_EXE_EXIT_CODE=${testExitCode}"
 
@@ -1458,7 +1464,10 @@ jobs:
           done
 
           echo "=== Windows DLL resolution under the test PATH ==="
-          MSYS_NO_PATHCONV=1 cmd.exe /d /s /c "set \"PATH=${path_lib};${path_runtime};%PATH%\" && echo --- where libopencv_core_shim.dll --- & where libopencv_core_shim.dll & echo --- where libgcc_s_seh-1.dll --- & where libgcc_s_seh-1.dll & echo --- where libstdc++-6.dll --- & where libstdc++-6.dll & echo --- where libopencv_core-500.dll --- & where libopencv_core-500.dll" || echo "warning: where.exe DLL resolution failed"
+          for name in libopencv_core_shim.dll libgcc_s_seh-1.dll libstdc++-6.dll libopencv_core-500.dll; do
+            echo "--- where ${name} ---"
+            PATH="${windows_test_path}" where.exe "${name}" || echo "warning: where.exe could not resolve ${name}"
+          done
 
           echo "=== Recent Windows Application Error events ==="
           powershell.exe -NoProfile -Command "Get-WinEvent -FilterHashtable @{LogName='Application'; StartTime=(Get-Date).AddMinutes(-15)} -ErrorAction SilentlyContinue | Select-Object -First 20 TimeCreated, Id, ProviderName, Message | Format-List" || echo "warning: Application Error event query failed"
