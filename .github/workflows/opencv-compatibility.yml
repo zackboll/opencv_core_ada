@@ -1336,9 +1336,82 @@ jobs:
           printf '%s\n' "${path_lib}"
           printf '%s\n' "${path_runtime}"
 
+          if [ -z "${gnat_gcc}" ]; then
+            echo "error: GNAT gcc is required to compile windows_shim_smoke.exe" >&2
+            exit 1
+          fi
+          case "${gnat_gcc}" in
+            *mingw64*)
+              echo "error: smoke compiler resolved to MSYS2 gcc: ${gnat_gcc}" >&2
+              exit 1
+              ;;
+          esac
+          if [ ! -f "${gnat_gcc}" ]; then
+            echo "error: GNAT gcc does not exist: ${gnat_gcc}" >&2
+            exit 1
+          fi
+          if [ ! -f lib/libopencv_core_shim.dll.a ]; then
+            echo "error: production shim import library is missing: lib/libopencv_core_shim.dll.a" >&2
+            ls -l lib || true
+            exit 1
+          fi
+
+          smoke_exe="tests/bin/windows_shim_smoke.exe"
+          echo "=== GNAT gcc smoke compile command ==="
+          echo "alr exec -- gcc -o ${smoke_exe} tests/windows_shim_smoke.c -Icpp -Llib -lopencv_core_shim -static-libgcc"
+          alr exec -- gcc -o "${smoke_exe}" tests/windows_shim_smoke.c \
+            -Icpp -Llib -lopencv_core_shim -static-libgcc
+          if [ ! -f "${smoke_exe}" ]; then
+            echo "error: windows_shim_smoke.exe was not produced" >&2
+            ls -l tests/bin || true
+            exit 1
+          fi
+
+          echo "=== windows_shim_smoke.exe PE imports (${dump} -p) ==="
+          smoke_deps=$(alr exec -- "${dump}" -p "${smoke_exe}" | grep -i 'DLL Name' || true)
+          echo "${smoke_deps}"
+          if ! printf '%s\n' "${smoke_deps}" | grep -qi 'libopencv_core_shim.dll'; then
+            echo "error: windows_shim_smoke.exe does not import libopencv_core_shim.dll" >&2
+            exit 1
+          fi
+          if printf '%s\n' "${smoke_deps}" | grep -qi 'libopencv_core-500.dll'; then
+            echo "error: windows_shim_smoke.exe still imports OpenCV Core directly" >&2
+            exit 1
+          fi
+          if printf '%s\n' "${smoke_deps}" | grep -qi 'libstdc++-6.dll'; then
+            echo "error: windows_shim_smoke.exe still imports libstdc++-6.dll" >&2
+            exit 1
+          fi
+          if printf '%s\n' "${smoke_deps}" | grep -qi 'libgcc_s_seh-1.dll'; then
+            echo "error: windows_shim_smoke.exe still imports libgcc_s_seh-1.dll" >&2
+            exit 1
+          fi
+
+          smoke_exe_win="${smoke_exe}"
+          if command -v cygpath >/dev/null 2>&1; then
+            smoke_exe_win=$(cygpath -wa "${smoke_exe}")
+          fi
+          echo "=== Absolute windows_shim_smoke.exe path ==="
+          printf '%s\n' "${smoke_exe_win}"
+
           set +e
           echo "=== Effective runtime PATH ==="
           MSYS_NO_PATHCONV=1 cmd.exe //c "set \"PATH=${path_lib};${path_runtime};%PATH%\" & echo PATH=%PATH%" || echo "warning: could not print the constructed Windows PATH"
+
+          echo "=== Direct windows_shim_smoke.exe execution ==="
+          MSYS_NO_PATHCONV=1 cmd.exe //c "set \"PATH=${path_lib};${path_runtime};%PATH%\" & \"${smoke_exe_win}\""
+          smokeExitCode=$?
+          echo "WINDOWS_SHIM_SMOKE_EXIT_CODE=${smokeExitCode}"
+
+          if [ "${smokeExitCode}" -ne 0 ]; then
+            echo "=== windows_shim_smoke.exe failed; PE/dependency diagnostics ==="
+            if [ -n "${dump}" ]; then
+              alr exec -- "${dump}" -p "${smoke_exe}" | grep -i 'DLL Name' || echo "warning: could not dump smoke PE imports"
+              alr exec -- "${dump}" -p "${shim_dll}" | grep -i 'DLL Name' || echo "warning: could not dump shim PE imports"
+            fi
+            echo "WINDOWS_SHIM_SMOKE_EXIT_CODE=${smokeExitCode}"
+            exit "${smokeExitCode}"
+          fi
 
           echo "=== Direct tests.exe execution ==="
           MSYS_NO_PATHCONV=1 cmd.exe //c "set \"PATH=${path_lib};${path_runtime};%PATH%\" & \"${test_exe_win}\""
