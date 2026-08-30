@@ -1255,10 +1255,10 @@ jobs:
 
           set +e
           echo "=== Effective runtime PATH ==="
-          MSYS_NO_PATHCONV=1 cmd.exe //c "set \"PATH=${path_lib};${path_runtime};%PATH%\" & echo PATH=%PATH%" || echo "warning: could not print the constructed Windows PATH"
+          MSYS_NO_PATHCONV=1 cmd.exe /d /s /c "set \"PATH=${path_lib};${path_runtime};%PATH%\" && set PATH" || echo "warning: could not print the constructed Windows PATH"
 
           echo "=== Direct windows_shim_smoke.exe execution ==="
-          MSYS_NO_PATHCONV=1 cmd.exe //c "set \"PATH=${path_lib};${path_runtime};%PATH%\" & \"${smoke_exe_win}\""
+          MSYS_NO_PATHCONV=1 cmd.exe /d /s /c "set \"PATH=${path_lib};${path_runtime};%PATH%\" && \"${smoke_exe_win}\" && echo WINDOWS_SHIM_SMOKE_RAN"
           smokeExitCode=$?
           echo "WINDOWS_SHIM_SMOKE_EXIT_CODE=${smokeExitCode}"
 
@@ -1413,7 +1413,7 @@ jobs:
 
           set +e
           echo "=== Direct tests.exe execution ==="
-          MSYS_NO_PATHCONV=1 cmd.exe //c "set \"PATH=${path_lib};${path_runtime};%PATH%\" & \"${test_exe_win}\""
+          MSYS_NO_PATHCONV=1 cmd.exe /d /s /c "set \"PATH=${path_lib};${path_runtime};%PATH%\" && \"${test_exe_win}\""
           testExitCode=$?
           echo "TESTS_EXE_EXIT_CODE=${testExitCode}"
 
@@ -1458,7 +1458,7 @@ jobs:
           done
 
           echo "=== Windows DLL resolution under the test PATH ==="
-          MSYS_NO_PATHCONV=1 cmd.exe //c "set \"PATH=${path_lib};${path_runtime};%PATH%\" & echo --- where libopencv_core_shim.dll --- & where libopencv_core_shim.dll & echo --- where libgcc_s_seh-1.dll --- & where libgcc_s_seh-1.dll & echo --- where libstdc++-6.dll --- & where libstdc++-6.dll & echo --- where libopencv_core-500.dll --- & where libopencv_core-500.dll" || echo "warning: where.exe DLL resolution failed"
+          MSYS_NO_PATHCONV=1 cmd.exe /d /s /c "set \"PATH=${path_lib};${path_runtime};%PATH%\" && echo --- where libopencv_core_shim.dll --- & where libopencv_core_shim.dll & echo --- where libgcc_s_seh-1.dll --- & where libgcc_s_seh-1.dll & echo --- where libstdc++-6.dll --- & where libstdc++-6.dll & echo --- where libopencv_core-500.dll --- & where libopencv_core-500.dll" || echo "warning: where.exe DLL resolution failed"
 
           echo "=== Recent Windows Application Error events ==="
           powershell.exe -NoProfile -Command "Get-WinEvent -FilterHashtable @{LogName='Application'; StartTime=(Get-Date).AddMinutes(-15)} -ErrorAction SilentlyContinue | Select-Object -First 20 TimeCreated, Id, ProviderName, Message | Format-List" || echo "warning: Application Error event query failed"
