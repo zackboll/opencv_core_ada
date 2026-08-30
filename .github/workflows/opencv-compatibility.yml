@@ -694,6 +694,7 @@ jobs:
     name: OpenCV Windows x86_64 (MSYS2)
     runs-on: windows-latest
     env:
+      OPENCV_CORE_WINDOWS_CI: "1"
       TESTS_WINDOWS_STATIC_ADA_RUNTIME: "True"
 
     defaults:
@@ -964,8 +965,7 @@ jobs:
             printf '%s\n' "${gpp_cmds}"
             exit 1
           fi
-          echo "=== Ada compiler fragments ==="
-          grep -E 'gnat_native|gcc(\.exe)?' "${log}" | tail -n 40 || true
+          echo "Root build completed successfully."
 
       - name: Verify generated OpenCV configuration
         if: ${{ always() && steps.root-build.outcome == 'success' }}
@@ -1286,9 +1286,6 @@ jobs:
             cat "${log}"
             exit 1
           fi
-          echo "=== Final link command fragments ==="
-          grep -E 'gcc(\.exe)? |g\+\+(\.exe)? |ld(\.exe)? |opencv_core_shim|libopencv_core\.dll\.a|-lstdc\+\+|-static-libgcc|-static-libstdc\+\+' "${log}" | tail -n 80
-
           # Extract the actual tests.exe link command. Do not treat the
           # separate libopencv_core_shim.dll link (-shared-libgcc -o ...) as
           # the final test executable link.
@@ -1297,9 +1294,6 @@ jobs:
             echo "error: could not extract the tests.exe link command" >&2
             exit 1
           fi
-          echo "=== Final tests.exe link command ==="
-          printf '%s\n' "${link_cmd}"
-
           if printf '%s\n' "${link_cmd}" | grep -E -- '-L[^[:space:]]*msys64[/\\]mingw64[/\\]lib([[:space:]]|$)'; then
             echo "error: tests.exe link still searches MSYS2 mingw64/lib" >&2
             exit 1
@@ -1350,8 +1344,7 @@ jobs:
             exit 1
           fi
 
-          echo "=== Binder command fragments ==="
-          grep -E 'gnatbind|gprbind|-static([[:space:]]|$)' "${log}" | tail -n 40 || true
+          echo "Test build and link checks completed successfully."
 
           test_exe=""
           for candidate in tests/bin/tests.exe tests/bin/tests; do
@@ -1419,61 +1412,35 @@ jobs:
 
           set +e
           echo "=== Direct tests.exe execution ==="
-          PATH="${windows_test_path}" "${test_exe}"
-          testExitCode=$?
+          full_log="${PWD}/windows-aunit-full.log"
+          set -o pipefail
+          PATH="${windows_test_path}" "${test_exe}" 2>&1 | tee "${full_log}"
+          testExitCode=${PIPESTATUS[0]}
+          set +o pipefail
           echo "TESTS_EXE_EXIT_CODE=${testExitCode}"
 
-          echo "=== tests.exe PE imports ==="
-          if [ -n "${dump}" ]; then
-            alr exec -- "${dump}" -p "${test_exe}" | grep -i 'DLL Name' || echo "warning: could not dump tests.exe PE imports"
-          else
-            echo "warning: objdump is unavailable; skipping tests.exe PE imports"
+          if [ "${testExitCode}" -ne 0 ]; then
+            echo "=== tests.exe and shim PE imports after failure ==="
+            alr exec -- "${dump}" -p "${test_exe}" | grep -i 'DLL Name' || true
+            alr exec -- "${dump}" -p "${shim_dll}" | grep -i 'DLL Name' || true
+            echo "=== Windows DLL resolution after failure ==="
+            for name in libopencv_core_shim.dll libgcc_s_seh-1.dll libstdc++-6.dll libopencv_core-500.dll; do
+              PATH="${windows_test_path}" where.exe "${name}" || true
+            done
+            echo "=== Recent Windows Application Error events ==="
+            powershell.exe -NoProfile -Command "Get-WinEvent -FilterHashtable @{LogName='Application'; StartTime=(Get-Date).AddMinutes(-15)} -ErrorAction SilentlyContinue | Select-Object -First 20 TimeCreated, Id, ProviderName, Message | Format-List" || true
           fi
-
-          echo "=== libopencv_core_shim.dll PE imports ==="
-          if [ -n "${dump}" ]; then
-            alr exec -- "${dump}" -p "${shim_dll}" | grep -i 'DLL Name' || echo "warning: could not dump shim PE imports"
-          else
-            echo "warning: objdump is unavailable; skipping shim PE imports"
-          fi
-
-          echo "=== Physical DLL candidates (MSYS2 vs GNAT vs shim dir) ==="
-          for name in libgcc_s_seh-1.dll libstdc++-6.dll libopencv_core-500.dll libopencv_core_shim.dll; do
-            echo "--- ${name} ---"
-            if [ -f "${runtime_dir}/${name}" ]; then
-              echo "MSYS2: ${runtime_dir}/${name}"
-              ls -l "${runtime_dir}/${name}" || echo "warning: ls failed for MSYS2 ${name}"
-              sha256sum "${runtime_dir}/${name}" || echo "warning: sha256sum failed for MSYS2 ${name}"
-            else
-              echo "MSYS2: absent"
-            fi
-            if [ -n "${gnat_bin}" ] && [ -f "${gnat_bin}/${name}" ]; then
-              echo "GNAT: ${gnat_bin}/${name}"
-              ls -l "${gnat_bin}/${name}" || echo "warning: ls failed for GNAT ${name}"
-              sha256sum "${gnat_bin}/${name}" || echo "warning: sha256sum failed for GNAT ${name}"
-            else
-              echo "GNAT: absent"
-            fi
-            if [ -f "${lib_dir}/${name}" ]; then
-              echo "shim-dir: ${lib_dir}/${name}"
-              ls -l "${lib_dir}/${name}" || echo "warning: ls failed for shim-dir ${name}"
-              sha256sum "${lib_dir}/${name}" || echo "warning: sha256sum failed for shim-dir ${name}"
-            else
-              echo "shim-dir: absent"
-            fi
-          done
-
-          echo "=== Windows DLL resolution under the test PATH ==="
-          for name in libopencv_core_shim.dll libgcc_s_seh-1.dll libstdc++-6.dll libopencv_core-500.dll; do
-            echo "--- where ${name} ---"
-            PATH="${windows_test_path}" where.exe "${name}" || echo "warning: where.exe could not resolve ${name}"
-          done
-
-          echo "=== Recent Windows Application Error events ==="
-          powershell.exe -NoProfile -Command "Get-WinEvent -FilterHashtable @{LogName='Application'; StartTime=(Get-Date).AddMinutes(-15)} -ErrorAction SilentlyContinue | Select-Object -First 20 TimeCreated, Id, ProviderName, Message | Format-List" || echo "warning: Application Error event query failed"
 
           echo "TESTS_EXE_EXIT_CODE=${testExitCode}"
           exit "${testExitCode}"
+
+      - name: Upload full Windows AUnit log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-aunit-full-log
+          path: windows-aunit-full.log
+          if-no-files-found: warn
 
       - name: Report Windows runtime diagnostics
         if: ${{ always() && steps.root-build.outcome == 'success' }}
