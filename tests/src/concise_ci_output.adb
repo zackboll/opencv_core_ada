@@ -3,7 +3,7 @@ with Ada.Strings.Fixed;
 with Ada.Text_IO;
 with AUnit.Simple_Test_Cases;
 
-package body Windows_CI_Output is
+package body Concise_CI_Output is
 
    use type AUnit.Message_String;
 
@@ -123,4 +123,4 @@ package body Windows_CI_Output is
         ("Unexpected Errors: " & Image (Natural (Result.Error_Count)));
    end Report;
 
-end Windows_CI_Output;
+end Concise_CI_Output;

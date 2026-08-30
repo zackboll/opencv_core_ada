@@ -6,7 +6,7 @@ with AUnit.Test_Results;
 with AUnit.Time_Measure;
 with AUnit.Tests;
 
-package Windows_CI_Output is
+package Concise_CI_Output is
 
    type Counting_Filter is new AUnit.Test_Filters.Test_Filter with private;
 
@@ -65,4 +65,4 @@ private
       Current : Natural := 0;
    end record;
 
-end Windows_CI_Output;
+end Concise_CI_Output;

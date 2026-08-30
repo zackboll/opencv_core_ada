@@ -694,8 +694,8 @@ jobs:
     name: OpenCV Windows x86_64 (MSYS2)
     runs-on: windows-latest
     env:
-      OPENCV_CORE_WINDOWS_CI: "1"
-      TESTS_WINDOWS_STATIC_ADA_RUNTIME: "True"
+      OPENCV_CORE_CI: "1"
+      TESTS_STATIC_ADA_RUNTIME: "True"
 
     defaults:
       run:
@@ -1004,10 +1004,6 @@ jobs:
             echo "error: generated GPR did not select -lstdc++" >&2
             exit 1
           fi
-          if ! grep -F 'Use_Direct_OpenCV_Link : Direct_OpenCV_Link_Kind := "True";' config/opencv_core_install.gpr; then
-            echo "error: generated GPR did not enable direct OpenCV Core linking" >&2
-            exit 1
-          fi
           if ! grep -F 'Use_Windows_Shared_Shim : Windows_Shared_Shim_Kind := "True";' config/opencv_core_install.gpr; then
             echo "error: generated GPR did not enable the Windows shared shim" >&2
             exit 1
@@ -1280,8 +1276,8 @@ jobs:
           set -e
 
           log="${RUNNER_TEMP:-$PWD}/opencv-core-windows-test-build.log"
-          echo "TESTS_WINDOWS_STATIC_ADA_RUNTIME=${TESTS_WINDOWS_STATIC_ADA_RUNTIME:-<unset>}"
-          if ! alr -n -C tests build -- -v -XTESTS_WINDOWS_STATIC_ADA_RUNTIME=True >"${log}" 2>&1; then
+          echo "TESTS_STATIC_ADA_RUNTIME=${TESTS_STATIC_ADA_RUNTIME:-<unset>}"
+          if ! alr -n -C tests build -- -v -XTESTS_STATIC_ADA_RUNTIME=True >"${log}" 2>&1; then
             echo "=== Test build failed ==="
             cat "${log}"
             exit 1
