@@ -139,7 +139,7 @@ case "$sysname" in
                 exit 1
                 ;;
         esac
-        echo "Windows C++ driver: $cxx_driver"
+        echo "External C++ driver: $cxx_driver"
         ;;
 esac
 
@@ -170,3 +170,10 @@ abstract project OpenCV_Core_Install is
    Cxx_Sysroot := "${cxx_sysroot}";
 end OpenCV_Core_Install;
 EOF
+
+sh scripts/build_opencv_shim.sh \
+    "$shim_build" \
+    "$cxx_driver" \
+    "$include_dir" \
+    "$library_dir" \
+    "$opencv_core_link_option"

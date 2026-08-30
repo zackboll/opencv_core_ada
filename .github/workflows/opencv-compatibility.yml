@@ -848,109 +848,6 @@ jobs:
           echo "PKG_CONFIG=${PKG_CONFIG:-<unset>}"
           echo "PKG_CONFIG_PATH=${PKG_CONFIG_PATH:-<unset>}"
 
-      - name: Build Windows C++ shim with MSYS2 g++
-        run: |
-          set -eu
-          mkdir -p lib obj/shim/windows
-          include_dir=$(alr exec -- x86_64-w64-mingw32-pkg-config --variable=includedir opencv5)
-          library_dir=$(alr exec -- x86_64-w64-mingw32-pkg-config --variable=libdir opencv5)
-          if [ -z "${include_dir}" ] || [ -z "${library_dir}" ]; then
-            echo "error: could not resolve OpenCV include/lib directories" >&2
-            exit 1
-          fi
-          cxx_driver="${library_dir%/lib}/bin/g++.exe"
-          if [ ! -f "${cxx_driver}" ]; then
-            cxx_driver="${library_dir%/lib}/bin/g++"
-          fi
-          if command -v cygpath >/dev/null 2>&1; then
-            include_dir=$(cygpath -m "${include_dir}")
-            library_dir=$(cygpath -m "${library_dir}")
-            cxx_driver=$(cygpath -m "${cxx_driver}")
-          fi
-          echo "=== Independent MSYS2 C++ compiler ==="
-          printf '%s\n' "${cxx_driver}"
-          case "${cxx_driver}" in
-            *gnat_native*)
-              echo "error: C++ driver resolved to GNAT: ${cxx_driver}" >&2
-              exit 1
-              ;;
-            *mingw64*)
-              ;;
-            *)
-              echo "error: C++ driver is not MSYS2 mingw64 g++: ${cxx_driver}" >&2
-              exit 1
-              ;;
-          esac
-          if [ ! -f "${cxx_driver}" ]; then
-            echo "error: MSYS2 g++ does not exist: ${cxx_driver}" >&2
-            exit 1
-          fi
-          "${cxx_driver}" --version
-          opencv_implib="${library_dir}/libopencv_core.dll.a"
-          if [ ! -f "${opencv_implib}" ]; then
-            echo "error: OpenCV Core import library was not found: ${opencv_implib}" >&2
-            exit 1
-          fi
-          object="obj/shim/windows/opencv_core_shim.o"
-          echo "=== Independent shim compile command ==="
-          echo "${cxx_driver} -c -std=c++17 -Wall -Wextra -Wpedantic -Werror -I${include_dir} -Icpp -o ${object} cpp/opencv_core_shim.cpp"
-          set +e
-          "${cxx_driver}" -c -std=c++17 -Wall -Wextra -Wpedantic -Werror \
-            "-I${include_dir}" -Icpp \
-            -o "${object}" cpp/opencv_core_shim.cpp
-          compile_status=$?
-          set -e
-          if [ "${compile_status}" -ne 0 ]; then
-            echo "error: independent MSYS2 g++ compile failed" >&2
-            echo "=== g++ --version ==="
-            "${cxx_driver}" --version || true
-            echo "=== g++ -v ==="
-            "${cxx_driver}" -v || true
-            echo "=== environment that can affect GCC include lookup ==="
-            echo "CPATH=${CPATH:-<unset>}"
-            echo "C_INCLUDE_PATH=${C_INCLUDE_PATH:-<unset>}"
-            echo "CPLUS_INCLUDE_PATH=${CPLUS_INCLUDE_PATH:-<unset>}"
-            echo "LIBRARY_PATH=${LIBRARY_PATH:-<unset>}"
-            echo "GCC_EXEC_PREFIX=${GCC_EXEC_PREFIX:-<unset>}"
-            echo "COMPILER_PATH=${COMPILER_PATH:-<unset>}"
-            echo "PATH=${PATH}"
-            exit 1
-          fi
-          echo "=== Independent shim link command ==="
-          echo "${cxx_driver} -shared -o lib/libopencv_core_shim.dll -Wl,--out-implib,lib/libopencv_core_shim.dll.a ${object} ${opencv_implib}"
-          "${cxx_driver}" -shared -o lib/libopencv_core_shim.dll \
-            -Wl,--out-implib,lib/libopencv_core_shim.dll.a \
-            "${object}" "${opencv_implib}"
-          dump=""
-          if alr exec -- which objdump >/dev/null 2>&1; then
-            dump=objdump
-          elif alr exec -- which x86_64-w64-mingw32-objdump >/dev/null 2>&1; then
-            dump=x86_64-w64-mingw32-objdump
-          fi
-          if [ -z "${dump}" ]; then
-            echo "error: objdump is required to inspect the independently built shim DLL" >&2
-            exit 1
-          fi
-          echo "=== Independent shim DLL dependencies ==="
-          deps=$(alr exec -- "${dump}" -p lib/libopencv_core_shim.dll | grep -i 'DLL Name' || true)
-          echo "${deps}"
-          if ! printf '%s\n' "${deps}" | grep -qi 'libopencv_core-500.dll'; then
-            echo "error: independently built shim does not import libopencv_core-500.dll" >&2
-            exit 1
-          fi
-          if ! printf '%s\n' "${deps}" | grep -qi 'libgcc_s_seh-1.dll'; then
-            echo "error: independently built shim does not import libgcc_s_seh-1.dll" >&2
-            exit 1
-          fi
-          if ! printf '%s\n' "${deps}" | grep -qi 'libstdc++-6.dll'; then
-            echo "error: independently built shim does not import libstdc++-6.dll" >&2
-            exit 1
-          fi
-          if printf '%s\n' "${deps}" | grep -qiE 'libgnat|libgnarl'; then
-            echo "error: independently built shim imports a GNAT runtime DLL" >&2
-            exit 1
-          fi
-
       - name: Build current source
         id: root-build
         run: |
@@ -963,18 +860,19 @@ jobs:
             cat "${log}"
             exit 1
           fi
-          echo "=== Ada GPRbuild must not compile C++ ==="
-          if grep -F 'opencv_core_shim.cpp' "${log}"; then
-            echo "error: Ada GPRbuild still compiled opencv_core_shim.cpp" >&2
+          cat "${log}"
+          if ! grep -F 'Building External_Relocatable OpenCV Core shim' "${log}"; then
+            echo "error: root build did not run the repository external shim builder" >&2
             exit 1
           fi
-          # Informational configure lines such as
-          # "Windows C++ driver: .../g++.exe" are not compiler invocations.
-          # Match g++ only when it appears as a command followed by switches.
-          gpp_cmds=$(grep -E 'g\+\+(\.exe)?"?[[:space:]]+-' "${log}" || true)
-          if [ -n "${gpp_cmds}" ]; then
-            echo "error: Ada GPRbuild still invoked g++" >&2
-            printf '%s\n' "${gpp_cmds}"
+          if [ ! -f obj/shim/external/opencv_core_shim.o ]; then
+            echo "error: external shim object was not produced" >&2
+            exit 1
+          fi
+          unexpected_objects=$(find obj/shim -type f -name 'opencv_core_shim.o' ! -path 'obj/shim/external/opencv_core_shim.o' -print)
+          if [ -n "${unexpected_objects}" ]; then
+            echo "error: GPRbuild independently produced another shim object" >&2
+            printf '%s\n' "${unexpected_objects}"
             exit 1
           fi
           echo "Root build completed successfully."
