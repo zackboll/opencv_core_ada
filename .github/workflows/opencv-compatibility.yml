@@ -140,15 +140,31 @@ jobs:
           fi
 
           echo "=== Relocatable Ada library ==="
-          file "${ada_library}"
-          dependencies=$(readelf -d "${ada_library}" | grep '(NEEDED)' || true)
-          echo "${dependencies}"
-          if ! printf '%s\n' "${dependencies}" | grep -F 'libopencv_core_shim'; then
-            echo "error: relocatable Ada library does not depend on the production shim" >&2
+          file_output=$(file "${ada_library}")
+          echo "${file_output}"
+          if ! printf '%s\n' "${file_output}" | grep -q 'shared object'; then
+            echo "error: ${ada_library} is not an ELF shared library" >&2
             exit 1
           fi
-          if printf '%s\n' "${dependencies}" | grep -E 'libopencv_core\.so|libstdc\+\+|libgcc_s'; then
-            echo "error: relocatable Ada library has an unexpected direct OpenCV/C++ runtime dependency" >&2
+
+          dependencies=$(readelf -d "${ada_library}" | grep '(NEEDED)' || true)
+          echo "${dependencies}"
+          if ! printf '%s\n' "${dependencies}" | grep -E 'libopencv_core\.so'; then
+            echo "error: relocatable Ada library does not depend on OpenCV Core" >&2
+            exit 1
+          fi
+          if ! printf '%s\n' "${dependencies}" | grep -F 'libstdc++.so'; then
+            echo "error: relocatable Ada library does not depend on the C++ runtime" >&2
+            exit 1
+          fi
+          if printf '%s\n' "${dependencies}" | grep -E 'libopencv_core_shim[^[:space:]]*\.so'; then
+            echo "error: Static_PIC relocatable Ada library unexpectedly depends on a dynamic shim" >&2
+            exit 1
+          fi
+
+          echo "=== Static_PIC shim symbol incorporated into Ada library ==="
+          if ! nm -D --defined-only "${ada_library}" | grep -q 'opencv_core_mat_reshape'; then
+            echo "error: relocatable Ada library does not define opencv_core_mat_reshape" >&2
             exit 1
           fi
 
@@ -548,10 +564,17 @@ jobs:
             echo "error: relocatable Ada library does not depend on the production shim" >&2
             exit 1
           fi
-          if printf '%s\n' "${dependencies}" | grep -E 'libopencv_core\.[0-9].*\.dylib|libstdc\+\+|/usr/lib/libc\+\+'; then
-            echo "error: relocatable Ada library has an unexpected direct OpenCV/C++ runtime dependency" >&2
+          if printf '%s\n' "${dependencies}" | grep -E 'libopencv_core\.[0-9][^[:space:]]*\.dylib'; then
+            echo "error: relocatable Ada library unexpectedly depends directly on OpenCV Core" >&2
             exit 1
           fi
+          if printf '%s\n' "${dependencies}" | grep -F '/usr/lib/libc++.1.dylib'; then
+            echo "error: relocatable Ada library unexpectedly depends directly on libc++" >&2
+            exit 1
+          fi
+
+          echo "=== Ada/GNAT runtime dependencies (allowed) ==="
+          printf '%s\n' "${dependencies}" | grep -E 'libstdc\+\+\.6\.dylib|libgcc_s\.1\.1\.dylib|libgnat-16\.dylib|libgnarl-16\.dylib' || echo "none"
 
   macos-arm64-macports:
     name: OpenCV macOS ARM64 (MacPorts)
