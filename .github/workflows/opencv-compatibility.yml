@@ -1118,6 +1118,161 @@ jobs:
           alr_path=$(alr exec -- sh -c 'printf "%s" "$PATH"')
           printf '%s\n' "${alr_path}"
 
+          dump=""
+          if alr exec -- which objdump >/dev/null 2>&1; then
+            dump=objdump
+          elif alr exec -- which x86_64-w64-mingw32-objdump >/dev/null 2>&1; then
+            dump=x86_64-w64-mingw32-objdump
+          fi
+          if [ -z "${dump}" ]; then
+            echo "error: objdump is required to inspect Windows PE dependencies" >&2
+            exit 1
+          fi
+
+          cxx_driver=$(sed -n 's/.*Cxx_Driver := "\(.*\)";/\1/p' config/opencv_core_install.gpr)
+          runtime_dir=$(dirname "${cxx_driver}")
+          lib_dir="${PWD}/lib"
+          echo "=== MSYS2 runtime directory ==="
+          printf '%s\n' "${runtime_dir}"
+          case "${runtime_dir}" in
+            *mingw64*bin*)
+              ;;
+            *)
+              echo "error: runtime directory is not MSYS2 mingw64/bin: ${runtime_dir}" >&2
+              exit 1
+              ;;
+          esac
+          if [ ! -d "${runtime_dir}" ]; then
+            echo "error: MSYS2 runtime directory does not exist: ${runtime_dir}" >&2
+            exit 1
+          fi
+
+          echo "=== MSYS2 runtime DLLs ==="
+          for name in libgcc_s_seh-1.dll libstdc++-6.dll libopencv_core-500.dll; do
+            candidate="${runtime_dir}/${name}"
+            if [ -f "${candidate}" ]; then
+              ls -l "${candidate}"
+              sha256sum "${candidate}" || true
+            else
+              echo "error: missing MSYS2 runtime DLL: ${candidate}" >&2
+              exit 1
+            fi
+          done
+
+          shim_dll=""
+          for candidate in lib/libopencv_core_shim.dll lib/opencv_core_shim.dll "${lib_dir}/libopencv_core_shim.dll"; do
+            if [ -f "${candidate}" ]; then
+              shim_dll="${candidate}"
+              break
+            fi
+          done
+          if [ -z "${shim_dll}" ]; then
+            echo "error: libopencv_core_shim.dll is missing before windows_shim_smoke.exe" >&2
+            ls -l lib || true
+            exit 1
+          fi
+
+          echo "=== GNAT gcc for windows_shim_smoke.exe ==="
+          gnat_gcc=$(alr exec -- which gcc || true)
+          gnat_bin=""
+          if [ -n "${gnat_gcc}" ]; then
+            gnat_bin=$(dirname "${gnat_gcc}")
+            echo "GNAT gcc=${gnat_gcc}"
+            echo "GNAT bin=${gnat_bin}"
+          fi
+          if [ -z "${gnat_gcc}" ]; then
+            echo "error: GNAT gcc is required to compile windows_shim_smoke.exe" >&2
+            exit 1
+          fi
+          case "${gnat_gcc}" in
+            *mingw64*)
+              echo "error: smoke compiler resolved to MSYS2 gcc: ${gnat_gcc}" >&2
+              exit 1
+              ;;
+          esac
+          if [ ! -f "${gnat_gcc}" ]; then
+            echo "error: GNAT gcc does not exist: ${gnat_gcc}" >&2
+            exit 1
+          fi
+          if [ ! -f lib/libopencv_core_shim.dll.a ]; then
+            echo "error: production shim import library is missing: lib/libopencv_core_shim.dll.a" >&2
+            ls -l lib || true
+            exit 1
+          fi
+
+          path_lib="${lib_dir}"
+          path_runtime="${runtime_dir}"
+          shim_dll_win="${shim_dll}"
+          if command -v cygpath >/dev/null 2>&1; then
+            path_lib=$(cygpath -wa "${lib_dir}")
+            path_runtime=$(cygpath -wa "${runtime_dir}")
+            shim_dll_win=$(cygpath -wa "${shim_dll}")
+          fi
+          echo "=== Absolute libopencv_core_shim.dll path ==="
+          printf '%s\n' "${shim_dll_win}"
+          echo "=== Effective runtime PATH prefixes ==="
+          printf '%s\n' "${path_lib}"
+          printf '%s\n' "${path_runtime}"
+
+          mkdir -p tests/bin
+          smoke_exe="tests/bin/windows_shim_smoke.exe"
+          echo "=== GNAT gcc smoke compile command ==="
+          echo "alr exec -- gcc -o ${smoke_exe} tests/windows_shim_smoke.c -Icpp -Llib -lopencv_core_shim -static-libgcc"
+          alr exec -- gcc -o "${smoke_exe}" tests/windows_shim_smoke.c \
+            -Icpp -Llib -lopencv_core_shim -static-libgcc
+          if [ ! -f "${smoke_exe}" ]; then
+            echo "error: windows_shim_smoke.exe was not produced" >&2
+            ls -l tests/bin || true
+            exit 1
+          fi
+
+          echo "=== windows_shim_smoke.exe PE imports (${dump} -p) ==="
+          smoke_deps=$(alr exec -- "${dump}" -p "${smoke_exe}" | grep -i 'DLL Name' || true)
+          echo "${smoke_deps}"
+          if ! printf '%s\n' "${smoke_deps}" | grep -qi 'libopencv_core_shim.dll'; then
+            echo "error: windows_shim_smoke.exe does not import libopencv_core_shim.dll" >&2
+            exit 1
+          fi
+          if printf '%s\n' "${smoke_deps}" | grep -qi 'libopencv_core-500.dll'; then
+            echo "error: windows_shim_smoke.exe still imports OpenCV Core directly" >&2
+            exit 1
+          fi
+          if printf '%s\n' "${smoke_deps}" | grep -qi 'libstdc++-6.dll'; then
+            echo "error: windows_shim_smoke.exe still imports libstdc++-6.dll" >&2
+            exit 1
+          fi
+          if printf '%s\n' "${smoke_deps}" | grep -qi 'libgcc_s_seh-1.dll'; then
+            echo "error: windows_shim_smoke.exe still imports libgcc_s_seh-1.dll" >&2
+            exit 1
+          fi
+
+          smoke_exe_win="${smoke_exe}"
+          if command -v cygpath >/dev/null 2>&1; then
+            smoke_exe_win=$(cygpath -wa "${smoke_exe}")
+          fi
+          echo "=== Absolute windows_shim_smoke.exe path ==="
+          printf '%s\n' "${smoke_exe_win}"
+
+          set +e
+          echo "=== Effective runtime PATH ==="
+          MSYS_NO_PATHCONV=1 cmd.exe //c "set \"PATH=${path_lib};${path_runtime};%PATH%\" & echo PATH=%PATH%" || echo "warning: could not print the constructed Windows PATH"
+
+          echo "=== Direct windows_shim_smoke.exe execution ==="
+          MSYS_NO_PATHCONV=1 cmd.exe //c "set \"PATH=${path_lib};${path_runtime};%PATH%\" & \"${smoke_exe_win}\""
+          smokeExitCode=$?
+          echo "WINDOWS_SHIM_SMOKE_EXIT_CODE=${smokeExitCode}"
+
+          if [ "${smokeExitCode}" -ne 0 ]; then
+            echo "=== windows_shim_smoke.exe failed; PE/dependency diagnostics ==="
+            if [ -n "${dump}" ]; then
+              alr exec -- "${dump}" -p "${smoke_exe}" | grep -i 'DLL Name' || echo "warning: could not dump smoke PE imports"
+              alr exec -- "${dump}" -p "${shim_dll}" | grep -i 'DLL Name' || echo "warning: could not dump shim PE imports"
+            fi
+            echo "WINDOWS_SHIM_SMOKE_EXIT_CODE=${smokeExitCode}"
+            exit "${smokeExitCode}"
+          fi
+          set -e
+
           log="${RUNNER_TEMP:-$PWD}/opencv-core-windows-test-build.log"
           echo "TESTS_WINDOWS_STATIC_ADA_RUNTIME=${TESTS_WINDOWS_STATIC_ADA_RUNTIME:-<unset>}"
           if ! alr -n -C tests build -- -v -XTESTS_WINDOWS_STATIC_ADA_RUNTIME=True >"${log}" 2>&1; then
@@ -1205,17 +1360,6 @@ jobs:
             exit 1
           fi
 
-          dump=""
-          if alr exec -- which objdump >/dev/null 2>&1; then
-            dump=objdump
-          elif alr exec -- which x86_64-w64-mingw32-objdump >/dev/null 2>&1; then
-            dump=x86_64-w64-mingw32-objdump
-          fi
-          if [ -z "${dump}" ]; then
-            echo "error: objdump is required to inspect Windows PE dependencies" >&2
-            exit 1
-          fi
-
           echo "=== tests.exe DLL dependencies before AUnit (${dump} -p) ==="
           deps=$(alr exec -- "${dump}" -p "${test_exe}" | grep -i 'DLL Name' || true)
           echo "${deps}"
@@ -1255,79 +1399,10 @@ jobs:
             exit 1
           fi
 
-          cxx_driver=$(sed -n 's/.*Cxx_Driver := "\(.*\)";/\1/p' config/opencv_core_install.gpr)
-          runtime_dir=$(dirname "${cxx_driver}")
-          lib_dir="${PWD}/lib"
-          echo "=== MSYS2 runtime directory ==="
-          printf '%s\n' "${runtime_dir}"
-          case "${runtime_dir}" in
-            *mingw64*bin*)
-              ;;
-            *)
-              echo "error: runtime directory is not MSYS2 mingw64/bin: ${runtime_dir}" >&2
-              exit 1
-              ;;
-          esac
-          if [ ! -d "${runtime_dir}" ]; then
-            echo "error: MSYS2 runtime directory does not exist: ${runtime_dir}" >&2
-            exit 1
-          fi
-
-          echo "=== MSYS2 runtime DLLs ==="
-          for name in libgcc_s_seh-1.dll libstdc++-6.dll libopencv_core-500.dll; do
-            candidate="${runtime_dir}/${name}"
-            if [ -f "${candidate}" ]; then
-              ls -l "${candidate}"
-              sha256sum "${candidate}" || true
-            else
-              echo "error: missing MSYS2 runtime DLL: ${candidate}" >&2
-              exit 1
-            fi
-          done
-
-          shim_dll=""
-          for candidate in lib/libopencv_core_shim.dll lib/opencv_core_shim.dll "${lib_dir}/libopencv_core_shim.dll"; do
-            if [ -f "${candidate}" ]; then
-              shim_dll="${candidate}"
-              break
-            fi
-          done
-          if [ -z "${shim_dll}" ]; then
-            echo "error: libopencv_core_shim.dll is missing before tests.exe launch" >&2
-            ls -l lib || true
-            exit 1
-          fi
-
-          echo "=== GNAT runtime DLL copies for comparison ==="
-          gnat_gcc=$(alr exec -- which gcc || true)
-          gnat_bin=""
-          if [ -n "${gnat_gcc}" ]; then
-            gnat_bin=$(dirname "${gnat_gcc}")
-            echo "GNAT bin=${gnat_bin}"
-            for name in libgcc_s_seh-1.dll libstdc++-6.dll; do
-              candidate="${gnat_bin}/${name}"
-              if [ -f "${candidate}" ]; then
-                ls -l "${candidate}"
-                sha256sum "${candidate}" || true
-              else
-                echo "absent: ${candidate}"
-              fi
-            done
-          else
-            echo "GNAT gcc was not found on PATH"
-          fi
-
-          path_lib="${lib_dir}"
-          path_runtime="${runtime_dir}"
           test_exe_win="${test_exe}"
-          shim_dll_win="${shim_dll}"
           if command -v cygpath >/dev/null 2>&1; then
-            path_lib=$(cygpath -wa "${lib_dir}")
-            path_runtime=$(cygpath -wa "${runtime_dir}")
             test_exe_win=$(cygpath -wa "${test_exe}")
-            shim_dll_win=$(cygpath -wa "${shim_dll}")
           fi
-
           echo "=== Absolute tests.exe path ==="
           printf '%s\n' "${test_exe_win}"
           echo "=== Absolute libopencv_core_shim.dll path ==="
@@ -1336,83 +1411,7 @@ jobs:
           printf '%s\n' "${path_lib}"
           printf '%s\n' "${path_runtime}"
 
-          if [ -z "${gnat_gcc}" ]; then
-            echo "error: GNAT gcc is required to compile windows_shim_smoke.exe" >&2
-            exit 1
-          fi
-          case "${gnat_gcc}" in
-            *mingw64*)
-              echo "error: smoke compiler resolved to MSYS2 gcc: ${gnat_gcc}" >&2
-              exit 1
-              ;;
-          esac
-          if [ ! -f "${gnat_gcc}" ]; then
-            echo "error: GNAT gcc does not exist: ${gnat_gcc}" >&2
-            exit 1
-          fi
-          if [ ! -f lib/libopencv_core_shim.dll.a ]; then
-            echo "error: production shim import library is missing: lib/libopencv_core_shim.dll.a" >&2
-            ls -l lib || true
-            exit 1
-          fi
-
-          smoke_exe="tests/bin/windows_shim_smoke.exe"
-          echo "=== GNAT gcc smoke compile command ==="
-          echo "alr exec -- gcc -o ${smoke_exe} tests/windows_shim_smoke.c -Icpp -Llib -lopencv_core_shim -static-libgcc"
-          alr exec -- gcc -o "${smoke_exe}" tests/windows_shim_smoke.c \
-            -Icpp -Llib -lopencv_core_shim -static-libgcc
-          if [ ! -f "${smoke_exe}" ]; then
-            echo "error: windows_shim_smoke.exe was not produced" >&2
-            ls -l tests/bin || true
-            exit 1
-          fi
-
-          echo "=== windows_shim_smoke.exe PE imports (${dump} -p) ==="
-          smoke_deps=$(alr exec -- "${dump}" -p "${smoke_exe}" | grep -i 'DLL Name' || true)
-          echo "${smoke_deps}"
-          if ! printf '%s\n' "${smoke_deps}" | grep -qi 'libopencv_core_shim.dll'; then
-            echo "error: windows_shim_smoke.exe does not import libopencv_core_shim.dll" >&2
-            exit 1
-          fi
-          if printf '%s\n' "${smoke_deps}" | grep -qi 'libopencv_core-500.dll'; then
-            echo "error: windows_shim_smoke.exe still imports OpenCV Core directly" >&2
-            exit 1
-          fi
-          if printf '%s\n' "${smoke_deps}" | grep -qi 'libstdc++-6.dll'; then
-            echo "error: windows_shim_smoke.exe still imports libstdc++-6.dll" >&2
-            exit 1
-          fi
-          if printf '%s\n' "${smoke_deps}" | grep -qi 'libgcc_s_seh-1.dll'; then
-            echo "error: windows_shim_smoke.exe still imports libgcc_s_seh-1.dll" >&2
-            exit 1
-          fi
-
-          smoke_exe_win="${smoke_exe}"
-          if command -v cygpath >/dev/null 2>&1; then
-            smoke_exe_win=$(cygpath -wa "${smoke_exe}")
-          fi
-          echo "=== Absolute windows_shim_smoke.exe path ==="
-          printf '%s\n' "${smoke_exe_win}"
-
           set +e
-          echo "=== Effective runtime PATH ==="
-          MSYS_NO_PATHCONV=1 cmd.exe //c "set \"PATH=${path_lib};${path_runtime};%PATH%\" & echo PATH=%PATH%" || echo "warning: could not print the constructed Windows PATH"
-
-          echo "=== Direct windows_shim_smoke.exe execution ==="
-          MSYS_NO_PATHCONV=1 cmd.exe //c "set \"PATH=${path_lib};${path_runtime};%PATH%\" & \"${smoke_exe_win}\""
-          smokeExitCode=$?
-          echo "WINDOWS_SHIM_SMOKE_EXIT_CODE=${smokeExitCode}"
-
-          if [ "${smokeExitCode}" -ne 0 ]; then
-            echo "=== windows_shim_smoke.exe failed; PE/dependency diagnostics ==="
-            if [ -n "${dump}" ]; then
-              alr exec -- "${dump}" -p "${smoke_exe}" | grep -i 'DLL Name' || echo "warning: could not dump smoke PE imports"
-              alr exec -- "${dump}" -p "${shim_dll}" | grep -i 'DLL Name' || echo "warning: could not dump shim PE imports"
-            fi
-            echo "WINDOWS_SHIM_SMOKE_EXIT_CODE=${smokeExitCode}"
-            exit "${smokeExitCode}"
-          fi
-
           echo "=== Direct tests.exe execution ==="
           MSYS_NO_PATHCONV=1 cmd.exe //c "set \"PATH=${path_lib};${path_runtime};%PATH%\" & \"${test_exe_win}\""
           testExitCode=$?
