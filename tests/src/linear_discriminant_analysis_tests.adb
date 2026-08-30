@@ -11,6 +11,10 @@ package body Linear_Discriminant_Analysis_Tests is
    use type OpenCV.Core.Mat_Size;
    use Mat_Test_Support;
 
+   package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
+
+   Result : aliased AUnit.Test_Suites.Test_Suite;
+
    type Label_Values is array (Natural range <>) of Long_Float;
 
    procedure Set_Point
@@ -604,9 +608,6 @@ package body Linear_Discriminant_Analysis_Tests is
    end Projection_And_Reconstruction_Reject_Invalid_Inputs;
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
-      package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
-      Result : constant AUnit.Test_Suites.Access_Test_Suite :=
-        new AUnit.Test_Suites.Test_Suite;
    begin
       Result.Add_Test
         (Caller.Create
@@ -640,7 +641,7 @@ package body Linear_Discriminant_Analysis_Tests is
         (Caller.Create
            ("LDA project and reconstruct reject invalid inputs",
             Projection_And_Reconstruction_Reject_Invalid_Inputs'Access));
-      return Result;
+      return Result'Access;
    end Suite;
 
 end Linear_Discriminant_Analysis_Tests;

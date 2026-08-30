@@ -35,7 +35,8 @@ project OpenCV_Core is
       --  consumers unchanged.
       case OpenCV_Core_Install.Use_Windows_Shared_Shim is
          when "True" =>
-            for Linker_Options use ("-static-libgcc", "-static-libstdc++");
+            for Linker_Options use
+              ("-lopencv_core_shim", "-static-libgcc", "-static-libstdc++");
          when "False" =>
             null;
       end case;
