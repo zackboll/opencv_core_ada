@@ -5,7 +5,6 @@ with "opencv_core_shim.gpr";
 project OpenCV_Core is
 
    for Library_Name use "opencv_core_ada";
-   for Library_Version use Project'Library_Name & ".so." & OpenCV_Core_Config.Crate_Version;
 
    for Languages use ("Ada");
    for Source_Dirs use ("src/", "src/internal/", "config/");

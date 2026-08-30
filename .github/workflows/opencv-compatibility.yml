@@ -127,6 +127,31 @@ jobs:
       - name: Run test suite
         run: alr -C tests run
 
+      - name: Smoke test relocatable Ada library
+        run: |
+          set -eu
+          OPENCV_CORE_LIBRARY_TYPE=relocatable alr -n build
+
+          ada_library=$(find lib -maxdepth 1 -type f -name 'libopencv_core_ada*.so' -print -quit)
+          if [ -z "${ada_library}" ]; then
+            echo "error: relocatable libopencv_core_ada*.so is missing" >&2
+            find lib -maxdepth 1 -type f -print || true
+            exit 1
+          fi
+
+          echo "=== Relocatable Ada library ==="
+          file "${ada_library}"
+          dependencies=$(readelf -d "${ada_library}" | grep '(NEEDED)' || true)
+          echo "${dependencies}"
+          if ! printf '%s\n' "${dependencies}" | grep -F 'libopencv_core_shim'; then
+            echo "error: relocatable Ada library does not depend on the production shim" >&2
+            exit 1
+          fi
+          if printf '%s\n' "${dependencies}" | grep -E 'libopencv_core\.so|libstdc\+\+|libgcc_s'; then
+            echo "error: relocatable Ada library has an unexpected direct OpenCV/C++ runtime dependency" >&2
+            exit 1
+          fi
+
   alire-ubuntu-lts:
     name: Alire Ubuntu LTS
     runs-on: ubuntu-latest
@@ -495,6 +520,36 @@ jobs:
           otool -L "${test_exe}" | grep libopencv_core_shim
           if otool -L "${test_exe}" | grep -E 'libopencv_core_shim_diag|libopencv_core_shim_ada_diag'; then
             echo "error: test executable depends on a diagnostic shim dylib" >&2
+            exit 1
+          fi
+
+      - name: Smoke test relocatable Ada library
+        run: |
+          set -eu
+          OPENCV_CORE_LIBRARY_TYPE=relocatable alr -n build
+
+          ada_library=""
+          for candidate in lib/libopencv_core_ada.dylib lib/libopencv_core_ada.*.dylib; do
+            if [ -e "${candidate}" ]; then
+              ada_library="${candidate}"
+              break
+            fi
+          done
+          if [ -z "${ada_library}" ]; then
+            echo "error: relocatable libopencv_core_ada*.dylib is missing" >&2
+            ls -l lib || true
+            exit 1
+          fi
+
+          echo "=== Relocatable Ada library ==="
+          dependencies=$(otool -L "${ada_library}")
+          echo "${dependencies}"
+          if ! printf '%s\n' "${dependencies}" | grep -F 'libopencv_core_shim'; then
+            echo "error: relocatable Ada library does not depend on the production shim" >&2
+            exit 1
+          fi
+          if printf '%s\n' "${dependencies}" | grep -E 'libopencv_core\.[0-9].*\.dylib|libstdc\+\+|/usr/lib/libc\+\+'; then
+            echo "error: relocatable Ada library has an unexpected direct OpenCV/C++ runtime dependency" >&2
             exit 1
           fi
 
@@ -1418,6 +1473,55 @@ jobs:
           fi
           if printf '%s\n' "${deps}" | grep -qi 'libgnarl-16.dll'; then
             echo "warning: test executable still imports libgnarl-16.dll"
+          fi
+
+      - name: Smoke test relocatable Ada library
+        run: |
+          set -eu
+          OPENCV_CORE_LIBRARY_TYPE=relocatable alr -n build
+
+          ada_dll=lib/libopencv_core_ada.dll
+          if [ ! -f "${ada_dll}" ]; then
+            echo "error: ${ada_dll} is missing" >&2
+            ls -l lib || true
+            exit 1
+          fi
+
+          dump=""
+          if alr exec -- which objdump >/dev/null 2>&1; then
+            dump=objdump
+          elif alr exec -- which x86_64-w64-mingw32-objdump >/dev/null 2>&1; then
+            dump=x86_64-w64-mingw32-objdump
+          fi
+          if [ -z "${dump}" ]; then
+            echo "error: objdump is unavailable" >&2
+            exit 1
+          fi
+
+          echo "=== Relocatable Ada library imports (${dump} -p) ==="
+          deps=$(alr exec -- "${dump}" -p "${ada_dll}" | grep -i 'DLL Name' || true)
+          echo "${deps}"
+          if ! printf '%s\n' "${deps}" | grep -qi 'libopencv_core_shim.dll'; then
+            echo "error: relocatable Ada library does not import libopencv_core_shim.dll" >&2
+            exit 1
+          fi
+          if printf '%s\n' "${deps}" | grep -Eqi 'libopencv_core-[^[:space:]]*\.dll|libstdc\+\+-6\.dll|libgcc_s_seh-1\.dll'; then
+            echo "error: relocatable Ada library has an unexpected direct OpenCV/C++ runtime import" >&2
+            exit 1
+          fi
+
+          echo "=== GNAT/GNARL imports (allowed) ==="
+          printf '%s\n' "${deps}" | grep -Ei 'libgnat|libgnarl' || echo "none"
+
+          if [ ! -f obj/shim/external/opencv_core_shim.o ]; then
+            echo "error: external shim object is missing after relocatable build" >&2
+            exit 1
+          fi
+          unexpected_objects=$(find obj/shim -type f -name 'opencv_core_shim.o' ! -path 'obj/shim/external/opencv_core_shim.o' -print)
+          if [ -n "${unexpected_objects}" ]; then
+            echo "error: relocatable build independently produced another shim object" >&2
+            printf '%s\n' "${unexpected_objects}"
+            exit 1
           fi
 
 
