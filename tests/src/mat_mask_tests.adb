@@ -1074,6 +1074,7 @@ package body Mat_Mask_Tests is
       Destination.Set_To (OpenCV.Core.Make_Scalar (9.0, 9.0, 9.0));
       Source.Copy_To (Destination, Mask);
       Zero_Mask := OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 1));
+      Zero_Mask.Set_To (OpenCV.Core.Make_Scalar (0.0));
       Source.Copy_To (Destination, Zero_Mask);
       Empty_Source.Copy_To (Empty_Destination, Empty_Mask);
 

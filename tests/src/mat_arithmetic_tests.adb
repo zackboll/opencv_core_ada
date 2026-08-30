@@ -251,7 +251,7 @@ package body Mat_Arithmetic_Tests is
       pragma Unreferenced (Test);
       Integer_Numerator   : OpenCV.Core.Mat :=
         OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
-      Integer_Denominator : constant OpenCV.Core.Mat :=
+      Integer_Denominator : OpenCV.Core.Mat :=
         OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
       Float_Numerator     : OpenCV.Core.Mat :=
         OpenCV.Core.Create (1, 3, (OpenCV.Core.Float32, 1));
@@ -261,9 +261,11 @@ package body Mat_Arithmetic_Tests is
       Float_Result        : OpenCV.Core.Mat;
    begin
       OpenCV.Core.UInt8_Access.Set (Integer_Numerator, 0, 0, 20);
+      Integer_Denominator.Set_To (OpenCV.Core.Make_Scalar (0.0));
       Integer_Result := Integer_Numerator.Divide (Integer_Denominator);
       OpenCV.Core.Float32_Access.Set (Float_Numerator, 0, 0, 1.0);
       OpenCV.Core.Float32_Access.Set (Float_Numerator, 0, 1, -1.0);
+      OpenCV.Core.Float32_Access.Set (Float_Numerator, 0, 2, 0.0);
       Float_Denominator.Set_To (OpenCV.Core.Make_Scalar (0.0));
       Float_Result := Float_Numerator.Divide (Float_Denominator);
       AUnit.Assertions.Assert
@@ -294,6 +296,7 @@ package body Mat_Arithmetic_Tests is
       OpenCV.Core.Float32_Access.Set (Numerator, 0, 0, 2.0);
       OpenCV.Core.Float32_Access.Set (Numerator, 0, 1, 1.0);
       OpenCV.Core.Float32_Access.Set (Numerator, 0, 2, -1.0);
+      OpenCV.Core.Float32_Access.Set (Numerator, 0, 3, 0.0);
       OpenCV.Core.Float32_Access.Set (Finite_Image, 0, 0, 2.0);
       Denominator.Set_To (OpenCV.Core.Make_Scalar (0.0));
       Result := Numerator.Divide (Denominator);
@@ -501,6 +504,7 @@ package body Mat_Arithmetic_Tests is
       OpenCV.Core.Float32_Access.Set (Left, 0, 1, 99.0);
       OpenCV.Core.Float32_Access.Set (Result, 0, 1, 9.0);
       OpenCV.Core.Float32_Access.Set (Numerator, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Numerator, 0, 1, 0.0);
       Zeros.Set_To (OpenCV.Core.Make_Scalar (0.0));
       Nonfinite := Numerator.Divide (Zeros);
       Empty_Result := Empty_Left.Abs_Diff (Empty_Right);
