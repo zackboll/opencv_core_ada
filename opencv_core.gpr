@@ -20,6 +20,22 @@ project OpenCV_Core is
         external ("LIBRARY_TYPE", "static-pic"));
    for Library_Kind use Library_Type;
 
+   case Library_Type is
+      when "relocatable" =>
+         case OpenCV_Core_Install.Ada_Link is
+            when "Shared_Shim_Static_GCC_Runtime" =>
+               for Library_Options use
+                 ("-L" & Project'Project_Dir & "lib",
+                  "-lopencv_core_shim",
+                  "-static-libgcc",
+                  "-static-libstdc++");
+            when "Default" =>
+               null;
+         end case;
+      when "static" | "static-pic" =>
+         null;
+   end case;
+
    package Compiler is
       for Default_Switches ("Ada") use
          OpenCV_Core_Config.Ada_Compiler_Switches & ("-Werror");
