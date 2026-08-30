@@ -616,8 +616,20 @@ jobs:
             echo "error: generated GPR did not select MacPorts library path" >&2
             exit 1
           fi
-          if ! grep -F 'Use_Apple_Clang : Apple_Clang_Kind := "True";' config/opencv_core_install.gpr; then
-            echo "error: generated GPR did not enable Apple clang++" >&2
+          if ! grep -F 'Shim_Build : Shim_Build_Kind := "Relocatable";' config/opencv_core_install.gpr; then
+            echo "error: generated GPR did not select a relocatable shim" >&2
+            exit 1
+          fi
+          if ! grep -F 'Cxx_Toolchain : Cxx_Toolchain_Kind := "Apple_Clang";' config/opencv_core_install.gpr; then
+            echo "error: generated GPR did not select Apple clang++" >&2
+            exit 1
+          fi
+          if ! grep -F 'Ada_Link : Ada_Link_Kind := "Default";' config/opencv_core_install.gpr; then
+            echo "error: generated GPR did not select default Ada linking" >&2
+            exit 1
+          fi
+          if ! grep -E 'Cxx_Sysroot := "[^"]+";' config/opencv_core_install.gpr; then
+            echo "error: generated GPR did not record the macOS SDK sysroot" >&2
             exit 1
           fi
 
@@ -974,8 +986,20 @@ jobs:
           echo "=== Generated config/opencv_core_install.gpr ==="
           cat config/opencv_core_install.gpr
 
-          if ! grep -F 'Use_Apple_Clang : Apple_Clang_Kind := "False";' config/opencv_core_install.gpr; then
-            echo "error: generated GPR did not keep Use_Apple_Clang False" >&2
+          if ! grep -F 'Shim_Build : Shim_Build_Kind := "External_Relocatable";' config/opencv_core_install.gpr; then
+            echo "error: generated GPR did not select an external relocatable shim" >&2
+            exit 1
+          fi
+          if ! grep -F 'Cxx_Toolchain : Cxx_Toolchain_Kind := "GNU";' config/opencv_core_install.gpr; then
+            echo "error: generated GPR did not select the GNU C++ toolchain" >&2
+            exit 1
+          fi
+          if ! grep -F 'Ada_Link : Ada_Link_Kind := "Shared_Shim_Static_GCC_Runtime";' config/opencv_core_install.gpr; then
+            echo "error: generated GPR did not select shared-shim static GCC runtime linking" >&2
+            exit 1
+          fi
+          if ! grep -F 'Cxx_Sysroot := "";' config/opencv_core_install.gpr; then
+            echo "error: generated GPR unexpectedly selected a C++ sysroot" >&2
             exit 1
           fi
           cxx_driver=$(sed -n 's/.*Cxx_Driver := "\(.*\)";/\1/p' config/opencv_core_install.gpr)
@@ -1002,10 +1026,6 @@ jobs:
           "${cxx_driver}" --version
           if ! grep -F 'Cxx_Runtime_Switch := "-lstdc++";' config/opencv_core_install.gpr; then
             echo "error: generated GPR did not select -lstdc++" >&2
-            exit 1
-          fi
-          if ! grep -F 'Use_Windows_Shared_Shim : Windows_Shared_Shim_Kind := "True";' config/opencv_core_install.gpr; then
-            echo "error: generated GPR did not enable the Windows shared shim" >&2
             exit 1
           fi
           if ! grep -E 'OpenCV_Core_Link_Option := "[^"]*mingw64[/\\]lib[/\\]libopencv_core\.dll\.a";' config/opencv_core_install.gpr; then

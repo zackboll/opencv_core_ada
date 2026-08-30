@@ -30,14 +30,13 @@ project OpenCV_Core is
    end Binder;
 
    package Linker is
-      --  Windows Ada consumers must not dynamically import the MinGW
-      --  libgcc/libstdc++ DLLs also used by OpenCV. Keep Linux/macOS
-      --  consumers unchanged.
-      case OpenCV_Core_Install.Use_Windows_Shared_Shim is
-         when "True" =>
+      --  Ada consumers of a shared shim may require an isolated static GCC
+      --  runtime. Other consumer link strategies remain unchanged.
+      case OpenCV_Core_Install.Ada_Link is
+         when "Shared_Shim_Static_GCC_Runtime" =>
             for Linker_Options use
               ("-lopencv_core_shim", "-static-libgcc", "-static-libstdc++");
-         when "False" =>
+         when "Default" =>
             null;
       end case;
    end Linker;
