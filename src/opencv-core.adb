@@ -2551,7 +2551,8 @@ package body OpenCV.Core is
       Operation      : String;
       Error_Context  : String;
       Transform_Kind : OpenCV.Internal.C_API.C_Int32;
-      Requirement    : DFT_Channel_Requirement) return Mat
+      Requirement    : DFT_Channel_Requirement;
+      Require_2D     : Boolean := False) return Mat
    is
       Result     : Mat;
       New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
@@ -2559,6 +2560,12 @@ package body OpenCV.Core is
       Status     : OpenCV.Internal.C_API.Status;
    begin
       Validate_DFT_Floating_Source (Self, Operation, Requirement);
+
+      if Require_2D and then Self.Dimension_Count /= 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            Operation & " requires exactly two dimensions");
+      end if;
 
       Status :=
         OpenCV.Internal.C_API.Mat_DFT
@@ -2673,6 +2680,31 @@ package body OpenCV.Core is
            OpenCV.Internal.C_API.DFT_Rows_Inverse_Real,
            Requirement => Complex_Only);
    end Inverse_Real_Discrete_Fourier_Transform_Rows;
+
+   function Packed_Discrete_Fourier_Transform_Rows (Self : Mat) return Mat is
+   begin
+      return
+        Perform_DFT
+          (Self,
+           "Packed_Discrete_Fourier_Transform_Rows",
+           "Mat row-wise packed discrete Fourier transform",
+           OpenCV.Internal.C_API.DFT_Rows_Forward_Packed,
+           Requirement => Real_Only,
+           Require_2D  => True);
+   end Packed_Discrete_Fourier_Transform_Rows;
+
+   function Inverse_Packed_Discrete_Fourier_Transform_Rows
+     (Self : Mat) return Mat is
+   begin
+      return
+        Perform_DFT
+          (Self,
+           "Inverse_Packed_Discrete_Fourier_Transform_Rows",
+           "Mat row-wise inverse packed discrete Fourier transform",
+           OpenCV.Internal.C_API.DFT_Rows_Inverse_Packed,
+           Requirement => Real_Only,
+           Require_2D  => True);
+   end Inverse_Packed_Discrete_Fourier_Transform_Rows;
 
    procedure Validate_DCT_Source
      (Self : Mat; Operation : String; Row_Wise : Boolean := False) is

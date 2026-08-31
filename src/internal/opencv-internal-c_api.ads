@@ -134,6 +134,8 @@ package OpenCV.Internal.C_API is
    DFT_Rows_Inverse_Real              : constant C_Int32 := 5;
    DFT_Forward_Packed                 : constant C_Int32 := 6;
    DFT_Inverse_Packed                 : constant C_Int32 := 7;
+   DFT_Rows_Forward_Packed            : constant C_Int32 := 8;
+   DFT_Rows_Inverse_Packed            : constant C_Int32 := 9;
    DCT_Forward                        : constant C_Int32 := 0;
    DCT_Inverse                        : constant C_Int32 := 1;
    DCT_Rows_Forward                   : constant C_Int32 := 2;

@@ -5420,6 +5420,225 @@ package body Mat_Transform_Tests is
         (Forward_Complex'Access, "Packed DFT must reject C2 input");
    end Packed_DFT_Rejects_Invalid_Inputs;
 
+   function Packed_Rows_Sample return OpenCV.Core.Mat is
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 5, (OpenCV.Core.Float32, 1));
+   begin
+      for Row in 0 .. 2 loop
+         for Column in 0 .. 4 loop
+            OpenCV.Core.Float32_Access.Set
+              (Source,
+               Row,
+               Column,
+               Interfaces.IEEE_Float_32
+                 ((Row + 1) * (Column + 2) + Row * Row - Column));
+         end loop;
+      end loop;
+      return Source;
+   end Packed_Rows_Sample;
+
+   procedure Packed_DFT_Rows_Forward_Oracles (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source32       : constant OpenCV.Core.Mat := Packed_Rows_Sample;
+      Source64       : constant OpenCV.Core.Mat :=
+        Source32.Convert_To (OpenCV.Core.Float64);
+      Packed32       : constant OpenCV.Core.Mat :=
+        Source32.Packed_Discrete_Fourier_Transform_Rows;
+      Packed64       : constant OpenCV.Core.Mat :=
+        Source64.Packed_Discrete_Fourier_Transform_Rows;
+      Ordinary       : constant OpenCV.Core.Mat :=
+        Source32.Packed_Discrete_Fourier_Transform;
+      All_Rows_Match : Boolean := True;
+   begin
+      AUnit.Assertions.Assert
+        (Packed32.Rows = 3
+         and then Packed32.Columns = 5
+         and then Packed32.Depth = OpenCV.Core.Float32
+         and then Packed32.Channels = 1
+         and then Packed64.Rows = 3
+         and then Packed64.Columns = 5
+         and then Packed64.Depth = OpenCV.Core.Float64
+         and then Packed64.Channels = 1,
+         "Packed DFT_ROWS must preserve odd/odd shape, depth, and C1");
+
+      for Row in 0 .. Source32.Rows - 1 loop
+         declare
+            Expected32 : constant OpenCV.Core.Mat :=
+              Source32.Row_View (OpenCV.Core.Size_Coordinate (Row))
+                .Packed_Discrete_Fourier_Transform;
+            Actual32   : constant OpenCV.Core.Mat :=
+              Packed32.Row_View (OpenCV.Core.Size_Coordinate (Row));
+            Expected64 : constant OpenCV.Core.Mat :=
+              Source64.Row_View (OpenCV.Core.Size_Coordinate (Row))
+                .Packed_Discrete_Fourier_Transform;
+            Actual64   : constant OpenCV.Core.Mat :=
+              Packed64.Row_View (OpenCV.Core.Size_Coordinate (Row));
+         begin
+            All_Rows_Match :=
+              All_Rows_Match
+              and then DFT_Float32_C1_Close (Actual32, Expected32, 0.000_1)
+              and then Actual64.Abs_Diff (Expected64).Norm < 1.0E-12;
+         end;
+      end loop;
+
+      AUnit.Assertions.Assert
+        (All_Rows_Match,
+         "Every packed DFT_ROWS row must match its independent packed DFT");
+      AUnit.Assertions.Assert
+        (Packed32.Abs_Diff (Ordinary).Norm > 0.1,
+         "Packed DFT_ROWS must differ from an ordinary 2-D packed DFT");
+   end Packed_DFT_Rows_Forward_Oracles;
+
+   procedure Packed_DFT_Rows_Round_Trips_And_Length_One
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source32      : constant OpenCV.Core.Mat := Packed_Rows_Sample;
+      Source64      : constant OpenCV.Core.Mat :=
+        Source32.Convert_To (OpenCV.Core.Float64);
+      Restored32    : constant OpenCV.Core.Mat :=
+        Source32
+          .Packed_Discrete_Fourier_Transform_Rows
+          .Inverse_Packed_Discrete_Fourier_Transform_Rows;
+      Restored64    : constant OpenCV.Core.Mat :=
+        Source64
+          .Packed_Discrete_Fourier_Transform_Rows
+          .Inverse_Packed_Discrete_Fourier_Transform_Rows;
+      Full_Restored : constant OpenCV.Core.Mat :=
+        Source32
+          .Discrete_Fourier_Transform_Rows
+          .Inverse_Real_Discrete_Fourier_Transform_Rows;
+      Length_One    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 1, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Length_One, 0, 0, -2.0);
+      OpenCV.Core.Float32_Access.Set (Length_One, 1, 0, 0.5);
+      OpenCV.Core.Float32_Access.Set (Length_One, 2, 0, 7.0);
+      AUnit.Assertions.Assert
+        (DFT_Float32_C1_Close (Restored32, Source32, 0.000_1)
+         and then DFT_Float32_C1_Close (Restored32, Full_Restored, 0.000_1),
+         "Packed and full-complex Float32 row paths must reconstruct equally");
+      AUnit.Assertions.Assert
+        (Restored64.Abs_Diff (Source64).Norm < 1.0E-12,
+         "Packed Float64 DFT_ROWS must round-trip with tight tolerance");
+      AUnit.Assertions.Assert
+        (DFT_Float32_C1_Close
+           (Length_One
+              .Packed_Discrete_Fourier_Transform_Rows
+              .Inverse_Packed_Discrete_Fourier_Transform_Rows,
+            Length_One,
+            0.000_1),
+         "Three independent row transforms of length one must round-trip");
+   end Packed_DFT_Rows_Round_Trips_And_Length_One;
+
+   procedure Packed_DFT_Rows_Region_And_Independence
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 7, (OpenCV.Core.Float32, 1));
+   begin
+      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      for Row in 0 .. 2 loop
+         for Column in 0 .. 4 loop
+            OpenCV.Core.Float32_Access.Set
+              (Parent,
+               Row,
+               Column + 1,
+               Interfaces.IEEE_Float_32 (Row * 10 + Column + 1));
+         end loop;
+      end loop;
+      declare
+         Source   : constant OpenCV.Core.Mat :=
+           Parent.Region ((X => 1, Y => 0, Width => 5, Height => 3));
+         Original : constant OpenCV.Core.Mat := Source.Clone;
+         Packed   : OpenCV.Core.Mat :=
+           Source.Packed_Discrete_Fourier_Transform_Rows;
+         Restored : OpenCV.Core.Mat :=
+           Packed.Inverse_Packed_Discrete_Fourier_Transform_Rows;
+      begin
+         AUnit.Assertions.Assert
+           (not Source.Is_Continuous
+            and then DFT_Float32_C1_Close (Restored, Original, 0.000_1)
+            and then DFT_Float32_C1_Close (Source, Original, 0.0),
+            "Packed DFT_ROWS must support Regions and leave Self unchanged");
+         Packed.Set_To (OpenCV.Core.Make_Scalar (-7.0));
+         AUnit.Assertions.Assert
+           (DFT_Float32_C1_Close (Restored, Original, 0.000_1),
+            "Packed row inverse output must not share packed storage");
+         Restored.Set_To (OpenCV.Core.Make_Scalar (-9.0));
+         AUnit.Assertions.Assert
+           (DFT_Float32_C1_Close (Source, Original, 0.0),
+            "Packed row results must own independent storage");
+      end;
+   end Packed_DFT_Rows_Region_And_Independence;
+
+   procedure Packed_DFT_Rows_Rejects_Invalid_Inputs
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Default_Source : OpenCV.Core.Mat;
+      Empty_Source   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 1));
+      Integer_Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 5, (OpenCV.Core.Int32, 1));
+      Complex_Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 5, (OpenCV.Core.Float32, 2));
+      Three_D_Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (OpenCV.Core.Dimension_Array'(1 => 2, 2 => 3, 3 => 5),
+           (OpenCV.Core.Float32, 1));
+
+      procedure Forward_Default is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Default_Source.Packed_Discrete_Fourier_Transform_Rows;
+      end Forward_Default;
+      procedure Inverse_Empty is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored :=
+           Empty_Source.Inverse_Packed_Discrete_Fourier_Transform_Rows;
+      end Inverse_Empty;
+      procedure Forward_Integer is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Integer_Source.Packed_Discrete_Fourier_Transform_Rows;
+      end Forward_Integer;
+      procedure Forward_Complex is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Complex_Source.Packed_Discrete_Fourier_Transform_Rows;
+      end Forward_Complex;
+      procedure Inverse_Complex is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored :=
+           Complex_Source.Inverse_Packed_Discrete_Fourier_Transform_Rows;
+      end Inverse_Complex;
+      procedure Forward_Three_D is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Three_D_Source.Packed_Discrete_Fourier_Transform_Rows;
+      end Forward_Three_D;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Forward_Default'Access, "Packed DFT_ROWS must reject a default Mat");
+      Assert_Raises_OpenCV_Error
+        (Inverse_Empty'Access,
+         "Packed inverse DFT_ROWS must reject empty input");
+      Assert_Raises_OpenCV_Error
+        (Forward_Integer'Access, "Packed DFT_ROWS must reject integer depth");
+      Assert_Raises_OpenCV_Error
+        (Forward_Complex'Access, "Packed DFT_ROWS must reject C2 input");
+      Assert_Raises_OpenCV_Error
+        (Inverse_Complex'Access,
+         "Packed inverse DFT_ROWS must reject C2 input");
+      Assert_Raises_OpenCV_Error
+        (Forward_Three_D'Access, "Packed DFT_ROWS must reject non-2-D input");
+   end Packed_DFT_Rows_Rejects_Invalid_Inputs;
+
    procedure DFT_Rows_Forward_Matches_Independent_Rows
      (Test : in out Mat_Test_Fixture)
    is
@@ -7826,6 +8045,22 @@ package body Mat_Transform_Tests is
         (Caller.Create
            ("Packed DFT rejects empty, integer, and C2 inputs",
             Packed_DFT_Rejects_Invalid_Inputs'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Packed DFT_ROWS Float32 and Float64 forward row oracles",
+            Packed_DFT_Rows_Forward_Oracles'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Packed DFT_ROWS round trips and row length one",
+            Packed_DFT_Rows_Round_Trips_And_Length_One'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Packed DFT_ROWS non-contiguous Region and independent storage",
+            Packed_DFT_Rows_Region_And_Independence'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Packed DFT_ROWS rejects empty, integer, and C2 inputs",
+            Packed_DFT_Rows_Rejects_Invalid_Inputs'Access));
       Result.Add_Test
         (Caller.Create
            ("DFT_ROWS forward matches independent row DFTs",

@@ -163,6 +163,8 @@ opencv_core_status opencv_core_border_interpolate(int32_t position,
 #define OPENCV_CORE_DFT_ROWS_INVERSE_REAL ((int32_t)5)
 #define OPENCV_CORE_DFT_FORWARD_PACKED ((int32_t)6)
 #define OPENCV_CORE_DFT_INVERSE_PACKED ((int32_t)7)
+#define OPENCV_CORE_DFT_ROWS_FORWARD_PACKED ((int32_t)8)
+#define OPENCV_CORE_DFT_ROWS_INVERSE_PACKED ((int32_t)9)
 
 /*
  * Stable DCT transform-kind identifiers for the C ABI. These are

@@ -914,6 +914,25 @@ package OpenCV.Core is
    --  independent storage and preserves rows, columns, and floating depth.
    function Inverse_Real_Discrete_Fourier_Transform_Rows
      (Self : Mat) return Mat;
+   --  Returns one independently transformed packed CCS spectrum per row using
+   --  DFT_ROWS without DFT_COMPLEX_OUTPUT. Self must be a non-empty, exactly
+   --  2-D Float32 or Float64 C1 Mat. For an M x N Mat, rows are a batch
+   --  dimension: the result contains M independent length-N transforms, not
+   --  one 2-D transform. Rows, columns, depth, and the single channel are
+   --  preserved; odd row counts and odd positive row lengths are supported.
+   --  Continuity is not required, Self is unchanged, and the result owns
+   --  independent storage. The same DFT arithmetic-safety limits apply.
+   function Packed_Discrete_Fourier_Transform_Rows (Self : Mat) return Mat;
+   --  Returns the normalized C1 real inverse of every packed CCS row using
+   --  DFT_ROWS, DFT_INVERSE, DFT_SCALE, and DFT_REAL_OUTPUT. Self has the same
+   --  structural and type requirements as
+   --  Packed_Discrete_Fourier_Transform_Rows and is intended to contain packed
+   --  row spectra such as those returned by that operation. The binding does
+   --  not inspect CCS contents or numerical validity. Each row is
+   --  reconstructed independently. Shape and depth are preserved, Self is
+   --  unchanged, and the result owns independent storage.
+   function Inverse_Packed_Discrete_Fourier_Transform_Rows
+     (Self : Mat) return Mat;
    --  Returns an independently owned Discrete Cosine Transform of
    --  Self using OpenCV 4.10 cv::dct. This is not DFT, a packed CCS
    --  spectrum, a batched DCT_ROWS transform, or an in-place

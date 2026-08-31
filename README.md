@@ -948,6 +948,8 @@ support, plus orthonormal DCT support:
 - `Discrete_Fourier_Transform_Rows`
 - `Inverse_Discrete_Fourier_Transform_Rows`
 - `Inverse_Real_Discrete_Fourier_Transform_Rows`
+- `Packed_Discrete_Fourier_Transform_Rows`
+- `Inverse_Packed_Discrete_Fourier_Transform_Rows`
 - `Discrete_Cosine_Transform`
 - `Inverse_Discrete_Cosine_Transform`
 - `Discrete_Cosine_Transform_Rows`
@@ -956,18 +958,21 @@ support, plus orthonormal DCT support:
 - `Multiply_Packed_Spectra`
 - `Optimal_DFT_Size`
 
-Two Fourier representations are available. `Discrete_Fourier_Transform`
-returns a full two-channel (`C2`) complex spectrum. For real (`C1`) input,
-`Packed_Discrete_Fourier_Transform` returns OpenCV's native same-shape,
-same-depth packed CCS (`C1`) spectrum. The packed representation is opaque and
-is primarily intended for efficient spectral pipelines and inverse
-transformation; its physical storage layout follows OpenCV. Both inverse paths
-are scaled, so a forward/inverse round trip approximately recovers the source
-without an extra caller scale factor.
+Four forward Fourier forms are available: ordinary full-complex, ordinary
+packed CCS, row-wise full-complex, and row-wise packed CCS.
+`Discrete_Fourier_Transform` returns a full two-channel (`C2`) complex spectrum.
+For real (`C1`) input, `Packed_Discrete_Fourier_Transform` returns OpenCV's
+native same-shape, same-depth packed CCS (`C1`) spectrum. The `_Rows` forms
+perform each row as an independent 1-D transform. In particular,
+`Packed_Discrete_Fourier_Transform_Rows` returns a same-shape C1 Mat containing
+one independent packed CCS representation per row, rather than an ordinary 2-D
+spectrum. The packed representation is opaque and its physical storage layout
+follows OpenCV. All inverse paths are scaled, so a forward/inverse round trip
+approximately recovers the source without an extra caller scale factor.
 `Inverse_Real_Discrete_Fourier_Transform` provides the real-output path for
-conjugate-symmetric spectra. The corresponding `_Rows` operations use
-`DFT_ROWS` to transform every row as an independent 1-D signal while preserving
-the same full-complex representation and scaled inverse convention.
+The corresponding `_Rows` operations use `DFT_ROWS` to transform every row as
+an independent 1-D signal. Full-complex C2 and packed CCS C1 row spectra have
+distinct inverse operations.
 The corresponding row-wise DCT operations use `DCT_ROWS` and OpenCV's
 orthonormal inverse convention. Only the row length must be one or even; the
 number of independent rows may be odd.
@@ -979,8 +984,9 @@ ordinary spectral multiplication from conjugate-right multiplication with
 inverse-transform, pad, crop, or otherwise construct a complete convolution or
 correlation pipeline.
 
-Packed row transforms, packed spectrum division, CCS-bin accessors,
-representation conversion, and in-place transforms are not yet exposed.
+Packed row spectrum multiplication, packed spectrum division, CCS-bin
+accessors, representation conversion, and in-place transforms are not yet
+exposed.
 
 ---
 
