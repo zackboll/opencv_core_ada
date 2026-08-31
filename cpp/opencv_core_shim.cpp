@@ -7022,6 +7022,12 @@ opencv_core_mat_dct(const opencv_core_mat_handle *source,
     case OPENCV_CORE_DCT_INVERSE:
         flags = cv::DCT_INVERSE;
         break;
+    case OPENCV_CORE_DCT_ROWS_FORWARD:
+        flags = cv::DCT_ROWS;
+        break;
+    case OPENCV_CORE_DCT_ROWS_INVERSE:
+        flags = cv::DCT_ROWS | cv::DCT_INVERSE;
+        break;
     default:
         return invalid_argument("transform_kind must be a known DCT kind");
     }

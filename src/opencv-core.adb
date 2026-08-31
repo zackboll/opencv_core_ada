@@ -2638,7 +2638,8 @@ package body OpenCV.Core is
            Require_Complex => True);
    end Inverse_Real_Discrete_Fourier_Transform_Rows;
 
-   procedure Validate_DCT_Source (Self : Mat; Operation : String) is
+   procedure Validate_DCT_Source
+     (Self : Mat; Operation : String; Row_Wise : Boolean := False) is
    begin
       if Self.Is_Empty then
          Ada.Exceptions.Raise_Exception
@@ -2661,7 +2662,9 @@ package body OpenCV.Core is
          Column_Count : constant Natural := Self.Columns;
          Even_Length  : Boolean;
       begin
-         if Row_Count = 1 and then Column_Count = 1 then
+         if Row_Wise then
+            Even_Length := Column_Count = 1 or else Column_Count mod 2 = 0;
+         elsif Row_Count = 1 and then Column_Count = 1 then
             Even_Length := True;
          elsif Row_Count = 1 then
             Even_Length := Column_Count mod 2 = 0;
@@ -2699,64 +2702,82 @@ package body OpenCV.Core is
       end;
    end Validate_DCT_Source;
 
-   function Discrete_Cosine_Transform (Self : Mat) return Mat is
+   function Perform_DCT
+     (Self           : Mat;
+      Operation      : String;
+      Error_Context  : String;
+      Transform_Kind : OpenCV.Internal.C_API.C_Int32;
+      Row_Wise       : Boolean := False) return Mat
+   is
       Result     : Mat;
       New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
         OpenCV.Internal.C_API.Null_Mat_Handle;
       Status     : OpenCV.Internal.C_API.Status;
    begin
-      Validate_DCT_Source (Self, "Discrete_Cosine_Transform");
+      Validate_DCT_Source (Self, Operation, Row_Wise);
 
       Status :=
         OpenCV.Internal.C_API.Mat_DCT
           (Source         => Self.Handle,
-           Transform_Kind => OpenCV.Internal.C_API.DCT_Forward,
+           Transform_Kind => Transform_Kind,
            Result         => New_Handle'Access);
       if Status /= OpenCV.Internal.C_API.Success then
          OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
-         Raise_On_Error (Status, "Mat discrete cosine transform");
+         Raise_On_Error (Status, Error_Context);
       end if;
 
       if New_Handle = OpenCV.Internal.C_API.Null_Mat_Handle then
          Ada.Exceptions.Raise_Exception
            (OpenCV_Error'Identity,
-            "Mat discrete cosine transform returned a null result handle");
+            Error_Context & " returned a null result handle");
       end if;
 
       OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
       Result.Handle := New_Handle;
       return Result;
+   end Perform_DCT;
+
+   function Discrete_Cosine_Transform (Self : Mat) return Mat is
+   begin
+      return
+        Perform_DCT
+          (Self,
+           "Discrete_Cosine_Transform",
+           "Mat discrete cosine transform",
+           OpenCV.Internal.C_API.DCT_Forward);
    end Discrete_Cosine_Transform;
 
    function Inverse_Discrete_Cosine_Transform (Self : Mat) return Mat is
-      Result     : Mat;
-      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
-        OpenCV.Internal.C_API.Null_Mat_Handle;
-      Status     : OpenCV.Internal.C_API.Status;
    begin
-      Validate_DCT_Source (Self, "Inverse_Discrete_Cosine_Transform");
-
-      Status :=
-        OpenCV.Internal.C_API.Mat_DCT
-          (Source         => Self.Handle,
-           Transform_Kind => OpenCV.Internal.C_API.DCT_Inverse,
-           Result         => New_Handle'Access);
-      if Status /= OpenCV.Internal.C_API.Success then
-         OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
-         Raise_On_Error (Status, "Mat inverse discrete cosine transform");
-      end if;
-
-      if New_Handle = OpenCV.Internal.C_API.Null_Mat_Handle then
-         Ada.Exceptions.Raise_Exception
-           (OpenCV_Error'Identity,
-            "Mat inverse discrete cosine transform returned a null"
-            & " result handle");
-      end if;
-
-      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
-      Result.Handle := New_Handle;
-      return Result;
+      return
+        Perform_DCT
+          (Self,
+           "Inverse_Discrete_Cosine_Transform",
+           "Mat inverse discrete cosine transform",
+           OpenCV.Internal.C_API.DCT_Inverse);
    end Inverse_Discrete_Cosine_Transform;
+
+   function Discrete_Cosine_Transform_Rows (Self : Mat) return Mat is
+   begin
+      return
+        Perform_DCT
+          (Self,
+           "Discrete_Cosine_Transform_Rows",
+           "Mat row-wise discrete cosine transform",
+           OpenCV.Internal.C_API.DCT_Rows_Forward,
+           Row_Wise => True);
+   end Discrete_Cosine_Transform_Rows;
+
+   function Inverse_Discrete_Cosine_Transform_Rows (Self : Mat) return Mat is
+   begin
+      return
+        Perform_DCT
+          (Self,
+           "Inverse_Discrete_Cosine_Transform_Rows",
+           "Mat row-wise inverse discrete cosine transform",
+           OpenCV.Internal.C_API.DCT_Rows_Inverse,
+           Row_Wise => True);
+   end Inverse_Discrete_Cosine_Transform_Rows;
 
    procedure Validate_Spectrum_Multiplication_Operands (Left, Right : Mat) is
    begin

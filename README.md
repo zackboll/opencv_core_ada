@@ -948,6 +948,8 @@ DCT support:
 - `Inverse_Real_Discrete_Fourier_Transform_Rows`
 - `Discrete_Cosine_Transform`
 - `Inverse_Discrete_Cosine_Transform`
+- `Discrete_Cosine_Transform_Rows`
+- `Inverse_Discrete_Cosine_Transform_Rows`
 - `Multiply_Spectra`
 - `Optimal_DFT_Size`
 
@@ -958,6 +960,9 @@ the source without an extra caller scale factor.
 conjugate-symmetric spectra. The corresponding `_Rows` operations use
 `DFT_ROWS` to transform every row as an independent 1-D signal while preserving
 the same full-complex representation and scaled inverse convention.
+The corresponding row-wise DCT operations use `DCT_ROWS` and OpenCV's
+orthonormal inverse convention. Only the row length must be one or even; the
+number of independent rows may be odd.
 
 `Multiply_Spectra` distinguishes ordinary spectral multiplication from
 conjugate-right multiplication with `Spectrum_Multiplication_Kind`.

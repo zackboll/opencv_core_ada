@@ -169,6 +169,8 @@ opencv_core_status opencv_core_border_interpolate(int32_t position,
  */
 #define OPENCV_CORE_DCT_FORWARD ((int32_t)0)
 #define OPENCV_CORE_DCT_INVERSE ((int32_t)1)
+#define OPENCV_CORE_DCT_ROWS_FORWARD ((int32_t)2)
+#define OPENCV_CORE_DCT_ROWS_INVERSE ((int32_t)3)
 
 /*
  * Stable spectrum-product identifiers for the C ABI. These are

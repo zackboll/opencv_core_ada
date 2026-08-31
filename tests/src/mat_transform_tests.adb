@@ -6588,6 +6588,229 @@ package body Mat_Transform_Tests is
       end;
    end Optimal_DCT_Size_Pads_For_DCT_Integration;
 
+   function DCT_Rows_Sample return OpenCV.Core.Mat is
+      Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 4, (OpenCV.Core.Float32, 1));
+   begin
+      for Row in 0 .. 2 loop
+         for Column in 0 .. 3 loop
+            OpenCV.Core.Float32_Access.Set
+              (Source,
+               Row,
+               Column,
+               Interfaces.IEEE_Float_32
+                 ((Row + 1) * (Column + 1) + Row * Row - Column));
+         end loop;
+      end loop;
+      return Source;
+   end DCT_Rows_Sample;
+
+   procedure DCT_Rows_Forward_Matches_Independent_Rows
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source32       : constant OpenCV.Core.Mat := DCT_Rows_Sample;
+      Source64       : constant OpenCV.Core.Mat :=
+        Source32.Convert_To (OpenCV.Core.Float64);
+      Rows32         : constant OpenCV.Core.Mat :=
+        Source32.Discrete_Cosine_Transform_Rows;
+      Rows64         : constant OpenCV.Core.Mat :=
+        Source64.Discrete_Cosine_Transform_Rows;
+      All_Rows_Match : Boolean := True;
+   begin
+      AUnit.Assertions.Assert
+        (Rows32.Rows = 3
+         and then Rows32.Columns = 4
+         and then Rows32.Depth = OpenCV.Core.Float32
+         and then Rows32.Channels = 1,
+         "DCT_ROWS must accept the 3x4 odd-row regression geometry");
+      AUnit.Assertions.Assert
+        (Rows64.Rows = 3
+         and then Rows64.Columns = 4
+         and then Rows64.Depth = OpenCV.Core.Float64
+         and then Rows64.Channels = 1,
+         "DCT_ROWS must preserve Float64 shape and type");
+
+      for Row in 0 .. Source32.Rows - 1 loop
+         declare
+            Expected32 : constant OpenCV.Core.Mat :=
+              Source32.Row_View (OpenCV.Core.Size_Coordinate (Row))
+                .Discrete_Cosine_Transform;
+            Actual32   : constant OpenCV.Core.Mat :=
+              Rows32.Row_View (OpenCV.Core.Size_Coordinate (Row));
+            Expected64 : constant OpenCV.Core.Mat :=
+              Source64.Row_View (OpenCV.Core.Size_Coordinate (Row))
+                .Discrete_Cosine_Transform;
+            Actual64   : constant OpenCV.Core.Mat :=
+              Rows64.Row_View (OpenCV.Core.Size_Coordinate (Row));
+         begin
+            All_Rows_Match :=
+              All_Rows_Match
+              and then DCT_Float32_C1_Close (Actual32, Expected32, 0.000_1)
+              and then Actual64.Abs_Diff (Expected64).Norm < 1.0E-12;
+         end;
+      end loop;
+
+      AUnit.Assertions.Assert
+        (All_Rows_Match,
+         "Each Float32 and Float64 DCT_ROWS row must match its ordinary DCT");
+      declare
+         Source_4x4 : OpenCV.Core.Mat :=
+           OpenCV.Core.Create (4, 4, (OpenCV.Core.Float32, 1));
+      begin
+         for Row in 0 .. 3 loop
+            for Column in 0 .. 3 loop
+               OpenCV.Core.Float32_Access.Set
+                 (Source_4x4,
+                  Row,
+                  Column,
+                  Interfaces.IEEE_Float_32
+                    ((Row + 1) * (Column + 2) + Row * Row - 2 * Column));
+            end loop;
+         end loop;
+         AUnit.Assertions.Assert
+           (Source_4x4.Discrete_Cosine_Transform_Rows.Abs_Diff
+              (Source_4x4.Discrete_Cosine_Transform)
+              .Norm
+            > 0.1,
+            "DCT_ROWS must differ from a true 2-D DCT for distinct"
+            & " row signals");
+      end;
+   end DCT_Rows_Forward_Matches_Independent_Rows;
+
+   procedure DCT_Rows_Round_Trip_One_Row_And_Unit_Length
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source32   : constant OpenCV.Core.Mat := DCT_Rows_Sample;
+      Source64   : constant OpenCV.Core.Mat :=
+        Source32.Convert_To (OpenCV.Core.Float64);
+      Restored32 : constant OpenCV.Core.Mat :=
+        Source32
+          .Discrete_Cosine_Transform_Rows
+          .Inverse_Discrete_Cosine_Transform_Rows;
+      Restored64 : constant OpenCV.Core.Mat :=
+        Source64
+          .Discrete_Cosine_Transform_Rows
+          .Inverse_Discrete_Cosine_Transform_Rows;
+      One_Row    : constant OpenCV.Core.Mat := Source32.Row_View (1);
+      Unit       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 1, (OpenCV.Core.Float32, 1));
+   begin
+      OpenCV.Core.Float32_Access.Set (Unit, 0, 0, 1.0);
+      OpenCV.Core.Float32_Access.Set (Unit, 1, 0, -2.0);
+      OpenCV.Core.Float32_Access.Set (Unit, 2, 0, 3.5);
+      AUnit.Assertions.Assert
+        (DCT_Float32_C1_Close (Restored32, Source32, 0.000_1),
+         "Float32 row-wise DCT forward and inverse must round-trip");
+      AUnit.Assertions.Assert
+        (Restored64.Abs_Diff (Source64).Norm < 1.0E-12,
+         "Float64 row-wise DCT forward and inverse must round-trip");
+      AUnit.Assertions.Assert
+        (One_Row.Discrete_Cosine_Transform_Rows.Abs_Diff
+           (One_Row.Discrete_Cosine_Transform)
+           .Norm
+         < 0.000_1,
+         "A one-row DCT_ROWS transform must equal ordinary DCT");
+      AUnit.Assertions.Assert
+        (DCT_Float32_C1_Close
+           (Unit.Discrete_Cosine_Transform_Rows, Unit, 0.000_1),
+         "OpenCV-supported row length one must transform each row"
+         & " as identity");
+   end DCT_Rows_Round_Trip_One_Row_And_Unit_Length;
+
+   procedure DCT_Rows_Noncontiguous_And_Independent
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 6, (OpenCV.Core.Float32, 1));
+   begin
+      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      for Row in 0 .. 2 loop
+         for Column in 0 .. 3 loop
+            OpenCV.Core.Float32_Access.Set
+              (Parent,
+               Row,
+               Column + 1,
+               Interfaces.IEEE_Float_32 (Row * 10 + Column + 1));
+         end loop;
+      end loop;
+      declare
+         Source   : constant OpenCV.Core.Mat :=
+           Parent.Region ((X => 1, Y => 0, Width => 4, Height => 3));
+         Original : constant OpenCV.Core.Mat := Source.Clone;
+         Spectrum : OpenCV.Core.Mat := Source.Discrete_Cosine_Transform_Rows;
+         Restored : constant OpenCV.Core.Mat :=
+           Spectrum.Inverse_Discrete_Cosine_Transform_Rows;
+      begin
+         AUnit.Assertions.Assert
+           (not Source.Is_Continuous
+            and then DCT_Float32_C1_Close (Restored, Original, 0.000_1),
+            "DCT_ROWS must round-trip a non-contiguous Region");
+         Spectrum.Set_To (OpenCV.Core.Make_Scalar (-50.0));
+         AUnit.Assertions.Assert
+           (DCT_Float32_C1_Close (Source, Original, 0.000_1)
+            and then DCT_Float32_C1_Close (Restored, Original, 0.000_1)
+            and then OpenCV.Core.Float32_Access.Get (Parent, 0, 0) = 99.0,
+            "Row-wise results must own storage and leave source/parent"
+            & " unchanged");
+      end;
+   end DCT_Rows_Noncontiguous_And_Independent;
+
+   procedure DCT_Rows_Rejects_Invalid_Inputs (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Default_Source : OpenCV.Core.Mat;
+      Empty_Source   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 1));
+      Odd_Length     : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 3, (OpenCV.Core.Float32, 1));
+      Integer_Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 4, (OpenCV.Core.Int32, 1));
+      C2_Source      : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 4, (OpenCV.Core.Float32, 2));
+
+      procedure Forward_Default is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Default_Source.Discrete_Cosine_Transform_Rows;
+      end Forward_Default;
+      procedure Inverse_Empty is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Empty_Source.Inverse_Discrete_Cosine_Transform_Rows;
+      end Inverse_Empty;
+      procedure Forward_Odd is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Odd_Length.Discrete_Cosine_Transform_Rows;
+      end Forward_Odd;
+      procedure Forward_Integer is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Integer_Source.Discrete_Cosine_Transform_Rows;
+      end Forward_Integer;
+      procedure Forward_C2 is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := C2_Source.Discrete_Cosine_Transform_Rows;
+      end Forward_C2;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Forward_Default'Access, "DCT_ROWS must reject a default Mat");
+      Assert_Raises_OpenCV_Error
+        (Inverse_Empty'Access,
+         "Inverse DCT_ROWS must reject typed empty input");
+      Assert_Raises_OpenCV_Error
+        (Forward_Odd'Access, "DCT_ROWS must reject odd row lengths above one");
+      Assert_Raises_OpenCV_Error
+        (Forward_Integer'Access, "DCT_ROWS must reject integer depth");
+      Assert_Raises_OpenCV_Error
+        (Forward_C2'Access,
+         "DCT_ROWS must reject channel counts other than one");
+   end DCT_Rows_Rejects_Invalid_Inputs;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
    Result : aliased AUnit.Test_Suites.Test_Suite;
 
@@ -7286,6 +7509,22 @@ package body Mat_Transform_Tests is
         (Caller.Create
            ("DCT 1x1 is identity",
             Discrete_Cosine_Transform_1x1_Is_Identity'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("DCT_ROWS forward matches independent row DCTs",
+            DCT_Rows_Forward_Matches_Independent_Rows'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("DCT_ROWS round trips, one row, and row length one",
+            DCT_Rows_Round_Trip_One_Row_And_Unit_Length'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("DCT_ROWS non-contiguous Region and independent storage",
+            DCT_Rows_Noncontiguous_And_Independent'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("DCT_ROWS rejects invalid inputs",
+            DCT_Rows_Rejects_Invalid_Inputs'Access));
       Result.Add_Test
         (Caller.Create
            ("Optimal_DCT_Size documented values",

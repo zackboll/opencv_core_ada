@@ -932,6 +932,20 @@ package OpenCV.Core is
    --  would cause OpenCV 4.10's internal signed DCT work-buffer
    --  arithmetic to overflow are rejected with OpenCV_Error.
    function Inverse_Discrete_Cosine_Transform (Self : Mat) return Mat;
+   --  Returns an independently owned DCT in which every row is transformed
+   --  as an independent 1-D signal using cv::dct with DCT_ROWS. Self must be
+   --  a non-empty 2-D Float32 or Float64 Mat with exactly one channel. The
+   --  transformed row length (Columns) must be 1 or even; Rows is only the
+   --  number of independent signals and may be odd. Rows, columns, depth, and
+   --  channel count are preserved. Non-contiguous Regions are supported and
+   --  Self is unchanged.
+   function Discrete_Cosine_Transform_Rows (Self : Mat) return Mat;
+   --  Returns the independently owned row-wise inverse DCT using DCT_ROWS
+   --  and DCT_INVERSE. Each row is independently inverse-transformed using
+   --  OpenCV's orthonormal convention, so no additional scaling is applied.
+   --  Input requirements and result metadata match
+   --  Discrete_Cosine_Transform_Rows.
+   function Inverse_Discrete_Cosine_Transform_Rows (Self : Mat) return Mat;
    --  Returns an independently owned per-element product of two
    --  full-complex spectra using OpenCV 4.10 cv::mulSpectrums.
    --  Left and Right must be non-empty 2-D Float32 or Float64 Mats
