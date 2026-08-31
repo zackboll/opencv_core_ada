@@ -943,6 +943,9 @@ DCT support:
 - `Discrete_Fourier_Transform`
 - `Inverse_Discrete_Fourier_Transform`
 - `Inverse_Real_Discrete_Fourier_Transform`
+- `Discrete_Fourier_Transform_Rows`
+- `Inverse_Discrete_Fourier_Transform_Rows`
+- `Inverse_Real_Discrete_Fourier_Transform_Rows`
 - `Discrete_Cosine_Transform`
 - `Inverse_Discrete_Cosine_Transform`
 - `Multiply_Spectra`
@@ -952,13 +955,15 @@ The forward DFT returns a full two-channel complex representation. The normal
 inverse DFT is scaled, so a forward/inverse round trip approximately recovers
 the source without an extra caller scale factor.
 `Inverse_Real_Discrete_Fourier_Transform` provides the real-output path for
-conjugate-symmetric spectra.
+conjugate-symmetric spectra. The corresponding `_Rows` operations use
+`DFT_ROWS` to transform every row as an independent 1-D signal while preserving
+the same full-complex representation and scaled inverse convention.
 
 `Multiply_Spectra` distinguishes ordinary spectral multiplication from
 conjugate-right multiplication with `Spectrum_Multiplication_Kind`.
 
-This first API intentionally does not expose packed CCS storage, `DFT_ROWS`, or
-an in-place transform interface.
+The API intentionally does not expose packed CCS storage or an in-place
+transform interface.
 
 ---
 

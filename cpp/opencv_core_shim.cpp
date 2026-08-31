@@ -6945,6 +6945,19 @@ opencv_core_mat_dft(const opencv_core_mat_handle *source,
     case OPENCV_CORE_DFT_INVERSE_REAL:
         flags = cv::DFT_INVERSE | cv::DFT_SCALE | cv::DFT_REAL_OUTPUT;
         break;
+    case OPENCV_CORE_DFT_ROWS_FORWARD_COMPLEX:
+        flags = cv::DFT_ROWS;
+        if (source->value.channels() == 1) {
+            flags |= cv::DFT_COMPLEX_OUTPUT;
+        }
+        break;
+    case OPENCV_CORE_DFT_ROWS_INVERSE_COMPLEX:
+        flags = cv::DFT_ROWS | cv::DFT_INVERSE | cv::DFT_SCALE;
+        break;
+    case OPENCV_CORE_DFT_ROWS_INVERSE_REAL:
+        flags = cv::DFT_ROWS | cv::DFT_INVERSE | cv::DFT_SCALE |
+                cv::DFT_REAL_OUTPUT;
+        break;
     default:
         return invalid_argument("transform_kind must be a known DFT kind");
     }

@@ -158,6 +158,9 @@ opencv_core_status opencv_core_border_interpolate(int32_t position,
 #define OPENCV_CORE_DFT_FORWARD_COMPLEX ((int32_t)0)
 #define OPENCV_CORE_DFT_INVERSE_COMPLEX ((int32_t)1)
 #define OPENCV_CORE_DFT_INVERSE_REAL ((int32_t)2)
+#define OPENCV_CORE_DFT_ROWS_FORWARD_COMPLEX ((int32_t)3)
+#define OPENCV_CORE_DFT_ROWS_INVERSE_COMPLEX ((int32_t)4)
+#define OPENCV_CORE_DFT_ROWS_INVERSE_REAL ((int32_t)5)
 
 /*
  * Stable DCT transform-kind identifiers for the C ABI. These are
@@ -1621,9 +1624,15 @@ opencv_core_mat_perspective_transform(
  *   DFT_INVERSE | DFT_SCALE
  * INVERSE_REAL:
  *   DFT_INVERSE | DFT_SCALE | DFT_REAL_OUTPUT
+ * ROWS_FORWARD_COMPLEX:
+ *   DFT_ROWS, plus DFT_COMPLEX_OUTPUT for C1 input
+ * ROWS_INVERSE_COMPLEX:
+ *   DFT_ROWS | DFT_INVERSE | DFT_SCALE
+ * ROWS_INVERSE_REAL:
+ *   DFT_ROWS | DFT_INVERSE | DFT_SCALE | DFT_REAL_OUTPUT
  *
- * nonzeroRows is always 0. DFT_ROWS is never set. Source is borrowed
- * and unmodified. The independently owned result is published only
+ * nonzeroRows is always 0. Source is borrowed and unmodified. The
+ * independently owned result is published only
  * after success. Dimensions whose OpenCV 4.10 signed DFT count or
  * byte-size products would overflow int are rejected before cv::dft.
  * On failure *out_mat remains null.

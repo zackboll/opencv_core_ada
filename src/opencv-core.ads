@@ -877,6 +877,25 @@ package OpenCV.Core is
    --  the full-complex element size (8 bytes for Float32, 16 bytes
    --  for Float64).
    function Inverse_Real_Discrete_Fourier_Transform (Self : Mat) return Mat;
+   --  Returns a full-complex DFT in which every row is transformed as an
+   --  independent 1-D signal using cv::dft with DFT_ROWS. Self must satisfy
+   --  the same depth, channel, non-empty, and size requirements as
+   --  Discrete_Fourier_Transform. Float32 or Float64 C1 input returns C2;
+   --  C2 input remains C2. Rows and columns are preserved. Continuity is not
+   --  required, Self is unchanged, and the result owns independent storage.
+   function Discrete_Fourier_Transform_Rows (Self : Mat) return Mat;
+   --  Returns the normalized row-wise inverse of a full-complex C2 spectrum
+   --  using DFT_ROWS, DFT_INVERSE, and DFT_SCALE. Each row is inverted and
+   --  scaled independently by its column count. The result remains C2 and
+   --  preserves Self's rows, columns, and Float32 or Float64 depth.
+   function Inverse_Discrete_Fourier_Transform_Rows (Self : Mat) return Mat;
+   --  Returns the normalized C1 real row-wise inverse of a full-complex C2
+   --  spectrum using DFT_ROWS, DFT_INVERSE, DFT_SCALE, and DFT_REAL_OUTPUT.
+   --  Every row is independently inverted. As with the ordinary real inverse,
+   --  each input row is expected to have conjugate symmetry. The result owns
+   --  independent storage and preserves rows, columns, and floating depth.
+   function Inverse_Real_Discrete_Fourier_Transform_Rows
+     (Self : Mat) return Mat;
    --  Returns an independently owned Discrete Cosine Transform of
    --  Self using OpenCV 4.10 cv::dct. This is not DFT, a packed CCS
    --  spectrum, a batched DCT_ROWS transform, or an in-place
