@@ -6211,6 +6211,261 @@ package body Mat_Transform_Tests is
          & " are supported");
    end Multiply_Spectra_Rejects_Packed_And_Extra_Channels;
 
+   function Packed_Product_Oracle_Matches
+     (Left, Right : OpenCV.Core.Mat;
+      Kind        : OpenCV.Core.Spectrum_Multiplication_Kind;
+      Tolerance   : Long_Float) return Boolean
+   is
+      Packed_Product : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Multiply_Packed_Spectra
+          (Left.Packed_Discrete_Fourier_Transform,
+           Right.Packed_Discrete_Fourier_Transform,
+           Kind);
+      Packed_Result  : constant OpenCV.Core.Mat :=
+        Packed_Product.Inverse_Packed_Discrete_Fourier_Transform;
+      Complex_Result : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Multiply_Spectra
+          (Left.Discrete_Fourier_Transform,
+           Right.Discrete_Fourier_Transform,
+           Kind)
+          .Inverse_Real_Discrete_Fourier_Transform;
+   begin
+      return
+        Packed_Product.Rows = Left.Rows
+        and then Packed_Product.Columns = Left.Columns
+        and then Packed_Product.Depth = Left.Depth
+        and then Packed_Product.Channels = 1
+        and then Packed_Result.Abs_Diff (Complex_Result).Norm < Tolerance;
+   end Packed_Product_Oracle_Matches;
+
+   procedure Multiply_Packed_Spectra_Float32_Products
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left  : constant OpenCV.Core.Mat := DFT_Sample_Real_Float32;
+      Right : constant OpenCV.Core.Mat := Left.Clone;
+   begin
+      AUnit.Assertions.Assert
+        (Packed_Product_Oracle_Matches
+           (Left, Right, OpenCV.Core.Ordinary_Spectrum_Product, 0.001),
+         "Float32 ordinary packed multiplication must match full-complex");
+      AUnit.Assertions.Assert
+        (Packed_Product_Oracle_Matches
+           (Left, Right, OpenCV.Core.Conjugate_Right_Spectrum_Product, 0.001),
+         "Float32 conjugate-right packed multiplication must match"
+         & " full-complex");
+   end Multiply_Packed_Spectra_Float32_Products;
+
+   procedure Multiply_Packed_Spectra_Float64_Products
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left  : constant OpenCV.Core.Mat :=
+        DFT_Sample_Real_Float32.Convert_To (OpenCV.Core.Float64);
+      Right : constant OpenCV.Core.Mat := Left.Clone;
+   begin
+      AUnit.Assertions.Assert
+        (Packed_Product_Oracle_Matches
+           (Left, Right, OpenCV.Core.Ordinary_Spectrum_Product, 1.0E-10),
+         "Float64 ordinary packed multiplication must match full-complex");
+      AUnit.Assertions.Assert
+        (Packed_Product_Oracle_Matches
+           (Left,
+            Right,
+            OpenCV.Core.Conjugate_Right_Spectrum_Product,
+            1.0E-10),
+         "Float64 conjugate-right packed multiplication must match"
+         & " full-complex");
+   end Multiply_Packed_Spectra_Float64_Products;
+
+   procedure Multiply_Packed_Spectra_Odd_Vectors_And_One_By_One
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Row    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 5, (OpenCV.Core.Float32, 1));
+      Column : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (5, 1, (OpenCV.Core.Float32, 1));
+      Unit   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+   begin
+      for Index in 0 .. 4 loop
+         OpenCV.Core.Float32_Access.Set
+           (Row, 0, Index, Interfaces.IEEE_Float_32 (Index + 1));
+         OpenCV.Core.Float32_Access.Set
+           (Column, Index, 0, Interfaces.IEEE_Float_32 (Index + 2));
+      end loop;
+      OpenCV.Core.Float32_Access.Set (Unit, 0, 0, 3.0);
+
+      AUnit.Assertions.Assert
+        (Packed_Product_Oracle_Matches
+           (Row, Row, OpenCV.Core.Ordinary_Spectrum_Product, 0.001)
+         and then Packed_Product_Oracle_Matches
+                    (Column,
+                     Column,
+                     OpenCV.Core.Conjugate_Right_Spectrum_Product,
+                     0.001)
+         and then Packed_Product_Oracle_Matches
+                    (Unit, Unit, OpenCV.Core.Ordinary_Spectrum_Product, 0.001),
+         "Packed multiplication must support odd row and column vectors"
+         & " and 1x1");
+   end Multiply_Packed_Spectra_Odd_Vectors_And_One_By_One;
+
+   procedure Multiply_Packed_Spectra_Regions_And_Independence
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left_Parent  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 7, (OpenCV.Core.Float32, 1));
+      Right_Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 7, (OpenCV.Core.Float32, 1));
+   begin
+      for Row in 0 .. 2 loop
+         for Column in 0 .. 6 loop
+            OpenCV.Core.Float32_Access.Set
+              (Left_Parent,
+               Row,
+               Column,
+               Interfaces.IEEE_Float_32 (Row * 7 + Column + 1));
+            OpenCV.Core.Float32_Access.Set
+              (Right_Parent,
+               Row,
+               Column,
+               Interfaces.IEEE_Float_32 (Row * 7 + Column + 2));
+         end loop;
+      end loop;
+
+      declare
+         Left_Source         : constant OpenCV.Core.Mat :=
+           Left_Parent.Region ((X => 1, Y => 0, Width => 5, Height => 3));
+         Right_Source        : constant OpenCV.Core.Mat :=
+           Right_Parent.Region ((X => 1, Y => 0, Width => 5, Height => 3));
+         Left_Packed_Parent  : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create (3, 7, (OpenCV.Core.Float32, 1));
+         Right_Packed_Parent : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create (3, 7, (OpenCV.Core.Float32, 1));
+         Left_Packed         : OpenCV.Core.Mat :=
+           Left_Packed_Parent.Region
+             ((X => 1, Y => 0, Width => 5, Height => 3));
+         Right_Packed        : OpenCV.Core.Mat :=
+           Right_Packed_Parent.Region
+             ((X => 1, Y => 0, Width => 5, Height => 3));
+      begin
+         Left_Source.Packed_Discrete_Fourier_Transform.Copy_To (Left_Packed);
+         Right_Source.Packed_Discrete_Fourier_Transform.Copy_To (Right_Packed);
+         declare
+            Left_Before    : constant OpenCV.Core.Mat := Left_Packed.Clone;
+            Right_Before   : constant OpenCV.Core.Mat := Right_Packed.Clone;
+            Product        : OpenCV.Core.Mat :=
+              OpenCV.Core.Multiply_Packed_Spectra
+                (Left_Packed,
+                 Right_Packed,
+                 OpenCV.Core.Conjugate_Right_Spectrum_Product);
+            Packed_Result  : constant OpenCV.Core.Mat :=
+              Product.Inverse_Packed_Discrete_Fourier_Transform;
+            Complex_Result : constant OpenCV.Core.Mat :=
+              OpenCV.Core.Multiply_Spectra
+                (Left_Source.Discrete_Fourier_Transform,
+                 Right_Source.Discrete_Fourier_Transform,
+                 OpenCV.Core.Conjugate_Right_Spectrum_Product)
+                .Inverse_Real_Discrete_Fourier_Transform;
+         begin
+            AUnit.Assertions.Assert
+              (not Left_Packed.Is_Continuous
+               and then not Right_Packed.Is_Continuous
+               and then Packed_Result.Abs_Diff (Complex_Result).Norm < 0.001
+               and then Left_Packed.Abs_Diff (Left_Before).Norm = 0.0
+               and then Right_Packed.Abs_Diff (Right_Before).Norm = 0.0,
+               "Non-contiguous packed Regions must match the full-complex"
+               & " oracle and remain unchanged");
+            Product.Set_To (OpenCV.Core.Make_Scalar (-17.0));
+            AUnit.Assertions.Assert
+              (Left_Packed.Abs_Diff (Left_Before).Norm = 0.0
+               and then Right_Packed.Abs_Diff (Right_Before).Norm = 0.0,
+               "Packed product storage must be independent of both operands");
+         end;
+      end;
+   end Multiply_Packed_Spectra_Regions_And_Independence;
+
+   procedure Multiply_Packed_Spectra_Rejects_Invalid_Inputs
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Default_Mat : OpenCV.Core.Mat;
+      Empty       : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 1));
+      Float32_C1  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
+      Float64_C1  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float64, 1));
+      Wrong_Shape : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
+      Float32_C2  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 2));
+      Int32_C1    : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Int32, 1));
+      Float32_ND  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (OpenCV.Core.Dimension_Array'(1 => 2, 2 => 3, 3 => 1),
+           (OpenCV.Core.Float32, 1));
+
+      procedure Default_Left is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored :=
+           OpenCV.Core.Multiply_Packed_Spectra (Default_Mat, Float32_C1);
+      end Default_Left;
+      procedure Empty_Right is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := OpenCV.Core.Multiply_Packed_Spectra (Float32_C1, Empty);
+      end Empty_Right;
+      procedure Mixed_Depth is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored :=
+           OpenCV.Core.Multiply_Packed_Spectra (Float32_C1, Float64_C1);
+      end Mixed_Depth;
+      procedure Shape_Mismatch is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored :=
+           OpenCV.Core.Multiply_Packed_Spectra (Float32_C1, Wrong_Shape);
+      end Shape_Mismatch;
+      procedure Full_Complex is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored :=
+           OpenCV.Core.Multiply_Packed_Spectra (Float32_C2, Float32_C2);
+      end Full_Complex;
+      procedure Integer_Depth is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := OpenCV.Core.Multiply_Packed_Spectra (Int32_C1, Int32_C1);
+      end Integer_Depth;
+      procedure Not_Two_Dimensional is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored :=
+           OpenCV.Core.Multiply_Packed_Spectra (Float32_ND, Float32_ND);
+      end Not_Two_Dimensional;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Default_Left'Access, "Packed product rejects default Left");
+      Assert_Raises_OpenCV_Error
+        (Empty_Right'Access, "Packed product rejects empty Right");
+      Assert_Raises_OpenCV_Error
+        (Mixed_Depth'Access, "Packed product rejects mixed depth");
+      Assert_Raises_OpenCV_Error
+        (Shape_Mismatch'Access, "Packed product rejects shape mismatch");
+      Assert_Raises_OpenCV_Error
+        (Full_Complex'Access, "Packed product rejects C2 input");
+      Assert_Raises_OpenCV_Error
+        (Integer_Depth'Access, "Packed product rejects integer depth");
+      Assert_Raises_OpenCV_Error
+        (Not_Two_Dimensional'Access, "Packed product rejects non-2-D input");
+   end Multiply_Packed_Spectra_Rejects_Invalid_Inputs;
+
    function DCT_Float32_C1_Close
      (Left, Right : OpenCV.Core.Mat; Tolerance : Long_Float) return Boolean is
    begin
@@ -7662,6 +7917,26 @@ package body Mat_Transform_Tests is
         (Caller.Create
            ("Multiply_Spectra rejects packed C1 and C3",
             Multiply_Spectra_Rejects_Packed_And_Extra_Channels'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Multiply_Packed_Spectra Float32 ordinary and conjugate products",
+            Multiply_Packed_Spectra_Float32_Products'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Multiply_Packed_Spectra Float64 ordinary and conjugate products",
+            Multiply_Packed_Spectra_Float64_Products'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Multiply_Packed_Spectra odd vectors and 1x1",
+            Multiply_Packed_Spectra_Odd_Vectors_And_One_By_One'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Multiply_Packed_Spectra Regions and independent storage",
+            Multiply_Packed_Spectra_Regions_And_Independence'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Multiply_Packed_Spectra rejects invalid inputs",
+            Multiply_Packed_Spectra_Rejects_Invalid_Inputs'Access));
       Result.Add_Test
         (Caller.Create
            ("DCT Float32 known 1-D forward coefficients",

@@ -953,6 +953,7 @@ support, plus orthonormal DCT support:
 - `Discrete_Cosine_Transform_Rows`
 - `Inverse_Discrete_Cosine_Transform_Rows`
 - `Multiply_Spectra`
+- `Multiply_Packed_Spectra`
 - `Optimal_DFT_Size`
 
 Two Fourier representations are available. `Discrete_Fourier_Transform`
@@ -971,12 +972,15 @@ The corresponding row-wise DCT operations use `DCT_ROWS` and OpenCV's
 orthonormal inverse convention. Only the row length must be one or even; the
 number of independent rows may be odd.
 
-`Multiply_Spectra` distinguishes ordinary spectral multiplication from
-conjugate-right multiplication with `Spectrum_Multiplication_Kind`.
+`Multiply_Spectra` operates on full-complex C2 spectra, while
+`Multiply_Packed_Spectra` operates on packed CCS C1 spectra. Both distinguish
+ordinary spectral multiplication from conjugate-right multiplication with
+`Spectrum_Multiplication_Kind`. Spectrum multiplication does not automatically
+inverse-transform, pad, crop, or otherwise construct a complete convolution or
+correlation pipeline.
 
-Packed row transforms, packed spectrum multiplication or division, CCS-bin
-accessors, representation conversion, and in-place transforms are not yet
-exposed.
+Packed row transforms, packed spectrum division, CCS-bin accessors,
+representation conversion, and in-place transforms are not yet exposed.
 
 ---
 

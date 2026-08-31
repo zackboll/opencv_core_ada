@@ -2815,85 +2815,139 @@ package body OpenCV.Core is
            Row_Wise => True);
    end Inverse_Discrete_Cosine_Transform_Rows;
 
-   procedure Validate_Spectrum_Multiplication_Operands (Left, Right : Mat) is
+   procedure Validate_Spectrum_Multiplication_Operands
+     (Left, Right : Mat; Operation : String; Required_Channels : Channel_Count)
+   is
    begin
       if Left.Is_Empty then
          Ada.Exceptions.Raise_Exception
            (OpenCV_Error'Identity,
-            "Multiply_Spectra requires a non-empty Left Mat");
+            Operation & " requires a non-empty Left Mat");
       end if;
 
       if Right.Is_Empty then
          Ada.Exceptions.Raise_Exception
            (OpenCV_Error'Identity,
-            "Multiply_Spectra requires a non-empty Right Mat");
+            Operation & " requires a non-empty Right Mat");
+      end if;
+
+      if Left.Dimension_Count /= 2 or else Right.Dimension_Count /= 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            Operation & " requires two-dimensional operands");
       end if;
 
       if Left.Rows /= Right.Rows then
          Ada.Exceptions.Raise_Exception
            (OpenCV_Error'Identity,
-            "Multiply_Spectra requires operands with identical row counts");
+            Operation & " requires operands with identical row counts");
       end if;
 
       if Left.Columns /= Right.Columns then
          Ada.Exceptions.Raise_Exception
            (OpenCV_Error'Identity,
-            "Multiply_Spectra requires operands with identical column counts");
+            Operation & " requires operands with identical column counts");
       end if;
 
       if Left.Depth /= Right.Depth then
          Ada.Exceptions.Raise_Exception
            (OpenCV_Error'Identity,
-            "Multiply_Spectra requires operands with identical depths");
+            Operation & " requires operands with identical depths");
       end if;
 
       if Left.Depth /= Float32 and then Left.Depth /= Float64 then
          Ada.Exceptions.Raise_Exception
            (OpenCV_Error'Identity,
-            "Multiply_Spectra requires Float32 or Float64 spectra");
+            Operation & " requires Float32 or Float64 spectra");
       end if;
 
-      if Left.Channels /= 2 or else Right.Channels /= 2 then
+      if Left.Channels /= Required_Channels
+        or else Right.Channels /= Required_Channels
+      then
          Ada.Exceptions.Raise_Exception
            (OpenCV_Error'Identity,
-            "Multiply_Spectra requires explicit two-channel complex spectra");
+            Operation
+            & (if Required_Channels = 2
+               then " requires explicit two-channel complex spectra"
+               else " requires one-channel packed CCS spectra"));
       end if;
    end Validate_Spectrum_Multiplication_Operands;
 
-   function Multiply_Spectra
-     (Left  : Mat;
-      Right : Mat;
-      Kind  : Spectrum_Multiplication_Kind := Ordinary_Spectrum_Product)
-      return Mat
+   function Perform_Spectrum_Multiplication
+     (Left              : Mat;
+      Right             : Mat;
+      Kind              : Spectrum_Multiplication_Kind;
+      Operation         : String;
+      Error_Context     : String;
+      Required_Channels : Channel_Count;
+      Representation    : OpenCV.Internal.C_API.C_Int32) return Mat
    is
       Result     : Mat;
       New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
         OpenCV.Internal.C_API.Null_Mat_Handle;
       Status     : OpenCV.Internal.C_API.Status;
    begin
-      Validate_Spectrum_Multiplication_Operands (Left, Right);
+      Validate_Spectrum_Multiplication_Operands
+        (Left, Right, Operation, Required_Channels);
 
       Status :=
         OpenCV.Internal.C_API.Mat_Multiply_Spectra
-          (Left   => Left.Handle,
-           Right  => Right.Handle,
-           Kind   => To_C_Spectrum_Multiplication_Kind (Kind),
-           Result => New_Handle'Access);
+          (Left           => Left.Handle,
+           Right          => Right.Handle,
+           Representation => Representation,
+           Kind           => To_C_Spectrum_Multiplication_Kind (Kind),
+           Result         => New_Handle'Access);
       if Status /= OpenCV.Internal.C_API.Success then
          OpenCV.Internal.C_API.Mat_Destroy (New_Handle);
-         Raise_On_Error (Status, "Mat spectrum multiplication");
+         Raise_On_Error (Status, Error_Context);
       end if;
 
       if New_Handle = OpenCV.Internal.C_API.Null_Mat_Handle then
          Ada.Exceptions.Raise_Exception
            (OpenCV_Error'Identity,
-            "Mat spectrum multiplication returned a null result handle");
+            Error_Context & " returned a null result handle");
       end if;
 
       OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
       Result.Handle := New_Handle;
       return Result;
+   end Perform_Spectrum_Multiplication;
+
+   function Multiply_Spectra
+     (Left  : Mat;
+      Right : Mat;
+      Kind  : Spectrum_Multiplication_Kind := Ordinary_Spectrum_Product)
+      return Mat is
+   begin
+      return
+        Perform_Spectrum_Multiplication
+          (Left,
+           Right,
+           Kind,
+           "Multiply_Spectra",
+           "Mat full-complex spectrum multiplication",
+           Required_Channels => 2,
+           Representation    =>
+             OpenCV.Internal.C_API.Spectrum_Representation_Full_Complex);
    end Multiply_Spectra;
+
+   function Multiply_Packed_Spectra
+     (Left  : Mat;
+      Right : Mat;
+      Kind  : Spectrum_Multiplication_Kind := Ordinary_Spectrum_Product)
+      return Mat is
+   begin
+      return
+        Perform_Spectrum_Multiplication
+          (Left,
+           Right,
+           Kind,
+           "Multiply_Packed_Spectra",
+           "Mat packed CCS spectrum multiplication",
+           Required_Channels => 1,
+           Representation    =>
+             OpenCV.Internal.C_API.Spectrum_Representation_Packed_CCS);
+   end Multiply_Packed_Spectra;
 
    function Optimal_DFT_Size (Minimum_Size : Positive) return Positive is
       Wide_Minimum : constant Long_Long_Integer :=

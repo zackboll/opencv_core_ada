@@ -182,6 +182,10 @@ opencv_core_status opencv_core_border_interpolate(int32_t position,
 #define OPENCV_CORE_SPECTRUM_PRODUCT_ORDINARY ((int32_t)0)
 #define OPENCV_CORE_SPECTRUM_PRODUCT_CONJUGATE_RIGHT ((int32_t)1)
 
+/* Stable spectrum-representation identifiers for the C ABI. */
+#define OPENCV_CORE_SPECTRUM_REPRESENTATION_FULL_COMPLEX ((int32_t)0)
+#define OPENCV_CORE_SPECTRUM_REPRESENTATION_PACKED_CCS ((int32_t)1)
+
 /*
  * Returns a borrowed pointer to the diagnostic for the most recent failed shim
  * operation on the calling thread. The pointer remains valid only until a
@@ -1689,10 +1693,12 @@ opencv_core_status
 opencv_core_get_optimal_dft_size(int32_t minimum_size, int32_t *out_size);
 
 /*
- * Multiplies two borrowed full-complex spectra using cv::mulSpectrums
- * with flags 0. kind must be one of the OPENCV_CORE_SPECTRUM_PRODUCT_*
- * identifiers; the shim maps them to conjB and never forwards a raw
- * OpenCV flag mask or DFT_ROWS.
+ * Multiplies two borrowed spectra using cv::mulSpectrums with flags 0.
+ * representation must explicitly identify full-complex or packed CCS
+ * inputs. kind must be one of the OPENCV_CORE_SPECTRUM_PRODUCT_*
+ * identifiers; the shim maps it to conjB and never forwards a raw
+ * OpenCV flag mask or DFT_ROWS. Matrix representation requirements are
+ * validated by the thick Ada API.
  *
  * ORDINARY:
  *   conjB = false  (Left(I) * Right(I))
@@ -1705,6 +1711,7 @@ opencv_core_get_optimal_dft_size(int32_t minimum_size, int32_t *out_size);
 opencv_core_status
 opencv_core_mat_multiply_spectra(const opencv_core_mat_handle *left,
                                  const opencv_core_mat_handle *right,
+                                 int32_t representation,
                                  int32_t kind,
                                  opencv_core_mat_handle **out_mat);
 

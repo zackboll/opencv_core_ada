@@ -139,8 +139,10 @@ package OpenCV.Internal.C_API is
    DCT_Rows_Forward                   : constant C_Int32 := 2;
    DCT_Rows_Inverse                   : constant C_Int32 := 3;
 
-   Spectrum_Product_Ordinary        : constant C_Int32 := 0;
-   Spectrum_Product_Conjugate_Right : constant C_Int32 := 1;
+   Spectrum_Product_Ordinary            : constant C_Int32 := 0;
+   Spectrum_Product_Conjugate_Right     : constant C_Int32 := 1;
+   Spectrum_Representation_Full_Complex : constant C_Int32 := 0;
+   Spectrum_Representation_Packed_CCS   : constant C_Int32 := 1;
 
    K_Means_Random_Centers    : constant C_Int32 := 0;
    K_Means_Plus_Plus_Centers : constant C_Int32 := 1;
@@ -1323,8 +1325,10 @@ package OpenCV.Internal.C_API is
      External_Name => "opencv_core_get_optimal_dft_size";
 
    function Mat_Multiply_Spectra
-     (Left, Right : Mat_Handle; Kind : C_Int32; Result : access Mat_Handle)
-      return Status
+     (Left, Right    : Mat_Handle;
+      Representation : C_Int32;
+      Kind           : C_Int32;
+      Result         : access Mat_Handle) return Status
    with
      Import,
      Convention    => C,

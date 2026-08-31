@@ -7125,6 +7125,7 @@ opencv_core_get_optimal_dft_size(int32_t minimum_size, int32_t *out_size) {
 opencv_core_status
 opencv_core_mat_multiply_spectra(const opencv_core_mat_handle *left,
                                  const opencv_core_mat_handle *right,
+                                 int32_t representation,
                                  int32_t kind,
                                  opencv_core_mat_handle **out_mat) {
     clear_error();
@@ -7139,6 +7140,15 @@ opencv_core_mat_multiply_spectra(const opencv_core_mat_handle *left,
 
     if (left == nullptr || right == nullptr) {
         return invalid_argument("Mat handle must not be null");
+    }
+
+    switch (representation) {
+    case OPENCV_CORE_SPECTRUM_REPRESENTATION_FULL_COMPLEX:
+    case OPENCV_CORE_SPECTRUM_REPRESENTATION_PACKED_CCS:
+        break;
+    default:
+        return invalid_argument(
+            "representation must be a known spectrum representation");
     }
 
     bool conjugate_right = false;
