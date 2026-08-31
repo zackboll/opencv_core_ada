@@ -1019,6 +1019,23 @@ package OpenCV.Core is
       Right : Mat;
       Kind  : Spectrum_Multiplication_Kind := Ordinary_Spectrum_Product)
       return Mat;
+   --  Returns an independently owned row-wise packed CCS C1 spectrum product
+   --  using cv::mulSpectrums with DFT_ROWS. Each row is interpreted as an
+   --  independent spectrum for a real signal of length Columns. Left and Right
+   --  must be non-empty 2-D Float32 or Float64 C1 Mats with identical rows,
+   --  columns, and depth. They are intended to come from operations such as
+   --  Packed_Discrete_Fourier_Transform_Rows; packed contents, conjugate
+   --  symmetry, and numerical validity cannot be checked by this API. Kind
+   --  selects ordinary multiplication or multiplication by the conjugate of
+   --  Right. No inverse transform, scaling, padding, or cropping is performed.
+   --  Non-contiguous Regions are supported. Both operands remain unchanged;
+   --  the result preserves shape and depth, remains C1, and owns independent
+   --  storage.
+   function Multiply_Packed_Spectra_Rows
+     (Left  : Mat;
+      Right : Mat;
+      Kind  : Spectrum_Multiplication_Kind := Ordinary_Spectrum_Product)
+      return Mat;
 
    --  Returns the smallest OpenCV-efficient DFT length N >=
    --  Minimum_Size using OpenCV 4.10 cv::getOptimalDFTSize. Efficient

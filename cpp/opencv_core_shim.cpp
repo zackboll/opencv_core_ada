@@ -7149,9 +7149,13 @@ opencv_core_mat_multiply_spectra(const opencv_core_mat_handle *left,
         return invalid_argument("Mat handle must not be null");
     }
 
+    int flags = 0;
     switch (representation) {
     case OPENCV_CORE_SPECTRUM_REPRESENTATION_FULL_COMPLEX:
     case OPENCV_CORE_SPECTRUM_REPRESENTATION_PACKED_CCS:
+        break;
+    case OPENCV_CORE_SPECTRUM_REPRESENTATION_PACKED_CCS_ROWS:
+        flags = cv::DFT_ROWS;
         break;
     default:
         return invalid_argument(
@@ -7172,7 +7176,8 @@ opencv_core_mat_multiply_spectra(const opencv_core_mat_handle *left,
 
     try {
         cv::Mat result;
-        cv::mulSpectrums(left->value, right->value, result, 0, conjugate_right);
+        cv::mulSpectrums(
+            left->value, right->value, result, flags, conjugate_right);
 
         std::unique_ptr<opencv_core_mat_handle> result_handle(
             new opencv_core_mat_handle(result));

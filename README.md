@@ -956,6 +956,7 @@ support, plus orthonormal DCT support:
 - `Inverse_Discrete_Cosine_Transform_Rows`
 - `Multiply_Spectra`
 - `Multiply_Packed_Spectra`
+- `Multiply_Packed_Spectra_Rows`
 - `Optimal_DFT_Size`
 
 Four forward Fourier forms are available: ordinary full-complex, ordinary
@@ -977,16 +978,20 @@ The corresponding row-wise DCT operations use `DCT_ROWS` and OpenCV's
 orthonormal inverse convention. Only the row length must be one or even; the
 number of independent rows may be odd.
 
-`Multiply_Spectra` operates on full-complex C2 spectra, while
-`Multiply_Packed_Spectra` operates on packed CCS C1 spectra. Both distinguish
-ordinary spectral multiplication from conjugate-right multiplication with
-`Spectrum_Multiplication_Kind`. Spectrum multiplication does not automatically
-inverse-transform, pad, crop, or otherwise construct a complete convolution or
-correlation pipeline.
+`Multiply_Spectra` operates on full-complex C2 spectra interpreted as one
+spectrum. `Multiply_Packed_Spectra` operates on packed CCS C1 spectra using
+ordinary non-row-wise spectrum geometry. `Multiply_Packed_Spectra_Rows`
+expects packed CCS C1 input containing one independent spectrum per row, such
+as output from `Packed_Discrete_Fourier_Transform_Rows`, and uses `DFT_ROWS`.
+These operations distinguish ordinary multiplication from conjugate-right
+multiplication with `Spectrum_Multiplication_Kind`.
 
-Packed row spectrum multiplication, packed spectrum division, CCS-bin
-accessors, representation conversion, and in-place transforms are not yet
-exposed.
+Spectrum multiplication does not automatically perform forward or inverse
+transforms, scale, pad, crop, or construct a complete convolution or
+correlation pipeline. Callers are responsible for those operations and for
+deciding whether their padding and geometry represent circular or linear
+convolution or correlation. Packed spectrum division, CCS-bin accessors,
+representation conversion, and in-place transforms are not yet exposed.
 
 ---
 

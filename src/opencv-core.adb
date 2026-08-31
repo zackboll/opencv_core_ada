@@ -2981,6 +2981,24 @@ package body OpenCV.Core is
              OpenCV.Internal.C_API.Spectrum_Representation_Packed_CCS);
    end Multiply_Packed_Spectra;
 
+   function Multiply_Packed_Spectra_Rows
+     (Left  : Mat;
+      Right : Mat;
+      Kind  : Spectrum_Multiplication_Kind := Ordinary_Spectrum_Product)
+      return Mat is
+   begin
+      return
+        Perform_Spectrum_Multiplication
+          (Left,
+           Right,
+           Kind,
+           "Multiply_Packed_Spectra_Rows",
+           "Mat row-wise packed CCS spectrum multiplication",
+           Required_Channels => 1,
+           Representation    =>
+             OpenCV.Internal.C_API.Spectrum_Representation_Packed_CCS_Rows);
+   end Multiply_Packed_Spectra_Rows;
+
    function Optimal_DFT_Size (Minimum_Size : Positive) return Positive is
       Wide_Minimum : constant Long_Long_Integer :=
         Long_Long_Integer (Minimum_Size);
