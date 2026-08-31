@@ -161,6 +161,8 @@ opencv_core_status opencv_core_border_interpolate(int32_t position,
 #define OPENCV_CORE_DFT_ROWS_FORWARD_COMPLEX ((int32_t)3)
 #define OPENCV_CORE_DFT_ROWS_INVERSE_COMPLEX ((int32_t)4)
 #define OPENCV_CORE_DFT_ROWS_INVERSE_REAL ((int32_t)5)
+#define OPENCV_CORE_DFT_FORWARD_PACKED ((int32_t)6)
+#define OPENCV_CORE_DFT_INVERSE_PACKED ((int32_t)7)
 
 /*
  * Stable DCT transform-kind identifiers for the C ABI. These are
@@ -1614,8 +1616,8 @@ opencv_core_mat_perspective_transform(
     opencv_core_mat_handle **out_mat);
 
 /*
- * Performs a full-complex Discrete Fourier Transform of a borrowed Mat
- * using cv::dft. transform_kind must be one of the
+ * Performs a full-complex or packed-CCS Discrete Fourier Transform of a
+ * borrowed Mat using cv::dft. transform_kind must be one of the
  * OPENCV_CORE_DFT_* identifiers; the shim constructs the exact OpenCV
  * flags and never forwards a raw DftFlags mask.
  *
@@ -1632,6 +1634,10 @@ opencv_core_mat_perspective_transform(
  *   DFT_ROWS | DFT_INVERSE | DFT_SCALE
  * ROWS_INVERSE_REAL:
  *   DFT_ROWS | DFT_INVERSE | DFT_SCALE | DFT_REAL_OUTPUT
+ * FORWARD_PACKED:
+ *   flags 0 (real C1 input produces OpenCV's native packed CCS C1 output)
+ * INVERSE_PACKED:
+ *   DFT_INVERSE | DFT_SCALE | DFT_REAL_OUTPUT
  *
  * nonzeroRows is always 0. Source is borrowed and unmodified. The
  * independently owned result is published only

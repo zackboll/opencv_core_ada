@@ -937,12 +937,14 @@ not a uniquely specified Moore-Penrose minimum-norm vector.
 
 ## Spectral transforms
 
-The current spectral slice includes full-complex DFT support and orthonormal
-DCT support:
+The current spectral slice includes full-complex and packed real-input DFT
+support, plus orthonormal DCT support:
 
 - `Discrete_Fourier_Transform`
 - `Inverse_Discrete_Fourier_Transform`
 - `Inverse_Real_Discrete_Fourier_Transform`
+- `Packed_Discrete_Fourier_Transform`
+- `Inverse_Packed_Discrete_Fourier_Transform`
 - `Discrete_Fourier_Transform_Rows`
 - `Inverse_Discrete_Fourier_Transform_Rows`
 - `Inverse_Real_Discrete_Fourier_Transform_Rows`
@@ -953,9 +955,14 @@ DCT support:
 - `Multiply_Spectra`
 - `Optimal_DFT_Size`
 
-The forward DFT returns a full two-channel complex representation. The normal
-inverse DFT is scaled, so a forward/inverse round trip approximately recovers
-the source without an extra caller scale factor.
+Two Fourier representations are available. `Discrete_Fourier_Transform`
+returns a full two-channel (`C2`) complex spectrum. For real (`C1`) input,
+`Packed_Discrete_Fourier_Transform` returns OpenCV's native same-shape,
+same-depth packed CCS (`C1`) spectrum. The packed representation is opaque and
+is primarily intended for efficient spectral pipelines and inverse
+transformation; its physical storage layout follows OpenCV. Both inverse paths
+are scaled, so a forward/inverse round trip approximately recovers the source
+without an extra caller scale factor.
 `Inverse_Real_Discrete_Fourier_Transform` provides the real-output path for
 conjugate-symmetric spectra. The corresponding `_Rows` operations use
 `DFT_ROWS` to transform every row as an independent 1-D signal while preserving
@@ -967,8 +974,9 @@ number of independent rows may be odd.
 `Multiply_Spectra` distinguishes ordinary spectral multiplication from
 conjugate-right multiplication with `Spectrum_Multiplication_Kind`.
 
-The API intentionally does not expose packed CCS storage or an in-place
-transform interface.
+Packed row transforms, packed spectrum multiplication or division, CCS-bin
+accessors, representation conversion, and in-place transforms are not yet
+exposed.
 
 ---
 

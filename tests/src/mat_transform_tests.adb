@@ -5235,6 +5235,191 @@ package body Mat_Transform_Tests is
         (Inverse_Real_C3'Access, "Inverse-real DFT must reject C3");
    end Discrete_Fourier_Transform_Rejects_Invalid_Channels;
 
+   procedure Packed_DFT_Float32_Forward_And_Oracle_Round_Trip
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source          : constant OpenCV.Core.Mat := DFT_Sample_Real_Float32;
+      Packed          : constant OpenCV.Core.Mat :=
+        Source.Packed_Discrete_Fourier_Transform;
+      Packed_Restored : constant OpenCV.Core.Mat :=
+        Packed.Inverse_Packed_Discrete_Fourier_Transform;
+      Full_Restored   : constant OpenCV.Core.Mat :=
+        Source
+          .Discrete_Fourier_Transform
+          .Inverse_Real_Discrete_Fourier_Transform;
+   begin
+      AUnit.Assertions.Assert
+        (Packed.Rows = Source.Rows
+         and then Packed.Columns = Source.Columns
+         and then Packed.Depth = OpenCV.Core.Float32
+         and then Packed.Channels = 1,
+         "Packed Float32 DFT must preserve odd shape and remain C1");
+      AUnit.Assertions.Assert
+        (DFT_Float32_C1_Close (Packed_Restored, Source, 0.000_1)
+         and then DFT_Float32_C1_Close
+                    (Packed_Restored, Full_Restored, 0.000_1),
+         "Packed Float32 inverse must agree with source and full-complex"
+         & " oracle");
+   end Packed_DFT_Float32_Forward_And_Oracle_Round_Trip;
+
+   procedure Packed_DFT_Float64_Forward_And_Oracle_Round_Trip
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source          : constant OpenCV.Core.Mat :=
+        DFT_Sample_Real_Float32.Convert_To (OpenCV.Core.Float64);
+      Packed          : constant OpenCV.Core.Mat :=
+        Source.Packed_Discrete_Fourier_Transform;
+      Packed_Restored : constant OpenCV.Core.Mat :=
+        Packed.Inverse_Packed_Discrete_Fourier_Transform;
+      Full_Restored   : constant OpenCV.Core.Mat :=
+        Source
+          .Discrete_Fourier_Transform
+          .Inverse_Real_Discrete_Fourier_Transform;
+   begin
+      AUnit.Assertions.Assert
+        (Packed.Rows = Source.Rows
+         and then Packed.Columns = Source.Columns
+         and then Packed.Depth = OpenCV.Core.Float64
+         and then Packed.Channels = 1,
+         "Packed Float64 DFT must preserve shape, depth, and one channel");
+      AUnit.Assertions.Assert
+        (Packed_Restored.Abs_Diff (Source).Norm < 1.0E-12
+         and then Packed_Restored.Abs_Diff (Full_Restored).Norm < 1.0E-12,
+         "Packed Float64 inverse must satisfy the tighter Float64 oracle");
+   end Packed_DFT_Float64_Forward_And_Oracle_Round_Trip;
+
+   procedure Packed_DFT_Row_And_Column_Vectors (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Row_Source    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 5, (OpenCV.Core.Float32, 1));
+      Column_Source : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (5, 1, (OpenCV.Core.Float32, 1));
+   begin
+      for Index in 0 .. 4 loop
+         OpenCV.Core.Float32_Access.Set
+           (Row_Source, 0, Index, Interfaces.IEEE_Float_32 (Index + 1));
+         OpenCV.Core.Float32_Access.Set
+           (Column_Source, Index, 0, Interfaces.IEEE_Float_32 (Index + 1));
+      end loop;
+
+      declare
+         Row_Packed      : constant OpenCV.Core.Mat :=
+           Row_Source.Packed_Discrete_Fourier_Transform;
+         Column_Packed   : constant OpenCV.Core.Mat :=
+           Column_Source.Packed_Discrete_Fourier_Transform;
+         Row_Restored    : constant OpenCV.Core.Mat :=
+           Row_Packed.Inverse_Packed_Discrete_Fourier_Transform;
+         Column_Restored : constant OpenCV.Core.Mat :=
+           Column_Packed.Inverse_Packed_Discrete_Fourier_Transform;
+      begin
+         AUnit.Assertions.Assert
+           (Row_Packed.Rows = 1
+            and then Row_Packed.Columns = 5
+            and then Row_Packed.Channels = 1
+            and then DFT_Float32_C1_Close (Row_Restored, Row_Source, 0.000_1),
+            "Odd 1xN input must round-trip through packed CCS");
+         AUnit.Assertions.Assert
+           (Column_Packed.Rows = 5
+            and then Column_Packed.Columns = 1
+            and then Column_Packed.Channels = 1
+            and then DFT_Float32_C1_Close
+                       (Column_Restored, Column_Source, 0.000_1),
+            "Odd Nx1 input must round-trip through packed CCS");
+      end;
+   end Packed_DFT_Row_And_Column_Vectors;
+
+   procedure Packed_DFT_Noncontiguous_Region_And_Independence
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 5, (OpenCV.Core.Float32, 1));
+   begin
+      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      for Row in 0 .. 2 loop
+         for Column in 0 .. 2 loop
+            OpenCV.Core.Float32_Access.Set
+              (Parent,
+               Row,
+               Column + 1,
+               Interfaces.IEEE_Float_32 (Row * 3 + Column + 1));
+         end loop;
+      end loop;
+
+      declare
+         Source   : constant OpenCV.Core.Mat :=
+           Parent.Region ((X => 1, Y => 0, Width => 3, Height => 3));
+         Original : constant OpenCV.Core.Mat := Source.Clone;
+         Packed   : OpenCV.Core.Mat :=
+           Source.Packed_Discrete_Fourier_Transform;
+         Restored : OpenCV.Core.Mat :=
+           Packed.Inverse_Packed_Discrete_Fourier_Transform;
+      begin
+         AUnit.Assertions.Assert
+           (not Source.Is_Continuous
+            and then DFT_Float32_C1_Close (Restored, Original, 0.000_1)
+            and then DFT_Float32_C1_Close (Source, Original, 0.0),
+            "Packed DFT must accept a Region and leave its source unchanged");
+         Packed.Set_To (OpenCV.Core.Make_Scalar (-7.0));
+         AUnit.Assertions.Assert
+           (DFT_Float32_C1_Close (Restored, Original, 0.000_1)
+            and then DFT_Float32_C1_Close (Source, Original, 0.0),
+            "Packed and inverse results must own storage independently");
+         Restored.Set_To (OpenCV.Core.Make_Scalar (-9.0));
+         AUnit.Assertions.Assert
+           (DFT_Float32_C1_Close (Source, Original, 0.0),
+            "Mutating inverse output must not alter source storage");
+      end;
+   end Packed_DFT_Noncontiguous_Region_And_Independence;
+
+   procedure Packed_DFT_Rejects_Invalid_Inputs (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Default_Source : OpenCV.Core.Mat;
+      Empty_Source   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 1));
+      Integer_Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.Int32, 1));
+      Complex_Source : constant OpenCV.Core.Mat :=
+        DFT_Sample_Real_Float32.Discrete_Fourier_Transform;
+
+      procedure Forward_Default is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Default_Source.Packed_Discrete_Fourier_Transform;
+      end Forward_Default;
+
+      procedure Inverse_Empty is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Empty_Source.Inverse_Packed_Discrete_Fourier_Transform;
+      end Inverse_Empty;
+
+      procedure Forward_Integer is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Integer_Source.Packed_Discrete_Fourier_Transform;
+      end Forward_Integer;
+
+      procedure Forward_Complex is
+         Ignored : OpenCV.Core.Mat;
+      begin
+         Ignored := Complex_Source.Packed_Discrete_Fourier_Transform;
+      end Forward_Complex;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Forward_Default'Access, "Packed DFT must reject a default Mat");
+      Assert_Raises_OpenCV_Error
+        (Inverse_Empty'Access, "Packed inverse must reject a typed empty Mat");
+      Assert_Raises_OpenCV_Error
+        (Forward_Integer'Access, "Packed DFT must reject integer depth");
+      Assert_Raises_OpenCV_Error
+        (Forward_Complex'Access, "Packed DFT must reject C2 input");
+   end Packed_DFT_Rejects_Invalid_Inputs;
+
    procedure DFT_Rows_Forward_Matches_Independent_Rows
      (Test : in out Mat_Test_Fixture)
    is
@@ -7366,6 +7551,26 @@ package body Mat_Transform_Tests is
         (Caller.Create
            ("DFT rejects invalid channel counts",
             Discrete_Fourier_Transform_Rejects_Invalid_Channels'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Packed DFT Float32 forward and full-complex oracle round trip",
+            Packed_DFT_Float32_Forward_And_Oracle_Round_Trip'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Packed DFT Float64 forward and full-complex oracle round trip",
+            Packed_DFT_Float64_Forward_And_Oracle_Round_Trip'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Packed DFT odd row and column vectors",
+            Packed_DFT_Row_And_Column_Vectors'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Packed DFT non-contiguous Region and independent storage",
+            Packed_DFT_Noncontiguous_Region_And_Independence'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Packed DFT rejects empty, integer, and C2 inputs",
+            Packed_DFT_Rejects_Invalid_Inputs'Access));
       Result.Add_Test
         (Caller.Create
            ("DFT_ROWS forward matches independent row DFTs",

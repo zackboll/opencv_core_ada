@@ -877,6 +877,24 @@ package OpenCV.Core is
    --  the full-complex element size (8 bytes for Float32, 16 bytes
    --  for Float64).
    function Inverse_Real_Discrete_Fourier_Transform (Self : Mat) return Mat;
+   --  Returns OpenCV's native packed CCS representation of the unscaled
+   --  forward DFT. Self must be a non-empty Float32 or Float64 C1 Mat. A
+   --  1 x N row, an N x 1 column, and an ordinary M x N Mat are supported,
+   --  including odd positive dimensions and non-contiguous Regions. The
+   --  result is an opaque spectral Mat with Self's rows, columns, depth, and
+   --  one channel; callers need not interpret its OpenCV-defined physical
+   --  layout to pass it to Inverse_Packed_Discrete_Fourier_Transform. Self is
+   --  unchanged and the result owns independent storage. The same DFT
+   --  signed-arithmetic safety limits documented above apply.
+   function Packed_Discrete_Fourier_Transform (Self : Mat) return Mat;
+   --  Returns the normalized real C1 inverse of an OpenCV packed CCS Mat.
+   --  Self must be a non-empty Float32 or Float64 C1 packed spectrum, normally
+   --  produced by Packed_Discrete_Fourier_Transform. OpenCV cv::dft is called
+   --  with DFT_INVERSE, DFT_SCALE, and DFT_REAL_OUTPUT. The result preserves
+   --  rows, columns, and depth, owns independent storage, and approximately
+   --  reproduces the original real source. Self is unchanged. The packed
+   --  layout remains opaque and the same DFT arithmetic-safety limits apply.
+   function Inverse_Packed_Discrete_Fourier_Transform (Self : Mat) return Mat;
    --  Returns a full-complex DFT in which every row is transformed as an
    --  independent 1-D signal using cv::dft with DFT_ROWS. Self must satisfy
    --  the same depth, channel, non-empty, and size requirements as

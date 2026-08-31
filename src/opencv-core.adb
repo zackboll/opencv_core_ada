@@ -2482,8 +2482,10 @@ package body OpenCV.Core is
       return Polar_To_Cart (Empty_Magnitude, Angle, Units);
    end Polar_To_Cart;
 
+   type DFT_Channel_Requirement is (Real_Or_Complex, Real_Only, Complex_Only);
+
    procedure Validate_DFT_Floating_Source
-     (Self : Mat; Operation : String; Require_Complex : Boolean) is
+     (Self : Mat; Operation : String; Requirement : DFT_Channel_Requirement) is
    begin
       if Self.Is_Empty then
          Ada.Exceptions.Raise_Exception
@@ -2496,19 +2498,30 @@ package body OpenCV.Core is
             Operation & " requires a Float32 or Float64 Mat");
       end if;
 
-      if Require_Complex then
-         if Self.Channels /= 2 then
-            Ada.Exceptions.Raise_Exception
-              (OpenCV_Error'Identity,
-               Operation & " requires a two-channel complex Mat");
-         end if;
-      elsif Self.Channels /= 1 and then Self.Channels /= 2 then
-         Ada.Exceptions.Raise_Exception
-           (OpenCV_Error'Identity,
-            Operation
-            & " requires a one-channel real or two-channel"
-            & " complex Mat");
-      end if;
+      case Requirement is
+         when Complex_Only    =>
+            if Self.Channels /= 2 then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  Operation & " requires a two-channel complex Mat");
+            end if;
+
+         when Real_Only       =>
+            if Self.Channels /= 1 then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  Operation & " requires a one-channel real Mat");
+            end if;
+
+         when Real_Or_Complex =>
+            if Self.Channels /= 1 and then Self.Channels /= 2 then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  Operation
+                  & " requires a one-channel real or two-channel"
+                  & " complex Mat");
+            end if;
+      end case;
 
       declare
          function Product_Exceeds_Signed_Int32
@@ -2534,18 +2547,18 @@ package body OpenCV.Core is
    end Validate_DFT_Floating_Source;
 
    function Perform_DFT
-     (Self            : Mat;
-      Operation       : String;
-      Error_Context   : String;
-      Transform_Kind  : OpenCV.Internal.C_API.C_Int32;
-      Require_Complex : Boolean) return Mat
+     (Self           : Mat;
+      Operation      : String;
+      Error_Context  : String;
+      Transform_Kind : OpenCV.Internal.C_API.C_Int32;
+      Requirement    : DFT_Channel_Requirement) return Mat
    is
       Result     : Mat;
       New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
         OpenCV.Internal.C_API.Null_Mat_Handle;
       Status     : OpenCV.Internal.C_API.Status;
    begin
-      Validate_DFT_Floating_Source (Self, Operation, Require_Complex);
+      Validate_DFT_Floating_Source (Self, Operation, Requirement);
 
       Status :=
         OpenCV.Internal.C_API.Mat_DFT
@@ -2579,7 +2592,7 @@ package body OpenCV.Core is
            "Discrete_Fourier_Transform",
            "Mat discrete Fourier transform",
            OpenCV.Internal.C_API.DFT_Forward_Complex,
-           Require_Complex => False);
+           Requirement => Real_Or_Complex);
    end Discrete_Fourier_Transform;
 
    function Inverse_Discrete_Fourier_Transform (Self : Mat) return Mat is
@@ -2590,7 +2603,7 @@ package body OpenCV.Core is
            "Inverse_Discrete_Fourier_Transform",
            "Mat inverse discrete Fourier transform",
            OpenCV.Internal.C_API.DFT_Inverse_Complex,
-           Require_Complex => True);
+           Requirement => Complex_Only);
    end Inverse_Discrete_Fourier_Transform;
 
    function Inverse_Real_Discrete_Fourier_Transform (Self : Mat) return Mat is
@@ -2601,8 +2614,31 @@ package body OpenCV.Core is
            "Inverse_Real_Discrete_Fourier_Transform",
            "Mat inverse real discrete Fourier transform",
            OpenCV.Internal.C_API.DFT_Inverse_Real,
-           Require_Complex => True);
+           Requirement => Complex_Only);
    end Inverse_Real_Discrete_Fourier_Transform;
+
+   function Packed_Discrete_Fourier_Transform (Self : Mat) return Mat is
+   begin
+      return
+        Perform_DFT
+          (Self,
+           "Packed_Discrete_Fourier_Transform",
+           "Mat packed discrete Fourier transform",
+           OpenCV.Internal.C_API.DFT_Forward_Packed,
+           Requirement => Real_Only);
+   end Packed_Discrete_Fourier_Transform;
+
+   function Inverse_Packed_Discrete_Fourier_Transform (Self : Mat) return Mat
+   is
+   begin
+      return
+        Perform_DFT
+          (Self,
+           "Inverse_Packed_Discrete_Fourier_Transform",
+           "Mat inverse packed discrete Fourier transform",
+           OpenCV.Internal.C_API.DFT_Inverse_Packed,
+           Requirement => Real_Only);
+   end Inverse_Packed_Discrete_Fourier_Transform;
 
    function Discrete_Fourier_Transform_Rows (Self : Mat) return Mat is
    begin
@@ -2612,7 +2648,7 @@ package body OpenCV.Core is
            "Discrete_Fourier_Transform_Rows",
            "Mat row-wise discrete Fourier transform",
            OpenCV.Internal.C_API.DFT_Rows_Forward_Complex,
-           Require_Complex => False);
+           Requirement => Real_Or_Complex);
    end Discrete_Fourier_Transform_Rows;
 
    function Inverse_Discrete_Fourier_Transform_Rows (Self : Mat) return Mat is
@@ -2623,7 +2659,7 @@ package body OpenCV.Core is
            "Inverse_Discrete_Fourier_Transform_Rows",
            "Mat row-wise inverse discrete Fourier transform",
            OpenCV.Internal.C_API.DFT_Rows_Inverse_Complex,
-           Require_Complex => True);
+           Requirement => Complex_Only);
    end Inverse_Discrete_Fourier_Transform_Rows;
 
    function Inverse_Real_Discrete_Fourier_Transform_Rows
@@ -2635,7 +2671,7 @@ package body OpenCV.Core is
            "Inverse_Real_Discrete_Fourier_Transform_Rows",
            "Mat row-wise inverse real discrete Fourier transform",
            OpenCV.Internal.C_API.DFT_Rows_Inverse_Real,
-           Require_Complex => True);
+           Requirement => Complex_Only);
    end Inverse_Real_Discrete_Fourier_Transform_Rows;
 
    procedure Validate_DCT_Source
