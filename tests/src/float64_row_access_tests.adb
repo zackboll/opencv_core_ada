@@ -311,7 +311,6 @@ package body Float64_Row_Access_Tests is
       Numerator   : OpenCV.Core.Mat := Float64_Image (1, 3);
       Denominator : OpenCV.Core.Mat := Float64_Image (1, 3);
       Nonfinite   : OpenCV.Core.Mat;
-      Copied      : OpenCV.Core.Float64_Row_Access.Row_Array (0 .. 2);
       Destination : OpenCV.Core.Mat := Float64_Image (1, 3);
       procedure Inspect
         (Data : aliased OpenCV.Core.Float64_Row_Access.Row_Array) is
@@ -320,6 +319,20 @@ package body Float64_Row_Access_Tests is
            (Data'Length = 3,
             "A borrowed nonfinite row must preserve its extent");
       end Inspect;
+
+      procedure Transfer
+        (Data : aliased OpenCV.Core.Float64_Row_Access.Row_Array)
+      is
+         procedure Write
+           (Output : aliased in out OpenCV.Core.Float64_Row_Access.Row_Array)
+         is
+         begin
+            Output := Data;
+         end Write;
+      begin
+         OpenCV.Core.Float64_Row_Access.With_Writable_Row
+           (Destination, 0, Write'Access);
+      end Transfer;
    begin
       OpenCV.Core.Float64_Access.Set (Numerator, 0, 0, 1.0);
       OpenCV.Core.Float64_Access.Set (Numerator, 0, 1, -1.0);
@@ -327,8 +340,8 @@ package body Float64_Row_Access_Tests is
       Denominator.Set_To (OpenCV.Core.Make_Scalar (0.0));
       Nonfinite := Numerator.Divide (Denominator);
 
-      OpenCV.Core.Float64_Row_Access.Read_Row (Nonfinite, 0, Copied);
-      OpenCV.Core.Float64_Row_Access.Write_Row (Destination, 0, Copied);
+      OpenCV.Core.Float64_Row_Access.With_Read_Only_Row
+        (Nonfinite, 0, Transfer'Access);
       OpenCV.Core.Float64_Row_Access.With_Read_Only_Row
         (Destination, 0, Inspect'Access);
       AUnit.Assertions.Assert
@@ -338,7 +351,7 @@ package body Float64_Row_Access_Tests is
                   = OpenCV.Core.Float64_Access.Negative_Infinity
          and then OpenCV.Core.Float64_Access.Classify (Destination, 0, 2)
                   = OpenCV.Core.Float64_Access.Not_A_Number,
-         "Copied and borrowed Float64 rows must preserve nonfinite values");
+         "Borrowed Float64 rows must preserve nonfinite values");
    end Row_Transfer_Preserves_Nonfinite_Classification;
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is

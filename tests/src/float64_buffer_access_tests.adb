@@ -97,6 +97,14 @@ package body Float64_Buffer_Access_Tests is
             "Float64 buffer writes must be immediately visible through"
             & " aliases");
       end Mutate;
+
+      procedure Inspect_Row
+        (Data : aliased OpenCV.Core.Float64_Row_Access.Row_Array) is
+      begin
+         AUnit.Assertions.Assert
+           (Data (0) = -7.75 and then Data (2) = 99.5,
+            "Borrowed Float64 row access must observe whole-buffer writes");
+      end Inspect_Row;
    begin
       Image.Set_To (OpenCV.Core.Make_Scalar (1.0));
       Alias := Image;
@@ -104,6 +112,8 @@ package body Float64_Buffer_Access_Tests is
       OpenCV.Core.Float64_Buffer_Access.With_Writable_Buffer
         (Image, Mutate'Access);
       OpenCV.Core.Float64_Row_Access.Read_Row (Image, 1, Row);
+      OpenCV.Core.Float64_Row_Access.With_Read_Only_Row
+        (Image, 1, Inspect_Row'Access);
       AUnit.Assertions.Assert
         (Row (0) = -7.75 and then Row (2) = 99.5,
          "Subsequent Float64 row access must observe whole-buffer writes");
@@ -310,6 +320,41 @@ package body Float64_Buffer_Access_Tests is
          "Writes before a callback exception must remain visible");
    end Callback_Exception_Propagates_And_Preserves_Writes;
 
+   procedure Three_Dimensional_Mat_Is_Rejected_Before_Callback
+     (Test : in out Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape => (2, 3, 4), Element_Type => (OpenCV.Core.Float64, 1));
+      Invoked : Boolean := False;
+
+      procedure Mark
+        (Data : aliased OpenCV.Core.Float64_Buffer_Access.Buffer_Array)
+      is
+         pragma Unreferenced (Data);
+      begin
+         Invoked := True;
+      end Mark;
+
+      procedure Borrow is
+      begin
+         OpenCV.Core.Float64_Buffer_Access.With_Read_Only_Buffer
+           (Image, Mark'Access);
+      end Borrow;
+   begin
+      AUnit.Assertions.Assert
+        (Image.Is_Continuous and then Image.Dimension_Count = 3,
+         "The dimensional fixture must be a continuous genuine 3-D Mat");
+      Assert_Raises_OpenCV_Error
+        (Borrow'Access,
+         "Float64 whole-buffer access must match the established 2-D"
+         & " contract");
+      AUnit.Assertions.Assert
+        (not Invoked,
+         "Dimensional validation must precede callback invocation");
+   end Three_Dimensional_Mat_Is_Rejected_Before_Callback;
+
    procedure Typed_Empty_Mat_Invokes_Callback_With_Empty_Array
      (Test : in out Fixture)
    is
@@ -362,6 +407,10 @@ package body Float64_Buffer_Access_Tests is
         (Caller.Create
            ("Float64 buffer callback exception preserves completed writes",
             Callback_Exception_Propagates_And_Preserves_Writes'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float64 buffer matches established 2-D dimensional contract",
+            Three_Dimensional_Mat_Is_Rejected_Before_Callback'Access));
       Result.Add_Test
         (Caller.Create
            ("Float64 typed empty buffer invokes callback with empty array",

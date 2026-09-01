@@ -18,7 +18,7 @@ translation of the C++ headers.
 >
 > **Development status:** active, pre-1.0 API.
 >
-> **Current test baseline:** 999 AUnit tests, with Ada and C++ warnings promoted
+> **Current test baseline:** 1000 AUnit tests, with Ada and C++ warnings promoted
 > to errors. GitHub Actions exercises the full test suite against four OpenCV
 > compatibility targets, plus a native Ubuntu 24.04 ARM64 job.
 >
@@ -583,13 +583,13 @@ operations can still be used.
 
 Direct typed access currently concentrates on five common layouts:
 
-| Layout | Element Get/Set | Copied row | Borrowed row | Continuous buffer borrow | Packed caller buffer -> `Mat` | Strided caller buffer -> `Mat` |
-| --- | --- | --- | --- | --- | --- | --- |
-| UInt8 C1 | `UInt8_Access` | `UInt8_Row_Access` | `UInt8_Row_Access` | `UInt8_Buffer_Access` | `UInt8_Mat_View` | — |
-| Float32 C1 | `Float32_Access` | `Float32_Row_Access` | `Float32_Row_Access` | `Float32_Buffer_Access` | `Float32_Mat_View` | `Float32_Mat_View` |
-| Float64 C1 | `Float64_Access` | `Float64_Row_Access` | `Float64_Row_Access` | `Float64_Buffer_Access` | — | — |
-| UInt8 C3 | `UInt8_Vec3_Access` | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Buffer_Access` | `UInt8_Vec3_Mat_View` | — |
-| Float32 C3 | `Float32_Vec3_Access` | `Float32_Vec3_Row_Access` | `Float32_Vec3_Row_Access` | `Float32_Vec3_Buffer_Access` | `Float32_Vec3_Mat_View` | — |
+| Layout | 2-D Get/Set | N-D Get/Set | Classification | Copied row | Borrowed row | Continuous buffer borrow | Packed caller buffer -> `Mat` | Strided caller buffer -> `Mat` |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| UInt8 C1 | `UInt8_Access` | `UInt8_Access` | — | `UInt8_Row_Access` | `UInt8_Row_Access` | `UInt8_Buffer_Access` | `UInt8_Mat_View` | — |
+| Float32 C1 | `Float32_Access` | `Float32_Access` | — | `Float32_Row_Access` | `Float32_Row_Access` | `Float32_Buffer_Access` | `Float32_Mat_View` | `Float32_Mat_View` |
+| Float64 C1 | `Float64_Access` | `Float64_Access` | `Float64_Access` | `Float64_Row_Access` | `Float64_Row_Access` | `Float64_Buffer_Access` | — | — |
+| UInt8 C3 | `UInt8_Vec3_Access` | — | — | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Buffer_Access` | `UInt8_Vec3_Mat_View` | — |
+| Float32 C3 | `Float32_Vec3_Access` | — | — | `Float32_Vec3_Row_Access` | `Float32_Vec3_Row_Access` | `Float32_Vec3_Buffer_Access` | `Float32_Vec3_Mat_View` | — |
 
 For Vec3 APIs, **one Ada vector is one complete OpenCV element/pixel**, not one
 scalar channel:
@@ -602,8 +602,9 @@ BGR, XYZ, or any other semantic channel interpretation.
 
 `Float64_Access` provides scalar 2-D and N-D Get/Set plus non-finite value
 classification. `Float64_Row_Access` adds copied and callback-scoped zero-copy
-row access for 2-D C1 Mats, including non-contiguous Regions. Float64 whole-
-buffer borrowing and external Mat views are not yet provided.
+row access for 2-D C1 Mats, including non-contiguous Regions.
+`Float64_Buffer_Access` adds callback-scoped zero-copy whole-buffer borrowing
+for continuous 2-D Mats. Float64 external Mat views are not yet provided.
 
 Generic pure-Ada value abstractions are also provided:
 
