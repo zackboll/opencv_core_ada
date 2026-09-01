@@ -4,6 +4,7 @@ with Ada.Exceptions;
 with Interfaces;
 with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
+with OpenCV.Core.Float64_Access;
 with OpenCV.Core.Float32_Buffer_Access;
 with OpenCV.Core.Float32_Mat_View;
 with OpenCV.Core.Float32_Row_Access;
@@ -27,9 +28,12 @@ package body Mat_Access_Tests is
 
    use type Ada.Exceptions.Exception_Id;
    use type Interfaces.IEEE_Float_32;
+   use type Interfaces.IEEE_Float_64;
+
    use type Interfaces.Unsigned_8;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
+   use type OpenCV.Core.Float64_Access.Float64_Classification;
    use type OpenCV.Core.UInt8_Row_Access.Row_Array;
    use type OpenCV.Core.UInt8_Vec3.Vector;
    use type OpenCV.Core.UInt8_Vec3_Row_Access.Row_Array;
@@ -4714,6 +4718,397 @@ package body Mat_Access_Tests is
          "Ordinary Mat assignment should share N-D typed element writes");
    end N_Dimensional_Assignment_Shares_Typed_Element_Writes;
 
+   procedure Float64_Typed_Element_Access (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.Float64, Channels => 1));
+   begin
+      OpenCV.Core.Float64_Access.Set
+        (Image, Row => 0, Column => 0, Value => 1.25);
+      OpenCV.Core.Float64_Access.Set
+        (Image, Row => 0, Column => 1, Value => -2.5);
+      OpenCV.Core.Float64_Access.Set
+        (Image, Row => 0, Column => 2, Value => 3.75);
+      OpenCV.Core.Float64_Access.Set
+        (Image, Row => 1, Column => 0, Value => 0.0);
+      OpenCV.Core.Float64_Access.Set
+        (Image, Row => 1, Column => 1, Value => -0.0);
+      OpenCV.Core.Float64_Access.Set
+        (Image, Row => 1, Column => 2, Value => 1.0E-300);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float64_Access.Get (Image, Row => 0, Column => 0) = 1.25
+         and then OpenCV.Core.Float64_Access.Get (Image, Row => 0, Column => 1)
+                  = -2.5
+         and then OpenCV.Core.Float64_Access.Get (Image, Row => 0, Column => 2)
+                  = 3.75,
+         "Float64 Get should preserve distinct finite values exactly");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float64_Access.Get (Image, Row => 1, Column => 0) = 0.0
+         and then OpenCV.Core.Float64_Access.Get (Image, Row => 1, Column => 1)
+                  = 0.0
+         and then OpenCV.Core.Float64_Access.Classify (Image, 1, 0)
+                  = OpenCV.Core.Float64_Access.Finite
+         and then OpenCV.Core.Float64_Access.Classify (Image, 1, 1)
+                  = OpenCV.Core.Float64_Access.Finite,
+         "Float64 Get should preserve +0.0 and -0.0 as finite zeros");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float64_Access.Get (Image, Row => 1, Column => 2)
+         = 1.0E-300,
+         "Float64 Get should preserve a very small finite value exactly");
+   end Float64_Typed_Element_Access;
+
+   procedure Float64_Preserves_Values_Beyond_Float32
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      First     : constant OpenCV.Core.Float64_Value := 1.0;
+      Second    : OpenCV.Core.Float64_Value;
+      First_32  : OpenCV.Core.Float32_Value;
+      Second_32 : OpenCV.Core.Float32_Value;
+      Image     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.Float64, Channels => 1));
+   begin
+      Second := First + 2.0**(-40);
+      First_32 := OpenCV.Core.Float32_Value (First);
+      Second_32 := OpenCV.Core.Float32_Value (Second);
+      AUnit.Assertions.Assert
+        (First /= Second and then First_32 = Second_32,
+         "The precision pair must be distinct in Float64 and identical in"
+         & " Float32");
+
+      OpenCV.Core.Float64_Access.Set
+        (Image, Row => 0, Column => 0, Value => First);
+      OpenCV.Core.Float64_Access.Set
+        (Image, Row => 0, Column => 1, Value => Second);
+      OpenCV.Core.Float64_Access.Set
+        (Image, Row => 0, Column => 2, Value => 1.0E300);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float64_Access.Get (Image, Row => 0, Column => 0) = First
+         and then OpenCV.Core.Float64_Access.Get (Image, Row => 0, Column => 1)
+                  = Second
+         and then OpenCV.Core.Float64_Access.Get (Image, Row => 0, Column => 0)
+                  /= OpenCV.Core.Float64_Access.Get
+                       (Image, Row => 0, Column => 1),
+         "Float64 access must keep nearby binary64 values distinct");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float64_Access.Get (Image, Row => 0, Column => 2)
+         = 1.0E300,
+         "Float64 Get should preserve a very large finite value exactly");
+   end Float64_Preserves_Values_Beyond_Float32;
+
+   procedure Float64_Classification_Identifies_Stored_Values
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Numerator   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 4, (OpenCV.Core.Float64, 1));
+      Denominator : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 4, (OpenCV.Core.Float64, 1));
+      Finite      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float64, 1));
+      Result      : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float64_Access.Set (Numerator, 0, 0, 2.0);
+      OpenCV.Core.Float64_Access.Set (Numerator, 0, 1, 1.0);
+      OpenCV.Core.Float64_Access.Set (Numerator, 0, 2, -1.0);
+      OpenCV.Core.Float64_Access.Set (Numerator, 0, 3, 0.0);
+      OpenCV.Core.Float64_Access.Set (Finite, 0, 0, 2.0);
+      Denominator.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Result := Numerator.Divide (Denominator);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float64_Access.Classify (Finite, 0, 0)
+         = OpenCV.Core.Float64_Access.Finite
+         and then OpenCV.Core.Float64_Access.Classify (Result, 0, 0)
+                  = OpenCV.Core.Float64_Access.Positive_Infinity
+         and then OpenCV.Core.Float64_Access.Classify (Result, 0, 1)
+                  = OpenCV.Core.Float64_Access.Positive_Infinity
+         and then OpenCV.Core.Float64_Access.Classify (Result, 0, 2)
+                  = OpenCV.Core.Float64_Access.Negative_Infinity
+         and then OpenCV.Core.Float64_Access.Classify (Result, 0, 3)
+                  = OpenCV.Core.Float64_Access.Not_A_Number,
+         "Float64 classification must identify finite, infinite, and NaN"
+         & " values");
+   end Float64_Classification_Identifies_Stored_Values;
+
+   procedure Float64_Region_And_Alias_Share_Typed_Writes
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 4,
+           Columns      => 6,
+           Element_Type => (Depth => OpenCV.Core.Float64, Channels => 1));
+      View   : OpenCV.Core.Mat;
+      Alias  : OpenCV.Core.Mat;
+      Copy   : OpenCV.Core.Mat;
+   begin
+      Parent.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      View := Parent.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+      Alias := Parent;
+      AUnit.Assertions.Assert
+        (not View.Is_Continuous,
+         "The Region used for access must be non-contiguous");
+
+      OpenCV.Core.Float64_Access.Set
+        (View, Row => 0, Column => 0, Value => 11.0);
+      OpenCV.Core.Float64_Access.Set
+        (View, Row => 1, Column => 2, Value => 13.0);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float64_Access.Get (View, Row => 0, Column => 0) = 11.0
+         and then OpenCV.Core.Float64_Access.Get (View, Row => 1, Column => 2)
+                  = 13.0,
+         "Float64 Get/Set must work on a non-contiguous Region");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float64_Access.Get (Parent, Row => 1, Column => 1) = 11.0
+         and then OpenCV.Core.Float64_Access.Get
+                    (Parent, Row => 2, Column => 3)
+                  = 13.0
+         and then OpenCV.Core.Float64_Access.Get (Alias, Row => 1, Column => 1)
+                  = 11.0,
+         "Region and shallow-alias writes must be visible in shared storage");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float64_Access.Get (Parent, Row => 1, Column => 0) = 1.0
+         and then OpenCV.Core.Float64_Access.Get
+                    (Parent, Row => 1, Column => 4)
+                  = 1.0,
+         "Region writes must not mutate parent padding");
+
+      Copy := Parent.Clone;
+      OpenCV.Core.Float64_Access.Set
+        (Parent, Row => 1, Column => 1, Value => 99.0);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float64_Access.Get (Copy, Row => 1, Column => 1) = 11.0,
+         "A clone must retain the pre-mutation Float64 value");
+   end Float64_Region_And_Alias_Share_Typed_Writes;
+
+   procedure Float64_Typed_Access_Rejects_Invalid_Mats_And_Indices
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      UInt8_Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+      Float32_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Multi         : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float64, 2));
+      Image         : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float64, 1));
+
+      procedure Read_UInt8 is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float64_Access.Get (UInt8_Image, 0, 0) = 0.0,
+            "An incompatible Float64 read unexpectedly succeeded");
+      end Read_UInt8;
+
+      procedure Read_Float32 is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float64_Access.Get (Float32_Image, 0, 0) = 0.0,
+            "A Float32 Mat Float64 read unexpectedly succeeded");
+      end Read_Float32;
+
+      procedure Read_Multi_Channel is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float64_Access.Get (Multi, 0, 0) = 0.0,
+            "A multi-channel Float64 read unexpectedly succeeded");
+      end Read_Multi_Channel;
+
+      procedure Read_Negative_Row is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float64_Access.Get (Image, -1, 0) = 0.0,
+            "A negative row read unexpectedly succeeded");
+      end Read_Negative_Row;
+
+      procedure Read_Negative_Column is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float64_Access.Get (Image, 0, -1) = 0.0,
+            "A negative column read unexpectedly succeeded");
+      end Read_Negative_Column;
+
+      procedure Read_Row_After_Last is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float64_Access.Get (Image, 2, 0) = 0.0,
+            "A past-the-end row read unexpectedly succeeded");
+      end Read_Row_After_Last;
+
+      procedure Read_Column_After_Last is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float64_Access.Get (Image, 0, 2) = 0.0,
+            "A past-the-end column read unexpectedly succeeded");
+      end Read_Column_After_Last;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Read_UInt8'Access, "Float64 access must reject a UInt8 Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_Float32'Access, "Float64 access must reject a Float32 Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_Multi_Channel'Access,
+         "Float64 access must reject a multi-channel Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_Negative_Row'Access,
+         "Float64 access must reject a negative row");
+      Assert_Raises_OpenCV_Error
+        (Read_Negative_Column'Access,
+         "Float64 access must reject a negative column");
+      Assert_Raises_OpenCV_Error
+        (Read_Row_After_Last'Access,
+         "Float64 access must reject a row after the last row");
+      Assert_Raises_OpenCV_Error
+        (Read_Column_After_Last'Access,
+         "Float64 access must reject a column after the last column");
+   end Float64_Typed_Access_Rejects_Invalid_Mats_And_Indices;
+
+   procedure Float64_One_Dimensional_Typed_Element_Access
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 4,
+           Element_Type => (Depth => OpenCV.Core.Float64, Channels => 1));
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.Float64_Access.Set
+        (Image, Row => 0, Column => 2, Value => 7.5);
+      OpenCV.Core.Float64_Access.Set
+        (Image, Indices => (0, 3), Value => -8.25);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float64_Access.Get (Image, Row => 0, Column => 2) = 7.5
+         and then OpenCV.Core.Float64_Access.Get (Image, Indices => (0, 3))
+                  = -8.25
+         and then OpenCV.Core.Float64_Access.Get (Image, Indices => (0, 1))
+                  = 0.0,
+         "Float64 1-D C1 access must preserve written and unrelated"
+         & " elements");
+   end Float64_One_Dimensional_Typed_Element_Access;
+
+   procedure Float64_N_Dimensional_Typed_Element_Access
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape        => (2, 3, 4),
+           Element_Type => (Depth => OpenCV.Core.Float64, Channels => 1));
+      Indices : constant OpenCV.Core.Index_Array (3 .. 5) := (1, 2, 3);
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.Float64_Access.Set
+        (Image, Indices => (0, 0, 0), Value => 1.25);
+      OpenCV.Core.Float64_Access.Set
+        (Image, Indices => Indices, Value => -2.5);
+      OpenCV.Core.Float64_Access.Set
+        (Image, Indices => (1, 1, 2), Value => 3.75);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float64_Access.Get (Image, Indices => (0, 0, 0)) = 1.25
+         and then OpenCV.Core.Float64_Access.Get (Image, Indices => (1, 2, 3))
+                  = -2.5
+         and then OpenCV.Core.Float64_Access.Get (Image, Indices => (1, 1, 2))
+                  = 3.75
+         and then OpenCV.Core.Float64_Access.Get (Image, Indices => (1, 2, 2))
+                  = 0.0,
+         "Float64 N-D Get/Set must address multiple locations and preserve"
+         & " unrelated elements");
+   end Float64_N_Dimensional_Typed_Element_Access;
+
+   procedure Float64_N_Dimensional_Typed_Access_Rejects_Invalid
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image         : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape        => (2, 3, 4),
+           Element_Type => (Depth => OpenCV.Core.Float64, Channels => 1));
+      Default_Empty : OpenCV.Core.Mat;
+      Empty_Indices : constant OpenCV.Core.Index_Array (1 .. 0) :=
+        (others => 0);
+
+      procedure Read_Two_Indices is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float64_Access.Get (Image, Indices => (1, 2)) = 0.0,
+            "A 2-index 3-D Float64 read unexpectedly succeeded");
+      end Read_Two_Indices;
+
+      procedure Read_Four_Indices is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float64_Access.Get (Image, Indices => (1, 2, 3, 0))
+            = 0.0,
+            "A 4-index 3-D Float64 read unexpectedly succeeded");
+      end Read_Four_Indices;
+
+      procedure Read_First_Axis is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float64_Access.Get (Image, Indices => (2, 0, 0)) = 0.0,
+            "An index equal to extent 1 unexpectedly succeeded");
+      end Read_First_Axis;
+
+      procedure Read_Second_Axis is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float64_Access.Get (Image, Indices => (0, 3, 0)) = 0.0,
+            "An index equal to extent 2 unexpectedly succeeded");
+      end Read_Second_Axis;
+
+      procedure Read_Third_Axis is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float64_Access.Get (Image, Indices => (0, 0, 4)) = 0.0,
+            "An index equal to extent 3 unexpectedly succeeded");
+      end Read_Third_Axis;
+
+      procedure Read_Default is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float64_Access.Get
+              (Default_Empty, Indices => Empty_Indices)
+            = 0.0,
+            "A default empty Float64 N-D read unexpectedly succeeded");
+      end Read_Default;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Read_Two_Indices'Access,
+         "Float64 N-D access must reject fewer indices than Dimension_Count");
+      Assert_Raises_OpenCV_Error
+        (Read_Four_Indices'Access,
+         "Float64 N-D access must reject more indices than Dimension_Count");
+      Assert_Raises_OpenCV_Error
+        (Read_First_Axis'Access,
+         "Float64 N-D access must reject an index equal to the first extent");
+      Assert_Raises_OpenCV_Error
+        (Read_Second_Axis'Access,
+         "Float64 N-D access must reject an index equal to the second"
+         & " extent");
+      Assert_Raises_OpenCV_Error
+        (Read_Third_Axis'Access,
+         "Float64 N-D access must reject an index equal to the third extent");
+      Assert_Raises_OpenCV_Error
+        (Read_Default'Access,
+         "Float64 N-D Get on a default Mat must raise OpenCV_Error");
+   end Float64_N_Dimensional_Typed_Access_Rejects_Invalid;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -4744,6 +5139,38 @@ package body Mat_Access_Tests is
         (Caller.Create
            ("Float32 typed element access",
             Float32_Typed_Element_Access'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float64 typed element access",
+            Float64_Typed_Element_Access'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float64 preserves values beyond Float32",
+            Float64_Preserves_Values_Beyond_Float32'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float64 classification identifies stored values",
+            Float64_Classification_Identifies_Stored_Values'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float64 Region and alias share typed writes",
+            Float64_Region_And_Alias_Share_Typed_Writes'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float64 typed access rejects invalid Mats and indices",
+            Float64_Typed_Access_Rejects_Invalid_Mats_And_Indices'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float64 1-D typed element access",
+            Float64_One_Dimensional_Typed_Element_Access'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float64 N-D typed element access",
+            Float64_N_Dimensional_Typed_Element_Access'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float64 N-D typed access rejects invalid",
+            Float64_N_Dimensional_Typed_Access_Rejects_Invalid'Access));
       Result.Add_Test
         (Caller.Create
            ("Typed access rejects incompatible depth",

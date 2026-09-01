@@ -930,6 +930,26 @@ opencv_core_status
 opencv_core_mat_set_float32(opencv_core_mat_handle *mat, int32_t row,
                             int32_t column, float value);
 
+opencv_core_status
+opencv_core_mat_get_float64(const opencv_core_mat_handle *mat, int32_t row,
+                            int32_t column, double *out_value);
+
+/* Stable Float64 classification identifiers. */
+#define OPENCV_CORE_FLOAT64_FINITE ((int32_t)0)
+#define OPENCV_CORE_FLOAT64_POSITIVE_INFINITY ((int32_t)1)
+#define OPENCV_CORE_FLOAT64_NEGATIVE_INFINITY ((int32_t)2)
+#define OPENCV_CORE_FLOAT64_NOT_A_NUMBER ((int32_t)3)
+
+opencv_core_status
+opencv_core_mat_classify_float64(const opencv_core_mat_handle *mat,
+                                 int32_t row, int32_t column,
+                                 int32_t *out_classification);
+
+opencv_core_status
+opencv_core_mat_set_float64(opencv_core_mat_handle *mat, int32_t row,
+                            int32_t column, double value);
+
+
 /*
  * Read or write one element of a single-channel Mat using N-dimensional
  * zero-based indices. ndims is the number of values in indices, in iteration
@@ -953,6 +973,16 @@ opencv_core_mat_get_float32_nd(const opencv_core_mat_handle *mat,
 opencv_core_status
 opencv_core_mat_set_float32_nd(opencv_core_mat_handle *mat, int32_t ndims,
                                const int32_t *indices, float value);
+
+opencv_core_status
+opencv_core_mat_get_float64_nd(const opencv_core_mat_handle *mat,
+                               int32_t ndims, const int32_t *indices,
+                               double *out_value);
+
+opencv_core_status
+opencv_core_mat_set_float64_nd(opencv_core_mat_handle *mat, int32_t ndims,
+                               const int32_t *indices, double value);
+
 
 
 /*

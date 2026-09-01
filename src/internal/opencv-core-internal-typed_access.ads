@@ -24,6 +24,17 @@ package OpenCV.Core.Internal.Typed_Access is
 
    procedure Set_Float32
      (Image : in out Mat; Row, Column : Integer; Value : Float32_Value);
+   function Get_Float64
+     (Image : Mat; Indices : Index_Array) return Float64_Value;
+
+   procedure Set_Float64
+     (Image : in out Mat; Indices : Index_Array; Value : Float64_Value);
+
+   function Get_Float64
+     (Image : Mat; Row, Column : Integer) return Float64_Value;
+
+   procedure Set_Float64
+     (Image : in out Mat; Row, Column : Integer; Value : Float64_Value);
 
    type UInt8_Row_Buffer is
      array (Natural range <>) of OpenCV.Internal.C_API.C_UInt8

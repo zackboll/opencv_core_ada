@@ -24,6 +24,8 @@ package OpenCV.Internal.C_API is
    subtype C_UInt32 is Interfaces.Unsigned_32;
    subtype C_UInt64 is Interfaces.Unsigned_64;
    subtype C_Float32 is Interfaces.C.C_float;
+   subtype C_Float64 is Interfaces.IEEE_Float_64;
+
    subtype C_Double is Interfaces.C.double;
 
    type Mat_Handle_Array is array (Natural range <>) of aliased Mat_Handle
@@ -772,6 +774,36 @@ package OpenCV.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_core_mat_set_float32";
+
+   Float64_Finite            : constant C_Int32 := 0;
+   Float64_Positive_Infinity : constant C_Int32 := 1;
+   Float64_Negative_Infinity : constant C_Int32 := 2;
+   Float64_Not_A_Number      : constant C_Int32 := 3;
+
+   function Mat_Get_Float64
+     (Self : Mat_Handle; Row, Column : C_Int32; Result : access C_Float64)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_float64";
+
+   function Mat_Classify_Float64
+     (Self : Mat_Handle; Row, Column : C_Int32; Result : access C_Int32)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_classify_float64";
+
+   function Mat_Set_Float64
+     (Self : Mat_Handle; Row, Column : C_Int32; Value : C_Float64)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_float64";
+
    function Mat_Get_UInt8_ND
      (Self            : Mat_Handle;
       Dimension_Count : C_Int32;
@@ -781,6 +813,26 @@ package OpenCV.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_core_mat_get_uint8_nd";
+
+   function Mat_Get_Float64_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Result          : access C_Float64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_float64_nd";
+
+   function Mat_Set_Float64_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Value           : C_Float64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_float64_nd";
 
    function Mat_Set_UInt8_ND
      (Self            : Mat_Handle;
