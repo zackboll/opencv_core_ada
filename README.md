@@ -18,7 +18,7 @@ translation of the C++ headers.
 >
 > **Development status:** active, pre-1.0 API.
 >
-> **Current test baseline:** 984 AUnit tests, with Ada and C++ warnings promoted
+> **Current test baseline:** 991 AUnit tests, with Ada and C++ warnings promoted
 > to errors. GitHub Actions exercises the full test suite against four OpenCV
 > compatibility targets, plus a native Ubuntu 24.04 ARM64 job.
 >
@@ -315,7 +315,7 @@ The test crate carries development-only dependencies such as AUnit, GNATprove,
 and GNATcov. They are intentionally not dependencies of the public library
 crate.
 
-At the time of this README update, the full suite contains **984 AUnit tests**.
+At the time of this README update, the full suite contains **991 AUnit tests**.
 Coverage includes ordinary behavior, invalid input, shape/depth/channel
 compatibility, empty Mats, non-contiguous Regions, shallow-versus-independent
 ownership, callback lifetimes, arbitrary Ada array lower bounds, failure
@@ -584,7 +584,7 @@ Direct typed access currently concentrates on five common layouts:
 | --- | --- | --- | --- | --- | --- | --- |
 | UInt8 C1 | `UInt8_Access` | `UInt8_Row_Access` | `UInt8_Row_Access` | `UInt8_Buffer_Access` | `UInt8_Mat_View` | — |
 | Float32 C1 | `Float32_Access` | `Float32_Row_Access` | `Float32_Row_Access` | `Float32_Buffer_Access` | `Float32_Mat_View` | `Float32_Mat_View` |
-| Float64 C1 | `Float64_Access` | — | — | — | — | — |
+| Float64 C1 | `Float64_Access` | `Float64_Row_Access` | `Float64_Row_Access` | — | — | — |
 | UInt8 C3 | `UInt8_Vec3_Access` | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Buffer_Access` | `UInt8_Vec3_Mat_View` | — |
 | Float32 C3 | `Float32_Vec3_Access` | `Float32_Vec3_Row_Access` | `Float32_Vec3_Row_Access` | `Float32_Vec3_Buffer_Access` | `Float32_Vec3_Mat_View` | — |
 
@@ -596,6 +596,11 @@ scalar channel:
 
 The predefined Vec3 packages are component-oriented and do not impose RGB,
 BGR, XYZ, or any other semantic channel interpretation.
+
+`Float64_Access` provides scalar 2-D and N-D Get/Set plus non-finite value
+classification. `Float64_Row_Access` adds copied and callback-scoped zero-copy
+row access for 2-D C1 Mats, including non-contiguous Regions. Float64 whole-
+buffer borrowing and external Mat views are not yet provided.
 
 Generic pure-Ada value abstractions are also provided:
 

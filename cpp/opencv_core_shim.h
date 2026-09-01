@@ -1008,6 +1008,16 @@ opencv_core_mat_write_float32_row(opencv_core_mat_handle *mat,
                                   int32_t row, const float *data,
                                   uint64_t element_count);
 
+opencv_core_status
+opencv_core_mat_read_float64_row(const opencv_core_mat_handle *mat,
+                                 int32_t row, double *data,
+                                 uint64_t element_count);
+
+opencv_core_status
+opencv_core_mat_write_float64_row(opencv_core_mat_handle *mat,
+                                  int32_t row, const double *data,
+                                  uint64_t element_count);
+
 /*
  * Borrow the start of one logical 2-D Mat row without copying pixels.
  * out_data is the address of the first active element of that row.

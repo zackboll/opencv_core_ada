@@ -44,6 +44,10 @@ package OpenCV.Core.Internal.Typed_Access is
      array (Natural range <>) of OpenCV.Internal.C_API.C_Float32
    with Convention => C;
 
+   type Float64_Row_Buffer is
+     array (Natural range <>) of OpenCV.Internal.C_API.C_Float64
+   with Convention => C;
+
    procedure Read_UInt8_Row
      (Image : Mat; Row : Integer; Data : out UInt8_Row_Buffer);
 
@@ -55,6 +59,12 @@ package OpenCV.Core.Internal.Typed_Access is
 
    procedure Write_Float32_Row
      (Image : in out Mat; Row : Integer; Data : Float32_Row_Buffer);
+
+   procedure Read_Float64_Row
+     (Image : Mat; Row : Integer; Data : out Float64_Row_Buffer);
+
+   procedure Write_Float64_Row
+     (Image : in out Mat; Row : Integer; Data : Float64_Row_Buffer);
 
    procedure Read_UInt8_Vec3_Row
      (Image : Mat; Row : Integer; Data : out UInt8_Row_Buffer);

@@ -326,6 +326,15 @@ package body OpenCV.Core.Internal.Typed_Access is
       return Data (Data'First)'Address;
    end Address_Of;
 
+   function Address_Of (Data : Float64_Row_Buffer) return System.Address is
+   begin
+      if Data'Length = 0 then
+         return System.Null_Address;
+      end if;
+
+      return Data (Data'First)'Address;
+   end Address_Of;
+
    procedure Read_UInt8_Row
      (Image : Mat; Row : Integer; Data : out UInt8_Row_Buffer)
    is
@@ -393,6 +402,40 @@ package body OpenCV.Core.Internal.Typed_Access is
    begin
       Raise_On_Error (Status, "Float32 typed Mat row write");
    end Write_Float32_Row;
+
+   procedure Read_Float64_Row
+     (Image : Mat; Row : Integer; Data : out Float64_Row_Buffer)
+   is
+      pragma
+        Warnings
+          (GNAT,
+           Off,
+           Data,
+           Reason =>
+             "Data is written by the imported C row-read operation"
+             & " through its address.");
+      Status : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Read_Float64_Row
+          (Self          => Image.Handle,
+           Row           => OpenCV.Internal.C_API.C_Int32 (Row),
+           Data          => Address_Of (Data),
+           Element_Count => OpenCV.Internal.C_API.C_UInt64 (Data'Length));
+   begin
+      Raise_On_Error (Status, "Float64 typed Mat row read");
+   end Read_Float64_Row;
+
+   procedure Write_Float64_Row
+     (Image : in out Mat; Row : Integer; Data : Float64_Row_Buffer)
+   is
+      Status : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Write_Float64_Row
+          (Self          => Image.Handle,
+           Row           => OpenCV.Internal.C_API.C_Int32 (Row),
+           Data          => Address_Of (Data),
+           Element_Count => OpenCV.Internal.C_API.C_UInt64 (Data'Length));
+   begin
+      Raise_On_Error (Status, "Float64 typed Mat row write");
+   end Write_Float64_Row;
 
    procedure Read_UInt8_Vec3_Row
      (Image : Mat; Row : Integer; Data : out UInt8_Row_Buffer)

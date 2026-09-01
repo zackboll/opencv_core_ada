@@ -52,6 +52,10 @@ package body OpenCV.Core.Internal.Typed_Row_Borrowing is
                & " channels");
          end if;
 
+      elsif Image.Dimension_Count /= 2 then
+         Raise_Invalid_Access
+           ("typed Mat row access requires a two-dimensional Mat");
+
       elsif Row >= Image.Rows then
          Raise_Invalid_Access ("Mat row index is outside the valid range");
       end if;
