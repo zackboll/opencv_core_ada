@@ -18,7 +18,7 @@ translation of the C++ headers.
 >
 > **Development status:** active, pre-1.0 API.
 >
-> **Current test baseline:** 991 AUnit tests, with Ada and C++ warnings promoted
+> **Current test baseline:** 999 AUnit tests, with Ada and C++ warnings promoted
 > to errors. GitHub Actions exercises the full test suite against four OpenCV
 > compatibility targets, plus a native Ubuntu 24.04 ARM64 job.
 >
@@ -529,7 +529,7 @@ finalized. The lease is a lifetime mechanism, not thread synchronization.
 
 ### Scoped continuous whole-buffer borrowing
 
-The four matching buffer-access packages provide:
+The five matching buffer-access packages provide:
 
 ```text
 With_Read_Only_Buffer
@@ -538,7 +538,10 @@ With_Writable_Buffer
 
 The callback receives a flat zero-based row-major array of `Image.Total`
 elements. Nonempty Mats must be continuous. Continuous Regions are accepted.
-There is no per-row copy and no write-back phase.
+There is no per-row copy and no write-back phase. The callback lifetime bounds
+the borrowed view; callers must not retain a reference or address afterward.
+Float64 C1 buffer access directly overlays native CV_64F storage without
+conversion. Use Float64 row access for non-contiguous 2-D Regions.
 
 ### Caller-owned buffer -> temporary `Mat`
 
@@ -584,7 +587,7 @@ Direct typed access currently concentrates on five common layouts:
 | --- | --- | --- | --- | --- | --- | --- |
 | UInt8 C1 | `UInt8_Access` | `UInt8_Row_Access` | `UInt8_Row_Access` | `UInt8_Buffer_Access` | `UInt8_Mat_View` | — |
 | Float32 C1 | `Float32_Access` | `Float32_Row_Access` | `Float32_Row_Access` | `Float32_Buffer_Access` | `Float32_Mat_View` | `Float32_Mat_View` |
-| Float64 C1 | `Float64_Access` | `Float64_Row_Access` | `Float64_Row_Access` | — | — | — |
+| Float64 C1 | `Float64_Access` | `Float64_Row_Access` | `Float64_Row_Access` | `Float64_Buffer_Access` | — | — |
 | UInt8 C3 | `UInt8_Vec3_Access` | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Buffer_Access` | `UInt8_Vec3_Mat_View` | — |
 | Float32 C3 | `Float32_Vec3_Access` | `Float32_Vec3_Row_Access` | `Float32_Vec3_Row_Access` | `Float32_Vec3_Buffer_Access` | `Float32_Vec3_Mat_View` | — |
 
@@ -1266,11 +1269,11 @@ The current limitations are intentional and help keep the public API coherent:
 
 2. **No public `SparseMat` or `UMat` abstraction.**
 
-3. **Typed direct/zero-copy access is focused on UInt8 and Float32 C1/C3, plus Float64 C1 Get/Set.**
-   Float64 C1 currently has 2-D and N-D Get/Set and classification. It does not yet
-   have the row, buffer-borrow, or external-view families. Other OpenCV depths are
-   available to general Mat operations but do not yet have the same typed Get/Set,
-   row, buffer-borrow, and external-view families.
+3. **Typed direct/zero-copy access is focused on UInt8 and Float32 C1/C3, plus Float64 C1.**
+   Float64 C1 has 2-D and N-D Get/Set, classification, 2-D row access, and
+   continuous 2-D whole-buffer borrowing. Float64 caller-buffer Mat views are
+   still not implemented. Other OpenCV depths are available to general Mat
+   operations but do not yet have the same typed access families.
 
 4. **External caller-buffer views are writable and callback-scoped.**  
    Packed 2-D views are available for UInt8/Float32 C1/C3. Row-strided external
@@ -1278,8 +1281,9 @@ The current limitations are intentional and help keep the public API coherent:
    every typed layout and a separate read-only external Mat abstraction are not
    yet exposed.
 
-5. **Whole-buffer borrowing requires a continuous nonempty Mat.**  
-   Use row borrowing for non-contiguous 2-D Regions or row-strided Mats.
+5. **Whole-buffer borrowing requires continuous 2-D storage.**
+   A typed empty Mat invokes the callback with an empty array. Use row borrowing
+   for non-contiguous 2-D Regions or row-strided Mats.
 
 6. **Scalar-valued APIs represent at most four components.**  
    Operations returning `Scalar` validate channel limits rather than silently

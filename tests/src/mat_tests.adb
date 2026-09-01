@@ -19,6 +19,7 @@ with K_Nearest_Neighbor_Tests;
 with Random_Tests;
 with Linear_Discriminant_Analysis_Tests;
 with Float64_Row_Access_Tests;
+with Float64_Buffer_Access_Tests;
 
 package body Mat_Tests is
 
@@ -47,6 +48,7 @@ package body Mat_Tests is
       Result.Add_Test (Random_Tests.Suite);
       Result.Add_Test (Linear_Discriminant_Analysis_Tests.Suite);
       Result.Add_Test (Float64_Row_Access_Tests.Suite);
+      Result.Add_Test (Float64_Buffer_Access_Tests.Suite);
       return Result'Access;
    end Suite;
 
