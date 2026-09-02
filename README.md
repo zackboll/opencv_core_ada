@@ -18,7 +18,7 @@ translation of the C++ headers.
 >
 > **Development status:** active, pre-1.0 API.
 >
-> **Current test baseline:** 1013 AUnit tests, with Ada and C++ warnings promoted
+> **Current test baseline:** 1019 AUnit tests, with Ada and C++ warnings promoted
 > to errors. GitHub Actions exercises the full test suite against four OpenCV
 > compatibility targets, plus a native Ubuntu 24.04 ARM64 job.
 >
@@ -43,6 +43,7 @@ Several related names appear in the repository:
 - [Goals and scope](#goals-and-scope)
 - [OpenCV compatibility](#opencv-compatibility)
 - [Architecture](#architecture)
+- [Cross-module Mat interoperability](#cross-module-mat-interoperability)
 - [Requirements](#requirements)
 - [Building](#building)
 - [Running the tests](#running-the-tests)
@@ -104,6 +105,33 @@ public Ada API
 Literal symbol-for-symbol coverage of every internal OpenCV Core implementation
 surface is not a goal. The target is broad coverage of portable, user-facing
 Core functionality with a coherent Ada design.
+
+---
+
+## Cross-module Mat interoperability
+
+Future module crates such as `opencv_imgproc`, `opencv_imgcodecs`,
+`opencv_highgui`, `opencv_videoio`, `opencv_features2d`, and
+`opencv_calib3d` depend on `opencv_core`. Application code continues to use
+`OpenCV.Core.Mat`; no public raw-pointer API is introduced.
+
+`OpenCV.Core.Module_Interop` is a deliberately low-level binding
+implementation interface for those crates. Its callback-scoped input and
+output handles are passed only to a module's private Ada/C++ interop. Core
+provides the installed `opencv_core_module_bridge.hpp` header for the module
+shim. The header is installed in the dependent project's `include` artifact
+directory by the Core GPR project, rather than being found through a
+repository-relative path.
+
+The bridge does not copy pixel data. Core remains the sole creator, owner, and
+destroyer of Core `cv::Mat` headers and opaque wrappers. A cooperating module
+shim may borrow the native header only for its callback/call scope, must never
+store or delete it, and must be compiled against the same compatible OpenCV ABI
+and installation as Core. Input handles permit inspection, including temporary
+external-buffer views. Output handles expose the actual Core header so an
+OutputArray operation can allocate or rebind it; temporary external-buffer
+views are rejected for output because rebinding would violate their no-escape
+ownership contract.
 
 ---
 
@@ -322,7 +350,7 @@ The test crate carries development-only dependencies such as AUnit, GNATprove,
 and GNATcov. They are intentionally not dependencies of the public library
 crate.
 
-At the time of this README update, the full suite contains **1013 AUnit tests**.
+At the time of this README update, the full suite contains **1019 AUnit tests**.
 Coverage includes ordinary behavior, invalid input, shape/depth/channel
 compatibility, empty Mats, non-contiguous Regions, shallow-versus-independent
 ownership, callback lifetimes, arbitrary Ada array lower bounds, failure

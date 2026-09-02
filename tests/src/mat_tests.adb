@@ -21,6 +21,7 @@ with Linear_Discriminant_Analysis_Tests;
 with Float64_Row_Access_Tests;
 with Float64_Buffer_Access_Tests;
 with Float64_Mat_View_Tests;
+with Module_Interop_Tests;
 
 package body Mat_Tests is
 
@@ -51,6 +52,7 @@ package body Mat_Tests is
       Result.Add_Test (Float64_Row_Access_Tests.Suite);
       Result.Add_Test (Float64_Buffer_Access_Tests.Suite);
       Result.Add_Test (Float64_Mat_View_Tests.Suite);
+      Result.Add_Test (Module_Interop_Tests.Suite);
       return Result'Access;
    end Suite;
 

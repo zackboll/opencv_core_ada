@@ -1431,6 +1431,53 @@ opencv_core_status opencv_core_mat_acquire_borrow_lease(
     }
 }
 
+opencv_core_status opencv_core_mat_resolve_input(
+    const opencv_core_mat_handle *source, void **out_native_mat) {
+    clear_error();
+
+    if (out_native_mat == nullptr) {
+        return invalid_argument("out_native_mat must not be null");
+    }
+    *out_native_mat = nullptr;
+    if (source == nullptr) {
+        return invalid_argument("source Mat handle must not be null");
+    }
+
+    try {
+        *out_native_mat = const_cast<cv::Mat *>(&source->value);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status opencv_core_mat_resolve_output(
+    opencv_core_mat_handle *destination, void **out_native_mat) {
+    clear_error();
+
+    if (out_native_mat == nullptr) {
+        return invalid_argument("out_native_mat must not be null");
+    }
+    *out_native_mat = nullptr;
+    if (destination == nullptr) {
+        return invalid_argument("destination Mat handle must not be null");
+    }
+    // ABI safety: rebinding an external-view header would leave the temporary
+    // Ada view detached from caller-owned storage, defeating its no-escape
+    // lifetime contract before the callback returns.
+    if (destination->temporary_external_view) {
+        return invalid_argument(
+            "temporary external-buffer Mat views cannot be output Mat handles");
+    }
+
+    try {
+        *out_native_mat = &destination->value;
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
 opencv_core_status
 opencv_core_mat_clone(const opencv_core_mat_handle *source,
                       opencv_core_mat_handle **out_mat) {

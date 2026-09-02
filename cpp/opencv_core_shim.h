@@ -260,6 +260,25 @@ opencv_core_status
 opencv_core_mat_acquire_borrow_lease(const opencv_core_mat_handle *source,
                                      opencv_core_mat_handle **out_mat);
 
+/*
+ * Implementation ABI for cooperating OpenCV Ada module shims. The successful
+ * result is a borrowed native cv::Mat pointer represented as void *. Core
+ * retains ownership of both the opaque handle and the cv::Mat header. It must
+ * not be deleted or retained after the corresponding Ada callback/call scope.
+ */
+opencv_core_status
+opencv_core_mat_resolve_input(const opencv_core_mat_handle *source,
+                              void **out_native_mat);
+
+/*
+ * As above, but returns a structurally mutable header for OutputArray-like
+ * operations. Temporary external-buffer views are rejected because rebinding
+ * their header could detach it from caller-owned storage.
+ */
+opencv_core_status
+opencv_core_mat_resolve_output(opencv_core_mat_handle *destination,
+                               void **out_native_mat);
+
 opencv_core_status
 opencv_core_mat_clone(const opencv_core_mat_handle *source,
                       opencv_core_mat_handle **out_mat);

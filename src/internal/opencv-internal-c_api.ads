@@ -224,6 +224,13 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_acquire_borrow_lease";
 
+   function Mat_Resolve_Output
+     (Destination : Mat_Handle; Result : access System.Address) return Status
+   with
+      Import,
+      Convention    => C,
+      External_Name => "opencv_core_mat_resolve_output";
+
    function Mat_Clone
      (Source : Mat_Handle; Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_clone";

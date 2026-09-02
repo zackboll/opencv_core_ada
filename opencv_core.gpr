@@ -58,6 +58,7 @@ project OpenCV_Core is
 
    package Install is
       for Artifacts (".") use ("share");
+       for Artifacts ("cpp/opencv_core_module_bridge.hpp") use ("include");
    end Install;
 
 end OpenCV_Core;
