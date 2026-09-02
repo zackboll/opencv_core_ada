@@ -83,21 +83,26 @@ package body Module_Interop_Tests is
       pragma Unreferenced (Test);
       Image : OpenCV.Core.Mat :=
         OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
-      Alias : constant OpenCV.Core.Mat := Image;
-      Copy  : constant OpenCV.Core.Mat := Image.Clone;
-
-      procedure Mutate (Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle)
-      is
-      begin
-         Module_Bridge_Probe.Mutate (Handle, 77);
-      end Mutate;
    begin
-      OpenCV.Core.Module_Interop.With_Output_Handle (Image, Mutate'Access);
-      AUnit.Assertions.Assert
-        (OpenCV.Core.UInt8_Access.Get (Image, 0, 0) = 77
-         and then OpenCV.Core.UInt8_Access.Get (Alias, 0, 0) = 77
-         and then OpenCV.Core.UInt8_Access.Get (Copy, 0, 0) = 0,
-         "output mutation must share ordinary aliases but not Clone storage");
+      OpenCV.Core.UInt8_Access.Set (Image, 0, 0, 23);
+      declare
+         Alias : constant OpenCV.Core.Mat := Image;
+         Copy  : constant OpenCV.Core.Mat := Image.Clone;
+
+         procedure Mutate
+           (Handle : OpenCV.Core.Module_Interop.Output_Mat_Handle) is
+         begin
+            Module_Bridge_Probe.Mutate (Handle, 77);
+         end Mutate;
+      begin
+         OpenCV.Core.Module_Interop.With_Output_Handle (Image, Mutate'Access);
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt8_Access.Get (Image, 0, 0) = 77
+            and then OpenCV.Core.UInt8_Access.Get (Alias, 0, 0) = 77
+            and then OpenCV.Core.UInt8_Access.Get (Copy, 0, 0) = 23,
+            "output mutation must share ordinary aliases but not Clone "
+            & "storage");
+      end;
    end Output_Mutation_Shares_And_Clone_Remains_Independent;
 
    procedure Output_Probe_Rebinds_Actual_Core_Header (Test : in out Fixture) is
