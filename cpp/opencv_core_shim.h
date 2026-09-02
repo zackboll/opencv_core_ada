@@ -233,10 +233,10 @@ opencv_core_mat_create_external_2d(int32_t rows, int32_t columns,
 
 /*
  * Creates a temporary 2-D Mat header over caller-owned storage with an
- * explicit row step. byte_count is the entire accessible capacity beginning
- * at data, and must cover rows * row_stride_bytes, including padding after
- * the final logical row and any trailing storage. row_stride_bytes is the
- * distance between starts of logical rows and must describe a valid Mat step.
+ * explicit row step. byte_count is the accessible capacity beginning at data
+ * and must cover (rows - 1) * row_stride_bytes plus one logical row. Padding
+ * after the final logical row is not required. row_stride_bytes is the distance
+ * between starts of logical rows and must describe a valid Mat step.
  * The resulting handle has the same temporary external-view lifetime rules as
  * opencv_core_mat_create_external_2d.
  */

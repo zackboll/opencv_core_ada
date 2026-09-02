@@ -6,6 +6,7 @@ generic
    Expected_Element_Bits : Positive;
    Native_Element_Alignment : Positive;
    Type_Name : String;
+   Require_Complete_Row_Strides : Boolean := True;
 package OpenCV.Core.Internal.Typed_External_Mat_View is
 
    --  Invokes Process with a temporary Mat whose pixels alias Data.

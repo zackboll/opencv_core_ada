@@ -1344,17 +1344,17 @@ opencv_core_status opencv_core_mat_create_external_2d_strided(
                 "external strided Mat view row stride is incompatible with scalar size");
         }
         size_t required_capacity_bytes = 0;
-        // ABI safety: OpenCV 4.10 forms datalimit as datastart + step * rows
-        // while constructing an explicit-step Mat. The caller storage must
-        // cover that complete pointer extent.
-        if (!checked_size_mul(static_cast<size_t>(rows), row_stride,
-                              &required_capacity_bytes)) {
+        if (!checked_size_mul(static_cast<size_t>(rows - 1), row_stride,
+                              &required_capacity_bytes) ||
+            required_capacity_bytes >
+                std::numeric_limits<size_t>::max() - logical_row_bytes) {
             return invalid_argument(
                 "external strided Mat view required capacity exceeds native size range");
         }
+        required_capacity_bytes += logical_row_bytes;
         if (byte_count < static_cast<uint64_t>(required_capacity_bytes)) {
             return invalid_argument(
-                "external strided Mat view byte count is smaller than rows * row stride");
+                "external strided Mat view backing storage is too short");
         }
         if (data == nullptr) {
             return invalid_argument("external strided Mat view data must not be null");

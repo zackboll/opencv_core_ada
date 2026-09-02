@@ -185,20 +185,30 @@ package body OpenCV.Core.Internal.Typed_External_Mat_View is
             & " Columns");
       end if;
 
-      if Row_Stride_Elements > Natural'Last / Rows then
+      if Rows > 1
+        and then Row_Stride_Elements > (Natural'Last - Columns) / (Rows - 1)
+      then
          Raise_Invalid_View
            (Type_Name
             & " strided external Mat view required element capacity exceeds"
-            & " the"
-            & " representable range");
+            & " the representable range");
       end if;
-      Required_Element_Capacity := Rows * Row_Stride_Elements;
+      Required_Element_Capacity := (Rows - 1) * Row_Stride_Elements + Columns;
+
+      if Require_Complete_Row_Strides then
+         if Row_Stride_Elements > Natural'Last / Rows then
+            Raise_Invalid_View
+              (Type_Name
+               & " strided external Mat view complete row strides exceed"
+               & " the representable range");
+         end if;
+         Required_Element_Capacity := Rows * Row_Stride_Elements;
+      end if;
 
       if Data'Length < Required_Element_Capacity then
          Raise_Invalid_View
            (Type_Name
-            & " strided external Mat view requires Data storage for complete"
-            & " row strides");
+            & " strided external Mat view backing storage is too short");
       end if;
 
       Row_Stride_Bytes := Expected_Byte_Count (Row_Stride_Elements);

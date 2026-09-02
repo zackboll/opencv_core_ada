@@ -18,7 +18,7 @@ translation of the C++ headers.
 >
 > **Development status:** active, pre-1.0 API.
 >
-> **Current test baseline:** 1004 AUnit tests, with Ada and C++ warnings promoted
+> **Current test baseline:** 1007 AUnit tests, with Ada and C++ warnings promoted
 > to errors. GitHub Actions exercises the full test suite against four OpenCV
 > compatibility targets, plus a native Ubuntu 24.04 ARM64 job.
 >
@@ -125,6 +125,13 @@ GitHub Actions currently tests these representative targets:
 These are **validation points, not an exhaustive list of supported releases**.
 Intermediate releases within the supported range are not all individually run
 in CI.
+
+Row-strided external views use the longstanding
+`cv::Mat(rows, cols, type, data, step)` constructor. The OpenCV 4.1.0 and 5.0.0
+headers both declare this overload with `size_t step`; both document `step` in
+bytes, including row-end padding, and state that data is neither copied nor
+automatically deallocated. The binding uses the same ABI path across the
+supported range.
 
 GitHub Actions also runs the same public test path natively on Ubuntu 24.04
 ARM64 against the distribution OpenCV packages. That job is for architecture
@@ -446,7 +453,7 @@ end External_Buffer_Example;
 `Data'Length` must equal `Rows * Columns`. The Ada lower bound is arbitrary.
 The temporary `Mat` does not own the caller's storage.
 
-### Wrap row-strided Float32 storage
+### Wrap row-strided Float32 or Float64 storage
 
 `OpenCV.Core.Float32_Mat_View` also provides a row-strided overload:
 
@@ -462,6 +469,24 @@ OpenCV.Core.Float32_Mat_View.With_Writable_Mat_View
 Each logical row exposes the first `Columns` Float32 elements of its stride.
 Padding remains outside the `Mat`. `Row_Stride_Elements` must be at least
 `Columns`, and the caller retains ownership of the complete backing buffer.
+
+`OpenCV.Core.Float64_Mat_View` provides a separately named operation whose
+stride is also measured in complete Ada elements rather than bytes:
+
+```ada
+OpenCV.Core.Float64_Mat_View.With_Writable_Strided_Mat_View
+  (Data       => Data,
+   Rows       => 3,
+   Columns    => 4,
+   Row_Stride => 6,
+   Process    => Process'Access);
+```
+
+`Row_Stride` is the number of `Float64_Value` elements from the start of one
+logical row to the next and must be at least `Columns`. `Data'Length` may be
+larger than, but must be at least, `(Rows - 1) * Row_Stride + Columns`; padding
+after the final row need not exist. Padding and extra trailing storage are not
+logical Mat elements and are left untouched.
 
 ---
 
@@ -559,10 +584,11 @@ OpenCV.Core.Float32_Vec3_Mat_View
 actual caller-owned Ada array. The public buffer formal is explicitly
 `aliased in out`, so the native header directly denotes the caller's storage.
 
-Packed views are available for all five typed layouts above. Float32 C1 also
-supports an explicit row stride through `Row_Stride_Elements`, allowing a Mat
-to represent the logical columns of a padded caller-owned row layout without
-copying the padding.
+Packed views are available for all five typed layouts above. Float32 C1 and
+Float64 C1 also support explicit row strides, allowing a Mat to represent the
+logical columns of padded caller-owned rows without copying their padding.
+Float64 uses `With_Writable_Strided_Mat_View` and measures `Row_Stride` in
+`Float64_Value` elements.
 
 Important lifetime rule: a temporary external-buffer Mat may not create a
 shallow alias that could outlive the callback. Ordinary `Mat` assignment and
@@ -578,6 +604,11 @@ rules. A multirow view with padding is non-contiguous, so operations requiring a
 single packed buffer must reject it; row-based and other non-contiguous-aware
 operations can still be used.
 
+Caller storage must remain alive throughout the callback, and OpenCV never
+owns or frees it. Row borrowing remains zero-copy and exposes exactly the
+logical `Columns` elements, never padding. Whole-buffer borrowing rejects a
+non-contiguous multirow strided view before invoking its callback.
+
 ---
 
 ## Typed access matrix
@@ -588,7 +619,7 @@ Direct typed access currently concentrates on five common layouts:
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | UInt8 C1 | `UInt8_Access` | `UInt8_Access` | — | `UInt8_Row_Access` | `UInt8_Row_Access` | `UInt8_Buffer_Access` | `UInt8_Mat_View` | — |
 | Float32 C1 | `Float32_Access` | `Float32_Access` | — | `Float32_Row_Access` | `Float32_Row_Access` | `Float32_Buffer_Access` | `Float32_Mat_View` | `Float32_Mat_View` |
-| Float64 C1 | `Float64_Access` | `Float64_Access` | `Float64_Access` | `Float64_Row_Access` | `Float64_Row_Access` | `Float64_Buffer_Access` | `Float64_Mat_View` | — |
+| Float64 C1 | `Float64_Access` | `Float64_Access` | `Float64_Access` | `Float64_Row_Access` | `Float64_Row_Access` | `Float64_Buffer_Access` | `Float64_Mat_View` | `Float64_Mat_View` |
 | UInt8 C3 | `UInt8_Vec3_Access` | — | — | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Buffer_Access` | `UInt8_Vec3_Mat_View` | — |
 | Float32 C3 | `Float32_Vec3_Access` | — | — | `Float32_Vec3_Row_Access` | `Float32_Vec3_Row_Access` | `Float32_Vec3_Buffer_Access` | `Float32_Vec3_Mat_View` | — |
 
@@ -1275,16 +1306,16 @@ The current limitations are intentional and help keep the public API coherent:
 2. **No public `SparseMat` or `UMat` abstraction.**
 
 3. **Typed direct/zero-copy access is focused on UInt8 and Float32 C1/C3, plus Float64 C1.**
-   Float64 C1 has 2-D and N-D Get/Set, classification, 2-D row access, and
-   continuous 2-D whole-buffer borrowing. Float64 caller-buffer Mat views are
-   still not implemented. Other OpenCV depths are available to general Mat
+   Float64 C1 has 2-D and N-D Get/Set, classification, 2-D row access,
+   continuous 2-D whole-buffer borrowing, and packed or row-strided 2-D
+   caller-buffer views. Other OpenCV depths are available to general Mat
    operations but do not yet have the same typed access families.
 
 4. **External caller-buffer views are writable and callback-scoped.**  
-   Packed 2-D views are available for UInt8/Float32 C1/C3. Row-strided external
-   storage is currently exposed only for Float32 C1. A general stride model for
-   every typed layout and a separate read-only external Mat abstraction are not
-   yet exposed.
+   Packed 2-D views are available for UInt8/Float32 C1/C3 and Float64 C1.
+   Row-strided external storage is exposed for Float32 C1 and Float64 C1.
+   Arbitrary N-D strides, multi-channel Float64 external views, and a separate
+   read-only external Mat abstraction are not yet exposed.
 
 5. **Whole-buffer borrowing requires continuous 2-D storage.**
    A typed empty Mat invokes the callback with an empty array. Use row borrowing
