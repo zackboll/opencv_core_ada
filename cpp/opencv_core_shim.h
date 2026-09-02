@@ -922,6 +922,14 @@ opencv_core_mat_set_uint8(opencv_core_mat_handle *mat, int32_t row,
                           int32_t column, uint8_t value);
 
 opencv_core_status
+opencv_core_mat_get_int32(const opencv_core_mat_handle *mat, int32_t row,
+                          int32_t column, int32_t *out_value);
+
+opencv_core_status
+opencv_core_mat_set_int32(opencv_core_mat_handle *mat, int32_t row,
+                          int32_t column, int32_t value);
+
+opencv_core_status
 opencv_core_mat_get_float32(const opencv_core_mat_handle *mat, int32_t row,
                             int32_t column, float *out_value);
 
@@ -974,6 +982,14 @@ opencv_core_mat_get_uint8_nd(const opencv_core_mat_handle *mat, int32_t ndims,
 opencv_core_status
 opencv_core_mat_set_uint8_nd(opencv_core_mat_handle *mat, int32_t ndims,
                              const int32_t *indices, uint8_t value);
+
+opencv_core_status
+opencv_core_mat_get_int32_nd(const opencv_core_mat_handle *mat, int32_t ndims,
+                             const int32_t *indices, int32_t *out_value);
+
+opencv_core_status
+opencv_core_mat_set_int32_nd(opencv_core_mat_handle *mat, int32_t ndims,
+                             const int32_t *indices, int32_t value);
 
 opencv_core_status
 opencv_core_mat_get_float32_nd(const opencv_core_mat_handle *mat,

@@ -18,7 +18,7 @@ translation of the C++ headers.
 >
 > **Development status:** active, pre-1.0 API.
 >
-> **Current test baseline:** 1007 AUnit tests, with Ada and C++ warnings promoted
+> **Current test baseline:** 1013 AUnit tests, with Ada and C++ warnings promoted
 > to errors. GitHub Actions exercises the full test suite against four OpenCV
 > compatibility targets, plus a native Ubuntu 24.04 ARM64 job.
 >
@@ -322,7 +322,7 @@ The test crate carries development-only dependencies such as AUnit, GNATprove,
 and GNATcov. They are intentionally not dependencies of the public library
 crate.
 
-At the time of this README update, the full suite contains **991 AUnit tests**.
+At the time of this README update, the full suite contains **1013 AUnit tests**.
 Coverage includes ordinary behavior, invalid input, shape/depth/channel
 compatibility, empty Mats, non-contiguous Regions, shallow-versus-independent
 ownership, callback lifetimes, arbitrary Ada array lower bounds, failure
@@ -613,11 +613,12 @@ non-contiguous multirow strided view before invoking its callback.
 
 ## Typed access matrix
 
-Direct typed access currently concentrates on five common layouts:
+Direct typed access currently concentrates on six common layouts:
 
 | Layout | 2-D Get/Set | N-D Get/Set | Classification | Copied row | Borrowed row | Continuous buffer borrow | Packed caller buffer -> `Mat` | Strided caller buffer -> `Mat` |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | UInt8 C1 | `UInt8_Access` | `UInt8_Access` | — | `UInt8_Row_Access` | `UInt8_Row_Access` | `UInt8_Buffer_Access` | `UInt8_Mat_View` | — |
+| Int32 C1 | `Int32_Access` | `Int32_Access` | — | — | — | — | — | — |
 | Float32 C1 | `Float32_Access` | `Float32_Access` | — | `Float32_Row_Access` | `Float32_Row_Access` | `Float32_Buffer_Access` | `Float32_Mat_View` | `Float32_Mat_View` |
 | Float64 C1 | `Float64_Access` | `Float64_Access` | `Float64_Access` | `Float64_Row_Access` | `Float64_Row_Access` | `Float64_Buffer_Access` | `Float64_Mat_View` | `Float64_Mat_View` |
 | UInt8 C3 | `UInt8_Vec3_Access` | — | — | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Buffer_Access` | `UInt8_Vec3_Mat_View` | — |
@@ -631,6 +632,10 @@ scalar channel:
 
 The predefined Vec3 packages are component-oriented and do not impose RGB,
 BGR, XYZ, or any other semantic channel interpretation.
+
+`Int32_Access` provides scalar 2-D and N-D Get/Set for single-channel `CV_32S`
+Mats. Copied row access, borrowed row access, whole-buffer borrowing, and
+caller-owned Mat views are not yet provided for Int32.
 
 `Float64_Access` provides scalar 2-D and N-D Get/Set plus non-finite value
 classification. `Float64_Row_Access` adds copied and callback-scoped zero-copy
@@ -1299,14 +1304,14 @@ GNATprove is supplied by the separate `tests` Alire environment.
 The current limitations are intentional and help keep the public API coherent:
 
 1. **The dense public `Mat` model is primarily 2-D.**  
-   N-dimensional construction, UInt8/Float32/Float64 C1 Get/Set, and `Slice` views are
+   N-dimensional construction, UInt8/Int32/Float32/Float64 C1 Get/Set, and `Slice` views are
    available. N-D reshape and dimension-dropping scalar indexing are not yet
    exposed as a complete Ada model.
 
 2. **No public `SparseMat` or `UMat` abstraction.**
 
-3. **Typed direct/zero-copy access is focused on UInt8 and Float32 C1/C3, plus Float64 C1.**
-   Float64 C1 has 2-D and N-D Get/Set, classification, 2-D row access,
+3. **Typed direct/zero-copy access is focused on UInt8 and Float32 C1/C3, plus Int32 C1 and Float64 C1.**
+   Int32 C1 has 2-D and N-D Get/Set. Float64 C1 has 2-D and N-D Get/Set, classification, 2-D row access,
    continuous 2-D whole-buffer borrowing, and packed or row-strided 2-D
    caller-buffer views. Other OpenCV depths are available to general Mat
    operations but do not yet have the same typed access families.

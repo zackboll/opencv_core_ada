@@ -753,6 +753,15 @@ package OpenCV.Internal.C_API is
      (Self : Mat_Handle; Row, Column : C_Int32; Value : C_UInt8) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_set_uint8";
 
+   function Mat_Get_Int32
+     (Self : Mat_Handle; Row, Column : C_Int32; Result : access C_Int32)
+      return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_get_int32";
+
+   function Mat_Set_Int32
+     (Self : Mat_Handle; Row, Column : C_Int32; Value : C_Int32) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_set_int32";
+
    function Mat_Get_Float32
      (Self : Mat_Handle; Row, Column : C_Int32; Result : access C_Float32)
       return Status
@@ -850,6 +859,26 @@ package OpenCV.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_core_mat_set_uint8_nd";
+
+   function Mat_Get_Int32_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Result          : access C_Int32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_int32_nd";
+
+   function Mat_Set_Int32_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Value           : C_Int32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_int32_nd";
 
    function Mat_Get_Float32_ND
      (Self            : Mat_Handle;

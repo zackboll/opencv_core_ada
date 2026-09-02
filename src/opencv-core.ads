@@ -129,9 +129,10 @@ package OpenCV.Core is
    --  the null range 1 .. 0.
    type Point_Array is array (Natural range <>) of Point;
 
-   --  CV_8U, CV_32F, and CV_64F element value domains used by
+   --  CV_8U, CV_32S, CV_32F, and CV_64F element value domains used by
    --  typed Mat accessors.
    subtype UInt8_Value is Interfaces.Unsigned_8;
+   subtype Int32_Value is Interfaces.Integer_32;
    subtype Float32_Value is Interfaces.IEEE_Float_32;
    subtype Float64_Value is Interfaces.IEEE_Float_64;
 
