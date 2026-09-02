@@ -25,7 +25,9 @@ project Tests is
       case OpenCV_Core_Install.Shim_Build is
          when "External_Relocatable" =>
             null;
-         when "Static_PIC" | "Relocatable" =>
+         when "Relocatable" =>
+             null;
+         when "Static_PIC" =>
             for Default_Switches ("C++") use
               ("-std=c++17", "-Wall", "-Wextra", "-Wpedantic", "-Werror",
                "-I" & OpenCV_Core'Project_Dir & "cpp",
@@ -34,11 +36,11 @@ project Tests is
    end Compiler;
 
    case OpenCV_Core_Install.Shim_Build is
-      when "External_Relocatable" =>
-         --  OpenCV-facing C++ must remain in the MSYS2 compiler family on
-         --  Windows. The probe DLL is built by scripts/build_module_bridge_probe.sh.
+      when "External_Relocatable" | "Relocatable" =>
+          --  OpenCV-facing C++ remains in the configured external compiler
+          --  family. The probe library is built by build_module_bridge_probe.sh.
          for Languages use ("Ada");
-      when "Static_PIC" | "Relocatable" =>
+      when "Static_PIC" =>
          for Languages use ("Ada", "C++");
    end case;
 
@@ -70,7 +72,12 @@ project Tests is
             for Switches ("Ada") use
               ("-L" & OpenCV_Core'Project_Dir & "lib",
                "-lopencv_core_module_bridge_probe");
-         when "Static_PIC" | "Relocatable" =>
+         when "Relocatable" =>
+             for Switches ("Ada") use
+               ("-L" & OpenCV_Core'Project_Dir & "lib",
+                "-lopencv_core_module_bridge_probe",
+                "-Wl,-rpath,@loader_path/../../lib");
+         when "Static_PIC" =>
             null;
       end case;
    end Linker;
