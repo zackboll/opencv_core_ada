@@ -250,6 +250,16 @@ opencv_core_status
 opencv_core_mat_copy(const opencv_core_mat_handle *source,
                      opencv_core_mat_handle **out_mat);
 
+/*
+ * Creates an internal callback-scoped lifetime lease. Unlike public Mat copy
+ * construction, this is permitted for temporary external-buffer views. The
+ * returned header preserves the temporary-view restriction and must not escape
+ * the internal borrowing operation that requested it.
+ */
+opencv_core_status
+opencv_core_mat_acquire_borrow_lease(const opencv_core_mat_handle *source,
+                                     opencv_core_mat_handle **out_mat);
+
 opencv_core_status
 opencv_core_mat_clone(const opencv_core_mat_handle *source,
                       opencv_core_mat_handle **out_mat);

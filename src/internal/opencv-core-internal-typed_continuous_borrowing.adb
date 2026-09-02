@@ -7,6 +7,7 @@ with System.Address_To_Access_Conversions;
 package body OpenCV.Core.Internal.Typed_Continuous_Borrowing is
 
    use type OpenCV.Internal.C_API.C_UInt64;
+   use type OpenCV.Internal.C_API.Status;
 
    pragma
      Compile_Time_Error
@@ -36,6 +37,22 @@ package body OpenCV.Core.Internal.Typed_Continuous_Borrowing is
    begin
       Ada.Exceptions.Raise_Exception (OpenCV_Error'Identity, Message);
    end Raise_Invalid_Access;
+
+   procedure Acquire_Borrow_Lease (Image : Mat; Lease : in out Mat) is
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Acquire_Borrow_Lease
+          (Image.Handle, New_Handle'Access);
+   begin
+      if Status /= OpenCV.Internal.C_API.Success then
+         Raise_Invalid_Access
+           (Type_Name & " buffer access could not retain Mat storage");
+      end if;
+
+      OpenCV.Internal.C_API.Mat_Destroy (Lease.Handle);
+      Lease.Handle := New_Handle;
+   end Acquire_Borrow_Lease;
 
    procedure Validate_Borrow (Image : Mat) is
    begin
@@ -122,8 +139,9 @@ package body OpenCV.Core.Internal.Typed_Continuous_Borrowing is
      (Image   : Mat;
       Process : not null access procedure (Data : aliased Buffer_Array))
    is
-      Lease : constant Mat := Image;
+      Lease : Mat;
    begin
+      Acquire_Borrow_Lease (Image, Lease);
       Validate_Borrow (Lease);
 
       declare
@@ -177,8 +195,9 @@ package body OpenCV.Core.Internal.Typed_Continuous_Borrowing is
      (Image   : in out Mat;
       Process : not null access procedure (Data : aliased in out Buffer_Array))
    is
-      Lease : constant Mat := Image;
+      Lease : Mat;
    begin
+      Acquire_Borrow_Lease (Image, Lease);
       Validate_Borrow (Lease);
 
       declare

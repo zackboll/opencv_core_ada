@@ -18,7 +18,7 @@ translation of the C++ headers.
 >
 > **Development status:** active, pre-1.0 API.
 >
-> **Current test baseline:** 1000 AUnit tests, with Ada and C++ warnings promoted
+> **Current test baseline:** 1004 AUnit tests, with Ada and C++ warnings promoted
 > to errors. GitHub Actions exercises the full test suite against four OpenCV
 > compatibility targets, plus a native Ubuntu 24.04 ARM64 job.
 >
@@ -545,11 +545,12 @@ conversion. Use Float64 row access for non-contiguous 2-D Regions.
 
 ### Caller-owned buffer -> temporary `Mat`
 
-The four Mat-view packages provide the reverse zero-copy direction:
+The five Mat-view packages provide the reverse zero-copy direction:
 
 ```text
 OpenCV.Core.UInt8_Mat_View
 OpenCV.Core.Float32_Mat_View
+OpenCV.Core.Float64_Mat_View
 OpenCV.Core.UInt8_Vec3_Mat_View
 OpenCV.Core.Float32_Vec3_Mat_View
 ```
@@ -558,7 +559,7 @@ OpenCV.Core.Float32_Vec3_Mat_View
 actual caller-owned Ada array. The public buffer formal is explicitly
 `aliased in out`, so the native header directly denotes the caller's storage.
 
-Packed views are available for all four typed layouts above. Float32 C1 also
+Packed views are available for all five typed layouts above. Float32 C1 also
 supports an explicit row stride through `Row_Stride_Elements`, allowing a Mat
 to represent the logical columns of a padded caller-owned row layout without
 copying the padding.
@@ -587,7 +588,7 @@ Direct typed access currently concentrates on five common layouts:
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | UInt8 C1 | `UInt8_Access` | `UInt8_Access` | — | `UInt8_Row_Access` | `UInt8_Row_Access` | `UInt8_Buffer_Access` | `UInt8_Mat_View` | — |
 | Float32 C1 | `Float32_Access` | `Float32_Access` | — | `Float32_Row_Access` | `Float32_Row_Access` | `Float32_Buffer_Access` | `Float32_Mat_View` | `Float32_Mat_View` |
-| Float64 C1 | `Float64_Access` | `Float64_Access` | `Float64_Access` | `Float64_Row_Access` | `Float64_Row_Access` | `Float64_Buffer_Access` | — | — |
+| Float64 C1 | `Float64_Access` | `Float64_Access` | `Float64_Access` | `Float64_Row_Access` | `Float64_Row_Access` | `Float64_Buffer_Access` | `Float64_Mat_View` | — |
 | UInt8 C3 | `UInt8_Vec3_Access` | — | — | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Buffer_Access` | `UInt8_Vec3_Mat_View` | — |
 | Float32 C3 | `Float32_Vec3_Access` | — | — | `Float32_Vec3_Row_Access` | `Float32_Vec3_Row_Access` | `Float32_Vec3_Buffer_Access` | `Float32_Vec3_Mat_View` | — |
 
@@ -604,7 +605,10 @@ BGR, XYZ, or any other semantic channel interpretation.
 classification. `Float64_Row_Access` adds copied and callback-scoped zero-copy
 row access for 2-D C1 Mats, including non-contiguous Regions.
 `Float64_Buffer_Access` adds callback-scoped zero-copy whole-buffer borrowing
-for continuous 2-D Mats. Float64 external Mat views are not yet provided.
+for continuous 2-D Mats. `Float64_Mat_View` adds callback-scoped contiguous
+caller-owned CV_64FC1 storage. The caller owns the backing storage, OpenCV does
+not free it, and it must remain alive for the callback lifetime. Arbitrary
+row-strided external Float64 views are not yet supported.
 
 Generic pure-Ada value abstractions are also provided:
 
@@ -1495,7 +1499,7 @@ Ada API across the supported 4.1-5.0 compatibility range:
 - typed UInt8/Float32 C1 and C3 element access;
 - copied rows plus scoped zero-copy row and continuous-buffer borrowing;
 - callback-scoped zero-copy `Mat` views over caller-owned UInt8/Float32 C1/C3
-  packed buffers and row-strided Float32 C1 storage;
+  and Float64 C1 packed buffers, plus row-strided Float32 C1 storage;
 - conversions, arithmetic, masks, bitwise operations, channel routing, sorting,
   rearrangement, borders, reductions, arg-reductions, statistics, PSNR, and
   range handling;
