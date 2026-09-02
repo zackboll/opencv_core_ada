@@ -1278,6 +1278,48 @@ jobs:
             cat "${log}"
             exit 1
           fi
+          if ! grep -F 'Building External_Relocatable OpenCV Core module bridge probe' "${log}"; then
+            echo "error: tests build did not invoke the external module bridge probe builder" >&2
+            exit 1
+          fi
+          if ! grep -F "C++ driver: ${cxx_driver}" "${log}"; then
+            echo "error: module bridge probe did not use the configured MSYS2 C++ driver" >&2
+            exit 1
+          fi
+          if grep -E 'gnat_native.*g\+\+.*opencv_core_module_bridge_probe\.cpp' "${log}"; then
+            echo "error: GNAT g++ compiled OpenCV-facing module bridge probe C++" >&2
+            exit 1
+          fi
+          probe_dll="lib/opencv_core_module_bridge_probe.dll"
+          probe_import_library="lib/libopencv_core_module_bridge_probe.dll.a"
+          if [ ! -f "${probe_dll}" ] || [ ! -f "${probe_import_library}" ]; then
+            echo "error: module bridge probe DLL or import library is missing" >&2
+            ls -l lib || true
+            exit 1
+          fi
+          echo "=== Module bridge probe DLL exports and imports (${dump} -p) ==="
+          probe_dump=$(alr exec -- "${dump}" -p "${probe_dll}")
+          printf '%s\n' "${probe_dump}"
+          for symbol in opencv_core_module_probe_input opencv_core_module_probe_mutate opencv_core_module_probe_create opencv_core_module_probe_invalid_inputs; do
+            if ! printf '%s\n' "${probe_dump}" | grep -q "${symbol}"; then
+              echo "error: module bridge probe does not export ${symbol}" >&2
+              exit 1
+            fi
+          done
+          for symbol in opencv_core_mat_resolve_input opencv_core_mat_resolve_output; do
+            if ! printf '%s\n' "${probe_dump}" | grep -q "${symbol}"; then
+              echo "error: module bridge probe does not import ${symbol} from Core shim" >&2
+              exit 1
+            fi
+          done
+          if ! printf '%s\n' "${probe_dump}" | grep -qi 'libopencv_core_shim.dll'; then
+            echo "error: module bridge probe does not import libopencv_core_shim.dll" >&2
+            exit 1
+          fi
+          if ! printf '%s\n' "${probe_dump}" | grep -qi 'libopencv_core-500.dll'; then
+            echo "error: module bridge probe does not import MSYS2 OpenCV Core" >&2
+            exit 1
+          fi
           # Extract the actual tests.exe link command. Do not treat the
           # separate libopencv_core_shim.dll link (-shared-libgcc -o ...) as
           # the final test executable link.
@@ -1304,6 +1346,10 @@ jobs:
           fi
           if ! printf '%s\n' "${link_cmd}" | grep -E '(^|[[:space:]])-lopencv_core_shim([[:space:]]|$)'; then
             echo "error: tests.exe link did not use shared shim linkage (-lopencv_core_shim)" >&2
+            exit 1
+          fi
+          if ! printf '%s\n' "${link_cmd}" | grep -E '(^|[[:space:]])-lopencv_core_module_bridge_probe([[:space:]]|$)'; then
+            echo "error: tests.exe link did not use the module bridge probe DLL" >&2
             exit 1
           fi
           if printf '%s\n' "${link_cmd}" | grep -E '(^|[[:space:]])-lstdc\+\+([[:space:]]|$)'; then
@@ -1356,7 +1402,7 @@ jobs:
           echo "${deps}"
 
           echo "=== Notable DLL imports ==="
-          for name in libgcc_s_seh-1.dll libgnat-16.dll libgnarl-16.dll libstdc++-6.dll libopencv_core-500.dll libopencv_core_shim.dll; do
+          for name in libgcc_s_seh-1.dll libgnat-16.dll libgnarl-16.dll libstdc++-6.dll libopencv_core-500.dll libopencv_core_shim.dll opencv_core_module_bridge_probe.dll; do
             if printf '%s\n' "${deps}" | grep -qi "${name}"; then
               echo "present: ${name}"
             else
@@ -1366,6 +1412,10 @@ jobs:
 
           if ! printf '%s\n' "${deps}" | grep -qi 'opencv_core_shim'; then
             echo "error: test executable does not depend on the production shim DLL" >&2
+          if ! printf '%s\n' "${deps}" | grep -qi 'opencv_core_module_bridge_probe.dll'; then
+            echo "error: test executable does not depend on the module bridge probe DLL" >&2
+            exit 1
+          fi
             exit 1
           fi
           if printf '%s\n' "${deps}" | grep -qi 'libopencv_core-500.dll'; then
@@ -1398,6 +1448,8 @@ jobs:
           printf '%s\n' "${test_exe_win}"
           echo "=== Absolute libopencv_core_shim.dll path ==="
           printf '%s\n' "${shim_dll_win}"
+          echo "=== Absolute opencv_core_module_bridge_probe.dll path ==="
+          printf '%s\n' "${probe_dll}"
           echo "=== Effective runtime PATH prefixes ==="
           printf '%s\n' "${path_lib}"
           printf '%s\n' "${path_runtime}"
@@ -1416,7 +1468,7 @@ jobs:
             alr exec -- "${dump}" -p "${test_exe}" | grep -i 'DLL Name' || true
             alr exec -- "${dump}" -p "${shim_dll}" | grep -i 'DLL Name' || true
             echo "=== Windows DLL resolution after failure ==="
-            for name in libopencv_core_shim.dll libgcc_s_seh-1.dll libstdc++-6.dll libopencv_core-500.dll; do
+            for name in opencv_core_module_bridge_probe.dll libopencv_core_shim.dll libgcc_s_seh-1.dll libstdc++-6.dll libopencv_core-500.dll; do
               PATH="${windows_test_path}" where.exe "${name}" || true
             done
             echo "=== Recent Windows Application Error events ==="

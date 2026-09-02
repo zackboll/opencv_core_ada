@@ -18,6 +18,10 @@ opencv_core = "*"
 [[pins]]
 opencv_core = { path='..' }
 
+[[actions]]
+type = "pre-build"
+command = ["sh", "../scripts/build_module_bridge_probe.sh"]
+
 [[depends-on]]
 gnatprove = "^16.1.0"
 

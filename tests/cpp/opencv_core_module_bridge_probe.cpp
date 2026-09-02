@@ -4,6 +4,12 @@
 
 #include <exception>
 
+#if defined(_WIN32)
+#define OPENCV_CORE_MODULE_PROBE_EXPORT __declspec(dllexport)
+#else
+#define OPENCV_CORE_MODULE_PROBE_EXPORT
+#endif
+
 namespace {
 
 opencv_core_status translate_exception() noexcept {
@@ -18,7 +24,7 @@ opencv_core_status translate_exception() noexcept {
 
 extern "C" {
 
-opencv_core_status opencv_core_module_probe_input(
+OPENCV_CORE_MODULE_PROBE_EXPORT opencv_core_status opencv_core_module_probe_input(
     const opencv_core_mat_handle *handle, int32_t *out_rows,
     int32_t *out_columns, int32_t *out_depth, int32_t *out_value) {
     if (out_rows == nullptr || out_columns == nullptr || out_depth == nullptr ||
@@ -51,7 +57,7 @@ opencv_core_status opencv_core_module_probe_input(
     }
 }
 
-opencv_core_status opencv_core_module_probe_mutate(
+OPENCV_CORE_MODULE_PROBE_EXPORT opencv_core_status opencv_core_module_probe_mutate(
     opencv_core_mat_handle *handle, uint8_t value) {
     try {
         cv::Mat *mat = nullptr;
@@ -71,7 +77,7 @@ opencv_core_status opencv_core_module_probe_mutate(
     }
 }
 
-opencv_core_status opencv_core_module_probe_create(
+OPENCV_CORE_MODULE_PROBE_EXPORT opencv_core_status opencv_core_module_probe_create(
     opencv_core_mat_handle *handle, int32_t rows, int32_t columns,
     uint8_t value) {
     try {
@@ -92,7 +98,8 @@ opencv_core_status opencv_core_module_probe_create(
     }
 }
 
-opencv_core_status opencv_core_module_probe_invalid_inputs(void) {
+OPENCV_CORE_MODULE_PROBE_EXPORT opencv_core_status
+opencv_core_module_probe_invalid_inputs(void) {
     const cv::Mat *input = nullptr;
     cv::Mat *output = nullptr;
     if (opencv_core_module_input_mat(nullptr, &input) == OPENCV_CORE_OK ||

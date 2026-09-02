@@ -12,7 +12,6 @@ project Tests is
    Static_Ada_Runtime : Static_Ada_Runtime_Kind :=
       external ("TESTS_STATIC_ADA_RUNTIME", "False");
 
-   for Languages use ("Ada", "C++");
    for Source_Dirs use ("src/", "cpp/", "config/");
    for Object_Dir use "obj/" & Tests_Config.Build_Profile;
    for Create_Missing_Dirs use "True";
@@ -22,10 +21,26 @@ project Tests is
    package Compiler is
       for Default_Switches ("Ada") use
          Tests_Config.Ada_Compiler_Switches & ("-Werror");
-       for Default_Switches ("C++") use
-         ("-std=c++17", "-Wall", "-Wextra", "-Wpedantic", "-Werror",
-          "-I../cpp", OpenCV_Core_Install.Include_Switch);
+
+      case OpenCV_Core_Install.Shim_Build is
+         when "External_Relocatable" =>
+            null;
+         when "Static_PIC" | "Relocatable" =>
+            for Default_Switches ("C++") use
+              ("-std=c++17", "-Wall", "-Wextra", "-Wpedantic", "-Werror",
+               "-I" & OpenCV_Core'Project_Dir & "cpp",
+               OpenCV_Core_Install.Include_Switch);
+      end case;
    end Compiler;
+
+   case OpenCV_Core_Install.Shim_Build is
+      when "External_Relocatable" =>
+         --  OpenCV-facing C++ must remain in the MSYS2 compiler family on
+         --  Windows. The probe DLL is built by scripts/build_module_bridge_probe.sh.
+         for Languages use ("Ada");
+      when "Static_PIC" | "Relocatable" =>
+         for Languages use ("Ada", "C++");
+   end case;
 
    package Binder is
       case Static_Ada_Runtime is
@@ -47,6 +62,15 @@ project Tests is
             for Driver use "gcc";
             for Trailing_Switches ("Ada") use ("-static-libgcc");
          when "False" =>
+            null;
+      end case;
+
+      case OpenCV_Core_Install.Shim_Build is
+         when "External_Relocatable" =>
+            for Switches ("Ada") use
+              ("-L" & OpenCV_Core'Project_Dir & "lib",
+               "-lopencv_core_module_bridge_probe");
+         when "Static_PIC" | "Relocatable" =>
             null;
       end case;
    end Linker;
