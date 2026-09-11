@@ -1076,6 +1076,14 @@ opencv_core_mat_write_uint8_row(opencv_core_mat_handle *mat, int32_t row,
                                 const uint8_t *data, uint64_t element_count);
 
 opencv_core_status
+opencv_core_mat_read_uint16_row(const opencv_core_mat_handle *mat, int32_t row,
+                                uint16_t *data, uint64_t element_count);
+
+opencv_core_status
+opencv_core_mat_write_uint16_row(opencv_core_mat_handle *mat, int32_t row,
+                                 const uint16_t *data, uint64_t element_count);
+
+opencv_core_status
 opencv_core_mat_read_float32_row(const opencv_core_mat_handle *mat,
                                  int32_t row, float *data,
                                  uint64_t element_count);

@@ -556,7 +556,7 @@ normal OpenCV reference counting.
 
 ### Copied row access
 
-The UInt8, Float32, UInt8 Vec3, and Float32 Vec3 row packages provide
+The UInt8, UInt16, Float32, UInt8 Vec3, and Float32 Vec3 row packages provide
 `Read_Row` / `Write_Row` APIs. Caller arrays may use arbitrary lower bounds;
 values map in iteration order to matrix columns.
 
@@ -565,7 +565,7 @@ array with no borrowed lifetime.
 
 ### Scoped zero-copy row borrowing
 
-The same four row-access families provide:
+The same five row-access families provide:
 
 ```text
 With_Read_Only_Row
@@ -646,7 +646,7 @@ Direct typed access currently concentrates on eight common layouts:
 | Layout | 2-D Get/Set | N-D Get/Set | Classification | Copied row | Borrowed row | Continuous buffer borrow | Packed caller buffer -> `Mat` | Strided caller buffer -> `Mat` |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | UInt8 C1 | `UInt8_Access` | `UInt8_Access` | — | `UInt8_Row_Access` | `UInt8_Row_Access` | `UInt8_Buffer_Access` | `UInt8_Mat_View` | — |
-| UInt16 C1 | `UInt16_Access` | `UInt16_Access` | — | — | — | — | — | — |
+| UInt16 C1 | `UInt16_Access` | `UInt16_Access` | — | `UInt16_Row_Access` | `UInt16_Row_Access` | — | — | — |
 | Int16 C1 | `Int16_Access` | `Int16_Access` | — | — | — | — | — | — |
 | Int32 C1 | `Int32_Access` | `Int32_Access` | — | — | — | — | — | — |
 | Float32 C1 | `Float32_Access` | `Float32_Access` | — | `Float32_Row_Access` | `Float32_Row_Access` | `Float32_Buffer_Access` | `Float32_Mat_View` | `Float32_Mat_View` |
@@ -664,7 +664,8 @@ The predefined Vec3 packages are component-oriented and do not impose RGB,
 BGR, XYZ, or any other semantic channel interpretation.
 
 `UInt16_Access` provides scalar 2-D and N-D Get/Set for single-channel `CV_16U`
-Mats. Copied row access, borrowed row access, whole-buffer borrowing, and
+Mats. `UInt16_Row_Access` adds copied and callback-scoped zero-copy row access
+for 2-D C1 Mats, including non-contiguous Regions. Whole-buffer borrowing and
 caller-owned Mat views are not yet provided for UInt16.
 
 `Int16_Access` provides scalar 2-D and N-D Get/Set for single-channel `CV_16S`
@@ -1351,7 +1352,8 @@ The current limitations are intentional and help keep the public API coherent:
 2. **No public `SparseMat` or `UMat` abstraction.**
 
 3. **Typed direct/zero-copy access is focused on UInt8 and Float32 C1/C3, plus UInt16/Int16/Int32 C1 and Float64 C1.**
-   UInt16, Int16, and Int32 C1 have 2-D and N-D Get/Set. Float64 C1 has 2-D and
+   UInt16 C1 has 2-D and N-D Get/Set plus copied and borrowed 2-D row access.
+   Int16 and Int32 C1 have 2-D and N-D Get/Set. Float64 C1 has 2-D and
    N-D Get/Set, classification, 2-D row access, continuous 2-D whole-buffer
    borrowing, and packed or row-strided 2-D caller-buffer views. Other OpenCV
    depths are available to general Mat operations but do not yet have the same
