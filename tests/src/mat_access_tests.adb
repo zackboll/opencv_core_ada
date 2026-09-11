@@ -277,8 +277,7 @@ package body Mat_Access_Tests is
          "Int32 access must reject a column after the last column");
    end Int32_Typed_Access_Rejects_Invalid_Mats_And_Indices;
 
-   procedure Int32_One_Dimensional_Typed_Element_Access
-     (Test : in out Mat_Test_Fixture)
+   procedure Int32_Two_Dimensional_ND_Indexing (Test : in out Mat_Test_Fixture)
    is
       pragma Unreferenced (Test);
       Image : OpenCV.Core.Mat :=
@@ -301,7 +300,7 @@ package body Mat_Access_Tests is
       AUnit.Assertions.Assert
         (OpenCV.Core.Int32_Access.Get (Image, Row => 0, Column => 1) = -9,
          "Int32 2-D Get should see the value written through N-D Set");
-   end Int32_One_Dimensional_Typed_Element_Access;
+   end Int32_Two_Dimensional_ND_Indexing;
 
    procedure Int32_N_Dimensional_Typed_Element_Access
      (Test : in out Mat_Test_Fixture)
@@ -497,11 +496,17 @@ package body Mat_Access_Tests is
                   = 1,
          "Region writes must not mutate parent padding");
 
-      Copy := Parent.Clone;
       OpenCV.Core.UInt16_Access.Set
         (Parent, Row => 1, Column => 1, Value => 99);
       AUnit.Assertions.Assert
-        (OpenCV.Core.UInt16_Access.Get (Copy, Row => 1, Column => 1) = 11,
+        (OpenCV.Core.UInt16_Access.Get (View, Row => 0, Column => 0) = 99,
+         "Parent writes must be visible through the Region");
+
+      Copy := Parent.Clone;
+      OpenCV.Core.UInt16_Access.Set
+        (Parent, Row => 1, Column => 1, Value => 77);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt16_Access.Get (Copy, Row => 1, Column => 1) = 99,
          "A clone must retain the pre-mutation UInt16 value");
    end UInt16_Region_And_Alias_Share_Typed_Writes;
 
@@ -587,7 +592,7 @@ package body Mat_Access_Tests is
          "UInt16 access must reject a column after the last column");
    end UInt16_Typed_Access_Rejects_Invalid_Mats_And_Indices;
 
-   procedure UInt16_One_Dimensional_Typed_Element_Access
+   procedure UInt16_Two_Dimensional_ND_Indexing
      (Test : in out Mat_Test_Fixture)
    is
       pragma Unreferenced (Test);
@@ -610,8 +615,9 @@ package body Mat_Access_Tests is
                   = 0
          and then OpenCV.Core.UInt16_Access.Get (Image, Row => 0, Column => 2)
                   = 0,
-         "UInt16 1-D C1 access must preserve written and unrelated elements");
-   end UInt16_One_Dimensional_Typed_Element_Access;
+         "UInt16 N-D indexing on a 2-D Mat must preserve written and"
+         & " unrelated elements");
+   end UInt16_Two_Dimensional_ND_Indexing;
 
    procedure UInt16_N_Dimensional_Typed_Element_Access
      (Test : in out Mat_Test_Fixture)
@@ -703,6 +709,13 @@ package body Mat_Access_Tests is
             "An index equal to extent 3 unexpectedly succeeded");
       end Read_Third_Axis;
 
+      procedure Read_Beyond_Third_Axis is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt16_Access.Get (Image, Indices => (0, 0, 5)) = 0,
+            "An index greater than extent 3 unexpectedly succeeded");
+      end Read_Beyond_Third_Axis;
+
       procedure Read_Default is
       begin
          AUnit.Assertions.Assert
@@ -727,6 +740,10 @@ package body Mat_Access_Tests is
       Assert_Raises_OpenCV_Error
         (Read_Third_Axis'Access,
          "UInt16 N-D access must reject an index equal to the third extent");
+      Assert_Raises_OpenCV_Error
+        (Read_Beyond_Third_Axis'Access,
+         "UInt16 N-D access must reject an index greater than the third"
+         & " extent");
       Assert_Raises_OpenCV_Error
         (Read_Default'Access,
          "UInt16 N-D Get on a default Mat must raise OpenCV_Error");
@@ -924,8 +941,7 @@ package body Mat_Access_Tests is
          "Int16 access must reject a column after the last column");
    end Int16_Typed_Access_Rejects_Invalid_Mats_And_Indices;
 
-   procedure Int16_One_Dimensional_Typed_Element_Access
-     (Test : in out Mat_Test_Fixture)
+   procedure Int16_Two_Dimensional_ND_Indexing (Test : in out Mat_Test_Fixture)
    is
       pragma Unreferenced (Test);
       Image : OpenCV.Core.Mat :=
@@ -948,8 +964,9 @@ package body Mat_Access_Tests is
                   = 0
          and then OpenCV.Core.Int16_Access.Get (Image, Row => 0, Column => 2)
                   = 0,
-         "Int16 1-D C1 access must preserve written and unrelated elements");
-   end Int16_One_Dimensional_Typed_Element_Access;
+         "Int16 N-D indexing on a 2-D Mat must preserve written and"
+         & " unrelated elements");
+   end Int16_Two_Dimensional_ND_Indexing;
 
    procedure Int16_N_Dimensional_Typed_Element_Access
      (Test : in out Mat_Test_Fixture)
@@ -6127,8 +6144,8 @@ package body Mat_Access_Tests is
             Int32_Typed_Access_Rejects_Invalid_Mats_And_Indices'Access));
       Result.Add_Test
         (Caller.Create
-           ("Int32 1-D typed element access",
-            Int32_One_Dimensional_Typed_Element_Access'Access));
+           ("Int32 N-D indexing on a 2-D Mat",
+            Int32_Two_Dimensional_ND_Indexing'Access));
       Result.Add_Test
         (Caller.Create
            ("Int32 N-D typed element access",
@@ -6151,8 +6168,8 @@ package body Mat_Access_Tests is
             UInt16_Typed_Access_Rejects_Invalid_Mats_And_Indices'Access));
       Result.Add_Test
         (Caller.Create
-           ("UInt16 1-D typed element access",
-            UInt16_One_Dimensional_Typed_Element_Access'Access));
+           ("UInt16 N-D indexing on a 2-D Mat",
+            UInt16_Two_Dimensional_ND_Indexing'Access));
       Result.Add_Test
         (Caller.Create
            ("UInt16 N-D typed element access",
@@ -6174,8 +6191,8 @@ package body Mat_Access_Tests is
             Int16_Typed_Access_Rejects_Invalid_Mats_And_Indices'Access));
       Result.Add_Test
         (Caller.Create
-           ("Int16 1-D typed element access",
-            Int16_One_Dimensional_Typed_Element_Access'Access));
+           ("Int16 N-D indexing on a 2-D Mat",
+            Int16_Two_Dimensional_ND_Indexing'Access));
       Result.Add_Test
         (Caller.Create
            ("Int16 N-D typed element access",

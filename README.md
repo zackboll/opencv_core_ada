@@ -679,10 +679,12 @@ caller-owned Mat views are not yet provided for Int32.
 classification. `Float64_Row_Access` adds copied and callback-scoped zero-copy
 row access for 2-D C1 Mats, including non-contiguous Regions.
 `Float64_Buffer_Access` adds callback-scoped zero-copy whole-buffer borrowing
-for continuous 2-D Mats. `Float64_Mat_View` adds callback-scoped contiguous
-caller-owned CV_64FC1 storage. The caller owns the backing storage, OpenCV does
-not free it, and it must remain alive for the callback lifetime. Arbitrary
-row-strided external Float64 views are not yet supported.
+for continuous 2-D Mats. `Float64_Mat_View` adds callback-scoped packed and
+row-strided caller-owned CV_64FC1 storage. Packed views overlay a contiguous
+Ada array. Row-strided views use `With_Writable_Strided_Mat_View` so a 2-D
+`Row_Stride` can skip padding between logical rows. Arbitrary N-D strides are
+not supported. The caller owns the backing storage, OpenCV does not free it,
+and it must remain alive for the callback lifetime.
 
 Generic pure-Ada value abstractions are also provided:
 
@@ -1342,17 +1344,18 @@ GNATprove is supplied by the separate `tests` Alire environment.
 The current limitations are intentional and help keep the public API coherent:
 
 1. **The dense public `Mat` model is primarily 2-D.**  
-   N-dimensional construction, UInt8/UInt16/Int16/Int32/Float32/Float64 C1 Get/Set, and `Slice` views are
-   available. N-D reshape and dimension-dropping scalar indexing are not yet
-   exposed as a complete Ada model.
+   N-dimensional construction, UInt8/UInt16/Int16/Int32/Float32/Float64 C1
+   Get/Set, and `Slice` views are available. N-D reshape and dimension-dropping
+   scalar indexing are not yet exposed as a complete Ada model.
 
 2. **No public `SparseMat` or `UMat` abstraction.**
 
 3. **Typed direct/zero-copy access is focused on UInt8 and Float32 C1/C3, plus UInt16/Int16/Int32 C1 and Float64 C1.**
-   Int16 C1 and Int32 C1 have 2-D and N-D Get/Set. Float64 C1 has 2-D and N-D Get/Set, classification, 2-D row access,
-   continuous 2-D whole-buffer borrowing, and packed or row-strided 2-D
-   caller-buffer views. Other OpenCV depths are available to general Mat
-   operations but do not yet have the same typed access families.
+   UInt16, Int16, and Int32 C1 have 2-D and N-D Get/Set. Float64 C1 has 2-D and
+   N-D Get/Set, classification, 2-D row access, continuous 2-D whole-buffer
+   borrowing, and packed or row-strided 2-D caller-buffer views. Other OpenCV
+   depths are available to general Mat operations but do not yet have the same
+   typed access families.
 
 4. **External caller-buffer views are writable and callback-scoped.**  
    Packed 2-D views are available for UInt8/Float32 C1/C3 and Float64 C1.
@@ -1390,9 +1393,11 @@ The current limitations are intentional and help keep the public API coherent:
     FileNode iterators, file append mode, Base64, comments, gzip controls, FLOW
     formatting, and raw persistence APIs are not part of the current slice.
 
-13. **The spectral API is deliberately focused.**  
-    Full-complex DFT/DCT workflows are supported, but packed CCS, `DFT_ROWS`,
-    and in-place transform APIs are not exposed.
+13. **The spectral API is deliberately focused.**
+    Full-complex and packed CCS DFT/DCT workflows, including `DFT_ROWS` and
+    `DCT_ROWS` forms, are supported. Packed-spectrum division, CCS-bin
+    accessors, packed/full representation conversion, and in-place transforms
+    are not yet exposed.
 
 14. **The supported OpenCV range is not exhaustively tested release-by-release.**  
     CI validates four representative OpenCV-version targets across 4.1-5.0, plus
