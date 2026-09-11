@@ -724,6 +724,7 @@ Major public abstractions include:
 
 - `Mat`, `Mat_Type`, `Depth_Type`, `Channel_Count`, `Mat_Size`
 - `Size`, `Point`, `Point_Array`, `Rect`, `Index_Range`, `Index_Range_Array`, `Scalar`
+- `Float16_Value`
 - `Mat_Array`
 - `Random_Number_Generator`
 - `Min_Max_Result`, `Mean_Std_Dev_Result`, `Range_Check_Result`
@@ -749,6 +750,12 @@ Float32
 Float64
 Float16
 ```
+
+`Float16_Value` is a private 16-bit type for the exact IEEE-754 binary16
+encoding used by OpenCV `CV_16F`. `Float16_From_Bits` / `Float16_Bits` preserve
+every pattern, including signed zeros, subnormals, infinities, and NaN
+payloads. Classification helpers inspect those stored bits. Typed Mat access
+and numeric Float32 conversion are not yet exposed.
 
 ### Creation, shape, metadata, and views
 
@@ -1359,7 +1366,9 @@ The current limitations are intentional and help keep the public API coherent:
    N-D Get/Set, classification, 2-D row access, continuous 2-D whole-buffer
    borrowing, and packed or row-strided 2-D caller-buffer views. Other OpenCV
    depths are available to general Mat operations but do not yet have the same
-   typed access families.
+   typed access families. Float16 now has an exact 16-bit public value
+   representation and IEEE-754 classification helpers, but typed Mat access
+   and numeric Float32 conversion are not yet exposed.
 
 4. **External caller-buffer views are writable and callback-scoped.**  
    Packed 2-D views are available for UInt8/Float32 C1/C3 and Float64 C1.

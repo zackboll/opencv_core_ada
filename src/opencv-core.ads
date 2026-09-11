@@ -138,6 +138,28 @@ package OpenCV.Core is
    subtype Float32_Value is Interfaces.IEEE_Float_32;
    subtype Float64_Value is Interfaces.IEEE_Float_64;
 
+   --  Exact IEEE-754 binary16 encoding used by OpenCV CV_16F. This is
+   --  the stored 16-bit pattern, not Short_Float, Float, Integer_16, or
+   --  a numeric Unsigned_16 value. Arithmetic and Float32 conversion
+   --  are not provided. Classification inspects the binary16 fields
+   --  directly: bit 15 is the sign, bits 14 .. 10 are the exponent, and
+   --  bits 9 .. 0 are the fraction. Is_Negative reports the stored sign
+   --  bit, so it is True for -0, negative finites, -Infinity, and
+   --  negative NaNs. NaN payloads, signed zeros, infinities, and
+   --  subnormals retain their exact bits.
+   type Float16_Value is private;
+
+   function Float16_From_Bits
+     (Bits : Interfaces.Unsigned_16) return Float16_Value;
+   function Float16_Bits (Value : Float16_Value) return Interfaces.Unsigned_16;
+
+   function Is_NaN (Value : Float16_Value) return Boolean;
+   function Is_Infinite (Value : Float16_Value) return Boolean;
+   function Is_Finite (Value : Float16_Value) return Boolean;
+   function Is_Subnormal (Value : Float16_Value) return Boolean;
+   function Is_Zero (Value : Float16_Value) return Boolean;
+   function Is_Negative (Value : Float16_Value) return Boolean;
+
    type Mat_Type is record
       Depth    : Depth_Type;
       Channels : Channel_Count;
@@ -2058,6 +2080,11 @@ package OpenCV.Core is
      (Self  : in out Mat;
       Value : Scalar := (Component_0 => 1.0, others => 0.0));
 private
+
+   type Float16_Value is record
+      Bits : Interfaces.Unsigned_16 := 0;
+   end record
+   with Size => 16, Object_Size => 16, Alignment => 2, Convention => C;
 
    type Random_Number_Generator is record
       State : Interfaces.Unsigned_64 := 16#FFFF_FFFF#;

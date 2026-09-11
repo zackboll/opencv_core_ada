@@ -13,6 +13,7 @@ package body OpenCV.Core is
    use type OpenCV.Internal.C_API.C_Int32;
    use type OpenCV.Internal.C_API.Status;
    use type Interfaces.Integer_64;
+   use type Interfaces.Unsigned_16;
 
    procedure Raise_On_Error
      (Result : OpenCV.Internal.C_API.Status; Operation : String)
@@ -67,6 +68,41 @@ package body OpenCV.Core is
        Component_1 => Component_1,
        Component_2 => Component_2,
        Component_3 => Component_3);
+
+   function Float16_From_Bits
+     (Bits : Interfaces.Unsigned_16) return Float16_Value
+   is ((Bits => Bits));
+
+   function Float16_Bits (Value : Float16_Value) return Interfaces.Unsigned_16
+   is (Value.Bits);
+
+   function Binary16_Exponent
+     (Value : Float16_Value) return Interfaces.Unsigned_16
+   is ((Value.Bits / 16#0400#) and 16#001F#);
+
+   function Binary16_Fraction
+     (Value : Float16_Value) return Interfaces.Unsigned_16
+   is (Value.Bits and 16#03FF#);
+
+   function Is_NaN (Value : Float16_Value) return Boolean
+   is (Binary16_Exponent (Value) = 16#001F#
+       and then Binary16_Fraction (Value) /= 0);
+
+   function Is_Infinite (Value : Float16_Value) return Boolean
+   is (Binary16_Exponent (Value) = 16#001F#
+       and then Binary16_Fraction (Value) = 0);
+
+   function Is_Finite (Value : Float16_Value) return Boolean
+   is (Binary16_Exponent (Value) /= 16#001F#);
+
+   function Is_Subnormal (Value : Float16_Value) return Boolean
+   is (Binary16_Exponent (Value) = 0 and then Binary16_Fraction (Value) /= 0);
+
+   function Is_Zero (Value : Float16_Value) return Boolean
+   is (Binary16_Exponent (Value) = 0 and then Binary16_Fraction (Value) = 0);
+
+   function Is_Negative (Value : Float16_Value) return Boolean
+   is ((Value.Bits and 16#8000#) /= 0);
 
    function To_C_Depth
      (Value : Depth_Type) return OpenCV.Internal.C_API.C_Int32
