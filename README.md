@@ -641,11 +641,12 @@ non-contiguous multirow strided view before invoking its callback.
 
 ## Typed access matrix
 
-Direct typed access currently concentrates on six common layouts:
+Direct typed access currently concentrates on seven common layouts:
 
 | Layout | 2-D Get/Set | N-D Get/Set | Classification | Copied row | Borrowed row | Continuous buffer borrow | Packed caller buffer -> `Mat` | Strided caller buffer -> `Mat` |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | UInt8 C1 | `UInt8_Access` | `UInt8_Access` | — | `UInt8_Row_Access` | `UInt8_Row_Access` | `UInt8_Buffer_Access` | `UInt8_Mat_View` | — |
+| UInt16 C1 | `UInt16_Access` | `UInt16_Access` | — | — | — | — | — | — |
 | Int32 C1 | `Int32_Access` | `Int32_Access` | — | — | — | — | — | — |
 | Float32 C1 | `Float32_Access` | `Float32_Access` | — | `Float32_Row_Access` | `Float32_Row_Access` | `Float32_Buffer_Access` | `Float32_Mat_View` | `Float32_Mat_View` |
 | Float64 C1 | `Float64_Access` | `Float64_Access` | `Float64_Access` | `Float64_Row_Access` | `Float64_Row_Access` | `Float64_Buffer_Access` | `Float64_Mat_View` | `Float64_Mat_View` |
@@ -660,6 +661,10 @@ scalar channel:
 
 The predefined Vec3 packages are component-oriented and do not impose RGB,
 BGR, XYZ, or any other semantic channel interpretation.
+
+`UInt16_Access` provides scalar 2-D and N-D Get/Set for single-channel `CV_16U`
+Mats. Copied row access, borrowed row access, whole-buffer borrowing, and
+caller-owned Mat views are not yet provided for UInt16.
 
 `Int32_Access` provides scalar 2-D and N-D Get/Set for single-channel `CV_32S`
 Mats. Copied row access, borrowed row access, whole-buffer borrowing, and

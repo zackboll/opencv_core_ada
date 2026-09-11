@@ -13,6 +13,18 @@ package OpenCV.Core.Internal.Typed_Access is
    procedure Set_UInt8
      (Image : in out Mat; Indices : Index_Array; Value : UInt8_Value);
 
+   function Get_UInt16
+     (Image : Mat; Row, Column : Integer) return UInt16_Value;
+
+   procedure Set_UInt16
+     (Image : in out Mat; Row, Column : Integer; Value : UInt16_Value);
+
+   function Get_UInt16
+     (Image : Mat; Indices : Index_Array) return UInt16_Value;
+
+   procedure Set_UInt16
+     (Image : in out Mat; Indices : Index_Array; Value : UInt16_Value);
+
    function Get_Int32 (Image : Mat; Row, Column : Integer) return Int32_Value;
 
    procedure Set_Int32

@@ -14,6 +14,7 @@ with OpenCV.Core.Float32_Vec3_Buffer_Access;
 with OpenCV.Core.Float32_Vec3_Mat_View;
 with OpenCV.Core.Float32_Vec3_Row_Access;
 with OpenCV.Core.Int32_Access;
+with OpenCV.Core.UInt16_Access;
 with OpenCV.Core.UInt8_Access;
 with OpenCV.Core.UInt8_Buffer_Access;
 with OpenCV.Core.UInt8_Mat_View;
@@ -32,6 +33,7 @@ package body Mat_Access_Tests is
    use type Interfaces.IEEE_Float_64;
 
    use type Interfaces.Unsigned_8;
+   use type Interfaces.Unsigned_16;
    use type Interfaces.Integer_32;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
@@ -409,6 +411,324 @@ package body Mat_Access_Tests is
         (Read_Default'Access,
          "Int32 N-D Get on a default Mat must raise OpenCV_Error");
    end Int32_N_Dimensional_Typed_Access_Rejects_Invalid;
+
+   procedure UInt16_Typed_Element_Access (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 3,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.UInt16, Channels => 1));
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (42.0));
+      OpenCV.Core.UInt16_Access.Set (Image, Row => 0, Column => 0, Value => 0);
+      OpenCV.Core.UInt16_Access.Set (Image, Row => 0, Column => 1, Value => 1);
+      OpenCV.Core.UInt16_Access.Set
+        (Image, Row => 0, Column => 2, Value => 32_767);
+      OpenCV.Core.UInt16_Access.Set
+        (Image, Row => 1, Column => 0, Value => 32_768);
+      OpenCV.Core.UInt16_Access.Set
+        (Image, Row => 1, Column => 1, Value => 65_534);
+      OpenCV.Core.UInt16_Access.Set
+        (Image, Row => 2, Column => 2, Value => 65_535);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt16_Access.Get (Image, Row => 0, Column => 0) = 0
+         and then OpenCV.Core.UInt16_Access.Get (Image, Row => 0, Column => 1)
+                  = 1
+         and then OpenCV.Core.UInt16_Access.Get (Image, Row => 0, Column => 2)
+                  = 32_767
+         and then OpenCV.Core.UInt16_Access.Get (Image, Row => 1, Column => 0)
+                  = 32_768
+         and then OpenCV.Core.UInt16_Access.Get (Image, Row => 1, Column => 1)
+                  = 65_534
+         and then OpenCV.Core.UInt16_Access.Get (Image, Row => 2, Column => 2)
+                  = 65_535,
+         "UInt16 Get should round-trip 0, 1, 32767, 32768, 65534, and 65535");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt16_Access.Get (Image, Row => 1, Column => 2) = 42
+         and then OpenCV.Core.UInt16_Access.Get (Image, Row => 2, Column => 0)
+                  = 42
+         and then OpenCV.Core.UInt16_Access.Get (Image, Row => 2, Column => 1)
+                  = 42,
+         "UInt16 Set must not modify neighboring elements");
+   end UInt16_Typed_Element_Access;
+
+   procedure UInt16_Region_And_Alias_Share_Typed_Writes
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 4,
+           Columns      => 6,
+           Element_Type => (Depth => OpenCV.Core.UInt16, Channels => 1));
+      View   : OpenCV.Core.Mat;
+      Alias  : OpenCV.Core.Mat;
+      Copy   : OpenCV.Core.Mat;
+   begin
+      Parent.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      View := Parent.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+      Alias := Parent;
+      AUnit.Assertions.Assert
+        (not View.Is_Continuous,
+         "The Region used for access must be non-contiguous");
+
+      OpenCV.Core.UInt16_Access.Set (View, Row => 0, Column => 0, Value => 11);
+      OpenCV.Core.UInt16_Access.Set (View, Row => 1, Column => 2, Value => 13);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt16_Access.Get (View, Row => 0, Column => 0) = 11
+         and then OpenCV.Core.UInt16_Access.Get (View, Row => 1, Column => 2)
+                  = 13,
+         "UInt16 Get/Set must work on a non-contiguous Region");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt16_Access.Get (Parent, Row => 1, Column => 1) = 11
+         and then OpenCV.Core.UInt16_Access.Get (Parent, Row => 2, Column => 3)
+                  = 13
+         and then OpenCV.Core.UInt16_Access.Get (Alias, Row => 1, Column => 1)
+                  = 11,
+         "Region and shallow-alias writes must be visible in shared storage");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt16_Access.Get (Parent, Row => 1, Column => 0) = 1
+         and then OpenCV.Core.UInt16_Access.Get (Parent, Row => 1, Column => 4)
+                  = 1,
+         "Region writes must not mutate parent padding");
+
+      Copy := Parent.Clone;
+      OpenCV.Core.UInt16_Access.Set
+        (Parent, Row => 1, Column => 1, Value => 99);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt16_Access.Get (Copy, Row => 1, Column => 1) = 11,
+         "A clone must retain the pre-mutation UInt16 value");
+   end UInt16_Region_And_Alias_Share_Typed_Writes;
+
+   procedure UInt16_Typed_Access_Rejects_Invalid_Mats_And_Indices
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      UInt8_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+      Int16_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Int16, 1));
+      Multi       : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt16, 2));
+      Image       : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt16, 1));
+
+      procedure Read_UInt8 is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt16_Access.Get (UInt8_Image, 0, 0) = 0,
+            "An incompatible UInt16 read unexpectedly succeeded");
+      end Read_UInt8;
+
+      procedure Read_Int16 is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt16_Access.Get (Int16_Image, 0, 0) = 0,
+            "An Int16 Mat UInt16 read unexpectedly succeeded");
+      end Read_Int16;
+
+      procedure Read_Multi_Channel is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt16_Access.Get (Multi, 0, 0) = 0,
+            "A multi-channel UInt16 read unexpectedly succeeded");
+      end Read_Multi_Channel;
+
+      procedure Read_Negative_Row is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt16_Access.Get (Image, -1, 0) = 0,
+            "A negative row read unexpectedly succeeded");
+      end Read_Negative_Row;
+
+      procedure Read_Negative_Column is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt16_Access.Get (Image, 0, -1) = 0,
+            "A negative column read unexpectedly succeeded");
+      end Read_Negative_Column;
+
+      procedure Read_Row_After_Last is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt16_Access.Get (Image, 2, 0) = 0,
+            "A past-the-end row read unexpectedly succeeded");
+      end Read_Row_After_Last;
+
+      procedure Read_Column_After_Last is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt16_Access.Get (Image, 0, 2) = 0,
+            "A past-the-end column read unexpectedly succeeded");
+      end Read_Column_After_Last;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Read_UInt8'Access, "UInt16 access must reject a UInt8 Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_Int16'Access, "UInt16 access must reject an Int16 Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_Multi_Channel'Access,
+         "UInt16 access must reject a multi-channel Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_Negative_Row'Access, "UInt16 access must reject a negative row");
+      Assert_Raises_OpenCV_Error
+        (Read_Negative_Column'Access,
+         "UInt16 access must reject a negative column");
+      Assert_Raises_OpenCV_Error
+        (Read_Row_After_Last'Access,
+         "UInt16 access must reject a row after the last row");
+      Assert_Raises_OpenCV_Error
+        (Read_Column_After_Last'Access,
+         "UInt16 access must reject a column after the last column");
+   end UInt16_Typed_Access_Rejects_Invalid_Mats_And_Indices;
+
+   procedure UInt16_One_Dimensional_Typed_Element_Access
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 4,
+           Element_Type => (Depth => OpenCV.Core.UInt16, Channels => 1));
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.UInt16_Access.Set (Image, Row => 0, Column => 0, Value => 1);
+      OpenCV.Core.UInt16_Access.Set
+        (Image, Row => 0, Column => 3, Value => 65_535);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt16_Access.Get (Image, Indices => (0, 0)) = 1
+         and then OpenCV.Core.UInt16_Access.Get (Image, Indices => (0, 3))
+                  = 65_535
+         and then OpenCV.Core.UInt16_Access.Get (Image, Row => 0, Column => 1)
+                  = 0
+         and then OpenCV.Core.UInt16_Access.Get (Image, Row => 0, Column => 2)
+                  = 0,
+         "UInt16 1-D C1 access must preserve written and unrelated elements");
+   end UInt16_One_Dimensional_Typed_Element_Access;
+
+   procedure UInt16_N_Dimensional_Typed_Element_Access
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape        => (2, 3, 4),
+           Element_Type => (Depth => OpenCV.Core.UInt16, Channels => 1));
+      Indices : constant OpenCV.Core.Index_Array (3 .. 5) := (1, 2, 3);
+      Alias   : OpenCV.Core.Mat;
+      Copy    : OpenCV.Core.Mat;
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      OpenCV.Core.UInt16_Access.Set (Image, Indices => (0, 0, 0), Value => 1);
+      OpenCV.Core.UInt16_Access.Set
+        (Image, Indices => Indices, Value => 65_535);
+      OpenCV.Core.UInt16_Access.Set
+        (Image, Indices => (0, 2, 0), Value => 32_768);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt16_Access.Get (Image, Indices => (0, 0, 0)) = 1,
+         "UInt16 N-D Get should return the first written 3-D value");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt16_Access.Get (Image, Indices => (1, 2, 3)) = 65_535,
+         "A non-1 lower bound must still address OpenCV coordinate [1][2][3]");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt16_Access.Get (Image, Indices => (0, 2, 0)) = 32_768,
+         "UInt16 N-D Get should preserve an interior 3-D coordinate");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt16_Access.Get (Image, Indices => (0, 0, 1)) = 0,
+         "A nearby 3-D element should remain at the initialized value");
+
+      Alias := Image;
+      Copy := Image.Clone;
+      OpenCV.Core.UInt16_Access.Set (Image, Indices => (0, 0, 0), Value => 42);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt16_Access.Get (Alias, Indices => (0, 0, 0)) = 42,
+         "Ordinary Mat assignment should share N-D UInt16 writes");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt16_Access.Get (Copy, Indices => (0, 0, 0)) = 1,
+         "A clone must retain the pre-mutation N-D UInt16 value");
+   end UInt16_N_Dimensional_Typed_Element_Access;
+
+   procedure UInt16_N_Dimensional_Typed_Access_Rejects_Invalid
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image         : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape        => (2, 3, 4),
+           Element_Type => (Depth => OpenCV.Core.UInt16, Channels => 1));
+      Default_Empty : OpenCV.Core.Mat;
+      Empty_Indices : constant OpenCV.Core.Index_Array (1 .. 0) :=
+        (others => 0);
+
+      procedure Read_Two_Indices is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt16_Access.Get (Image, Indices => (1, 2)) = 0,
+            "A 2-index 3-D UInt16 read unexpectedly succeeded");
+      end Read_Two_Indices;
+
+      procedure Read_Four_Indices is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt16_Access.Get (Image, Indices => (1, 2, 3, 0)) = 0,
+            "A 4-index 3-D UInt16 read unexpectedly succeeded");
+      end Read_Four_Indices;
+
+      procedure Read_First_Axis is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt16_Access.Get (Image, Indices => (2, 0, 0)) = 0,
+            "An index equal to extent 1 unexpectedly succeeded");
+      end Read_First_Axis;
+
+      procedure Read_Second_Axis is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt16_Access.Get (Image, Indices => (0, 3, 0)) = 0,
+            "An index equal to extent 2 unexpectedly succeeded");
+      end Read_Second_Axis;
+
+      procedure Read_Third_Axis is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt16_Access.Get (Image, Indices => (0, 0, 4)) = 0,
+            "An index equal to extent 3 unexpectedly succeeded");
+      end Read_Third_Axis;
+
+      procedure Read_Default is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt16_Access.Get
+              (Default_Empty, Indices => Empty_Indices)
+            = 0,
+            "A default empty UInt16 N-D read unexpectedly succeeded");
+      end Read_Default;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Read_Two_Indices'Access,
+         "UInt16 N-D access must reject fewer indices than Dimension_Count");
+      Assert_Raises_OpenCV_Error
+        (Read_Four_Indices'Access,
+         "UInt16 N-D access must reject more indices than Dimension_Count");
+      Assert_Raises_OpenCV_Error
+        (Read_First_Axis'Access,
+         "UInt16 N-D access must reject an index equal to the first extent");
+      Assert_Raises_OpenCV_Error
+        (Read_Second_Axis'Access,
+         "UInt16 N-D access must reject an index equal to the second extent");
+      Assert_Raises_OpenCV_Error
+        (Read_Third_Axis'Access,
+         "UInt16 N-D access must reject an index equal to the third extent");
+      Assert_Raises_OpenCV_Error
+        (Read_Default'Access,
+         "UInt16 N-D Get on a default Mat must raise OpenCV_Error");
+   end UInt16_N_Dimensional_Typed_Access_Rejects_Invalid;
 
    procedure Typed_Access_Rejects_Incompatible_Depth
      (Test : in out Mat_Test_Fixture)
@@ -5466,6 +5786,30 @@ package body Mat_Access_Tests is
         (Caller.Create
            ("Int32 N-D typed access rejects invalid",
             Int32_N_Dimensional_Typed_Access_Rejects_Invalid'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt16 typed element access",
+            UInt16_Typed_Element_Access'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt16 Region and alias share typed writes",
+            UInt16_Region_And_Alias_Share_Typed_Writes'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt16 typed access rejects invalid Mats and indices",
+            UInt16_Typed_Access_Rejects_Invalid_Mats_And_Indices'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt16 1-D typed element access",
+            UInt16_One_Dimensional_Typed_Element_Access'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt16 N-D typed element access",
+            UInt16_N_Dimensional_Typed_Element_Access'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt16 N-D typed access rejects invalid",
+            UInt16_N_Dimensional_Typed_Access_Rejects_Invalid'Access));
       Result.Add_Test
         (Caller.Create
            ("Float64 typed element access",
