@@ -1002,6 +1002,19 @@ opencv_core_status
 opencv_core_mat_set_float64(opencv_core_mat_handle *mat, int32_t row,
                             int32_t column, double value);
 
+/*
+ * Read or write one IEEE-754 binary16 encoding from a two-dimensional,
+ * single-channel CV_16F Mat. The uint16_t argument is the stored 16-bit
+ * pattern, not an integer-valued pixel. Row and column are zero-based.
+ */
+opencv_core_status
+opencv_core_mat_get_float16(const opencv_core_mat_handle *mat, int32_t row,
+                            int32_t column, uint16_t *out_value);
+
+opencv_core_status
+opencv_core_mat_set_float16(opencv_core_mat_handle *mat, int32_t row,
+                            int32_t column, uint16_t value);
+
 
 /*
  * Read or write one element of a single-channel Mat using N-dimensional
@@ -1059,6 +1072,20 @@ opencv_core_mat_get_float64_nd(const opencv_core_mat_handle *mat,
 opencv_core_status
 opencv_core_mat_set_float64_nd(opencv_core_mat_handle *mat, int32_t ndims,
                                const int32_t *indices, double value);
+
+/*
+ * Read or write one IEEE-754 binary16 encoding from a single-channel
+ * CV_16F Mat using N-dimensional zero-based indices. The uint16_t
+ * argument is the stored 16-bit pattern, not an integer-valued pixel.
+ */
+opencv_core_status
+opencv_core_mat_get_float16_nd(const opencv_core_mat_handle *mat,
+                               int32_t ndims, const int32_t *indices,
+                               uint16_t *out_value);
+
+opencv_core_status
+opencv_core_mat_set_float16_nd(opencv_core_mat_handle *mat, int32_t ndims,
+                               const int32_t *indices, uint16_t value);
 
 
 

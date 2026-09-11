@@ -3,6 +3,7 @@ with AUnit.Test_Caller;
 with Ada.Exceptions;
 with Interfaces;
 with OpenCV.Core;
+with OpenCV.Core.Float16_Access;
 with OpenCV.Core.Float32_Access;
 with OpenCV.Core.Float64_Access;
 with OpenCV.Core.Float32_Buffer_Access;
@@ -1102,6 +1103,586 @@ package body Mat_Access_Tests is
         (Read_Default'Access,
          "Int16 N-D Get on a default Mat must raise OpenCV_Error");
    end Int16_N_Dimensional_Typed_Access_Rejects_Invalid;
+
+   function Bits_Of
+     (Value : OpenCV.Core.Float16_Value) return Interfaces.Unsigned_16
+   is (OpenCV.Core.Float16_Bits (Value));
+
+   function Value_Of
+     (Bits : Interfaces.Unsigned_16) return OpenCV.Core.Float16_Value
+   is (OpenCV.Core.Float16_From_Bits (Bits));
+
+   procedure Assert_Stored_Bits
+     (Image    : OpenCV.Core.Mat;
+      Row      : Integer;
+      Column   : Integer;
+      Expected : Interfaces.Unsigned_16;
+      Message  : String)
+   is
+      Stored : constant Interfaces.Unsigned_16 :=
+        Bits_Of (OpenCV.Core.Float16_Access.Get (Image, Row, Column));
+   begin
+      AUnit.Assertions.Assert
+        (Stored = Expected,
+         Message
+         & " (got"
+         & Interfaces.Unsigned_16'Image (Stored)
+         & ", expected"
+         & Interfaces.Unsigned_16'Image (Expected)
+         & ")");
+   end Assert_Stored_Bits;
+
+   procedure Assert_Stored_Bits
+     (Image    : OpenCV.Core.Mat;
+      Indices  : OpenCV.Core.Index_Array;
+      Expected : Interfaces.Unsigned_16;
+      Message  : String)
+   is
+      Stored : constant Interfaces.Unsigned_16 :=
+        Bits_Of (OpenCV.Core.Float16_Access.Get (Image, Indices));
+   begin
+      AUnit.Assertions.Assert
+        (Stored = Expected,
+         Message
+         & " (got"
+         & Interfaces.Unsigned_16'Image (Stored)
+         & ", expected"
+         & Interfaces.Unsigned_16'Image (Expected)
+         & ")");
+   end Assert_Stored_Bits;
+
+   procedure Float16_Typed_Element_Access (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 4,
+           Columns      => 4,
+           Element_Type => (Depth => OpenCV.Core.Float16, Channels => 1));
+      Zero  : constant OpenCV.Core.Float16_Value := Value_Of (16#0000#);
+   begin
+      for Row in 0 .. 3 loop
+         for Column in 0 .. 3 loop
+            OpenCV.Core.Float16_Access.Set
+              (Image, Row => Row, Column => Column, Value => Zero);
+         end loop;
+      end loop;
+
+      OpenCV.Core.Float16_Access.Set (Image, 0, 0, Value_Of (16#0000#));
+      OpenCV.Core.Float16_Access.Set (Image, 0, 1, Value_Of (16#8000#));
+      OpenCV.Core.Float16_Access.Set (Image, 0, 2, Value_Of (16#0001#));
+      OpenCV.Core.Float16_Access.Set (Image, 0, 3, Value_Of (16#03FF#));
+      OpenCV.Core.Float16_Access.Set (Image, 1, 0, Value_Of (16#0400#));
+      OpenCV.Core.Float16_Access.Set (Image, 1, 1, Value_Of (16#3C00#));
+      OpenCV.Core.Float16_Access.Set (Image, 1, 2, Value_Of (16#BC00#));
+      OpenCV.Core.Float16_Access.Set (Image, 1, 3, Value_Of (16#7BFF#));
+      OpenCV.Core.Float16_Access.Set (Image, 2, 0, Value_Of (16#FBFF#));
+      OpenCV.Core.Float16_Access.Set (Image, 2, 1, Value_Of (16#7C00#));
+      OpenCV.Core.Float16_Access.Set (Image, 2, 2, Value_Of (16#FC00#));
+      OpenCV.Core.Float16_Access.Set (Image, 2, 3, Value_Of (16#7E00#));
+      OpenCV.Core.Float16_Access.Set (Image, 3, 0, Value_Of (16#7C01#));
+      OpenCV.Core.Float16_Access.Set (Image, 3, 1, Value_Of (16#FC01#));
+
+      Assert_Stored_Bits (Image, 0, 0, 16#0000#, "+0 must preserve bits");
+      Assert_Stored_Bits
+        (Image, 0, 1, 16#8000#, "-0 must preserve the sign bit");
+      Assert_Stored_Bits
+        (Image, 0, 2, 16#0001#, "smallest subnormal must preserve bits");
+      Assert_Stored_Bits
+        (Image, 0, 3, 16#03FF#, "largest subnormal must preserve bits");
+      Assert_Stored_Bits
+        (Image, 1, 0, 16#0400#, "smallest normal must preserve bits");
+      Assert_Stored_Bits (Image, 1, 1, 16#3C00#, "+1 must preserve bits");
+      Assert_Stored_Bits (Image, 1, 2, 16#BC00#, "-1 must preserve bits");
+      Assert_Stored_Bits
+        (Image, 1, 3, 16#7BFF#, "maximum finite must preserve bits");
+      Assert_Stored_Bits
+        (Image, 2, 0, 16#FBFF#, "negative maximum finite must preserve bits");
+      Assert_Stored_Bits
+        (Image, 2, 1, 16#7C00#, "+infinity must preserve bits");
+      Assert_Stored_Bits
+        (Image, 2, 2, 16#FC00#, "-infinity must preserve bits");
+      Assert_Stored_Bits
+        (Image, 2, 3, 16#7E00#, "quiet NaN must preserve bits");
+      Assert_Stored_Bits
+        (Image, 3, 0, 16#7C01#, "small NaN payload must preserve bits");
+      Assert_Stored_Bits
+        (Image, 3, 1, 16#FC01#, "negative NaN must preserve bits");
+      Assert_Stored_Bits
+        (Image, 3, 2, 16#0000#, "an unwritten neighbor must remain +0");
+      Assert_Stored_Bits
+        (Image, 3, 3, 16#0000#, "an unwritten corner must remain +0");
+   end Float16_Typed_Element_Access;
+
+   procedure Float16_Region_And_Alias_Share_Typed_Writes
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 4,
+           Columns      => 6,
+           Element_Type => (Depth => OpenCV.Core.Float16, Channels => 1));
+      View   : OpenCV.Core.Mat;
+      Alias  : OpenCV.Core.Mat;
+      Copy   : OpenCV.Core.Mat;
+      Fill   : constant OpenCV.Core.Float16_Value := Value_Of (16#3C00#);
+   begin
+      for Row in 0 .. 3 loop
+         for Column in 0 .. 5 loop
+            OpenCV.Core.Float16_Access.Set
+              (Parent, Row => Row, Column => Column, Value => Fill);
+         end loop;
+      end loop;
+
+      View := Parent.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+      Alias := Parent;
+      AUnit.Assertions.Assert
+        (not View.Is_Continuous,
+         "The Region used for access must be non-contiguous");
+
+      OpenCV.Core.Float16_Access.Set
+        (View, Row => 0, Column => 0, Value => Value_Of (16#8000#));
+      OpenCV.Core.Float16_Access.Set
+        (View, Row => 1, Column => 2, Value => Value_Of (16#7C01#));
+
+      Assert_Stored_Bits
+        (View, 0, 0, 16#8000#, "Region Get must preserve -0 bits");
+      Assert_Stored_Bits
+        (View, 1, 2, 16#7C01#, "Region Get must preserve NaN payload bits");
+      Assert_Stored_Bits
+        (Parent,
+         1,
+         1,
+         16#8000#,
+         "Region writes must be visible in the parent");
+      Assert_Stored_Bits
+        (Parent,
+         2,
+         3,
+         16#7C01#,
+         "Region NaN writes must be visible in the parent");
+      Assert_Stored_Bits
+        (Alias,
+         1,
+         1,
+         16#8000#,
+         "Shallow-alias writes must share the Region storage");
+      Assert_Stored_Bits
+        (Parent,
+         1,
+         0,
+         16#3C00#,
+         "Region writes must not mutate parent padding");
+      Assert_Stored_Bits
+        (Parent,
+         1,
+         4,
+         16#3C00#,
+         "Region writes must not mutate the far parent padding");
+
+      OpenCV.Core.Float16_Access.Set
+        (Parent, Row => 1, Column => 1, Value => Value_Of (16#7C00#));
+      Assert_Stored_Bits
+        (View,
+         0,
+         0,
+         16#7C00#,
+         "Parent writes must be visible through the Region");
+
+      Copy := Parent.Clone;
+      OpenCV.Core.Float16_Access.Set
+        (Parent, Row => 1, Column => 1, Value => Value_Of (16#FC00#));
+      Assert_Stored_Bits
+        (Copy, 1, 1, 16#7C00#, "A clone must retain the pre-mutation bits");
+      Assert_Stored_Bits
+        (Parent, 1, 1, 16#FC00#, "The original must observe its own mutation");
+      OpenCV.Core.Float16_Access.Set
+        (Copy, Row => 2, Column => 3, Value => Value_Of (16#0001#));
+      Assert_Stored_Bits
+        (Parent,
+         2,
+         3,
+         16#7C01#,
+         "Mutating a clone must not change the original");
+   end Float16_Region_And_Alias_Share_Typed_Writes;
+
+   procedure Float16_Typed_Access_Rejects_Invalid_Mats_And_Indices
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      UInt16_Image  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt16, 1));
+      Int16_Image   : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Int16, 1));
+      Float32_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Multi         : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float16, 2));
+      Three         : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float16, 3));
+      Image         : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 2, (OpenCV.Core.Float16, 1));
+      Default_Empty : OpenCV.Core.Mat;
+
+      procedure Read_UInt16 is
+      begin
+         AUnit.Assertions.Assert
+           (Bits_Of (OpenCV.Core.Float16_Access.Get (UInt16_Image, 0, 0)) = 0,
+            "A UInt16 Mat Float16 read unexpectedly succeeded");
+      end Read_UInt16;
+
+      procedure Read_Int16 is
+      begin
+         AUnit.Assertions.Assert
+           (Bits_Of (OpenCV.Core.Float16_Access.Get (Int16_Image, 0, 0)) = 0,
+            "An Int16 Mat Float16 read unexpectedly succeeded");
+      end Read_Int16;
+
+      procedure Read_Float32 is
+      begin
+         AUnit.Assertions.Assert
+           (Bits_Of (OpenCV.Core.Float16_Access.Get (Float32_Image, 0, 0)) = 0,
+            "A Float32 Mat Float16 read unexpectedly succeeded");
+      end Read_Float32;
+
+      procedure Read_Multi_Channel is
+      begin
+         AUnit.Assertions.Assert
+           (Bits_Of (OpenCV.Core.Float16_Access.Get (Multi, 0, 0)) = 0,
+            "A Float16 C2 read unexpectedly succeeded");
+      end Read_Multi_Channel;
+
+      procedure Read_Three_Channel is
+      begin
+         AUnit.Assertions.Assert
+           (Bits_Of (OpenCV.Core.Float16_Access.Get (Three, 0, 0)) = 0,
+            "A Float16 C3 read unexpectedly succeeded");
+      end Read_Three_Channel;
+
+      procedure Read_Negative_Row is
+      begin
+         AUnit.Assertions.Assert
+           (Bits_Of (OpenCV.Core.Float16_Access.Get (Image, -1, 0)) = 0,
+            "A negative row read unexpectedly succeeded");
+      end Read_Negative_Row;
+
+      procedure Read_Negative_Column is
+      begin
+         AUnit.Assertions.Assert
+           (Bits_Of (OpenCV.Core.Float16_Access.Get (Image, 0, -1)) = 0,
+            "A negative column read unexpectedly succeeded");
+      end Read_Negative_Column;
+
+      procedure Read_Row_After_Last is
+      begin
+         AUnit.Assertions.Assert
+           (Bits_Of (OpenCV.Core.Float16_Access.Get (Image, 2, 0)) = 0,
+            "A past-the-end row read unexpectedly succeeded");
+      end Read_Row_After_Last;
+
+      procedure Read_Column_After_Last is
+      begin
+         AUnit.Assertions.Assert
+           (Bits_Of (OpenCV.Core.Float16_Access.Get (Image, 0, 2)) = 0,
+            "A past-the-end column read unexpectedly succeeded");
+      end Read_Column_After_Last;
+
+      procedure Read_Default is
+      begin
+         AUnit.Assertions.Assert
+           (Bits_Of (OpenCV.Core.Float16_Access.Get (Default_Empty, 0, 0)) = 0,
+            "A default Mat Float16 read unexpectedly succeeded");
+      end Read_Default;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Read_UInt16'Access,
+         "Float16 access must reject a UInt16 Mat of the same element size");
+      Assert_Raises_OpenCV_Error
+        (Read_Int16'Access, "Float16 access must reject an Int16 Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_Float32'Access, "Float16 access must reject a Float32 Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_Multi_Channel'Access,
+         "Float16 access must reject a two-channel Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_Three_Channel'Access,
+         "Float16 access must reject a three-channel Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_Negative_Row'Access,
+         "Float16 access must reject a negative row");
+      Assert_Raises_OpenCV_Error
+        (Read_Negative_Column'Access,
+         "Float16 access must reject a negative column");
+      Assert_Raises_OpenCV_Error
+        (Read_Row_After_Last'Access,
+         "Float16 access must reject a row after the last row");
+      Assert_Raises_OpenCV_Error
+        (Read_Column_After_Last'Access,
+         "Float16 access must reject a column after the last column");
+      Assert_Raises_OpenCV_Error
+        (Read_Default'Access,
+         "Float16 Get on a default Mat must raise OpenCV_Error");
+   end Float16_Typed_Access_Rejects_Invalid_Mats_And_Indices;
+
+   procedure Float16_Two_Dimensional_ND_Indexing
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 4,
+           Element_Type => (Depth => OpenCV.Core.Float16, Channels => 1));
+   begin
+      for Column in 0 .. 3 loop
+         OpenCV.Core.Float16_Access.Set
+           (Image, Row => 0, Column => Column, Value => Value_Of (16#0000#));
+      end loop;
+
+      OpenCV.Core.Float16_Access.Set
+        (Image, Row => 0, Column => 0, Value => Value_Of (16#8000#));
+      OpenCV.Core.Float16_Access.Set
+        (Image, Row => 0, Column => 3, Value => Value_Of (16#7E00#));
+
+      Assert_Stored_Bits
+        (Image,
+         (0, 0),
+         16#8000#,
+         "N-D Get of a 2-D Mat must see the 2-D -0 write");
+      Assert_Stored_Bits
+        (Image,
+         (0, 3),
+         16#7E00#,
+         "N-D Get of a 2-D Mat must see the 2-D NaN write");
+      Assert_Stored_Bits
+        (Image, 0, 1, 16#0000#, "an unrelated 2-D neighbor must remain +0");
+      Assert_Stored_Bits
+        (Image, 0, 2, 16#0000#, "the other unrelated neighbor must remain +0");
+
+      OpenCV.Core.Float16_Access.Set
+        (Image, Indices => (0, 1), Value => Value_Of (16#0001#));
+      Assert_Stored_Bits
+        (Image,
+         0,
+         1,
+         16#0001#,
+         "2-D Get must see a subsequent N-D write on the same Mat");
+   end Float16_Two_Dimensional_ND_Indexing;
+
+   procedure Float16_N_Dimensional_Typed_Element_Access
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape        => (2, 3, 4),
+           Element_Type => (Depth => OpenCV.Core.Float16, Channels => 1));
+      Indices : constant OpenCV.Core.Index_Array (7 .. 9) := (1, 2, 3);
+      Alias   : OpenCV.Core.Mat;
+      Copy    : OpenCV.Core.Mat;
+      Zero    : constant OpenCV.Core.Float16_Value := Value_Of (16#0000#);
+   begin
+      for Axis_0 in 0 .. 1 loop
+         for Axis_1 in 0 .. 2 loop
+            for Axis_2 in 0 .. 3 loop
+               OpenCV.Core.Float16_Access.Set
+                 (Image,
+                  Indices =>
+                    (OpenCV.Core.Size_Coordinate (Axis_0),
+                     OpenCV.Core.Size_Coordinate (Axis_1),
+                     OpenCV.Core.Size_Coordinate (Axis_2)),
+                  Value   => Zero);
+            end loop;
+         end loop;
+      end loop;
+
+      OpenCV.Core.Float16_Access.Set
+        (Image, Indices => (0, 0, 0), Value => Value_Of (16#3C00#));
+      OpenCV.Core.Float16_Access.Set
+        (Image, Indices => Indices, Value => Value_Of (16#7C01#));
+      OpenCV.Core.Float16_Access.Set
+        (Image, Indices => (0, 2, 0), Value => Value_Of (16#0001#));
+      OpenCV.Core.Float16_Access.Set
+        (Image, Indices => (1, 0, 0), Value => Value_Of (16#8000#));
+
+      Assert_Stored_Bits
+        (Image, (0, 0, 0), 16#3C00#, "N-D Get should return +1");
+      Assert_Stored_Bits
+        (Image,
+         (1, 2, 3),
+         16#7C01#,
+         "A non-1 lower bound must still address OpenCV coordinate [1][2][3]");
+      Assert_Stored_Bits
+        (Image, (0, 2, 0), 16#0001#, "N-D Get should preserve a subnormal");
+      Assert_Stored_Bits
+        (Image, (1, 0, 0), 16#8000#, "N-D Get should preserve -0");
+      Assert_Stored_Bits
+        (Image,
+         (0, 0, 1),
+         16#0000#,
+         "A nearby 3-D element should remain at the initialized value");
+
+      Alias := Image;
+      Copy := Image.Clone;
+      OpenCV.Core.Float16_Access.Set
+        (Image, Indices => (0, 0, 0), Value => Value_Of (16#BC00#));
+      Assert_Stored_Bits
+        (Alias,
+         (0, 0, 0),
+         16#BC00#,
+         "Ordinary Mat assignment should share N-D Float16 writes");
+      Assert_Stored_Bits
+        (Copy,
+         (0, 0, 0),
+         16#3C00#,
+         "A clone must retain the pre-mutation N-D Float16 bits");
+   end Float16_N_Dimensional_Typed_Element_Access;
+
+   procedure Float16_N_Dimensional_Typed_Access_Rejects_Invalid
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image         : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape        => (2, 3, 4),
+           Element_Type => (Depth => OpenCV.Core.Float16, Channels => 1));
+      Default_Empty : OpenCV.Core.Mat;
+      Empty_Indices : constant OpenCV.Core.Index_Array (1 .. 0) :=
+        (others => 0);
+
+      procedure Read_Two_Indices is
+      begin
+         AUnit.Assertions.Assert
+           (Bits_Of (OpenCV.Core.Float16_Access.Get (Image, Indices => (1, 2)))
+            = 0,
+            "A 2-index 3-D Float16 read unexpectedly succeeded");
+      end Read_Two_Indices;
+
+      procedure Read_Four_Indices is
+      begin
+         AUnit.Assertions.Assert
+           (Bits_Of
+              (OpenCV.Core.Float16_Access.Get (Image, Indices => (1, 2, 3, 0)))
+            = 0,
+            "A 4-index 3-D Float16 read unexpectedly succeeded");
+      end Read_Four_Indices;
+
+      procedure Read_First_Axis is
+      begin
+         AUnit.Assertions.Assert
+           (Bits_Of
+              (OpenCV.Core.Float16_Access.Get (Image, Indices => (2, 0, 0)))
+            = 0,
+            "An index equal to extent 1 unexpectedly succeeded");
+      end Read_First_Axis;
+
+      procedure Read_Second_Axis is
+      begin
+         AUnit.Assertions.Assert
+           (Bits_Of
+              (OpenCV.Core.Float16_Access.Get (Image, Indices => (0, 3, 0)))
+            = 0,
+            "An index equal to extent 2 unexpectedly succeeded");
+      end Read_Second_Axis;
+
+      procedure Read_Third_Axis is
+      begin
+         AUnit.Assertions.Assert
+           (Bits_Of
+              (OpenCV.Core.Float16_Access.Get (Image, Indices => (0, 0, 4)))
+            = 0,
+            "An index equal to extent 3 unexpectedly succeeded");
+      end Read_Third_Axis;
+
+      procedure Read_Beyond_Third_Axis is
+      begin
+         AUnit.Assertions.Assert
+           (Bits_Of
+              (OpenCV.Core.Float16_Access.Get (Image, Indices => (0, 0, 5)))
+            = 0,
+            "An index greater than extent 3 unexpectedly succeeded");
+      end Read_Beyond_Third_Axis;
+
+      procedure Read_Default is
+      begin
+         AUnit.Assertions.Assert
+           (Bits_Of
+              (OpenCV.Core.Float16_Access.Get
+                 (Default_Empty, Indices => Empty_Indices))
+            = 0,
+            "A default empty Float16 N-D read unexpectedly succeeded");
+      end Read_Default;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Read_Two_Indices'Access,
+         "Float16 N-D access must reject fewer indices than Dimension_Count");
+      Assert_Raises_OpenCV_Error
+        (Read_Four_Indices'Access,
+         "Float16 N-D access must reject more indices than Dimension_Count");
+      Assert_Raises_OpenCV_Error
+        (Read_First_Axis'Access,
+         "Float16 N-D access must reject an index equal to the first extent");
+      Assert_Raises_OpenCV_Error
+        (Read_Second_Axis'Access,
+         "Float16 N-D access must reject an index equal to the second extent");
+      Assert_Raises_OpenCV_Error
+        (Read_Third_Axis'Access,
+         "Float16 N-D access must reject an index equal to the third extent");
+      Assert_Raises_OpenCV_Error
+        (Read_Beyond_Third_Axis'Access,
+         "Float16 N-D access must reject an index greater than the third"
+         & " extent");
+      Assert_Raises_OpenCV_Error
+        (Read_Default'Access,
+         "Float16 N-D Get on a default Mat must raise OpenCV_Error");
+   end Float16_N_Dimensional_Typed_Access_Rejects_Invalid;
+
+   procedure Float16_Preserves_All_65536_Encodings
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 256,
+           Columns      => 256,
+           Element_Type => (Depth => OpenCV.Core.Float16, Channels => 1));
+      Bits   : Interfaces.Unsigned_16 := 0;
+      Failed : Natural := 0;
+   begin
+      loop
+         declare
+            Row    : constant Integer := Integer (Bits / 256);
+            Column : constant Integer := Integer (Bits mod 256);
+         begin
+            OpenCV.Core.Float16_Access.Set
+              (Image, Row, Column, Value_Of (Bits));
+         end;
+
+         exit when Bits = Interfaces.Unsigned_16'Last;
+         Bits := Bits + 1;
+      end loop;
+
+      Bits := 0;
+      loop
+         declare
+            Row    : constant Integer := Integer (Bits / 256);
+            Column : constant Integer := Integer (Bits mod 256);
+            Stored : constant Interfaces.Unsigned_16 :=
+              Bits_Of (OpenCV.Core.Float16_Access.Get (Image, Row, Column));
+         begin
+            if Stored /= Bits then
+               Failed := Failed + 1;
+            end if;
+         end;
+
+         exit when Bits = Interfaces.Unsigned_16'Last;
+         Bits := Bits + 1;
+      end loop;
+
+      AUnit.Assertions.Assert
+        (Failed = 0,
+         "every binary16 encoding must round-trip through typed Mat access");
+   end Float16_Preserves_All_65536_Encodings;
 
    procedure Typed_Access_Rejects_Incompatible_Depth
      (Test : in out Mat_Test_Fixture)
@@ -7325,6 +7906,34 @@ package body Mat_Access_Tests is
         (Caller.Create
            ("Int16 N-D typed access rejects invalid",
             Int16_N_Dimensional_Typed_Access_Rejects_Invalid'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float16 typed element access",
+            Float16_Typed_Element_Access'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float16 Region and alias share typed writes",
+            Float16_Region_And_Alias_Share_Typed_Writes'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float16 typed access rejects invalid Mats and indices",
+            Float16_Typed_Access_Rejects_Invalid_Mats_And_Indices'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float16 N-D indexing on a 2-D Mat",
+            Float16_Two_Dimensional_ND_Indexing'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float16 N-D typed element access",
+            Float16_N_Dimensional_Typed_Element_Access'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float16 N-D typed access rejects invalid",
+            Float16_N_Dimensional_Typed_Access_Rejects_Invalid'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float16 preserves all 65536 binary16 encodings",
+            Float16_Preserves_All_65536_Encodings'Access));
       Result.Add_Test
         (Caller.Create
            ("Float64 typed element access",

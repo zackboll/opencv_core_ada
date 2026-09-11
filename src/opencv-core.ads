@@ -129,8 +129,8 @@ package OpenCV.Core is
    --  the null range 1 .. 0.
    type Point_Array is array (Natural range <>) of Point;
 
-   --  CV_8U, CV_16U, CV_16S, CV_32S, CV_32F, and CV_64F element value
-   --  domains used by typed Mat accessors.
+   --  CV_8U, CV_16U, CV_16S, CV_32S, CV_32F, CV_64F, and CV_16F element
+   --  value domains used by typed Mat accessors.
    subtype UInt8_Value is Interfaces.Unsigned_8;
    subtype UInt16_Value is Interfaces.Unsigned_16;
    subtype Int16_Value is Interfaces.Integer_16;
@@ -148,6 +148,7 @@ package OpenCV.Core is
    --  infinities, and subnormals retain their exact bits.
    --  Float16_From_Bits / Float16_Bits copy that encoding. To_Float16 /
    --  To_Float32 convert numerically between binary16 and binary32.
+   --  OpenCV.Core.Float16_Access stores and loads the exact encoding.
    type Float16_Value is private;
 
    function Float16_From_Bits

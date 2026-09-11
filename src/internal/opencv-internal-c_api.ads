@@ -847,6 +847,23 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_set_float64";
 
+   --  uint16_t carries the stored IEEE binary16 encoding, not an
+   --  integer pixel.
+   function Mat_Get_Float16
+     (Self : Mat_Handle; Row, Column : C_Int32; Result : access C_UInt16)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_float16";
+
+   function Mat_Set_Float16
+     (Self : Mat_Handle; Row, Column : C_Int32; Value : C_UInt16) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_float16";
+
    function Mat_Get_UInt8_ND
      (Self            : Mat_Handle;
       Dimension_Count : C_Int32;
@@ -876,6 +893,28 @@ package OpenCV.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_core_mat_set_float64_nd";
+
+   --  uint16_t carries the stored IEEE binary16 encoding, not an
+   --  integer pixel.
+   function Mat_Get_Float16_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Result          : access C_UInt16) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_float16_nd";
+
+   function Mat_Set_Float16_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Value           : C_UInt16) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_float16_nd";
 
    function Mat_Set_UInt8_ND
      (Self            : Mat_Handle;

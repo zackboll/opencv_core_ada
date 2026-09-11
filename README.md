@@ -641,7 +641,7 @@ non-contiguous multirow strided view before invoking its callback.
 
 ## Typed access matrix
 
-Direct typed access currently concentrates on eight common layouts:
+Direct typed access currently concentrates on nine common layouts:
 
 | Layout | 2-D Get/Set | N-D Get/Set | Classification | Copied row | Borrowed row | Continuous buffer borrow | Packed caller buffer -> `Mat` | Strided caller buffer -> `Mat` |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -649,6 +649,7 @@ Direct typed access currently concentrates on eight common layouts:
 | UInt16 C1 | `UInt16_Access` | `UInt16_Access` | — | `UInt16_Row_Access` | `UInt16_Row_Access` | — | — | — |
 | Int16 C1 | `Int16_Access` | `Int16_Access` | — | `Int16_Row_Access` | `Int16_Row_Access` | — | — | — |
 | Int32 C1 | `Int32_Access` | `Int32_Access` | — | — | — | — | — | — |
+| Float16 C1 | `Float16_Access` | `Float16_Access` | `Float16_Value` helpers | — | — | — | — | — |
 | Float32 C1 | `Float32_Access` | `Float32_Access` | — | `Float32_Row_Access` | `Float32_Row_Access` | `Float32_Buffer_Access` | `Float32_Mat_View` | `Float32_Mat_View` |
 | Float64 C1 | `Float64_Access` | `Float64_Access` | `Float64_Access` | `Float64_Row_Access` | `Float64_Row_Access` | `Float64_Buffer_Access` | `Float64_Mat_View` | `Float64_Mat_View` |
 | UInt8 C3 | `UInt8_Vec3_Access` | — | — | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Buffer_Access` | `UInt8_Vec3_Mat_View` | — |
@@ -676,6 +677,13 @@ caller-owned Mat views are not yet provided for Int16.
 `Int32_Access` provides scalar 2-D and N-D Get/Set for single-channel `CV_32S`
 Mats. Copied row access, borrowed row access, whole-buffer borrowing, and
 caller-owned Mat views are not yet provided for Int32.
+
+`Float16_Access` provides scalar 2-D and N-D Get/Set for single-channel
+`CV_16F` Mats. Access is bit-preserving: every binary16 encoding, including
+signed zeros, subnormals, infinities, and NaN payloads, round-trips through
+`Float16_From_Bits` / `Float16_Bits`. Copied row access, borrowed row access,
+whole-buffer borrowing, and caller-owned Mat views are not yet provided for
+Float16.
 
 `Float64_Access` provides scalar 2-D and N-D Get/Set plus non-finite value
 classification. `Float64_Row_Access` adds copied and callback-scoped zero-copy
@@ -756,7 +764,10 @@ encoding used by OpenCV `CV_16F`. `Float16_From_Bits` / `Float16_Bits` preserve
 every pattern, including signed zeros, subnormals, infinities, and NaN
 payloads. Classification helpers inspect those stored bits. `To_Float16` /
 `To_Float32` convert numerically between binary16 and binary32 using
-round-to-nearest, ties-to-even. Typed Mat access is not yet exposed.
+round-to-nearest, ties-to-even. `OpenCV.Core.Float16_Access` provides scalar
+C1 2-D and N-D Get/Set that store and load the exact encoding. Copied row
+access, borrowed row access, whole-buffer borrowing, and external Mat views
+are not yet exposed.
 
 ### Creation, shape, metadata, and views
 
@@ -1354,23 +1365,25 @@ GNATprove is supplied by the separate `tests` Alire environment.
 The current limitations are intentional and help keep the public API coherent:
 
 1. **The dense public `Mat` model is primarily 2-D.**  
-   N-dimensional construction, UInt8/UInt16/Int16/Int32/Float32/Float64 C1
+   N-dimensional construction, UInt8/UInt16/Int16/Int32/Float16/Float32/Float64 C1
    Get/Set, and `Slice` views are available. N-D reshape and dimension-dropping
    scalar indexing are not yet exposed as a complete Ada model.
 
 2. **No public `SparseMat` or `UMat` abstraction.**
 
-3. **Typed direct/zero-copy access is focused on UInt8 and Float32 C1/C3, plus UInt16/Int16/Int32 C1 and Float64 C1.**
+3. **Typed direct/zero-copy access is focused on UInt8 and Float32 C1/C3, plus UInt16/Int16/Int32/Float16 C1 and Float64 C1.**
    UInt16 C1 has 2-D and N-D Get/Set plus copied and borrowed 2-D row access.
    Int16 C1 has 2-D and N-D Get/Set plus copied and borrowed 2-D row access.
-   Int32 C1 has 2-D and N-D Get/Set. Float64 C1 has 2-D and
+   Int32 C1 has 2-D and N-D Get/Set. Float16 C1 has 2-D and N-D Get/Set that
+   preserve the exact binary16 encoding. Float64 C1 has 2-D and
    N-D Get/Set, classification, 2-D row access, continuous 2-D whole-buffer
    borrowing, and packed or row-strided 2-D caller-buffer views. Other OpenCV
    depths are available to general Mat operations but do not yet have the same
    typed access families. Float16 now has an exact 16-bit public value
-   representation, IEEE-754 classification helpers, and numeric
-   Float32 <-> Float16 conversion, but typed Mat access is not yet
-   exposed.
+   representation, IEEE-754 classification helpers, numeric
+   Float32 <-> Float16 conversion, and scalar C1 2-D/N-D Get/Set, but copied
+   row access, borrowed row access, continuous buffer borrowing, and external
+   caller-buffer Mat views are not yet exposed.
 
 4. **External caller-buffer views are writable and callback-scoped.**  
    Packed 2-D views are available for UInt8/Float32 C1/C3 and Float64 C1.

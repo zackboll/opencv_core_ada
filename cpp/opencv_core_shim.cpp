@@ -728,6 +728,27 @@ opencv_core_status prepare_nd_typed_at(const cv::Mat &mat, int32_t ndims,
     return OPENCV_CORE_OK;
 }
 
+#if CV_VERSION_MAJOR > 4 || (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 10)
+using opencv_core_float16_storage = cv::hfloat;
+#else
+using opencv_core_float16_storage = cv::float16_t;
+#endif
+
+static_assert(sizeof(opencv_core_float16_storage) == sizeof(uint16_t),
+              "OpenCV binary16 storage must be exactly 16 bits");
+
+uint16_t float16_bits_from_storage(const opencv_core_float16_storage &value) {
+    uint16_t bits = 0;
+    std::memcpy(&bits, static_cast<const void *>(&value), sizeof(bits));
+    return bits;
+}
+
+opencv_core_float16_storage float16_storage_from_bits(uint16_t bits) {
+    opencv_core_float16_storage value;
+    std::memcpy(static_cast<void *>(&value), &bits, sizeof(bits));
+    return value;
+}
+
 
 bool from_opencv_depth(int opencv_depth, int32_t &depth) noexcept {
     switch (opencv_depth) {
@@ -4614,6 +4635,67 @@ opencv_core_mat_set_float64(opencv_core_mat_handle *mat, int32_t row,
 }
 
 opencv_core_status
+opencv_core_mat_get_float16(const opencv_core_mat_handle *mat, int32_t row,
+                            int32_t column, uint16_t *out_value) {
+    clear_error();
+
+    if (out_value == nullptr) {
+        return invalid_argument("out_value must not be null");
+    }
+
+    *out_value = 0;
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        const opencv_core_status status =
+            validate_typed_at(mat->value, row, column, CV_16F, 1,
+                              "Mat depth must be Float16",
+                              "Mat must have exactly one channel");
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        const opencv_core_float16_storage value =
+            mat->value.at<opencv_core_float16_storage>(
+                static_cast<int>(row), static_cast<int>(column));
+        *out_value = float16_bits_from_storage(value);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_set_float16(opencv_core_mat_handle *mat, int32_t row,
+                            int32_t column, uint16_t value) {
+    clear_error();
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        const opencv_core_status status =
+            validate_typed_at(mat->value, row, column, CV_16F, 1,
+                              "Mat depth must be Float16",
+                              "Mat must have exactly one channel");
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        mat->value.at<opencv_core_float16_storage>(
+            static_cast<int>(row), static_cast<int>(column)) =
+            float16_storage_from_bits(value);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_get_uint8_nd(const opencv_core_mat_handle *mat, int32_t ndims,
                              const int32_t *indices, uint8_t *out_value) {
     clear_error();
@@ -4951,6 +5033,67 @@ opencv_core_mat_set_float64_nd(opencv_core_mat_handle *mat, int32_t ndims,
         return translate_current_exception();
     }
 }
+
+opencv_core_status
+opencv_core_mat_get_float16_nd(const opencv_core_mat_handle *mat,
+                               int32_t ndims, const int32_t *indices,
+                               uint16_t *out_value) {
+    clear_error();
+
+    if (out_value == nullptr) {
+        return invalid_argument("out_value must not be null");
+    }
+
+    *out_value = 0;
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        int opencv_indices[maximum_mat_dimensions];
+        const opencv_core_status status =
+            prepare_nd_typed_at(mat->value, ndims, indices, opencv_indices,
+                                sizeof(opencv_core_float16_storage));
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        const opencv_core_float16_storage value =
+            mat->value.at<opencv_core_float16_storage>(opencv_indices);
+        *out_value = float16_bits_from_storage(value);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_set_float16_nd(opencv_core_mat_handle *mat, int32_t ndims,
+                               const int32_t *indices, uint16_t value) {
+    clear_error();
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        int opencv_indices[maximum_mat_dimensions];
+        const opencv_core_status status =
+            prepare_nd_typed_at(mat->value, ndims, indices, opencv_indices,
+                                sizeof(opencv_core_float16_storage));
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        mat->value.at<opencv_core_float16_storage>(opencv_indices) =
+            float16_storage_from_bits(value);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
 
 opencv_core_status
 opencv_core_mat_read_uint8_row(const opencv_core_mat_handle *mat, int32_t row,
