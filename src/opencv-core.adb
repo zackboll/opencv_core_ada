@@ -1,4 +1,5 @@
 with Ada.Exceptions;
+with Ada.Unchecked_Conversion;
 with Interfaces.C;
 with OpenCV.Internal.Safe_Arithmetic;
 
@@ -14,6 +15,44 @@ package body OpenCV.Core is
    use type OpenCV.Internal.C_API.Status;
    use type Interfaces.Integer_64;
    use type Interfaces.Unsigned_16;
+   use type Interfaces.Unsigned_32;
+
+   pragma
+     Compile_Time_Error
+       (Float32_Value'Size /= 32,
+        "Float32_Value must be 32-bit IEEE binary32 for Float16 conversion");
+   pragma
+     Compile_Time_Error
+       (Float32_Value'Object_Size /= 32,
+        "Float32_Value object size must be 32 bits for Float16 conversion");
+   pragma
+     Compile_Time_Error
+       (Interfaces.Unsigned_32'Size /= 32,
+        "Unsigned_32 must be 32 bits for Float16 conversion bit-casts");
+
+   function Float32_To_Bits is new
+     Ada.Unchecked_Conversion (Float32_Value, Interfaces.Unsigned_32);
+   function Bits_To_Float32 is new
+     Ada.Unchecked_Conversion (Interfaces.Unsigned_32, Float32_Value);
+
+   function Float32_Bits_Of
+     (Value : Float32_Value) return Interfaces.Unsigned_32
+   is
+      pragma Suppress (Validity_Check);
+   begin
+      --  IEEE specials are valid conversion inputs. Validity checks
+      --  cannot fire before the bit-cast copies the encoding.
+      return Float32_To_Bits (Value);
+   end Float32_Bits_Of;
+
+   function Float32_From_Bits
+     (Bits : Interfaces.Unsigned_32) return Float32_Value
+   is
+      pragma Suppress (Validity_Check);
+   begin
+      --  Binary16 expansion may produce signed infinity or NaN.
+      return Bits_To_Float32 (Bits);
+   end Float32_From_Bits;
 
    procedure Raise_On_Error
      (Result : OpenCV.Internal.C_API.Status; Operation : String)
@@ -103,6 +142,165 @@ package body OpenCV.Core is
 
    function Is_Negative (Value : Float16_Value) return Boolean
    is ((Value.Bits and 16#8000#) /= 0);
+
+   function To_Float32 (Value : Float16_Value) return Float32_Value is
+      pragma Suppress (Validity_Check);
+      Sign     : constant Interfaces.Unsigned_32 :=
+        Interfaces.Shift_Left
+          (Interfaces.Unsigned_32 ((Value.Bits / 16#8000#) and 1), 31);
+      Exponent : constant Interfaces.Unsigned_16 := Binary16_Exponent (Value);
+      Fraction : constant Interfaces.Unsigned_16 := Binary16_Fraction (Value);
+      Bits     : Interfaces.Unsigned_32;
+   begin
+      if Exponent = 0 then
+         if Fraction = 0 then
+            Bits := Sign;
+         else
+            declare
+               Mantissa : Interfaces.Unsigned_16 := Fraction;
+               Shift    : Interfaces.Unsigned_32 := 0;
+            begin
+               while (Mantissa and 16#0400#) = 0 loop
+                  Mantissa := Mantissa * 2;
+                  Shift := Shift + 1;
+               end loop;
+
+               --  Subnormal binary16 values are f * 2^-24. After Shift
+               --  left-normalizations, the unbiased exponent is -14 - Shift.
+               Bits :=
+                 Sign
+                 or Interfaces.Shift_Left
+                      (Interfaces.Unsigned_32'(127 - 14) - Shift, 23)
+                 or Interfaces.Shift_Left
+                      (Interfaces.Unsigned_32 (Mantissa and 16#03FF#), 13);
+            end;
+         end if;
+      elsif Exponent = 16#001F# then
+         Bits :=
+           Sign
+           or 16#7F80_0000#
+           or Interfaces.Shift_Left (Interfaces.Unsigned_32 (Fraction), 13);
+      else
+         Bits :=
+           Sign
+           or Interfaces.Shift_Left
+                (Interfaces.Unsigned_32 (Exponent)
+                 + Interfaces.Unsigned_32'(127 - 15),
+                 23)
+           or Interfaces.Shift_Left (Interfaces.Unsigned_32 (Fraction), 13);
+      end if;
+
+      return Float32_From_Bits (Bits);
+   end To_Float32;
+
+   function To_Float16 (Value : Float32_Value) return Float16_Value is
+      pragma Suppress (Validity_Check);
+      Bits       : constant Interfaces.Unsigned_32 := Float32_Bits_Of (Value);
+      Sign       : constant Interfaces.Unsigned_16 :=
+        Interfaces.Unsigned_16 (Interfaces.Shift_Right (Bits, 31) and 1)
+        * 16#8000#;
+      Exponent32 : constant Interfaces.Unsigned_32 :=
+        Interfaces.Shift_Right (Bits, 23) and 16#FF#;
+      Fraction32 : constant Interfaces.Unsigned_32 := Bits and 16#7F_FFFF#;
+   begin
+      if Exponent32 = 16#FF# then
+         if Fraction32 = 0 then
+            return Float16_From_Bits (Sign or 16#7C00#);
+         end if;
+
+         declare
+            Payload : Interfaces.Unsigned_16 :=
+              Interfaces.Unsigned_16
+                (Interfaces.Shift_Right (Fraction32, 13) and 16#03FF#);
+         begin
+            if Payload = 0 then
+               Payload := 1;
+            end if;
+
+            return Float16_From_Bits (Sign or 16#7C00# or Payload);
+         end;
+      end if;
+
+      --  Binary32 zeros and subnormals are far below the binary16
+      --  subnormal range and round to signed zero.
+      if Exponent32 = 0 then
+         return Float16_From_Bits (Sign);
+      end if;
+
+      declare
+         Unbiased : constant Integer := Integer (Exponent32) - 127;
+      begin
+         if Unbiased > 15 then
+            return Float16_From_Bits (Sign or 16#7C00#);
+         end if;
+
+         if Unbiased >= -14 then
+            declare
+               Exponent16 : Interfaces.Unsigned_32 :=
+                 Interfaces.Unsigned_32 (Unbiased + 15);
+               Mantissa   : constant Interfaces.Unsigned_32 :=
+                 Fraction32 or 16#80_0000#;
+               Kept       : Interfaces.Unsigned_32 :=
+                 Interfaces.Shift_Right (Mantissa, 13);
+               Remainder  : constant Interfaces.Unsigned_32 :=
+                 Mantissa and 16#1FFF#;
+            begin
+               if Remainder > 16#1000#
+                 or else (Remainder = 16#1000# and then (Kept and 1) /= 0)
+               then
+                  Kept := Kept + 1;
+               end if;
+
+               if Kept >= 16#0800# then
+                  Kept := 16#0400#;
+                  Exponent16 := Exponent16 + 1;
+               end if;
+
+               if Exponent16 >= 31 then
+                  return Float16_From_Bits (Sign or 16#7C00#);
+               end if;
+
+               return
+                 Float16_From_Bits
+                   (Sign
+                    or Interfaces.Unsigned_16
+                         (Interfaces.Shift_Left (Exponent16, 10))
+                    or Interfaces.Unsigned_16 (Kept and 16#03FF#));
+            end;
+         end if;
+
+         --  Subnormal or underflow. Shift so bit 0 of binary16 is 2^-24.
+         declare
+            Shift     : constant Integer := -Unbiased - 1;
+            Mantissa  : constant Interfaces.Unsigned_32 :=
+              Fraction32 or 16#80_0000#;
+            Kept      : Interfaces.Unsigned_32;
+            Remainder : Interfaces.Unsigned_32;
+            Half      : Interfaces.Unsigned_32;
+         begin
+            if Shift > 24 then
+               return Float16_From_Bits (Sign);
+            end if;
+
+            Kept := Interfaces.Shift_Right (Mantissa, Natural (Shift));
+            Remainder :=
+              Mantissa and (Interfaces.Shift_Left (1, Natural (Shift)) - 1);
+            Half := Interfaces.Shift_Left (1, Natural (Shift - 1));
+
+            if Remainder > Half
+              or else (Remainder = Half and then (Kept and 1) /= 0)
+            then
+               Kept := Kept + 1;
+            end if;
+
+            if Kept >= 16#0400# then
+               return Float16_From_Bits (Sign or 16#0400#);
+            end if;
+
+            return Float16_From_Bits (Sign or Interfaces.Unsigned_16 (Kept));
+         end;
+      end;
+   end To_Float16;
 
    function To_C_Depth
      (Value : Depth_Type) return OpenCV.Internal.C_API.C_Int32

@@ -140,13 +140,14 @@ package OpenCV.Core is
 
    --  Exact IEEE-754 binary16 encoding used by OpenCV CV_16F. This is
    --  the stored 16-bit pattern, not Short_Float, Float, Integer_16, or
-   --  a numeric Unsigned_16 value. Arithmetic and Float32 conversion
-   --  are not provided. Classification inspects the binary16 fields
-   --  directly: bit 15 is the sign, bits 14 .. 10 are the exponent, and
-   --  bits 9 .. 0 are the fraction. Is_Negative reports the stored sign
-   --  bit, so it is True for -0, negative finites, -Infinity, and
-   --  negative NaNs. NaN payloads, signed zeros, infinities, and
-   --  subnormals retain their exact bits.
+   --  a numeric Unsigned_16 value. Classification inspects the binary16
+   --  fields directly: bit 15 is the sign, bits 14 .. 10 are the
+   --  exponent, and bits 9 .. 0 are the fraction. Is_Negative reports
+   --  the stored sign bit, so it is True for -0, negative finites,
+   --  -Infinity, and negative NaNs. NaN payloads, signed zeros,
+   --  infinities, and subnormals retain their exact bits.
+   --  Float16_From_Bits / Float16_Bits copy that encoding. To_Float16 /
+   --  To_Float32 convert numerically between binary16 and binary32.
    type Float16_Value is private;
 
    function Float16_From_Bits
@@ -159,6 +160,24 @@ package OpenCV.Core is
    function Is_Subnormal (Value : Float16_Value) return Boolean;
    function Is_Zero (Value : Float16_Value) return Boolean;
    function Is_Negative (Value : Float16_Value) return Boolean;
+
+   --  Converts IEEE binary32 to binary16 using round-to-nearest,
+   --  ties-to-even. Finite overflow produces signed infinity. Values
+   --  below the normal binary16 range may become subnormal or zero.
+   --  Signed zeros, infinities, and the NaN sign bit are preserved.
+   --  NaN conversion copies the most significant payload bits that fit
+   --  in the binary16 fraction and forces a nonzero fraction so NaN
+   --  remains NaN. Payload width shrinks, so NaN encodings are not
+   --  required to round-trip exactly through Float32. This is numeric
+   --  conversion, not Float16_From_Bits.
+   function To_Float16 (Value : Float32_Value) return Float16_Value;
+
+   --  Expands binary16 to binary32 exactly for every finite Float16
+   --  value. Signed zeros and infinities retain their sign. NaNs remain
+   --  NaNs, with the binary16 payload placed in the most significant
+   --  bits of the binary32 fraction. This is numeric conversion, not
+   --  Float16_Bits.
+   function To_Float32 (Value : Float16_Value) return Float32_Value;
 
    type Mat_Type is record
       Depth    : Depth_Type;

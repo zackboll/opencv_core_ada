@@ -754,8 +754,9 @@ Float16
 `Float16_Value` is a private 16-bit type for the exact IEEE-754 binary16
 encoding used by OpenCV `CV_16F`. `Float16_From_Bits` / `Float16_Bits` preserve
 every pattern, including signed zeros, subnormals, infinities, and NaN
-payloads. Classification helpers inspect those stored bits. Typed Mat access
-and numeric Float32 conversion are not yet exposed.
+payloads. Classification helpers inspect those stored bits. `To_Float16` /
+`To_Float32` convert numerically between binary16 and binary32 using
+round-to-nearest, ties-to-even. Typed Mat access is not yet exposed.
 
 ### Creation, shape, metadata, and views
 
@@ -1367,8 +1368,9 @@ The current limitations are intentional and help keep the public API coherent:
    borrowing, and packed or row-strided 2-D caller-buffer views. Other OpenCV
    depths are available to general Mat operations but do not yet have the same
    typed access families. Float16 now has an exact 16-bit public value
-   representation and IEEE-754 classification helpers, but typed Mat access
-   and numeric Float32 conversion are not yet exposed.
+   representation, IEEE-754 classification helpers, and numeric
+   Float32 <-> Float16 conversion, but typed Mat access is not yet
+   exposed.
 
 4. **External caller-buffer views are writable and callback-scoped.**  
    Packed 2-D views are available for UInt8/Float32 C1/C3 and Float64 C1.
