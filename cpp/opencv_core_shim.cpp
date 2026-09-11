@@ -5066,6 +5066,64 @@ opencv_core_mat_write_uint16_row(opencv_core_mat_handle *mat, int32_t row,
     }
 }
 
+opencv_core_status
+opencv_core_mat_read_int16_row(const opencv_core_mat_handle *mat, int32_t row,
+                               int16_t *data, uint64_t element_count) {
+    clear_error();
+
+    if (data == nullptr && element_count != 0) {
+        return invalid_argument(
+            "data must not be null when element_count is nonzero");
+    }
+
+    try {
+        const int16_t *row_data = nullptr;
+        std::size_t byte_count = 0;
+        const opencv_core_status status =
+            prepare_row(mat, row, element_count, CV_16S,
+                        "Mat depth must be Int16", row_data, byte_count);
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        if (byte_count != 0) {
+            std::memcpy(data, row_data, byte_count);
+        }
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_write_int16_row(opencv_core_mat_handle *mat, int32_t row,
+                                const int16_t *data, uint64_t element_count) {
+    clear_error();
+
+    if (data == nullptr && element_count != 0) {
+        return invalid_argument(
+            "data must not be null when element_count is nonzero");
+    }
+
+    try {
+        const int16_t *row_data = nullptr;
+        std::size_t byte_count = 0;
+        const opencv_core_status status =
+            prepare_row(mat, row, element_count, CV_16S,
+                        "Mat depth must be Int16", row_data, byte_count);
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        if (byte_count != 0) {
+            std::memcpy(const_cast<int16_t *>(row_data), data, byte_count);
+        }
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
 
 opencv_core_status
 opencv_core_mat_read_float32_row(const opencv_core_mat_handle *mat,

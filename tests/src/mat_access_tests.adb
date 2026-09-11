@@ -15,6 +15,7 @@ with OpenCV.Core.Float32_Vec3_Mat_View;
 with OpenCV.Core.Float32_Vec3_Row_Access;
 with OpenCV.Core.Int32_Access;
 with OpenCV.Core.Int16_Access;
+with OpenCV.Core.Int16_Row_Access;
 with OpenCV.Core.UInt16_Access;
 with OpenCV.Core.UInt16_Row_Access;
 with OpenCV.Core.UInt8_Access;
@@ -41,6 +42,8 @@ package body Mat_Access_Tests is
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
    use type OpenCV.Core.Float64_Access.Float64_Classification;
+   use type OpenCV.Core.Int16_Row_Access.Row_Array;
+
    use type OpenCV.Core.UInt16_Row_Access.Row_Array;
    use type OpenCV.Core.UInt8_Row_Access.Row_Array;
    use type OpenCV.Core.UInt8_Vec3.Vector;
@@ -3135,6 +3138,567 @@ package body Mat_Access_Tests is
       OpenCV.Core.UInt16_Row_Access.With_Read_Only_Row
         (Image, Row => 0, Process => Inspect'Access);
    end UInt16_Borrowed_Row_Lease_Survives_Header_Rebind;
+
+   procedure Int16_Row_Access_Reads_Writes_And_Preserves_Array_Order
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 3,
+           Columns      => 7,
+           Element_Type => (Depth => OpenCV.Core.Int16, Channels => 1));
+      Written  : constant OpenCV.Core.Int16_Row_Access.Row_Array (5 .. 11) :=
+        (-32_768, -32_767, -1, 0, 1, 32_766, 32_767);
+      Readback : OpenCV.Core.Int16_Row_Access.Row_Array (5 .. 11);
+      From_Set : OpenCV.Core.Int16_Row_Access.Row_Array (10 .. 16);
+   begin
+      Image.Set_To (OpenCV.Core.Make_Scalar (9.0));
+      OpenCV.Core.Int16_Row_Access.Write_Row
+        (Image, Row => 1, Data => Written);
+      OpenCV.Core.Int16_Row_Access.Read_Row
+        (Image, Row => 1, Data => Readback);
+
+      AUnit.Assertions.Assert
+        (Readback = Written,
+         "Int16 row access must preserve ordered values and nonzero bounds");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Int16_Access.Get (Image, Row => 1, Column => 0) = -32_768
+         and then OpenCV.Core.Int16_Access.Get (Image, Row => 1, Column => 1)
+                  = -32_767
+         and then OpenCV.Core.Int16_Access.Get (Image, Row => 1, Column => 2)
+                  = -1
+         and then OpenCV.Core.Int16_Access.Get (Image, Row => 1, Column => 3)
+                  = 0
+         and then OpenCV.Core.Int16_Access.Get (Image, Row => 1, Column => 4)
+                  = 1
+         and then OpenCV.Core.Int16_Access.Get (Image, Row => 1, Column => 5)
+                  = 32_766
+         and then OpenCV.Core.Int16_Access.Get (Image, Row => 1, Column => 6)
+                  = 32_767,
+         "Int16 element access must observe a bulk row write");
+
+      OpenCV.Core.Int16_Access.Set
+        (Image, Row => 0, Column => 0, Value => 32_767);
+      OpenCV.Core.Int16_Access.Set
+        (Image, Row => 0, Column => 1, Value => 32_766);
+      OpenCV.Core.Int16_Access.Set (Image, Row => 0, Column => 2, Value => 1);
+      OpenCV.Core.Int16_Access.Set (Image, Row => 0, Column => 3, Value => 0);
+      OpenCV.Core.Int16_Access.Set (Image, Row => 0, Column => 4, Value => -1);
+      OpenCV.Core.Int16_Access.Set
+        (Image, Row => 0, Column => 5, Value => -32_767);
+      OpenCV.Core.Int16_Access.Set
+        (Image, Row => 0, Column => 6, Value => -32_768);
+      OpenCV.Core.Int16_Row_Access.Read_Row
+        (Image, Row => 0, Data => From_Set);
+
+      AUnit.Assertions.Assert
+        (From_Set = (32_767, 32_766, 1, 0, -1, -32_767, -32_768),
+         "Int16 bulk row reads must observe per-element writes");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Int16_Access.Get (Image, Row => 2, Column => 0) = 9
+         and then OpenCV.Core.Int16_Access.Get (Image, Row => 2, Column => 6)
+                  = 9,
+         "Writing one Int16 row must not modify adjacent rows");
+   end Int16_Row_Access_Reads_Writes_And_Preserves_Array_Order;
+
+   procedure Int16_Row_Access_Handles_Non_Continuous_Regions
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 4,
+           Columns      => 6,
+           Element_Type => (Depth => OpenCV.Core.Int16, Channels => 1));
+      View     : OpenCV.Core.Mat :=
+        Parent.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+      Written  : constant OpenCV.Core.Int16_Row_Access.Row_Array (4 .. 6) :=
+        (-32_768, -1, 32_767);
+      Readback : OpenCV.Core.Int16_Row_Access.Row_Array (8 .. 10);
+   begin
+      Parent.Set_To (OpenCV.Core.Make_Scalar (7.0));
+      AUnit.Assertions.Assert
+        (not View.Is_Continuous,
+         "A partial-width multi-row Int16 Region must be non-continuous");
+
+      OpenCV.Core.Int16_Row_Access.Write_Row (View, Row => 1, Data => Written);
+      OpenCV.Core.Int16_Row_Access.Read_Row (View, Row => 1, Data => Readback);
+
+      AUnit.Assertions.Assert
+        (Readback = Written,
+         "Int16 Region row access must return only the active columns");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Int16_Access.Get (Parent, Row => 2, Column => 1) = -32_768
+         and then OpenCV.Core.Int16_Access.Get (Parent, Row => 2, Column => 2)
+                  = -1
+         and then OpenCV.Core.Int16_Access.Get (Parent, Row => 2, Column => 3)
+                  = 32_767,
+         "Int16 Region row writes must mutate the corresponding parent"
+         & " pixels");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Int16_Access.Get (Parent, Row => 2, Column => 0) = 7
+         and then OpenCV.Core.Int16_Access.Get (Parent, Row => 2, Column => 4)
+                  = 7
+         and then OpenCV.Core.Int16_Access.Get (Parent, Row => 1, Column => 1)
+                  = 7
+         and then OpenCV.Core.Int16_Access.Get (Parent, Row => 3, Column => 3)
+                  = 7,
+         "Int16 Region row writes must leave parent padding unchanged");
+   end Int16_Row_Access_Handles_Non_Continuous_Regions;
+
+   procedure Int16_Row_Access_Rejects_Invalid_Mats_Indices_And_Lengths
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Int16_Image   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.Int16, Channels => 1));
+      UInt16_Image  : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.UInt16, Channels => 1));
+      RGB_Image     : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.Int16, Channels => 3));
+      Empty         : OpenCV.Core.Mat;
+      Correct_Int16 : OpenCV.Core.Int16_Row_Access.Row_Array (0 .. 2) :=
+        (others => 0);
+      Short_Int16   : OpenCV.Core.Int16_Row_Access.Row_Array (0 .. 1) :=
+        (others => 0);
+      Long_Int16    :
+        constant OpenCV.Core.Int16_Row_Access.Row_Array (0 .. 3) :=
+          (others => 0);
+
+      procedure Read_Wrong_Depth is
+      begin
+         OpenCV.Core.Int16_Row_Access.Read_Row
+           (UInt16_Image, Row => 0, Data => Correct_Int16);
+      end Read_Wrong_Depth;
+
+      procedure Read_Multi_Channel is
+      begin
+         OpenCV.Core.Int16_Row_Access.Read_Row
+           (RGB_Image, Row => 0, Data => Correct_Int16);
+      end Read_Multi_Channel;
+
+      procedure Read_Row_Equal_To_Rows is
+      begin
+         OpenCV.Core.Int16_Row_Access.Read_Row
+           (Int16_Image, Row => 1, Data => Correct_Int16);
+      end Read_Row_Equal_To_Rows;
+
+      procedure Read_Row_Beyond_Rows is
+      begin
+         OpenCV.Core.Int16_Row_Access.Read_Row
+           (Int16_Image, Row => 2, Data => Correct_Int16);
+      end Read_Row_Beyond_Rows;
+
+      procedure Write_Too_Short is
+      begin
+         OpenCV.Core.Int16_Row_Access.Write_Row
+           (Int16_Image, Row => 0, Data => Short_Int16);
+      end Write_Too_Short;
+
+      procedure Write_Too_Long is
+      begin
+         OpenCV.Core.Int16_Row_Access.Write_Row
+           (Int16_Image, Row => 0, Data => Long_Int16);
+      end Write_Too_Long;
+
+      procedure Read_Wrong_Length is
+      begin
+         OpenCV.Core.Int16_Row_Access.Read_Row
+           (Int16_Image, Row => 0, Data => Short_Int16);
+      end Read_Wrong_Length;
+
+      procedure Read_Default is
+      begin
+         OpenCV.Core.Int16_Row_Access.Read_Row
+           (Empty, Row => 0, Data => Correct_Int16);
+      end Read_Default;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Read_Wrong_Depth'Access, "Int16 row access must reject a UInt16 Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_Multi_Channel'Access,
+         "Int16 row access must reject a multi-channel Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_Row_Equal_To_Rows'Access,
+         "Int16 row access must reject a row equal to Rows");
+      Assert_Raises_OpenCV_Error
+        (Read_Row_Beyond_Rows'Access,
+         "Int16 row access must reject a row beyond the final row");
+      Assert_Raises_OpenCV_Error
+        (Write_Too_Short'Access,
+         "Int16 row access must reject an input array that is too short");
+      Assert_Raises_OpenCV_Error
+        (Write_Too_Long'Access,
+         "Int16 row access must reject an input array that is too long");
+      Assert_Raises_OpenCV_Error
+        (Read_Wrong_Length'Access,
+         "Int16 row access must reject an output array of the wrong length");
+      Assert_Raises_OpenCV_Error
+        (Read_Default'Access, "Int16 row access must reject a default Mat");
+   end Int16_Row_Access_Rejects_Invalid_Mats_Indices_And_Lengths;
+
+   procedure Int16_Borrowed_Writable_Row_Is_Zero_Copy
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 4,
+           Element_Type => (Depth => OpenCV.Core.Int16, Channels => 1));
+      Alias : OpenCV.Core.Mat;
+
+      procedure Mutate
+        (Data : aliased in out OpenCV.Core.Int16_Row_Access.Row_Array) is
+      begin
+         AUnit.Assertions.Assert
+           (Data'First = 0 and then Data'Last = 3 and then Data'Length = 4,
+            "A writable borrowed Int16 row must use zero-based columns");
+
+         Data (0) := -32_768;
+         Data (1) := -1;
+         Data (2) := 0;
+         Data (3) := 32_767;
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Int16_Access.Get (Image, Row => 1, Column => 0)
+            = -32_768
+            and then OpenCV.Core.Int16_Access.Get
+                       (Image, Row => 1, Column => 1)
+                     = -1
+            and then OpenCV.Core.Int16_Access.Get
+                       (Image, Row => 1, Column => 2)
+                     = 0
+            and then OpenCV.Core.Int16_Access.Get
+                       (Image, Row => 1, Column => 3)
+                     = 32_767,
+            "A write through the borrowed Int16 row must be immediately"
+            & " visible through Get");
+
+         OpenCV.Core.Int16_Access.Set
+           (Alias, Row => 1, Column => 3, Value => 1);
+         AUnit.Assertions.Assert
+           (Data (3) = 1,
+            "A write through a shallow alias must be immediately visible"
+            & " through the borrowed Int16 row");
+      end Mutate;
+   begin
+      OpenCV.Core.Int16_Access.Set (Image, Row => 1, Column => 0, Value => 9);
+      OpenCV.Core.Int16_Access.Set (Image, Row => 1, Column => 1, Value => 8);
+      OpenCV.Core.Int16_Access.Set (Image, Row => 1, Column => 2, Value => 7);
+      OpenCV.Core.Int16_Access.Set (Image, Row => 1, Column => 3, Value => 6);
+      Alias := Image;
+
+      OpenCV.Core.Int16_Row_Access.With_Writable_Row
+        (Image, Row => 1, Process => Mutate'Access);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Int16_Access.Get (Image, Row => 1, Column => 0) = -32_768
+         and then OpenCV.Core.Int16_Access.Get (Image, Row => 1, Column => 1)
+                  = -1
+         and then OpenCV.Core.Int16_Access.Get (Image, Row => 1, Column => 2)
+                  = 0
+         and then OpenCV.Core.Int16_Access.Get (Image, Row => 1, Column => 3)
+                  = 1,
+         "Writable borrowed Int16 mutations must remain after Process"
+         & " returns");
+   end Int16_Borrowed_Writable_Row_Is_Zero_Copy;
+
+   procedure Int16_Borrowed_Read_Only_Row_Matches_Mat
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 4,
+           Element_Type => (Depth => OpenCV.Core.Int16, Channels => 1));
+      Alias : OpenCV.Core.Mat;
+
+      procedure Inspect (Data : aliased OpenCV.Core.Int16_Row_Access.Row_Array)
+      is
+      begin
+         AUnit.Assertions.Assert
+           (Data'First = 0 and then Data'Last = 3 and then Data'Length = 4,
+            "A read-only borrowed Int16 row must use zero-based columns");
+         AUnit.Assertions.Assert
+           (Data (0) = -32_768
+            and then Data (1) = -1
+            and then Data (2) = 0
+            and then Data (3) = 32_767,
+            "A read-only borrowed Int16 row must match the Mat values");
+
+         OpenCV.Core.Int16_Access.Set
+           (Alias, Row => 0, Column => 0, Value => 32_766);
+         AUnit.Assertions.Assert
+           (Data (0) = 32_766,
+            "A borrowed Int16 row must observe alias writes during the"
+            & " callback");
+      end Inspect;
+   begin
+      OpenCV.Core.Int16_Access.Set
+        (Image, Row => 0, Column => 0, Value => -32_768);
+      OpenCV.Core.Int16_Access.Set (Image, Row => 0, Column => 1, Value => -1);
+      OpenCV.Core.Int16_Access.Set (Image, Row => 0, Column => 2, Value => 0);
+      OpenCV.Core.Int16_Access.Set
+        (Image, Row => 0, Column => 3, Value => 32_767);
+      Alias := Image;
+
+      OpenCV.Core.Int16_Row_Access.With_Read_Only_Row
+        (Image, Row => 0, Process => Inspect'Access);
+   end Int16_Borrowed_Read_Only_Row_Matches_Mat;
+
+   procedure Int16_Borrowed_Row_Handles_Non_Continuous_Region
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Parent : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 4,
+           Columns      => 6,
+           Element_Type => (Depth => OpenCV.Core.Int16, Channels => 1));
+      View   : OpenCV.Core.Mat :=
+        Parent.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+      Alias  : OpenCV.Core.Mat;
+
+      procedure Inspect (Data : aliased OpenCV.Core.Int16_Row_Access.Row_Array)
+      is
+      begin
+         AUnit.Assertions.Assert
+           (Data'First = 0 and then Data'Last = 2 and then Data'Length = 3,
+            "A borrowed Int16 Region row must expose only Region columns");
+         AUnit.Assertions.Assert
+           (Data (0) = 11 and then Data (2) = 13,
+            "A read-only borrowed Int16 Region row must match parent"
+            & " values");
+      end Inspect;
+
+      procedure Mutate
+        (Data : aliased in out OpenCV.Core.Int16_Row_Access.Row_Array) is
+      begin
+         AUnit.Assertions.Assert
+           (Data'First = 0 and then Data'Last = 2 and then Data'Length = 3,
+            "A writable borrowed Int16 Region row must use Region columns");
+         Data (0) := -32_768;
+         Data (1) := -1;
+         Data (2) := 32_767;
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Int16_Access.Get (Alias, Row => 2, Column => 1)
+            = -32_768
+            and then OpenCV.Core.Int16_Access.Get
+                       (Alias, Row => 2, Column => 3)
+                     = 32_767,
+            "Borrowed Int16 Region writes must be visible through aliases");
+      end Mutate;
+   begin
+      Parent.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      OpenCV.Core.Int16_Access.Set
+        (Parent, Row => 1, Column => 1, Value => 11);
+      OpenCV.Core.Int16_Access.Set
+        (Parent, Row => 1, Column => 3, Value => 13);
+      AUnit.Assertions.Assert
+        (not View.Is_Continuous,
+         "A partial-width multi-row Int16 Region must be non-continuous");
+
+      OpenCV.Core.Int16_Row_Access.With_Read_Only_Row
+        (View, Row => 0, Process => Inspect'Access);
+
+      Alias := Parent;
+      OpenCV.Core.Int16_Row_Access.With_Writable_Row
+        (View, Row => 1, Process => Mutate'Access);
+
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Int16_Access.Get (Parent, Row => 2, Column => 1) = -32_768
+         and then OpenCV.Core.Int16_Access.Get (Parent, Row => 2, Column => 2)
+                  = -1
+         and then OpenCV.Core.Int16_Access.Get (Parent, Row => 2, Column => 3)
+                  = 32_767,
+         "Borrowed Int16 Region writes must mutate the corresponding parent"
+         & " elements");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Int16_Access.Get (Parent, Row => 2, Column => 0) = 1
+         and then OpenCV.Core.Int16_Access.Get (Parent, Row => 2, Column => 4)
+                  = 1
+         and then OpenCV.Core.Int16_Access.Get (Parent, Row => 1, Column => 1)
+                  = 11,
+         "Borrowed Int16 Region writes must not mutate parent padding");
+   end Int16_Borrowed_Row_Handles_Non_Continuous_Region;
+
+   procedure Int16_Borrowed_Row_Rejects_Invalid_Mats_And_Indices
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      UInt16_Image : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.UInt16, Channels => 1));
+      RGB_Image    : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.Int16, Channels => 3));
+      Valid_Image  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.Int16, Channels => 1));
+      Empty        : OpenCV.Core.Mat;
+      Invoked      : Boolean := False;
+
+      procedure Mark_Read
+        (Data : aliased OpenCV.Core.Int16_Row_Access.Row_Array)
+      is
+         pragma Unreferenced (Data);
+      begin
+         Invoked := True;
+      end Mark_Read;
+
+      procedure Mark_Write
+        (Data : aliased in out OpenCV.Core.Int16_Row_Access.Row_Array)
+      is
+         pragma Unreferenced (Data);
+      begin
+         Invoked := True;
+      end Mark_Write;
+
+      procedure Read_UInt16 is
+      begin
+         OpenCV.Core.Int16_Row_Access.With_Read_Only_Row
+           (UInt16_Image, Row => 0, Process => Mark_Read'Access);
+      end Read_UInt16;
+
+      procedure Read_Multi_Channel is
+      begin
+         OpenCV.Core.Int16_Row_Access.With_Read_Only_Row
+           (RGB_Image, Row => 0, Process => Mark_Read'Access);
+      end Read_Multi_Channel;
+
+      procedure Write_Past_Last is
+      begin
+         OpenCV.Core.Int16_Row_Access.With_Writable_Row
+           (Valid_Image, Row => 1, Process => Mark_Write'Access);
+      end Write_Past_Last;
+
+      procedure Read_Default is
+      begin
+         OpenCV.Core.Int16_Row_Access.With_Read_Only_Row
+           (Empty, Row => 0, Process => Mark_Read'Access);
+      end Read_Default;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Read_UInt16'Access,
+         "Int16 borrowed-row access must reject a UInt16 Mat");
+      Assert_Raises_OpenCV_Error
+        (Read_Multi_Channel'Access,
+         "Int16 borrowed-row access must reject a multi-channel Mat");
+      Assert_Raises_OpenCV_Error
+        (Write_Past_Last'Access,
+         "Int16 borrowed-row access must reject a row equal to Rows");
+      Assert_Raises_OpenCV_Error
+        (Read_Default'Access,
+         "Int16 borrowed-row access must reject a default Mat");
+      AUnit.Assertions.Assert
+        (not Invoked, "Borrowed-row validation must not invoke the callback");
+   end Int16_Borrowed_Row_Rejects_Invalid_Mats_And_Indices;
+
+   procedure Int16_Borrowed_Row_Propagates_Callback_Exception
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.Int16, Channels => 1));
+      Raised  : Boolean := False;
+      Message : Ada.Exceptions.Exception_Id := Ada.Exceptions.Null_Id;
+
+      procedure Mutate
+        (Data : aliased in out OpenCV.Core.Int16_Row_Access.Row_Array) is
+      begin
+         Data (0) := -32_768;
+         raise Borrowed_Row_Callback_Error;
+      end Mutate;
+   begin
+      OpenCV.Core.Int16_Access.Set (Image, Row => 0, Column => 0, Value => 1);
+      OpenCV.Core.Int16_Access.Set (Image, Row => 0, Column => 1, Value => 2);
+
+      begin
+         OpenCV.Core.Int16_Row_Access.With_Writable_Row
+           (Image, Row => 0, Process => Mutate'Access);
+      exception
+         when Error : Borrowed_Row_Callback_Error =>
+            Raised := True;
+            Message := Ada.Exceptions.Exception_Identity (Error);
+      end;
+
+      AUnit.Assertions.Assert
+        (Raised and then Message = Borrowed_Row_Callback_Error'Identity,
+         "A callback exception must propagate unchanged");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Int16_Access.Get (Image, Row => 0, Column => 0) = -32_768
+         and then OpenCV.Core.Int16_Access.Get (Image, Row => 0, Column => 1)
+                  = 2,
+         "Writes completed before a callback exception must remain visible");
+
+      OpenCV.Core.Int16_Access.Set (Image, Row => 0, Column => 1, Value => 4);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Int16_Access.Get (Image, Row => 0, Column => 1) = 4,
+         "The Mat must remain usable after a borrowed-row callback exception");
+   end Int16_Borrowed_Row_Propagates_Callback_Exception;
+
+   procedure Int16_Borrowed_Row_Lease_Survives_Header_Rebind
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 1,
+           Columns      => 2,
+           Element_Type => (Depth => OpenCV.Core.Int16, Channels => 1));
+      Alias : OpenCV.Core.Mat;
+
+      procedure Inspect (Data : aliased OpenCV.Core.Int16_Row_Access.Row_Array)
+      is
+         Replacement : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Rows         => 1,
+              Columns      => 1,
+              Element_Type => (Depth => OpenCV.Core.Int16, Channels => 1));
+         Empty       : OpenCV.Core.Mat;
+      begin
+         AUnit.Assertions.Assert
+           (Data'First = 0 and then Data'Length = 2 and then Data (1) = 32_767,
+            "The borrowed Int16 row must remain valid at callback entry");
+         Image := Replacement;
+         Alias := Empty;
+         AUnit.Assertions.Assert
+           (Alias.Is_Empty,
+            "Rebinding the alias header must leave an empty Mat");
+         AUnit.Assertions.Assert
+           (Data (0) = -32_768 and then Data (1) = 32_767,
+            "The Int16 row lease must survive rebinding and finalizing other"
+            & " headers");
+      end Inspect;
+   begin
+      OpenCV.Core.Int16_Access.Set
+        (Image, Row => 0, Column => 0, Value => -32_768);
+      OpenCV.Core.Int16_Access.Set
+        (Image, Row => 0, Column => 1, Value => 32_767);
+      Alias := Image;
+      OpenCV.Core.Int16_Row_Access.With_Read_Only_Row
+        (Image, Row => 0, Process => Inspect'Access);
+   end Int16_Borrowed_Row_Lease_Survives_Header_Rebind;
 
    procedure UInt8_Vec3_Borrowed_Writable_Row_Is_Zero_Copy
      (Test : in out Mat_Test_Fixture)
@@ -6662,6 +7226,9 @@ package body Mat_Access_Tests is
 
    procedure U16_Row_Invalid (Test : in out Mat_Test_Fixture)
    renames UInt16_Row_Access_Rejects_Invalid_Mats_Indices_And_Lengths;
+   procedure I16_Row_Invalid (Test : in out Mat_Test_Fixture)
+   renames Int16_Row_Access_Rejects_Invalid_Mats_Indices_And_Lengths;
+
    procedure F32_V3_Row_Invalid (Test : in out Mat_Test_Fixture)
    renames Float32_Vec3_Borrowed_Row_Rejects_Invalid_Mats_And_Indices;
    procedure U8_V3_Buffer_Offset (Test : in out Mat_Test_Fixture)
@@ -6979,6 +7546,42 @@ package body Mat_Access_Tests is
         (Caller.Create
            ("UInt16 borrowed row lease survives header rebind",
             UInt16_Borrowed_Row_Lease_Survives_Header_Rebind'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Int16 row access reads, writes, and preserves array order",
+            Int16_Row_Access_Reads_Writes_And_Preserves_Array_Order'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Int16 row access handles non-continuous Regions",
+            Int16_Row_Access_Handles_Non_Continuous_Regions'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Int16 row access rejects invalid Mats, indices, and lengths",
+            I16_Row_Invalid'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Int16 borrowed writable row is zero-copy",
+            Int16_Borrowed_Writable_Row_Is_Zero_Copy'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Int16 borrowed read-only row matches Mat",
+            Int16_Borrowed_Read_Only_Row_Matches_Mat'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Int16 borrowed row handles non-continuous Regions",
+            Int16_Borrowed_Row_Handles_Non_Continuous_Region'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Int16 borrowed row rejects invalid Mats and indices",
+            Int16_Borrowed_Row_Rejects_Invalid_Mats_And_Indices'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Int16 borrowed row propagates callback exceptions",
+            Int16_Borrowed_Row_Propagates_Callback_Exception'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Int16 borrowed row lease survives header rebind",
+            Int16_Borrowed_Row_Lease_Survives_Header_Rebind'Access));
       Result.Add_Test
         (Caller.Create
            ("UInt8 Vec3 borrowed writable row is zero-copy",
