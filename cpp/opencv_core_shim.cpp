@@ -4296,6 +4296,65 @@ opencv_core_mat_set_uint16(opencv_core_mat_handle *mat, int32_t row,
     }
 }
 
+opencv_core_status
+opencv_core_mat_get_int16(const opencv_core_mat_handle *mat, int32_t row,
+                          int32_t column, int16_t *out_value) {
+    clear_error();
+
+    if (out_value == nullptr) {
+        return invalid_argument("out_value must not be null");
+    }
+
+    *out_value = 0;
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        const opencv_core_status status =
+            validate_typed_at(mat->value, row, column, CV_16S, 1,
+                              "Mat depth must be Int16",
+                              "Mat must have exactly one channel");
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        *out_value =
+            mat->value.at<int16_t>(static_cast<int>(row),
+                                   static_cast<int>(column));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_set_int16(opencv_core_mat_handle *mat, int32_t row,
+                          int32_t column, int16_t value) {
+    clear_error();
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        const opencv_core_status status =
+            validate_typed_at(mat->value, row, column, CV_16S, 1,
+                              "Mat depth must be Int16",
+                              "Mat must have exactly one channel");
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        mat->value.at<int16_t>(static_cast<int>(row),
+                               static_cast<int>(column)) = value;
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
 static_assert(sizeof(int) == sizeof(int32_t),
               "CV_32S Int32 accessors require 32-bit int");
 
@@ -4660,6 +4719,62 @@ opencv_core_mat_set_uint16_nd(opencv_core_mat_handle *mat, int32_t ndims,
         }
 
         mat->value.at<uint16_t>(opencv_indices) = value;
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_get_int16_nd(const opencv_core_mat_handle *mat, int32_t ndims,
+                             const int32_t *indices, int16_t *out_value) {
+    clear_error();
+
+    if (out_value == nullptr) {
+        return invalid_argument("out_value must not be null");
+    }
+
+    *out_value = 0;
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        int opencv_indices[maximum_mat_dimensions];
+        const opencv_core_status status =
+            prepare_nd_typed_at(mat->value, ndims, indices, opencv_indices,
+                                sizeof(int16_t));
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        *out_value = mat->value.at<int16_t>(opencv_indices);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_set_int16_nd(opencv_core_mat_handle *mat, int32_t ndims,
+                             const int32_t *indices, int16_t value) {
+    clear_error();
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        int opencv_indices[maximum_mat_dimensions];
+        const opencv_core_status status =
+            prepare_nd_typed_at(mat->value, ndims, indices, opencv_indices,
+                                sizeof(int16_t));
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        mat->value.at<int16_t>(opencv_indices) = value;
         return OPENCV_CORE_OK;
     } catch (...) {
         return translate_current_exception();

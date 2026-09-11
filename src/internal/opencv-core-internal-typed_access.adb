@@ -77,6 +77,33 @@ package body OpenCV.Core.Internal.Typed_Access is
       Raise_On_Error (Status, "UInt16 typed Mat write");
    end Set_UInt16;
 
+   function Get_Int16 (Image : Mat; Row, Column : Integer) return Int16_Value
+   is
+      Result : aliased OpenCV.Internal.C_API.C_Int16 := 0;
+      Status : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Get_Int16
+          (Self   => Image.Handle,
+           Row    => OpenCV.Internal.C_API.C_Int32 (Row),
+           Column => OpenCV.Internal.C_API.C_Int32 (Column),
+           Result => Result'Access);
+   begin
+      Raise_On_Error (Status, "Int16 typed Mat read");
+      return Int16_Value (Result);
+   end Get_Int16;
+
+   procedure Set_Int16
+     (Image : in out Mat; Row, Column : Integer; Value : Int16_Value)
+   is
+      Status : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Set_Int16
+          (Self   => Image.Handle,
+           Row    => OpenCV.Internal.C_API.C_Int32 (Row),
+           Column => OpenCV.Internal.C_API.C_Int32 (Column),
+           Value  => OpenCV.Internal.C_API.C_Int16 (Value));
+   begin
+      Raise_On_Error (Status, "Int16 typed Mat write");
+   end Set_Int16;
+
    function Get_Int32 (Image : Mat; Row, Column : Integer) return Int32_Value
    is
       Result : aliased OpenCV.Internal.C_API.C_Int32 := 0;
@@ -296,6 +323,69 @@ package body OpenCV.Core.Internal.Typed_Access is
 
       Raise_On_Error (Status, "UInt16 typed Mat N-dimensional write");
    end Set_UInt16;
+
+   function Get_Int16 (Image : Mat; Indices : Index_Array) return Int16_Value
+   is
+      Result : aliased OpenCV.Internal.C_API.C_Int16 := 0;
+      Status : OpenCV.Internal.C_API.Status;
+   begin
+      if Indices'Length = 0 then
+         Status :=
+           OpenCV.Internal.C_API.Mat_Get_Int16_ND
+             (Self            => Image.Handle,
+              Dimension_Count => 0,
+              Indices         => null,
+              Result          => Result'Access);
+      else
+         declare
+            C_Indices :
+              OpenCV.Internal.C_API.C_Int32_Array (0 .. Indices'Length - 1);
+         begin
+            Fill_C_Indices (Indices, C_Indices);
+            Status :=
+              OpenCV.Internal.C_API.Mat_Get_Int16_ND
+                (Self            => Image.Handle,
+                 Dimension_Count =>
+                   OpenCV.Internal.C_API.C_Int32 (Indices'Length),
+                 Indices         => C_Indices (C_Indices'First)'Access,
+                 Result          => Result'Access);
+         end;
+      end if;
+
+      Raise_On_Error (Status, "Int16 typed Mat N-dimensional read");
+      return Int16_Value (Result);
+   end Get_Int16;
+
+   procedure Set_Int16
+     (Image : in out Mat; Indices : Index_Array; Value : Int16_Value)
+   is
+      Status : OpenCV.Internal.C_API.Status;
+   begin
+      if Indices'Length = 0 then
+         Status :=
+           OpenCV.Internal.C_API.Mat_Set_Int16_ND
+             (Self            => Image.Handle,
+              Dimension_Count => 0,
+              Indices         => null,
+              Value           => OpenCV.Internal.C_API.C_Int16 (Value));
+      else
+         declare
+            C_Indices :
+              OpenCV.Internal.C_API.C_Int32_Array (0 .. Indices'Length - 1);
+         begin
+            Fill_C_Indices (Indices, C_Indices);
+            Status :=
+              OpenCV.Internal.C_API.Mat_Set_Int16_ND
+                (Self            => Image.Handle,
+                 Dimension_Count =>
+                   OpenCV.Internal.C_API.C_Int32 (Indices'Length),
+                 Indices         => C_Indices (C_Indices'First)'Access,
+                 Value           => OpenCV.Internal.C_API.C_Int16 (Value));
+         end;
+      end if;
+
+      Raise_On_Error (Status, "Int16 typed Mat N-dimensional write");
+   end Set_Int16;
 
    function Get_Int32 (Image : Mat; Indices : Index_Array) return Int32_Value
    is

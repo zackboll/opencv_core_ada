@@ -22,6 +22,7 @@ package OpenCV.Internal.C_API is
    subtype C_Int32 is Interfaces.Integer_32;
    subtype C_UInt8 is Interfaces.Unsigned_8;
    subtype C_UInt16 is Interfaces.Unsigned_16;
+   subtype C_Int16 is Interfaces.Integer_16;
    subtype C_UInt32 is Interfaces.Unsigned_32;
    subtype C_UInt64 is Interfaces.Unsigned_64;
    subtype C_Float32 is Interfaces.C.C_float;
@@ -770,6 +771,15 @@ package OpenCV.Internal.C_API is
      (Self : Mat_Handle; Row, Column : C_Int32; Value : C_UInt16) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_set_uint16";
 
+   function Mat_Get_Int16
+     (Self : Mat_Handle; Row, Column : C_Int32; Result : access C_Int16)
+      return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_get_int16";
+
+   function Mat_Set_Int16
+     (Self : Mat_Handle; Row, Column : C_Int32; Value : C_Int16) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_set_int16";
+
    function Mat_Get_Int32
      (Self : Mat_Handle; Row, Column : C_Int32; Result : access C_Int32)
       return Status
@@ -896,6 +906,26 @@ package OpenCV.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_core_mat_set_uint16_nd";
+
+   function Mat_Get_Int16_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Result          : access C_Int16) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_int16_nd";
+
+   function Mat_Set_Int16_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Value           : C_Int16) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_int16_nd";
 
    function Mat_Get_Int32_ND
      (Self            : Mat_Handle;

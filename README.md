@@ -641,12 +641,13 @@ non-contiguous multirow strided view before invoking its callback.
 
 ## Typed access matrix
 
-Direct typed access currently concentrates on seven common layouts:
+Direct typed access currently concentrates on eight common layouts:
 
 | Layout | 2-D Get/Set | N-D Get/Set | Classification | Copied row | Borrowed row | Continuous buffer borrow | Packed caller buffer -> `Mat` | Strided caller buffer -> `Mat` |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | UInt8 C1 | `UInt8_Access` | `UInt8_Access` | — | `UInt8_Row_Access` | `UInt8_Row_Access` | `UInt8_Buffer_Access` | `UInt8_Mat_View` | — |
 | UInt16 C1 | `UInt16_Access` | `UInt16_Access` | — | — | — | — | — | — |
+| Int16 C1 | `Int16_Access` | `Int16_Access` | — | — | — | — | — | — |
 | Int32 C1 | `Int32_Access` | `Int32_Access` | — | — | — | — | — | — |
 | Float32 C1 | `Float32_Access` | `Float32_Access` | — | `Float32_Row_Access` | `Float32_Row_Access` | `Float32_Buffer_Access` | `Float32_Mat_View` | `Float32_Mat_View` |
 | Float64 C1 | `Float64_Access` | `Float64_Access` | `Float64_Access` | `Float64_Row_Access` | `Float64_Row_Access` | `Float64_Buffer_Access` | `Float64_Mat_View` | `Float64_Mat_View` |
@@ -665,6 +666,10 @@ BGR, XYZ, or any other semantic channel interpretation.
 `UInt16_Access` provides scalar 2-D and N-D Get/Set for single-channel `CV_16U`
 Mats. Copied row access, borrowed row access, whole-buffer borrowing, and
 caller-owned Mat views are not yet provided for UInt16.
+
+`Int16_Access` provides scalar 2-D and N-D Get/Set for single-channel `CV_16S`
+Mats. Copied row access, borrowed row access, whole-buffer borrowing, and
+caller-owned Mat views are not yet provided for Int16.
 
 `Int32_Access` provides scalar 2-D and N-D Get/Set for single-channel `CV_32S`
 Mats. Copied row access, borrowed row access, whole-buffer borrowing, and
@@ -1337,14 +1342,14 @@ GNATprove is supplied by the separate `tests` Alire environment.
 The current limitations are intentional and help keep the public API coherent:
 
 1. **The dense public `Mat` model is primarily 2-D.**  
-   N-dimensional construction, UInt8/Int32/Float32/Float64 C1 Get/Set, and `Slice` views are
+   N-dimensional construction, UInt8/UInt16/Int16/Int32/Float32/Float64 C1 Get/Set, and `Slice` views are
    available. N-D reshape and dimension-dropping scalar indexing are not yet
    exposed as a complete Ada model.
 
 2. **No public `SparseMat` or `UMat` abstraction.**
 
-3. **Typed direct/zero-copy access is focused on UInt8 and Float32 C1/C3, plus Int32 C1 and Float64 C1.**
-   Int32 C1 has 2-D and N-D Get/Set. Float64 C1 has 2-D and N-D Get/Set, classification, 2-D row access,
+3. **Typed direct/zero-copy access is focused on UInt8 and Float32 C1/C3, plus UInt16/Int16/Int32 C1 and Float64 C1.**
+   Int16 C1 and Int32 C1 have 2-D and N-D Get/Set. Float64 C1 has 2-D and N-D Get/Set, classification, 2-D row access,
    continuous 2-D whole-buffer borrowing, and packed or row-strided 2-D
    caller-buffer views. Other OpenCV depths are available to general Mat
    operations but do not yet have the same typed access families.
