@@ -3198,6 +3198,27 @@ opencv_core_mat_divide(const opencv_core_mat_handle *left,
     }
 }
 
+// OpenCV 4.x exposes CV_16F Mat storage/conversion but its absdiff dispatch
+// tables do not implement CV_16F arithmetic. OpenCV 5.x provides native
+// Float16 absdiff, so use it there and widen only on older supported versions.
+// Native execution is used only while it satisfies the binding's
+// Float32-to-Float16 result model. This is OpenCV operation support, not CPU
+// FP16 feature detection.
+static void abs_diff_float16(const cv::Mat &left, const cv::Mat &right,
+                             cv::Mat &result) {
+#if CV_VERSION_MAJOR >= 5
+    cv::absdiff(left, right, result);
+#else
+    cv::Mat left32;
+    cv::Mat right32;
+    cv::Mat result32;
+    left.convertTo(left32, CV_32F);
+    right.convertTo(right32, CV_32F);
+    cv::absdiff(left32, right32, result32);
+    result32.convertTo(result, CV_16F);
+#endif
+}
+
 opencv_core_status
 opencv_core_mat_abs_diff(const opencv_core_mat_handle *left,
                          const opencv_core_mat_handle *right,
@@ -3216,7 +3237,11 @@ opencv_core_mat_abs_diff(const opencv_core_mat_handle *left,
 
     try {
         cv::Mat difference;
-        cv::absdiff(left->value, right->value, difference);
+        if (left->value.depth() == CV_16F) {
+            abs_diff_float16(left->value, right->value, difference);
+        } else {
+            cv::absdiff(left->value, right->value, difference);
+        }
         *out_mat = new opencv_core_mat_handle(difference);
         return OPENCV_CORE_OK;
     } catch (...) {

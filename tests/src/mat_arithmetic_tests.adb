@@ -52,6 +52,12 @@ package body Mat_Arithmetic_Tests is
    is (OpenCV.Core.To_Float16
          (OpenCV.Core.To_Float32 (Left) / OpenCV.Core.To_Float32 (Right)));
 
+   function Expected_Abs_Diff
+     (Left, Right : OpenCV.Core.Float16_Value) return OpenCV.Core.Float16_Value
+   is (OpenCV.Core.To_Float16
+         (abs (OpenCV.Core.To_Float32 (Left)
+               - OpenCV.Core.To_Float32 (Right))));
+
    function Float16_C1 (Rows, Columns : Natural) return OpenCV.Core.Mat
    is (OpenCV.Core.Create (Rows, Columns, (OpenCV.Core.Float16, 1)));
 
@@ -1897,6 +1903,23 @@ package body Mat_Arithmetic_Tests is
       16#7BFF#,
       16#FBFF#);
 
+   --  Representative finite right operands for the Abs_Diff exact oracle.
+   --  Both zero encodings are valid because absolute difference has no
+   --  divisor.
+   Abs_Diff_Sweep_Operands : constant Operand_Bits :=
+     (16#0000#,
+      16#8000#,
+      16#0001#,
+      16#8001#,
+      16#03FF#,
+      16#0400#,
+      16#3BFF#,
+      16#3C01#,
+      16#C200#,
+      16#7BFF#,
+      16#FBFF#,
+      16#4000#);
+
    --  Nonzero finite denominators only. Zero must not be passed through
    --  Expected_Divide because Ada `/` can trap on a zero divisor.
    Divide_Sweep_Operands : constant Operand_Bits :=
@@ -3408,6 +3431,339 @@ package body Mat_Arithmetic_Tests is
         (Quotient, Check'Access);
    end Mat_Float16_Divide_Finite_Oracle_Sample;
 
+   procedure Mat_Abs_Diff_Works_For_Float16_C1 (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left, Right : OpenCV.Core.Mat := Float16_C1 (1, 4);
+      Result      : OpenCV.Core.Mat;
+   begin
+      Set_C1 (Left, 0, 0, 16#4600#);
+      Set_C1 (Right, 0, 0, 16#4000#);
+      Set_C1 (Left, 0, 1, 16#C600#);
+      Set_C1 (Right, 0, 1, 16#4000#);
+      Set_C1 (Left, 0, 2, 16#4000#);
+      Set_C1 (Right, 0, 2, 16#C600#);
+      Set_C1 (Left, 0, 3, 16#C600#);
+      Set_C1 (Right, 0, 3, 16#C000#);
+      Result := Left.Abs_Diff (Right);
+      Assert_Float16_Metadata (Result, 1, 4, 1, "Float16 C1 Abs_Diff type");
+      Assert_Stored_Bits (Result, 0, 0, 16#4400#, "6 - 2 absolute difference");
+      Assert_Stored_Bits
+        (Result, 0, 1, 16#4800#, "-6 - 2 absolute difference");
+      Assert_Stored_Bits
+        (Result, 0, 2, 16#4800#, "2 - -6 absolute difference");
+      Assert_Stored_Bits
+        (Result, 0, 3, 16#4400#, "-6 - -2 absolute difference");
+   end Mat_Abs_Diff_Works_For_Float16_C1;
+
+   procedure Mat_Float16_Abs_Diff_Symmetry_And_Zero
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left, Right                    : OpenCV.Core.Mat := Float16_C1 (1, 8);
+      Forward_Result, Reverse_Result : OpenCV.Core.Mat;
+   begin
+      for Column in 0 .. 7 loop
+         declare
+            L : constant Interfaces.Unsigned_16 :=
+              (case Column is
+                 when 0      => 16#4600#,
+                 when 1      => 16#C600#,
+                 when 2      => 16#0001#,
+                 when 3      => 16#7BFF#,
+                 when 4      => 16#4600#,
+                 when 5      => 16#C600#,
+                 when 6      => 16#8000#,
+                 when others => 16#0000#);
+            R : constant Interfaces.Unsigned_16 :=
+              (case Column is
+                 when 0      => 16#4000#,
+                 when 1      => 16#3C00#,
+                 when 2      => 16#8001#,
+                 when 3      => 16#0400#,
+                 when 4      => 16#4600#,
+                 when 5      => 16#C600#,
+                 when 6      => 16#0000#,
+                 when others => 16#8000#);
+         begin
+            Set_C1 (Left, 0, Column, L);
+            Set_C1 (Right, 0, Column, R);
+         end;
+      end loop;
+      Forward_Result := Left.Abs_Diff (Right);
+      Reverse_Result := Right.Abs_Diff (Left);
+      for Column in 0 .. 7 loop
+         Assert_Bits
+           (OpenCV.Core.Float16_Access.Get (Forward_Result, 0, Column),
+            Bits_Of
+              (OpenCV.Core.Float16_Access.Get (Reverse_Result, 0, Column)),
+            "Float16 Abs_Diff must be symmetric");
+      end loop;
+      Assert_Stored_Bits
+        (Forward_Result, 0, 4, 16#0000#, "+x versus +x is +0");
+      Assert_Stored_Bits
+        (Forward_Result, 0, 5, 16#0000#, "-x versus -x is +0");
+      Assert_Stored_Bits
+        (Forward_Result, 0, 6, 16#0000#, "+0 versus -0 is +0");
+      Assert_Stored_Bits
+        (Forward_Result, 0, 7, 16#0000#, "-0 versus +0 is +0");
+   end Mat_Float16_Abs_Diff_Symmetry_And_Zero;
+
+   procedure Mat_Float16_Abs_Diff_Boundaries_And_Nonfinite
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left, Right : OpenCV.Core.Mat := Float16_C1 (1, 11);
+      Result      : OpenCV.Core.Mat;
+   begin
+      Set_C1 (Left, 0, 0, 16#3C00#);
+      Set_C1 (Right, 0, 0, 16#3555#);
+      Set_C1 (Left, 0, 1, 16#0001#);
+      Set_C1 (Right, 0, 1, 16#0000#);
+      Set_C1 (Left, 0, 2, 16#0002#);
+      Set_C1 (Right, 0, 2, 16#0001#);
+      Set_C1 (Left, 0, 3, 16#0400#);
+      Set_C1 (Right, 0, 3, 16#03FF#);
+      Set_C1 (Left, 0, 4, 16#7BFF#);
+      Set_C1 (Right, 0, 4, 16#FBFF#);
+      Set_C1 (Left, 0, 5, 16#7C00#);
+      Set_C1 (Right, 0, 5, 16#3C00#);
+      Set_C1 (Left, 0, 6, 16#FC00#);
+      Set_C1 (Right, 0, 6, 16#7C00#);
+      Set_C1 (Left, 0, 7, 16#7E00#);
+      Set_C1 (Right, 0, 7, 16#3C00#);
+      Set_C1 (Left, 0, 8, 16#3C00#);
+      Set_C1 (Right, 0, 8, 16#7E00#);
+      Set_C1 (Left, 0, 9, 16#7C00#);
+      Set_C1 (Right, 0, 9, 16#7C00#);
+      Set_C1 (Left, 0, 10, 16#7E00#);
+      Set_C1 (Right, 0, 10, 16#7E00#);
+      Result := Left.Abs_Diff (Right);
+      for Column in 0 .. 4 loop
+         Assert_Bits
+           (OpenCV.Core.Float16_Access.Get (Result, 0, Column),
+            Bits_Of
+              (Expected_Abs_Diff
+                 (OpenCV.Core.Float16_Access.Get (Left, 0, Column),
+                  OpenCV.Core.Float16_Access.Get (Right, 0, Column))),
+            "Float16 Abs_Diff boundary must match Float32 oracle");
+      end loop;
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Is_Infinite
+           (OpenCV.Core.Float16_Access.Get (Result, 0, 4))
+         and then not OpenCV.Core.Is_Negative
+                        (OpenCV.Core.Float16_Access.Get (Result, 0, 4))
+         and then OpenCV.Core.Is_Infinite
+                    (OpenCV.Core.Float16_Access.Get (Result, 0, 5))
+         and then OpenCV.Core.Is_Infinite
+
+                    (OpenCV.Core.Float16_Access.Get (Result, 0, 6))
+         and then OpenCV.Core.Is_NaN
+                    (OpenCV.Core.Float16_Access.Get (Result, 0, 7))
+         and then OpenCV.Core.Is_NaN
+                    (OpenCV.Core.Float16_Access.Get (Result, 0, 8))
+         and then OpenCV.Core.Is_NaN
+                    (OpenCV.Core.Float16_Access.Get (Result, 0, 9))
+         and then OpenCV.Core.Is_NaN
+                    (OpenCV.Core.Float16_Access.Get (Result, 0, 10)),
+         "Float16 Abs_Diff must classify overflow, infinity, and NaN");
+   end Mat_Float16_Abs_Diff_Boundaries_And_Nonfinite;
+
+   procedure Mat_Float16_Abs_Diff_C3_Multi_Row (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left, Right : OpenCV.Core.Mat := Float16_C3 (2, 2);
+      Result      : OpenCV.Core.Mat;
+   begin
+      for Row in 0 .. 1 loop
+         for Column in 0 .. 1 loop
+            OpenCV.Core.Float16_Vec3_Access.Set
+              (Left, Row, Column, Pixel (16#4600#, 16#0002#, 16#7BFF#));
+            OpenCV.Core.Float16_Vec3_Access.Set
+              (Right, Row, Column, Pixel (16#4000#, 16#0001#, 16#FBFF#));
+         end loop;
+      end loop;
+      Result := Left.Abs_Diff (Right);
+      Assert_Float16_Metadata
+        (Result, 2, 2, 3, "Float16 C3 Abs_Diff multi-row metadata");
+      for Row in 0 .. 1 loop
+         for Column in 0 .. 1 loop
+            Assert_Stored_Pixel
+              (Result,
+               Row,
+               Column,
+               (0 => Expected_Abs_Diff (F16 (16#4600#), F16 (16#4000#)),
+                1 => Expected_Abs_Diff (F16 (16#0002#), F16 (16#0001#)),
+                2 => Expected_Abs_Diff (F16 (16#7BFF#), F16 (16#FBFF#))),
+               "Float16 C3 Abs_Diff ordinary/subnormal/overflow");
+         end loop;
+      end loop;
+   end Mat_Float16_Abs_Diff_C3_Multi_Row;
+   procedure Mat_Float16_Abs_Diff_C3_Regions_And_Ownership
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left_Parent  : OpenCV.Core.Mat := Float16_C3 (4, 6);
+      Right_Parent : OpenCV.Core.Mat := Float16_C3 (4, 6);
+      Left, Right  : OpenCV.Core.Mat;
+      Result       : OpenCV.Core.Mat;
+   begin
+      for Row in 0 .. 3 loop
+         for Column in 0 .. 5 loop
+            OpenCV.Core.Float16_Vec3_Access.Set
+              (Left_Parent, Row, Column, Pixel (16#7C00#, 16#0002#, 16#7E00#));
+            OpenCV.Core.Float16_Vec3_Access.Set
+              (Right_Parent,
+               Row,
+               Column,
+               Pixel (16#3C00#, 16#0001#, 16#3C00#));
+         end loop;
+      end loop;
+      Left := Left_Parent.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+      Right := Right_Parent.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+      AUnit.Assertions.Assert
+        (not Left.Is_Continuous and then not Right.Is_Continuous,
+         "Float16 C3 Abs_Diff Region fixtures must be non-contiguous");
+      Result := Left.Abs_Diff (Right);
+      Assert_Float16_Metadata
+        (Result, 2, 3, 3, "Float16 C3 Abs_Diff metadata");
+      AUnit.Assertions.Assert
+        (Result.Is_Continuous,
+         "Float16 C3 Abs_Diff Region result must have independent storage");
+      Assert_Stored_Pixel
+        (Result,
+         0,
+         0,
+         (0 => F16 (16#7C00#),
+          1 => Expected_Abs_Diff (F16 (16#0002#), F16 (16#0001#)),
+          2 => F16 (16#7E00#)),
+         "Float16 C3 Abs_Diff must be per-channel");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Is_Infinite
+           (OpenCV.Core.Float16_Vec3_Access.Get (Result, 0, 0) (0))
+         and then OpenCV.Core.Is_NaN
+                    (OpenCV.Core.Float16_Vec3_Access.Get (Result, 0, 0) (2)),
+         "Float16 C3 Abs_Diff must preserve nonfinite classifications");
+      OpenCV.Core.Float16_Vec3_Access.Set
+        (Left_Parent, 1, 1, Pixel (16#3C00#, 16#3C00#, 16#3C00#));
+      OpenCV.Core.Float16_Vec3_Access.Set
+        (Right_Parent, 1, 1, Pixel (16#4000#, 16#4000#, 16#4000#));
+      OpenCV.Core.Float16_Vec3_Access.Set
+        (Result, 0, 0, Pixel (16#0000#, 16#0000#, 16#0000#));
+      Assert_Stored_Pixel
+        (Result,
+         0,
+         1,
+         (0 => F16 (16#7C00#),
+          1 => Expected_Abs_Diff (F16 (16#0002#), F16 (16#0001#)),
+          2 => F16 (16#7E00#)),
+         "Float16 C3 Abs_Diff result must not share source storage");
+      Assert_Stored_Pixel
+        (Left_Parent,
+         1,
+         1,
+         Pixel (16#3C00#, 16#3C00#, 16#3C00#),
+         "Float16 C3 Abs_Diff must not mutate left parent storage");
+      Assert_Stored_Pixel
+        (Right_Parent,
+         1,
+         1,
+         Pixel (16#4000#, 16#4000#, 16#4000#),
+         "Float16 C3 Abs_Diff must not mutate right parent storage");
+   end Mat_Float16_Abs_Diff_C3_Regions_And_Ownership;
+
+   procedure Mat_Float16_Abs_Diff_Validation_And_Empty
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      C1             : constant OpenCV.Core.Mat := Float16_C1 (1, 1);
+      Rows           : constant OpenCV.Core.Mat := Float16_C1 (2, 1);
+      Columns        : constant OpenCV.Core.Mat := Float16_C1 (1, 2);
+      C3             : constant OpenCV.Core.Mat := Float16_C3 (1, 1);
+      Float32        : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Empty          : OpenCV.Core.Mat;
+      Typed          : constant OpenCV.Core.Mat := Float16_C1 (0, 0);
+      procedure Bad_Rows is
+         X : constant OpenCV.Core.Mat := C1.Abs_Diff (Rows);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Rows;
+      procedure Bad_Columns is
+         X : constant OpenCV.Core.Mat := C1.Abs_Diff (Columns);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Columns;
+      procedure Bad_Channels is
+         X : constant OpenCV.Core.Mat := C1.Abs_Diff (C3);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Channels;
+      procedure Bad_Depth is
+         X : constant OpenCV.Core.Mat := C1.Abs_Diff (Float32);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Depth;
+      Default_Result : constant OpenCV.Core.Mat := Empty.Abs_Diff (Empty);
+      Typed_Result   : constant OpenCV.Core.Mat := Typed.Abs_Diff (Typed);
+   begin
+      Assert_Raises_OpenCV_Error (Bad_Rows'Access, "Float16 Abs_Diff rows");
+      Assert_Raises_OpenCV_Error
+        (Bad_Columns'Access, "Float16 Abs_Diff columns");
+      Assert_Raises_OpenCV_Error
+        (Bad_Channels'Access, "Float16 Abs_Diff channels");
+      Assert_Raises_OpenCV_Error (Bad_Depth'Access, "Float16 Abs_Diff depth");
+      AUnit.Assertions.Assert
+        (Default_Result.Is_Empty and then Typed_Result.Is_Empty,
+         "Float16 Abs_Diff must preserve established empty behavior");
+   end Mat_Float16_Abs_Diff_Validation_And_Empty;
+
+   procedure Mat_Float16_Abs_Diff_Finite_Oracle_Sweep
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left : OpenCV.Core.Mat := Float16_C1 (1, Finite_Count);
+   begin
+      OpenCV.Core.Float16_Buffer_Access.With_Writable_Buffer
+        (Left, Fill_Finite_Left'Access);
+      for Operand of Abs_Diff_Sweep_Operands loop
+         declare
+            Right  : OpenCV.Core.Mat := Float16_C1 (1, Finite_Count);
+            Result : OpenCV.Core.Mat;
+            procedure Check
+              (Data : aliased OpenCV.Core.Float16_Buffer_Access.Buffer_Array)
+            is
+               Right_Value : constant OpenCV.Core.Float16_Value :=
+                 F16 (Operand);
+            begin
+               for Index in Data'Range loop
+                  declare
+                     Left_Value : constant OpenCV.Core.Float16_Value :=
+                       OpenCV.Core.Float16_Access.Get (Left, 0, Index);
+                     Expected   : constant OpenCV.Core.Float16_Value :=
+                       Expected_Abs_Diff (Left_Value, Right_Value);
+                  begin
+                     if Bits_Of (Data (Index)) /= Bits_Of (Expected) then
+                        AUnit.Assertions.Assert
+                          (False,
+                           "Abs_Diff oracle mismatch left="
+                           & Interfaces.Unsigned_16'Image
+                               (Bits_Of (Left_Value))
+                           & " right="
+                           & Interfaces.Unsigned_16'Image (Operand));
+                     end if;
+                  end;
+               end loop;
+            end Check;
+         begin
+            Fill_Constant (Right, Operand);
+            Result := Left.Abs_Diff (Right);
+            OpenCV.Core.Float16_Buffer_Access.With_Read_Only_Buffer
+              (Result, Check'Access);
+         end;
+      end loop;
+   end Mat_Float16_Abs_Diff_Finite_Oracle_Sweep;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -3719,6 +4075,34 @@ package body Mat_Arithmetic_Tests is
         (Caller.Create
            ("Mat Float16 Divide finite oracle sample",
             Mat_Float16_Divide_Finite_Oracle_Sample'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Abs_Diff works for Float16 C1",
+            Mat_Abs_Diff_Works_For_Float16_C1'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Abs_Diff symmetry and signed zero",
+            Mat_Float16_Abs_Diff_Symmetry_And_Zero'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Abs_Diff boundaries and nonfinite",
+            Mat_Float16_Abs_Diff_Boundaries_And_Nonfinite'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Abs_Diff C3 multi-row",
+            Mat_Float16_Abs_Diff_C3_Multi_Row'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Abs_Diff C3 Regions and ownership",
+            Mat_Float16_Abs_Diff_C3_Regions_And_Ownership'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Abs_Diff validation and empty",
+            Mat_Float16_Abs_Diff_Validation_And_Empty'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Abs_Diff finite oracle sweep",
+            Mat_Float16_Abs_Diff_Finite_Oracle_Sweep'Access));
 
       return Result'Access;
    end Suite;
