@@ -110,14 +110,23 @@ case "$sysname" in
     MINGW*|MSYS*)
         shim_build="External_Relocatable"
         ada_link="Shared_Shim_Static_GCC_Runtime"
+        # Compile and link the shim with the same MSYS2 MinGW64 g++ that
+        # packaged OpenCV, not GNAT-FSF g++ from PATH.
+        if ! command -v cygpath >/dev/null 2>&1; then
+            echo "error: cygpath is required to record GPR-compatible MSYS2 paths" >&2
+            exit 1
+        fi
+        # Record OpenCV and toolchain paths in Windows mixed form so GPR,
+        # native MinGW g++, and Git Bash CI verification all see the same
+        # files. MSYS mounts such as /mingw64 are invisible to Git Bash.
+        include_dir=$(cygpath -m "$include_dir")
+        library_dir=$(cygpath -m "$library_dir")
         opencv_core_import_library="${library_dir}/libopencv_core.dll.a"
         if [ ! -f "$opencv_core_import_library" ]; then
             echo "error: OpenCV Core import library was not found: $opencv_core_import_library" >&2
             exit 1
         fi
         opencv_core_link_option="$opencv_core_import_library"
-        # Compile and link the shim with the same MSYS2 MinGW64 g++ that
-        # packaged OpenCV, not GNAT-FSF g++ from PATH.
         mingw_prefix=$(dirname "$library_dir")
         cxx_candidate="${mingw_prefix}/bin/g++.exe"
         if [ ! -f "$cxx_candidate" ]; then
@@ -126,10 +135,6 @@ case "$sysname" in
         if [ ! -f "$cxx_candidate" ]; then
             echo "error: MSYS2 MinGW64 g++ was not found at ${mingw_prefix}/bin/g++.exe" >&2
             echo "error: install mingw-w64-x86_64-gcc in the same prefix as OpenCV" >&2
-            exit 1
-        fi
-        if ! command -v cygpath >/dev/null 2>&1; then
-            echo "error: cygpath is required to record a GPR-compatible MSYS2 g++ path" >&2
             exit 1
         fi
         cxx_driver=$(cygpath -m "$cxx_candidate")

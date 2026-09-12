@@ -985,11 +985,11 @@ jobs:
               echo "error: generated GPR selected GNAT g++: ${cxx_driver}" >&2
               exit 1
               ;;
-            *mingw64*g++*)
+            [A-Za-z]:/*mingw64*/g++*)
               echo "generated GPR selected MSYS2 MinGW64 g++"
               ;;
             *)
-              echo "error: generated GPR did not select MSYS2 MinGW64 g++: ${cxx_driver}" >&2
+              echo "error: generated GPR did not select a Windows mixed MSYS2 MinGW64 g++ path: ${cxx_driver}" >&2
               exit 1
               ;;
           esac
@@ -1023,6 +1023,44 @@ jobs:
 
           import_library=$(sed -n 's/.*OpenCV_Core_Link_Option := "\(.*\)";/\1/p' config/opencv_core_install.gpr)
           echo "OpenCV_Core_Link_Option=${import_library}"
+          case "${import_library}" in
+            [A-Za-z]:/*mingw64*/lib/libopencv_core.dll.a)
+              ;;
+            *)
+              echo "error: generated OpenCV Core import library is not a Windows mixed MinGW64 path: ${import_library}" >&2
+              exit 1
+              ;;
+          esac
+          include_switch=$(sed -n 's/.*Include_Switch := "\(.*\)";/\1/p' config/opencv_core_install.gpr)
+          library_search_switch=$(sed -n 's/.*Library_Search_Switch := "\(.*\)";/\1/p' config/opencv_core_install.gpr)
+          echo "Include_Switch=${include_switch}"
+          echo "Library_Search_Switch=${library_search_switch}"
+          case "${include_switch}" in
+            -I[A-Za-z]:/*mingw64*/include/opencv5)
+              ;;
+            *)
+              echo "error: generated include path is not a Windows mixed MinGW64 opencv5 path: ${include_switch}" >&2
+              exit 1
+              ;;
+          esac
+          case "${library_search_switch}" in
+            -L[A-Za-z]:/*mingw64*/lib)
+              ;;
+            *)
+              echo "error: generated library search path is not a Windows mixed MinGW64 lib path: ${library_search_switch}" >&2
+              exit 1
+              ;;
+          esac
+          include_dir="${include_switch#-I}"
+          library_dir="${library_search_switch#-L}"
+          if [ ! -d "${include_dir}" ]; then
+            echo "error: generated OpenCV include directory does not exist: ${include_dir}" >&2
+            exit 1
+          fi
+          if [ ! -d "${library_dir}" ]; then
+            echo "error: generated OpenCV library directory does not exist: ${library_dir}" >&2
+            exit 1
+          fi
           if [ ! -f "${import_library}" ]; then
             echo "error: generated OpenCV Core import library does not exist: ${import_library}" >&2
             alr exec -- pacman -Ql mingw-w64-x86_64-opencv | grep 'libopencv_core\.dll\.a$' || true
