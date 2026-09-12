@@ -1248,6 +1248,26 @@ opencv_core_mat_write_float32_vec3_row(opencv_core_mat_handle *mat,
                                        int32_t row, const float *data,
                                        uint64_t element_count);
 
+/*
+ * Copy one complete row of a two-dimensional, exactly three-channel CV_16F
+ * Mat. element_count is the logical Vec3 element count and must equal mat
+ * columns. data is a flat uint16_t buffer ordered as
+ * column0.component0, column0.component1, column0.component2,
+ * column1.component0, and so on. Each uint16_t is the stored IEEE-754
+ * binary16 encoding. The implementation copies exact object bits and
+ * does not convert through a floating-point type or depend on OpenCV's
+ * public half C++ type name.
+ */
+opencv_core_status
+opencv_core_mat_read_float16_vec3_row(const opencv_core_mat_handle *mat,
+                                      int32_t row, uint16_t *data,
+                                      uint64_t element_count);
+
+opencv_core_status
+opencv_core_mat_write_float16_vec3_row(opencv_core_mat_handle *mat,
+                                       int32_t row, const uint16_t *data,
+                                       uint64_t element_count);
+
 opencv_core_status
 opencv_core_mat_set_to(opencv_core_mat_handle *mat,
                        const opencv_core_scalar *value);

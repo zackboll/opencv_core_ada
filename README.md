@@ -653,7 +653,7 @@ Direct typed access currently concentrates on nine common layouts:
 | Float32 C1 | `Float32_Access` | `Float32_Access` | — | `Float32_Row_Access` | `Float32_Row_Access` | `Float32_Buffer_Access` | `Float32_Mat_View` | `Float32_Mat_View` |
 | Float64 C1 | `Float64_Access` | `Float64_Access` | `Float64_Access` | `Float64_Row_Access` | `Float64_Row_Access` | `Float64_Buffer_Access` | `Float64_Mat_View` | `Float64_Mat_View` |
 | UInt8 C3 | `UInt8_Vec3_Access` | — | — | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Buffer_Access` | `UInt8_Vec3_Mat_View` | — |
-| Float16 C3 | `Float16_Vec3_Access` | — | — | — | — | — | — | — |
+| Float16 C3 | `Float16_Vec3_Access` | — | — | `Float16_Vec3_Row_Access` | `Float16_Vec3_Row_Access` | — | — | — |
 | Float32 C3 | `Float32_Vec3_Access` | — | — | `Float32_Vec3_Row_Access` | `Float32_Vec3_Row_Access` | `Float32_Vec3_Buffer_Access` | `Float32_Vec3_Mat_View` | — |
 
 For Vec3 APIs, **one Ada vector is one complete OpenCV element/pixel**, not one
@@ -699,10 +699,13 @@ owns the backing storage, OpenCV does not free it, and it must remain alive
 for the callback lifetime. The main C1 FP16 data plane is now complete:
 exact value representation, Float32 conversion, scalar access, row access,
 continuous-buffer borrowing, packed external views, and strided external
-views. This does not add FP16 C3 row, buffer, or external-view APIs or
+views. This does not add FP16 C3 buffer or external-view APIs or
 broad OpenCV 4.x FP16 algorithm coverage. `Float16_Vec3` /
 `Float16_Vec3_Access` add exact-bit 2-D Get/Set for ordinary three-channel
-`CV_16FC3` Mats. Component 0, 1, and 2 correspond to OpenCV channels 0, 1,
+`CV_16FC3` Mats. `Float16_Vec3_Row_Access` adds copied and callback-scoped
+zero-copy row access for 2-D C3 Mats, including non-contiguous Regions, and
+likewise preserves exact binary16 component bits without converting through
+Float32. Component 0, 1, and 2 correspond to OpenCV channels 0, 1,
 and 2; Core does not assign RGB or BGR meaning.
 
 `Float64_Access` provides scalar 2-D and N-D Get/Set plus non-finite value

@@ -695,6 +695,69 @@ prepare_vec3_row(const opencv_core_mat_handle *mat, int32_t row,
     return OPENCV_CORE_OK;
 }
 
+opencv_core_status
+prepare_float16_vec3_row(const opencv_core_mat_handle *mat, int32_t row,
+                         uint64_t element_count, const uint8_t *&row_data,
+                         std::size_t &byte_count) {
+    row_data = nullptr;
+    byte_count = 0;
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    if (row < 0) {
+        return invalid_argument("row must not be negative");
+    }
+
+    // ABI safety: the shim copies element_count * 6 bytes from a formed
+    // row pointer. A non-2-D Mat, a smaller stored element, a missing
+    // data pointer, or an out-of-range row would make that copy
+    // out-of-bounds.
+    if (mat->value.dims != 2) {
+        return invalid_argument("Mat must be two-dimensional");
+    }
+
+    if (mat->value.depth() != CV_16F) {
+        return invalid_argument("Mat depth must be Float16");
+    }
+
+    if (mat->value.channels() != 3) {
+        return invalid_argument("Mat must have exactly three channels");
+    }
+
+    if (row >= mat->value.rows) {
+        return invalid_argument("row is outside Mat bounds");
+    }
+
+    if (element_count != static_cast<uint64_t>(mat->value.cols)) {
+        return invalid_argument("element_count must equal Mat columns");
+    }
+
+    // ABI safety: copying six bytes per column from a smaller stored
+    // element would read or write past the logical row.
+    if (mat->value.elemSize1() != 2 || mat->value.elemSize() != 6) {
+        return invalid_argument(
+            "Mat element size does not match a Float16 Vec3 pixel");
+    }
+
+    if (element_count >
+        static_cast<uint64_t>(std::numeric_limits<std::size_t>::max() / 6)) {
+        return invalid_argument("row byte count exceeds the native size range");
+    }
+
+    byte_count = static_cast<std::size_t>(element_count) * 6;
+
+    if (byte_count != 0 && mat->value.data == nullptr) {
+        return invalid_argument("Mat has no row storage");
+    }
+
+    // Untyped row pointer plus memcpy preserves exact binary16 object
+    // bits without aliasing a C++ half type as uint16_t.
+    row_data = mat->value.ptr(static_cast<int>(row));
+    return OPENCV_CORE_OK;
+}
+
 // ABI safety: Mat::at<T> relies on CV_DbgAssert for type/dimension/
 // bounds validation and then performs typed pointer access. Release
 // OpenCV builds cannot be relied upon to reject a raw ABI caller safely.
@@ -5587,6 +5650,64 @@ opencv_core_mat_write_float32_vec3_row(opencv_core_mat_handle *mat,
             assign_vec(row_data[column],
                        cv::Vec<float, 3>(data[offset], data[offset + 1],
                                          data[offset + 2]));
+        }
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_read_float16_vec3_row(const opencv_core_mat_handle *mat,
+                                      int32_t row, uint16_t *data,
+                                      uint64_t element_count) {
+    clear_error();
+
+    if (data == nullptr && element_count != 0) {
+        return invalid_argument(
+            "data must not be null when element_count is nonzero");
+    }
+
+    try {
+        const uint8_t *row_data = nullptr;
+        std::size_t byte_count = 0;
+        const opencv_core_status status = prepare_float16_vec3_row(
+            mat, row, element_count, row_data, byte_count);
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        if (byte_count != 0) {
+            std::memcpy(data, row_data, byte_count);
+        }
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_write_float16_vec3_row(opencv_core_mat_handle *mat,
+                                       int32_t row, const uint16_t *data,
+                                       uint64_t element_count) {
+    clear_error();
+
+    if (data == nullptr && element_count != 0) {
+        return invalid_argument(
+            "data must not be null when element_count is nonzero");
+    }
+
+    try {
+        const uint8_t *row_data = nullptr;
+        std::size_t byte_count = 0;
+        const opencv_core_status status = prepare_float16_vec3_row(
+            mat, row, element_count, row_data, byte_count);
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        if (byte_count != 0) {
+            std::memcpy(const_cast<uint8_t *>(row_data), data, byte_count);
         }
         return OPENCV_CORE_OK;
     } catch (...) {
