@@ -1429,7 +1429,7 @@ The current limitations are intentional and help keep the public API coherent:
    buffer borrowing, and packed or strided external caller-buffer Mat views.
 
 4. **External caller-buffer views are writable and callback-scoped.**  
-   Packed 2-D views are available for UInt8/Float32 C1/C3 and Float16/Float64 C1/C3.
+   Packed 2-D views are available for UInt8, Float16, and Float32 C1/C3, plus Float64 C1.
    Row-strided external storage is exposed for Float16 C1/C3, Float32 C1, and
    Float64 C1.
    Arbitrary N-D strides, multi-channel Float64 external views, and a separate
