@@ -138,6 +138,13 @@ package OpenCV.Core is
    subtype Float32_Value is Interfaces.IEEE_Float_32;
    subtype Float64_Value is Interfaces.IEEE_Float_64;
 
+   --  Value-semantic 2-D point with binary32 coordinates. This is the
+   --  shared Core representation for OpenCV floating-point 2-D points.
+   type Float32_Point is record
+      X : Float32_Value := 0.0;
+      Y : Float32_Value := 0.0;
+   end record;
+
    --  Exact IEEE-754 binary16 encoding used by OpenCV CV_16F. This is
    --  the stored 16-bit pattern, not Short_Float, Float, Integer_16, or
    --  a numeric Unsigned_16 value. Classification inspects the binary16
