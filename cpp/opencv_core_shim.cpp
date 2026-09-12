@@ -3012,6 +3012,27 @@ static void add_or_subtract_float16(const cv::Mat &left, const cv::Mat &right,
 #endif
 }
 
+// OpenCV 4.x exposes CV_16F Mat storage/conversion but the supported
+// 4.x Multiply dispatch tables do not implement CV_16F arithmetic
+// (HAL mul kernels stop at 8u/8s/16u/16s/32s/32f/64f). OpenCV 5.x
+// provides native mul16f, so use native half arithmetic there and
+// widen only on older supported versions. This is OpenCV operation
+// support, not CPU FP16 feature detection.
+static void multiply_float16(const cv::Mat &left, const cv::Mat &right,
+                             cv::Mat &result) {
+#if CV_VERSION_MAJOR >= 5
+    cv::multiply(left, right, result, 1.0, -1);
+#else
+    cv::Mat left32;
+    cv::Mat right32;
+    cv::Mat result32;
+    left.convertTo(left32, CV_32F);
+    right.convertTo(right32, CV_32F);
+    cv::multiply(left32, right32, result32, 1.0, -1);
+    result32.convertTo(result, CV_16F);
+#endif
+}
+
 opencv_core_status
 opencv_core_mat_add(const opencv_core_mat_handle *left,
                     const opencv_core_mat_handle *right,
@@ -3102,7 +3123,11 @@ opencv_core_mat_multiply(const opencv_core_mat_handle *left,
         }
 
         cv::Mat product;
-        cv::multiply(left->value, right->value, product, 1.0, -1);
+        if (left->value.depth() == CV_16F) {
+            multiply_float16(left->value, right->value, product);
+        } else {
+            cv::multiply(left->value, right->value, product, 1.0, -1);
+        }
         *out_mat = new opencv_core_mat_handle(product);
         return OPENCV_CORE_OK;
     } catch (...) {
