@@ -3764,6 +3764,497 @@ package body Mat_Arithmetic_Tests is
       end loop;
    end Mat_Float16_Abs_Diff_Finite_Oracle_Sweep;
 
+   function Finite_Minimum
+     (Left, Right : OpenCV.Core.Float16_Value) return OpenCV.Core.Float16_Value
+   is (if OpenCV.Core.To_Float32 (Left) < OpenCV.Core.To_Float32 (Right)
+       then Left
+       else Right);
+
+   function Finite_Maximum
+     (Left, Right : OpenCV.Core.Float16_Value) return OpenCV.Core.Float16_Value
+   is (if OpenCV.Core.To_Float32 (Left) > OpenCV.Core.To_Float32 (Right)
+       then Left
+       else Right);
+
+   procedure Mat_Float16_Minimum_Maximum_C1_And_Ownership
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left, Right      : OpenCV.Core.Mat := Float16_C1 (1, 8);
+      Minimum, Maximum : OpenCV.Core.Mat;
+   begin
+      Set_C1 (Left, 0, 0, 16#3C00#);
+      Set_C1 (Right, 0, 0, 16#4000#);
+      Set_C1 (Left, 0, 1, 16#C000#);
+      Set_C1 (Right, 0, 1, 16#3800#);
+      Set_C1 (Left, 0, 2, 16#C200#);
+      Set_C1 (Right, 0, 2, 16#BC00#);
+      Set_C1 (Left, 0, 3, 16#3800#);
+      Set_C1 (Right, 0, 3, 16#3400#);
+      Set_C1 (Left, 0, 4, 16#0001#);
+      Set_C1 (Right, 0, 4, 16#8001#);
+      Set_C1 (Left, 0, 5, 16#03FF#);
+      Set_C1 (Right, 0, 5, 16#0400#);
+      Set_C1 (Left, 0, 6, 16#7BFF#);
+      Set_C1 (Right, 0, 6, 16#FBFF#);
+      Set_C1 (Left, 0, 7, 16#7BFF#);
+      Set_C1 (Right, 0, 7, 16#7BFF#);
+      Minimum := Left.Minimum (Right);
+      Maximum := Left.Maximum (Right);
+      Assert_Float16_Metadata (Minimum, 1, 8, 1, "Float16 Minimum metadata");
+      Assert_Float16_Metadata (Maximum, 1, 8, 1, "Float16 Maximum metadata");
+      for Column in 0 .. 7 loop
+         declare
+            L : constant OpenCV.Core.Float16_Value :=
+              OpenCV.Core.Float16_Access.Get (Left, 0, Column);
+            R : constant OpenCV.Core.Float16_Value :=
+              OpenCV.Core.Float16_Access.Get (Right, 0, Column);
+         begin
+            Assert_Bits
+              (OpenCV.Core.Float16_Access.Get (Minimum, 0, Column),
+               Bits_Of (Finite_Minimum (L, R)),
+               "Float16 Minimum must select the smaller finite operand");
+            Assert_Bits
+              (OpenCV.Core.Float16_Access.Get (Maximum, 0, Column),
+               Bits_Of (Finite_Maximum (L, R)),
+               "Float16 Maximum must select the larger finite operand");
+         end;
+      end loop;
+      Set_C1 (Left, 0, 0, 16#7BFF#);
+      Set_C1 (Right, 0, 1, 16#7BFF#);
+      Set_C1 (Minimum, 0, 2, 16#0000#);
+      Set_C1 (Maximum, 0, 3, 16#0000#);
+      Assert_Stored_Bits
+        (Minimum,
+         0,
+         0,
+         16#3C00#,
+         "Minimum result must not share left storage");
+      Assert_Stored_Bits
+        (Maximum,
+         0,
+         1,
+         16#3800#,
+         "Maximum result must not share right storage");
+      Assert_Stored_Bits
+        (Left, 0, 2, 16#C200#, "Minimum result must not mutate sources");
+      Assert_Stored_Bits
+        (Right, 0, 3, 16#3400#, "Maximum result must not mutate sources");
+   end Mat_Float16_Minimum_Maximum_C1_And_Ownership;
+
+   procedure Mat_Float16_Minimum_Maximum_Special_And_C3
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      pragma Suppress (Validity_Check);
+      Left, Right                 : OpenCV.Core.Mat := Float16_C1 (1, 12);
+      Float32_Left, Float32_Right : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 12, (OpenCV.Core.Float32, 1));
+      Float32_Min, Float32_Max    : OpenCV.Core.Mat;
+      Min_Result, Max_Result      : OpenCV.Core.Mat;
+      C3_Left, C3_Right           : OpenCV.Core.Mat := Float16_C3 (2, 2);
+      C3_Min, C3_Max              : OpenCV.Core.Mat;
+   begin
+      for Column in 0 .. 11 loop
+         declare
+            L : constant Interfaces.Unsigned_16 :=
+              (case Column is
+                 when 0      => 16#0000#,
+                 when 1      => 16#8000#,
+                 when 2      => 16#0000#,
+                 when 3      => 16#8000#,
+                 when 4      => 16#7C00#,
+                 when 5      => 16#FC00#,
+                 when 6      => 16#7C00#,
+                 when 7      => 16#7C00#,
+                 when 8      => 16#FC00#,
+                 when 9      => 16#7E00#,
+                 when 10     => 16#3C00#,
+                 when others => 16#FE00#);
+            R : constant Interfaces.Unsigned_16 :=
+              (case Column is
+                 when 0      => 16#0000#,
+                 when 1      => 16#8000#,
+                 when 2      => 16#8000#,
+                 when 3      => 16#0000#,
+                 when 4      => 16#3C00#,
+                 when 5      => 16#3C00#,
+                 when 6      => 16#FC00#,
+                 when 7      => 16#7C00#,
+                 when 8      => 16#FC00#,
+                 when 9      => 16#3C00#,
+                 when 10     => 16#7E00#,
+                 when others => 16#7E00#);
+         begin
+            Set_C1 (Left, 0, Column, L);
+            Set_C1 (Right, 0, Column, R);
+            OpenCV.Core.Float32_Access.Set
+              (Float32_Left, 0, Column, OpenCV.Core.To_Float32 (F16 (L)));
+            OpenCV.Core.Float32_Access.Set
+              (Float32_Right, 0, Column, OpenCV.Core.To_Float32 (F16 (R)));
+         end;
+      end loop;
+      Min_Result := Left.Minimum (Right);
+      Max_Result := Left.Maximum (Right);
+      Float32_Min := Float32_Left.Minimum (Float32_Right);
+      Float32_Max := Float32_Left.Maximum (Float32_Right);
+      for Column in 0 .. 11 loop
+         declare
+            L : constant OpenCV.Core.Float16_Value :=
+              OpenCV.Core.Float16_Access.Get (Left, 0, Column);
+            R : constant OpenCV.Core.Float16_Value :=
+              OpenCV.Core.Float16_Access.Get (Right, 0, Column);
+         begin
+            pragma Unreferenced (L, R);
+            Assert_Bits
+              (OpenCV.Core.Float16_Access.Get (Min_Result, 0, Column),
+               Bits_Of
+                 (OpenCV.Core.To_Float16
+                    (OpenCV.Core.Float32_Access.Get (Float32_Min, 0, Column))),
+               "Float16 Minimum must match Float32 special model");
+            Assert_Bits
+              (OpenCV.Core.Float16_Access.Get (Max_Result, 0, Column),
+               Bits_Of
+                 (OpenCV.Core.To_Float16
+                    (OpenCV.Core.Float32_Access.Get (Float32_Max, 0, Column))),
+               "Float16 Maximum must match Float32 special model");
+         end;
+      end loop;
+      for Row in 0 .. 1 loop
+         for Column in 0 .. 1 loop
+            OpenCV.Core.Float16_Vec3_Access.Set
+              (C3_Left, Row, Column, Pixel (16#C000#, 16#4500#, 16#0001#));
+            OpenCV.Core.Float16_Vec3_Access.Set
+              (C3_Right, Row, Column, Pixel (16#4200#, 16#BC00#, 16#0002#));
+         end loop;
+      end loop;
+      C3_Min := C3_Left.Minimum (C3_Right);
+      C3_Max := C3_Left.Maximum (C3_Right);
+      Assert_Float16_Metadata (C3_Min, 2, 2, 3, "Float16 C3 Minimum metadata");
+      Assert_Float16_Metadata (C3_Max, 2, 2, 3, "Float16 C3 Maximum metadata");
+      Assert_Stored_Pixel
+        (C3_Min,
+         1,
+         1,
+         Pixel (16#C000#, 16#BC00#, 16#0001#),
+         "Float16 C3 Minimum components");
+      Assert_Stored_Pixel
+        (C3_Max,
+         1,
+         1,
+         Pixel (16#4200#, 16#4500#, 16#0002#),
+         "Float16 C3 Maximum components");
+      OpenCV.Core.Float16_Vec3_Access.Set
+        (C3_Left, 0, 0, Pixel (16#0000#, 16#7C00#, 16#7E00#));
+      OpenCV.Core.Float16_Vec3_Access.Set
+        (C3_Right, 0, 0, Pixel (16#8000#, 16#FC00#, 16#3C00#));
+      C3_Min := C3_Left.Minimum (C3_Right);
+      C3_Max := C3_Left.Maximum (C3_Right);
+      Assert_Bits
+        (OpenCV.Core.Float16_Vec3_Access.Get (C3_Min, 0, 0) (0),
+         Bits_Of (OpenCV.Core.Float16_Access.Get (Min_Result, 0, 2)),
+         "Float16 C3 Minimum signed zero must match Float32 model");
+      Assert_Bits
+        (OpenCV.Core.Float16_Vec3_Access.Get (C3_Max, 0, 0) (0),
+         Bits_Of (OpenCV.Core.Float16_Access.Get (Max_Result, 0, 2)),
+         "Float16 C3 Maximum signed zero must match Float32 model");
+      Assert_Bits
+        (OpenCV.Core.Float16_Vec3_Access.Get (C3_Min, 0, 0) (1),
+         16#FC00#,
+         "Float16 C3 Minimum infinity component");
+      Assert_Bits
+        (OpenCV.Core.Float16_Vec3_Access.Get (C3_Max, 0, 0) (1),
+         16#7C00#,
+         "Float16 C3 Maximum infinity component");
+      Assert_Bits
+        (OpenCV.Core.Float16_Vec3_Access.Get (C3_Min, 0, 0) (2),
+         Bits_Of (OpenCV.Core.Float16_Access.Get (Min_Result, 0, 10)),
+         "Float16 C3 Minimum NaN component must match Float32 model");
+      Assert_Bits
+        (OpenCV.Core.Float16_Vec3_Access.Get (C3_Max, 0, 0) (2),
+         Bits_Of (OpenCV.Core.Float16_Access.Get (Max_Result, 0, 10)),
+         "Float16 C3 Maximum NaN component must match Float32 model");
+   end Mat_Float16_Minimum_Maximum_Special_And_C3;
+
+   procedure Mat_Float16_Minimum_Maximum_Regions_And_Validation
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left_Parent, Right_Parent     : OpenCV.Core.Mat := Float16_C1 (4, 6);
+      Left, Right, Minimum, Maximum : OpenCV.Core.Mat;
+      C1                            : constant OpenCV.Core.Mat :=
+        Float16_C1 (1, 1);
+      Rows                          : constant OpenCV.Core.Mat :=
+        Float16_C1 (2, 1);
+      Columns                       : constant OpenCV.Core.Mat :=
+        Float16_C1 (1, 2);
+      C3                            : constant OpenCV.Core.Mat :=
+        Float16_C3 (1, 1);
+      F32                           : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Empty                         : OpenCV.Core.Mat;
+      Typed                         : constant OpenCV.Core.Mat :=
+        Float16_C1 (0, 0);
+      procedure Bad_Rows is
+         X : constant OpenCV.Core.Mat := C1.Minimum (Rows);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Rows;
+      procedure Bad_Columns is
+         X : constant OpenCV.Core.Mat := C1.Maximum (Columns);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Columns;
+      procedure Bad_Channels is
+         X : constant OpenCV.Core.Mat := C1.Minimum (C3);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Channels;
+      procedure Bad_Depth is
+         X : constant OpenCV.Core.Mat := C1.Maximum (F32);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Depth;
+      procedure Bad_Default is
+         X : constant OpenCV.Core.Mat := Empty.Minimum (C1);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Default;
+   begin
+      for Row in 0 .. 3 loop
+         for Column in 0 .. 5 loop
+            Set_C1 (Left_Parent, Row, Column, 16#C000#);
+            Set_C1 (Right_Parent, Row, Column, 16#3800#);
+         end loop;
+      end loop;
+      Left := Left_Parent.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+      Right := Right_Parent.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+      Minimum := Left.Minimum (Right);
+      Maximum := Left.Maximum (Right);
+      AUnit.Assertions.Assert
+        (not Left.Is_Continuous
+         and then not Right.Is_Continuous
+         and then Minimum.Is_Continuous
+         and then Maximum.Is_Continuous,
+         "Float16 Minimum and Maximum Regions must allocate"
+         & " independent results");
+      Assert_Float16_Metadata
+        (Minimum, 2, 3, 1, "Float16 Minimum Region metadata");
+      Assert_Float16_Metadata
+        (Maximum, 2, 3, 1, "Float16 Maximum Region metadata");
+      Set_C1 (Left_Parent, 1, 1, 16#7BFF#);
+      Set_C1 (Right_Parent, 1, 1, 16#FBFF#);
+      Set_C1 (Minimum, 0, 1, 16#0000#);
+      Set_C1 (Maximum, 0, 2, 16#0000#);
+      Assert_Stored_Bits
+        (Minimum,
+         0,
+         0,
+         16#C000#,
+         "Minimum Region result must not share sources");
+      Assert_Stored_Bits
+        (Maximum,
+         1,
+         2,
+         16#3800#,
+         "Maximum Region result must not share sources");
+      Assert_Raises_OpenCV_Error (Bad_Rows'Access, "Float16 Minimum rows");
+      Assert_Raises_OpenCV_Error
+        (Bad_Columns'Access, "Float16 Maximum columns");
+      Assert_Raises_OpenCV_Error
+        (Bad_Channels'Access, "Float16 Minimum channels");
+      Assert_Raises_OpenCV_Error (Bad_Depth'Access, "Float16 Maximum depth");
+      Assert_Raises_OpenCV_Error
+        (Bad_Default'Access, "Float16 Minimum default Mat");
+      AUnit.Assertions.Assert
+        (Empty.Minimum (Empty).Is_Empty
+         and then Typed.Maximum (Typed).Is_Empty,
+         "Float16 Minimum and Maximum must preserve empty behavior");
+   end Mat_Float16_Minimum_Maximum_Regions_And_Validation;
+
+   procedure Mat_Float16_Minimum_Maximum_C3_Regions
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left_Parent, Right_Parent     : OpenCV.Core.Mat := Float16_C3 (4, 6);
+      Left, Right, Minimum, Maximum : OpenCV.Core.Mat;
+   begin
+      for Row in 0 .. 3 loop
+         for Column in 0 .. 5 loop
+            OpenCV.Core.Float16_Vec3_Access.Set
+              (Left_Parent, Row, Column, Pixel (16#C000#, 16#4500#, 16#0001#));
+            OpenCV.Core.Float16_Vec3_Access.Set
+              (Right_Parent,
+               Row,
+               Column,
+               Pixel (16#4200#, 16#BC00#, 16#0002#));
+         end loop;
+      end loop;
+      Left := Left_Parent.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+      Right := Right_Parent.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+      Minimum := Left.Minimum (Right);
+      Maximum := Left.Maximum (Right);
+      AUnit.Assertions.Assert
+        (not Left.Is_Continuous
+         and then not Right.Is_Continuous
+         and then Minimum.Is_Continuous
+         and then Maximum.Is_Continuous,
+         "Float16 C3 Minimum and Maximum Regions must allocate results");
+      Assert_Float16_Metadata
+        (Minimum, 2, 3, 3, "Float16 C3 Minimum Region metadata");
+      Assert_Float16_Metadata
+        (Maximum, 2, 3, 3, "Float16 C3 Maximum Region metadata");
+      Assert_Stored_Pixel
+        (Minimum,
+         1,
+         2,
+         Pixel (16#C000#, 16#BC00#, 16#0001#),
+         "Float16 C3 Minimum Region components");
+      Assert_Stored_Pixel
+        (Maximum,
+         1,
+         2,
+         Pixel (16#4200#, 16#4500#, 16#0002#),
+         "Float16 C3 Maximum Region components");
+   end Mat_Float16_Minimum_Maximum_C3_Regions;
+
+   procedure Mat_Float16_Minimum_Maximum_Finite_Oracle
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left : OpenCV.Core.Mat := Float16_C1 (1, Finite_Count);
+      procedure Check
+        (Data       : aliased OpenCV.Core.Float16_Buffer_Access.Buffer_Array;
+         Operand    : Interfaces.Unsigned_16;
+         Is_Minimum : Boolean) is
+      begin
+         for Index in Data'Range loop
+            declare
+               L        : constant OpenCV.Core.Float16_Value :=
+                 OpenCV.Core.Float16_Access.Get (Left, 0, Index);
+               R        : constant OpenCV.Core.Float16_Value := F16 (Operand);
+               Expected : constant OpenCV.Core.Float16_Value :=
+                 (if Is_Minimum
+                  then Finite_Minimum (L, R)
+                  else Finite_Maximum (L, R));
+            begin
+               if not (OpenCV.Core.Is_Zero (L)
+                       and then OpenCV.Core.Is_Zero (R))
+               then
+                  Assert_Bits
+                    (Data (Index),
+                     Bits_Of (Expected),
+                     (if Is_Minimum
+                      then "Float16 Minimum finite exact oracle"
+                      else "Float16 Maximum finite exact oracle"));
+               end if;
+            end;
+         end loop;
+      end Check;
+   begin
+      OpenCV.Core.Float16_Buffer_Access.With_Writable_Buffer
+        (Left, Fill_Finite_Left'Access);
+      for Operand of Abs_Diff_Sweep_Operands loop
+         declare
+            Right            : OpenCV.Core.Mat := Float16_C1 (1, Finite_Count);
+            Minimum, Maximum : OpenCV.Core.Mat;
+            procedure Check_Minimum
+              (Data : aliased OpenCV.Core.Float16_Buffer_Access.Buffer_Array)
+            is
+            begin
+               Check (Data, Operand, True);
+            end Check_Minimum;
+            procedure Check_Maximum
+              (Data : aliased OpenCV.Core.Float16_Buffer_Access.Buffer_Array)
+            is
+            begin
+               Check (Data, Operand, False);
+            end Check_Maximum;
+         begin
+            Fill_Constant (Right, Operand);
+            Minimum := Left.Minimum (Right);
+            Maximum := Left.Maximum (Right);
+            OpenCV.Core.Float16_Buffer_Access.With_Read_Only_Buffer
+              (Minimum, Check_Minimum'Access);
+            OpenCV.Core.Float16_Buffer_Access.With_Read_Only_Buffer
+              (Maximum, Check_Maximum'Access);
+         end;
+      end loop;
+   end Mat_Float16_Minimum_Maximum_Finite_Oracle;
+
+   procedure Mat_Float16_Minimum_Maximum_Finite_Sample
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left, Right      : OpenCV.Core.Mat := Float16_C1 (1, Sample_Pair_Count);
+      Minimum, Maximum : OpenCV.Core.Mat;
+      procedure Fill_Left
+        (Data : aliased in out OpenCV.Core.Float16_Buffer_Access.Buffer_Array)
+      is
+      begin
+         for Index in Data'Range loop
+            Data (Index) := F16 (Sample_Left_Bits (Index));
+         end loop;
+      end Fill_Left;
+      procedure Fill_Right
+        (Data : aliased in out OpenCV.Core.Float16_Buffer_Access.Buffer_Array)
+      is
+      begin
+         for Index in Data'Range loop
+            Data (Index) := F16 (Sample_Right_Bits (Index));
+         end loop;
+      end Fill_Right;
+      procedure Check
+        (Data       : aliased OpenCV.Core.Float16_Buffer_Access.Buffer_Array;
+         Is_Minimum : Boolean) is
+      begin
+         for Index in Data'Range loop
+            declare
+               L        : constant OpenCV.Core.Float16_Value :=
+                 F16 (Sample_Left_Bits (Index));
+               R        : constant OpenCV.Core.Float16_Value :=
+                 F16 (Sample_Right_Bits (Index));
+               Expected : constant OpenCV.Core.Float16_Value :=
+                 (if Is_Minimum
+                  then Finite_Minimum (L, R)
+                  else Finite_Maximum (L, R));
+            begin
+               if not (OpenCV.Core.Is_Zero (L)
+                       and then OpenCV.Core.Is_Zero (R))
+               then
+                  Assert_Bits
+                    (Data (Index),
+                     Bits_Of (Expected),
+                     (if Is_Minimum
+                      then "Float16 Minimum finite sample"
+                      else "Float16 Maximum finite sample"));
+               end if;
+            end;
+         end loop;
+      end Check;
+      procedure Check_Minimum
+        (Data : aliased OpenCV.Core.Float16_Buffer_Access.Buffer_Array) is
+      begin
+         Check (Data, True);
+      end Check_Minimum;
+      procedure Check_Maximum
+        (Data : aliased OpenCV.Core.Float16_Buffer_Access.Buffer_Array) is
+      begin
+         Check (Data, False);
+      end Check_Maximum;
+   begin
+      OpenCV.Core.Float16_Buffer_Access.With_Writable_Buffer
+        (Left, Fill_Left'Access);
+      OpenCV.Core.Float16_Buffer_Access.With_Writable_Buffer
+        (Right, Fill_Right'Access);
+      Minimum := Left.Minimum (Right);
+      Maximum := Left.Maximum (Right);
+      OpenCV.Core.Float16_Buffer_Access.With_Read_Only_Buffer
+        (Minimum, Check_Minimum'Access);
+      OpenCV.Core.Float16_Buffer_Access.With_Read_Only_Buffer
+        (Maximum, Check_Maximum'Access);
+   end Mat_Float16_Minimum_Maximum_Finite_Sample;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -3896,6 +4387,30 @@ package body Mat_Arithmetic_Tests is
         (Caller.Create
            ("Mat mixed empty representations remain empty",
             Mat_Mixed_Empty_Representations_Remain_Empty'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Minimum and Maximum C1 ownership",
+            Mat_Float16_Minimum_Maximum_C1_And_Ownership'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Minimum and Maximum special C3",
+            Mat_Float16_Minimum_Maximum_Special_And_C3'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Minimum and Maximum Regions validation",
+            Mat_Float16_Minimum_Maximum_Regions_And_Validation'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Minimum and Maximum C3 Regions",
+            Mat_Float16_Minimum_Maximum_C3_Regions'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Minimum and Maximum finite oracle",
+            Mat_Float16_Minimum_Maximum_Finite_Oracle'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Minimum and Maximum finite sample",
+            Mat_Float16_Minimum_Maximum_Finite_Sample'Access));
       Result.Add_Test
         (Caller.Create
            ("Mat Add works for Float16 C1",

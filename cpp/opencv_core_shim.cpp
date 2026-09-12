@@ -3302,6 +3302,34 @@ opencv_core_mat_scale_add(const opencv_core_mat_handle *left, double scale,
     }
 }
 
+// OpenCV 4.x has no CV_16F min/max kernels: its min/max dispatch tables end
+// with a null CV_16F slot. OpenCV 5.x supplies native min16f/max16f. The same
+// Float32-model conformance tests run on both paths, including special values.
+enum class min_max_operation { minimum, maximum };
+
+static void min_max_float16(const cv::Mat &left, const cv::Mat &right,
+                            cv::Mat &result, min_max_operation operation) {
+#if CV_VERSION_MAJOR >= 5
+    if (operation == min_max_operation::minimum) {
+        cv::min(left, right, result);
+    } else {
+        cv::max(left, right, result);
+    }
+#else
+    cv::Mat left32;
+    cv::Mat right32;
+    cv::Mat result32;
+    left.convertTo(left32, CV_32F);
+    right.convertTo(right32, CV_32F);
+    if (operation == min_max_operation::minimum) {
+        cv::min(left32, right32, result32);
+    } else {
+        cv::max(left32, right32, result32);
+    }
+    result32.convertTo(result, CV_16F);
+#endif
+}
+
 opencv_core_status
 opencv_core_mat_minimum(const opencv_core_mat_handle *left,
                         const opencv_core_mat_handle *right,
@@ -3330,7 +3358,12 @@ opencv_core_mat_minimum(const opencv_core_mat_handle *left,
         }
 
         cv::Mat result;
-        cv::min(left->value, right->value, result);
+        if (left->value.depth() == CV_16F) {
+            min_max_float16(left->value, right->value, result,
+                            min_max_operation::minimum);
+        } else {
+            cv::min(left->value, right->value, result);
+        }
         *out_mat = new opencv_core_mat_handle(result);
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -3366,7 +3399,12 @@ opencv_core_mat_maximum(const opencv_core_mat_handle *left,
         }
 
         cv::Mat result;
-        cv::max(left->value, right->value, result);
+        if (left->value.depth() == CV_16F) {
+            min_max_float16(left->value, right->value, result,
+                            min_max_operation::maximum);
+        } else {
+            cv::max(left->value, right->value, result);
+        }
         *out_mat = new opencv_core_mat_handle(result);
         return OPENCV_CORE_OK;
     } catch (...) {
