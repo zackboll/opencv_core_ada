@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <cfloat>
 #include <cmath>
+#include <cstddef>
 #include <cstring>
 #include <algorithm>
 #include <exception>
@@ -5719,6 +5720,103 @@ opencv_core_mat_set_float32_vec3(opencv_core_mat_handle *mat, int32_t row,
         assign_vec(mat->value.at<cv::Vec<float, 3>>(static_cast<int>(row),
                                                     static_cast<int>(column)),
                    to_opencv_vec3(*value));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+static_assert(sizeof(opencv_core_float16_vec3) == 6,
+              "opencv_core_float16_vec3 must be packed 6-byte ABI storage");
+static_assert(offsetof(opencv_core_float16_vec3, component_0) == 0,
+              "opencv_core_float16_vec3 component_0 must start at offset 0");
+static_assert(offsetof(opencv_core_float16_vec3, component_1) == 2,
+              "opencv_core_float16_vec3 component_1 must start at offset 2");
+static_assert(offsetof(opencv_core_float16_vec3, component_2) == 4,
+              "opencv_core_float16_vec3 component_2 must start at offset 4");
+
+opencv_core_status
+opencv_core_mat_get_float16_vec3(const opencv_core_mat_handle *mat,
+                                 int32_t row, int32_t column,
+                                 opencv_core_float16_vec3 *out_value) {
+    clear_error();
+
+    if (out_value == nullptr) {
+        return invalid_argument("out_value must not be null");
+    }
+
+    *out_value = {0, 0, 0};
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        const opencv_core_status status =
+            validate_typed_at(mat->value, row, column, CV_16F, 3,
+                              "Mat depth must be Float16",
+                              "Mat must have exactly three channels");
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        // ABI safety: Mat::ptr(row) plus column * elemSize() addresses
+        // six bytes of native CV_16FC3 storage. OpenCV's public half
+        // C++ type name is not used; memcpy copies exact binary16 bits.
+        if (mat->value.elemSize1() != 2 || mat->value.elemSize() != 6) {
+            return invalid_argument(
+                "Mat element size does not match a Float16 Vec3 pixel");
+        }
+
+        const unsigned char *const pixel =
+            mat->value.ptr(static_cast<int>(row)) +
+            static_cast<std::size_t>(column) * mat->value.elemSize();
+        std::memcpy(&out_value->component_0, pixel + 0, 2);
+        std::memcpy(&out_value->component_1, pixel + 2, 2);
+        std::memcpy(&out_value->component_2, pixel + 4, 2);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_set_float16_vec3(opencv_core_mat_handle *mat, int32_t row,
+                                 int32_t column,
+                                 const opencv_core_float16_vec3 *value) {
+    clear_error();
+
+    if (value == nullptr) {
+        return invalid_argument("value must not be null");
+    }
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        const opencv_core_status status =
+            validate_typed_at(mat->value, row, column, CV_16F, 3,
+                              "Mat depth must be Float16",
+                              "Mat must have exactly three channels");
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        // ABI safety: the shim writes six bytes at ptr(row) +
+        // column * elemSize(). An 8-byte store would overwrite the next
+        // pixel or padding; OpenCV half C++ types are not used.
+        if (mat->value.elemSize1() != 2 || mat->value.elemSize() != 6) {
+            return invalid_argument(
+                "Mat element size does not match a Float16 Vec3 pixel");
+        }
+
+        unsigned char *const pixel =
+            mat->value.ptr(static_cast<int>(row)) +
+            static_cast<std::size_t>(column) * mat->value.elemSize();
+        std::memcpy(pixel + 0, &value->component_0, 2);
+        std::memcpy(pixel + 2, &value->component_1, 2);
+        std::memcpy(pixel + 4, &value->component_2, 2);
         return OPENCV_CORE_OK;
     } catch (...) {
         return translate_current_exception();

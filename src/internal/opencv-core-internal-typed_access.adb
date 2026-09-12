@@ -1075,5 +1075,46 @@ package body OpenCV.Core.Internal.Typed_Access is
    begin
       Raise_On_Error (Status, "Float32 Vec3 typed Mat write");
    end Set_Float32_Vec3;
+   function Get_Float16_Vec3
+     (Image : Mat; Row, Column : Integer)
+      return OpenCV.Core.Float16_Vec3.Vector
+   is
+      Result : aliased OpenCV.Internal.C_API.Float16_Vec3 := (others => 0);
+      Status : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Get_Float16_Vec3
+          (Self   => Image.Handle,
+           Row    => OpenCV.Internal.C_API.C_Int32 (Row),
+           Column => OpenCV.Internal.C_API.C_Int32 (Column),
+           Result => Result'Access);
+   begin
+      Raise_On_Error (Status, "Float16 Vec3 typed Mat read");
+      return
+        (0 => Float16_From_Bits (Interfaces.Unsigned_16 (Result.Component_0)),
+         1 => Float16_From_Bits (Interfaces.Unsigned_16 (Result.Component_1)),
+         2 => Float16_From_Bits (Interfaces.Unsigned_16 (Result.Component_2)));
+   end Get_Float16_Vec3;
+
+   procedure Set_Float16_Vec3
+     (Image  : in out Mat;
+      Row    : Integer;
+      Column : Integer;
+      Value  : OpenCV.Core.Float16_Vec3.Vector)
+   is
+      C_Value : aliased constant OpenCV.Internal.C_API.Float16_Vec3 :=
+        (Component_0 =>
+           OpenCV.Internal.C_API.C_UInt16 (Float16_Bits (Value (0))),
+         Component_1 =>
+           OpenCV.Internal.C_API.C_UInt16 (Float16_Bits (Value (1))),
+         Component_2 =>
+           OpenCV.Internal.C_API.C_UInt16 (Float16_Bits (Value (2))));
+      Status  : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Set_Float16_Vec3
+          (Self   => Image.Handle,
+           Row    => OpenCV.Internal.C_API.C_Int32 (Row),
+           Column => OpenCV.Internal.C_API.C_Int32 (Column),
+           Value  => C_Value'Access);
+   begin
+      Raise_On_Error (Status, "Float16 Vec3 typed Mat write");
+   end Set_Float16_Vec3;
 
 end OpenCV.Core.Internal.Typed_Access;

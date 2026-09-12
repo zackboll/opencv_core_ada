@@ -66,6 +66,15 @@ package OpenCV.Internal.C_API is
       Component_2 : C_Float32;
    end record
    with Convention => C;
+   --  Each component is the stored IEEE binary16 encoding, not an
+   --  integer-valued channel.
+   type Float16_Vec3 is record
+      Component_0 : C_UInt16;
+      Component_1 : C_UInt16;
+      Component_2 : C_UInt16;
+   end record
+   with Convention => C;
+
    Depth_UInt8   : constant C_Int32 := 0;
    Depth_Int8    : constant C_Int32 := 1;
    Depth_UInt16  : constant C_Int32 := 2;
@@ -1167,6 +1176,27 @@ package OpenCV.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_core_mat_get_float32_vec3";
+
+   --  Each uint16_t component is the stored IEEE binary16 encoding.
+   function Mat_Get_Float16_Vec3
+     (Self   : Mat_Handle;
+      Row    : C_Int32;
+      Column : C_Int32;
+      Result : access Float16_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_float16_vec3";
+
+   function Mat_Set_Float16_Vec3
+     (Self   : Mat_Handle;
+      Row    : C_Int32;
+      Column : C_Int32;
+      Value  : access constant Float16_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_float16_vec3";
 
    function Mat_Set_Float32_Vec3
      (Self   : Mat_Handle;

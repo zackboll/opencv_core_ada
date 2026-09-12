@@ -1,3 +1,4 @@
+with OpenCV.Core.Float16_Vec3;
 with OpenCV.Core.Float32_Vec3;
 with OpenCV.Core.UInt8_Vec3;
 with OpenCV.Internal.C_API;
@@ -172,5 +173,15 @@ package OpenCV.Core.Internal.Typed_Access is
       Row    : Integer;
       Column : Integer;
       Value  : OpenCV.Core.Float32_Vec3.Vector);
+      
+   function Get_Float16_Vec3
+     (Image : Mat; Row, Column : Integer)
+      return OpenCV.Core.Float16_Vec3.Vector;
+
+   procedure Set_Float16_Vec3
+     (Image  : in out Mat;
+      Row    : Integer;
+      Column : Integer;
+      Value  : OpenCV.Core.Float16_Vec3.Vector);
 
 end OpenCV.Core.Internal.Typed_Access;

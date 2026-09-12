@@ -653,16 +653,20 @@ Direct typed access currently concentrates on nine common layouts:
 | Float32 C1 | `Float32_Access` | `Float32_Access` | — | `Float32_Row_Access` | `Float32_Row_Access` | `Float32_Buffer_Access` | `Float32_Mat_View` | `Float32_Mat_View` |
 | Float64 C1 | `Float64_Access` | `Float64_Access` | `Float64_Access` | `Float64_Row_Access` | `Float64_Row_Access` | `Float64_Buffer_Access` | `Float64_Mat_View` | `Float64_Mat_View` |
 | UInt8 C3 | `UInt8_Vec3_Access` | — | — | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Buffer_Access` | `UInt8_Vec3_Mat_View` | — |
+| Float16 C3 | `Float16_Vec3_Access` | — | — | — | — | — | — | — |
 | Float32 C3 | `Float32_Vec3_Access` | — | — | `Float32_Vec3_Row_Access` | `Float32_Vec3_Row_Access` | `Float32_Vec3_Buffer_Access` | `Float32_Vec3_Mat_View` | — |
 
 For Vec3 APIs, **one Ada vector is one complete OpenCV element/pixel**, not one
 scalar channel:
 
 - UInt8 Vec3: 24 bits / 3 bytes per element, native alignment 1;
+- Float16 Vec3: 48 bits / 6 bytes per element, native scalar alignment 2;
 - Float32 Vec3: 96 bits / 12 bytes per element, native scalar alignment 4.
 
 The predefined Vec3 packages are component-oriented and do not impose RGB,
-BGR, XYZ, or any other semantic channel interpretation.
+BGR, XYZ, or any other semantic channel interpretation. `Float16_Vec3`
+is an exact three-component binary16 pixel type: indices `0 .. 2` are
+OpenCV channel indices, not RGB or BGR names.
 
 `UInt16_Access` provides scalar 2-D and N-D Get/Set for single-channel `CV_16U`
 Mats. `UInt16_Row_Access` adds copied and callback-scoped zero-copy row access
@@ -695,8 +699,11 @@ owns the backing storage, OpenCV does not free it, and it must remain alive
 for the callback lifetime. The main C1 FP16 data plane is now complete:
 exact value representation, Float32 conversion, scalar access, row access,
 continuous-buffer borrowing, packed external views, and strided external
-views. This does not add FP16 C3 support or broad OpenCV 4.x FP16 algorithm
-coverage.
+views. This does not add FP16 C3 row, buffer, or external-view APIs or
+broad OpenCV 4.x FP16 algorithm coverage. `Float16_Vec3` /
+`Float16_Vec3_Access` add exact-bit 2-D Get/Set for ordinary three-channel
+`CV_16FC3` Mats. Component 0, 1, and 2 correspond to OpenCV channels 0, 1,
+and 2; Core does not assign RGB or BGR meaning.
 
 `Float64_Access` provides scalar 2-D and N-D Get/Set plus non-finite value
 classification. `Float64_Row_Access` adds copied and callback-scoped zero-copy
@@ -1384,21 +1391,23 @@ The current limitations are intentional and help keep the public API coherent:
 
 2. **No public `SparseMat` or `UMat` abstraction.**
 
-3. **Typed direct/zero-copy access is focused on UInt8 and Float32 C1/C3, plus UInt16/Int16/Int32/Float16 C1 and Float64 C1.**
+3. **Typed direct/zero-copy access is focused on UInt8 and Float32 C1/C3, plus UInt16/Int16/Int32/Float16 C1, Float16 C3 2-D Get/Set, and Float64 C1.**
    UInt16 C1 has 2-D and N-D Get/Set plus copied and borrowed 2-D row access.
    Int16 C1 has 2-D and N-D Get/Set plus copied and borrowed 2-D row access.
    Int32 C1 has 2-D and N-D Get/Set. Float16 C1 has 2-D and N-D Get/Set that
    preserve the exact binary16 encoding, plus copied and borrowed 2-D row
    access, continuous 2-D whole-buffer borrowing, and packed or row-strided
-   2-D caller-buffer views. Float64 C1 has 2-D and
+   2-D caller-buffer views. Float16 C3 has 2-D Vec3 Get/Set that preserve
+   exact binary16 encodings per channel; N-D C3 access, row access, buffer
+   borrowing, and external views are not yet provided. Float64 C1 has 2-D and
    N-D Get/Set, classification, 2-D row access, continuous 2-D whole-buffer
    borrowing, and packed or row-strided 2-D caller-buffer views. Other OpenCV
    depths are available to general Mat operations but do not yet have the same
    typed access families. Float16 now has an exact 16-bit public value
    representation, IEEE-754 classification helpers, numeric
    Float32 <-> Float16 conversion, scalar C1 2-D/N-D Get/Set, copied and
-   borrowed row access, continuous buffer borrowing, and packed or strided
-   external caller-buffer Mat views.
+   borrowed row access, continuous buffer borrowing, packed or strided
+   external caller-buffer Mat views, and C3 2-D Vec3 Get/Set.
 
 4. **External caller-buffer views are writable and callback-scoped.**  
    Packed 2-D views are available for UInt8/Float32 C1/C3 and Float16/Float64 C1.

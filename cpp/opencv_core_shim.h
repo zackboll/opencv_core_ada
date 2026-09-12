@@ -64,6 +64,17 @@ typedef struct {
     float component_1;
     float component_2;
 } opencv_core_float32_vec3;
+
+/*
+ * Raw IEEE-754 binary16 encodings for a three-channel CV_16F pixel.
+ * Each uint16_t member is the stored 16-bit pattern, not an integer
+ * channel value and not a numeric conversion through float.
+ */
+typedef struct {
+    uint16_t component_0;
+    uint16_t component_1;
+    uint16_t component_2;
+} opencv_core_float16_vec3;
 /*
  * Stable depth identifiers for the C ABI. These are translated explicitly to
  * OpenCV depth constants by the shim and are not OpenCV's encoded Mat types.
@@ -1192,6 +1203,23 @@ opencv_core_status
 opencv_core_mat_set_float32_vec3(opencv_core_mat_handle *mat,
                                  int32_t row, int32_t column,
                                  const opencv_core_float32_vec3 *value);
+
+/*
+ * Read or write one three-channel CV_16F pixel as raw binary16 encodings.
+ * Row, column, and component numbering are zero-based. Each uint16_t
+ * member is the stored 16-bit pattern. The implementation copies six
+ * bytes of native Mat storage and does not depend on OpenCV's public
+ * half C++ type name.
+ */
+opencv_core_status
+opencv_core_mat_get_float16_vec3(const opencv_core_mat_handle *mat,
+                                 int32_t row, int32_t column,
+                                 opencv_core_float16_vec3 *out_value);
+
+opencv_core_status
+opencv_core_mat_set_float16_vec3(opencv_core_mat_handle *mat,
+                                 int32_t row, int32_t column,
+                                 const opencv_core_float16_vec3 *value);
 
 /*
  * Copy one complete row of a two-dimensional, exactly three-channel Mat.
