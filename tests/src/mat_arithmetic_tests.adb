@@ -2,6 +2,10 @@ with AUnit.Assertions;
 with AUnit.Test_Caller;
 with Interfaces;
 with OpenCV.Core;
+with OpenCV.Core.Float16_Access;
+with OpenCV.Core.Float16_Buffer_Access;
+with OpenCV.Core.Float16_Vec3;
+with OpenCV.Core.Float16_Vec3_Access;
 with OpenCV.Core.Float32_Access;
 with OpenCV.Core.UInt8_Access;
 with OpenCV.Core.UInt8_Vec3;
@@ -12,12 +16,112 @@ package body Mat_Arithmetic_Tests is
 
    use type Interfaces.IEEE_Float_32;
    use type Interfaces.Unsigned_8;
+   use type Interfaces.Unsigned_16;
+
    use type OpenCV.Core.Depth_Type;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Float32_Access.Float32_Classification;
    use type OpenCV.Core.UInt8_Vec3.Vector;
 
    use Mat_Test_Support;
+   function F16
+     (Bits : Interfaces.Unsigned_16) return OpenCV.Core.Float16_Value
+   is (OpenCV.Core.Float16_From_Bits (Bits));
+
+   function Bits_Of
+     (Value : OpenCV.Core.Float16_Value) return Interfaces.Unsigned_16
+   is (OpenCV.Core.Float16_Bits (Value));
+
+   function Expected_Add
+     (Left, Right : OpenCV.Core.Float16_Value) return OpenCV.Core.Float16_Value
+   is (OpenCV.Core.To_Float16
+         (OpenCV.Core.To_Float32 (Left) + OpenCV.Core.To_Float32 (Right)));
+
+   function Expected_Subtract
+     (Left, Right : OpenCV.Core.Float16_Value) return OpenCV.Core.Float16_Value
+   is (OpenCV.Core.To_Float16
+         (OpenCV.Core.To_Float32 (Left) - OpenCV.Core.To_Float32 (Right)));
+
+   function Float16_C1 (Rows, Columns : Natural) return OpenCV.Core.Mat
+   is (OpenCV.Core.Create (Rows, Columns, (OpenCV.Core.Float16, 1)));
+
+   function Float16_C3 (Rows, Columns : Natural) return OpenCV.Core.Mat
+   is (OpenCV.Core.Create (Rows, Columns, (OpenCV.Core.Float16, 3)));
+
+   function Pixel
+     (C0, C1, C2 : Interfaces.Unsigned_16)
+      return OpenCV.Core.Float16_Vec3.Vector
+   is ((0 => F16 (C0), 1 => F16 (C1), 2 => F16 (C2)));
+
+   procedure Assert_Bits
+     (Value    : OpenCV.Core.Float16_Value;
+      Expected : Interfaces.Unsigned_16;
+      Message  : String)
+   is
+      Stored : constant Interfaces.Unsigned_16 := Bits_Of (Value);
+   begin
+      AUnit.Assertions.Assert
+        (Stored = Expected,
+         Message
+         & " (got"
+         & Interfaces.Unsigned_16'Image (Stored)
+         & ", expected"
+         & Interfaces.Unsigned_16'Image (Expected)
+         & ")");
+   end Assert_Bits;
+
+   procedure Assert_Stored_Bits
+     (Image    : OpenCV.Core.Mat;
+      Row      : Integer;
+      Column   : Integer;
+      Expected : Interfaces.Unsigned_16;
+      Message  : String) is
+   begin
+      Assert_Bits
+        (OpenCV.Core.Float16_Access.Get (Image, Row, Column),
+         Expected,
+         Message);
+   end Assert_Stored_Bits;
+
+   procedure Assert_Stored_Pixel
+     (Image    : OpenCV.Core.Mat;
+      Row      : Integer;
+      Column   : Integer;
+      Expected : OpenCV.Core.Float16_Vec3.Vector;
+      Message  : String)
+   is
+      Stored : constant OpenCV.Core.Float16_Vec3.Vector :=
+        OpenCV.Core.Float16_Vec3_Access.Get (Image, Row, Column);
+   begin
+      for Component in OpenCV.Core.Float16_Vec3.Component_Index loop
+         Assert_Bits
+           (Stored (Component),
+            Bits_Of (Expected (Component)),
+            Message & " component" & Integer'Image (Component));
+      end loop;
+   end Assert_Stored_Pixel;
+
+   procedure Assert_Float16_Metadata
+     (Image         : OpenCV.Core.Mat;
+      Rows, Columns : Natural;
+      Channels      : OpenCV.Core.Channel_Count;
+      Message       : String) is
+   begin
+      AUnit.Assertions.Assert
+        (Image.Rows = Rows
+         and then Image.Columns = Columns
+         and then Image.Depth = OpenCV.Core.Float16
+         and then Image.Channels = Channels,
+         Message);
+   end Assert_Float16_Metadata;
+
+   procedure Set_C1
+     (Image       : in out OpenCV.Core.Mat;
+      Row, Column : Integer;
+      Bits        : Interfaces.Unsigned_16) is
+   begin
+      OpenCV.Core.Float16_Access.Set (Image, Row, Column, F16 (Bits));
+   end Set_C1;
 
    procedure Mat_Add_And_Subtract_Work_For_Float32
      (Test : in out Mat_Test_Fixture)
@@ -1215,6 +1319,758 @@ package body Mat_Arithmetic_Tests is
          & " UInt8 C1 operands as an empty result");
    end Mat_Mixed_Empty_Representations_Remain_Empty;
 
+   procedure Mat_Add_Works_For_Float16_C1 (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Left   : OpenCV.Core.Mat := Float16_C1 (1, 3);
+      Right  : OpenCV.Core.Mat := Float16_C1 (1, 3);
+      Result : OpenCV.Core.Mat;
+   begin
+      --  1.0 + 2.0 = 3.0, 1.5 + 2.25 = 3.75, -2.0 + 0.5 = -1.5
+      Set_C1 (Left, 0, 0, 16#3C00#);
+      Set_C1 (Left, 0, 1, 16#3E00#);
+      Set_C1 (Left, 0, 2, 16#C000#);
+      Set_C1 (Right, 0, 0, 16#4000#);
+      Set_C1 (Right, 0, 1, 16#4080#);
+      Set_C1 (Right, 0, 2, 16#3800#);
+      Result := Left.Add (Right);
+      Assert_Float16_Metadata
+        (Result, 1, 3, 1, "Float16 C1 Add must preserve shape and type");
+      Assert_Stored_Bits (Result, 0, 0, 16#4200#, "1.0 + 2.0 must be 3.0");
+      Assert_Stored_Bits (Result, 0, 1, 16#4380#, "1.5 + 2.25 must be 3.75");
+      Assert_Stored_Bits (Result, 0, 2, 16#BE00#, "-2.0 + 0.5 must be -1.5");
+      Assert_Stored_Bits (Left, 0, 0, 16#3C00#, "Add must not mutate Left");
+      Assert_Stored_Bits (Right, 0, 0, 16#4000#, "Add must not mutate Right");
+      Set_C1 (Result, 0, 0, 16#7C00#);
+      Assert_Stored_Bits
+        (Left, 0, 0, 16#3C00#, "mutating the result must not affect Left");
+   end Mat_Add_Works_For_Float16_C1;
+
+   procedure Mat_Subtract_Works_For_Float16_C1 (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left   : OpenCV.Core.Mat := Float16_C1 (1, 3);
+      Right  : OpenCV.Core.Mat := Float16_C1 (1, 3);
+      Result : OpenCV.Core.Mat;
+   begin
+      --  3.0 - 1.0, 1.0 - 2.0, -1.5 - (-0.5)
+      Set_C1 (Left, 0, 0, 16#4200#);
+      Set_C1 (Left, 0, 1, 16#3C00#);
+      Set_C1 (Left, 0, 2, 16#BE00#);
+      Set_C1 (Right, 0, 0, 16#3C00#);
+      Set_C1 (Right, 0, 1, 16#4000#);
+      Set_C1 (Right, 0, 2, 16#B800#);
+      Result := Left.Subtract (Right);
+      Assert_Float16_Metadata
+        (Result, 1, 3, 1, "Float16 C1 Subtract must preserve shape and type");
+      Assert_Stored_Bits (Result, 0, 0, 16#4000#, "3.0 - 1.0 must be 2.0");
+      Assert_Stored_Bits (Result, 0, 1, 16#BC00#, "1.0 - 2.0 must be -1.0");
+      Assert_Stored_Bits
+        (Result, 0, 2, 16#BC00#, "-1.5 - (-0.5) must be -1.0");
+   end Mat_Subtract_Works_For_Float16_C1;
+
+   procedure Mat_Float16_Add_Subtract_Round_To_Nearest_Even
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left  : OpenCV.Core.Mat := Float16_C1 (1, 4);
+      Right : OpenCV.Core.Mat := Float16_C1 (1, 4);
+      Sum   : OpenCV.Core.Mat;
+      Diff  : OpenCV.Core.Mat;
+   begin
+      --  exact 1+2; 1 + 2^-12 rounds down; 1 + 3*2^-12 rounds up;
+      --  1 + 2^-11 is the ties-to-even midpoint.
+      Set_C1 (Left, 0, 0, 16#3C00#);
+      Set_C1 (Right, 0, 0, 16#4000#);
+      Set_C1 (Left, 0, 1, 16#3C00#);
+      Set_C1 (Right, 0, 1, 16#1000#);
+      Set_C1 (Left, 0, 2, 16#3C00#);
+      Set_C1 (Right, 0, 2, 16#1800#);
+      Set_C1 (Left, 0, 3, 16#3C00#);
+      Set_C1 (Right, 0, 3, 16#1400#);
+      Sum := Left.Add (Right);
+      Diff := Left.Subtract (Right);
+      for Column in 0 .. 3 loop
+         declare
+            L : constant OpenCV.Core.Float16_Value :=
+              OpenCV.Core.Float16_Access.Get (Left, 0, Column);
+            R : constant OpenCV.Core.Float16_Value :=
+              OpenCV.Core.Float16_Access.Get (Right, 0, Column);
+         begin
+            Assert_Bits
+              (OpenCV.Core.Float16_Access.Get (Sum, 0, Column),
+               Bits_Of (Expected_Add (L, R)),
+               "Float16 Add rounding must match the Float32 oracle");
+            Assert_Bits
+              (OpenCV.Core.Float16_Access.Get (Diff, 0, Column),
+               Bits_Of (Expected_Subtract (L, R)),
+               "Float16 Subtract rounding must match the Float32 oracle");
+         end;
+      end loop;
+   end Mat_Float16_Add_Subtract_Round_To_Nearest_Even;
+
+   procedure Mat_Float16_Add_Subtract_Handle_Subnormals
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left  : OpenCV.Core.Mat := Float16_C1 (1, 3);
+      Right : OpenCV.Core.Mat := Float16_C1 (1, 3);
+      Sum   : OpenCV.Core.Mat;
+      Diff  : OpenCV.Core.Mat;
+   begin
+      Set_C1 (Left, 0, 0, 16#0001#);
+      Set_C1 (Right, 0, 0, 16#0001#);
+      Set_C1 (Left, 0, 1, 16#0400#);
+      Set_C1 (Right, 0, 1, 16#03FF#);
+      Set_C1 (Left, 0, 2, 16#0003#);
+      Set_C1 (Right, 0, 2, 16#0003#);
+      Sum := Left.Add (Right);
+      Diff := Left.Subtract (Right);
+      Assert_Bits
+        (OpenCV.Core.Float16_Access.Get (Sum, 0, 0),
+         Bits_Of
+           (Expected_Add
+              (OpenCV.Core.Float16_Access.Get (Left, 0, 0),
+               OpenCV.Core.Float16_Access.Get (Right, 0, 0))),
+         "min subnormal + min subnormal");
+      Assert_Bits
+        (OpenCV.Core.Float16_Access.Get (Diff, 0, 1),
+         Bits_Of
+           (Expected_Subtract
+              (OpenCV.Core.Float16_Access.Get (Left, 0, 1),
+               OpenCV.Core.Float16_Access.Get (Right, 0, 1))),
+         "min normal - max subnormal");
+      Assert_Bits
+        (OpenCV.Core.Float16_Access.Get (Diff, 0, 2),
+         Bits_Of
+           (Expected_Subtract
+              (OpenCV.Core.Float16_Access.Get (Left, 0, 2),
+               OpenCV.Core.Float16_Access.Get (Right, 0, 2))),
+         "small positive - itself");
+   end Mat_Float16_Add_Subtract_Handle_Subnormals;
+
+   procedure Mat_Float16_Add_Overflows_To_Signed_Infinity
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left  : OpenCV.Core.Mat := Float16_C1 (1, 2);
+      Right : OpenCV.Core.Mat := Float16_C1 (1, 2);
+      Sum   : OpenCV.Core.Mat;
+   begin
+      Set_C1 (Left, 0, 0, 16#7BFF#);
+      Set_C1 (Right, 0, 0, 16#7BFF#);
+      Set_C1 (Left, 0, 1, 16#FBFF#);
+      Set_C1 (Right, 0, 1, 16#FBFF#);
+      Sum := Left.Add (Right);
+      Assert_Stored_Bits
+        (Sum, 0, 0, 16#7C00#, "max finite + max finite must be +Inf");
+      Assert_Stored_Bits
+        (Sum,
+         0,
+         1,
+         16#FC00#,
+         "negative max finite + negative max finite must be -Inf");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Is_Infinite (OpenCV.Core.Float16_Access.Get (Sum, 0, 0))
+         and then not OpenCV.Core.Is_Negative
+                        (OpenCV.Core.Float16_Access.Get (Sum, 0, 0)),
+         "+overflow must classify as nonnegative infinity");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Is_Infinite (OpenCV.Core.Float16_Access.Get (Sum, 0, 1))
+         and then OpenCV.Core.Is_Negative
+                    (OpenCV.Core.Float16_Access.Get (Sum, 0, 1)),
+         "-overflow must classify as negative infinity");
+   end Mat_Float16_Add_Overflows_To_Signed_Infinity;
+
+   procedure Mat_Float16_Add_Subtract_Signed_Zero
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left  : OpenCV.Core.Mat := Float16_C1 (1, 5);
+      Right : OpenCV.Core.Mat := Float16_C1 (1, 5);
+      Sum   : OpenCV.Core.Mat;
+      Diff  : OpenCV.Core.Mat;
+   begin
+      --  +0 + -0, -0 + -0, +0 - +0, -0 - +0, x - x
+      Set_C1 (Left, 0, 0, 16#0000#);
+      Set_C1 (Right, 0, 0, 16#8000#);
+      Set_C1 (Left, 0, 1, 16#8000#);
+      Set_C1 (Right, 0, 1, 16#8000#);
+      Set_C1 (Left, 0, 2, 16#0000#);
+      Set_C1 (Right, 0, 2, 16#0000#);
+      Set_C1 (Left, 0, 3, 16#8000#);
+      Set_C1 (Right, 0, 3, 16#0000#);
+      Set_C1 (Left, 0, 4, 16#3C00#);
+      Set_C1 (Right, 0, 4, 16#3C00#);
+      Sum := Left.Add (Right);
+      Diff := Left.Subtract (Right);
+      for Column in 0 .. 4 loop
+         declare
+            L : constant OpenCV.Core.Float16_Value :=
+              OpenCV.Core.Float16_Access.Get (Left, 0, Column);
+            R : constant OpenCV.Core.Float16_Value :=
+              OpenCV.Core.Float16_Access.Get (Right, 0, Column);
+         begin
+            Assert_Bits
+              (OpenCV.Core.Float16_Access.Get (Sum, 0, Column),
+               Bits_Of (Expected_Add (L, R)),
+               "signed-zero Add must match the Float32 oracle");
+            Assert_Bits
+              (OpenCV.Core.Float16_Access.Get (Diff, 0, Column),
+               Bits_Of (Expected_Subtract (L, R)),
+               "signed-zero Subtract must match the Float32 oracle");
+         end;
+      end loop;
+   end Mat_Float16_Add_Subtract_Signed_Zero;
+
+   procedure Mat_Float16_Add_Subtract_Infinity_And_NaN
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left      : OpenCV.Core.Mat := Float16_C1 (1, 6);
+      Right     : OpenCV.Core.Mat := Float16_C1 (1, 6);
+      Sum       : OpenCV.Core.Mat;
+      Diff      : OpenCV.Core.Mat;
+      Plus_Inf  : constant OpenCV.Core.Float16_Value := F16 (16#7C00#);
+      Minus_Inf : constant OpenCV.Core.Float16_Value := F16 (16#FC00#);
+      One       : constant OpenCV.Core.Float16_Value := F16 (16#3C00#);
+      Quiet_NaN : constant OpenCV.Core.Float16_Value := F16 (16#7E00#);
+   begin
+      OpenCV.Core.Float16_Access.Set (Left, 0, 0, Plus_Inf);
+      OpenCV.Core.Float16_Access.Set (Right, 0, 0, One);
+      OpenCV.Core.Float16_Access.Set (Left, 0, 1, Minus_Inf);
+      OpenCV.Core.Float16_Access.Set (Right, 0, 1, One);
+      OpenCV.Core.Float16_Access.Set (Left, 0, 2, Plus_Inf);
+      OpenCV.Core.Float16_Access.Set (Right, 0, 2, Plus_Inf);
+      OpenCV.Core.Float16_Access.Set (Left, 0, 3, Minus_Inf);
+      OpenCV.Core.Float16_Access.Set (Right, 0, 3, Minus_Inf);
+      OpenCV.Core.Float16_Access.Set (Left, 0, 4, Quiet_NaN);
+      OpenCV.Core.Float16_Access.Set (Right, 0, 4, One);
+      OpenCV.Core.Float16_Access.Set (Left, 0, 5, One);
+      OpenCV.Core.Float16_Access.Set (Right, 0, 5, Quiet_NaN);
+      Sum := Left.Add (Right);
+      Diff := Left.Subtract (Right);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Is_Infinite (OpenCV.Core.Float16_Access.Get (Sum, 0, 0))
+         and then not OpenCV.Core.Is_Negative
+                        (OpenCV.Core.Float16_Access.Get (Sum, 0, 0)),
+         "+Inf + finite must be +Inf");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Is_Infinite (OpenCV.Core.Float16_Access.Get (Sum, 0, 1))
+         and then OpenCV.Core.Is_Negative
+                    (OpenCV.Core.Float16_Access.Get (Sum, 0, 1)),
+         "-Inf + finite must be -Inf");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Is_NaN (OpenCV.Core.Float16_Access.Get (Diff, 0, 2)),
+         "+Inf - +Inf must be NaN");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Is_NaN (OpenCV.Core.Float16_Access.Get (Diff, 0, 3)),
+         "-Inf - -Inf must be NaN");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Is_NaN (OpenCV.Core.Float16_Access.Get (Sum, 0, 4)),
+         "NaN + finite must be NaN");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Is_NaN (OpenCV.Core.Float16_Access.Get (Diff, 0, 5)),
+         "finite - NaN must be NaN");
+   end Mat_Float16_Add_Subtract_Infinity_And_NaN;
+
+   procedure Mat_Add_Works_For_Float16_C3 (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Left   : OpenCV.Core.Mat := Float16_C3 (1, 1);
+      Right  : OpenCV.Core.Mat := Float16_C3 (1, 1);
+      Result : OpenCV.Core.Mat;
+   begin
+      --  (1.0, -2.0, 0.5) + (2.0, 0.5, 4.0) = (3.0, -1.5, 4.5)
+      OpenCV.Core.Float16_Vec3_Access.Set
+        (Left, 0, 0, Pixel (16#3C00#, 16#C000#, 16#3800#));
+      OpenCV.Core.Float16_Vec3_Access.Set
+        (Right, 0, 0, Pixel (16#4000#, 16#3800#, 16#4400#));
+      Result := Left.Add (Right);
+      Assert_Float16_Metadata
+        (Result, 1, 1, 3, "Float16 C3 Add must preserve C3 metadata");
+      Assert_Stored_Pixel
+        (Result,
+         0,
+         0,
+         Pixel (16#4200#, 16#BE00#, 16#4480#),
+         "Float16 C3 Add must keep component order");
+   end Mat_Add_Works_For_Float16_C3;
+
+   procedure Mat_Subtract_Works_For_Float16_C3 (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left   : OpenCV.Core.Mat := Float16_C3 (1, 1);
+      Right  : OpenCV.Core.Mat := Float16_C3 (1, 1);
+      Result : OpenCV.Core.Mat;
+   begin
+      --  (4.0, -1.0, 2.5) - (1.0, 0.5, -0.5) = (3.0, -1.5, 3.0)
+      OpenCV.Core.Float16_Vec3_Access.Set
+        (Left, 0, 0, Pixel (16#4400#, 16#BC00#, 16#4100#));
+      OpenCV.Core.Float16_Vec3_Access.Set
+        (Right, 0, 0, Pixel (16#3C00#, 16#3800#, 16#B800#));
+      Result := Left.Subtract (Right);
+      Assert_Stored_Pixel
+        (Result,
+         0,
+         0,
+         Pixel (16#4200#, 16#BE00#, 16#4200#),
+         "Float16 C3 Subtract must compute each channel independently");
+   end Mat_Subtract_Works_For_Float16_C3;
+
+   procedure Mat_Float16_C3_Mixed_Numeric_Categories
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left     : OpenCV.Core.Mat := Float16_C3 (1, 1);
+      Right    : OpenCV.Core.Mat := Float16_C3 (1, 1);
+      Result   : OpenCV.Core.Mat;
+      Expected : OpenCV.Core.Float16_Vec3.Vector;
+   begin
+      --  channel 0 subnormal, channel 1 finite rounding, channel 2 overflow
+      OpenCV.Core.Float16_Vec3_Access.Set
+        (Left, 0, 0, Pixel (16#0001#, 16#3C00#, 16#7BFF#));
+      OpenCV.Core.Float16_Vec3_Access.Set
+        (Right, 0, 0, Pixel (16#0001#, 16#1400#, 16#7BFF#));
+      Result := Left.Add (Right);
+      Expected :=
+        (0 => Expected_Add (F16 (16#0001#), F16 (16#0001#)),
+         1 => Expected_Add (F16 (16#3C00#), F16 (16#1400#)),
+         2 => Expected_Add (F16 (16#7BFF#), F16 (16#7BFF#)));
+      Assert_Stored_Pixel
+        (Result,
+         0,
+         0,
+         Expected,
+         "C3 mixed categories must match the oracle independently");
+   end Mat_Float16_C3_Mixed_Numeric_Categories;
+
+   procedure Mat_Float16_C3_Add_Subtract_Multi_Row
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left  : OpenCV.Core.Mat := Float16_C3 (2, 3);
+      Right : OpenCV.Core.Mat := Float16_C3 (2, 3);
+      Sum   : OpenCV.Core.Mat;
+      Diff  : OpenCV.Core.Mat;
+   begin
+      for Row in 0 .. 1 loop
+         for Column in 0 .. 2 loop
+            declare
+               Base : constant Interfaces.Unsigned_16 :=
+                 Interfaces.Unsigned_16 (16#3C00# + Row * 16#40# + Column);
+            begin
+               OpenCV.Core.Float16_Vec3_Access.Set
+                 (Left, Row, Column, Pixel (Base, 16#C000#, 16#3800#));
+               OpenCV.Core.Float16_Vec3_Access.Set
+                 (Right, Row, Column, Pixel (16#3C00#, 16#3800#, Base));
+            end;
+         end loop;
+      end loop;
+      Sum := Left.Add (Right);
+      Diff := Left.Subtract (Right);
+      Assert_Float16_Metadata
+        (Sum, 2, 3, 3, "multi-row Float16 C3 Add must keep image shape");
+      for Row in 0 .. 1 loop
+         for Column in 0 .. 2 loop
+            declare
+               L             : constant OpenCV.Core.Float16_Vec3.Vector :=
+                 OpenCV.Core.Float16_Vec3_Access.Get (Left, Row, Column);
+               R             : constant OpenCV.Core.Float16_Vec3.Vector :=
+                 OpenCV.Core.Float16_Vec3_Access.Get (Right, Row, Column);
+               Expected_Sum  : constant OpenCV.Core.Float16_Vec3.Vector :=
+                 (0 => Expected_Add (L (0), R (0)),
+                  1 => Expected_Add (L (1), R (1)),
+                  2 => Expected_Add (L (2), R (2)));
+               Expected_Diff : constant OpenCV.Core.Float16_Vec3.Vector :=
+                 (0 => Expected_Subtract (L (0), R (0)),
+                  1 => Expected_Subtract (L (1), R (1)),
+                  2 => Expected_Subtract (L (2), R (2)));
+            begin
+               Assert_Stored_Pixel (Sum, Row, Column, Expected_Sum, "C3 Add");
+               Assert_Stored_Pixel
+                 (Diff, Row, Column, Expected_Diff, "C3 Subtract");
+            end;
+         end loop;
+      end loop;
+   end Mat_Float16_C3_Add_Subtract_Multi_Row;
+
+   procedure Mat_Float16_Add_Subtract_Handle_Regions
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left_Parent  : OpenCV.Core.Mat := Float16_C1 (4, 6);
+      Right_Parent : OpenCV.Core.Mat := Float16_C1 (4, 6);
+      Left_Region  : OpenCV.Core.Mat;
+      Right_Region : OpenCV.Core.Mat;
+      Result       : OpenCV.Core.Mat;
+      C3_Parent_L  : OpenCV.Core.Mat := Float16_C3 (4, 6);
+      C3_Parent_R  : OpenCV.Core.Mat := Float16_C3 (4, 6);
+      C3_Region_L  : OpenCV.Core.Mat;
+      C3_Region_R  : OpenCV.Core.Mat;
+      C3_Result    : OpenCV.Core.Mat;
+   begin
+      for Row in 0 .. 3 loop
+         for Column in 0 .. 5 loop
+            Set_C1 (Left_Parent, Row, Column, 16#3C00#);
+            Set_C1 (Right_Parent, Row, Column, 16#4000#);
+            OpenCV.Core.Float16_Vec3_Access.Set
+              (C3_Parent_L, Row, Column, Pixel (16#3C00#, 16#C000#, 16#3800#));
+            OpenCV.Core.Float16_Vec3_Access.Set
+              (C3_Parent_R, Row, Column, Pixel (16#4000#, 16#3800#, 16#4400#));
+         end loop;
+      end loop;
+      Left_Region :=
+        Left_Parent.Region ((X => 2, Y => 1, Width => 3, Height => 2));
+      Right_Region :=
+        Right_Parent.Region ((X => 2, Y => 1, Width => 3, Height => 2));
+      AUnit.Assertions.Assert
+        (not Left_Region.Is_Continuous,
+         "C1 Region fixture must be non-contiguous");
+      Result := Left_Region.Add (Right_Region);
+      Assert_Float16_Metadata
+        (Result, 2, 3, 1, "Region Add result must be independent Float16 C1");
+      AUnit.Assertions.Assert
+        (Result.Is_Continuous,
+         "Region arithmetic must produce independent continuous storage");
+      Assert_Stored_Bits (Result, 0, 0, 16#4200#, "Region Add 1.0+2.0");
+      Assert_Stored_Bits
+        (Left_Parent, 0, 0, 16#3C00#, "C1 parent Left must stay unchanged");
+      Assert_Stored_Bits
+        (Right_Parent, 1, 2, 16#4000#, "C1 parent Right must stay unchanged");
+      Set_C1 (Result, 0, 0, 16#7C00#);
+      Assert_Stored_Bits
+        (Left_Parent,
+         1,
+         2,
+         16#3C00#,
+         "mutating Region Add result must not affect the parent");
+
+      C3_Region_L :=
+        C3_Parent_L.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+      C3_Region_R :=
+        C3_Parent_R.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+      AUnit.Assertions.Assert
+        (not C3_Region_L.Is_Continuous,
+         "C3 Region fixture must be non-contiguous");
+      C3_Result := C3_Region_L.Subtract (C3_Region_R);
+      Assert_Float16_Metadata
+        (C3_Result, 2, 3, 3, "C3 Region Subtract must keep Float16 C3");
+      Assert_Stored_Pixel
+        (C3_Result,
+         0,
+         0,
+         (0 => Expected_Subtract (F16 (16#3C00#), F16 (16#4000#)),
+          1 => Expected_Subtract (F16 (16#C000#), F16 (16#3800#)),
+          2 => Expected_Subtract (F16 (16#3800#), F16 (16#4400#))),
+         "C3 Region Subtract (1,-2,0.5)-(2,0.5,4)");
+      Assert_Stored_Pixel
+        (C3_Parent_L,
+         0,
+         0,
+         Pixel (16#3C00#, 16#C000#, 16#3800#),
+         "C3 parent must remain unchanged outside the Region");
+   end Mat_Float16_Add_Subtract_Handle_Regions;
+
+   procedure Mat_Float16_Add_Subtract_Ownership
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left   : OpenCV.Core.Mat := Float16_C1 (1, 2);
+      Right  : OpenCV.Core.Mat := Float16_C1 (1, 2);
+      Alias  : OpenCV.Core.Mat;
+      Result : OpenCV.Core.Mat;
+   begin
+      Set_C1 (Left, 0, 0, 16#3C00#);
+      Set_C1 (Left, 0, 1, 16#4000#);
+      Set_C1 (Right, 0, 0, 16#3C00#);
+      Set_C1 (Right, 0, 1, 16#3C00#);
+      Alias := Left;
+      Result := Left.Add (Right);
+      Assert_Stored_Bits
+        (Alias, 0, 0, 16#3C00#, "shallow alias must still share Left");
+      Set_C1 (Alias, 0, 0, 16#4400#);
+      Assert_Stored_Bits
+        (Left, 0, 0, 16#4400#, "alias mutation must still share Left storage");
+      Assert_Stored_Bits
+        (Result, 0, 0, 16#4000#, "result must not share Left storage");
+      Set_C1 (Result, 0, 1, 16#7C00#);
+      Assert_Stored_Bits
+        (Left, 0, 1, 16#4000#, "mutating result must not affect Left");
+      Assert_Stored_Bits
+        (Right, 0, 1, 16#3C00#, "mutating result must not affect Right");
+      Set_C1 (Right, 0, 0, 16#7BFF#);
+      Assert_Stored_Bits
+        (Result,
+         0,
+         0,
+         16#4000#,
+         "later input mutation must not affect result");
+   end Mat_Float16_Add_Subtract_Ownership;
+
+   procedure Mat_Float16_Add_Subtract_Reject_Incompatible
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      C1_A        : constant OpenCV.Core.Mat := Float16_C1 (1, 1);
+      C1_B        : constant OpenCV.Core.Mat := Float16_C1 (2, 1);
+      C1_Wide     : constant OpenCV.Core.Mat := Float16_C1 (1, 2);
+      C3          : constant OpenCV.Core.Mat := Float16_C3 (1, 1);
+      F32         : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Default_Mat : OpenCV.Core.Mat;
+      procedure Bad_Shape is
+         X : constant OpenCV.Core.Mat := C1_A.Add (C1_B);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Shape;
+      procedure Bad_Columns is
+         X : constant OpenCV.Core.Mat := C1_A.Subtract (C1_Wide);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Columns;
+      procedure Bad_Channels is
+         X : constant OpenCV.Core.Mat := C1_A.Add (C3);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Channels;
+      procedure Bad_Depth is
+         X : constant OpenCV.Core.Mat := C1_A.Subtract (F32);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Depth;
+      procedure Bad_Default is
+         X : constant OpenCV.Core.Mat := Default_Mat.Add (C1_A);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Default;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Bad_Shape'Access, "Float16 Add must reject mismatched rows");
+      Assert_Raises_OpenCV_Error
+        (Bad_Columns'Access,
+         "Float16 Subtract must reject mismatched columns");
+      Assert_Raises_OpenCV_Error
+        (Bad_Channels'Access,
+         "Float16 Add must reject C1 vs C3 channel mismatch");
+      Assert_Raises_OpenCV_Error
+        (Bad_Depth'Access,
+         "Float16 Subtract must reject Float32 depth mismatch");
+      Assert_Raises_OpenCV_Error
+        (Bad_Default'Access,
+         "Float16 Add must reject a default Mat paired with a typed Mat");
+   end Mat_Float16_Add_Subtract_Reject_Incompatible;
+
+   Finite_Count : constant := 2 * 16#7C00#;
+
+   type Operand_Bits is array (Positive range <>) of Interfaces.Unsigned_16;
+
+   Sweep_Operands : constant Operand_Bits :=
+     (16#0000#,
+      16#8000#,
+      16#0001#,
+      16#03FF#,
+      16#0400#,
+      16#3C00#,
+      16#BC00#,
+      16#7BFF#,
+      16#FBFF#);
+
+   Sample_Pair_Count : constant := 4096;
+
+   procedure Fill_Finite_Left
+     (Data : aliased in out OpenCV.Core.Float16_Buffer_Access.Buffer_Array)
+   is
+      Index : Natural := 0;
+   begin
+      for Bits in Interfaces.Unsigned_16 range 0 .. 16#7BFF# loop
+         Data (Index) := F16 (Bits);
+         Index := Index + 1;
+      end loop;
+      for Bits in Interfaces.Unsigned_16 range 16#8000# .. 16#FBFF# loop
+         Data (Index) := F16 (Bits);
+         Index := Index + 1;
+      end loop;
+   end Fill_Finite_Left;
+
+   procedure Fill_Constant
+     (Image : in out OpenCV.Core.Mat; Bits : Interfaces.Unsigned_16)
+   is
+      procedure Fill
+        (Data : aliased in out OpenCV.Core.Float16_Buffer_Access.Buffer_Array)
+      is
+      begin
+         for Index in Data'Range loop
+            Data (Index) := F16 (Bits);
+         end loop;
+      end Fill;
+   begin
+      OpenCV.Core.Float16_Buffer_Access.With_Writable_Buffer
+        (Image, Fill'Access);
+   end Fill_Constant;
+
+   function Sample_Left_Bits (Index : Natural) return Interfaces.Unsigned_16 is
+      Raw : constant Natural := (Index * 13) mod Finite_Count;
+   begin
+      if Raw < 16#7C00# then
+         return Interfaces.Unsigned_16 (Raw);
+      else
+         return Interfaces.Unsigned_16 (Raw - 16#7C00#) + 16#8000#;
+      end if;
+   end Sample_Left_Bits;
+
+   function Sample_Right_Bits (Index : Natural) return Interfaces.Unsigned_16
+   is
+      Raw : constant Natural := (Index * 29 + 17) mod Finite_Count;
+   begin
+      if Raw < 16#7C00# then
+         return Interfaces.Unsigned_16 (Raw);
+      else
+         return Interfaces.Unsigned_16 (Raw - 16#7C00#) + 16#8000#;
+      end if;
+   end Sample_Right_Bits;
+
+   procedure Mat_Float16_Finite_Oracle_Sweep (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left : OpenCV.Core.Mat := Float16_C1 (1, Finite_Count);
+   begin
+      OpenCV.Core.Float16_Buffer_Access.With_Writable_Buffer
+        (Left, Fill_Finite_Left'Access);
+      for Operand of Sweep_Operands loop
+         declare
+            Right : OpenCV.Core.Mat := Float16_C1 (1, Finite_Count);
+            Sum   : OpenCV.Core.Mat;
+            Diff  : OpenCV.Core.Mat;
+            procedure Check
+              (Data   : aliased OpenCV.Core.Float16_Buffer_Access.Buffer_Array;
+               Is_Add : Boolean)
+            is
+               Right_Value : constant OpenCV.Core.Float16_Value :=
+                 F16 (Operand);
+            begin
+               for Index in Data'Range loop
+                  declare
+                     Left_Value : constant OpenCV.Core.Float16_Value :=
+                       OpenCV.Core.Float16_Access.Get (Left, 0, Index);
+                     Expected   : constant OpenCV.Core.Float16_Value :=
+                       (if Is_Add
+                        then Expected_Add (Left_Value, Right_Value)
+                        else Expected_Subtract (Left_Value, Right_Value));
+                  begin
+                     if Bits_Of (Data (Index)) /= Bits_Of (Expected) then
+                        AUnit.Assertions.Assert
+                          (False,
+                           (if Is_Add then "Add" else "Subtract")
+                           & " oracle mismatch left="
+                           & Interfaces.Unsigned_16'Image
+                               (Bits_Of (Left_Value))
+                           & " right="
+                           & Interfaces.Unsigned_16'Image (Operand)
+                           & " got="
+                           & Interfaces.Unsigned_16'Image
+                               (Bits_Of (Data (Index)))
+                           & " expected="
+                           & Interfaces.Unsigned_16'Image
+                               (Bits_Of (Expected)));
+                     end if;
+                  end;
+               end loop;
+            end Check;
+            procedure Check_Add
+              (Data : aliased OpenCV.Core.Float16_Buffer_Access.Buffer_Array)
+            is
+            begin
+               Check (Data, True);
+            end Check_Add;
+            procedure Check_Sub
+              (Data : aliased OpenCV.Core.Float16_Buffer_Access.Buffer_Array)
+            is
+            begin
+               Check (Data, False);
+            end Check_Sub;
+         begin
+            Fill_Constant (Right, Operand);
+            Sum := Left.Add (Right);
+            Diff := Left.Subtract (Right);
+            OpenCV.Core.Float16_Buffer_Access.With_Read_Only_Buffer
+              (Sum, Check_Add'Access);
+            OpenCV.Core.Float16_Buffer_Access.With_Read_Only_Buffer
+              (Diff, Check_Sub'Access);
+         end;
+      end loop;
+   end Mat_Float16_Finite_Oracle_Sweep;
+
+   procedure Mat_Float16_Finite_Oracle_Sample (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left  : OpenCV.Core.Mat := Float16_C1 (1, Sample_Pair_Count);
+      Right : OpenCV.Core.Mat := Float16_C1 (1, Sample_Pair_Count);
+      Sum   : OpenCV.Core.Mat;
+      Diff  : OpenCV.Core.Mat;
+      procedure Fill_Sample
+        (Left_Data :
+           aliased in out OpenCV.Core.Float16_Buffer_Access.Buffer_Array) is
+      begin
+         for Index in Left_Data'Range loop
+            Left_Data (Index) := F16 (Sample_Left_Bits (Index));
+         end loop;
+      end Fill_Sample;
+      procedure Fill_Right
+        (Right_Data :
+           aliased in out OpenCV.Core.Float16_Buffer_Access.Buffer_Array) is
+      begin
+         for Index in Right_Data'Range loop
+            Right_Data (Index) := F16 (Sample_Right_Bits (Index));
+         end loop;
+      end Fill_Right;
+      procedure Check_Add
+        (Data : aliased OpenCV.Core.Float16_Buffer_Access.Buffer_Array) is
+      begin
+         for Index in Data'Range loop
+            declare
+               L : constant OpenCV.Core.Float16_Value :=
+                 F16 (Sample_Left_Bits (Index));
+               R : constant OpenCV.Core.Float16_Value :=
+                 F16 (Sample_Right_Bits (Index));
+            begin
+               if Bits_Of (Data (Index)) /= Bits_Of (Expected_Add (L, R)) then
+                  AUnit.Assertions.Assert
+                    (False, "sampled Add mismatch at" & Integer'Image (Index));
+               end if;
+            end;
+         end loop;
+      end Check_Add;
+      procedure Check_Sub
+        (Data : aliased OpenCV.Core.Float16_Buffer_Access.Buffer_Array) is
+      begin
+         for Index in Data'Range loop
+            declare
+               L : constant OpenCV.Core.Float16_Value :=
+                 F16 (Sample_Left_Bits (Index));
+               R : constant OpenCV.Core.Float16_Value :=
+                 F16 (Sample_Right_Bits (Index));
+            begin
+               if Bits_Of (Data (Index)) /= Bits_Of (Expected_Subtract (L, R))
+               then
+                  AUnit.Assertions.Assert
+                    (False,
+                     "sampled Subtract mismatch at" & Integer'Image (Index));
+               end if;
+            end;
+         end loop;
+      end Check_Sub;
+   begin
+      OpenCV.Core.Float16_Buffer_Access.With_Writable_Buffer
+        (Left, Fill_Sample'Access);
+      OpenCV.Core.Float16_Buffer_Access.With_Writable_Buffer
+        (Right, Fill_Right'Access);
+      Sum := Left.Add (Right);
+      Diff := Left.Subtract (Right);
+      OpenCV.Core.Float16_Buffer_Access.With_Read_Only_Buffer
+        (Sum, Check_Add'Access);
+      OpenCV.Core.Float16_Buffer_Access.With_Read_Only_Buffer
+        (Diff, Check_Sub'Access);
+   end Mat_Float16_Finite_Oracle_Sample;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -1347,6 +2203,71 @@ package body Mat_Arithmetic_Tests is
         (Caller.Create
            ("Mat mixed empty representations remain empty",
             Mat_Mixed_Empty_Representations_Remain_Empty'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Add works for Float16 C1",
+            Mat_Add_Works_For_Float16_C1'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Subtract works for Float16 C1",
+            Mat_Subtract_Works_For_Float16_C1'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Add and Subtract round to nearest even",
+            Mat_Float16_Add_Subtract_Round_To_Nearest_Even'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Add and Subtract handle subnormals",
+            Mat_Float16_Add_Subtract_Handle_Subnormals'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Add overflows to signed infinity",
+            Mat_Float16_Add_Overflows_To_Signed_Infinity'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Add and Subtract signed zero",
+            Mat_Float16_Add_Subtract_Signed_Zero'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Add and Subtract infinity and NaN",
+            Mat_Float16_Add_Subtract_Infinity_And_NaN'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Add works for Float16 C3",
+            Mat_Add_Works_For_Float16_C3'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Subtract works for Float16 C3",
+            Mat_Subtract_Works_For_Float16_C3'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 C3 mixed numeric categories",
+            Mat_Float16_C3_Mixed_Numeric_Categories'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 C3 Add and Subtract multi-row",
+            Mat_Float16_C3_Add_Subtract_Multi_Row'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Add and Subtract handle Regions",
+            Mat_Float16_Add_Subtract_Handle_Regions'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Add and Subtract ownership",
+            Mat_Float16_Add_Subtract_Ownership'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Add and Subtract reject incompatible",
+            Mat_Float16_Add_Subtract_Reject_Incompatible'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 finite oracle sweep",
+            Mat_Float16_Finite_Oracle_Sweep'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 finite oracle sample",
+            Mat_Float16_Finite_Oracle_Sample'Access));
+
       return Result'Access;
    end Suite;
 

@@ -2983,6 +2983,35 @@ opencv_core_mat_normalize(const opencv_core_mat_handle *source,
     }
 }
 
+// OpenCV 4.x exposes CV_16F Mat storage/conversion but the supported
+// 4.x Add/Subtract dispatch tables do not implement CV_16F arithmetic
+// (HAL add/sub kernels stop at 8u/8s/16u/16s/32s/32f/64f). OpenCV 5.x
+// provides native add16f/sub16f, so use native half arithmetic there
+// and widen only on older supported versions. This is OpenCV operation
+// support, not CPU FP16 feature detection.
+static void add_or_subtract_float16(const cv::Mat &left, const cv::Mat &right,
+                                    cv::Mat &result, bool subtract) {
+#if CV_VERSION_MAJOR >= 5
+    if (subtract) {
+        cv::subtract(left, right, result, cv::noArray(), -1);
+    } else {
+        cv::add(left, right, result, cv::noArray(), -1);
+    }
+#else
+    cv::Mat left32;
+    cv::Mat right32;
+    cv::Mat result32;
+    left.convertTo(left32, CV_32F);
+    right.convertTo(right32, CV_32F);
+    if (subtract) {
+        cv::subtract(left32, right32, result32, cv::noArray(), -1);
+    } else {
+        cv::add(left32, right32, result32, cv::noArray(), -1);
+    }
+    result32.convertTo(result, CV_16F);
+#endif
+}
+
 opencv_core_status
 opencv_core_mat_add(const opencv_core_mat_handle *left,
                     const opencv_core_mat_handle *right,
@@ -3001,7 +3030,11 @@ opencv_core_mat_add(const opencv_core_mat_handle *left,
 
     try {
         cv::Mat sum;
-        cv::add(left->value, right->value, sum, cv::noArray(), -1);
+        if (left->value.depth() == CV_16F) {
+            add_or_subtract_float16(left->value, right->value, sum, false);
+        } else {
+            cv::add(left->value, right->value, sum, cv::noArray(), -1);
+        }
         *out_mat = new opencv_core_mat_handle(sum);
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -3027,7 +3060,13 @@ opencv_core_mat_subtract(const opencv_core_mat_handle *left,
 
     try {
         cv::Mat difference;
-        cv::subtract(left->value, right->value, difference, cv::noArray(), -1);
+        if (left->value.depth() == CV_16F) {
+            add_or_subtract_float16(left->value, right->value, difference,
+                                    true);
+        } else {
+            cv::subtract(left->value, right->value, difference, cv::noArray(),
+                         -1);
+        }
         *out_mat = new opencv_core_mat_handle(difference);
         return OPENCV_CORE_OK;
     } catch (...) {
