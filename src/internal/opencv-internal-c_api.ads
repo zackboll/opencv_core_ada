@@ -1106,6 +1106,28 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_write_float64_row";
 
+   --  uint16_t carries the stored IEEE binary16 encoding, not an
+   --  integer pixel.
+   function Mat_Read_Float16_Row
+     (Self          : Mat_Handle;
+      Row           : C_Int32;
+      Data          : System.Address;
+      Element_Count : C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_read_float16_row";
+
+   function Mat_Write_Float16_Row
+     (Self          : Mat_Handle;
+      Row           : C_Int32;
+      Data          : System.Address;
+      Element_Count : C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_write_float16_row";
+
    function Mat_Borrow_Row_Data
      (Self           : Mat_Handle;
       Row            : C_Int32;

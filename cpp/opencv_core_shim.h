@@ -1139,6 +1139,23 @@ opencv_core_mat_write_float64_row(opencv_core_mat_handle *mat,
                                   uint64_t element_count);
 
 /*
+ * Copy one complete row of a two-dimensional, single-channel CV_16F Mat.
+ * Each uint16_t is the stored IEEE-754 binary16 encoding, not an
+ * integer-valued pixel. Whole-Mat continuity is not required. The
+ * implementation copies exact object bits and does not convert through
+ * a floating-point type.
+ */
+opencv_core_status
+opencv_core_mat_read_float16_row(const opencv_core_mat_handle *mat,
+                                 int32_t row, uint16_t *data,
+                                 uint64_t element_count);
+
+opencv_core_status
+opencv_core_mat_write_float16_row(opencv_core_mat_handle *mat, int32_t row,
+                                  const uint16_t *data,
+                                  uint64_t element_count);
+
+/*
  * Borrow the start of one logical 2-D Mat row without copying pixels.
  * out_data is the address of the first active element of that row.
  * out_byte_count is columns * elemSize(), never the possibly padded

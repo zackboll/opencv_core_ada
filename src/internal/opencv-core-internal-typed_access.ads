@@ -100,6 +100,12 @@ package OpenCV.Core.Internal.Typed_Access is
      array (Natural range <>) of OpenCV.Internal.C_API.C_Float64
    with Convention => C;
 
+   --  Each element is the stored IEEE binary16 encoding, not an
+   --  integer-valued pixel.
+   type Float16_Row_Buffer is
+     array (Natural range <>) of OpenCV.Internal.C_API.C_UInt16
+   with Convention => C;
+
    procedure Read_UInt8_Row
      (Image : Mat; Row : Integer; Data : out UInt8_Row_Buffer);
 
@@ -129,6 +135,12 @@ package OpenCV.Core.Internal.Typed_Access is
 
    procedure Write_Float64_Row
      (Image : in out Mat; Row : Integer; Data : Float64_Row_Buffer);
+
+   procedure Read_Float16_Row
+     (Image : Mat; Row : Integer; Data : out Float16_Row_Buffer);
+
+   procedure Write_Float16_Row
+     (Image : in out Mat; Row : Integer; Data : Float16_Row_Buffer);
 
    procedure Read_UInt8_Vec3_Row
      (Image : Mat; Row : Integer; Data : out UInt8_Row_Buffer);
