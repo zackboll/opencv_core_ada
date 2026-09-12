@@ -47,6 +47,11 @@ package body Mat_Arithmetic_Tests is
    is (OpenCV.Core.To_Float16
          (OpenCV.Core.To_Float32 (Left) * OpenCV.Core.To_Float32 (Right)));
 
+   function Expected_Divide
+     (Left, Right : OpenCV.Core.Float16_Value) return OpenCV.Core.Float16_Value
+   is (OpenCV.Core.To_Float16
+         (OpenCV.Core.To_Float32 (Left) / OpenCV.Core.To_Float32 (Right)));
+
    function Float16_C1 (Rows, Columns : Natural) return OpenCV.Core.Mat
    is (OpenCV.Core.Create (Rows, Columns, (OpenCV.Core.Float16, 1)));
 
@@ -1892,6 +1897,22 @@ package body Mat_Arithmetic_Tests is
       16#7BFF#,
       16#FBFF#);
 
+   --  Nonzero finite denominators only. Zero must not be passed through
+   --  Expected_Divide because Ada `/` can trap on a zero divisor.
+   Divide_Sweep_Operands : constant Operand_Bits :=
+     (16#0001#,
+      16#8001#,
+      16#03FF#,
+      16#0400#,
+      16#3800#,
+      16#B800#,
+      16#3C00#,
+      16#BC00#,
+      16#4000#,
+      16#4200#,
+      16#7BFF#,
+      16#FBFF#);
+
    Sample_Pair_Count : constant := 4096;
 
    procedure Fill_Finite_Left
@@ -1945,6 +1966,23 @@ package body Mat_Arithmetic_Tests is
          return Interfaces.Unsigned_16 (Raw - 16#7C00#) + 16#8000#;
       end if;
    end Sample_Right_Bits;
+
+   --  Finite nonzero sample denominators. Mapping +0/-0 onto the next
+   --  encoding of the same sign keeps the pair count and avoids Ada `/`
+   --  traps in Expected_Divide.
+   function Sample_Divide_Right_Bits
+     (Index : Natural) return Interfaces.Unsigned_16
+   is
+      Bits : constant Interfaces.Unsigned_16 := Sample_Right_Bits (Index);
+   begin
+      if Bits = 16#0000# then
+         return 16#0001#;
+      elsif Bits = 16#8000# then
+         return 16#8001#;
+      else
+         return Bits;
+      end if;
+   end Sample_Divide_Right_Bits;
 
    procedure Mat_Float16_Finite_Oracle_Sweep (Test : in out Mat_Test_Fixture)
    is
@@ -2684,6 +2722,692 @@ package body Mat_Arithmetic_Tests is
         (Product, Check'Access);
    end Mat_Float16_Multiply_Finite_Oracle_Sample;
 
+   procedure Mat_Divide_Works_For_Float16_C1 (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left   : OpenCV.Core.Mat := Float16_C1 (1, 5);
+      Right  : OpenCV.Core.Mat := Float16_C1 (1, 5);
+      Result : OpenCV.Core.Mat;
+   begin
+      --  2.0/1.0, 3.0/2.0, -2.0/0.5, (-3.0)/(-2.0), 1.0/2.0
+      Set_C1 (Left, 0, 0, 16#4000#);
+      Set_C1 (Right, 0, 0, 16#3C00#);
+      Set_C1 (Left, 0, 1, 16#4200#);
+      Set_C1 (Right, 0, 1, 16#4000#);
+      Set_C1 (Left, 0, 2, 16#C000#);
+      Set_C1 (Right, 0, 2, 16#3800#);
+      Set_C1 (Left, 0, 3, 16#C200#);
+      Set_C1 (Right, 0, 3, 16#C000#);
+      Set_C1 (Left, 0, 4, 16#3C00#);
+      Set_C1 (Right, 0, 4, 16#4000#);
+      Result := Left.Divide (Right);
+      Assert_Float16_Metadata
+        (Result, 1, 5, 1, "Float16 C1 Divide must preserve shape and type");
+      Assert_Stored_Bits (Result, 0, 0, 16#4000#, "2.0 / 1.0 must be 2.0");
+      Assert_Stored_Bits (Result, 0, 1, 16#3E00#, "3.0 / 2.0 must be 1.5");
+      Assert_Stored_Bits (Result, 0, 2, 16#C400#, "-2.0 / 0.5 must be -4.0");
+      Assert_Stored_Bits
+        (Result, 0, 3, 16#3E00#, "(-3.0) / (-2.0) must be 1.5");
+      Assert_Stored_Bits (Result, 0, 4, 16#3800#, "1.0 / 2.0 must be 0.5");
+      Assert_Stored_Bits (Left, 0, 0, 16#4000#, "Divide must not mutate Left");
+      Assert_Stored_Bits
+        (Right, 0, 0, 16#3C00#, "Divide must not mutate Right");
+      Set_C1 (Result, 0, 0, 16#7C00#);
+      Assert_Stored_Bits
+        (Left, 0, 0, 16#4000#, "mutating the quotient must not affect Left");
+   end Mat_Divide_Works_For_Float16_C1;
+
+   procedure Mat_Float16_Divide_Round_To_Nearest_Even
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left     : OpenCV.Core.Mat := Float16_C1 (1, 4);
+      Right    : OpenCV.Core.Mat := Float16_C1 (1, 4);
+      Quotient : OpenCV.Core.Mat;
+   begin
+      --  1/3, 2/3, 1/5, 7/3 against the Float32 oracle.
+      Set_C1 (Left, 0, 0, 16#3C00#);
+      Set_C1 (Right, 0, 0, 16#4200#);
+      Set_C1 (Left, 0, 1, 16#4000#);
+      Set_C1 (Right, 0, 1, 16#4200#);
+      Set_C1 (Left, 0, 2, 16#3C00#);
+      Set_C1 (Right, 0, 2, 16#4500#);
+      Set_C1 (Left, 0, 3, 16#4700#);
+      Set_C1 (Right, 0, 3, 16#4200#);
+      Quotient := Left.Divide (Right);
+      for Column in 0 .. 3 loop
+         declare
+            L : constant OpenCV.Core.Float16_Value :=
+              OpenCV.Core.Float16_Access.Get (Left, 0, Column);
+            R : constant OpenCV.Core.Float16_Value :=
+              OpenCV.Core.Float16_Access.Get (Right, 0, Column);
+         begin
+            Assert_Bits
+              (OpenCV.Core.Float16_Access.Get (Quotient, 0, Column),
+               Bits_Of (Expected_Divide (L, R)),
+               "Float16 Divide rounding must match the Float32 oracle");
+         end;
+      end loop;
+   end Mat_Float16_Divide_Round_To_Nearest_Even;
+
+   procedure Mat_Float16_Divide_Handle_Subnormals
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left     : OpenCV.Core.Mat := Float16_C1 (1, 7);
+      Right    : OpenCV.Core.Mat := Float16_C1 (1, 7);
+      Quotient : OpenCV.Core.Mat;
+   begin
+      --  min subnormal / 1, max subnormal / 2, min normal / 2,
+      --  min normal / max finite, small / large, underflow +0, -0.
+      Set_C1 (Left, 0, 0, 16#0001#);
+      Set_C1 (Right, 0, 0, 16#3C00#);
+      Set_C1 (Left, 0, 1, 16#03FF#);
+      Set_C1 (Right, 0, 1, 16#4000#);
+      Set_C1 (Left, 0, 2, 16#0400#);
+      Set_C1 (Right, 0, 2, 16#4000#);
+      Set_C1 (Left, 0, 3, 16#0400#);
+      Set_C1 (Right, 0, 3, 16#7BFF#);
+      Set_C1 (Left, 0, 4, 16#0002#);
+      Set_C1 (Right, 0, 4, 16#4800#);
+      Set_C1 (Left, 0, 5, 16#0001#);
+      Set_C1 (Right, 0, 5, 16#7BFF#);
+      Set_C1 (Left, 0, 6, 16#8001#);
+      Set_C1 (Right, 0, 6, 16#7BFF#);
+      Quotient := Left.Divide (Right);
+      for Column in 0 .. 6 loop
+         declare
+            L : constant OpenCV.Core.Float16_Value :=
+              OpenCV.Core.Float16_Access.Get (Left, 0, Column);
+            R : constant OpenCV.Core.Float16_Value :=
+              OpenCV.Core.Float16_Access.Get (Right, 0, Column);
+         begin
+            Assert_Bits
+              (OpenCV.Core.Float16_Access.Get (Quotient, 0, Column),
+               Bits_Of (Expected_Divide (L, R)),
+               "Float16 Divide subnormal/underflow must match the oracle");
+         end;
+      end loop;
+   end Mat_Float16_Divide_Handle_Subnormals;
+
+   procedure Mat_Float16_Divide_Overflows_To_Signed_Infinity
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left     : OpenCV.Core.Mat := Float16_C1 (1, 3);
+      Right    : OpenCV.Core.Mat := Float16_C1 (1, 3);
+      Quotient : OpenCV.Core.Mat;
+   begin
+      Set_C1 (Left, 0, 0, 16#7BFF#);
+      Set_C1 (Right, 0, 0, 16#0001#);
+      Set_C1 (Left, 0, 1, 16#FBFF#);
+      Set_C1 (Right, 0, 1, 16#0001#);
+      Set_C1 (Left, 0, 2, 16#7BFF#);
+      Set_C1 (Right, 0, 2, 16#8001#);
+      Quotient := Left.Divide (Right);
+      Assert_Stored_Bits
+        (Quotient, 0, 0, 16#7C00#, "max finite / min subnormal must be +Inf");
+      Assert_Stored_Bits
+        (Quotient,
+         0,
+         1,
+         16#FC00#,
+         "negative max finite / min subnormal must be -Inf");
+      Assert_Stored_Bits
+        (Quotient,
+         0,
+         2,
+         16#FC00#,
+         "max finite / negative min subnormal must be -Inf");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Is_Infinite
+           (OpenCV.Core.Float16_Access.Get (Quotient, 0, 0))
+         and then not OpenCV.Core.Is_Negative
+                        (OpenCV.Core.Float16_Access.Get (Quotient, 0, 0)),
+         "+overflow must classify as nonnegative infinity");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Is_Infinite
+           (OpenCV.Core.Float16_Access.Get (Quotient, 0, 1))
+         and then OpenCV.Core.Is_Negative
+                    (OpenCV.Core.Float16_Access.Get (Quotient, 0, 1)),
+         "-overflow must classify as negative infinity");
+   end Mat_Float16_Divide_Overflows_To_Signed_Infinity;
+
+   procedure Mat_Float16_Divide_Signed_Zero (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Left     : OpenCV.Core.Mat := Float16_C1 (1, 4);
+      Right    : OpenCV.Core.Mat := Float16_C1 (1, 4);
+      Quotient : OpenCV.Core.Mat;
+   begin
+      --  +0 / +, -0 / +, +0 / -, -0 / - with nonzero denominators.
+      Set_C1 (Left, 0, 0, 16#0000#);
+      Set_C1 (Right, 0, 0, 16#3C00#);
+      Set_C1 (Left, 0, 1, 16#8000#);
+      Set_C1 (Right, 0, 1, 16#3C00#);
+      Set_C1 (Left, 0, 2, 16#0000#);
+      Set_C1 (Right, 0, 2, 16#BC00#);
+      Set_C1 (Left, 0, 3, 16#8000#);
+      Set_C1 (Right, 0, 3, 16#BC00#);
+      Quotient := Left.Divide (Right);
+      for Column in 0 .. 3 loop
+         declare
+            L : constant OpenCV.Core.Float16_Value :=
+              OpenCV.Core.Float16_Access.Get (Left, 0, Column);
+            R : constant OpenCV.Core.Float16_Value :=
+              OpenCV.Core.Float16_Access.Get (Right, 0, Column);
+         begin
+            Assert_Bits
+              (OpenCV.Core.Float16_Access.Get (Quotient, 0, Column),
+               Bits_Of (Expected_Divide (L, R)),
+               "signed-zero Divide must match the Float32 oracle");
+         end;
+      end loop;
+   end Mat_Float16_Divide_Signed_Zero;
+
+   procedure Mat_Float16_Divide_Infinity_And_NaN
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left      : OpenCV.Core.Mat := Float16_C1 (1, 8);
+      Right     : OpenCV.Core.Mat := Float16_C1 (1, 8);
+      Quotient  : OpenCV.Core.Mat;
+      Plus_Inf  : constant OpenCV.Core.Float16_Value := F16 (16#7C00#);
+      Minus_Inf : constant OpenCV.Core.Float16_Value := F16 (16#FC00#);
+      One       : constant OpenCV.Core.Float16_Value := F16 (16#3C00#);
+      Quiet_NaN : constant OpenCV.Core.Float16_Value := F16 (16#7E00#);
+   begin
+      OpenCV.Core.Float16_Access.Set (Left, 0, 0, Plus_Inf);
+      OpenCV.Core.Float16_Access.Set (Right, 0, 0, One);
+      OpenCV.Core.Float16_Access.Set (Left, 0, 1, Minus_Inf);
+      OpenCV.Core.Float16_Access.Set (Right, 0, 1, One);
+      OpenCV.Core.Float16_Access.Set (Left, 0, 2, One);
+      OpenCV.Core.Float16_Access.Set (Right, 0, 2, Plus_Inf);
+      OpenCV.Core.Float16_Access.Set (Left, 0, 3, One);
+      OpenCV.Core.Float16_Access.Set (Right, 0, 3, Minus_Inf);
+      OpenCV.Core.Float16_Access.Set (Left, 0, 4, Plus_Inf);
+      OpenCV.Core.Float16_Access.Set (Right, 0, 4, Plus_Inf);
+      OpenCV.Core.Float16_Access.Set (Left, 0, 5, Minus_Inf);
+      OpenCV.Core.Float16_Access.Set (Right, 0, 5, Minus_Inf);
+      OpenCV.Core.Float16_Access.Set (Left, 0, 6, Quiet_NaN);
+      OpenCV.Core.Float16_Access.Set (Right, 0, 6, One);
+      OpenCV.Core.Float16_Access.Set (Left, 0, 7, One);
+      OpenCV.Core.Float16_Access.Set (Right, 0, 7, Quiet_NaN);
+      Quotient := Left.Divide (Right);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Is_Infinite
+           (OpenCV.Core.Float16_Access.Get (Quotient, 0, 0))
+         and then not OpenCV.Core.Is_Negative
+                        (OpenCV.Core.Float16_Access.Get (Quotient, 0, 0)),
+         "+Inf / positive finite must be +Inf");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Is_Infinite
+           (OpenCV.Core.Float16_Access.Get (Quotient, 0, 1))
+         and then OpenCV.Core.Is_Negative
+                    (OpenCV.Core.Float16_Access.Get (Quotient, 0, 1)),
+         "-Inf / positive finite must be -Inf");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Is_Zero (OpenCV.Core.Float16_Access.Get (Quotient, 0, 2))
+         and then not OpenCV.Core.Is_Negative
+                        (OpenCV.Core.Float16_Access.Get (Quotient, 0, 2)),
+         "finite / +Inf must be +0");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Is_Zero (OpenCV.Core.Float16_Access.Get (Quotient, 0, 3))
+         and then OpenCV.Core.Is_Negative
+                    (OpenCV.Core.Float16_Access.Get (Quotient, 0, 3)),
+         "finite / -Inf must be -0");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Is_NaN (OpenCV.Core.Float16_Access.Get (Quotient, 0, 4)),
+         "+Inf / +Inf must be NaN");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Is_NaN (OpenCV.Core.Float16_Access.Get (Quotient, 0, 5)),
+         "-Inf / -Inf must be NaN");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Is_NaN (OpenCV.Core.Float16_Access.Get (Quotient, 0, 6)),
+         "NaN / finite must be NaN");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Is_NaN (OpenCV.Core.Float16_Access.Get (Quotient, 0, 7)),
+         "finite / NaN must be NaN");
+   end Mat_Float16_Divide_Infinity_And_NaN;
+
+   procedure Mat_Float16_Divide_By_Zero (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Left     : OpenCV.Core.Mat := Float16_C1 (1, 8);
+      Right    : OpenCV.Core.Mat := Float16_C1 (1, 8);
+      Quotient : OpenCV.Core.Mat;
+   begin
+      --  Do not use Expected_Divide here: Ada `/` can trap on zero.
+      Set_C1 (Left, 0, 0, 16#3C00#);
+      Set_C1 (Right, 0, 0, 16#0000#);
+      Set_C1 (Left, 0, 1, 16#BC00#);
+      Set_C1 (Right, 0, 1, 16#0000#);
+      Set_C1 (Left, 0, 2, 16#3C00#);
+      Set_C1 (Right, 0, 2, 16#8000#);
+      Set_C1 (Left, 0, 3, 16#BC00#);
+      Set_C1 (Right, 0, 3, 16#8000#);
+      Set_C1 (Left, 0, 4, 16#0000#);
+      Set_C1 (Right, 0, 4, 16#0000#);
+      Set_C1 (Left, 0, 5, 16#8000#);
+      Set_C1 (Right, 0, 5, 16#0000#);
+      Set_C1 (Left, 0, 6, 16#7C00#);
+      Set_C1 (Right, 0, 6, 16#0000#);
+      Set_C1 (Left, 0, 7, 16#FC00#);
+      Set_C1 (Right, 0, 7, 16#0000#);
+      Quotient := Left.Divide (Right);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Is_Infinite
+           (OpenCV.Core.Float16_Access.Get (Quotient, 0, 0))
+         and then not OpenCV.Core.Is_Negative
+                        (OpenCV.Core.Float16_Access.Get (Quotient, 0, 0)),
+         "+finite / +0 must be +Inf");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Is_Infinite
+           (OpenCV.Core.Float16_Access.Get (Quotient, 0, 1))
+         and then OpenCV.Core.Is_Negative
+                    (OpenCV.Core.Float16_Access.Get (Quotient, 0, 1)),
+         "-finite / +0 must be -Inf");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Is_Infinite
+           (OpenCV.Core.Float16_Access.Get (Quotient, 0, 2))
+         and then OpenCV.Core.Is_Negative
+                    (OpenCV.Core.Float16_Access.Get (Quotient, 0, 2)),
+         "+finite / -0 must be -Inf");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Is_Infinite
+           (OpenCV.Core.Float16_Access.Get (Quotient, 0, 3))
+         and then not OpenCV.Core.Is_Negative
+                        (OpenCV.Core.Float16_Access.Get (Quotient, 0, 3)),
+         "-finite / -0 must be +Inf");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Is_NaN (OpenCV.Core.Float16_Access.Get (Quotient, 0, 4)),
+         "+0 / +0 must be NaN");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Is_NaN (OpenCV.Core.Float16_Access.Get (Quotient, 0, 5)),
+         "-0 / +0 must be NaN");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Is_Infinite
+           (OpenCV.Core.Float16_Access.Get (Quotient, 0, 6))
+         and then not OpenCV.Core.Is_Negative
+                        (OpenCV.Core.Float16_Access.Get (Quotient, 0, 6)),
+         "+Inf / +0 must be +Inf");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Is_Infinite
+           (OpenCV.Core.Float16_Access.Get (Quotient, 0, 7))
+         and then OpenCV.Core.Is_Negative
+                    (OpenCV.Core.Float16_Access.Get (Quotient, 0, 7)),
+         "-Inf / +0 must be -Inf");
+   end Mat_Float16_Divide_By_Zero;
+
+   procedure Mat_Divide_Works_For_Float16_C3 (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left     : OpenCV.Core.Mat := Float16_C3 (1, 1);
+      Right    : OpenCV.Core.Mat := Float16_C3 (1, 1);
+      Result   : OpenCV.Core.Mat;
+      Expected : OpenCV.Core.Float16_Vec3.Vector;
+   begin
+      --  (6.0, -2.0, 1.0) / (2.0, 0.5, 3.0) = (3.0, -4.0, 1/3)
+      OpenCV.Core.Float16_Vec3_Access.Set
+        (Left, 0, 0, Pixel (16#4600#, 16#C000#, 16#3C00#));
+      OpenCV.Core.Float16_Vec3_Access.Set
+        (Right, 0, 0, Pixel (16#4000#, 16#3800#, 16#4200#));
+      Result := Left.Divide (Right);
+      Expected :=
+        (0 => Expected_Divide (F16 (16#4600#), F16 (16#4000#)),
+         1 => Expected_Divide (F16 (16#C000#), F16 (16#3800#)),
+         2 => Expected_Divide (F16 (16#3C00#), F16 (16#4200#)));
+      Assert_Float16_Metadata
+        (Result, 1, 1, 3, "Float16 C3 Divide must preserve C3 metadata");
+      Assert_Stored_Pixel
+        (Result,
+         0,
+         0,
+         Expected,
+         "Float16 C3 Divide must keep component order");
+   end Mat_Divide_Works_For_Float16_C3;
+
+   procedure Mat_Float16_C3_Divide_Mixed_Numeric_Categories
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left     : OpenCV.Core.Mat := Float16_C3 (1, 1);
+      Right    : OpenCV.Core.Mat := Float16_C3 (1, 1);
+      Result   : OpenCV.Core.Mat;
+      Expected : OpenCV.Core.Float16_Vec3.Vector;
+   begin
+      --  channel 0 subnormal, channel 1 non-exact quotient, channel 2 overflow
+      OpenCV.Core.Float16_Vec3_Access.Set
+        (Left, 0, 0, Pixel (16#0001#, 16#3C00#, 16#7BFF#));
+      OpenCV.Core.Float16_Vec3_Access.Set
+        (Right, 0, 0, Pixel (16#3C00#, 16#4200#, 16#0001#));
+      Result := Left.Divide (Right);
+      Expected :=
+        (0 => Expected_Divide (F16 (16#0001#), F16 (16#3C00#)),
+         1 => Expected_Divide (F16 (16#3C00#), F16 (16#4200#)),
+         2 => Expected_Divide (F16 (16#7BFF#), F16 (16#0001#)));
+      Assert_Stored_Pixel
+        (Result,
+         0,
+         0,
+         Expected,
+         "C3 Divide mixed categories must match the oracle independently");
+   end Mat_Float16_C3_Divide_Mixed_Numeric_Categories;
+
+   procedure Mat_Float16_C3_Divide_Multi_Row (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left     : OpenCV.Core.Mat := Float16_C3 (2, 3);
+      Right    : OpenCV.Core.Mat := Float16_C3 (2, 3);
+      Quotient : OpenCV.Core.Mat;
+   begin
+      for Row in 0 .. 1 loop
+         for Column in 0 .. 2 loop
+            declare
+               Base : constant Interfaces.Unsigned_16 :=
+                 Interfaces.Unsigned_16 (16#3C00# + Row * 16#40# + Column);
+            begin
+               OpenCV.Core.Float16_Vec3_Access.Set
+                 (Left, Row, Column, Pixel (Base, 16#C000#, 16#3800#));
+               OpenCV.Core.Float16_Vec3_Access.Set
+                 (Right, Row, Column, Pixel (16#3C00#, 16#3800#, Base));
+            end;
+         end loop;
+      end loop;
+      Quotient := Left.Divide (Right);
+      Assert_Float16_Metadata
+        (Quotient,
+         2,
+         3,
+         3,
+         "multi-row Float16 C3 Divide must keep image shape");
+      for Row in 0 .. 1 loop
+         for Column in 0 .. 2 loop
+            declare
+               L        : constant OpenCV.Core.Float16_Vec3.Vector :=
+                 OpenCV.Core.Float16_Vec3_Access.Get (Left, Row, Column);
+               R        : constant OpenCV.Core.Float16_Vec3.Vector :=
+                 OpenCV.Core.Float16_Vec3_Access.Get (Right, Row, Column);
+               Expected : constant OpenCV.Core.Float16_Vec3.Vector :=
+                 (0 => Expected_Divide (L (0), R (0)),
+                  1 => Expected_Divide (L (1), R (1)),
+                  2 => Expected_Divide (L (2), R (2)));
+            begin
+               Assert_Stored_Pixel
+                 (Quotient, Row, Column, Expected, "C3 Divide");
+            end;
+         end loop;
+      end loop;
+   end Mat_Float16_C3_Divide_Multi_Row;
+
+   procedure Mat_Float16_Divide_Handle_Regions (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left_Parent  : OpenCV.Core.Mat := Float16_C1 (4, 6);
+      Right_Parent : OpenCV.Core.Mat := Float16_C1 (4, 6);
+      Left_Region  : OpenCV.Core.Mat;
+      Right_Region : OpenCV.Core.Mat;
+      Result       : OpenCV.Core.Mat;
+      C3_Parent_L  : OpenCV.Core.Mat := Float16_C3 (4, 6);
+      C3_Parent_R  : OpenCV.Core.Mat := Float16_C3 (4, 6);
+      C3_Region_L  : OpenCV.Core.Mat;
+      C3_Region_R  : OpenCV.Core.Mat;
+      C3_Result    : OpenCV.Core.Mat;
+   begin
+      for Row in 0 .. 3 loop
+         for Column in 0 .. 5 loop
+            Set_C1 (Left_Parent, Row, Column, 16#4000#);
+            Set_C1 (Right_Parent, Row, Column, 16#3C00#);
+            OpenCV.Core.Float16_Vec3_Access.Set
+              (C3_Parent_L, Row, Column, Pixel (16#4600#, 16#C000#, 16#3C00#));
+            OpenCV.Core.Float16_Vec3_Access.Set
+              (C3_Parent_R, Row, Column, Pixel (16#4000#, 16#3800#, 16#4200#));
+         end loop;
+      end loop;
+      Left_Region :=
+        Left_Parent.Region ((X => 2, Y => 1, Width => 3, Height => 2));
+      Right_Region :=
+        Right_Parent.Region ((X => 2, Y => 1, Width => 3, Height => 2));
+      AUnit.Assertions.Assert
+        (not Left_Region.Is_Continuous,
+         "C1 Region fixture must be non-contiguous");
+      Result := Left_Region.Divide (Right_Region);
+      Assert_Float16_Metadata
+        (Result,
+         2,
+         3,
+         1,
+         "Region Divide result must be independent Float16 C1");
+      AUnit.Assertions.Assert
+        (Result.Is_Continuous,
+         "Region Divide must produce independent continuous storage");
+      Assert_Stored_Bits (Result, 0, 0, 16#4000#, "Region Divide 2.0/1.0");
+      Assert_Stored_Bits
+        (Left_Parent, 0, 0, 16#4000#, "C1 parent Left must stay unchanged");
+      Assert_Stored_Bits
+        (Right_Parent, 1, 2, 16#3C00#, "C1 parent Right must stay unchanged");
+      Set_C1 (Result, 0, 0, 16#7C00#);
+      Assert_Stored_Bits
+        (Left_Parent,
+         1,
+         2,
+         16#4000#,
+         "mutating Region Divide result must not affect the parent");
+
+      C3_Region_L :=
+        C3_Parent_L.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+      C3_Region_R :=
+        C3_Parent_R.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+      AUnit.Assertions.Assert
+        (not C3_Region_L.Is_Continuous,
+         "C3 Region fixture must be non-contiguous");
+      C3_Result := C3_Region_L.Divide (C3_Region_R);
+      Assert_Float16_Metadata
+        (C3_Result, 2, 3, 3, "C3 Region Divide must keep Float16 C3");
+      Assert_Stored_Pixel
+        (C3_Result,
+         0,
+         0,
+         (0 => Expected_Divide (F16 (16#4600#), F16 (16#4000#)),
+          1 => Expected_Divide (F16 (16#C000#), F16 (16#3800#)),
+          2 => Expected_Divide (F16 (16#3C00#), F16 (16#4200#))),
+         "C3 Region Divide (6,-2,1)/(2,0.5,3)");
+      Assert_Stored_Pixel
+        (C3_Parent_L,
+         0,
+         0,
+         Pixel (16#4600#, 16#C000#, 16#3C00#),
+         "C3 parent must remain unchanged outside the Region");
+   end Mat_Float16_Divide_Handle_Regions;
+
+   procedure Mat_Float16_Divide_Ownership (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Left   : OpenCV.Core.Mat := Float16_C1 (1, 2);
+      Right  : OpenCV.Core.Mat := Float16_C1 (1, 2);
+      Alias  : OpenCV.Core.Mat;
+      Result : OpenCV.Core.Mat;
+   begin
+      Set_C1 (Left, 0, 0, 16#4000#);
+      Set_C1 (Left, 0, 1, 16#4200#);
+      Set_C1 (Right, 0, 0, 16#3C00#);
+      Set_C1 (Right, 0, 1, 16#4000#);
+      Alias := Left;
+      Result := Left.Divide (Right);
+      Assert_Stored_Bits
+        (Alias, 0, 0, 16#4000#, "shallow alias must still share Left");
+      Set_C1 (Alias, 0, 0, 16#4400#);
+      Assert_Stored_Bits
+        (Left, 0, 0, 16#4400#, "alias mutation must still share Left storage");
+      Assert_Stored_Bits
+        (Result, 0, 0, 16#4000#, "result must not share Left storage");
+      Set_C1 (Result, 0, 1, 16#7C00#);
+      Assert_Stored_Bits
+        (Left, 0, 1, 16#4200#, "mutating result must not affect Left");
+      Assert_Stored_Bits
+        (Right, 0, 1, 16#4000#, "mutating result must not affect Right");
+      Set_C1 (Right, 0, 0, 16#7BFF#);
+      Assert_Stored_Bits
+        (Result,
+         0,
+         0,
+         16#4000#,
+         "later input mutation must not affect result");
+   end Mat_Float16_Divide_Ownership;
+
+   procedure Mat_Float16_Divide_Reject_Incompatible
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      C1_A        : constant OpenCV.Core.Mat := Float16_C1 (1, 1);
+      C1_B        : constant OpenCV.Core.Mat := Float16_C1 (2, 1);
+      C1_Wide     : constant OpenCV.Core.Mat := Float16_C1 (1, 2);
+      C3          : constant OpenCV.Core.Mat := Float16_C3 (1, 1);
+      F32         : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      Default_Mat : OpenCV.Core.Mat;
+      procedure Bad_Shape is
+         X : constant OpenCV.Core.Mat := C1_A.Divide (C1_B);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Shape;
+      procedure Bad_Columns is
+         X : constant OpenCV.Core.Mat := C1_A.Divide (C1_Wide);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Columns;
+      procedure Bad_Channels is
+         X : constant OpenCV.Core.Mat := C1_A.Divide (C3);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Channels;
+      procedure Bad_Depth is
+         X : constant OpenCV.Core.Mat := C1_A.Divide (F32);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Depth;
+      procedure Bad_Default is
+         X : constant OpenCV.Core.Mat := Default_Mat.Divide (C1_A);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Default;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Bad_Shape'Access, "Float16 Divide must reject mismatched rows");
+      Assert_Raises_OpenCV_Error
+        (Bad_Columns'Access, "Float16 Divide must reject mismatched columns");
+      Assert_Raises_OpenCV_Error
+        (Bad_Channels'Access,
+         "Float16 Divide must reject C1 vs C3 channel mismatch");
+      Assert_Raises_OpenCV_Error
+        (Bad_Depth'Access,
+         "Float16 Divide must reject Float32 depth mismatch");
+      Assert_Raises_OpenCV_Error
+        (Bad_Default'Access,
+         "Float16 Divide must reject a default Mat paired with a typed Mat");
+   end Mat_Float16_Divide_Reject_Incompatible;
+
+   procedure Mat_Float16_Divide_Finite_Oracle_Sweep
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left : OpenCV.Core.Mat := Float16_C1 (1, Finite_Count);
+   begin
+      OpenCV.Core.Float16_Buffer_Access.With_Writable_Buffer
+        (Left, Fill_Finite_Left'Access);
+      for Operand of Divide_Sweep_Operands loop
+         declare
+            Right    : OpenCV.Core.Mat := Float16_C1 (1, Finite_Count);
+            Quotient : OpenCV.Core.Mat;
+            procedure Check
+              (Data : aliased OpenCV.Core.Float16_Buffer_Access.Buffer_Array)
+            is
+               Right_Value : constant OpenCV.Core.Float16_Value :=
+                 F16 (Operand);
+            begin
+               for Index in Data'Range loop
+                  declare
+                     Left_Value : constant OpenCV.Core.Float16_Value :=
+                       OpenCV.Core.Float16_Access.Get (Left, 0, Index);
+                     Expected   : constant OpenCV.Core.Float16_Value :=
+                       Expected_Divide (Left_Value, Right_Value);
+                  begin
+                     if Bits_Of (Data (Index)) /= Bits_Of (Expected) then
+                        AUnit.Assertions.Assert
+                          (False,
+                           "Divide oracle mismatch left="
+                           & Interfaces.Unsigned_16'Image
+                               (Bits_Of (Left_Value))
+                           & " right="
+                           & Interfaces.Unsigned_16'Image (Operand)
+                           & " got="
+                           & Interfaces.Unsigned_16'Image
+                               (Bits_Of (Data (Index)))
+                           & " expected="
+                           & Interfaces.Unsigned_16'Image
+                               (Bits_Of (Expected)));
+                     end if;
+                  end;
+               end loop;
+            end Check;
+         begin
+            Fill_Constant (Right, Operand);
+            Quotient := Left.Divide (Right);
+            OpenCV.Core.Float16_Buffer_Access.With_Read_Only_Buffer
+              (Quotient, Check'Access);
+         end;
+      end loop;
+   end Mat_Float16_Divide_Finite_Oracle_Sweep;
+
+   procedure Mat_Float16_Divide_Finite_Oracle_Sample
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left     : OpenCV.Core.Mat := Float16_C1 (1, Sample_Pair_Count);
+      Right    : OpenCV.Core.Mat := Float16_C1 (1, Sample_Pair_Count);
+      Quotient : OpenCV.Core.Mat;
+      procedure Fill_Sample
+        (Left_Data :
+           aliased in out OpenCV.Core.Float16_Buffer_Access.Buffer_Array) is
+      begin
+         for Index in Left_Data'Range loop
+            Left_Data (Index) := F16 (Sample_Left_Bits (Index));
+         end loop;
+      end Fill_Sample;
+      procedure Fill_Right
+        (Right_Data :
+           aliased in out OpenCV.Core.Float16_Buffer_Access.Buffer_Array) is
+      begin
+         for Index in Right_Data'Range loop
+            Right_Data (Index) := F16 (Sample_Divide_Right_Bits (Index));
+         end loop;
+      end Fill_Right;
+      procedure Check
+        (Data : aliased OpenCV.Core.Float16_Buffer_Access.Buffer_Array) is
+      begin
+         for Index in Data'Range loop
+            declare
+               L : constant OpenCV.Core.Float16_Value :=
+                 F16 (Sample_Left_Bits (Index));
+               R : constant OpenCV.Core.Float16_Value :=
+                 F16 (Sample_Divide_Right_Bits (Index));
+            begin
+               if Bits_Of (Data (Index)) /= Bits_Of (Expected_Divide (L, R))
+               then
+                  AUnit.Assertions.Assert
+                    (False,
+                     "sampled Divide mismatch at" & Integer'Image (Index));
+               end if;
+            end;
+         end loop;
+      end Check;
+   begin
+      OpenCV.Core.Float16_Buffer_Access.With_Writable_Buffer
+        (Left, Fill_Sample'Access);
+      OpenCV.Core.Float16_Buffer_Access.With_Writable_Buffer
+        (Right, Fill_Right'Access);
+      Quotient := Left.Divide (Right);
+      OpenCV.Core.Float16_Buffer_Access.With_Read_Only_Buffer
+        (Quotient, Check'Access);
+   end Mat_Float16_Divide_Finite_Oracle_Sample;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -2936,6 +3660,65 @@ package body Mat_Arithmetic_Tests is
         (Caller.Create
            ("Mat Float16 Multiply finite oracle sample",
             Mat_Float16_Multiply_Finite_Oracle_Sample'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Divide works for Float16 C1",
+            Mat_Divide_Works_For_Float16_C1'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Divide round to nearest even",
+            Mat_Float16_Divide_Round_To_Nearest_Even'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Divide handle subnormals",
+            Mat_Float16_Divide_Handle_Subnormals'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Divide overflows to signed infinity",
+            Mat_Float16_Divide_Overflows_To_Signed_Infinity'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Divide signed zero",
+            Mat_Float16_Divide_Signed_Zero'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Divide infinity and NaN",
+            Mat_Float16_Divide_Infinity_And_NaN'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Divide by zero", Mat_Float16_Divide_By_Zero'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Divide works for Float16 C3",
+            Mat_Divide_Works_For_Float16_C3'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 C3 Divide mixed numeric categories",
+            Mat_Float16_C3_Divide_Mixed_Numeric_Categories'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 C3 Divide multi-row",
+            Mat_Float16_C3_Divide_Multi_Row'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Divide handle Regions",
+            Mat_Float16_Divide_Handle_Regions'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Divide ownership",
+            Mat_Float16_Divide_Ownership'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Divide reject incompatible",
+            Mat_Float16_Divide_Reject_Incompatible'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Divide finite oracle sweep",
+            Mat_Float16_Divide_Finite_Oracle_Sweep'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Divide finite oracle sample",
+            Mat_Float16_Divide_Finite_Oracle_Sample'Access));
 
       return Result'Access;
    end Suite;

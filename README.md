@@ -704,9 +704,10 @@ owns the backing storage, OpenCV does not free it, and it must remain alive
 for the callback lifetime. The main C1 FP16 data plane is now complete:
 exact value representation, Float32 conversion, scalar access, row access,
 continuous-buffer borrowing, packed external views, and strided external
-views. `Add`, `Subtract`, and `Multiply` additionally support Float16 with
-native OpenCV 5.x arithmetic and an internal Float32 compatibility path on
-OpenCV 4.x. This does not add broad OpenCV 4.x FP16 algorithm coverage.
+views. `Add`, `Subtract`, `Multiply`, and `Divide` additionally support
+Float16 with native OpenCV 5.x arithmetic and an internal Float32
+compatibility path on OpenCV 4.x. This does not add broad OpenCV 4.x FP16
+algorithm coverage.
 `Float16_Vec3` / `Float16_Vec3_Access` add exact-bit 2-D Get/Set for ordinary
 three-channel `CV_16FC3` Mats. `Float16_Vec3_Row_Access` adds copied and
 callback-scoped zero-copy row access for 2-D C3 Mats, including non-contiguous
@@ -720,8 +721,8 @@ measured in complete C3 pixels can skip padding between logical rows. The main
 C3 FP16 storage/access data plane is now complete: exact-bit pixel Get/Set,
 copied rows, borrowed zero-copy rows, continuous whole-buffer borrowing, packed
 caller-owned Mat views, and row-strided caller-owned Mat views. `Add`,
-`Subtract`, and `Multiply` support Float16 C3 with the same native-or-fallback
-policy as C1. This does not add N-D C3 access or broad OpenCV 4.x FP16 algorithm coverage. Component 0, 1,
+`Subtract`, `Multiply`, and `Divide` support Float16 C3 with the same
+native-or-fallback policy as C1. This does not add N-D C3 access or broad OpenCV 4.x FP16 algorithm coverage. Component 0, 1,
 and 2 correspond to OpenCV channels 0, 1, and 2; Core does not assign RGB or
 BGR meaning.
 
@@ -807,12 +808,12 @@ payloads. Classification helpers inspect those stored bits. `To_Float16` /
 round-to-nearest, ties-to-even. `OpenCV.Core.Float16_Access` provides scalar
 C1 2-D and N-D Get/Set that store and load the exact encoding. Copied row
 access, borrowed row access, whole-buffer borrowing, and packed or row-strided
-external Mat views are available for Float16 C1 and C3. `Add`, `Subtract`, and
-`Multiply` accept Float16 Mats and return Float16; they use native OpenCV FP16
-arithmetic where the supported OpenCV version implements the operation and an
-internal Float32 compatibility path otherwise. Storage/access bit preservation
-is distinct from arithmetic numeric semantics. This does not imply broad
-Float16 coverage of every Core algorithm.
+external Mat views are available for Float16 C1 and C3. `Add`, `Subtract`,
+`Multiply`, and `Divide` accept Float16 Mats and return Float16; they use
+native OpenCV FP16 arithmetic where the supported OpenCV version implements
+the operation and an internal Float32 compatibility path otherwise. Storage
+and access bit preservation is distinct from arithmetic numeric semantics.
+This does not imply broad Float16 coverage of every Core algorithm.
 
 ### Creation, shape, metadata, and views
 
@@ -885,25 +886,30 @@ Explicit Mat/Mat operations include:
 - `Add_Weighted`
 - `Scale_Add`
 
-`Add`, `Subtract`, and `Multiply` accept Float16 operands with the same shape,
-depth, and channel-count compatibility rules as the other public depths. The
-result is always Float16; the public result type does not change on older
-OpenCV releases. OpenCV 5.x uses native `CV_16F` `cv::add` / `cv::subtract` /
-`cv::multiply`. OpenCV 4.1, 4.6, and 4.10 expose Float16 storage and
-`convertTo` but do not implement those arithmetic kernels, so the binding
-widens internally to Float32, performs the operation, and narrows back to
-Float16. That fallback exists only for compatibility. Finite results are
-defined as
+`Add`, `Subtract`, `Multiply`, and `Divide` accept Float16 operands with the
+same shape, depth, and channel-count compatibility rules as the other public
+depths. The result is always Float16; the public result type does not change
+on older OpenCV releases. OpenCV 5.x uses native `CV_16F` `cv::add` /
+`cv::subtract` / `cv::multiply` / `cv::divide` when that path satisfies the
+binding's Float32-to-Float16 result model. OpenCV 4.1, 4.6, and 4.10 expose
+Float16 storage and `convertTo` but do not implement those arithmetic kernels,
+so the binding widens internally to Float32, performs the operation, and
+narrows back to Float16. That fallback exists only for compatibility. Finite
+results are defined as
 
 ```text
 To_Float16 (To_Float32 (Left) +/- To_Float32 (Right))
 To_Float16 (To_Float32 (Left) * To_Float32 (Right))
+To_Float16 (To_Float32 (Left) / To_Float32 (Right))
 ```
 
+for finite operands, with a nonzero finite denominator required for Divide.
+This is Float32 division of exactly widened binary16 operands followed by the
+binding's Float16 narrowing, not a claim of native IEEE binary16 division.
 Storage and typed-access APIs preserve exact binary16 object bits, including
 NaN payloads. Arithmetic does not promise payload preservation; it preserves
 numeric and classification behavior. This does not imply broad Float16 support
-for other Core algorithms, including `Divide`.
+for other Core algorithms.
 
 Algebraic multiplication is deliberately separate as `Matrix_Multiply`.
 
