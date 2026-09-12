@@ -24,6 +24,7 @@ with Float16_Buffer_Access_Tests;
 with Float16_Mat_View_Tests;
 with Float16_Vec3_Access_Tests;
 with Float16_Vec3_Row_Access_Tests;
+with Float16_Vec3_Buffer_Access_Tests;
 with Float64_Row_Access_Tests;
 with Float64_Buffer_Access_Tests;
 with Float64_Mat_View_Tests;
@@ -61,6 +62,7 @@ package body Mat_Tests is
       Result.Add_Test (Float16_Mat_View_Tests.Suite);
       Result.Add_Test (Float16_Vec3_Access_Tests.Suite);
       Result.Add_Test (Float16_Vec3_Row_Access_Tests.Suite);
+      Result.Add_Test (Float16_Vec3_Buffer_Access_Tests.Suite);
       Result.Add_Test (Float64_Row_Access_Tests.Suite);
       Result.Add_Test (Float64_Buffer_Access_Tests.Suite);
       Result.Add_Test (Float64_Mat_View_Tests.Suite);
