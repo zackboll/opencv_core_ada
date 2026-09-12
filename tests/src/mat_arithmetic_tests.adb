@@ -3847,13 +3847,17 @@ package body Mat_Arithmetic_Tests is
    is
       pragma Unreferenced (Test);
       pragma Suppress (Validity_Check);
-      Left, Right                 : OpenCV.Core.Mat := Float16_C1 (1, 12);
-      Float32_Left, Float32_Right : OpenCV.Core.Mat :=
-        OpenCV.Core.Create (1, 12, (OpenCV.Core.Float32, 1));
-      Float32_Min, Float32_Max    : OpenCV.Core.Mat;
-      Min_Result, Max_Result      : OpenCV.Core.Mat;
-      C3_Left, C3_Right           : OpenCV.Core.Mat := Float16_C3 (2, 2);
-      C3_Min, C3_Max              : OpenCV.Core.Mat;
+      Left, Right                        : OpenCV.Core.Mat :=
+        Float16_C1 (1, 12);
+      Float32_Left, Float32_Right        : OpenCV.Core.Mat;
+      Float32_Min, Float32_Max           : OpenCV.Core.Mat;
+      Min_Result, Max_Result             : OpenCV.Core.Mat;
+      C3_Left, C3_Right                  : OpenCV.Core.Mat :=
+        Float16_C3 (2, 2);
+      C3_Min, C3_Max                     : OpenCV.Core.Mat;
+      Float32_C3_Left, Float32_C3_Right  : OpenCV.Core.Mat;
+      Float32_C3_Min, Float32_C3_Max     : OpenCV.Core.Mat;
+      Float32_C3_Min16, Float32_C3_Max16 : OpenCV.Core.Mat;
    begin
       for Column in 0 .. 11 loop
          declare
@@ -3888,14 +3892,12 @@ package body Mat_Arithmetic_Tests is
          begin
             Set_C1 (Left, 0, Column, L);
             Set_C1 (Right, 0, Column, R);
-            OpenCV.Core.Float32_Access.Set
-              (Float32_Left, 0, Column, OpenCV.Core.To_Float32 (F16 (L)));
-            OpenCV.Core.Float32_Access.Set
-              (Float32_Right, 0, Column, OpenCV.Core.To_Float32 (F16 (R)));
          end;
       end loop;
       Min_Result := Left.Minimum (Right);
       Max_Result := Left.Maximum (Right);
+      Float32_Left := Left.Convert_To (OpenCV.Core.Float32);
+      Float32_Right := Right.Convert_To (OpenCV.Core.Float32);
       Float32_Min := Float32_Left.Minimum (Float32_Right);
       Float32_Max := Float32_Left.Maximum (Float32_Right);
       for Column in 0 .. 11 loop
@@ -3948,15 +3950,23 @@ package body Mat_Arithmetic_Tests is
         (C3_Left, 0, 0, Pixel (16#0000#, 16#7C00#, 16#7E00#));
       OpenCV.Core.Float16_Vec3_Access.Set
         (C3_Right, 0, 0, Pixel (16#8000#, 16#FC00#, 16#3C00#));
+      Float32_C3_Left := C3_Left.Convert_To (OpenCV.Core.Float32);
+      Float32_C3_Right := C3_Right.Convert_To (OpenCV.Core.Float32);
       C3_Min := C3_Left.Minimum (C3_Right);
       C3_Max := C3_Left.Maximum (C3_Right);
+      Float32_C3_Min := Float32_C3_Left.Minimum (Float32_C3_Right);
+      Float32_C3_Max := Float32_C3_Left.Maximum (Float32_C3_Right);
+      Float32_C3_Min16 := Float32_C3_Min.Convert_To (OpenCV.Core.Float16);
+      Float32_C3_Max16 := Float32_C3_Max.Convert_To (OpenCV.Core.Float16);
       Assert_Bits
         (OpenCV.Core.Float16_Vec3_Access.Get (C3_Min, 0, 0) (0),
-         Bits_Of (OpenCV.Core.Float16_Access.Get (Min_Result, 0, 2)),
+         Bits_Of
+           (OpenCV.Core.Float16_Vec3_Access.Get (Float32_C3_Min16, 0, 0) (0)),
          "Float16 C3 Minimum signed zero must match Float32 model");
       Assert_Bits
         (OpenCV.Core.Float16_Vec3_Access.Get (C3_Max, 0, 0) (0),
-         Bits_Of (OpenCV.Core.Float16_Access.Get (Max_Result, 0, 2)),
+         Bits_Of
+           (OpenCV.Core.Float16_Vec3_Access.Get (Float32_C3_Max16, 0, 0) (0)),
          "Float16 C3 Maximum signed zero must match Float32 model");
       Assert_Bits
         (OpenCV.Core.Float16_Vec3_Access.Get (C3_Min, 0, 0) (1),
@@ -3968,11 +3978,13 @@ package body Mat_Arithmetic_Tests is
          "Float16 C3 Maximum infinity component");
       Assert_Bits
         (OpenCV.Core.Float16_Vec3_Access.Get (C3_Min, 0, 0) (2),
-         Bits_Of (OpenCV.Core.Float16_Access.Get (Min_Result, 0, 10)),
+         Bits_Of
+           (OpenCV.Core.Float16_Vec3_Access.Get (Float32_C3_Min16, 0, 0) (2)),
          "Float16 C3 Minimum NaN component must match Float32 model");
       Assert_Bits
         (OpenCV.Core.Float16_Vec3_Access.Get (C3_Max, 0, 0) (2),
-         Bits_Of (OpenCV.Core.Float16_Access.Get (Max_Result, 0, 10)),
+         Bits_Of
+           (OpenCV.Core.Float16_Vec3_Access.Get (Float32_C3_Max16, 0, 0) (2)),
          "Float16 C3 Maximum NaN component must match Float32 model");
    end Mat_Float16_Minimum_Maximum_Special_And_C3;
 
