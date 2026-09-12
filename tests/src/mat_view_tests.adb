@@ -1,6 +1,8 @@
 with AUnit.Assertions;
 with AUnit.Test_Caller;
+with Ada.Exceptions;
 with Interfaces;
+with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
 with OpenCV.Core.UInt8_Access;
@@ -453,6 +455,17 @@ package body Mat_View_Tests is
       begin
          pragma Unreferenced (Ignored);
       end Zero_Height;
+
+      procedure Maximum_Signed_Origin is
+         Ignored : constant OpenCV.Core.Mat :=
+           Source.Region
+             ((X      => OpenCV.Core.Point_Coordinate'Last,
+               Y      => 0,
+               Width  => 1,
+               Height => 1));
+      begin
+         pragma Unreferenced (Ignored);
+      end Maximum_Signed_Origin;
    begin
       Assert_Raises_OpenCV_Error
         (X_Beyond_Source'Access, "Region must reject an X outside source");
@@ -468,7 +481,59 @@ package body Mat_View_Tests is
         (Zero_Width'Access, "Region must reject zero width");
       Assert_Raises_OpenCV_Error
         (Zero_Height'Access, "Region must reject zero height");
+      Assert_Raises_OpenCV_Error
+        (Maximum_Signed_Origin'Access,
+         "Region must reject a Point_Coordinate'Last origin outside source");
    end Region_Rejects_Invalid_Areas;
+
+   procedure Region_Rejects_Negative_Origins (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Source : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Rows         => 2,
+           Columns      => 3,
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+
+      procedure Assert_Ada_Nonnegative_Origin_Rejection
+        (Area : OpenCV.Core.Rect; Message : String)
+      is
+         Raised : Boolean := False;
+      begin
+         declare
+            Ignored : constant OpenCV.Core.Mat := Source.Region (Area);
+         begin
+            pragma Unreferenced (Ignored);
+         end;
+         AUnit.Assertions.Assert (False, Message);
+      exception
+         when Error : OpenCV.OpenCV_Error =>
+            Raised := True;
+            AUnit.Assertions.Assert
+              (Ada.Exceptions.Exception_Message (Error)
+               = "Mat region origin must be nonnegative",
+               Message
+               & "; expected Ada nonnegative-origin diagnostic, got "
+               & Ada.Exceptions.Exception_Message (Error));
+            AUnit.Assertions.Assert (Raised, Message);
+      end Assert_Ada_Nonnegative_Origin_Rejection;
+   begin
+      Assert_Ada_Nonnegative_Origin_Rejection
+        ((X => -1, Y => 0, Width => 1, Height => 1),
+         "Region must reject a negative X origin in Ada");
+      Assert_Ada_Nonnegative_Origin_Rejection
+        ((X => 0, Y => -1, Width => 1, Height => 1),
+         "Region must reject a negative Y origin in Ada");
+      Assert_Ada_Nonnegative_Origin_Rejection
+        ((X => -3, Y => -4, Width => 1, Height => 1),
+         "Region must reject negative X and Y origins in Ada");
+      Assert_Ada_Nonnegative_Origin_Rejection
+        ((X      => OpenCV.Core.Point_Coordinate'First,
+          Y      => 0,
+          Width  => 1,
+          Height => 1),
+         "Region must reject Point_Coordinate'First X in Ada");
+   end Region_Rejects_Negative_Origins;
 
    procedure Region_Reports_Authoritative_Storage_Layout
      (Test : in out Mat_Test_Fixture)
@@ -1507,6 +1572,10 @@ package body Mat_View_Tests is
         (Caller.Create
            ("Region rejects invalid areas",
             Region_Rejects_Invalid_Areas'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Region rejects negative origins",
+            Region_Rejects_Negative_Origins'Access));
       Result.Add_Test
         (Caller.Create
            ("Region reports authoritative storage layout",

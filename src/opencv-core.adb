@@ -3499,6 +3499,8 @@ package body OpenCV.Core is
       Source_Rows    : constant Size_Coordinate := Size_Coordinate (Self.Rows);
       Source_Columns : constant Size_Coordinate :=
         Size_Coordinate (Self.Columns);
+      Origin_X       : Size_Coordinate;
+      Origin_Y       : Size_Coordinate;
       Result         : Mat;
       New_Handle     : aliased OpenCV.Internal.C_API.Mat_Handle :=
         OpenCV.Internal.C_API.Null_Mat_Handle;
@@ -3510,14 +3512,22 @@ package body OpenCV.Core is
             "Mat region width and height must be positive");
       end if;
 
-      if Area.X >= Source_Columns or else Area.Y >= Source_Rows then
+      if Area.X < 0 or else Area.Y < 0 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Mat region origin must be nonnegative");
+      end if;
+
+      Origin_X := Size_Coordinate (Area.X);
+      Origin_Y := Size_Coordinate (Area.Y);
+
+      if Origin_X >= Source_Columns or else Origin_Y >= Source_Rows then
          Ada.Exceptions.Raise_Exception
            (OpenCV_Error'Identity,
             "Mat region origin is outside source bounds");
       end if;
 
-      if Area.Width > Source_Columns - Area.X
-        or else Area.Height > Source_Rows - Area.Y
+      if Area.Width > Source_Columns - Origin_X
+        or else Area.Height > Source_Rows - Origin_Y
       then
          Ada.Exceptions.Raise_Exception
            (OpenCV_Error'Identity, "Mat region extends outside source bounds");
@@ -3526,8 +3536,8 @@ package body OpenCV.Core is
       Status :=
         OpenCV.Internal.C_API.Mat_Region
           (Source => Self.Handle,
-           X      => OpenCV.Internal.C_API.C_Int32 (Area.X),
-           Y      => OpenCV.Internal.C_API.C_Int32 (Area.Y),
+           X      => OpenCV.Internal.C_API.C_Int32 (Origin_X),
+           Y      => OpenCV.Internal.C_API.C_Int32 (Origin_Y),
            Width  => OpenCV.Internal.C_API.C_Int32 (Area.Width),
            Height => OpenCV.Internal.C_API.C_Int32 (Area.Height),
            Result => New_Handle'Access);

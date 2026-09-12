@@ -216,9 +216,14 @@ package OpenCV.Core is
       end case;
    end record;
 
+   --  Axis-aligned rectangle with a signed origin and nonnegative size.
+   --  OpenCV rectangle origins may be negative. Width and Height remain
+   --  nonnegative in this Ada value model. A Rect is not restricted merely
+   --  because Mat ROI operations require nonnegative origins; Mat.Region
+   --  enforces that ROI-specific constraint itself.
    type Rect is record
-      X      : Size_Coordinate := 0;
-      Y      : Size_Coordinate := 0;
+      X      : Point_Coordinate := 0;
+      Y      : Point_Coordinate := 0;
       Width  : Size_Coordinate := 0;
       Height : Size_Coordinate := 0;
    end record;
@@ -1192,6 +1197,11 @@ package OpenCV.Core is
    function Channel_Size (Self : Mat) return Mat_Size;
    function Is_Continuous (Self : Mat) return Boolean;
    function Is_Submatrix (Self : Mat) return Boolean;
+
+   --  Creates a distinct Mat header sharing Self's storage for a 2-D ROI.
+   --  Rect origins are signed, but a Mat ROI still requires a nonnegative
+   --  zero-based origin that lies entirely inside Self. Width and Height
+   --  must be positive.
    function Region (Self : Mat; Area : Rect) return Mat;
 
    --  These operations create distinct Mat headers sharing Self's storage.

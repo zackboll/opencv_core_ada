@@ -39,6 +39,54 @@ package body Mat_Basic_Tests is
          "Point must preserve negative X and Y coordinates");
    end Size_And_Point_Are_Ordinary_Value_Types;
 
+   procedure Rect_Preserves_Signed_Origins (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Positive_Origin : constant OpenCV.Core.Rect :=
+        (X => 1, Y => 4, Width => 10, Height => 20);
+      Negative_X      : constant OpenCV.Core.Rect :=
+        (X => -3, Y => 4, Width => 10, Height => 20);
+      Negative_Y      : constant OpenCV.Core.Rect :=
+        (X => 3, Y => -4, Width => 10, Height => 20);
+      Negative_Both   : constant OpenCV.Core.Rect :=
+        (X => -3, Y => -4, Width => 10, Height => 20);
+      Extreme         : constant OpenCV.Core.Rect :=
+        (X      => OpenCV.Core.Point_Coordinate'First,
+         Y      => OpenCV.Core.Point_Coordinate'Last,
+         Width  => OpenCV.Core.Size_Coordinate'Last,
+         Height => 0);
+   begin
+      AUnit.Assertions.Assert
+        (Positive_Origin.X = 1
+         and then Positive_Origin.Y = 4
+         and then Positive_Origin.Width = 10
+         and then Positive_Origin.Height = 20,
+         "Rect must preserve a nonnegative origin and dimensions");
+      AUnit.Assertions.Assert
+        (Negative_X.X = -3
+         and then Negative_X.Y = 4
+         and then Negative_X.Width = 10
+         and then Negative_X.Height = 20,
+         "Rect must preserve a negative X origin");
+      AUnit.Assertions.Assert
+        (Negative_Y.X = 3
+         and then Negative_Y.Y = -4
+         and then Negative_Y.Width = 10
+         and then Negative_Y.Height = 20,
+         "Rect must preserve a negative Y origin");
+      AUnit.Assertions.Assert
+        (Negative_Both.X = -3
+         and then Negative_Both.Y = -4
+         and then Negative_Both.Width = 10
+         and then Negative_Both.Height = 20,
+         "Rect must preserve negative X and Y origins");
+      AUnit.Assertions.Assert
+        (Extreme.X = OpenCV.Core.Point_Coordinate'First
+         and then Extreme.Y = OpenCV.Core.Point_Coordinate'Last
+         and then Extreme.Width = OpenCV.Core.Size_Coordinate'Last
+         and then Extreme.Height = 0,
+         "Rect must preserve signed origin and nonnegative size extremes");
+   end Rect_Preserves_Signed_Origins;
+
    procedure Mat_Dimensions_Reflect_Mat_And_View_Shapes
      (Test : in out Mat_Test_Fixture)
    is
@@ -798,6 +846,10 @@ package body Mat_Basic_Tests is
         (Caller.Create
            ("Size and Point are ordinary value types",
             Size_And_Point_Are_Ordinary_Value_Types'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Rect preserves signed origins",
+            Rect_Preserves_Signed_Origins'Access));
       Result.Add_Test
         (Caller.Create
            ("Mat dimensions reflect Mat and view shapes",

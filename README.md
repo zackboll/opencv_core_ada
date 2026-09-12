@@ -427,6 +427,9 @@ ROI : Mat :=
 ```
 
 A Region has its own `Mat` header but shares the parent's storage.
+`Rect` origins are signed so they can represent general OpenCV rectangles,
+including negative `X`/`Y`. `Mat.Region` still requires a nonnegative
+zero-based ROI origin that fits inside the source.
 
 ### Borrow a row without copying
 
