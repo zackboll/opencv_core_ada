@@ -649,7 +649,7 @@ Direct typed access currently concentrates on nine common layouts:
 | UInt16 C1 | `UInt16_Access` | `UInt16_Access` | — | `UInt16_Row_Access` | `UInt16_Row_Access` | — | — | — |
 | Int16 C1 | `Int16_Access` | `Int16_Access` | — | `Int16_Row_Access` | `Int16_Row_Access` | — | — | — |
 | Int32 C1 | `Int32_Access` | `Int32_Access` | — | — | — | — | — | — |
-| Float16 C1 | `Float16_Access` | `Float16_Access` | `Float16_Value` helpers | `Float16_Row_Access` | `Float16_Row_Access` | — | — | — |
+| Float16 C1 | `Float16_Access` | `Float16_Access` | `Float16_Value` helpers | `Float16_Row_Access` | `Float16_Row_Access` | `Float16_Buffer_Access` | — | — |
 | Float32 C1 | `Float32_Access` | `Float32_Access` | — | `Float32_Row_Access` | `Float32_Row_Access` | `Float32_Buffer_Access` | `Float32_Mat_View` | `Float32_Mat_View` |
 | Float64 C1 | `Float64_Access` | `Float64_Access` | `Float64_Access` | `Float64_Row_Access` | `Float64_Row_Access` | `Float64_Buffer_Access` | `Float64_Mat_View` | `Float64_Mat_View` |
 | UInt8 C3 | `UInt8_Vec3_Access` | — | — | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Buffer_Access` | `UInt8_Vec3_Mat_View` | — |
@@ -684,8 +684,10 @@ signed zeros, subnormals, infinities, and NaN payloads, round-trips through
 `Float16_From_Bits` / `Float16_Bits`. `Float16_Row_Access` adds copied and
 callback-scoped zero-copy row access for 2-D C1 Mats, including
 non-contiguous Regions, and likewise preserves exact binary16 object bits
-without converting through Float32. Whole-buffer borrowing and caller-owned
-Mat views are not yet provided for Float16.
+without converting through Float32. `Float16_Buffer_Access` adds
+callback-scoped zero-copy whole-buffer borrowing for continuous 2-D C1
+Mats. Non-contiguous Regions still require row access. Caller-owned Mat
+views are not yet provided for Float16.
 
 `Float64_Access` provides scalar 2-D and N-D Get/Set plus non-finite value
 classification. `Float64_Row_Access` adds copied and callback-scoped zero-copy
