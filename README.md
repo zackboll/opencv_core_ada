@@ -649,7 +649,7 @@ Direct typed access currently concentrates on nine common layouts:
 | UInt16 C1 | `UInt16_Access` | `UInt16_Access` | — | `UInt16_Row_Access` | `UInt16_Row_Access` | — | — | — |
 | Int16 C1 | `Int16_Access` | `Int16_Access` | — | `Int16_Row_Access` | `Int16_Row_Access` | — | — | — |
 | Int32 C1 | `Int32_Access` | `Int32_Access` | — | — | — | — | — | — |
-| Float16 C1 | `Float16_Access` | `Float16_Access` | `Float16_Value` helpers | `Float16_Row_Access` | `Float16_Row_Access` | `Float16_Buffer_Access` | — | — |
+| Float16 C1 | `Float16_Access` | `Float16_Access` | `Float16_Value` helpers | `Float16_Row_Access` | `Float16_Row_Access` | `Float16_Buffer_Access` | `Float16_Mat_View` | `Float16_Mat_View` |
 | Float32 C1 | `Float32_Access` | `Float32_Access` | — | `Float32_Row_Access` | `Float32_Row_Access` | `Float32_Buffer_Access` | `Float32_Mat_View` | `Float32_Mat_View` |
 | Float64 C1 | `Float64_Access` | `Float64_Access` | `Float64_Access` | `Float64_Row_Access` | `Float64_Row_Access` | `Float64_Buffer_Access` | `Float64_Mat_View` | `Float64_Mat_View` |
 | UInt8 C3 | `UInt8_Vec3_Access` | — | — | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Buffer_Access` | `UInt8_Vec3_Mat_View` | — |
@@ -686,8 +686,17 @@ callback-scoped zero-copy row access for 2-D C1 Mats, including
 non-contiguous Regions, and likewise preserves exact binary16 object bits
 without converting through Float32. `Float16_Buffer_Access` adds
 callback-scoped zero-copy whole-buffer borrowing for continuous 2-D C1
-Mats. Non-contiguous Regions still require row access. Caller-owned Mat
-views are not yet provided for Float16.
+Mats. Non-contiguous Regions still require row access. `Float16_Mat_View`
+adds callback-scoped packed and row-strided caller-owned CV_16FC1 storage.
+Packed views overlay a contiguous Ada array. Row-strided views use
+`With_Writable_Strided_Mat_View` so a 2-D `Row_Stride` can skip padding
+between logical rows. Arbitrary N-D strides are not supported. The caller
+owns the backing storage, OpenCV does not free it, and it must remain alive
+for the callback lifetime. The main C1 FP16 data plane is now complete:
+exact value representation, Float32 conversion, scalar access, row access,
+continuous-buffer borrowing, packed external views, and strided external
+views. This does not add FP16 C3 support or broad OpenCV 4.x FP16 algorithm
+coverage.
 
 `Float64_Access` provides scalar 2-D and N-D Get/Set plus non-finite value
 classification. `Float64_Row_Access` adds copied and callback-scoped zero-copy
@@ -1379,19 +1388,22 @@ The current limitations are intentional and help keep the public API coherent:
    UInt16 C1 has 2-D and N-D Get/Set plus copied and borrowed 2-D row access.
    Int16 C1 has 2-D and N-D Get/Set plus copied and borrowed 2-D row access.
    Int32 C1 has 2-D and N-D Get/Set. Float16 C1 has 2-D and N-D Get/Set that
-   preserve the exact binary16 encoding. Float64 C1 has 2-D and
+   preserve the exact binary16 encoding, plus copied and borrowed 2-D row
+   access, continuous 2-D whole-buffer borrowing, and packed or row-strided
+   2-D caller-buffer views. Float64 C1 has 2-D and
    N-D Get/Set, classification, 2-D row access, continuous 2-D whole-buffer
    borrowing, and packed or row-strided 2-D caller-buffer views. Other OpenCV
    depths are available to general Mat operations but do not yet have the same
    typed access families. Float16 now has an exact 16-bit public value
    representation, IEEE-754 classification helpers, numeric
-   Float32 <-> Float16 conversion, and scalar C1 2-D/N-D Get/Set, but copied
-   row access, borrowed row access, continuous buffer borrowing, and external
-   caller-buffer Mat views are not yet exposed.
+   Float32 <-> Float16 conversion, scalar C1 2-D/N-D Get/Set, copied and
+   borrowed row access, continuous buffer borrowing, and packed or strided
+   external caller-buffer Mat views.
 
 4. **External caller-buffer views are writable and callback-scoped.**  
-   Packed 2-D views are available for UInt8/Float32 C1/C3 and Float64 C1.
-   Row-strided external storage is exposed for Float32 C1 and Float64 C1.
+   Packed 2-D views are available for UInt8/Float32 C1/C3 and Float16/Float64 C1.
+   Row-strided external storage is exposed for Float16 C1, Float32 C1, and
+   Float64 C1.
    Arbitrary N-D strides, multi-channel Float64 external views, and a separate
    read-only external Mat abstraction are not yet exposed.
 
