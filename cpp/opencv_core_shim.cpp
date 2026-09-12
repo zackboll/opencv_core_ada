@@ -3219,6 +3219,27 @@ static void abs_diff_float16(const cv::Mat &left, const cv::Mat &right,
 #endif
 }
 
+// OpenCV 4.x exposes CV_16F Mat storage/conversion but its addWeighted
+// dispatch table does not implement CV_16F. OpenCV 5.x provides native
+// addWeighted16f: it widens operands and double coefficients to Float32,
+// evaluates there, then rounds once to Float16. Use that native path on 5.x
+// and the equivalent explicit conversion path on older supported versions.
+static void add_weighted_float16(const cv::Mat &left, double alpha,
+                                 const cv::Mat &right, double beta,
+                                 double gamma, cv::Mat &result) {
+#if CV_VERSION_MAJOR >= 5
+    cv::addWeighted(left, alpha, right, beta, gamma, result, -1);
+#else
+    cv::Mat left32;
+    cv::Mat right32;
+    cv::Mat result32;
+    left.convertTo(left32, CV_32F);
+    right.convertTo(right32, CV_32F);
+    cv::addWeighted(left32, alpha, right32, beta, gamma, result32, -1);
+    result32.convertTo(result, CV_16F);
+#endif
+}
+
 opencv_core_status
 opencv_core_mat_abs_diff(const opencv_core_mat_handle *left,
                          const opencv_core_mat_handle *right,
@@ -3267,8 +3288,13 @@ opencv_core_mat_add_weighted(const opencv_core_mat_handle *left, double alpha,
 
     try {
         cv::Mat weighted_sum;
-        cv::addWeighted(left->value, alpha, right->value, beta, gamma,
-                        weighted_sum, -1);
+        if (left->value.depth() == CV_16F) {
+            add_weighted_float16(left->value, alpha, right->value, beta,
+                                 gamma, weighted_sum);
+        } else {
+            cv::addWeighted(left->value, alpha, right->value, beta, gamma,
+                            weighted_sum, -1);
+        }
         *out_mat = new opencv_core_mat_handle(weighted_sum);
         return OPENCV_CORE_OK;
     } catch (...) {

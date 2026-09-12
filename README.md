@@ -18,7 +18,7 @@ translation of the C++ headers.
 >
 > **Development status:** active, pre-1.0 API.
 >
-> **Current test baseline:** 1019 AUnit tests, with Ada and C++ warnings promoted
+> **Current test baseline:** 1208 AUnit tests, with Ada and C++ warnings promoted
 > to errors. GitHub Actions exercises the full test suite against four OpenCV
 > compatibility targets, plus a native Ubuntu 24.04 ARM64 job.
 >
@@ -812,7 +812,7 @@ round-to-nearest, ties-to-even. `OpenCV.Core.Float16_Access` provides scalar
 C1 2-D and N-D Get/Set that store and load the exact encoding. Copied row
 access, borrowed row access, whole-buffer borrowing, and packed or row-strided
 external Mat views are available for Float16 C1 and C3. `Add`, `Subtract`,
-`Multiply`, `Divide`, `Abs_Diff`, `Minimum`, and `Maximum` accept Float16 Mats
+`Multiply`, `Divide`, `Abs_Diff`, `Minimum`, `Maximum`, and `Add_Weighted` accept Float16 Mats
 and return Float16; they use native OpenCV FP16 arithmetic where the supported
 OpenCV version implements the operation and an internal Float32 compatibility path otherwise. Storage
 and access bit preservation is distinct from arithmetic numeric semantics.
@@ -889,7 +889,7 @@ Explicit Mat/Mat operations include:
 - `Add_Weighted`
 - `Scale_Add`
 
-`Add`, `Subtract`, `Multiply`, `Divide`, `Abs_Diff`, `Minimum`, and `Maximum`
+`Add`, `Subtract`, `Multiply`, `Divide`, `Abs_Diff`, `Minimum`, `Maximum`, and `Add_Weighted`
 accept Float16 operands with the same shape, depth, and channel-count
 compatibility rules as the other public depths. The result is always Float16;
 the public result type does not change on older OpenCV releases. OpenCV 5.x
@@ -905,9 +905,21 @@ To_Float16 (To_Float32 (Left) +/- To_Float32 (Right))
 To_Float16 (To_Float32 (Left) * To_Float32 (Right))
 To_Float16 (To_Float32 (Left) / To_Float32 (Right))
 To_Float16 (abs (To_Float32 (Left) - To_Float32 (Right)))
+To_Float16 (Float32_Add_Weighted
+              (To_Float32 (Left), Float32 (Alpha),
+               To_Float32 (Right), Float32 (Beta), Float32 (Gamma)))
 ```
 
 for finite operands, with a nonzero finite denominator required for Divide.
+For `Add_Weighted`, OpenCV 5.x uses native `CV_16F` `addWeighted`; OpenCV
+4.1, 4.6, and 4.10 widen to Float32, call `addWeighted`, and narrow once to
+Float16. The coefficients cross the binding ABI as `double` and are narrowed
+to Float32 by both paths. The finite contract above was checked against the
+OpenCV 5.0 native path using deterministic binary16 coverage and rounding,
+overflow, underflow, cancellation, signed-zero, and coefficient cases. This
+defines the operation in terms of OpenCV's Float32 kernel rather than a
+particular scalar evaluation order or fused-operation choice; signed-zero and
+NaN payload bits are therefore not promised.
 For finite numerically unequal operands, `Minimum` and `Maximum` select the
 smaller or larger binary16 operand exactly. Their signed-zero, infinity, and
 NaN behavior follows the established Float32 `cv::min` / `cv::max` semantics

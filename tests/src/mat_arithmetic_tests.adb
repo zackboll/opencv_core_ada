@@ -139,6 +139,24 @@ package body Mat_Arithmetic_Tests is
       OpenCV.Core.Float16_Access.Set (Image, Row, Column, F16 (Bits));
    end Set_C1;
 
+   function Expected_Add_Weighted
+     (Left, Right : OpenCV.Core.Float16_Value; Alpha, Beta, Gamma : Long_Float)
+      return OpenCV.Core.Float16_Value
+   is
+      A : constant Interfaces.IEEE_Float_32 :=
+        Interfaces.IEEE_Float_32 (Alpha);
+      B : constant Interfaces.IEEE_Float_32 := Interfaces.IEEE_Float_32 (Beta);
+      G : constant Interfaces.IEEE_Float_32 :=
+        Interfaces.IEEE_Float_32 (Gamma);
+   begin
+      return
+        OpenCV.Core.To_Float16
+          (OpenCV.Core.To_Float32 (Left)
+           * A
+           + OpenCV.Core.To_Float32 (Right) * B
+           + G);
+   end Expected_Add_Weighted;
+
    procedure Mat_Add_And_Subtract_Work_For_Float32
      (Test : in out Mat_Test_Fixture)
    is
@@ -1875,6 +1893,189 @@ package body Mat_Arithmetic_Tests is
          "Float16 Add must reject a default Mat paired with a typed Mat");
    end Mat_Float16_Add_Subtract_Reject_Incompatible;
 
+   procedure Mat_Add_Weighted_Works_For_Float16_C1
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left   : OpenCV.Core.Mat := Float16_C1 (1, 6);
+      Right  : OpenCV.Core.Mat := Float16_C1 (1, 6);
+      Result : OpenCV.Core.Mat;
+   begin
+      Set_C1 (Left, 0, 0, 16#3C00#);
+      Set_C1 (Right, 0, 0, 16#4000#);
+      Set_C1 (Left, 0, 1, 16#3C00#);
+      Set_C1 (Right, 0, 1, 16#3C00#);
+      Set_C1 (Left, 0, 2, 16#0001#);
+      Set_C1 (Right, 0, 2, 16#8001#);
+      Set_C1 (Left, 0, 3, 16#7BFF#);
+      Set_C1 (Right, 0, 3, 16#7BFF#);
+      Set_C1 (Left, 0, 4, 16#C000#);
+      Set_C1 (Right, 0, 4, 16#4000#);
+      Set_C1 (Left, 0, 5, 16#8000#);
+      Set_C1 (Right, 0, 5, 16#0000#);
+      Result := Left.Add_Weighted (0.1, Right, 0.3, 0.7);
+      Assert_Float16_Metadata
+        (Result, 1, 6, 1, "Float16 Add_Weighted must preserve C1 metadata");
+      for Column in 0 .. 5 loop
+         Assert_Bits
+           (OpenCV.Core.Float16_Access.Get (Result, 0, Column),
+            Bits_Of
+              (Expected_Add_Weighted
+                 (OpenCV.Core.Float16_Access.Get (Left, 0, Column),
+                  OpenCV.Core.Float16_Access.Get (Right, 0, Column),
+                  0.1,
+                  0.3,
+                  0.7)),
+            "Float16 Add_Weighted must apply Alpha, Beta, and Gamma");
+      end loop;
+      Result := Left.Add_Weighted (1.0, Right, -1.0, 0.0);
+      Result := Left.Add_Weighted (0.5, Right, 0.0, 0.0);
+      Assert_Stored_Bits
+        (Result, 0, 2, 16#0000#, "half a minimum subnormal must underflow");
+      Result := Left.Add_Weighted (1.0, Right, 1.0, 0.0);
+      Assert_Stored_Bits
+        (Result, 0, 3, 16#7C00#, "finite overflow must produce infinity");
+      Result := Left.Add_Weighted (1.0, Right, -1.0, 0.0);
+      Assert_Stored_Bits
+        (Result, 0, 4, 16#C400#, "negative cancellation must be preserved");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Is_Zero (OpenCV.Core.Float16_Access.Get (Result, 0, 5)),
+         "Add_Weighted signed-zero inputs must produce a zero result");
+   end Mat_Add_Weighted_Works_For_Float16_C1;
+
+   procedure Mat_Float16_Add_Weighted_Nonfinite
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left   : OpenCV.Core.Mat := Float16_C1 (1, 3);
+      Right  : OpenCV.Core.Mat := Float16_C1 (1, 3);
+      Result : OpenCV.Core.Mat;
+   begin
+      Set_C1 (Left, 0, 0, 16#7C00#);
+      Set_C1 (Right, 0, 0, 16#3C00#);
+      Set_C1 (Left, 0, 1, 16#FC00#);
+      Set_C1 (Right, 0, 1, 16#7C00#);
+      Set_C1 (Left, 0, 2, 16#7E01#);
+      Set_C1 (Right, 0, 2, 16#3C00#);
+      Result := Left.Add_Weighted (1.0, Right, 1.0, 0.0);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Is_Infinite
+           (OpenCV.Core.Float16_Access.Get (Result, 0, 0))
+         and then not OpenCV.Core.Is_Negative
+                        (OpenCV.Core.Float16_Access.Get (Result, 0, 0))
+         and then OpenCV.Core.Is_NaN
+                    (OpenCV.Core.Float16_Access.Get (Result, 0, 1))
+         and then OpenCV.Core.Is_NaN
+                    (OpenCV.Core.Float16_Access.Get (Result, 0, 2)),
+         "Float16 Add_Weighted must classify infinity and NaN results");
+   end Mat_Float16_Add_Weighted_Nonfinite;
+
+   procedure Mat_Float16_Add_Weighted_C3_Regions_And_Ownership
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left_Parent                       : OpenCV.Core.Mat := Float16_C3 (3, 5);
+      Right_Parent                      : OpenCV.Core.Mat := Float16_C3 (3, 5);
+      Left_Region, Right_Region, Result : OpenCV.Core.Mat;
+      Expected                          :
+        constant OpenCV.Core.Float16_Vec3.Vector :=
+          (0 =>
+             Expected_Add_Weighted
+               (F16 (16#3C00#), F16 (16#4000#), 0.5, 0.25, 0.0),
+           1 =>
+             Expected_Add_Weighted
+               (F16 (16#C000#), F16 (16#3800#), 0.5, 0.25, 0.0),
+           2 =>
+             Expected_Add_Weighted
+               (F16 (16#3800#), F16 (16#4400#), 0.5, 0.25, 0.0));
+   begin
+      for Row in 0 .. 2 loop
+         for Column in 0 .. 4 loop
+            OpenCV.Core.Float16_Vec3_Access.Set
+              (Left_Parent, Row, Column, Pixel (16#3C00#, 16#C000#, 16#3800#));
+            OpenCV.Core.Float16_Vec3_Access.Set
+              (Right_Parent,
+               Row,
+               Column,
+               Pixel (16#4000#, 16#3800#, 16#4400#));
+         end loop;
+      end loop;
+      Left_Region :=
+        Left_Parent.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+      Right_Region :=
+        Right_Parent.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+      AUnit.Assertions.Assert
+        (not Left_Region.Is_Continuous and then not Right_Region.Is_Continuous,
+         "Float16 Add_Weighted Regions must be genuinely non-contiguous");
+      Result := Left_Region.Add_Weighted (0.5, Right_Region, 0.25);
+      Assert_Float16_Metadata
+        (Result, 2, 3, 3, "Float16 Add_Weighted must preserve C3 metadata");
+      for Row in 0 .. 1 loop
+         for Column in 0 .. 2 loop
+            Assert_Stored_Pixel
+              (Result,
+               Row,
+               Column,
+               Expected,
+               "Float16 Add_Weighted must apply independently per C3"
+               & " component");
+         end loop;
+      end loop;
+      OpenCV.Core.Float16_Vec3_Access.Set
+        (Left_Parent, 1, 1, Pixel (16#7C00#, 16#7C00#, 16#7C00#));
+      Assert_Stored_Pixel
+        (Result,
+         0,
+         0,
+         Expected,
+         "later Region input mutation must not affect Float16 Add_Weighted"
+         & " result");
+      OpenCV.Core.Float16_Vec3_Access.Set
+        (Result, 0, 0, Pixel (16#7C00#, 16#7C00#, 16#7C00#));
+      Assert_Stored_Pixel
+        (Right_Parent,
+         1,
+         1,
+         Pixel (16#4000#, 16#3800#, 16#4400#),
+         "Float16 Add_Weighted result must not share Region input storage");
+   end Mat_Float16_Add_Weighted_C3_Regions_And_Ownership;
+
+   procedure Mat_Float16_Add_Weighted_Rejects_Incompatible
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      C1            : constant OpenCV.Core.Mat := Float16_C1 (1, 1);
+      Different_Row : constant OpenCV.Core.Mat := Float16_C1 (2, 1);
+      C3            : constant OpenCV.Core.Mat := Float16_C3 (1, 1);
+      F32           : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
+      procedure Bad_Rows is
+         X : constant OpenCV.Core.Mat :=
+           C1.Add_Weighted (1.0, Different_Row, 1.0);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Rows;
+      procedure Bad_Channels is
+         X : constant OpenCV.Core.Mat := C1.Add_Weighted (1.0, C3, 1.0);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Channels;
+      procedure Bad_Depth is
+         X : constant OpenCV.Core.Mat := C1.Add_Weighted (1.0, F32, 1.0);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Depth;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Bad_Rows'Access, "Float16 Add_Weighted must reject mismatched rows");
+      Assert_Raises_OpenCV_Error
+        (Bad_Channels'Access,
+         "Float16 Add_Weighted must reject mismatched channel counts");
+      Assert_Raises_OpenCV_Error
+        (Bad_Depth'Access,
+         "Float16 Add_Weighted must reject mismatched depths");
+   end Mat_Float16_Add_Weighted_Rejects_Incompatible;
+
    Finite_Count : constant := 2 * 16#7C00#;
 
    type Operand_Bits is array (Positive range <>) of Interfaces.Unsigned_16;
@@ -2006,6 +2207,69 @@ package body Mat_Arithmetic_Tests is
          return Bits;
       end if;
    end Sample_Divide_Right_Bits;
+
+   procedure Mat_Float16_Add_Weighted_Finite_Oracle_Sample
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left   : OpenCV.Core.Mat := Float16_C1 (1, Sample_Pair_Count);
+      Right  : OpenCV.Core.Mat := Float16_C1 (1, Sample_Pair_Count);
+      Result : OpenCV.Core.Mat;
+      procedure Fill_Left
+        (Data : aliased in out OpenCV.Core.Float16_Buffer_Access.Buffer_Array)
+      is
+      begin
+         for Index in Data'Range loop
+            Data (Index) := F16 (Sample_Left_Bits (Index));
+         end loop;
+      end Fill_Left;
+      procedure Fill_Right
+        (Data : aliased in out OpenCV.Core.Float16_Buffer_Access.Buffer_Array)
+      is
+      begin
+         for Index in Data'Range loop
+            Data (Index) := F16 (Sample_Right_Bits (Index));
+         end loop;
+      end Fill_Right;
+      procedure Check (Alpha, Beta, Gamma : Long_Float) is
+         Left32   : constant OpenCV.Core.Mat :=
+           Left.Convert_To (OpenCV.Core.Float32);
+         Right32  : constant OpenCV.Core.Mat :=
+           Right.Convert_To (OpenCV.Core.Float32);
+         Expected : constant OpenCV.Core.Mat :=
+           Left32.Add_Weighted (Alpha, Right32, Beta, Gamma).Convert_To
+             (OpenCV.Core.Float16);
+         procedure Verify
+           (Data : aliased OpenCV.Core.Float16_Buffer_Access.Buffer_Array) is
+         begin
+            for Index in Data'Range loop
+               if Bits_Of (Data (Index))
+                 /= Bits_Of
+                      (OpenCV.Core.Float16_Access.Get (Expected, 0, Index))
+               then
+                  AUnit.Assertions.Assert
+                    (False,
+                     "sampled Float16 Add_Weighted mismatch at"
+                     & Integer'Image (Index));
+               end if;
+            end loop;
+         end Verify;
+      begin
+         Result := Left.Add_Weighted (Alpha, Right, Beta, Gamma);
+         OpenCV.Core.Float16_Buffer_Access.With_Read_Only_Buffer
+           (Result, Verify'Access);
+      end Check;
+   begin
+      OpenCV.Core.Float16_Buffer_Access.With_Writable_Buffer
+        (Left, Fill_Left'Access);
+      OpenCV.Core.Float16_Buffer_Access.With_Writable_Buffer
+        (Right, Fill_Right'Access);
+      Check (1.0, 1.0, 0.0);
+      Check (0.5, 0.25, 0.0);
+      Check (0.1, 0.3, 0.7);
+      Check (-1.0, 1.0, 0.0);
+      Check (0.7, -0.3, 1.0);
+   end Mat_Float16_Add_Weighted_Finite_Oracle_Sample;
 
    procedure Mat_Float16_Finite_Oracle_Sweep (Test : in out Mat_Test_Fixture)
    is
@@ -4351,6 +4615,26 @@ package body Mat_Arithmetic_Tests is
         (Caller.Create
            ("Mat Add_Weighted rejects incompatible operands",
             Mat_Add_Weighted_Rejects_Incompatible_Operands'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Add_Weighted works for Float16 C1",
+            Mat_Add_Weighted_Works_For_Float16_C1'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Add_Weighted classifies nonfinite results",
+            Mat_Float16_Add_Weighted_Nonfinite'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Add_Weighted C3 Regions and ownership",
+            Mat_Float16_Add_Weighted_C3_Regions_And_Ownership'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Add_Weighted rejects incompatible operands",
+            Mat_Float16_Add_Weighted_Rejects_Incompatible'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Add_Weighted finite oracle sample",
+            Mat_Float16_Add_Weighted_Finite_Oracle_Sample'Access));
       Result.Add_Test
         (Caller.Create
            ("Mat Scale_Add maps UInt8 exactly",
