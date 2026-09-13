@@ -18,7 +18,7 @@ translation of the C++ headers.
 >
 > **Development status:** active, pre-1.0 API.
 >
-> **Current test baseline:** 1211 AUnit tests, with Ada and C++ warnings promoted
+> **Current test baseline:** 1218 AUnit tests, with Ada and C++ warnings promoted
 > to errors. GitHub Actions exercises the full test suite against four OpenCV
 > compatibility targets, plus a native Ubuntu 24.04 ARM64 job.
 >
@@ -812,7 +812,8 @@ round-to-nearest, ties-to-even. `OpenCV.Core.Float16_Access` provides scalar
 C1 2-D and N-D Get/Set that store and load the exact encoding. Copied row
 access, borrowed row access, whole-buffer borrowing, and packed or row-strided
 external Mat views are available for Float16 C1 and C3. `Add`, `Subtract`,
-`Multiply`, `Divide`, `Abs_Diff`, `Minimum`, `Maximum`, and `Add_Weighted` accept Float16 Mats
+`Multiply`, `Divide`, `Abs_Diff`, `Minimum`, `Maximum`, `Add_Weighted`, and
+`Scale_Add` accept Float16 Mats
 and return Float16; they use native OpenCV FP16 arithmetic where the supported
 OpenCV version implements a conforming operation and an internal Float32
 compatibility path otherwise. Storage
@@ -912,6 +913,10 @@ To_Float16
         (Round_Float32 (To_Float32 (Left) * Float32 (Alpha))
          + Round_Float32 (To_Float32 (Right) * Float32 (Beta)))
       + Float32 (Gamma)))
+To_Float16
+  (Round_Float32
+     (Round_Float32 (To_Float32 (Left) * Float32 (Scale))
+      + To_Float32 (Right)))
 ```
 
 for finite operands, with a nonzero finite denominator required for Divide.
@@ -924,6 +929,13 @@ Float32; no fused operation is used. OpenCV then narrows the completed
 Float32 Mat once to Float16. This avoids OpenCV-version, SIMD-width, and scalar
 tail differences observed in generic Float32 and native Float16
 `addWeighted` kernels. Signed-zero and NaN payload bits are not promised.
+For `Scale_Add`, OpenCV 4.1 through 5.0 expose dedicated CPU `scaleAdd`
+kernels only for Float32 and Float64, not Float16. Every supported version
+therefore uses one binding-controlled Float16 path: operands widen exactly to
+Float32, Scale narrows from the C ABI `double` to Float32, multiplication and
+addition round separately to Float32 without contraction, and the completed
+result narrows once to Float16. This avoids dependence on OpenCV version, SIMD
+width, and scalar-tail position. `Scale_Add` remains intentionally 2-D.
 For finite numerically unequal operands, `Minimum` and `Maximum` select the
 smaller or larger binary16 operand exactly. Their signed-zero, infinity, and
 NaN behavior follows the established Float32 `cv::min` / `cv::max` semantics

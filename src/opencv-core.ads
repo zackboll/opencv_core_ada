@@ -1150,8 +1150,11 @@ package OpenCV.Core is
    --  Returns an independent Mat with Self's shape and element type.
    --  Each element is Self * Scale + Right. Depths below Float32 use
    --  OpenCV's addWeighted path: UInt8, Int8, UInt16, and Int16 saturate;
-   --  Int32 does not. Float32 and Float64 use the dedicated scaleAdd
-   --  kernels. Float16 is not supported by OpenCV.
+   --  Int32 does not. Float32 and Float64 use the dedicated scaleAdd kernels.
+   --  On every supported OpenCV version, Float16 narrows Scale to Float32,
+   --  rounds the multiplication and addition separately to Float32, then
+   --  rounds the result once to Float16. This binding-controlled path is
+   --  independent of SIMD width and scalar-tail position.
    --  Both operands must have identical 2D shape and element type.
    function Scale_Add (Self : Mat; Scale : Long_Float; Right : Mat) return Mat;
 

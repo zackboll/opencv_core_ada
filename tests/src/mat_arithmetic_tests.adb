@@ -166,6 +166,22 @@ package body Mat_Arithmetic_Tests is
       return OpenCV.Core.To_Float16 (Weighted_Sum);
    end Expected_Add_Weighted;
 
+   function Expected_Scale_Add
+     (Left, Right : OpenCV.Core.Float16_Value; Scale : Long_Float)
+      return OpenCV.Core.Float16_Value
+   is
+      Scale32 : constant Interfaces.IEEE_Float_32 :=
+        Interfaces.IEEE_Float_32 (Scale);
+      Product : Interfaces.IEEE_Float_32;
+      Sum     : Interfaces.IEEE_Float_32;
+      pragma Volatile (Product);
+      pragma Volatile (Sum);
+   begin
+      Product := OpenCV.Core.To_Float32 (Left) * Scale32;
+      Sum := Product + OpenCV.Core.To_Float32 (Right);
+      return OpenCV.Core.To_Float16 (Sum);
+   end Expected_Scale_Add;
+
    procedure Mat_Add_And_Subtract_Work_For_Float32
      (Test : in out Mat_Test_Fixture)
    is
@@ -1034,6 +1050,9 @@ package body Mat_Arithmetic_Tests is
         OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
       Channels                              : constant OpenCV.Core.Mat :=
         OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 3));
+      Three_D                               : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape => (2, 3, 4), Element_Type => (OpenCV.Core.UInt8, 1));
       procedure Bad_Rows is
          X : constant OpenCV.Core.Mat :=
            Base.Scale_Add (Scale => 1.0, Right => Rows);
@@ -1058,6 +1077,12 @@ package body Mat_Arithmetic_Tests is
       begin
          pragma Unreferenced (X);
       end Bad_Channels;
+      procedure Bad_Dimensions is
+         X : constant OpenCV.Core.Mat :=
+           Three_D.Scale_Add (Scale => 1.0, Right => Three_D);
+      begin
+         pragma Unreferenced (X);
+      end Bad_Dimensions;
    begin
       Empty_Result :=
         Empty_Left.Scale_Add (Scale => 2.0, Right => Empty_Right);
@@ -1072,6 +1097,9 @@ package body Mat_Arithmetic_Tests is
         (Bad_Depth'Access, "Scale_Add must reject mismatched depths");
       Assert_Raises_OpenCV_Error
         (Bad_Channels'Access, "Scale_Add must reject mismatched channels");
+      Assert_Raises_OpenCV_Error
+        (Bad_Dimensions'Access,
+         "Scale_Add must remain restricted to 2-D Mats");
    end Mat_Scale_Add_Handles_Empty_And_Compatibility;
 
    procedure Mat_Scale_Add_Supports_Int32 (Test : in out Mat_Test_Fixture) is
@@ -1110,6 +1138,297 @@ package body Mat_Arithmetic_Tests is
          and then Approximately_Equal (Result.Sum.Component_0, 4.0),
          "Scale_Add must support Float64 values as Scale * Left + Right");
    end Mat_Scale_Add_Supports_Float64;
+
+   procedure Mat_Float16_Scale_Add_Works_For_Multi_Row_C1
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left   : OpenCV.Core.Mat := Float16_C1 (2, 3);
+      Right  : OpenCV.Core.Mat := Float16_C1 (2, 3);
+      Result : OpenCV.Core.Mat;
+   begin
+      Set_C1 (Left, 0, 0, 16#3C00#);
+      Set_C1 (Left, 0, 1, 16#C000#);
+      Set_C1 (Left, 0, 2, 16#3800#);
+      Set_C1 (Left, 1, 0, 16#4200#);
+      Set_C1 (Left, 1, 1, 16#BC00#);
+      Set_C1 (Left, 1, 2, 16#4400#);
+      Set_C1 (Right, 0, 0, 16#4000#);
+      Set_C1 (Right, 0, 1, 16#3C00#);
+      Set_C1 (Right, 0, 2, 16#C200#);
+      Set_C1 (Right, 1, 0, 16#B800#);
+      Set_C1 (Right, 1, 1, 16#4000#);
+      Set_C1 (Right, 1, 2, 16#C000#);
+
+      Result := Left.Scale_Add (Scale => 0.5, Right => Right);
+      Assert_Float16_Metadata
+        (Result, 2, 3, 1, "Float16 Scale_Add must preserve C1 metadata");
+      for Row in 0 .. 1 loop
+         for Column in 0 .. 2 loop
+            Assert_Bits
+              (OpenCV.Core.Float16_Access.Get (Result, Row, Column),
+               Bits_Of
+                 (Expected_Scale_Add
+                    (OpenCV.Core.Float16_Access.Get (Left, Row, Column),
+                     OpenCV.Core.Float16_Access.Get (Right, Row, Column),
+                     0.5)),
+               "Float16 Scale_Add must process every multi-row C1 value");
+         end loop;
+      end loop;
+   end Mat_Float16_Scale_Add_Works_For_Multi_Row_C1;
+
+   procedure Mat_Float16_Scale_Add_Uses_Staged_Float32_Arithmetic
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left   : OpenCV.Core.Mat := Float16_C1 (1, 2);
+      Right  : OpenCV.Core.Mat := Float16_C1 (1, 2);
+      Result : OpenCV.Core.Mat;
+   begin
+      Set_C1 (Left, 0, 0, 16#463F#);
+      Set_C1 (Right, 0, 0, 16#B8FF#);
+      Set_C1 (Left, 0, 1, 16#008C#);
+      Set_C1 (Right, 0, 1, 16#8012#);
+      Result := Left.Scale_Add (Scale => 0.1, Right => Right);
+      Assert_Stored_Bits
+        (Result,
+         0,
+         0,
+         16#0667#,
+         "Float16 Scale_Add must narrow Scale to Float32 before evaluation");
+      Assert_Stored_Bits
+        (Result,
+         0,
+         1,
+         16#8004#,
+         "Float16 Scale_Add must round the product before addition");
+   end Mat_Float16_Scale_Add_Uses_Staged_Float32_Arithmetic;
+
+   procedure Mat_Float16_Scale_Add_Is_Tail_Invariant
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      type Length_Array is array (Positive range <>) of Positive;
+      Lengths : constant Length_Array :=
+        (1, 3, 7, 8, 9, 15, 16, 17, 31, 32, 33);
+      procedure Check (Length, Position : Natural) is
+         Left   : OpenCV.Core.Mat := Float16_C1 (1, Length);
+         Right  : OpenCV.Core.Mat := Float16_C1 (1, Length);
+         Result : OpenCV.Core.Mat;
+      begin
+         for Column in 0 .. Length - 1 loop
+            Set_C1 (Left, 0, Column, 16#3555#);
+            Set_C1 (Right, 0, Column, 16#B155#);
+         end loop;
+         Set_C1 (Left, 0, Position, 16#008C#);
+         Set_C1 (Right, 0, Position, 16#8012#);
+         Result := Left.Scale_Add (Scale => 0.1, Right => Right);
+         Assert_Stored_Bits
+           (Result,
+            0,
+            Position,
+            16#8004#,
+            "Float16 Scale_Add must be invariant at length"
+            & Natural'Image (Length)
+            & " position"
+            & Natural'Image (Position));
+      end Check;
+   begin
+      for Length of Lengths loop
+         Check (Length, 0);
+         Check (Length, Length / 2);
+         Check (Length, Length - 1);
+      end loop;
+   end Mat_Float16_Scale_Add_Is_Tail_Invariant;
+
+   procedure Mat_Float16_Scale_Add_Handles_C3_Regions_And_Ownership
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      C1_Left_Parent  : OpenCV.Core.Mat := Float16_C1 (3, 5);
+      C1_Right_Parent : OpenCV.Core.Mat := Float16_C1 (3, 5);
+      C3_Left_Parent  : OpenCV.Core.Mat := Float16_C3 (3, 5);
+      C3_Right_Parent : OpenCV.Core.Mat := Float16_C3 (3, 5);
+      C1_Left         : OpenCV.Core.Mat;
+      C1_Right        : OpenCV.Core.Mat;
+      C3_Left         : OpenCV.Core.Mat;
+      C3_Right        : OpenCV.Core.Mat;
+      C1_Result       : OpenCV.Core.Mat;
+      C3_Result       : OpenCV.Core.Mat;
+      Left_Pixel      : constant OpenCV.Core.Float16_Vec3.Vector :=
+        Pixel (16#3C00#, 16#C000#, 16#3800#);
+      Right_Pixel     : constant OpenCV.Core.Float16_Vec3.Vector :=
+        Pixel (16#4000#, 16#3800#, 16#C400#);
+      Expected_Pixel  : constant OpenCV.Core.Float16_Vec3.Vector :=
+        (0 => Expected_Scale_Add (Left_Pixel (0), Right_Pixel (0), 0.5),
+         1 => Expected_Scale_Add (Left_Pixel (1), Right_Pixel (1), 0.5),
+         2 => Expected_Scale_Add (Left_Pixel (2), Right_Pixel (2), 0.5));
+   begin
+      for Row in 0 .. 2 loop
+         for Column in 0 .. 4 loop
+            Set_C1 (C1_Left_Parent, Row, Column, 16#4200#);
+            Set_C1 (C1_Right_Parent, Row, Column, 16#B800#);
+            OpenCV.Core.Float16_Vec3_Access.Set
+              (C3_Left_Parent, Row, Column, Left_Pixel);
+            OpenCV.Core.Float16_Vec3_Access.Set
+              (C3_Right_Parent, Row, Column, Right_Pixel);
+         end loop;
+      end loop;
+      C1_Left :=
+        C1_Left_Parent.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+      C1_Right :=
+        C1_Right_Parent.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+      C3_Left :=
+        C3_Left_Parent.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+      C3_Right :=
+        C3_Right_Parent.Region ((X => 1, Y => 1, Width => 3, Height => 2));
+      AUnit.Assertions.Assert
+        (not C1_Left.Is_Continuous
+         and then not C1_Right.Is_Continuous
+         and then not C3_Left.Is_Continuous
+         and then not C3_Right.Is_Continuous,
+         "Float16 Scale_Add Regions must be genuinely non-contiguous");
+
+      C1_Result := C1_Left.Scale_Add (Scale => -0.5, Right => C1_Right);
+      C3_Result := C3_Left.Scale_Add (Scale => 0.5, Right => C3_Right);
+      Assert_Float16_Metadata
+        (C1_Result,
+         2,
+         3,
+         1,
+         "Float16 Scale_Add must preserve C1 Region shape");
+      Assert_Float16_Metadata
+        (C3_Result,
+         2,
+         3,
+         3,
+         "Float16 Scale_Add must preserve C3 Region shape");
+      for Row in 0 .. 1 loop
+         for Column in 0 .. 2 loop
+            Assert_Bits
+              (OpenCV.Core.Float16_Access.Get (C1_Result, Row, Column),
+               Bits_Of
+                 (Expected_Scale_Add (F16 (16#4200#), F16 (16#B800#), -0.5)),
+               "Float16 Scale_Add must process every C1 Region value");
+            Assert_Stored_Pixel
+              (C3_Result,
+               Row,
+               Column,
+               Expected_Pixel,
+               "Float16 Scale_Add must process every multi-row C3 component");
+            Assert_Stored_Bits
+              (C1_Left,
+               Row,
+               Column,
+               16#4200#,
+               "C1 left Region must be unchanged");
+            Assert_Stored_Bits
+              (C1_Right,
+               Row,
+               Column,
+               16#B800#,
+               "C1 right Region must be unchanged");
+            Assert_Stored_Pixel
+              (C3_Left,
+               Row,
+               Column,
+               Left_Pixel,
+               "C3 left Region must be unchanged");
+            Assert_Stored_Pixel
+              (C3_Right,
+               Row,
+               Column,
+               Right_Pixel,
+               "C3 right Region must be unchanged");
+         end loop;
+      end loop;
+
+      Set_C1 (C1_Left_Parent, 1, 1, 16#7C00#);
+      OpenCV.Core.Float16_Vec3_Access.Set
+        (C3_Right_Parent, 1, 1, Pixel (16#7C00#, 16#7C00#, 16#7C00#));
+      Assert_Bits
+        (OpenCV.Core.Float16_Access.Get (C1_Result, 0, 0),
+         Bits_Of (Expected_Scale_Add (F16 (16#4200#), F16 (16#B800#), -0.5)),
+         "later C1 input mutation must not affect Scale_Add result");
+      Assert_Stored_Pixel
+        (C3_Result,
+         0,
+         0,
+         Expected_Pixel,
+         "later C3 input mutation must not affect Scale_Add result");
+      Set_C1 (C1_Result, 0, 1, 16#7C00#);
+      OpenCV.Core.Float16_Vec3_Access.Set
+        (C3_Result, 0, 1, Pixel (16#7C00#, 16#7C00#, 16#7C00#));
+      Assert_Stored_Bits
+        (C1_Right_Parent,
+         1,
+         2,
+         16#B800#,
+         "C1 Scale_Add result must not share right input storage");
+      Assert_Stored_Pixel
+        (C3_Left_Parent,
+         1,
+         2,
+         Left_Pixel,
+         "C3 Scale_Add result must not share left input storage");
+   end Mat_Float16_Scale_Add_Handles_C3_Regions_And_Ownership;
+
+   procedure Mat_Float16_Scale_Add_Handles_Special_Values
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left   : OpenCV.Core.Mat := Float16_C1 (2, 5);
+      Right  : OpenCV.Core.Mat := Float16_C1 (2, 5);
+      Zero   : OpenCV.Core.Mat := Float16_C1 (2, 5);
+      Result : OpenCV.Core.Mat;
+   begin
+      Set_C1 (Left, 0, 0, 16#0000#);
+      Set_C1 (Right, 0, 0, 16#8000#);
+      Set_C1 (Left, 0, 1, 16#8000#);
+      Set_C1 (Right, 0, 1, 16#8000#);
+      Set_C1 (Left, 0, 2, 16#7C00#);
+      Set_C1 (Right, 0, 2, 16#3C00#);
+      Set_C1 (Left, 0, 3, 16#FC00#);
+      Set_C1 (Right, 0, 3, 16#BC00#);
+      Set_C1 (Left, 0, 4, 16#7E01#);
+      Set_C1 (Right, 0, 4, 16#3C00#);
+      Set_C1 (Left, 1, 0, 16#7BFF#);
+      Set_C1 (Right, 1, 0, 16#7BFF#);
+      Set_C1 (Left, 1, 1, 16#0001#);
+      Set_C1 (Right, 1, 1, 16#0000#);
+      Set_C1 (Left, 1, 2, 16#0001#);
+      Set_C1 (Right, 1, 2, 16#0001#);
+      Set_C1 (Left, 1, 3, 16#3C00#);
+      Set_C1 (Right, 1, 3, 16#BC00#);
+      Set_C1 (Left, 1, 4, 16#BC00#);
+      Set_C1 (Right, 1, 4, 16#3C00#);
+
+      Result := Left.Scale_Add (Scale => 1.0, Right => Right);
+      Assert_Stored_Bits (Result, 0, 0, 16#0000#, "+0 plus -0 must be +0");
+      Assert_Stored_Bits (Result, 0, 1, 16#8000#, "-0 plus -0 must be -0");
+      Assert_Stored_Bits (Result, 0, 2, 16#7C00#, "+Inf must remain +Inf");
+      Assert_Stored_Bits (Result, 0, 3, 16#FC00#, "-Inf must remain -Inf");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Is_NaN (OpenCV.Core.Float16_Access.Get (Result, 0, 4)),
+         "Float16 Scale_Add must preserve NaN classification");
+      Assert_Stored_Bits
+        (Result, 1, 0, 16#7C00#, "finite overflow must be +Inf");
+      Assert_Stored_Bits
+        (Result,
+         1,
+         2,
+         16#0002#,
+         "two minimum subnormals must remain subnormal");
+      Assert_Stored_Bits
+        (Result, 1, 3, 16#0000#, "positive cancellation must be +0");
+      Assert_Stored_Bits
+        (Result, 1, 4, 16#0000#, "negative cancellation must be +0");
+
+      Zero.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Result := Left.Scale_Add (Scale => 0.5, Right => Zero);
+      Assert_Stored_Bits
+        (Result, 1, 1, 16#0000#, "half a minimum subnormal must underflow");
+   end Mat_Float16_Scale_Add_Handles_Special_Values;
 
    procedure Mat_Minimum_And_Maximum_Map_UInt8_And_Float32
      (Test : in out Mat_Test_Fixture)
@@ -1937,7 +2256,6 @@ package body Mat_Arithmetic_Tests is
                   0.7)),
             "Float16 Add_Weighted must apply Alpha, Beta, and Gamma");
       end loop;
-      Result := Left.Add_Weighted (1.0, Right, -1.0, 0.0);
       Result := Left.Add_Weighted (0.5, Right, 0.0, 0.0);
       Assert_Stored_Bits
         (Result, 0, 2, 16#0000#, "half a minimum subnormal must underflow");
@@ -2449,6 +2767,69 @@ package body Mat_Arithmetic_Tests is
       Check (-1.0, 1.0, 0.0);
       Check (0.7, -0.3, 1.0);
    end Mat_Float16_Add_Weighted_Finite_Oracle_Sample;
+
+   procedure Mat_Float16_Scale_Add_Finite_Oracle_Sample
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      type Scale_Array is array (Positive range <>) of Long_Float;
+      Scales : constant Scale_Array := (1.0, -1.0, 0.5, 0.1, 0.3, 1.5, -0.7);
+      Left   : OpenCV.Core.Mat := Float16_C1 (1, Sample_Pair_Count);
+      Right  : OpenCV.Core.Mat := Float16_C1 (1, Sample_Pair_Count);
+      Result : OpenCV.Core.Mat;
+      procedure Fill_Left
+        (Data : aliased in out OpenCV.Core.Float16_Buffer_Access.Buffer_Array)
+      is
+      begin
+         for Index in Data'Range loop
+            Data (Index) := F16 (Sample_Left_Bits (Index));
+         end loop;
+      end Fill_Left;
+      procedure Fill_Right
+        (Data : aliased in out OpenCV.Core.Float16_Buffer_Access.Buffer_Array)
+      is
+      begin
+         for Index in Data'Range loop
+            Data (Index) := F16 (Sample_Right_Bits (Index));
+         end loop;
+      end Fill_Right;
+      procedure Check (Scale : Long_Float) is
+         procedure Verify
+           (Data : aliased OpenCV.Core.Float16_Buffer_Access.Buffer_Array) is
+         begin
+            for Index in Data'Range loop
+               declare
+                  Expected : constant OpenCV.Core.Float16_Value :=
+                    Expected_Scale_Add
+                      (F16 (Sample_Left_Bits (Index)),
+                       F16 (Sample_Right_Bits (Index)),
+                       Scale);
+               begin
+                  if Bits_Of (Data (Index)) /= Bits_Of (Expected) then
+                     AUnit.Assertions.Assert
+                       (False,
+                        "sampled Float16 Scale_Add mismatch at"
+                        & Integer'Image (Index)
+                        & " for scale"
+                        & Long_Float'Image (Scale));
+                  end if;
+               end;
+            end loop;
+         end Verify;
+      begin
+         Result := Left.Scale_Add (Scale, Right);
+         OpenCV.Core.Float16_Buffer_Access.With_Read_Only_Buffer
+           (Result, Verify'Access);
+      end Check;
+   begin
+      OpenCV.Core.Float16_Buffer_Access.With_Writable_Buffer
+        (Left, Fill_Left'Access);
+      OpenCV.Core.Float16_Buffer_Access.With_Writable_Buffer
+        (Right, Fill_Right'Access);
+      for Scale of Scales loop
+         Check (Scale);
+      end loop;
+   end Mat_Float16_Scale_Add_Finite_Oracle_Sample;
 
    procedure Mat_Float16_Finite_Oracle_Sweep (Test : in out Mat_Test_Fixture)
    is
@@ -4858,6 +5239,30 @@ package body Mat_Arithmetic_Tests is
         (Caller.Create
            ("Mat Scale_Add supports Float64",
             Mat_Scale_Add_Supports_Float64'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Scale_Add works for multi-row C1",
+            Mat_Float16_Scale_Add_Works_For_Multi_Row_C1'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Scale_Add uses staged Float32 arithmetic",
+            Mat_Float16_Scale_Add_Uses_Staged_Float32_Arithmetic'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Scale_Add is tail invariant",
+            Mat_Float16_Scale_Add_Is_Tail_Invariant'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Scale_Add handles C3 Regions and ownership",
+            Mat_Float16_Scale_Add_Handles_C3_Regions_And_Ownership'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Scale_Add handles special values",
+            Mat_Float16_Scale_Add_Handles_Special_Values'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Scale_Add finite oracle sample",
+            Mat_Float16_Scale_Add_Finite_Oracle_Sample'Access));
       Result.Add_Test
         (Caller.Create
            ("Mat Minimum and Maximum map UInt8 and Float32",

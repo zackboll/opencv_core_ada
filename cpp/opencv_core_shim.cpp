@@ -3235,6 +3235,62 @@ static float add_weighted_float32(float left, float alpha, float right,
     return weighted_sum;
 }
 
+// Keep Float16 Scale_Add independent of OpenCV version, SIMD width, and tail
+// position by making its two binary32 rounding points explicit. Volatile
+// temporaries prevent FMA contraction and excess-precision intermediates.
+static float scale_add_float32(float left, float scale, float right) {
+    volatile float product = left * scale;
+    volatile float sum = product + right;
+    return sum;
+}
+
+static void scale_add_float16(const cv::Mat &left, double scale,
+                              const cv::Mat &right, cv::Mat &result) {
+    // ABI safety: scalar_count is derived from left.channels(); a right Mat
+    // with fewer channels would make the loop read past each right plane.
+    if (left.channels() != right.channels()) {
+        throw std::invalid_argument(
+            "Float16 Scale_Add operands must have matching channels");
+    }
+
+    cv::Mat left32;
+    cv::Mat right32;
+    left.convertTo(left32, CV_32F);
+    right.convertTo(right32, CV_32F);
+
+    // ABI safety: iterator construction and traversal require valid shape
+    // metadata and non-null data pointers, which default empty Mats lack.
+    if (left32.empty()) {
+        result.release();
+        return;
+    }
+
+    cv::Mat result32(left32.rows, left32.cols, left32.type());
+    const float scale32 = static_cast<float>(scale);
+    const cv::Mat *arrays[] = {&left32, &right32, &result32, nullptr};
+    uchar *ptrs[3] = {};
+    cv::NAryMatIterator iterator(arrays, ptrs, 3);
+    std::size_t scalar_count = 0;
+    // ABI safety: the loop below performs typed pointer arithmetic over every
+    // channel scalar in an iterator plane.
+    if (!checked_size_mul(iterator.size,
+                          static_cast<std::size_t>(left32.channels()),
+                          &scalar_count)) {
+        throw std::overflow_error("Float16 Scale_Add plane size overflow");
+    }
+    for (std::size_t plane = 0; plane < iterator.nplanes;
+         ++plane, ++iterator) {
+        const float *left_plane = reinterpret_cast<const float *>(ptrs[0]);
+        const float *right_plane = reinterpret_cast<const float *>(ptrs[1]);
+        float *result_plane = reinterpret_cast<float *>(ptrs[2]);
+        for (std::size_t index = 0; index < scalar_count; ++index) {
+            result_plane[index] = scale_add_float32(
+                left_plane[index], scale32, right_plane[index]);
+        }
+    }
+    result32.convertTo(result, CV_16F);
+}
+
 static void add_weighted_float16(const cv::Mat &left, double alpha,
                                  const cv::Mat &right, double beta,
                                  double gamma, cv::Mat &result) {
@@ -3359,7 +3415,11 @@ opencv_core_mat_scale_add(const opencv_core_mat_handle *left, double scale,
 
     try {
         cv::Mat scaled_sum;
-        cv::scaleAdd(left->value, scale, right->value, scaled_sum);
+        if (left->value.depth() == CV_16F) {
+            scale_add_float16(left->value, scale, right->value, scaled_sum);
+        } else {
+            cv::scaleAdd(left->value, scale, right->value, scaled_sum);
+        }
         *out_mat = new opencv_core_mat_handle(scaled_sum);
         return OPENCV_CORE_OK;
     } catch (...) {
