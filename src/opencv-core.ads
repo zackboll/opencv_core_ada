@@ -1136,10 +1136,11 @@ package OpenCV.Core is
    function Minimum (Left, Right : Mat) return Mat;
    function Maximum (Left, Right : Mat) return Mat;
    --  Returns an independent Mat with the compatible operands' shape and
-   --  element type. Float16 evaluates the weighted expression in Float32,
-   --  with Alpha, Beta, and Gamma narrowed to Float32, then rounds once to
-   --  Float16. OpenCV 5 uses its native CV_16F kernel; OpenCV 4.x uses an
-   --  equivalent Float32 compatibility path.
+   --  element type. On every supported OpenCV version, Float16 narrows Alpha,
+   --  Beta, and Gamma to Float32; rounds each product and each subsequent sum
+   --  to Float32; then rounds the result once to Float16. This deterministic
+   --  compatibility path is independent of SIMD width and scalar-tail
+   --  position.
    function Add_Weighted
      (Left  : Mat;
       Alpha : Long_Float;

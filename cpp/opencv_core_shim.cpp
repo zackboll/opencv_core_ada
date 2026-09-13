@@ -3219,25 +3219,46 @@ static void abs_diff_float16(const cv::Mat &left, const cv::Mat &right,
 #endif
 }
 
-// OpenCV 4.x exposes CV_16F Mat storage/conversion but its addWeighted
-// dispatch table does not implement CV_16F. OpenCV 5.x provides native
-// addWeighted16f: it widens operands and double coefficients to Float32,
-// evaluates there, then rounds once to Float16. Use that native path on 5.x
-// and the equivalent explicit conversion path on older supported versions.
+// OpenCV 4.x CV_32F addWeighted and OpenCV 5.x CV_16F addWeighted can vary
+// with scalar versus SIMD dispatch. Keep Float16 behavior independent of the
+// OpenCV version, row width, and tail position by making every binary32
+// rounding point explicit. Volatile temporaries prevent contraction into an
+// FMA and prevent excess-precision intermediates without global compiler
+// options.
+static float add_weighted_float32(float left, float alpha, float right,
+                                  float beta, float gamma) {
+    volatile float left_product = left * alpha;
+    volatile float right_product = right * beta;
+    volatile float sum = left_product + right_product;
+    volatile float weighted_sum = sum + gamma;
+    return weighted_sum;
+}
+
 static void add_weighted_float16(const cv::Mat &left, double alpha,
                                  const cv::Mat &right, double beta,
                                  double gamma, cv::Mat &result) {
-#if CV_VERSION_MAJOR >= 5
-    cv::addWeighted(left, alpha, right, beta, gamma, result, -1);
-#else
     cv::Mat left32;
     cv::Mat right32;
-    cv::Mat result32;
     left.convertTo(left32, CV_32F);
     right.convertTo(right32, CV_32F);
-    cv::addWeighted(left32, alpha, right32, beta, gamma, result32, -1);
+
+    cv::Mat result32(left32.rows, left32.cols, left32.type());
+    const float alpha32 = static_cast<float>(alpha);
+    const float beta32 = static_cast<float>(beta);
+    const float gamma32 = static_cast<float>(gamma);
+    const std::size_t scalar_columns =
+        static_cast<std::size_t>(left32.cols) * left32.channels();
+    for (int row = 0; row < left32.rows; ++row) {
+        const float *left_row = left32.ptr<float>(row);
+        const float *right_row = right32.ptr<float>(row);
+        float *result_row = result32.ptr<float>(row);
+        for (std::size_t column = 0; column < scalar_columns; ++column) {
+            result_row[column] =
+                add_weighted_float32(left_row[column], alpha32,
+                                     right_row[column], beta32, gamma32);
+        }
+    }
     result32.convertTo(result, CV_16F);
-#endif
 }
 
 opencv_core_status

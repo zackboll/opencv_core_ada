@@ -18,7 +18,7 @@ translation of the C++ headers.
 >
 > **Development status:** active, pre-1.0 API.
 >
-> **Current test baseline:** 1208 AUnit tests, with Ada and C++ warnings promoted
+> **Current test baseline:** 1211 AUnit tests, with Ada and C++ warnings promoted
 > to errors. GitHub Actions exercises the full test suite against four OpenCV
 > compatibility targets, plus a native Ubuntu 24.04 ARM64 job.
 >
@@ -814,7 +814,8 @@ access, borrowed row access, whole-buffer borrowing, and packed or row-strided
 external Mat views are available for Float16 C1 and C3. `Add`, `Subtract`,
 `Multiply`, `Divide`, `Abs_Diff`, `Minimum`, `Maximum`, and `Add_Weighted` accept Float16 Mats
 and return Float16; they use native OpenCV FP16 arithmetic where the supported
-OpenCV version implements the operation and an internal Float32 compatibility path otherwise. Storage
+OpenCV version implements a conforming operation and an internal Float32
+compatibility path otherwise. Storage
 and access bit preservation is distinct from arithmetic numeric semantics.
 This does not imply broad Float16 coverage of every Core algorithm.
 
@@ -905,21 +906,24 @@ To_Float16 (To_Float32 (Left) +/- To_Float32 (Right))
 To_Float16 (To_Float32 (Left) * To_Float32 (Right))
 To_Float16 (To_Float32 (Left) / To_Float32 (Right))
 To_Float16 (abs (To_Float32 (Left) - To_Float32 (Right)))
-To_Float16 (Float32_Add_Weighted
-              (To_Float32 (Left), Float32 (Alpha),
-               To_Float32 (Right), Float32 (Beta), Float32 (Gamma)))
+To_Float16
+  (Round_Float32
+     (Round_Float32
+        (Round_Float32 (To_Float32 (Left) * Float32 (Alpha))
+         + Round_Float32 (To_Float32 (Right) * Float32 (Beta)))
+      + Float32 (Gamma)))
 ```
 
 for finite operands, with a nonzero finite denominator required for Divide.
-For `Add_Weighted`, OpenCV 5.x uses native `CV_16F` `addWeighted`; OpenCV
-4.1, 4.6, and 4.10 widen to Float32, call `addWeighted`, and narrow once to
-Float16. The coefficients cross the binding ABI as `double` and are narrowed
-to Float32 by both paths. The finite contract above was checked against the
-OpenCV 5.0 native path using deterministic binary16 coverage and rounding,
-overflow, underflow, cancellation, signed-zero, and coefficient cases. This
-defines the operation in terms of OpenCV's Float32 kernel rather than a
-particular scalar evaluation order or fused-operation choice; signed-zero and
-NaN payload bits are therefore not promised.
+For `Add_Weighted`, every supported OpenCV version uses the same private
+binding-controlled compatibility path. Inputs are widened with OpenCV's
+Float16-to-Float32 conversion. The coefficients cross the binding ABI as
+`double` and are explicitly narrowed to Float32. Each multiplication, the
+addition of the products, and the addition of Gamma is separately rounded to
+Float32; no fused operation is used. OpenCV then narrows the completed
+Float32 Mat once to Float16. This avoids OpenCV-version, SIMD-width, and scalar
+tail differences observed in generic Float32 and native Float16
+`addWeighted` kernels. Signed-zero and NaN payload bits are not promised.
 For finite numerically unequal operands, `Minimum` and `Maximum` select the
 smaller or larger binary16 operand exactly. Their signed-zero, infinity, and
 NaN behavior follows the established Float32 `cv::min` / `cv::max` semantics

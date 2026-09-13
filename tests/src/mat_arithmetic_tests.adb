@@ -143,18 +143,26 @@ package body Mat_Arithmetic_Tests is
      (Left, Right : OpenCV.Core.Float16_Value; Alpha, Beta, Gamma : Long_Float)
       return OpenCV.Core.Float16_Value
    is
-      A : constant Interfaces.IEEE_Float_32 :=
+      A             : constant Interfaces.IEEE_Float_32 :=
         Interfaces.IEEE_Float_32 (Alpha);
-      B : constant Interfaces.IEEE_Float_32 := Interfaces.IEEE_Float_32 (Beta);
-      G : constant Interfaces.IEEE_Float_32 :=
+      B             : constant Interfaces.IEEE_Float_32 :=
+        Interfaces.IEEE_Float_32 (Beta);
+      G             : constant Interfaces.IEEE_Float_32 :=
         Interfaces.IEEE_Float_32 (Gamma);
+      Left_Product  : Interfaces.IEEE_Float_32;
+      Right_Product : Interfaces.IEEE_Float_32;
+      Product_Sum   : Interfaces.IEEE_Float_32;
+      Weighted_Sum  : Interfaces.IEEE_Float_32;
+      pragma Volatile (Left_Product);
+      pragma Volatile (Right_Product);
+      pragma Volatile (Product_Sum);
+      pragma Volatile (Weighted_Sum);
    begin
-      return
-        OpenCV.Core.To_Float16
-          (OpenCV.Core.To_Float32 (Left)
-           * A
-           + OpenCV.Core.To_Float32 (Right) * B
-           + G);
+      Left_Product := OpenCV.Core.To_Float32 (Left) * A;
+      Right_Product := OpenCV.Core.To_Float32 (Right) * B;
+      Product_Sum := Left_Product + Right_Product;
+      Weighted_Sum := Product_Sum + G;
+      return OpenCV.Core.To_Float16 (Weighted_Sum);
    end Expected_Add_Weighted;
 
    procedure Mat_Add_And_Subtract_Work_For_Float32
@@ -1943,6 +1951,81 @@ package body Mat_Arithmetic_Tests is
          "Add_Weighted signed-zero inputs must produce a zero result");
    end Mat_Add_Weighted_Works_For_Float16_C1;
 
+   procedure Mat_Float16_Add_Weighted_Uses_Float32_Coefficients
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left   : OpenCV.Core.Mat := Float16_C1 (1, 1);
+      Right  : OpenCV.Core.Mat := Float16_C1 (1, 1);
+      Result : OpenCV.Core.Mat;
+   begin
+      Set_C1 (Left, 0, 0, 16#6834#);
+      Set_C1 (Right, 0, 0, 16#EC85#);
+      Result := Left.Add_Weighted (0.1, Right, 0.3, 0.7);
+      Assert_Stored_Bits
+        (Result,
+         0,
+         0,
+         16#E495#,
+         "Float16 Add_Weighted must narrow coefficients before evaluation");
+   end Mat_Float16_Add_Weighted_Uses_Float32_Coefficients;
+
+   procedure Mat_Float16_Add_Weighted_Uses_Float32_Arithmetic
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left   : OpenCV.Core.Mat := Float16_C1 (1, 1);
+      Right  : OpenCV.Core.Mat := Float16_C1 (1, 1);
+      Result : OpenCV.Core.Mat;
+   begin
+      Set_C1 (Left, 0, 0, 16#DE4C#);
+      Set_C1 (Right, 0, 0, 16#4C9A#);
+      Result := Left.Add_Weighted (0.1, Right, 0.3, 0.7);
+      Assert_Stored_Bits
+        (Result,
+         0,
+         0,
+         16#D042#,
+         "Float16 Add_Weighted must round intermediate arithmetic to Float32");
+   end Mat_Float16_Add_Weighted_Uses_Float32_Arithmetic;
+
+   procedure Mat_Float16_Add_Weighted_Is_Tail_Invariant
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      type Length_Array is array (Positive range <>) of Positive;
+      Lengths : constant Length_Array :=
+        (1, 3, 7, 8, 9, 15, 16, 17, 31, 32, 33);
+      procedure Check (Length, Position : Natural) is
+         Left   : OpenCV.Core.Mat := Float16_C1 (1, Length);
+         Right  : OpenCV.Core.Mat := Float16_C1 (1, Length);
+         Result : OpenCV.Core.Mat;
+      begin
+         for Column in 0 .. Length - 1 loop
+            Set_C1 (Left, 0, Column, 16#3555#);
+            Set_C1 (Right, 0, Column, 16#B155#);
+         end loop;
+         Set_C1 (Left, 0, Position, 16#6834#);
+         Set_C1 (Right, 0, Position, 16#EC85#);
+         Result := Left.Add_Weighted (0.1, Right, 0.3, 0.7);
+         Assert_Stored_Bits
+           (Result,
+            0,
+            Position,
+            16#E495#,
+            "Float16 Add_Weighted must be invariant at length"
+            & Natural'Image (Length)
+            & " position"
+            & Natural'Image (Position));
+      end Check;
+   begin
+      for Length of Lengths loop
+         Check (Length, 0);
+         Check (Length, Length / 2);
+         Check (Length, Length - 1);
+      end loop;
+   end Mat_Float16_Add_Weighted_Is_Tail_Invariant;
+
    procedure Mat_Float16_Add_Weighted_Nonfinite
      (Test : in out Mat_Test_Fixture)
    is
@@ -2232,26 +2315,26 @@ package body Mat_Arithmetic_Tests is
          end loop;
       end Fill_Right;
       procedure Check (Alpha, Beta, Gamma : Long_Float) is
-         Left32   : constant OpenCV.Core.Mat :=
-           Left.Convert_To (OpenCV.Core.Float32);
-         Right32  : constant OpenCV.Core.Mat :=
-           Right.Convert_To (OpenCV.Core.Float32);
-         Expected : constant OpenCV.Core.Mat :=
-           Left32.Add_Weighted (Alpha, Right32, Beta, Gamma).Convert_To
-             (OpenCV.Core.Float16);
          procedure Verify
            (Data : aliased OpenCV.Core.Float16_Buffer_Access.Buffer_Array) is
          begin
             for Index in Data'Range loop
-               if Bits_Of (Data (Index))
-                 /= Bits_Of
-                      (OpenCV.Core.Float16_Access.Get (Expected, 0, Index))
-               then
-                  AUnit.Assertions.Assert
-                    (False,
-                     "sampled Float16 Add_Weighted mismatch at"
-                     & Integer'Image (Index));
-               end if;
+               declare
+                  Expected : constant OpenCV.Core.Float16_Value :=
+                    Expected_Add_Weighted
+                      (F16 (Sample_Left_Bits (Index)),
+                       F16 (Sample_Right_Bits (Index)),
+                       Alpha,
+                       Beta,
+                       Gamma);
+               begin
+                  if Bits_Of (Data (Index)) /= Bits_Of (Expected) then
+                     AUnit.Assertions.Assert
+                       (False,
+                        "sampled Float16 Add_Weighted mismatch at"
+                        & Integer'Image (Index));
+                  end if;
+               end;
             end loop;
          end Verify;
       begin
@@ -4619,6 +4702,18 @@ package body Mat_Arithmetic_Tests is
         (Caller.Create
            ("Mat Add_Weighted works for Float16 C1",
             Mat_Add_Weighted_Works_For_Float16_C1'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Add_Weighted uses Float32 coefficients",
+            Mat_Float16_Add_Weighted_Uses_Float32_Coefficients'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Add_Weighted uses Float32 arithmetic",
+            Mat_Float16_Add_Weighted_Uses_Float32_Arithmetic'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Add_Weighted is tail invariant",
+            Mat_Float16_Add_Weighted_Is_Tail_Invariant'Access));
       Result.Add_Test
         (Caller.Create
            ("Mat Float16 Add_Weighted classifies nonfinite results",
