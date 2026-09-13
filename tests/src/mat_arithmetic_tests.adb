@@ -166,20 +166,28 @@ package body Mat_Arithmetic_Tests is
       return OpenCV.Core.To_Float16 (Weighted_Sum);
    end Expected_Add_Weighted;
 
+   --  Models the documented Float16 Scale_Add compatibility path: widen both
+   --  operands to Float32, let OpenCV's Float32 scaleAdd run, then narrow
+   --  back to Float16. The 1x1 path always uses the scalar tail, so SIMD
+   --  invariance is checked separately.
    function Expected_Scale_Add
      (Left, Right : OpenCV.Core.Float16_Value; Scale : Long_Float)
       return OpenCV.Core.Float16_Value
    is
-      Scale32 : constant Interfaces.IEEE_Float_32 :=
-        Interfaces.IEEE_Float_32 (Scale);
-      Product : Interfaces.IEEE_Float_32;
-      Sum     : Interfaces.IEEE_Float_32;
-      pragma Volatile (Product);
-      pragma Volatile (Sum);
+      Left_Mat  : OpenCV.Core.Mat := Float16_C1 (1, 1);
+      Right_Mat : OpenCV.Core.Mat := Float16_C1 (1, 1);
+      Left32    : OpenCV.Core.Mat;
+      Right32   : OpenCV.Core.Mat;
+      Result32  : OpenCV.Core.Mat;
+      Result16  : OpenCV.Core.Mat;
    begin
-      Product := OpenCV.Core.To_Float32 (Left) * Scale32;
-      Sum := Product + OpenCV.Core.To_Float32 (Right);
-      return OpenCV.Core.To_Float16 (Sum);
+      OpenCV.Core.Float16_Access.Set (Left_Mat, 0, 0, Left);
+      OpenCV.Core.Float16_Access.Set (Right_Mat, 0, 0, Right);
+      Left32 := Left_Mat.Convert_To (OpenCV.Core.Float32);
+      Right32 := Right_Mat.Convert_To (OpenCV.Core.Float32);
+      Result32 := Left32.Scale_Add (Scale, Right32);
+      Result16 := Result32.Convert_To (OpenCV.Core.Float16);
+      return OpenCV.Core.Float16_Access.Get (Result16, 0, 0);
    end Expected_Scale_Add;
 
    procedure Mat_Add_And_Subtract_Work_For_Float32
@@ -1201,7 +1209,8 @@ package body Mat_Arithmetic_Tests is
          0,
          1,
          16#8004#,
-         "Float16 Scale_Add must round the product before addition");
+         "Float16 Scale_Add must follow the Float32-scale compatibility"
+         & " model");
    end Mat_Float16_Scale_Add_Uses_Staged_Float32_Arithmetic;
 
    procedure Mat_Float16_Scale_Add_Is_Tail_Invariant
@@ -1240,6 +1249,93 @@ package body Mat_Arithmetic_Tests is
          Check (Length, Length - 1);
       end loop;
    end Mat_Float16_Scale_Add_Is_Tail_Invariant;
+
+   procedure Mat_Float16_Scale_Add_Handles_C3 (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left        : OpenCV.Core.Mat := Float16_C3 (1, 1);
+      Right       : OpenCV.Core.Mat := Float16_C3 (1, 1);
+      Result      : OpenCV.Core.Mat;
+      Left_Pixel  : constant OpenCV.Core.Float16_Vec3.Vector :=
+        Pixel (16#3C00#, 16#C000#, 16#3800#);
+      Right_Pixel : constant OpenCV.Core.Float16_Vec3.Vector :=
+        Pixel (16#4000#, 16#3800#, 16#C400#);
+      Expected    : constant OpenCV.Core.Float16_Vec3.Vector :=
+        (0 => Expected_Scale_Add (Left_Pixel (0), Right_Pixel (0), 0.5),
+         1 => Expected_Scale_Add (Left_Pixel (1), Right_Pixel (1), 0.5),
+         2 => Expected_Scale_Add (Left_Pixel (2), Right_Pixel (2), 0.5));
+   begin
+      OpenCV.Core.Float16_Vec3_Access.Set (Left, 0, 0, Left_Pixel);
+      OpenCV.Core.Float16_Vec3_Access.Set (Right, 0, 0, Right_Pixel);
+      Result := Left.Scale_Add (Scale => 0.5, Right => Right);
+      Assert_Float16_Metadata
+        (Result, 1, 1, 3, "Float16 Scale_Add must preserve C3 metadata");
+      Assert_Stored_Pixel
+        (Result,
+         0,
+         0,
+         Expected,
+         "Float16 Scale_Add must process C3 components independently");
+   end Mat_Float16_Scale_Add_Handles_C3;
+
+   procedure Mat_Float16_Scale_Add_Handles_Multi_Row_C3
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Left   : OpenCV.Core.Mat := Float16_C3 (2, 2);
+      Right  : OpenCV.Core.Mat := Float16_C3 (2, 2);
+      Result : OpenCV.Core.Mat;
+   begin
+      OpenCV.Core.Float16_Vec3_Access.Set
+        (Left, 0, 0, Pixel (16#3C00#, 16#C000#, 16#3800#));
+      OpenCV.Core.Float16_Vec3_Access.Set
+        (Left, 0, 1, Pixel (16#4200#, 16#BC00#, 16#4400#));
+      OpenCV.Core.Float16_Vec3_Access.Set
+        (Left, 1, 0, Pixel (16#4000#, 16#C200#, 16#3C00#));
+      OpenCV.Core.Float16_Vec3_Access.Set
+        (Left, 1, 1, Pixel (16#B800#, 16#3800#, 16#C400#));
+      OpenCV.Core.Float16_Vec3_Access.Set
+        (Right, 0, 0, Pixel (16#4000#, 16#3800#, 16#C400#));
+      OpenCV.Core.Float16_Vec3_Access.Set
+        (Right, 0, 1, Pixel (16#B800#, 16#4000#, 16#C000#));
+      OpenCV.Core.Float16_Vec3_Access.Set
+        (Right, 1, 0, Pixel (16#3C00#, 16#C000#, 16#4200#));
+      OpenCV.Core.Float16_Vec3_Access.Set
+        (Right, 1, 1, Pixel (16#C200#, 16#4400#, 16#3800#));
+      Result := Left.Scale_Add (Scale => -0.7, Right => Right);
+      Assert_Float16_Metadata
+        (Result,
+         2,
+         2,
+         3,
+         "Float16 Scale_Add must preserve multi-row C3 metadata");
+      for Row in 0 .. 1 loop
+         for Column in 0 .. 1 loop
+            declare
+               Left_Pixel  : constant OpenCV.Core.Float16_Vec3.Vector :=
+                 OpenCV.Core.Float16_Vec3_Access.Get (Left, Row, Column);
+               Right_Pixel : constant OpenCV.Core.Float16_Vec3.Vector :=
+                 OpenCV.Core.Float16_Vec3_Access.Get (Right, Row, Column);
+               Expected    : constant OpenCV.Core.Float16_Vec3.Vector :=
+                 (0 =>
+                    Expected_Scale_Add (Left_Pixel (0), Right_Pixel (0), -0.7),
+                  1 =>
+                    Expected_Scale_Add (Left_Pixel (1), Right_Pixel (1), -0.7),
+                  2 =>
+                    Expected_Scale_Add
+                      (Left_Pixel (2), Right_Pixel (2), -0.7));
+            begin
+               Assert_Stored_Pixel
+                 (Result,
+                  Row,
+                  Column,
+                  Expected,
+                  "Float16 Scale_Add must process every multi-row C3"
+                  & " component");
+            end;
+         end loop;
+      end loop;
+   end Mat_Float16_Scale_Add_Handles_Multi_Row_C3;
 
    procedure Mat_Float16_Scale_Add_Handles_C3_Regions_And_Ownership
      (Test : in out Mat_Test_Fixture)
@@ -2773,7 +2869,8 @@ package body Mat_Arithmetic_Tests is
    is
       pragma Unreferenced (Test);
       type Scale_Array is array (Positive range <>) of Long_Float;
-      Scales : constant Scale_Array := (1.0, -1.0, 0.5, 0.1, 0.3, 1.5, -0.7);
+      Scales : constant Scale_Array :=
+        (1.0, -1.0, 0.5, 0.1, 0.3, 0.7, 1.5, -0.7);
       Left   : OpenCV.Core.Mat := Float16_C1 (1, Sample_Pair_Count);
       Right  : OpenCV.Core.Mat := Float16_C1 (1, Sample_Pair_Count);
       Result : OpenCV.Core.Mat;
@@ -5245,12 +5342,20 @@ package body Mat_Arithmetic_Tests is
             Mat_Float16_Scale_Add_Works_For_Multi_Row_C1'Access));
       Result.Add_Test
         (Caller.Create
-           ("Mat Float16 Scale_Add uses staged Float32 arithmetic",
+           ("Mat Float16 Scale_Add uses Float32 scale narrowing",
             Mat_Float16_Scale_Add_Uses_Staged_Float32_Arithmetic'Access));
       Result.Add_Test
         (Caller.Create
            ("Mat Float16 Scale_Add is tail invariant",
             Mat_Float16_Scale_Add_Is_Tail_Invariant'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Scale_Add handles C3",
+            Mat_Float16_Scale_Add_Handles_C3'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Scale_Add handles multi-row C3",
+            Mat_Float16_Scale_Add_Handles_Multi_Row_C3'Access));
       Result.Add_Test
         (Caller.Create
            ("Mat Float16 Scale_Add handles C3 Regions and ownership",

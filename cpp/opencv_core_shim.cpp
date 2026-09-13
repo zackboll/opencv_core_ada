@@ -3235,59 +3235,28 @@ static float add_weighted_float32(float left, float alpha, float right,
     return weighted_sum;
 }
 
-// Keep Float16 Scale_Add independent of OpenCV version, SIMD width, and tail
-// position by making its two binary32 rounding points explicit. Volatile
-// temporaries prevent FMA contraction and excess-precision intermediates.
-static float scale_add_float32(float left, float scale, float right) {
-    volatile float product = left * scale;
-    volatile float sum = product + right;
-    return sum;
-}
-
+// OpenCV 4.1 through 5.0 expose CPU scaleAdd kernels only for CV_32F and
+// CV_64F. Float16 therefore widens both operands to Float32, narrows scale
+// to Float32 so the coefficient reaching the Float32 kernel is exact, uses
+// OpenCV's optimized cv::scaleAdd, and narrows the result back to CV_16F.
 static void scale_add_float16(const cv::Mat &left, double scale,
                               const cv::Mat &right, cv::Mat &result) {
-    // ABI safety: scalar_count is derived from left.channels(); a right Mat
-    // with fewer channels would make the loop read past each right plane.
-    if (left.channels() != right.channels()) {
-        throw std::invalid_argument(
-            "Float16 Scale_Add operands must have matching channels");
-    }
-
     cv::Mat left32;
     cv::Mat right32;
+    cv::Mat result32;
     left.convertTo(left32, CV_32F);
     right.convertTo(right32, CV_32F);
 
-    // ABI safety: iterator construction and traversal require valid shape
-    // metadata and non-null data pointers, which default empty Mats lack.
+    // ABI safety: default-empty and typed 0x0 CV_16F sources convert to empty
+    // CV_32F Mats. OpenCV 5 scaleAdd output creation can then build a 0-D
+    // scalar destination and throw in getContinuousSize2D.
     if (left32.empty()) {
         result.release();
         return;
     }
 
-    cv::Mat result32(left32.rows, left32.cols, left32.type());
     const float scale32 = static_cast<float>(scale);
-    const cv::Mat *arrays[] = {&left32, &right32, &result32, nullptr};
-    uchar *ptrs[3] = {};
-    cv::NAryMatIterator iterator(arrays, ptrs, 3);
-    std::size_t scalar_count = 0;
-    // ABI safety: the loop below performs typed pointer arithmetic over every
-    // channel scalar in an iterator plane.
-    if (!checked_size_mul(iterator.size,
-                          static_cast<std::size_t>(left32.channels()),
-                          &scalar_count)) {
-        throw std::overflow_error("Float16 Scale_Add plane size overflow");
-    }
-    for (std::size_t plane = 0; plane < iterator.nplanes;
-         ++plane, ++iterator) {
-        const float *left_plane = reinterpret_cast<const float *>(ptrs[0]);
-        const float *right_plane = reinterpret_cast<const float *>(ptrs[1]);
-        float *result_plane = reinterpret_cast<float *>(ptrs[2]);
-        for (std::size_t index = 0; index < scalar_count; ++index) {
-            result_plane[index] = scale_add_float32(
-                left_plane[index], scale32, right_plane[index]);
-        }
-    }
+    cv::scaleAdd(left32, static_cast<double>(scale32), right32, result32);
     result32.convertTo(result, CV_16F);
 }
 
