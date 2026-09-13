@@ -18,7 +18,7 @@ translation of the C++ headers.
 >
 > **Development status:** active, pre-1.0 API.
 >
-> **Current test baseline:** 1220 AUnit tests, with Ada and C++ warnings promoted
+> **Current test baseline:** 1221 AUnit tests, with Ada and C++ warnings promoted
 > to errors. GitHub Actions exercises the full test suite against four OpenCV
 > compatibility targets, plus a native Ubuntu 24.04 ARM64 job.
 >
@@ -350,7 +350,7 @@ The test crate carries development-only dependencies such as AUnit, GNATprove,
 and GNATcov. They are intentionally not dependencies of the public library
 crate.
 
-At the time of this README update, the full suite contains **1220 AUnit tests**.
+At the time of this README update, the full suite contains **1221 AUnit tests**.
 Coverage includes ordinary behavior, invalid input, shape/depth/channel
 compatibility, empty Mats, non-contiguous Regions, shallow-versus-independent
 ownership, callback lifetimes, arbitrary Ada array lower bounds, failure
@@ -929,9 +929,15 @@ For `Scale_Add`, OpenCV 4.1 through 5.0 expose dedicated CPU `scaleAdd`
 kernels only for Float32 and Float64, not Float16. Float16 `Scale_Add` is
 implemented by widening the operands to Float32, narrowing Scale to Float32,
 executing OpenCV's optimized Float32 `scaleAdd` operation, and narrowing the
-result back to Float16. This compatibility path is used across OpenCV 4.1-5.0
-because those supported versions do not expose a `CV_16F` `scaleAdd` kernel.
-`Scale_Add` remains intentionally 2-D.
+result back to Float16. Unlike `Add_Weighted`, this path preserves OpenCV's
+optimized SIMD and fused-multiply-add execution rather than imposing
+binding-controlled rounding. Numerical results therefore follow the OpenCV
+Float32 execution path and may exhibit platform- or SIMD-dependent last-bit
+differences after conversion to Float16. Exact Float16 bits are not promised
+to be independent of architecture, SIMD dispatch, or scalar-tail placement.
+This compatibility path is used across OpenCV 4.1-5.0 because those supported
+versions do not expose a `CV_16F` `scaleAdd` kernel. `Scale_Add` remains
+intentionally 2-D.
 For finite numerically unequal operands, `Minimum` and `Maximum` select the
 smaller or larger binary16 operand exactly. Their signed-zero, infinity, and
 NaN behavior follows the established Float32 `cv::min` / `cv::max` semantics

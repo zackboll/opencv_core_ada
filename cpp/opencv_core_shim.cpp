@@ -3236,9 +3236,14 @@ static float add_weighted_float32(float left, float alpha, float right,
 }
 
 // OpenCV 4.1 through 5.0 expose CPU scaleAdd kernels only for CV_32F and
-// CV_64F. Float16 therefore widens both operands to Float32, narrows scale
-// to Float32 so the coefficient reaching the Float32 kernel is exact, uses
-// OpenCV's optimized cv::scaleAdd, and narrows the result back to CV_16F.
+// CV_64F, not CV_16F. Float16 therefore widens both operands to Float32,
+// narrows scale to Float32 so the coefficient reaching the Float32 kernel
+// is exact, uses OpenCV's optimized cv::scaleAdd, and narrows the result
+// back to CV_16F. OpenCV is intentionally allowed to use SIMD multiply-add,
+// including fused multiply-add depending on architecture and CPU dispatch.
+// Exact Float16 result bits are therefore not promised to be invariant
+// across SIMD width, FMA capability, or scalar-tail placement; this is
+// normal optimized floating-point behavior.
 static void scale_add_float16(const cv::Mat &left, double scale,
                               const cv::Mat &right, cv::Mat &result) {
     cv::Mat left32;

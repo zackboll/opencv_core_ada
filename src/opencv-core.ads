@@ -1152,9 +1152,13 @@ package OpenCV.Core is
    --  OpenCV's addWeighted path: UInt8, Int8, UInt16, and Int16 saturate;
    --  Int32 does not. Float32 and Float64 use the dedicated scaleAdd kernels.
    --  On every supported OpenCV version, Float16 Scale_Add widens its inputs
-   --  to Float32, narrows Scale to Float32, performs OpenCV Float32 scaleAdd,
-   --  and narrows the resulting values back to Float16. Supported OpenCV
-   --  4.1 through 5.0 releases do not expose a CV_16F scaleAdd kernel.
+   --  exactly to Float32, narrows Scale to Float32, executes OpenCV's
+   --  optimized Float32 scaleAdd, and narrows the result once to Float16.
+   --  Supported OpenCV 4.1 through 5.0 releases do not expose a CV_16F
+   --  scaleAdd kernel. OpenCV may use SIMD or fused multiply-add depending
+   --  on architecture and CPU dispatch; exact Float16 bit patterns are not
+   --  guaranteed to be independent of architecture, SIMD dispatch, or
+   --  vector-tail placement.
    --  Both operands must have identical 2D shape and element type.
    function Scale_Add (Self : Mat; Scale : Long_Float; Right : Mat) return Mat;
 

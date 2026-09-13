@@ -740,7 +740,9 @@ opencv_core_mat_add_weighted(const opencv_core_mat_handle *left, double alpha,
  * Returns scale * left + right for two Mats with identical dimensions and
  * type, using cv::scaleAdd. The result has the same type and independent
  * storage. Depths below CV_32F use OpenCV's addWeighted path: 8- and
- * 16-bit integer depths saturate; CV_32S does not.
+ * 16-bit integer depths saturate; CV_32S does not. CV_16F operands are
+ * handled internally as CV_16F -> CV_32F -> cv::scaleAdd -> CV_16F, with
+ * the scalar coefficient narrowed to Float32 before execution.
  */
 opencv_core_status
 opencv_core_mat_scale_add(const opencv_core_mat_handle *left, double scale,

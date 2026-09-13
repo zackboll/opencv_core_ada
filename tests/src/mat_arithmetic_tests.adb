@@ -166,29 +166,78 @@ package body Mat_Arithmetic_Tests is
       return OpenCV.Core.To_Float16 (Weighted_Sum);
    end Expected_Add_Weighted;
 
-   --  Models the documented Float16 Scale_Add compatibility path: widen both
-   --  operands to Float32, let OpenCV's Float32 scaleAdd run, then narrow
-   --  back to Float16. The 1x1 path always uses the scalar tail, so SIMD
-   --  invariance is checked separately.
-   function Expected_Scale_Add
-     (Left, Right : OpenCV.Core.Float16_Value; Scale : Long_Float)
-      return OpenCV.Core.Float16_Value
+   --  Same-layout Float16 Scale_Add oracle: convert both operands to Float32,
+   --  narrow Scale to IEEE Float32, run ordinary Float32 Scale_Add on Mats
+   --  with the same shape, then convert the result back to Float16. This
+   --  matches the documented compatibility path without calling Float16
+   --  Scale_Add again. A 1x1 helper would always use OpenCV's scalar tail
+   --  and would not be a valid exact-bit oracle for wider SIMD layouts.
+   function Narrowed_Scale (Scale : Long_Float) return Long_Float
+   is (Long_Float (Interfaces.IEEE_Float_32 (Scale)));
+
+   function Float32_Compatibility_Scale_Add
+     (Left : OpenCV.Core.Mat; Scale : Long_Float; Right : OpenCV.Core.Mat)
+      return OpenCV.Core.Mat
    is
-      Left_Mat  : OpenCV.Core.Mat := Float16_C1 (1, 1);
-      Right_Mat : OpenCV.Core.Mat := Float16_C1 (1, 1);
-      Left32    : OpenCV.Core.Mat;
-      Right32   : OpenCV.Core.Mat;
-      Result32  : OpenCV.Core.Mat;
-      Result16  : OpenCV.Core.Mat;
+      Left32   : constant OpenCV.Core.Mat :=
+        Left.Convert_To (OpenCV.Core.Float32);
+      Right32  : constant OpenCV.Core.Mat :=
+        Right.Convert_To (OpenCV.Core.Float32);
+      Result32 : constant OpenCV.Core.Mat :=
+        Left32.Scale_Add (Narrowed_Scale (Scale), Right32);
    begin
-      OpenCV.Core.Float16_Access.Set (Left_Mat, 0, 0, Left);
-      OpenCV.Core.Float16_Access.Set (Right_Mat, 0, 0, Right);
-      Left32 := Left_Mat.Convert_To (OpenCV.Core.Float32);
-      Right32 := Right_Mat.Convert_To (OpenCV.Core.Float32);
-      Result32 := Left32.Scale_Add (Scale, Right32);
-      Result16 := Result32.Convert_To (OpenCV.Core.Float16);
-      return OpenCV.Core.Float16_Access.Get (Result16, 0, 0);
-   end Expected_Scale_Add;
+      return Result32.Convert_To (OpenCV.Core.Float16);
+   end Float32_Compatibility_Scale_Add;
+
+   procedure Assert_Matches_Float32_Compatibility
+     (Result  : OpenCV.Core.Mat;
+      Left    : OpenCV.Core.Mat;
+      Scale   : Long_Float;
+      Right   : OpenCV.Core.Mat;
+      Message : String)
+   is
+      Expected : constant OpenCV.Core.Mat :=
+        Float32_Compatibility_Scale_Add (Left, Scale, Right);
+   begin
+      AUnit.Assertions.Assert
+        (Result.Rows = Expected.Rows
+         and then Result.Columns = Expected.Columns
+         and then Result.Depth = OpenCV.Core.Float16
+         and then Result.Channels = Expected.Channels,
+         Message & ": metadata must match the Float32 compatibility path");
+      if Result.Channels = 1 then
+         for Row in 0 .. Result.Rows - 1 loop
+            for Column in 0 .. Result.Columns - 1 loop
+               Assert_Bits
+                 (OpenCV.Core.Float16_Access.Get (Result, Row, Column),
+                  Bits_Of
+                    (OpenCV.Core.Float16_Access.Get (Expected, Row, Column)),
+                  Message
+                  & " at ("
+                  & Integer'Image (Row)
+                  & ","
+                  & Integer'Image (Column)
+                  & ")");
+            end loop;
+         end loop;
+      else
+         for Row in 0 .. Result.Rows - 1 loop
+            for Column in 0 .. Result.Columns - 1 loop
+               Assert_Stored_Pixel
+                 (Result,
+                  Row,
+                  Column,
+                  OpenCV.Core.Float16_Vec3_Access.Get (Expected, Row, Column),
+                  Message
+                  & " at ("
+                  & Integer'Image (Row)
+                  & ","
+                  & Integer'Image (Column)
+                  & ")");
+            end loop;
+         end loop;
+      end if;
+   end Assert_Matches_Float32_Compatibility;
 
    procedure Mat_Add_And_Subtract_Work_For_Float32
      (Test : in out Mat_Test_Fixture)
@@ -1171,18 +1220,12 @@ package body Mat_Arithmetic_Tests is
       Result := Left.Scale_Add (Scale => 0.5, Right => Right);
       Assert_Float16_Metadata
         (Result, 2, 3, 1, "Float16 Scale_Add must preserve C1 metadata");
-      for Row in 0 .. 1 loop
-         for Column in 0 .. 2 loop
-            Assert_Bits
-              (OpenCV.Core.Float16_Access.Get (Result, Row, Column),
-               Bits_Of
-                 (Expected_Scale_Add
-                    (OpenCV.Core.Float16_Access.Get (Left, Row, Column),
-                     OpenCV.Core.Float16_Access.Get (Right, Row, Column),
-                     0.5)),
-               "Float16 Scale_Add must process every multi-row C1 value");
-         end loop;
-      end loop;
+      Assert_Matches_Float32_Compatibility
+        (Result,
+         Left,
+         0.5,
+         Right,
+         "Float16 Scale_Add must process every multi-row C1 value");
    end Mat_Float16_Scale_Add_Works_For_Multi_Row_C1;
 
    procedure Mat_Float16_Scale_Add_Uses_Staged_Float32_Arithmetic
@@ -1198,22 +1241,15 @@ package body Mat_Arithmetic_Tests is
       Set_C1 (Left, 0, 1, 16#008C#);
       Set_C1 (Right, 0, 1, 16#8012#);
       Result := Left.Scale_Add (Scale => 0.1, Right => Right);
-      Assert_Stored_Bits
+      Assert_Matches_Float32_Compatibility
         (Result,
-         0,
-         0,
-         16#0667#,
+         Left,
+         0.1,
+         Right,
          "Float16 Scale_Add must narrow Scale to Float32 before evaluation");
-      Assert_Stored_Bits
-        (Result,
-         0,
-         1,
-         16#8004#,
-         "Float16 Scale_Add must follow the Float32-scale compatibility"
-         & " model");
    end Mat_Float16_Scale_Add_Uses_Staged_Float32_Arithmetic;
 
-   procedure Mat_Float16_Scale_Add_Is_Tail_Invariant
+   procedure Mat_Float16_Scale_Add_Follows_Float32_SIMD_Widths
      (Test : in out Mat_Test_Fixture)
    is
       pragma Unreferenced (Test);
@@ -1232,12 +1268,13 @@ package body Mat_Arithmetic_Tests is
          Set_C1 (Left, 0, Position, 16#008C#);
          Set_C1 (Right, 0, Position, 16#8012#);
          Result := Left.Scale_Add (Scale => 0.1, Right => Right);
-         Assert_Stored_Bits
+         Assert_Matches_Float32_Compatibility
            (Result,
-            0,
-            Position,
-            16#8004#,
-            "Float16 Scale_Add must be invariant at length"
+            Left,
+            0.1,
+            Right,
+            "Float16 Scale_Add must follow the same-layout Float32 path at"
+            & " length"
             & Natural'Image (Length)
             & " position"
             & Natural'Image (Position));
@@ -1248,7 +1285,58 @@ package body Mat_Arithmetic_Tests is
          Check (Length, Length / 2);
          Check (Length, Length - 1);
       end loop;
-   end Mat_Float16_Scale_Add_Is_Tail_Invariant;
+   end Mat_Float16_Scale_Add_Follows_Float32_SIMD_Widths;
+
+   --  Separate Float32 multiply/add and fused multiply-add can land on
+   --  opposite sides of a Float16 rounding boundary, for example producing
+   --  0x4EA4 versus 0x4EA5 for Left=0x580B, Right=0xCA1F, Scale=0.3, or a
+   --  signed-zero difference for Left=0x95D7, Right=0x08AC, Scale=0.1.
+   --  These cases exist to pin the documented OpenCV Float32 compatibility
+   --  path, not to require SIMD and scalar tails to differ.
+   procedure Mat_Float16_Scale_Add_FMA_Sensitive_Follows_Float32_Path
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      type Length_Array is array (Positive range <>) of Positive;
+      Lengths : constant Length_Array :=
+        (1, 3, 7, 8, 9, 15, 16, 17, 31, 32, 33);
+      procedure Check
+        (Length, Position      : Natural;
+         Left_Bits, Right_Bits : Interfaces.Unsigned_16;
+         Scale                 : Long_Float)
+      is
+         Left   : OpenCV.Core.Mat := Float16_C1 (1, Length);
+         Right  : OpenCV.Core.Mat := Float16_C1 (1, Length);
+         Result : OpenCV.Core.Mat;
+      begin
+         for Column in 0 .. Length - 1 loop
+            Set_C1 (Left, 0, Column, 16#3555#);
+            Set_C1 (Right, 0, Column, 16#B155#);
+         end loop;
+         Set_C1 (Left, 0, Position, Left_Bits);
+         Set_C1 (Right, 0, Position, Right_Bits);
+         Result := Left.Scale_Add (Scale => Scale, Right => Right);
+         Assert_Matches_Float32_Compatibility
+           (Result,
+            Left,
+            Scale,
+            Right,
+            "FMA-sensitive Float16 Scale_Add must follow the same-layout"
+            & " Float32 path at length"
+            & Natural'Image (Length)
+            & " position"
+            & Natural'Image (Position));
+      end Check;
+   begin
+      for Length of Lengths loop
+         Check (Length, 0, 16#580B#, 16#CA1F#, 0.3);
+         Check (Length, Length / 2, 16#580B#, 16#CA1F#, 0.3);
+         Check (Length, Length - 1, 16#580B#, 16#CA1F#, 0.3);
+         Check (Length, 0, 16#95D7#, 16#08AC#, 0.1);
+         Check (Length, Length / 2, 16#95D7#, 16#08AC#, 0.1);
+         Check (Length, Length - 1, 16#95D7#, 16#08AC#, 0.1);
+      end loop;
+   end Mat_Float16_Scale_Add_FMA_Sensitive_Follows_Float32_Path;
 
    procedure Mat_Float16_Scale_Add_Handles_C3 (Test : in out Mat_Test_Fixture)
    is
@@ -1260,21 +1348,17 @@ package body Mat_Arithmetic_Tests is
         Pixel (16#3C00#, 16#C000#, 16#3800#);
       Right_Pixel : constant OpenCV.Core.Float16_Vec3.Vector :=
         Pixel (16#4000#, 16#3800#, 16#C400#);
-      Expected    : constant OpenCV.Core.Float16_Vec3.Vector :=
-        (0 => Expected_Scale_Add (Left_Pixel (0), Right_Pixel (0), 0.5),
-         1 => Expected_Scale_Add (Left_Pixel (1), Right_Pixel (1), 0.5),
-         2 => Expected_Scale_Add (Left_Pixel (2), Right_Pixel (2), 0.5));
    begin
       OpenCV.Core.Float16_Vec3_Access.Set (Left, 0, 0, Left_Pixel);
       OpenCV.Core.Float16_Vec3_Access.Set (Right, 0, 0, Right_Pixel);
       Result := Left.Scale_Add (Scale => 0.5, Right => Right);
       Assert_Float16_Metadata
         (Result, 1, 1, 3, "Float16 Scale_Add must preserve C3 metadata");
-      Assert_Stored_Pixel
+      Assert_Matches_Float32_Compatibility
         (Result,
-         0,
-         0,
-         Expected,
+         Left,
+         0.5,
+         Right,
          "Float16 Scale_Add must process C3 components independently");
    end Mat_Float16_Scale_Add_Handles_C3;
 
@@ -1309,32 +1393,12 @@ package body Mat_Arithmetic_Tests is
          2,
          3,
          "Float16 Scale_Add must preserve multi-row C3 metadata");
-      for Row in 0 .. 1 loop
-         for Column in 0 .. 1 loop
-            declare
-               Left_Pixel  : constant OpenCV.Core.Float16_Vec3.Vector :=
-                 OpenCV.Core.Float16_Vec3_Access.Get (Left, Row, Column);
-               Right_Pixel : constant OpenCV.Core.Float16_Vec3.Vector :=
-                 OpenCV.Core.Float16_Vec3_Access.Get (Right, Row, Column);
-               Expected    : constant OpenCV.Core.Float16_Vec3.Vector :=
-                 (0 =>
-                    Expected_Scale_Add (Left_Pixel (0), Right_Pixel (0), -0.7),
-                  1 =>
-                    Expected_Scale_Add (Left_Pixel (1), Right_Pixel (1), -0.7),
-                  2 =>
-                    Expected_Scale_Add
-                      (Left_Pixel (2), Right_Pixel (2), -0.7));
-            begin
-               Assert_Stored_Pixel
-                 (Result,
-                  Row,
-                  Column,
-                  Expected,
-                  "Float16 Scale_Add must process every multi-row C3"
-                  & " component");
-            end;
-         end loop;
-      end loop;
+      Assert_Matches_Float32_Compatibility
+        (Result,
+         Left,
+         -0.7,
+         Right,
+         "Float16 Scale_Add must process every multi-row C3 component");
    end Mat_Float16_Scale_Add_Handles_Multi_Row_C3;
 
    procedure Mat_Float16_Scale_Add_Handles_C3_Regions_And_Ownership
@@ -1355,10 +1419,8 @@ package body Mat_Arithmetic_Tests is
         Pixel (16#3C00#, 16#C000#, 16#3800#);
       Right_Pixel     : constant OpenCV.Core.Float16_Vec3.Vector :=
         Pixel (16#4000#, 16#3800#, 16#C400#);
-      Expected_Pixel  : constant OpenCV.Core.Float16_Vec3.Vector :=
-        (0 => Expected_Scale_Add (Left_Pixel (0), Right_Pixel (0), 0.5),
-         1 => Expected_Scale_Add (Left_Pixel (1), Right_Pixel (1), 0.5),
-         2 => Expected_Scale_Add (Left_Pixel (2), Right_Pixel (2), 0.5));
+      C1_Expected_00  : OpenCV.Core.Float16_Value;
+      C3_Expected_00  : OpenCV.Core.Float16_Vec3.Vector;
    begin
       for Row in 0 .. 2 loop
          for Column in 0 .. 4 loop
@@ -1399,19 +1461,22 @@ package body Mat_Arithmetic_Tests is
          3,
          3,
          "Float16 Scale_Add must preserve C3 Region shape");
+      Assert_Matches_Float32_Compatibility
+        (C1_Result,
+         C1_Left,
+         -0.5,
+         C1_Right,
+         "Float16 Scale_Add must process every C1 Region value");
+      Assert_Matches_Float32_Compatibility
+        (C3_Result,
+         C3_Left,
+         0.5,
+         C3_Right,
+         "Float16 Scale_Add must process every multi-row C3 component");
+      C1_Expected_00 := OpenCV.Core.Float16_Access.Get (C1_Result, 0, 0);
+      C3_Expected_00 := OpenCV.Core.Float16_Vec3_Access.Get (C3_Result, 0, 0);
       for Row in 0 .. 1 loop
          for Column in 0 .. 2 loop
-            Assert_Bits
-              (OpenCV.Core.Float16_Access.Get (C1_Result, Row, Column),
-               Bits_Of
-                 (Expected_Scale_Add (F16 (16#4200#), F16 (16#B800#), -0.5)),
-               "Float16 Scale_Add must process every C1 Region value");
-            Assert_Stored_Pixel
-              (C3_Result,
-               Row,
-               Column,
-               Expected_Pixel,
-               "Float16 Scale_Add must process every multi-row C3 component");
             Assert_Stored_Bits
               (C1_Left,
                Row,
@@ -1444,13 +1509,13 @@ package body Mat_Arithmetic_Tests is
         (C3_Right_Parent, 1, 1, Pixel (16#7C00#, 16#7C00#, 16#7C00#));
       Assert_Bits
         (OpenCV.Core.Float16_Access.Get (C1_Result, 0, 0),
-         Bits_Of (Expected_Scale_Add (F16 (16#4200#), F16 (16#B800#), -0.5)),
+         Bits_Of (C1_Expected_00),
          "later C1 input mutation must not affect Scale_Add result");
       Assert_Stored_Pixel
         (C3_Result,
          0,
          0,
-         Expected_Pixel,
+         C3_Expected_00,
          "later C3 input mutation must not affect Scale_Add result");
       Set_C1 (C1_Result, 0, 1, 16#7C00#);
       OpenCV.Core.Float16_Vec3_Access.Set
@@ -2891,32 +2956,16 @@ package body Mat_Arithmetic_Tests is
          end loop;
       end Fill_Right;
       procedure Check (Scale : Long_Float) is
-         procedure Verify
-           (Data : aliased OpenCV.Core.Float16_Buffer_Access.Buffer_Array) is
-         begin
-            for Index in Data'Range loop
-               declare
-                  Expected : constant OpenCV.Core.Float16_Value :=
-                    Expected_Scale_Add
-                      (F16 (Sample_Left_Bits (Index)),
-                       F16 (Sample_Right_Bits (Index)),
-                       Scale);
-               begin
-                  if Bits_Of (Data (Index)) /= Bits_Of (Expected) then
-                     AUnit.Assertions.Assert
-                       (False,
-                        "sampled Float16 Scale_Add mismatch at"
-                        & Integer'Image (Index)
-                        & " for scale"
-                        & Long_Float'Image (Scale));
-                  end if;
-               end;
-            end loop;
-         end Verify;
       begin
          Result := Left.Scale_Add (Scale, Right);
-         OpenCV.Core.Float16_Buffer_Access.With_Read_Only_Buffer
-           (Result, Verify'Access);
+         Assert_Matches_Float32_Compatibility
+           (Result,
+            Left,
+            Scale,
+            Right,
+            "sampled Float16 Scale_Add must follow the same-layout Float32"
+            & " path for scale"
+            & Long_Float'Image (Scale));
       end Check;
    begin
       OpenCV.Core.Float16_Buffer_Access.With_Writable_Buffer
@@ -5346,8 +5395,13 @@ package body Mat_Arithmetic_Tests is
             Mat_Float16_Scale_Add_Uses_Staged_Float32_Arithmetic'Access));
       Result.Add_Test
         (Caller.Create
-           ("Mat Float16 Scale_Add is tail invariant",
-            Mat_Float16_Scale_Add_Is_Tail_Invariant'Access));
+           ("Mat Float16 Scale_Add follows Float32 path across SIMD widths",
+            Mat_Float16_Scale_Add_Follows_Float32_SIMD_Widths'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Scale_Add follows Float32 path for FMA-sensitive"
+            & " values",
+            Mat_Float16_Scale_Add_FMA_Sensitive_Follows_Float32_Path'Access));
       Result.Add_Test
         (Caller.Create
            ("Mat Float16 Scale_Add handles C3",
