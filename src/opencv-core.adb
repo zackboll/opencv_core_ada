@@ -595,6 +595,40 @@ package body OpenCV.Core is
       end if;
    end Validate_Arithmetic_Compatibility;
 
+   procedure Validate_Add_Weighted_Compatibility (Left, Right : Mat) is
+      Left_Dimensions  : constant Natural := Left.Dimension_Count;
+      Right_Dimensions : constant Natural := Right.Dimension_Count;
+   begin
+      if Left_Dimensions /= Right_Dimensions then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat weighted addition requires operands with identical"
+            & " dimension counts");
+      end if;
+
+      for Axis in 1 .. Left_Dimensions loop
+         if Left.Extent (Axis) /= Right.Extent (Axis) then
+            Ada.Exceptions.Raise_Exception
+              (OpenCV_Error'Identity,
+               "Mat weighted addition requires operands with identical"
+               & " extents");
+         end if;
+      end loop;
+
+      if Left.Depth /= Right.Depth then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat weighted addition requires operands with identical depths");
+      end if;
+
+      if Left.Channels /= Right.Channels then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Mat weighted addition requires operands with identical channel"
+            & " counts");
+      end if;
+   end Validate_Add_Weighted_Compatibility;
+
    procedure Validate_Mask (Source, Mask : Mat) is
    begin
       if Mask.Depth /= UInt8 then
@@ -792,7 +826,7 @@ package body OpenCV.Core is
         OpenCV.Internal.C_API.Null_Mat_Handle;
       Status     : OpenCV.Internal.C_API.Status;
    begin
-      Validate_Arithmetic_Compatibility (Left, Right);
+      Validate_Add_Weighted_Compatibility (Left, Right);
       Status :=
         OpenCV.Internal.C_API.Mat_Add_Weighted
           (Left   => Left.Handle,

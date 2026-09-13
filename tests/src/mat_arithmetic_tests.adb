@@ -20,6 +20,7 @@ package body Mat_Arithmetic_Tests is
 
    use type OpenCV.Core.Depth_Type;
    use type OpenCV.Core.Channel_Count;
+   use type OpenCV.Core.Size_Coordinate;
    use type OpenCV.Core.Float32_Access.Float32_Classification;
    use type OpenCV.Core.UInt8_Vec3.Vector;
 
@@ -2025,6 +2026,101 @@ package body Mat_Arithmetic_Tests is
          Check (Length, Length - 1);
       end loop;
    end Mat_Float16_Add_Weighted_Is_Tail_Invariant;
+
+   procedure Mat_Float16_Add_Weighted_Preserves_N_Dimensional_Shape
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Alpha  : constant := 0.1;
+      Beta   : constant := 0.3;
+      Gamma  : constant := 0.7;
+      Left   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape => (2, 3, 4), Element_Type => (OpenCV.Core.Float16, 1));
+      Right  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape => (2, 3, 4), Element_Type => (OpenCV.Core.Float16, 1));
+      Result : OpenCV.Core.Mat;
+   begin
+      for Axis_0 in 0 .. 1 loop
+         for Axis_1 in 0 .. 2 loop
+            for Axis_2 in 0 .. 3 loop
+               declare
+                  Indices    : constant OpenCV.Core.Index_Array :=
+                    (OpenCV.Core.Size_Coordinate (Axis_0),
+                     OpenCV.Core.Size_Coordinate (Axis_1),
+                     OpenCV.Core.Size_Coordinate (Axis_2));
+                  Position   : constant Natural :=
+                    Axis_0 * 12 + Axis_1 * 4 + Axis_2;
+                  Left_Bits  : constant Interfaces.Unsigned_16 :=
+                    16#3000# + Interfaces.Unsigned_16 (Position * 37);
+                  Right_Bits : constant Interfaces.Unsigned_16 :=
+                    16#B000# + Interfaces.Unsigned_16 (Position * 53);
+               begin
+                  OpenCV.Core.Float16_Access.Set
+                    (Left, Indices, F16 (Left_Bits));
+                  OpenCV.Core.Float16_Access.Set
+                    (Right, Indices, F16 (Right_Bits));
+               end;
+            end loop;
+         end loop;
+      end loop;
+
+      Result := Left.Add_Weighted (Alpha, Right, Beta, Gamma);
+      AUnit.Assertions.Assert
+        (Result.Dimension_Count = 3
+         and then Result.Extent (1) = 2
+         and then Result.Extent (2) = 3
+         and then Result.Extent (3) = 4,
+         "Float16 Add_Weighted must preserve the complete N-D shape");
+
+      for Axis_0 in 0 .. 1 loop
+         for Axis_1 in 0 .. 2 loop
+            for Axis_2 in 0 .. 3 loop
+               declare
+                  Indices    : constant OpenCV.Core.Index_Array :=
+                    (OpenCV.Core.Size_Coordinate (Axis_0),
+                     OpenCV.Core.Size_Coordinate (Axis_1),
+                     OpenCV.Core.Size_Coordinate (Axis_2));
+                  Position   : constant Natural :=
+                    Axis_0 * 12 + Axis_1 * 4 + Axis_2;
+                  Left_Bits  : constant Interfaces.Unsigned_16 :=
+                    16#3000# + Interfaces.Unsigned_16 (Position * 37);
+                  Right_Bits : constant Interfaces.Unsigned_16 :=
+                    16#B000# + Interfaces.Unsigned_16 (Position * 53);
+                  Expected   : constant OpenCV.Core.Float16_Value :=
+                    Expected_Add_Weighted
+                      (F16 (Left_Bits), F16 (Right_Bits), Alpha, Beta, Gamma);
+               begin
+                  Assert_Bits
+                    (OpenCV.Core.Float16_Access.Get (Result, Indices),
+                     Bits_Of (Expected),
+                     "Float16 Add_Weighted must process every N-D element");
+                  Assert_Bits
+                    (OpenCV.Core.Float16_Access.Get (Left, Indices),
+                     Left_Bits,
+                     "Float16 Add_Weighted must not modify its left N-D"
+                     & " input");
+                  Assert_Bits
+                    (OpenCV.Core.Float16_Access.Get (Right, Indices),
+                     Right_Bits,
+                     "Float16 Add_Weighted must not modify its right N-D"
+                     & " input");
+               end;
+            end loop;
+         end loop;
+      end loop;
+
+      OpenCV.Core.Float16_Access.Set (Result, (1, 2, 3), F16 (16#7C00#));
+      Assert_Bits
+        (OpenCV.Core.Float16_Access.Get (Left, (1, 2, 3)),
+         16#3353#,
+         "Float16 Add_Weighted N-D result must own independent storage");
+      Assert_Bits
+        (OpenCV.Core.Float16_Access.Get (Right, (1, 2, 3)),
+         16#B4C3#,
+         "Float16 Add_Weighted N-D result must not share right input storage");
+   end Mat_Float16_Add_Weighted_Preserves_N_Dimensional_Shape;
 
    procedure Mat_Float16_Add_Weighted_Nonfinite
      (Test : in out Mat_Test_Fixture)
@@ -4714,6 +4810,10 @@ package body Mat_Arithmetic_Tests is
         (Caller.Create
            ("Mat Float16 Add_Weighted is tail invariant",
             Mat_Float16_Add_Weighted_Is_Tail_Invariant'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat Float16 Add_Weighted preserves N-D shape",
+            Mat_Float16_Add_Weighted_Preserves_N_Dimensional_Shape'Access));
       Result.Add_Test
         (Caller.Create
            ("Mat Float16 Add_Weighted classifies nonfinite results",

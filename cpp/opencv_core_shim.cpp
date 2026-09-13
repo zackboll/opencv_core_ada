@@ -14,6 +14,7 @@
 #include <memory>
 #include <new>
 #include <set>
+#include <stdexcept>
 #include <vector>
 #include <string>
 
@@ -3242,20 +3243,37 @@ static void add_weighted_float16(const cv::Mat &left, double alpha,
     left.convertTo(left32, CV_32F);
     right.convertTo(right32, CV_32F);
 
-    cv::Mat result32(left32.rows, left32.cols, left32.type());
+    // ABI safety: constructing an N-D Mat and iterator from a default empty
+    // Mat would pass zero dimensions and null size metadata into OpenCV.
+    if (left32.empty()) {
+        result.release();
+        return;
+    }
+
+    cv::Mat result32(left32.dims, left32.size.p, left32.type());
     const float alpha32 = static_cast<float>(alpha);
     const float beta32 = static_cast<float>(beta);
     const float gamma32 = static_cast<float>(gamma);
-    const std::size_t scalar_columns =
-        static_cast<std::size_t>(left32.cols) * left32.channels();
-    for (int row = 0; row < left32.rows; ++row) {
-        const float *left_row = left32.ptr<float>(row);
-        const float *right_row = right32.ptr<float>(row);
-        float *result_row = result32.ptr<float>(row);
-        for (std::size_t column = 0; column < scalar_columns; ++column) {
-            result_row[column] =
-                add_weighted_float32(left_row[column], alpha32,
-                                     right_row[column], beta32, gamma32);
+    const cv::Mat *arrays[] = {&left32, &right32, &result32, nullptr};
+    uchar *ptrs[3] = {};
+    cv::NAryMatIterator iterator(arrays, ptrs, 3);
+    std::size_t scalar_count = 0;
+    // ABI safety: the loop below performs typed pointer arithmetic over every
+    // channel scalar in an iterator plane.
+    if (!checked_size_mul(iterator.size,
+                          static_cast<std::size_t>(left32.channels()),
+                          &scalar_count)) {
+        throw std::overflow_error("Float16 Add_Weighted plane size overflow");
+    }
+    for (std::size_t plane = 0; plane < iterator.nplanes;
+         ++plane, ++iterator) {
+        const float *left_plane = reinterpret_cast<const float *>(ptrs[0]);
+        const float *right_plane = reinterpret_cast<const float *>(ptrs[1]);
+        float *result_plane = reinterpret_cast<float *>(ptrs[2]);
+        for (std::size_t index = 0; index < scalar_count; ++index) {
+            result_plane[index] =
+                add_weighted_float32(left_plane[index], alpha32,
+                                     right_plane[index], beta32, gamma32);
         }
     }
     result32.convertTo(result, CV_16F);
