@@ -20,6 +20,7 @@ with Random_Tests;
 with Linear_Discriminant_Analysis_Tests;
 with Float16_Value_Tests;
 with Float32_Point_Tests;
+with Rotated_Rect_Tests;
 with Float16_Row_Access_Tests;
 with Float16_Buffer_Access_Tests;
 with Float16_Mat_View_Tests;
@@ -60,6 +61,7 @@ package body Mat_Tests is
       Result.Add_Test (Linear_Discriminant_Analysis_Tests.Suite);
       Result.Add_Test (Float16_Value_Tests.Suite);
       Result.Add_Test (Float32_Point_Tests.Suite);
+      Result.Add_Test (Rotated_Rect_Tests.Suite);
       Result.Add_Test (Float16_Row_Access_Tests.Suite);
       Result.Add_Test (Float16_Buffer_Access_Tests.Suite);
       Result.Add_Test (Float16_Mat_View_Tests.Suite);

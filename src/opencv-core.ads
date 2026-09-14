@@ -145,6 +145,22 @@ package OpenCV.Core is
       Y : Float32_Value := 0.0;
    end record;
 
+   --  Value-semantic two-dimensional binary32 extent. Individual operations
+   --  define whether negative dimensions are meaningful.
+   type Float32_Size is record
+      Width  : Float32_Value := 0.0;
+      Height : Float32_Value := 0.0;
+   end record;
+
+   --  Value-semantic rotated rectangle with binary32 native OpenCV fields.
+   --  Angle_Degrees is deliberately not normalized because different OpenCV
+   --  operations and versions can use distinct equivalent representations.
+   type Rotated_Rect is record
+      Center        : Float32_Point := (X => 0.0, Y => 0.0);
+      Size          : Float32_Size := (Width => 0.0, Height => 0.0);
+      Angle_Degrees : Float32_Value := 0.0;
+   end record;
+
    --  Exact IEEE-754 binary16 encoding used by OpenCV CV_16F. This is
    --  the stored 16-bit pattern, not Short_Float, Float, Integer_16, or
    --  a numeric Unsigned_16 value. Classification inspects the binary16
