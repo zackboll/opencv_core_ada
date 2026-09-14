@@ -1136,11 +1136,15 @@ package OpenCV.Core is
    function Minimum (Left, Right : Mat) return Mat;
    function Maximum (Left, Right : Mat) return Mat;
    --  Returns an independent Mat with the compatible operands' shape and
-   --  element type. On every supported OpenCV version, Float16 narrows Alpha,
-   --  Beta, and Gamma to Float32; rounds each product and each subsequent sum
-   --  to Float32; then rounds the result once to Float16. This deterministic
-   --  compatibility path is independent of SIMD width and scalar-tail
-   --  position.
+   --  element type. Float16 Add_Weighted uses native CV_16F cv::addWeighted
+   --  on OpenCV 5.0. On supported OpenCV 4.x releases, operands are widened
+   --  to Float32, OpenCV's optimized Float32 addWeighted is executed, and
+   --  the result is narrowed to Float16. OpenCV may use SIMD or fused
+   --  multiply-add depending on architecture and CPU dispatch; exact Float16
+   --  bit patterns are not guaranteed to be independent of OpenCV version,
+   --  architecture, SIMD dispatch, or vector-tail placement. Scale_Add has
+   --  no native CV_16F kernel through OpenCV 5.0, so it uses Float32
+   --  compatibility on every supported version.
    function Add_Weighted
      (Left  : Mat;
       Alpha : Long_Float;

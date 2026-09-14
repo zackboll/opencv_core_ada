@@ -3220,21 +3220,6 @@ static void abs_diff_float16(const cv::Mat &left, const cv::Mat &right,
 #endif
 }
 
-// OpenCV 4.x CV_32F addWeighted and OpenCV 5.x CV_16F addWeighted can vary
-// with scalar versus SIMD dispatch. Keep Float16 behavior independent of the
-// OpenCV version, row width, and tail position by making every binary32
-// rounding point explicit. Volatile temporaries prevent contraction into an
-// FMA and prevent excess-precision intermediates without global compiler
-// options.
-static float add_weighted_float32(float left, float alpha, float right,
-                                  float beta, float gamma) {
-    volatile float left_product = left * alpha;
-    volatile float right_product = right * beta;
-    volatile float sum = left_product + right_product;
-    volatile float weighted_sum = sum + gamma;
-    return weighted_sum;
-}
-
 // OpenCV 4.1 through 5.0 expose CPU scaleAdd kernels only for CV_32F and
 // CV_64F, not CV_16F. Float16 therefore widens both operands to Float32,
 // narrows scale to Float32 so the coefficient reaching the Float32 kernel
@@ -3265,48 +3250,39 @@ static void scale_add_float16(const cv::Mat &left, double scale,
     result32.convertTo(result, CV_16F);
 }
 
+// OpenCV 4.x exposes CV_16F Mat storage/conversion but the supported
+// 4.x addWeighted dispatch tables do not implement CV_16F arithmetic
+// (the CV_16F slot is null after 8u/8s/16u/16s/32s/32f/64f). OpenCV 5.x
+// provides native addWeighted16f, so use native half arithmetic there
+// and widen only on older supported versions. OpenCV is intentionally
+// allowed to use SIMD and fused multiply-add depending on architecture
+// and CPU dispatch. Exact Float16 result bits are therefore not promised
+// to be invariant across OpenCV version, SIMD width, FMA capability, or
+// scalar-tail placement. This is OpenCV operation support, not CPU FP16
+// feature detection.
 static void add_weighted_float16(const cv::Mat &left, double alpha,
                                  const cv::Mat &right, double beta,
                                  double gamma, cv::Mat &result) {
+#if CV_VERSION_MAJOR >= 5
+    cv::addWeighted(left, alpha, right, beta, gamma, result, -1);
+#else
     cv::Mat left32;
     cv::Mat right32;
+    cv::Mat result32;
     left.convertTo(left32, CV_32F);
     right.convertTo(right32, CV_32F);
 
-    // ABI safety: constructing an N-D Mat and iterator from a default empty
-    // Mat would pass zero dimensions and null size metadata into OpenCV.
+    // ABI safety: default-empty and typed 0x0 CV_16F sources convert to empty
+    // CV_32F Mats. Passing those empty headers into addWeighted can construct
+    // a 0-D scalar destination and then throw in getContinuousSize2D.
     if (left32.empty()) {
         result.release();
         return;
     }
 
-    cv::Mat result32(left32.dims, left32.size.p, left32.type());
-    const float alpha32 = static_cast<float>(alpha);
-    const float beta32 = static_cast<float>(beta);
-    const float gamma32 = static_cast<float>(gamma);
-    const cv::Mat *arrays[] = {&left32, &right32, &result32, nullptr};
-    uchar *ptrs[3] = {};
-    cv::NAryMatIterator iterator(arrays, ptrs, 3);
-    std::size_t scalar_count = 0;
-    // ABI safety: the loop below performs typed pointer arithmetic over every
-    // channel scalar in an iterator plane.
-    if (!checked_size_mul(iterator.size,
-                          static_cast<std::size_t>(left32.channels()),
-                          &scalar_count)) {
-        throw std::overflow_error("Float16 Add_Weighted plane size overflow");
-    }
-    for (std::size_t plane = 0; plane < iterator.nplanes;
-         ++plane, ++iterator) {
-        const float *left_plane = reinterpret_cast<const float *>(ptrs[0]);
-        const float *right_plane = reinterpret_cast<const float *>(ptrs[1]);
-        float *result_plane = reinterpret_cast<float *>(ptrs[2]);
-        for (std::size_t index = 0; index < scalar_count; ++index) {
-            result_plane[index] =
-                add_weighted_float32(left_plane[index], alpha32,
-                                     right_plane[index], beta32, gamma32);
-        }
-    }
+    cv::addWeighted(left32, alpha, right32, beta, gamma, result32, -1);
     result32.convertTo(result, CV_16F);
+#endif
 }
 
 opencv_core_status

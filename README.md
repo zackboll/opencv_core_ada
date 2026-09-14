@@ -18,7 +18,7 @@ translation of the C++ headers.
 >
 > **Development status:** active, pre-1.0 API.
 >
-> **Current test baseline:** 1221 AUnit tests, with Ada and C++ warnings promoted
+> **Current test baseline:** 1219 AUnit tests, with Ada and C++ warnings promoted
 > to errors. GitHub Actions exercises the full test suite against four OpenCV
 > compatibility targets, plus a native Ubuntu 24.04 ARM64 job.
 >
@@ -350,7 +350,7 @@ The test crate carries development-only dependencies such as AUnit, GNATprove,
 and GNATcov. They are intentionally not dependencies of the public library
 crate.
 
-At the time of this README update, the full suite contains **1221 AUnit tests**.
+At the time of this README update, the full suite contains **1219 AUnit tests**.
 Coverage includes ordinary behavior, invalid input, shape/depth/channel
 compatibility, empty Mats, non-contiguous Regions, shallow-versus-independent
 ownership, callback lifetimes, arbitrary Ada array lower bounds, failure
@@ -895,36 +895,22 @@ Explicit Mat/Mat operations include:
 accept Float16 operands with the same shape, depth, and channel-count
 compatibility rules as the other public depths. The result is always Float16;
 the public result type does not change on older OpenCV releases. OpenCV 5.x
-uses native `CV_16F` operations when that path satisfies the binding's
-Float32-to-Float16 result model. OpenCV 4.1, 4.6, and 4.10 expose Float16
-storage and `convertTo` but do not implement these arithmetic kernels, so the
-binding widens internally to Float32, performs the operation, and narrows back
-to Float16. That fallback exists only for compatibility. Finite results are
-defined as
+uses native `CV_16F` operations where supported. OpenCV 4.1, 4.6, and 4.10
+provide Float16 storage and `convertTo`; operations without native Float16
+kernels use a Float32 compatibility path. The fallback exists only for
+compatibility.
 
-```text
-To_Float16 (To_Float32 (Left) +/- To_Float32 (Right))
-To_Float16 (To_Float32 (Left) * To_Float32 (Right))
-To_Float16 (To_Float32 (Left) / To_Float32 (Right))
-To_Float16 (abs (To_Float32 (Left) - To_Float32 (Right)))
-To_Float16
-  (Round_Float32
-     (Round_Float32
-        (Round_Float32 (To_Float32 (Left) * Float32 (Alpha))
-         + Round_Float32 (To_Float32 (Right) * Float32 (Beta)))
-      + Float32 (Gamma)))
-```
-
-for finite operands, with a nonzero finite denominator required for Divide.
-For `Add_Weighted`, every supported OpenCV version uses the same private
-binding-controlled compatibility path. Inputs are widened with OpenCV's
-Float16-to-Float32 conversion. The coefficients cross the binding ABI as
-`double` and are explicitly narrowed to Float32. Each multiplication, the
-addition of the products, and the addition of Gamma is separately rounded to
-Float32; no fused operation is used. OpenCV then narrows the completed
-Float32 Mat once to Float16. This avoids OpenCV-version, SIMD-width, and scalar
-tail differences observed in generic Float32 and native Float16
-`addWeighted` kernels. Signed-zero and NaN payload bits are not promised.
+For Divide, finite operands require a nonzero finite denominator.
+For `Add_Weighted`, OpenCV 4.1, 4.6, and 4.10 widen Float16 operands to
+Float32, execute OpenCV's optimized Float32 `addWeighted` with the public
+`double` coefficients, and narrow once to Float16. OpenCV 5.0 provides native
+`CV_16F` `addWeighted`, which the binding uses directly with those same public
+`double` coefficients. The optimized paths may use SIMD, fused multiply-add,
+differing vector widths, and scalar tails, so exact Float16 result bits are
+intentionally not guaranteed across OpenCV versions, architectures, CPU
+dispatch, FMA capability, or scalar-tail placement. These are normal optimized
+OpenCV semantics, not defects. NaN payload and signed-zero bit identity are not
+promised.
 For `Scale_Add`, OpenCV 4.1 through 5.0 expose dedicated CPU `scaleAdd`
 kernels only for Float32 and Float64, not Float16. Float16 `Scale_Add` is
 implemented by widening the operands to Float32, narrowing Scale to Float32,

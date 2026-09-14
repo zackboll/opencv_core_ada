@@ -730,6 +730,11 @@ opencv_core_mat_maximum(const opencv_core_mat_handle *left,
 /*
  * Returns alpha * left + beta * right + gamma for two Mats with identical
  * dimensions and type, using the same output type and independent storage.
+ * CV_16F operands use native cv::addWeighted on OpenCV 5.0. On supported
+ * OpenCV 4.x releases they are widened to CV_32F, OpenCV's optimized
+ * CV_32F addWeighted is executed, and the result is narrowed to CV_16F.
+ * Exact CV_16F bits are not promised across OpenCV versions, architectures,
+ * SIMD dispatch, or scalar-tail placement.
  */
 opencv_core_status
 opencv_core_mat_add_weighted(const opencv_core_mat_handle *left, double alpha,
