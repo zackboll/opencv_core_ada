@@ -24,6 +24,11 @@ opencv_core_status translate_exception() noexcept {
 
 extern "C" {
 
+OPENCV_CORE_MODULE_PROBE_EXPORT int32_t opencv_core_module_probe_version_major(
+    void) {
+    return CV_VERSION_MAJOR;
+}
+
 OPENCV_CORE_MODULE_PROBE_EXPORT opencv_core_status opencv_core_module_probe_input(
     const opencv_core_mat_handle *handle, int32_t *out_rows,
     int32_t *out_columns, int32_t *out_depth, int32_t *out_value) {

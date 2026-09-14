@@ -8,6 +8,12 @@ package body Module_Bridge_Probe is
 
    use type C_Int32;
 
+   function Probe_Version_Major return C_Int32
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_module_probe_version_major";
+
    function Probe_Input
      (Handle  : OpenCV.Core.Module_Interop.Input_Mat_Handle;
       Rows    : access C_Int32;
@@ -50,6 +56,11 @@ package body Module_Bridge_Probe is
            (OpenCV.OpenCV_Error'Identity, Operation & " failed");
       end if;
    end Raise_On_Error;
+
+   function OpenCV_Major_Version return Natural is
+   begin
+      return Natural (Probe_Version_Major);
+   end OpenCV_Major_Version;
 
    procedure Inspect
      (Handle      : OpenCV.Core.Module_Interop.Input_Mat_Handle;

@@ -3,6 +3,8 @@ with OpenCV.Core.Module_Interop;
 
 package Module_Bridge_Probe is
 
+   function OpenCV_Major_Version return Natural;
+
    type Input_Observation is record
       Rows    : Integer;
       Columns : Integer;

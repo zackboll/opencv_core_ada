@@ -11,6 +11,7 @@ with OpenCV.Core.UInt8_Access;
 with OpenCV.Core.UInt8_Vec3;
 with OpenCV.Core.UInt8_Vec3_Access;
 with Mat_Test_Support;
+with Module_Bridge_Probe;
 
 package body Mat_Arithmetic_Tests is
 
@@ -159,8 +160,41 @@ package body Mat_Arithmetic_Tests is
       return Result32.Convert_To (OpenCV.Core.Float16);
    end Float32_Compatibility_Add_Weighted;
 
+   function Ordered_Float16_Key
+     (Value : OpenCV.Core.Float16_Value) return Interfaces.Unsigned_16
+   is
+      Bits : constant Interfaces.Unsigned_16 := Bits_Of (Value);
+   begin
+      --  This orders finite binary16 encodings from negative to positive:
+      --  -infinity through -zero map below +zero through +infinity. The two
+      --  zero encodings remain adjacent; callers handle their equal-value
+      --  exception explicitly before measuring distance.
+      if (Bits and 16#8000#) = 0 then
+         return 16#8000# + Bits;
+      else
+         return 16#7FFF# - (Bits and 16#7FFF#);
+      end if;
+   end Ordered_Float16_Key;
+
+   function Float16_Representable_Distance
+     (Left, Right : OpenCV.Core.Float16_Value) return Interfaces.Unsigned_16
+   is
+      Left_Key  : constant Interfaces.Unsigned_16 :=
+        Ordered_Float16_Key (Left);
+      Right_Key : constant Interfaces.Unsigned_16 :=
+        Ordered_Float16_Key (Right);
+   begin
+      if Left_Key < Right_Key then
+         return Right_Key - Left_Key;
+      else
+         return Left_Key - Right_Key;
+      end if;
+   end Float16_Representable_Distance;
+
    procedure Assert_Float16_Optimized_Result
-     (Actual, Expected : OpenCV.Core.Float16_Value; Message : String) is
+     (Actual, Expected : OpenCV.Core.Float16_Value; Message : String)
+   is
+      Native_CV_16F_Maximum_Representable_Distance : constant := 1;
    begin
       if OpenCV.Core.Is_NaN (Expected) then
          AUnit.Assertions.Assert
@@ -171,22 +205,40 @@ package body Mat_Arithmetic_Tests is
             and then OpenCV.Core.Is_Negative (Actual)
                      = OpenCV.Core.Is_Negative (Expected),
             Message & ": result must preserve infinity classification");
+      elsif OpenCV.Core.Is_Zero (Expected)
+        and then OpenCV.Core.Is_Zero (Actual)
+      then
+         null;
+      elsif Module_Bridge_Probe.OpenCV_Major_Version < 5 then
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Is_Finite (Actual)
+            and then Bits_Of (Actual) = Bits_Of (Expected),
+            Message
+            & ": OpenCV 4.x result must exactly match the Float32"
+            & " compatibility path (got"
+            & Interfaces.Unsigned_16'Image (Bits_Of (Actual))
+            & ", expected"
+            & Interfaces.Unsigned_16'Image (Bits_Of (Expected))
+            & ")");
       else
          declare
-            Actual_Value   : constant Long_Float :=
-              Long_Float (OpenCV.Core.To_Float32 (Actual));
-            Expected_Value : constant Long_Float :=
-              Long_Float (OpenCV.Core.To_Float32 (Expected));
-            --  One binary16 ULP at the expected magnitude, with one minimum
-            --  subnormal to cover results adjacent to zero.
-            Tolerance      : constant Long_Float :=
-              abs (Expected_Value) / 512.0 + 5.960464477539063E-8;
+            Distance : constant Interfaces.Unsigned_16 :=
+              Float16_Representable_Distance (Actual, Expected);
          begin
             AUnit.Assertions.Assert
               (OpenCV.Core.Is_Finite (Actual)
-               and then abs (Actual_Value - Expected_Value) <= Tolerance,
+               and then Distance
+                        <= Native_CV_16F_Maximum_Representable_Distance,
                Message
-               & ": result exceeds one binary16 ULP of the Float32 path");
+               & ": native CV_16F result exceeds one binary16"
+               & " representable step of the Float32 compatibility path"
+               & " (got"
+               & Interfaces.Unsigned_16'Image (Bits_Of (Actual))
+               & ", expected"
+               & Interfaces.Unsigned_16'Image (Bits_Of (Expected))
+               & ", distance"
+               & Interfaces.Unsigned_16'Image (Distance)
+               & ")");
          end;
       end if;
    end Assert_Float16_Optimized_Result;
