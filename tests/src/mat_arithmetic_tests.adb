@@ -165,14 +165,13 @@ package body Mat_Arithmetic_Tests is
    is
       Bits : constant Interfaces.Unsigned_16 := Bits_Of (Value);
    begin
-      --  This orders finite binary16 encodings from negative to positive:
-      --  -infinity through -zero map below +zero through +infinity. The two
-      --  zero encodings remain adjacent; callers handle their equal-value
-      --  exception explicitly before measuring distance.
+      --  This orders binary16 encodings from negative to positive, mapping
+      --  both signed-zero encodings to the same numeric point. Negative
+      --  magnitudes reverse so values increase toward zero.
       if (Bits and 16#8000#) = 0 then
          return 16#8000# + Bits;
       else
-         return 16#7FFF# - (Bits and 16#7FFF#);
+         return 16#8000# - (Bits and 16#7FFF#);
       end if;
    end Ordered_Float16_Key;
 
@@ -190,6 +189,119 @@ package body Mat_Arithmetic_Tests is
          return Left_Key - Right_Key;
       end if;
    end Float16_Representable_Distance;
+
+   procedure Verify_Float16_Representable_Distance is
+      Positive_Zero              : constant OpenCV.Core.Float16_Value :=
+        F16 (0);
+      Negative_Zero              : constant OpenCV.Core.Float16_Value :=
+        F16 (16#8000#);
+      Positive_Minimum_Subnormal : constant OpenCV.Core.Float16_Value :=
+        F16 (16#0001#);
+      Negative_Minimum_Subnormal : constant OpenCV.Core.Float16_Value :=
+        F16 (16#8001#);
+      Positive_Largest_Subnormal : constant OpenCV.Core.Float16_Value :=
+        F16 (16#03FF#);
+      Positive_Smallest_Normal   : constant OpenCV.Core.Float16_Value :=
+        F16 (16#0400#);
+      Negative_Largest_Subnormal : constant OpenCV.Core.Float16_Value :=
+        F16 (16#83FF#);
+      Negative_Smallest_Normal   : constant OpenCV.Core.Float16_Value :=
+        F16 (16#8400#);
+      Negative_Two               : constant OpenCV.Core.Float16_Value :=
+        F16 (16#C000#);
+      Negative_One               : constant OpenCV.Core.Float16_Value :=
+        F16 (16#BC00#);
+      Positive_One               : constant OpenCV.Core.Float16_Value :=
+        F16 (16#3C00#);
+      Positive_Two               : constant OpenCV.Core.Float16_Value :=
+        F16 (16#4000#);
+      Negative_Infinity          : constant OpenCV.Core.Float16_Value :=
+        F16 (16#FC00#);
+      Negative_Largest_Finite    : constant OpenCV.Core.Float16_Value :=
+        F16 (16#FBFF#);
+      Positive_Largest_Finite    : constant OpenCV.Core.Float16_Value :=
+        F16 (16#7BFF#);
+      Positive_Infinity          : constant OpenCV.Core.Float16_Value :=
+        F16 (16#7C00#);
+
+      procedure Assert_Distance
+        (Left, Right : OpenCV.Core.Float16_Value;
+         Expected    : Interfaces.Unsigned_16;
+         Message     : String)
+      is
+         Actual : constant Interfaces.Unsigned_16 :=
+           Float16_Representable_Distance (Left, Right);
+      begin
+         AUnit.Assertions.Assert
+           (Actual = Expected,
+            Message
+            & " (got"
+            & Interfaces.Unsigned_16'Image (Actual)
+            & ", expected"
+            & Interfaces.Unsigned_16'Image (Expected)
+            & ")");
+      end Assert_Distance;
+   begin
+      Assert_Distance
+        (Positive_Zero, Negative_Zero, 0, "+0 and -0 must have distance zero");
+      Assert_Distance
+        (Positive_Zero,
+         Positive_Minimum_Subnormal,
+         1,
+         "+0 and the positive minimum subnormal must be adjacent");
+      Assert_Distance
+        (Positive_Zero,
+         Negative_Minimum_Subnormal,
+         1,
+         "+0 and the negative minimum subnormal must be adjacent");
+      Assert_Distance
+        (Negative_Zero,
+         Positive_Minimum_Subnormal,
+         1,
+         "-0 and the positive minimum subnormal must be adjacent");
+      Assert_Distance
+        (Negative_Zero,
+         Negative_Minimum_Subnormal,
+         1,
+         "-0 and the negative minimum subnormal must be adjacent");
+      Assert_Distance
+        (Positive_Minimum_Subnormal,
+         Negative_Minimum_Subnormal,
+         2,
+         "minimum subnormals on opposite sides of zero must be two steps"
+         & " apart");
+      AUnit.Assertions.Assert
+        (Ordered_Float16_Key (Negative_Two)
+         < Ordered_Float16_Key (Negative_One)
+         and then Ordered_Float16_Key (Negative_One)
+                  < Ordered_Float16_Key (Negative_Minimum_Subnormal)
+         and then Ordered_Float16_Key (Negative_Minimum_Subnormal)
+                  < Ordered_Float16_Key (Positive_Zero)
+         and then Ordered_Float16_Key (Positive_Zero)
+                  < Ordered_Float16_Key (Positive_Minimum_Subnormal)
+         and then Ordered_Float16_Key (Positive_Minimum_Subnormal)
+                  < Ordered_Float16_Key (Positive_One)
+         and then Ordered_Float16_Key (Positive_One)
+                  < Ordered_Float16_Key (Positive_Two),
+         "Float16 ordered keys must increase from negative to positive"
+         & " values");
+      Assert_Distance
+        (Positive_Largest_Subnormal,
+         Positive_Smallest_Normal,
+         1,
+         "positive largest subnormal and smallest normal must be adjacent");
+      Assert_Distance
+        (Negative_Smallest_Normal,
+         Negative_Largest_Subnormal,
+         1,
+         "negative smallest normal and largest subnormal must be adjacent");
+      AUnit.Assertions.Assert
+        (Ordered_Float16_Key (Negative_Infinity)
+         < Ordered_Float16_Key (Negative_Largest_Finite)
+         and then Ordered_Float16_Key (Positive_Largest_Finite)
+                  < Ordered_Float16_Key (Positive_Infinity),
+         "Float16 ordered keys must preserve finite and infinity boundaries");
+   end Verify_Float16_Representable_Distance;
 
    procedure Assert_Float16_Optimized_Result
      (Actual, Expected : OpenCV.Core.Float16_Value; Message : String)
@@ -2603,6 +2715,7 @@ package body Mat_Arithmetic_Tests is
             & Natural'Image (Position));
       end Check;
    begin
+      Verify_Float16_Representable_Distance;
       for Length of Lengths loop
          Check (Length, 0, 16#6834#, 16#EC85#);
          Check (Length, Length / 2, 16#DE4C#, 16#4C9A#);
