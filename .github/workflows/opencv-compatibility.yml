@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - release/opencv_core-0.2.0
   pull_request:
   workflow_dispatch:
 
@@ -90,8 +91,8 @@ jobs:
             /bin/sh -c '
               set -eu
               echo "=== Source being tested ==="
-              git rev-parse HEAD
-              git log -1 --oneline
+              git -c safe.directory=/workspace rev-parse HEAD
+              git -c safe.directory=/workspace log -1 --oneline
 
               echo "=== Nested test suite ==="
               alr -C tests run
@@ -319,8 +320,8 @@ jobs:
               set -eu
 
               echo "=== Source being tested ==="
-              git rev-parse HEAD
-              git log -1 --oneline
+              git -c safe.directory=/workspace rev-parse HEAD
+              git -c safe.directory=/workspace log -1 --oneline
 
               echo "=== Environment ==="
               cat /etc/os-release
