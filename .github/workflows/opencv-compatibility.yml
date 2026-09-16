@@ -18,18 +18,22 @@ jobs:
           - name: OpenCV 4.1
             container_dir: containers/debian12-opencv-4.1
             image: opencv-core-ci-4.1
+            expected_opencv: "4.1.0"
 
           - name: OpenCV 4.6
             container_dir: containers/debian12-opencv-4.6
             image: opencv-core-ci-4.6
+            expected_opencv: "4.6.0"
 
           - name: OpenCV 4.10
             container_dir: containers/debian13-opencv-4.10
             image: opencv-core-ci-4.10
+            expected_opencv: "4.10.0"
 
           - name: OpenCV 5.0
             container_dir: containers/debian13-opencv-5.0
             image: opencv-core-ci-5.0
+            expected_opencv: "5.0.0"
 
     name: ${{ matrix.name }}
 
@@ -60,6 +64,13 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
 
+      - name: Report source
+        run: |
+          set -eu
+          echo "=== Source being tested ==="
+          git rev-parse HEAD
+          git log -1 --oneline
+
       - name: Verify OpenCV version
         run: |
           docker run --rm "${{ matrix.image }}" sh -c \
@@ -76,7 +87,108 @@ jobs:
             -v "$PWD/.ci-cache/alire/builds:/root/.cache/alire/builds" \
             -w /workspace \
             "${{ matrix.image }}" \
-            alr -C tests run
+            /bin/sh -c '
+              set -eu
+              echo "=== Source being tested ==="
+              git rev-parse HEAD
+              git log -1 --oneline
+
+              echo "=== Nested test suite ==="
+              alr -C tests run
+
+              echo "=== OpenCV after Alire resolution ==="
+              opencv_version=$(pkg-config --modversion opencv5 2>/dev/null || \
+                pkg-config --modversion opencv4 2>/dev/null || \
+                pkg-config --modversion opencv)
+              echo "pkg-config OpenCV=${opencv_version}"
+              case "${opencv_version}" in
+                ${{ matrix.expected_opencv }}*)
+                  ;;
+                *)
+                  echo "error: expected OpenCV ${{ matrix.expected_opencv }} after Alire resolution, got ${opencv_version}" >&2
+                  exit 1
+                  ;;
+              esac
+            '
+
+  release-entry-point:
+    name: Release entry point
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Report source
+        run: |
+          set -eu
+          echo "=== Source being tested ==="
+          git rev-parse HEAD
+          git log -1 --oneline
+
+      - name: Install OpenCV Core and build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            ca-certificates \
+            curl \
+            git \
+            libopencv-dev \
+            pkg-config \
+            unzip
+
+      - name: Install Alire
+        env:
+          ALIRE_VERSION: "2.1.1"
+        run: |
+          curl -L \
+            -o /tmp/alire.zip \
+            "https://github.com/alire-project/alire/releases/download/v${ALIRE_VERSION}/alr-${ALIRE_VERSION}-bin-x86_64-linux.zip"
+          unzip /tmp/alire.zip -d /tmp/alire
+          sudo install -m 0755 /tmp/alire/bin/alr /usr/local/bin/alr
+          rm -rf /tmp/alire /tmp/alire.zip
+          alr --version
+
+      - name: Select Ada toolchain
+        run: |
+          alr -n --force toolchain --select \
+            gnat_native=16.1.0 \
+            gprbuild=26.0.1
+          alr toolchain
+
+      - name: Root build
+        run: |
+          set -eu
+          echo "=== Source being tested ==="
+          git rev-parse HEAD
+          alr -n build -- -f
+
+      - name: Confirm OpenCV after Alire resolution
+        run: |
+          set -eu
+          opencv_version=$(pkg-config --modversion opencv5 2>/dev/null || \
+            pkg-config --modversion opencv4 2>/dev/null || \
+            pkg-config --modversion opencv)
+          echo "pkg-config OpenCV=${opencv_version}"
+          if [ -z "${opencv_version}" ]; then
+            echo "error: OpenCV pkg-config metadata missing after Alire resolution" >&2
+            exit 1
+          fi
+
+      - name: Root test action
+        run: |
+          set -eu
+          echo "=== Source being tested ==="
+          git rev-parse HEAD
+          alr -n test
+
+      - name: Pinned-source root-value consumer
+        run: |
+          set -eu
+          echo "=== Source being tested ==="
+          git rev-parse HEAD
+          scripts/validate_root_value_consumer.sh "$PWD"
 
   ubuntu-arm64:
     name: OpenCV Ubuntu 24.04 ARM64
@@ -100,6 +212,9 @@ jobs:
 
       - name: Report architecture and OpenCV version
         run: |
+          echo "=== Source being tested ==="
+          git rev-parse HEAD
+          git log -1 --oneline
           uname -m
           pkg-config --modversion opencv5 2>/dev/null || \
           pkg-config --modversion opencv4 2>/dev/null || \
@@ -202,6 +317,10 @@ jobs:
             ghcr.io/alire-project/docker/gnat:ubuntu-lts \
             /bin/bash -c '
               set -eu
+
+              echo "=== Source being tested ==="
+              git rev-parse HEAD
+              git log -1 --oneline
 
               echo "=== Environment ==="
               cat /etc/os-release

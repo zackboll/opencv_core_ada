@@ -21,6 +21,13 @@ work_root=${2:-"${TMPDIR:-/tmp}/opencv_core_root_value_consumer.$$"}
 fixture="$core_source/scripts/root_value_consumer.adb"
 header="cpp/opencv_core_module_bridge.hpp"
 
+# Pinned-source validation must not silently pick up another checkout
+# through a caller GPR_PROJECT_PATH.
+if [ -n "${GPR_PROJECT_PATH:-}" ]; then
+    echo "unsetting inherited GPR_PROJECT_PATH=${GPR_PROJECT_PATH}"
+    unset GPR_PROJECT_PATH
+fi
+
 if [ ! -f "$core_source/alire.toml" ]; then
     echo "error: $core_source is not an opencv_core source tree" >&2
     exit 1
@@ -61,6 +68,18 @@ if [ ! -f "$prefix/include/opencv_core_module_bridge.hpp" ]; then
     echo "error: exported header missing: $prefix/include/opencv_core_module_bridge.hpp" >&2
     find "$prefix" -name '*bridge*' -o -name '*.hpp' || true
     exit 1
+fi
+
+if ! cmp -s "$core_source/$header" "$prefix/include/opencv_core_module_bridge.hpp"; then
+    echo "error: installed header does not match $core_source/$header" >&2
+    exit 1
+fi
+
+echo "=== Installed artifacts containing original source paths ==="
+if grep -R -n -F "$core_source" "$prefix" >/dev/null 2>&1; then
+    grep -R -n -F "$core_source" "$prefix" || true
+else
+    echo "none"
 fi
 
 echo "pinned source consumer passed"

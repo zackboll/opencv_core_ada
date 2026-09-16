@@ -348,6 +348,13 @@ alr -C tests build
 alr -C tests run
 ```
 
+The crate also defines a root test action, which is the release
+entry-point gate:
+
+```sh
+alr test
+```
+
 The test crate carries development-only dependencies such as AUnit, GNATprove,
 and GNATcov. They are intentionally not dependencies of the public library
 crate.
