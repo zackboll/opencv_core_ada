@@ -12,6 +12,7 @@ procedure Root_Value_Consumer is
    use type OpenCV.Rect;
    use type OpenCV.Scalar;
    use type OpenCV.Border_Kind;
+   use type OpenCV.Size_Coordinate;
    use type OpenCV.UInt8_Value;
 
    Dimensions : constant OpenCV.Size := (Width => 4, Height => 3);
