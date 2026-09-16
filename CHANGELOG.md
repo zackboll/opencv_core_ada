@@ -87,6 +87,10 @@ already present in the published `0.1.0` index manifest:
 Ordinary publication should no longer require adding those declarations
 by hand.
 
+`opencv_core.gpr` now installs `cpp/opencv_core_module_bridge.hpp` into
+the prefix `include` directory. The previous destination/source
+`Artifacts` mapping did not export the header.
+
 ## 0.1.0
 
 Initial indexed release at commit

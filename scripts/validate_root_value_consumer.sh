@@ -53,5 +53,16 @@ alr -n with opencv_core --use="$core_source"
 alr -n build
 alr -n run
 
+prefix="$work_root/prefix"
+mkdir -p "$prefix"
+alr exec -- gprinstall -f -p -r --prefix="$prefix" -P "$core_source/opencv_core.gpr"
+
+if [ ! -f "$prefix/include/opencv_core_module_bridge.hpp" ]; then
+    echo "error: exported header missing: $prefix/include/opencv_core_module_bridge.hpp" >&2
+    find "$prefix" -name '*bridge*' -o -name '*.hpp' || true
+    exit 1
+fi
+
 echo "pinned source consumer passed"
+echo "exported header: $prefix/include/opencv_core_module_bridge.hpp"
 echo "work directory: $work_root"
