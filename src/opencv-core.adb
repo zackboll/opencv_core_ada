@@ -98,16 +98,6 @@ package body OpenCV.Core is
        Component_2 => Long_Float (Value.Component_2),
        Component_3 => Long_Float (Value.Component_3));
 
-   function Make_Scalar
-     (Component_0 : Long_Float;
-      Component_1 : Long_Float := 0.0;
-      Component_2 : Long_Float := 0.0;
-      Component_3 : Long_Float := 0.0) return Scalar
-   is (Component_0 => Component_0,
-       Component_1 => Component_1,
-       Component_2 => Component_2,
-       Component_3 => Component_3);
-
    function Float16_From_Bits
      (Bits : Interfaces.Unsigned_16) return Float16_Value
    is ((Bits => Bits));

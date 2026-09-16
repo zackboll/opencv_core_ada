@@ -1,5 +1,6 @@
 with AUnit.Assertions;
 with AUnit.Test_Caller;
+with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.Float64_Access;
 with OpenCV.Core.Float64_Row_Access;
@@ -7,8 +8,8 @@ with Mat_Test_Support;
 
 package body Float64_Row_Access_Tests is
 
-   use type OpenCV.Core.Float64_Value;
-   use type OpenCV.Core.Float32_Value;
+   use type OpenCV.Float64_Value;
+   use type OpenCV.Float32_Value;
    use type OpenCV.Core.Float64_Access.Float64_Classification;
    use type OpenCV.Core.Float64_Row_Access.Row_Array;
    use Mat_Test_Support;
@@ -29,10 +30,10 @@ package body Float64_Row_Access_Tests is
      (Test : in out Fixture)
    is
       pragma Unreferenced (Test);
-      First       : constant OpenCV.Core.Float64_Value := 1.0;
-      Distinct    : OpenCV.Core.Float64_Value;
-      First_32    : OpenCV.Core.Float32_Value;
-      Distinct_32 : OpenCV.Core.Float32_Value;
+      First       : constant OpenCV.Float64_Value := 1.0;
+      Distinct    : OpenCV.Float64_Value;
+      First_32    : OpenCV.Float32_Value;
+      Distinct_32 : OpenCV.Float32_Value;
       Image       : OpenCV.Core.Mat := Float64_Image (3, 4);
       Written     : OpenCV.Core.Float64_Row_Access.Row_Array (5 .. 8);
       Readback    : OpenCV.Core.Float64_Row_Access.Row_Array (10 .. 13);
@@ -48,15 +49,15 @@ package body Float64_Row_Access_Tests is
       One_Result  : OpenCV.Core.Float64_Row_Access.Row_Array (0 .. 0);
    begin
       Distinct := First + 2.0**(-40);
-      First_32 := OpenCV.Core.Float32_Value (First);
-      Distinct_32 := OpenCV.Core.Float32_Value (Distinct);
+      First_32 := OpenCV.Float32_Value (First);
+      Distinct_32 := OpenCV.Float32_Value (Distinct);
       Written := (First, Distinct, -1.0E-200, 3.141592653589793);
       One := (0 => Distinct);
       AUnit.Assertions.Assert
         (First /= Distinct and then First_32 = Distinct_32,
          "The precision regression values must collapse as Float32");
 
-      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Image.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.Float64_Row_Access.Write_Row (Image, 0, Written);
       OpenCV.Core.Float64_Row_Access.Write_Row (Image, 2, Last_Row);
       OpenCV.Core.Float64_Row_Access.Read_Row (Image, 0, Readback);
@@ -95,7 +96,7 @@ package body Float64_Row_Access_Tests is
         (11.25, 12.5, 13.75);
       Readback : OpenCV.Core.Float64_Row_Access.Row_Array (0 .. 2);
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      Parent.Set_To (OpenCV.Make_Scalar (1.0));
       Alias := Parent;
       Copy := Parent.Clone;
       AUnit.Assertions.Assert
@@ -189,8 +190,8 @@ package body Float64_Row_Access_Tests is
      (Test : in out Fixture)
    is
       pragma Unreferenced (Test);
-      First    : constant OpenCV.Core.Float64_Value := 1.0;
-      Distinct : constant OpenCV.Core.Float64_Value := First + 2.0**(-40);
+      First    : constant OpenCV.Float64_Value := 1.0;
+      Distinct : constant OpenCV.Float64_Value := First + 2.0**(-40);
       Image    : OpenCV.Core.Mat := Float64_Image (2, 3);
       Values   : constant OpenCV.Core.Float64_Row_Access.Row_Array (0 .. 2) :=
         (First, Distinct, -8.125);
@@ -219,7 +220,7 @@ package body Float64_Row_Access_Tests is
         Parent.Region ((X => 2, Y => 1, Width => 3, Height => 2));
       Alias   : OpenCV.Core.Mat;
       Copy    : OpenCV.Core.Mat;
-      Precise : constant OpenCV.Core.Float64_Value := 1.0 + 2.0**(-40);
+      Precise : constant OpenCV.Float64_Value := 1.0 + 2.0**(-40);
       procedure Mutate
         (Data : aliased in out OpenCV.Core.Float64_Row_Access.Row_Array) is
       begin
@@ -233,7 +234,7 @@ package body Float64_Row_Access_Tests is
             "Borrowed writes must be immediately visible through aliases");
       end Mutate;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      Parent.Set_To (OpenCV.Make_Scalar (1.0));
       Alias := Parent;
       Copy := Parent.Clone;
       OpenCV.Core.Float64_Row_Access.With_Writable_Row
@@ -337,7 +338,7 @@ package body Float64_Row_Access_Tests is
       OpenCV.Core.Float64_Access.Set (Numerator, 0, 0, 1.0);
       OpenCV.Core.Float64_Access.Set (Numerator, 0, 1, -1.0);
       OpenCV.Core.Float64_Access.Set (Numerator, 0, 2, 0.0);
-      Denominator.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Denominator.Set_To (OpenCV.Make_Scalar (0.0));
       Nonfinite := Numerator.Divide (Denominator);
 
       OpenCV.Core.Float64_Row_Access.With_Read_Only_Row

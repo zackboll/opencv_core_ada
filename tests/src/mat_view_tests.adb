@@ -19,11 +19,11 @@ package body Mat_View_Tests is
    use type OpenCV.Core.Depth_Type;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Mat_Size;
-   use type OpenCV.Core.Point_Coordinate;
+   use type OpenCV.Point_Coordinate;
    use type OpenCV.Core.UInt8_Vec3.Vector;
 
    use Mat_Test_Support;
-   use type OpenCV.Core.Size_Coordinate;
+   use type OpenCV.Size_Coordinate;
 
    procedure Row_View_Has_Metadata_And_Shares_Data
      (Test : in out Mat_Test_Fixture)
@@ -459,7 +459,7 @@ package body Mat_View_Tests is
       procedure Maximum_Signed_Origin is
          Ignored : constant OpenCV.Core.Mat :=
            Source.Region
-             ((X      => OpenCV.Core.Point_Coordinate'Last,
+             ((X      => OpenCV.Point_Coordinate'Last,
                Y      => 0,
                Width  => 1,
                Height => 1));
@@ -496,7 +496,7 @@ package body Mat_View_Tests is
            Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
 
       procedure Assert_Ada_Nonnegative_Origin_Rejection
-        (Area : OpenCV.Core.Rect; Message : String)
+        (Area : OpenCV.Rect; Message : String)
       is
          Raised : Boolean := False;
       begin
@@ -528,7 +528,7 @@ package body Mat_View_Tests is
         ((X => -3, Y => -4, Width => 1, Height => 1),
          "Region must reject negative X and Y origins in Ada");
       Assert_Ada_Nonnegative_Origin_Rejection
-        ((X      => OpenCV.Core.Point_Coordinate'First,
+        ((X      => OpenCV.Point_Coordinate'First,
           Y      => 0,
           Width  => 1,
           Height => 1),
@@ -661,7 +661,7 @@ package body Mat_View_Tests is
       View   : OpenCV.Core.Mat;
       Copy   : OpenCV.Core.Mat;
    begin
-      Source.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Source.Set_To (OpenCV.Make_Scalar (0.0));
       View := Source.Reshape (Channels => 3);
       OpenCV.Core.UInt8_Vec3_Access.Set
         (View, Row => 0, Column => 1, Value => (10, 20, 30));
@@ -1156,9 +1156,9 @@ package body Mat_View_Tests is
                OpenCV.Core.UInt8_Access.Set
                  (Image,
                   Indices =>
-                    (OpenCV.Core.Size_Coordinate (D1),
-                     OpenCV.Core.Size_Coordinate (D2),
-                     OpenCV.Core.Size_Coordinate (D3)),
+                    (OpenCV.Size_Coordinate (D1),
+                     OpenCV.Size_Coordinate (D2),
+                     OpenCV.Size_Coordinate (D3)),
                   Value   => Interfaces.Unsigned_8 (D1 * 30 + D2 * 6 + D3));
             end loop;
          end loop;

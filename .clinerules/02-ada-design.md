@@ -71,6 +71,9 @@ Value-like OpenCV abstractions such as points, sizes, rectangles, vectors, and s
 
 Preserve recognizable OpenCV domain type names where they are already concise and widely understood.
 
+Shared value types such as `Point`, `Size`, `Rect`, `Scalar`, and
+`Point_Array` are declared in `OpenCV`. `Mat` remains in `OpenCV.Core`.
+
 Examples include:
 
 - `Mat`

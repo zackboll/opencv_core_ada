@@ -1,6 +1,7 @@
 with AUnit.Assertions;
 with AUnit.Test_Caller;
 with Interfaces;
+with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
 with OpenCV.Core.UInt8_Access;
@@ -18,9 +19,9 @@ package body K_Means_Tests is
      (Samples : in out OpenCV.Core.Mat; Row : Natural; X, Y : Long_Float) is
    begin
       OpenCV.Core.Float32_Access.Set
-        (Samples, Row, 0, OpenCV.Core.Float32_Value (X));
+        (Samples, Row, 0, OpenCV.Float32_Value (X));
       OpenCV.Core.Float32_Access.Set
-        (Samples, Row, 1, OpenCV.Core.Float32_Value (Y));
+        (Samples, Row, 1, OpenCV.Float32_Value (Y));
    end Set_Point;
 
    procedure Set_Label
@@ -28,7 +29,7 @@ package body K_Means_Tests is
    is
    begin
       OpenCV.Core.UInt8_Access.Set
-        (Labels, Row, Column, OpenCV.Core.UInt8_Value (Value));
+        (Labels, Row, Column, OpenCV.UInt8_Value (Value));
    end Set_Label;
 
    function Labels_Are_Valid
@@ -116,7 +117,7 @@ package body K_Means_Tests is
         Long_Float (OpenCV.Core.Float32_Access.Get (Result.Centers, 1, 0));
       Center_11 :=
         Long_Float (OpenCV.Core.Float32_Access.Get (Result.Centers, 1, 1));
-      Samples.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Samples.Set_To (OpenCV.Make_Scalar (99.0));
       AUnit.Assertions.Assert
         (Approximately_Equal
            (Long_Float (OpenCV.Core.Float32_Access.Get (Result.Centers, 0, 0)),
@@ -264,8 +265,8 @@ package body K_Means_Tests is
          and then OpenCV.Core.Float32_Access.Get (Samples, 0, 0) = 0.0
          and then OpenCV.Core.Float32_Access.Get (Samples, 3, 1) = 11.0,
          "initial-label K_Means must not modify labels or samples");
-      Samples.Set_To (OpenCV.Core.Make_Scalar (99.0));
-      Initial_Labels.Set_To (OpenCV.Core.Make_Scalar (7.0));
+      Samples.Set_To (OpenCV.Make_Scalar (99.0));
+      Initial_Labels.Set_To (OpenCV.Make_Scalar (7.0));
       AUnit.Assertions.Assert
         (Result.Labels.Compare (Labels_Snapshot, OpenCV.Core.Equal)
            .Count_Non_Zero
@@ -329,7 +330,7 @@ package body K_Means_Tests is
       Initial_Labels : OpenCV.Core.Mat;
       First, Second  : OpenCV.Core.K_Means_Result;
    begin
-      Source.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Source.Set_To (OpenCV.Make_Scalar (0.0));
       for Row in 0 .. 3 loop
          OpenCV.Core.Float32_Access.Set
            (Samples, Row, 0, (if Row < 2 then 0.0 else 10.0));
@@ -391,7 +392,7 @@ package body K_Means_Tests is
            OpenCV.Core.Create (4, 1, (OpenCV.Core.Float32, 1));
          Ignored : OpenCV.Core.K_Means_Result;
       begin
-         Labels.Set_To (OpenCV.Core.Make_Scalar (-1.0));
+         Labels.Set_To (OpenCV.Make_Scalar (-1.0));
          Ignored :=
            OpenCV.Core.K_Means
              (Samples, 2, Labels.Convert_To (OpenCV.Core.Int32));

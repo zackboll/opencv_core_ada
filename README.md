@@ -10,7 +10,7 @@ access, and Ada exceptions while keeping the C++ ABI behind a small stable C
 interface. It is intentionally an Ada API over OpenCV rather than a mechanical
 translation of the C++ headers.
 
-> **Version:** `0.1.0`
+> **Version:** `0.2.0`
 >
 > **OpenCV compatibility:** **4.1 through 5.0**, inclusive. The public Ada API
 > is intended to remain the same across this range. Not every intermediate
@@ -18,7 +18,7 @@ translation of the C++ headers.
 >
 > **Development status:** active, pre-1.0 API.
 >
-> **Current test baseline:** 1219 AUnit tests, with Ada and C++ warnings promoted
+> **Current test baseline:** 1232 AUnit tests, with Ada and C++ warnings promoted
 > to errors. GitHub Actions exercises the full test suite against four OpenCV
 > compatibility targets, plus a native Ubuntu 24.04 ARM64 job.
 >
@@ -35,7 +35,8 @@ Several related names appear in the repository:
 | GitHub repository | `opencv_core_ada` |
 | Alire crate | `opencv_core` |
 | GPR project | `OpenCV_Core` |
-| Ada API root | `OpenCV.Core` |
+| Ada API root | `OpenCV` |
+| Core Mat API | `OpenCV.Core` |
 | Built library name | `opencv_core_ada` |
 
 ## Contents
@@ -48,6 +49,7 @@ Several related names appear in the repository:
 - [Building](#building)
 - [Running the tests](#running-the-tests)
 - [Quick start](#quick-start)
+- [Shared value types](#shared-value-types)
 - [Ownership, views, and zero-copy access](#ownership-views-and-zero-copy-access)
 - [Typed access matrix](#typed-access-matrix)
 - [Public API overview](#public-api-overview)
@@ -195,7 +197,7 @@ Ada application
      v
 +-------------------------------------------+
 | Thick Ada API                             |
-| OpenCV.Core / child packages              |
+| OpenCV shared values / OpenCV.Core        |
 | controlled types, strong enums, records   |
 | exceptions, generics, scoped callbacks    |
 +-------------------------------------------+
@@ -350,7 +352,7 @@ The test crate carries development-only dependencies such as AUnit, GNATprove,
 and GNATcov. They are intentionally not dependencies of the public library
 crate.
 
-At the time of this README update, the full suite contains **1219 AUnit tests**.
+At the time of this README update, the full suite contains **1232 AUnit tests**.
 Coverage includes ordinary behavior, invalid input, shape/depth/channel
 compatibility, empty Mats, non-contiguous Regions, shallow-versus-independent
 ownership, callback lifetimes, arbitrary Ada array lower bounds, failure
@@ -369,6 +371,7 @@ state of the others.
 
 ```ada
 with Ada.Text_IO;
+with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.UInt8_Access;
 
@@ -381,7 +384,7 @@ procedure Example is
         Columns      => 640,
         Element_Type => (Depth => UInt8, Channels => 1));
 
-   Value : UInt8_Value;
+   Value : OpenCV.UInt8_Value;
 begin
    OpenCV.Core.UInt8_Access.Set
      (Image, Row => 10, Column => 20, Value => 255);
@@ -390,7 +393,7 @@ begin
      OpenCV.Core.UInt8_Access.Get
        (Image, Row => 10, Column => 20);
 
-   Ada.Text_IO.Put_Line (UInt8_Value'Image (Value));
+   Ada.Text_IO.Put_Line (OpenCV.UInt8_Value'Image (Value));
 end Example;
 ```
 
@@ -399,7 +402,7 @@ storage is **not automatically zero-filled**. Initialize explicitly when a
 known initial value is required:
 
 ```ada
-Image.Set_To (Make_Scalar (0.0));
+Image.Set_To (OpenCV.Make_Scalar (0.0));
 ```
 
 ### Create from `Size`
@@ -410,10 +413,10 @@ Image : Mat :=
     (Dimensions   => (Width => 640, Height => 480),
      Element_Type => (Depth => Float32, Channels => 1));
 
-Dims : constant Size := Image.Dimensions;
+Dims : constant OpenCV.Size := Image.Dimensions;
 ```
 
-`Size.Width` maps to columns and `Size.Height` maps to rows.
+`OpenCV.Size.Width` maps to columns and `OpenCV.Size.Height` maps to rows.
 
 ### Create a shared Region
 
@@ -427,9 +430,49 @@ ROI : Mat :=
 ```
 
 A Region has its own `Mat` header but shares the parent's storage.
-`Rect` origins are signed so they can represent general OpenCV rectangles,
+`OpenCV.Rect` origins are signed so they can represent general OpenCV rectangles,
 including negative `X`/`Y`. `Mat.Region` still requires a nonnegative
 zero-based ROI origin that fits inside the source.
+
+---
+
+## Shared value types
+
+`OpenCV` owns the shared public values used across Core and later module
+crates. The `opencv_core` crate still distributes the parent package.
+`OpenCV.Core` continues to own `Mat` and matrix-specific abstractions.
+
+Shared root types include numeric value subtypes (`OpenCV.UInt8_Value`,
+`OpenCV.UInt16_Value`, `OpenCV.Int16_Value`, `OpenCV.Int32_Value`,
+`OpenCV.Float32_Value`, `OpenCV.Float64_Value`), integer coordinates
+and geometry (`OpenCV.Point_Coordinate`, `OpenCV.Size_Coordinate`,
+`OpenCV.Point`, `OpenCV.Point_Array`, `OpenCV.Size`, `OpenCV.Rect`),
+floating-point geometry (`OpenCV.Float32_Point`, `OpenCV.Float32_Size`,
+`OpenCV.Rotated_Rect`), the shared scalar (`OpenCV.Scalar`,
+`OpenCV.Make_Scalar`), and shared options (`OpenCV.Border_Kind` with
+literals such as `OpenCV.Reflect_101`, and `OpenCV.Angle_Unit`).
+
+This relocation is source-breaking. Callers that previously wrote
+`OpenCV.Core.Point` or `OpenCV.Core.Make_Scalar` must update
+qualification and visibility to the root `OpenCV` package. Clients that
+use `"="` or other operators on those values need `with OpenCV;` so the
+operators are visible. Core does not keep compatibility aliases for the
+moved names.
+
+Representative spellings:
+
+| Old | New |
+| --- | --- |
+| `OpenCV.Core.Point` | `OpenCV.Point` |
+| `OpenCV.Core.Point_Coordinate` | `OpenCV.Point_Coordinate` |
+| `OpenCV.Core.Size` | `OpenCV.Size` |
+| `OpenCV.Core.Rect` | `OpenCV.Rect` |
+| `OpenCV.Core.Scalar` | `OpenCV.Scalar` |
+| `OpenCV.Core.Make_Scalar` | `OpenCV.Make_Scalar` |
+| `OpenCV.Core.Point_Array` | `OpenCV.Point_Array` |
+| `OpenCV.Core.Reflect_101` | `OpenCV.Reflect_101` |
+
+---
 
 ### Borrow a row without copying
 
@@ -774,8 +817,9 @@ the Ada declarations and covered by tests.
 
 Major public abstractions include:
 
-- `Mat`, `Mat_Type`, `Depth_Type`, `Channel_Count`, `Mat_Size`
-- `Size`, `Point`, `Point_Array`, `Rect`, `Index_Range`, `Index_Range_Array`, `Scalar`
+- `OpenCV.Core.Mat`, `Mat_Type`, `Depth_Type`, `Channel_Count`, `Mat_Size`
+- `OpenCV.Size`, `OpenCV.Point`, `OpenCV.Point_Array`, `OpenCV.Rect`, `OpenCV.Scalar`
+- `Index_Range`, `Index_Range_Array`
 - `Float16_Value`
 - `Mat_Array`
 - `Random_Number_Generator`
@@ -1689,8 +1733,11 @@ partially integrated batches.
 The Alire crate version is currently:
 
 ```text
-0.1.0
+0.2.0
 ```
+
+See `CHANGELOG.md` for the source-breaking shared-value relocation and
+the other material work since indexed `0.1.0`.
 
 The API should still be considered experimental until 1.0. Public names and
 some overloads may evolve as broader typed access, N-dimensional matrices,

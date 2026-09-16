@@ -2,6 +2,7 @@ with AUnit.Assertions;
 with AUnit.Test_Caller;
 with Ada.Exceptions;
 with Interfaces;
+with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.Float16_Access;
 with OpenCV.Core.Float32_Access;
@@ -59,9 +60,9 @@ package body Mat_Access_Tests is
           (Rows         => 2,
            Columns      => 3,
            Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
-      Total : OpenCV.Core.Scalar;
+      Total : OpenCV.Scalar;
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Image.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.UInt8_Access.Set (Image, Row => 0, Column => 0, Value => 5);
       OpenCV.Core.UInt8_Access.Set (Image, Row => 0, Column => 2, Value => 17);
       OpenCV.Core.UInt8_Access.Set
@@ -125,9 +126,9 @@ package body Mat_Access_Tests is
           (Rows         => 2,
            Columns      => 3,
            Element_Type => (Depth => OpenCV.Core.Int32, Channels => 1));
-      Total : OpenCV.Core.Scalar;
+      Total : OpenCV.Scalar;
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Image.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.Int32_Access.Set (Image, Row => 0, Column => 0, Value => -1);
       OpenCV.Core.Int32_Access.Set
         (Image, Row => 0, Column => 2, Value => 2_147_483_647);
@@ -165,7 +166,7 @@ package body Mat_Access_Tests is
       Alias  : OpenCV.Core.Mat;
       Copy   : OpenCV.Core.Mat;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      Parent.Set_To (OpenCV.Make_Scalar (1.0));
       View := Parent.Region ((X => 1, Y => 1, Width => 3, Height => 2));
       Alias := Parent;
       AUnit.Assertions.Assert
@@ -292,7 +293,7 @@ package body Mat_Access_Tests is
            Columns      => 4,
            Element_Type => (Depth => OpenCV.Core.Int32, Channels => 1));
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Image.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.Int32_Access.Set (Image, Row => 0, Column => 2, Value => 7);
 
       AUnit.Assertions.Assert
@@ -319,7 +320,7 @@ package body Mat_Access_Tests is
       Alias : OpenCV.Core.Mat;
       Copy  : OpenCV.Core.Mat;
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Image.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.Int32_Access.Set (Image, Indices => (0, 0, 0), Value => -1);
       OpenCV.Core.Int32_Access.Set
         (Image, Indices => (1, 2, 3), Value => 2_147_483_647);
@@ -427,7 +428,7 @@ package body Mat_Access_Tests is
            Columns      => 3,
            Element_Type => (Depth => OpenCV.Core.UInt16, Channels => 1));
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (42.0));
+      Image.Set_To (OpenCV.Make_Scalar (42.0));
       OpenCV.Core.UInt16_Access.Set (Image, Row => 0, Column => 0, Value => 0);
       OpenCV.Core.UInt16_Access.Set (Image, Row => 0, Column => 1, Value => 1);
       OpenCV.Core.UInt16_Access.Set
@@ -474,7 +475,7 @@ package body Mat_Access_Tests is
       Alias  : OpenCV.Core.Mat;
       Copy   : OpenCV.Core.Mat;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      Parent.Set_To (OpenCV.Make_Scalar (1.0));
       View := Parent.Region ((X => 1, Y => 1, Width => 3, Height => 2));
       Alias := Parent;
       AUnit.Assertions.Assert
@@ -608,7 +609,7 @@ package body Mat_Access_Tests is
            Columns      => 4,
            Element_Type => (Depth => OpenCV.Core.UInt16, Channels => 1));
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Image.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.UInt16_Access.Set (Image, Row => 0, Column => 0, Value => 1);
       OpenCV.Core.UInt16_Access.Set
         (Image, Row => 0, Column => 3, Value => 65_535);
@@ -637,7 +638,7 @@ package body Mat_Access_Tests is
       Alias   : OpenCV.Core.Mat;
       Copy    : OpenCV.Core.Mat;
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Image.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.UInt16_Access.Set (Image, Indices => (0, 0, 0), Value => 1);
       OpenCV.Core.UInt16_Access.Set
         (Image, Indices => Indices, Value => 65_535);
@@ -763,7 +764,7 @@ package body Mat_Access_Tests is
            Columns      => 3,
            Element_Type => (Depth => OpenCV.Core.Int16, Channels => 1));
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (42.0));
+      Image.Set_To (OpenCV.Make_Scalar (42.0));
       OpenCV.Core.Int16_Access.Set
         (Image, Row => 0, Column => 0, Value => -32_768);
       OpenCV.Core.Int16_Access.Set
@@ -812,7 +813,7 @@ package body Mat_Access_Tests is
       Alias  : OpenCV.Core.Mat;
       Copy   : OpenCV.Core.Mat;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      Parent.Set_To (OpenCV.Make_Scalar (1.0));
       View := Parent.Region ((X => 1, Y => 1, Width => 3, Height => 2));
       Alias := Parent;
       AUnit.Assertions.Assert
@@ -956,7 +957,7 @@ package body Mat_Access_Tests is
            Columns      => 4,
            Element_Type => (Depth => OpenCV.Core.Int16, Channels => 1));
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Image.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.Int16_Access.Set
         (Image, Row => 0, Column => 0, Value => -32_768);
       OpenCV.Core.Int16_Access.Set
@@ -986,7 +987,7 @@ package body Mat_Access_Tests is
       Alias   : OpenCV.Core.Mat;
       Copy    : OpenCV.Core.Mat;
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Image.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.Int16_Access.Set
         (Image, Indices => (0, 0, 0), Value => -32_768);
       OpenCV.Core.Int16_Access.Set
@@ -1488,9 +1489,9 @@ package body Mat_Access_Tests is
                OpenCV.Core.Float16_Access.Set
                  (Image,
                   Indices =>
-                    (OpenCV.Core.Size_Coordinate (Axis_0),
-                     OpenCV.Core.Size_Coordinate (Axis_1),
-                     OpenCV.Core.Size_Coordinate (Axis_2)),
+                    (OpenCV.Size_Coordinate (Axis_0),
+                     OpenCV.Size_Coordinate (Axis_1),
+                     OpenCV.Size_Coordinate (Axis_2)),
                   Value   => Zero);
             end loop;
          end loop;
@@ -1839,9 +1840,9 @@ package body Mat_Access_Tests is
       First  : constant OpenCV.Core.UInt8_Vec3.Vector := (1, 2, 3);
       Second : constant OpenCV.Core.UInt8_Vec3.Vector := (10, 20, 30);
       Pixel  : OpenCV.Core.UInt8_Vec3.Vector;
-      Total  : OpenCV.Core.Scalar;
+      Total  : OpenCV.Scalar;
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Image.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.UInt8_Vec3_Access.Set
         (Image, Row => 0, Column => 1, Value => First);
       OpenCV.Core.UInt8_Vec3_Access.Set
@@ -2081,7 +2082,7 @@ package body Mat_Access_Tests is
       Readback : OpenCV.Core.UInt8_Row_Access.Row_Array (5 .. 8);
       From_Set : OpenCV.Core.UInt8_Row_Access.Row_Array (10 .. 13);
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Image.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.UInt8_Row_Access.Write_Row
         (Image, Row => 1, Data => Written);
       OpenCV.Core.UInt8_Row_Access.Read_Row
@@ -2342,7 +2343,7 @@ package body Mat_Access_Tests is
       Readback : OpenCV.Core.UInt8_Vec3_Row_Access.Row_Array (5 .. 7);
       From_Set : OpenCV.Core.UInt8_Vec3_Row_Access.Row_Array (10 .. 12);
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (0.0, 0.0, 0.0));
+      Image.Set_To (OpenCV.Make_Scalar (0.0, 0.0, 0.0));
       OpenCV.Core.UInt8_Vec3_Row_Access.Write_Row
         (Image, Row => 1, Data => Written);
       OpenCV.Core.UInt8_Vec3_Row_Access.Read_Row
@@ -2762,7 +2763,7 @@ package body Mat_Access_Tests is
          Data (2) := 13.0;
       end Mutate;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      Parent.Set_To (OpenCV.Make_Scalar (1.0));
       AUnit.Assertions.Assert
         (not View.Is_Continuous,
          "A partial-width multi-row Region must be non-continuous");
@@ -3030,7 +3031,7 @@ package body Mat_Access_Tests is
          Data (2) := 13;
       end Mutate;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      Parent.Set_To (OpenCV.Make_Scalar (1.0));
       AUnit.Assertions.Assert
         (not View.Is_Continuous,
          "A partial-width multi-row Region must be non-continuous");
@@ -3181,7 +3182,7 @@ package body Mat_Access_Tests is
       Readback : OpenCV.Core.UInt16_Row_Access.Row_Array (5 .. 10);
       From_Set : OpenCV.Core.UInt16_Row_Access.Row_Array (10 .. 15);
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (9.0));
+      Image.Set_To (OpenCV.Make_Scalar (9.0));
       OpenCV.Core.UInt16_Row_Access.Write_Row
         (Image, Row => 1, Data => Written);
       OpenCV.Core.UInt16_Row_Access.Read_Row
@@ -3242,7 +3243,7 @@ package body Mat_Access_Tests is
         (0, 32_768, 65_535);
       Readback : OpenCV.Core.UInt16_Row_Access.Row_Array (8 .. 10);
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (7.0));
+      Parent.Set_To (OpenCV.Make_Scalar (7.0));
       AUnit.Assertions.Assert
         (not View.Is_Continuous,
          "A partial-width multi-row UInt16 Region must be non-continuous");
@@ -3519,7 +3520,7 @@ package body Mat_Access_Tests is
             "Borrowed UInt16 Region writes must be visible through aliases");
       end Mutate;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      Parent.Set_To (OpenCV.Make_Scalar (1.0));
       OpenCV.Core.UInt16_Access.Set
         (Parent, Row => 1, Column => 1, Value => 11);
       OpenCV.Core.UInt16_Access.Set
@@ -3734,7 +3735,7 @@ package body Mat_Access_Tests is
       Readback : OpenCV.Core.Int16_Row_Access.Row_Array (5 .. 11);
       From_Set : OpenCV.Core.Int16_Row_Access.Row_Array (10 .. 16);
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (9.0));
+      Image.Set_To (OpenCV.Make_Scalar (9.0));
       OpenCV.Core.Int16_Row_Access.Write_Row
         (Image, Row => 1, Data => Written);
       OpenCV.Core.Int16_Row_Access.Read_Row
@@ -3798,7 +3799,7 @@ package body Mat_Access_Tests is
         (-32_768, -1, 32_767);
       Readback : OpenCV.Core.Int16_Row_Access.Row_Array (8 .. 10);
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (7.0));
+      Parent.Set_To (OpenCV.Make_Scalar (7.0));
       AUnit.Assertions.Assert
         (not View.Is_Continuous,
          "A partial-width multi-row Int16 Region must be non-continuous");
@@ -4081,7 +4082,7 @@ package body Mat_Access_Tests is
             "Borrowed Int16 Region writes must be visible through aliases");
       end Mutate;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      Parent.Set_To (OpenCV.Make_Scalar (1.0));
       OpenCV.Core.Int16_Access.Set
         (Parent, Row => 1, Column => 1, Value => 11);
       OpenCV.Core.Int16_Access.Set
@@ -4397,7 +4398,7 @@ package body Mat_Access_Tests is
          Data (2) := (31, 32, 33);
       end Mutate;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (1.0, 2.0, 3.0));
+      Parent.Set_To (OpenCV.Make_Scalar (1.0, 2.0, 3.0));
       AUnit.Assertions.Assert
         (not View.Is_Continuous,
          "A partial-width multi-row Vec3 Region must be non-continuous");
@@ -4697,7 +4698,7 @@ package body Mat_Access_Tests is
          Data (2) := (-31.5, 32.125, 33.75);
       end Mutate;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (1.0, 2.0, 3.0));
+      Parent.Set_To (OpenCV.Make_Scalar (1.0, 2.0, 3.0));
       AUnit.Assertions.Assert
         (not View.Is_Continuous,
          "A partial-width multi-row Vec3 Region must be non-continuous");
@@ -5023,7 +5024,7 @@ package body Mat_Access_Tests is
          Data (3) := -22.25;
       end Mutate;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      Parent.Set_To (OpenCV.Make_Scalar (1.0));
       AUnit.Assertions.Assert
         (View.Is_Continuous,
          "A full-width multi-row Region of a continuous parent must be"
@@ -5115,7 +5116,7 @@ package body Mat_Access_Tests is
            (Noncontinuous, Process => Mark_Read'Access);
       end Read_Noncontinuous;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      Parent.Set_To (OpenCV.Make_Scalar (1.0));
       AUnit.Assertions.Assert
         (not Noncontinuous.Is_Continuous,
          "A partial-width multi-row Region must be non-continuous");
@@ -5322,7 +5323,7 @@ package body Mat_Access_Tests is
          Data (3) := 22;
       end Mutate;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      Parent.Set_To (OpenCV.Make_Scalar (1.0));
       AUnit.Assertions.Assert
         (View.Is_Continuous,
          "A full-width multi-row Region of a continuous parent must be"
@@ -5399,7 +5400,7 @@ package body Mat_Access_Tests is
            (Noncontinuous, Process => Mark_Read'Access);
       end Read_Noncontinuous;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      Parent.Set_To (OpenCV.Make_Scalar (1.0));
       AUnit.Assertions.Assert
         (not Noncontinuous.Is_Continuous,
          "A partial-width multi-row Region must be non-continuous");
@@ -5608,7 +5609,7 @@ package body Mat_Access_Tests is
          Data (2) := (31, 32, 33);
       end Mutate;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (1.0, 2.0, 3.0));
+      Parent.Set_To (OpenCV.Make_Scalar (1.0, 2.0, 3.0));
       AUnit.Assertions.Assert
         (View.Is_Submatrix,
          "The continuous offset Region test must exercise a submatrix");
@@ -5696,7 +5697,7 @@ package body Mat_Access_Tests is
            (Noncontinuous, Process => Mark_Read'Access);
       end Read_Noncontinuous;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (1.0, 2.0, 3.0));
+      Parent.Set_To (OpenCV.Make_Scalar (1.0, 2.0, 3.0));
       AUnit.Assertions.Assert
         (not Noncontinuous.Is_Continuous,
          "A partial-width multi-row Vec3 Region must be non-continuous");
@@ -5924,7 +5925,7 @@ package body Mat_Access_Tests is
          Data (2) := (-4.5, 5.125, 6.75);
       end Mutate;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (1.0, 2.0, 3.0));
+      Parent.Set_To (OpenCV.Make_Scalar (1.0, 2.0, 3.0));
       AUnit.Assertions.Assert
         (View.Is_Submatrix,
          "The continuous offset Region test must exercise a submatrix");
@@ -6021,7 +6022,7 @@ package body Mat_Access_Tests is
            (Noncontinuous, Process => Mark_Read'Access);
       end Read_Noncontinuous;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (1.0, 2.0, 3.0));
+      Parent.Set_To (OpenCV.Make_Scalar (1.0, 2.0, 3.0));
       AUnit.Assertions.Assert
         (not Noncontinuous.Is_Continuous,
          "A partial-width multi-row Vec3 Region must be non-continuous");
@@ -6134,7 +6135,7 @@ package body Mat_Access_Tests is
          AUnit.Assertions.Assert
            (Data (14) = (31, 32, 33),
             "UInt8 Vec3 Mat-to-Data aliasing must cross the row boundary");
-         Image.Set_To (OpenCV.Core.Make_Scalar (100.0, 110.0, 120.0));
+         Image.Set_To (OpenCV.Make_Scalar (100.0, 110.0, 120.0));
       end Process;
    begin
       OpenCV.Core.UInt8_Vec3_Mat_View.With_Writable_Mat_View
@@ -6177,7 +6178,7 @@ package body Mat_Access_Tests is
          AUnit.Assertions.Assert
            (Vec3_Approximately_Equal (Data (24), (-4.5, 5.125, 6.75)),
             "Float32 Vec3 Mat-to-Data aliasing must cross the row boundary");
-         Image.Set_To (OpenCV.Core.Make_Scalar (7.25, -8.5, 9.75));
+         Image.Set_To (OpenCV.Make_Scalar (7.25, -8.5, 9.75));
       end Process;
    begin
       OpenCV.Core.Float32_Vec3_Mat_View.With_Writable_Mat_View
@@ -6405,7 +6406,7 @@ package body Mat_Access_Tests is
            (Approximately_Equal (Long_Float (Data (8)), -7.25),
             "A write through Set must be immediately visible through Data");
 
-         Image.Set_To (OpenCV.Core.Make_Scalar (3.5));
+         Image.Set_To (OpenCV.Make_Scalar (3.5));
          AUnit.Assertions.Assert
            (Approximately_Equal (Long_Float (Data (5)), 3.5)
             and then Approximately_Equal (Long_Float (Data (10)), 3.5),
@@ -6702,7 +6703,7 @@ package body Mat_Access_Tests is
          AUnit.Assertions.Assert
            (Approximately_Equal (Long_Float (Data (25)), -7.25),
             "The final logical Mat element must alias Data");
-         Image.Set_To (OpenCV.Core.Make_Scalar (3.5));
+         Image.Set_To (OpenCV.Make_Scalar (3.5));
          AUnit.Assertions.Assert
            (Approximately_Equal (Long_Float (Data (10)), 3.5)
             and then Approximately_Equal (Long_Float (Data (16)), 3.5)
@@ -6925,7 +6926,7 @@ package body Mat_Access_Tests is
            (Data (14) = 200,
             "A write through Set must be immediately visible through Data");
 
-         Image.Set_To (OpenCV.Core.Make_Scalar (255.0));
+         Image.Set_To (OpenCV.Make_Scalar (255.0));
          AUnit.Assertions.Assert
            (Data (11) = 255 and then Data (16) = 255,
             "An in-place OpenCV write must mutate the caller-owned buffer");
@@ -7090,7 +7091,7 @@ package body Mat_Access_Tests is
           (Shape        => (2, 3, 4),
            Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (7.0));
+      Image.Set_To (OpenCV.Make_Scalar (7.0));
       OpenCV.Core.UInt8_Access.Set (Image, Indices => (1, 2, 3), Value => 42);
 
       AUnit.Assertions.Assert
@@ -7113,7 +7114,7 @@ package body Mat_Access_Tests is
           (Shape        => (2, 3, 4, 5),
            Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Image.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.Float32_Access.Set
         (Image, Indices => (0, 0, 0, 0), Value => 1.25);
       OpenCV.Core.Float32_Access.Set
@@ -7154,7 +7155,7 @@ package body Mat_Access_Tests is
            Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
       Indices : constant OpenCV.Core.Index_Array (3 .. 5) := (1, 2, 3);
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Image.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.UInt8_Access.Set (Image, Indices => Indices, Value => 9);
 
       AUnit.Assertions.Assert
@@ -7351,7 +7352,7 @@ package body Mat_Access_Tests is
            Columns      => 7,
            Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Image.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.UInt8_Access.Set (Image, Row => 3, Column => 5, Value => 42);
 
       AUnit.Assertions.Assert
@@ -7377,7 +7378,7 @@ package body Mat_Access_Tests is
            Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
       Copy   : OpenCV.Core.Mat;
    begin
-      Source.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Source.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.UInt8_Access.Set (Source, Indices => (1, 2, 3), Value => 10);
       Copy := Source.Clone;
       OpenCV.Core.UInt8_Access.Set (Source, Indices => (1, 2, 3), Value => 99);
@@ -7400,7 +7401,7 @@ package body Mat_Access_Tests is
            Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
       Shallow_Copy : OpenCV.Core.Mat;
    begin
-      Source.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Source.Set_To (OpenCV.Make_Scalar (0.0));
       Shallow_Copy := Source;
       OpenCV.Core.UInt8_Access.Set (Source, Indices => (1, 2, 3), Value => 21);
 
@@ -7457,10 +7458,10 @@ package body Mat_Access_Tests is
      (Test : in out Mat_Test_Fixture)
    is
       pragma Unreferenced (Test);
-      First     : constant OpenCV.Core.Float64_Value := 1.0;
-      Second    : OpenCV.Core.Float64_Value;
-      First_32  : OpenCV.Core.Float32_Value;
-      Second_32 : OpenCV.Core.Float32_Value;
+      First     : constant OpenCV.Float64_Value := 1.0;
+      Second    : OpenCV.Float64_Value;
+      First_32  : OpenCV.Float32_Value;
+      Second_32 : OpenCV.Float32_Value;
       Image     : OpenCV.Core.Mat :=
         OpenCV.Core.Create
           (Rows         => 1,
@@ -7468,8 +7469,8 @@ package body Mat_Access_Tests is
            Element_Type => (Depth => OpenCV.Core.Float64, Channels => 1));
    begin
       Second := First + 2.0**(-40);
-      First_32 := OpenCV.Core.Float32_Value (First);
-      Second_32 := OpenCV.Core.Float32_Value (Second);
+      First_32 := OpenCV.Float32_Value (First);
+      Second_32 := OpenCV.Float32_Value (Second);
       AUnit.Assertions.Assert
         (First /= Second and then First_32 = Second_32,
          "The precision pair must be distinct in Float64 and identical in"
@@ -7513,7 +7514,7 @@ package body Mat_Access_Tests is
       OpenCV.Core.Float64_Access.Set (Numerator, 0, 2, -1.0);
       OpenCV.Core.Float64_Access.Set (Numerator, 0, 3, 0.0);
       OpenCV.Core.Float64_Access.Set (Finite, 0, 0, 2.0);
-      Denominator.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Denominator.Set_To (OpenCV.Make_Scalar (0.0));
       Result := Numerator.Divide (Denominator);
 
       AUnit.Assertions.Assert
@@ -7544,7 +7545,7 @@ package body Mat_Access_Tests is
       Alias  : OpenCV.Core.Mat;
       Copy   : OpenCV.Core.Mat;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      Parent.Set_To (OpenCV.Make_Scalar (1.0));
       View := Parent.Region ((X => 1, Y => 1, Width => 3, Height => 2));
       Alias := Parent;
       AUnit.Assertions.Assert
@@ -7677,7 +7678,7 @@ package body Mat_Access_Tests is
            Columns      => 4,
            Element_Type => (Depth => OpenCV.Core.Float64, Channels => 1));
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Image.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.Float64_Access.Set
         (Image, Row => 0, Column => 2, Value => 7.5);
       OpenCV.Core.Float64_Access.Set
@@ -7703,7 +7704,7 @@ package body Mat_Access_Tests is
            Element_Type => (Depth => OpenCV.Core.Float64, Channels => 1));
       Indices : constant OpenCV.Core.Index_Array (3 .. 5) := (1, 2, 3);
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Image.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.Float64_Access.Set
         (Image, Indices => (0, 0, 0), Value => 1.25);
       OpenCV.Core.Float64_Access.Set

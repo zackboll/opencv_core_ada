@@ -1,5 +1,6 @@
 with AUnit.Assertions;
 with AUnit.Test_Caller;
+with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.UInt8_Access;
 with Mat_Test_Support;
@@ -10,8 +11,8 @@ package body Mat_Basic_Tests is
    use type OpenCV.Core.Depth_Type;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Mat_Size;
-   use type OpenCV.Core.Point_Coordinate;
-   use type OpenCV.Core.Size_Coordinate;
+   use type OpenCV.Point_Coordinate;
+   use type OpenCV.Size_Coordinate;
 
    use Mat_Test_Support;
    use type Interfaces.Unsigned_8;
@@ -20,10 +21,10 @@ package body Mat_Basic_Tests is
      (Test : in out Mat_Test_Fixture)
    is
       pragma Unreferenced (Test);
-      Dimensions : constant OpenCV.Core.Size := (Width => 5, Height => 3);
-      Empty_Size : constant OpenCV.Core.Size := (Width => 0, Height => 0);
-      Positive   : constant OpenCV.Core.Point := (X => 7, Y => 11);
-      Negative   : constant OpenCV.Core.Point := (X => -7, Y => -11);
+      Dimensions : constant OpenCV.Size := (Width => 5, Height => 3);
+      Empty_Size : constant OpenCV.Size := (Width => 0, Height => 0);
+      Positive   : constant OpenCV.Point := (X => 7, Y => 11);
+      Negative   : constant OpenCV.Point := (X => -7, Y => -11);
    begin
       AUnit.Assertions.Assert
         (Dimensions.Width = 5 and then Dimensions.Height = 3,
@@ -41,18 +42,18 @@ package body Mat_Basic_Tests is
 
    procedure Rect_Preserves_Signed_Origins (Test : in out Mat_Test_Fixture) is
       pragma Unreferenced (Test);
-      Positive_Origin : constant OpenCV.Core.Rect :=
+      Positive_Origin : constant OpenCV.Rect :=
         (X => 1, Y => 4, Width => 10, Height => 20);
-      Negative_X      : constant OpenCV.Core.Rect :=
+      Negative_X      : constant OpenCV.Rect :=
         (X => -3, Y => 4, Width => 10, Height => 20);
-      Negative_Y      : constant OpenCV.Core.Rect :=
+      Negative_Y      : constant OpenCV.Rect :=
         (X => 3, Y => -4, Width => 10, Height => 20);
-      Negative_Both   : constant OpenCV.Core.Rect :=
+      Negative_Both   : constant OpenCV.Rect :=
         (X => -3, Y => -4, Width => 10, Height => 20);
-      Extreme         : constant OpenCV.Core.Rect :=
-        (X      => OpenCV.Core.Point_Coordinate'First,
-         Y      => OpenCV.Core.Point_Coordinate'Last,
-         Width  => OpenCV.Core.Size_Coordinate'Last,
+      Extreme         : constant OpenCV.Rect :=
+        (X      => OpenCV.Point_Coordinate'First,
+         Y      => OpenCV.Point_Coordinate'Last,
+         Width  => OpenCV.Size_Coordinate'Last,
          Height => 0);
    begin
       AUnit.Assertions.Assert
@@ -80,9 +81,9 @@ package body Mat_Basic_Tests is
          and then Negative_Both.Height = 20,
          "Rect must preserve negative X and Y origins");
       AUnit.Assertions.Assert
-        (Extreme.X = OpenCV.Core.Point_Coordinate'First
-         and then Extreme.Y = OpenCV.Core.Point_Coordinate'Last
-         and then Extreme.Width = OpenCV.Core.Size_Coordinate'Last
+        (Extreme.X = OpenCV.Point_Coordinate'First
+         and then Extreme.Y = OpenCV.Point_Coordinate'Last
+         and then Extreme.Width = OpenCV.Size_Coordinate'Last
          and then Extreme.Height = 0,
          "Rect must preserve signed origin and nonnegative size extremes");
    end Rect_Preserves_Signed_Origins;
@@ -126,9 +127,9 @@ package body Mat_Basic_Tests is
          "A reshape result dimensions must report its derived shape");
       AUnit.Assertions.Assert
         (Converted.Dimensions.Width
-         = OpenCV.Core.Size_Coordinate (UInt8_Image.Columns)
+         = OpenCV.Size_Coordinate (UInt8_Image.Columns)
          and then Converted.Dimensions.Height
-                  = OpenCV.Core.Size_Coordinate (UInt8_Image.Rows),
+                  = OpenCV.Size_Coordinate (UInt8_Image.Rows),
          "A Convert_To result dimensions must preserve its source shape");
    end Mat_Dimensions_Reflect_Mat_And_View_Shapes;
 
@@ -165,9 +166,9 @@ package body Mat_Basic_Tests is
         (Image.Dimensions.Width = 0 and then Image.Dimensions.Height = 0,
          "A default empty Mat must have zero width and height");
       AUnit.Assertions.Assert
-        (Image.Dimensions.Width = OpenCV.Core.Size_Coordinate (Image.Columns)
+        (Image.Dimensions.Width = OpenCV.Size_Coordinate (Image.Columns)
          and then Image.Dimensions.Height
-                  = OpenCV.Core.Size_Coordinate (Image.Rows),
+                  = OpenCV.Size_Coordinate (Image.Rows),
          "Mat dimensions must remain consistent with columns and rows");
    end Empty_Mat_Has_Zero_Dimensions;
 
@@ -288,10 +289,10 @@ package body Mat_Basic_Tests is
            Columns      => 3,
            Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
       Copy   : OpenCV.Core.Mat;
-      Total  : OpenCV.Core.Scalar;
+      Total  : OpenCV.Scalar;
    begin
       Copy := Source;
-      Source.Set_To (OpenCV.Core.Make_Scalar (10.0));
+      Source.Set_To (OpenCV.Make_Scalar (10.0));
       Total := Copy.Sum;
 
       AUnit.Assertions.Assert
@@ -325,9 +326,9 @@ package body Mat_Basic_Tests is
            Columns      => 3,
            Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
       Copy   : OpenCV.Core.Mat;
-      Total  : OpenCV.Core.Scalar;
+      Total  : OpenCV.Scalar;
    begin
-      Source.Set_To (OpenCV.Core.Make_Scalar (1.0, 2.0, 3.0));
+      Source.Set_To (OpenCV.Make_Scalar (1.0, 2.0, 3.0));
       Copy := Source.Clone;
 
       AUnit.Assertions.Assert
@@ -347,7 +348,7 @@ package body Mat_Basic_Tests is
          and then Total.Component_3 = 0.0,
          "A clone should initially preserve all channel sums");
 
-      Source.Set_To (OpenCV.Core.Make_Scalar (4.0, 5.0, 6.0));
+      Source.Set_To (OpenCV.Make_Scalar (4.0, 5.0, 6.0));
       Total := Source.Sum;
       AUnit.Assertions.Assert
         (Total.Component_0 = 24.0
@@ -375,13 +376,13 @@ package body Mat_Basic_Tests is
            Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
       Shallow_Copy : OpenCV.Core.Mat;
       Deep_Copy    : OpenCV.Core.Mat;
-      Total        : OpenCV.Core.Scalar;
+      Total        : OpenCV.Scalar;
    begin
-      Source.Set_To (OpenCV.Core.Make_Scalar (2.0));
+      Source.Set_To (OpenCV.Make_Scalar (2.0));
       Shallow_Copy := Source;
       Deep_Copy := Source.Clone;
 
-      Source.Set_To (OpenCV.Core.Make_Scalar (5.0));
+      Source.Set_To (OpenCV.Make_Scalar (5.0));
 
       Total := Shallow_Copy.Sum;
       AUnit.Assertions.Assert
@@ -664,10 +665,10 @@ package body Mat_Basic_Tests is
       AUnit.Assertions.Assert
         (Image.Dimension_Count = 2, "A 2-D Create result should have 2 dims");
       AUnit.Assertions.Assert
-        (Image.Extent (1) = OpenCV.Core.Size_Coordinate (Image.Rows),
+        (Image.Extent (1) = OpenCV.Size_Coordinate (Image.Rows),
          "Extent 1 must match Rows for a 2-D Mat");
       AUnit.Assertions.Assert
-        (Image.Extent (2) = OpenCV.Core.Size_Coordinate (Image.Columns),
+        (Image.Extent (2) = OpenCV.Size_Coordinate (Image.Columns),
          "Extent 2 must match Columns for a 2-D Mat");
    end Two_Dimensional_Create_Reports_Matching_Extents;
 
@@ -681,7 +682,7 @@ package body Mat_Basic_Tests is
            Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
 
       procedure Query_Past_Last is
-         Unused : OpenCV.Core.Size_Coordinate;
+         Unused : OpenCV.Size_Coordinate;
       begin
          Unused := Image.Extent (4);
       end Query_Past_Last;
@@ -700,9 +701,9 @@ package body Mat_Basic_Tests is
           (Shape        => (2, 3, 4),
            Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
       Copy   : OpenCV.Core.Mat;
-      Total  : OpenCV.Core.Scalar;
+      Total  : OpenCV.Scalar;
    begin
-      Source.Set_To (OpenCV.Core.Make_Scalar (2.0));
+      Source.Set_To (OpenCV.Make_Scalar (2.0));
       Copy := Source.Clone;
 
       AUnit.Assertions.Assert
@@ -724,7 +725,7 @@ package body Mat_Basic_Tests is
       AUnit.Assertions.Assert
         (Total.Component_0 = 48.0, "The clone should copy the source values");
 
-      Source.Set_To (OpenCV.Core.Make_Scalar (5.0));
+      Source.Set_To (OpenCV.Make_Scalar (5.0));
       Total := Copy.Sum;
       AUnit.Assertions.Assert
         (Total.Component_0 = 48.0,
@@ -740,7 +741,7 @@ package body Mat_Basic_Tests is
         OpenCV.Core.Create (0, 0, (OpenCV.Core.UInt8, 1));
 
       procedure Query_Default_Extent is
-         Unused : OpenCV.Core.Size_Coordinate;
+         Unused : OpenCV.Size_Coordinate;
       begin
          Unused := Default_Empty.Extent (1);
       end Query_Default_Extent;

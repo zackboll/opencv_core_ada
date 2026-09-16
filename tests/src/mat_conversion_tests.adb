@@ -2,6 +2,7 @@ with AUnit.Assertions;
 with AUnit.Test_Caller;
 with Ada.Numerics;
 with Interfaces;
+with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
 with OpenCV.Core.Float32_Matx3x3;
@@ -247,7 +248,7 @@ package body Mat_Conversion_Tests is
          View   : constant OpenCV.Core.Mat :=
            Source.Region ((X => 1, Y => 0, Width => 2, Height => 3));
       begin
-         Source.Set_To (OpenCV.Core.Make_Scalar (-2.0, 1.0, 3.5));
+         Source.Set_To (OpenCV.Make_Scalar (-2.0, 1.0, 3.5));
          AUnit.Assertions.Assert
            (not View.Is_Continuous,
             "Convert_Scale_Abs test Region must be non-continuous");
@@ -469,7 +470,7 @@ package body Mat_Conversion_Tests is
          View   : constant OpenCV.Core.Mat :=
            Source.Region ((X => 1, Y => 0, Width => 2, Height => 3));
       begin
-         Source.Set_To (OpenCV.Core.Make_Scalar (1.0));
+         Source.Set_To (OpenCV.Make_Scalar (1.0));
          OpenCV.Core.UInt8_Access.Set (Source, 0, 1, 0);
          OpenCV.Core.UInt8_Access.Set (Source, 0, 2, 255);
          AUnit.Assertions.Assert
@@ -748,7 +749,7 @@ package body Mat_Conversion_Tests is
       OpenCV.Core.Float32_Access.Set (Numerator, 0, 0, 1.0);
       OpenCV.Core.Float32_Access.Set (Numerator, 0, 1, -1.0);
       OpenCV.Core.Float32_Access.Set (Numerator, 0, 2, 0.0);
-      Denominator.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Denominator.Set_To (OpenCV.Make_Scalar (0.0));
       Special := Numerator.Divide (Denominator);
       Special_Out := Special.Sqrt;
 
@@ -812,7 +813,7 @@ package body Mat_Conversion_Tests is
          View   : constant OpenCV.Core.Mat :=
            Source.Region ((X => 1, Y => 0, Width => 2, Height => 3));
       begin
-         Source.Set_To (OpenCV.Core.Make_Scalar (4.0));
+         Source.Set_To (OpenCV.Make_Scalar (4.0));
          OpenCV.Core.Float32_Access.Set (Source, 0, 1, 9.0);
          AUnit.Assertions.Assert
            (not View.Is_Continuous, "Sqrt test Region must be non-continuous");
@@ -1064,7 +1065,7 @@ package body Mat_Conversion_Tests is
          View   : constant OpenCV.Core.Mat :=
            Source.Region ((X => 1, Y => 0, Width => 2, Height => 3));
       begin
-         Source.Set_To (OpenCV.Core.Make_Scalar (0.0));
+         Source.Set_To (OpenCV.Make_Scalar (0.0));
          OpenCV.Core.Float32_Access.Set (Source, 0, 1, 1.0);
          AUnit.Assertions.Assert
            (not View.Is_Continuous, "Exp test Region must be non-continuous");
@@ -1340,7 +1341,7 @@ package body Mat_Conversion_Tests is
          View   : constant OpenCV.Core.Mat :=
            Source.Region ((X => 1, Y => 0, Width => 2, Height => 3));
       begin
-         Source.Set_To (OpenCV.Core.Make_Scalar (1.0));
+         Source.Set_To (OpenCV.Make_Scalar (1.0));
          OpenCV.Core.Float32_Access.Set (Source, 0, 1, 2.718_281_828);
          AUnit.Assertions.Assert
            (not View.Is_Continuous, "Log test Region must be non-continuous");
@@ -1752,7 +1753,7 @@ package body Mat_Conversion_Tests is
          View   : constant OpenCV.Core.Mat :=
            Source.Region ((X => 1, Y => 0, Width => 2, Height => 3));
       begin
-         Source.Set_To (OpenCV.Core.Make_Scalar (2.0));
+         Source.Set_To (OpenCV.Make_Scalar (2.0));
          OpenCV.Core.Float32_Access.Set (Source, 0, 1, 3.0);
          AUnit.Assertions.Assert
            (not View.Is_Continuous, "Pow test Region must be non-continuous");
@@ -2071,8 +2072,8 @@ package body Mat_Conversion_Tests is
          View_Y   : constant OpenCV.Core.Mat :=
            Source_Y.Region ((X => 1, Y => 0, Width => 2, Height => 3));
       begin
-         Source_X.Set_To (OpenCV.Core.Make_Scalar (3.0));
-         Source_Y.Set_To (OpenCV.Core.Make_Scalar (4.0));
+         Source_X.Set_To (OpenCV.Make_Scalar (3.0));
+         Source_Y.Set_To (OpenCV.Make_Scalar (4.0));
          OpenCV.Core.Float32_Access.Set (Source_X, 0, 1, 5.0);
          OpenCV.Core.Float32_Access.Set (Source_Y, 0, 1, 12.0);
          AUnit.Assertions.Assert
@@ -2383,7 +2384,7 @@ package body Mat_Conversion_Tests is
       OpenCV.Core.Float32_Access.Set (Y, 0, 1, 1.0);
       OpenCV.Core.Float32_Access.Set (Y, 0, 2, 0.0);
       OpenCV.Core.Float32_Access.Set (Y, 0, 3, -1.0);
-      Degrees := OpenCV.Core.Phase (X, Y, Units => OpenCV.Core.Degrees);
+      Degrees := OpenCV.Core.Phase (X, Y, Units => OpenCV.Degrees);
       Default_Rad := OpenCV.Core.Phase (X, Y);
 
       AUnit.Assertions.Assert
@@ -2438,7 +2439,7 @@ package body Mat_Conversion_Tests is
       OpenCV.Core.Float32_Access.Set (Y, 0, 0, 1.0);
       OpenCV.Core.Float32_Access.Set (Y, 0, 1, 1.0);
       OpenCV.Core.Float32_Access.Set (Y, 0, 2, 0.0);
-      Result := OpenCV.Core.Phase (X, Y, Units => OpenCV.Core.Degrees);
+      Result := OpenCV.Core.Phase (X, Y, Units => OpenCV.Degrees);
 
       AUnit.Assertions.Assert
         (Approximately_Equal
@@ -2480,7 +2481,7 @@ package body Mat_Conversion_Tests is
       OpenCV.Core.Float32_Access.Set (Float32_Y, 0, 0, 1.0);
       X := Float32_X.Convert_To (Depth => OpenCV.Core.Float64);
       Y := Float32_Y.Convert_To (Depth => OpenCV.Core.Float64);
-      Result := OpenCV.Core.Phase (X, Y, Units => OpenCV.Core.Degrees);
+      Result := OpenCV.Core.Phase (X, Y, Units => OpenCV.Degrees);
       Readable := Result.Convert_To (Depth => OpenCV.Core.Float32);
 
       AUnit.Assertions.Assert
@@ -2515,7 +2516,7 @@ package body Mat_Conversion_Tests is
         (X, Row => 0, Column => 0, Value => (1.0, 0.0, -1.0));
       OpenCV.Core.Float32_Vec3_Access.Set
         (Y, Row => 0, Column => 0, Value => (0.0, 1.0, 0.0));
-      Result := OpenCV.Core.Phase (X, Y, Units => OpenCV.Core.Degrees);
+      Result := OpenCV.Core.Phase (X, Y, Units => OpenCV.Degrees);
       Pixel :=
         OpenCV.Core.Float32_Vec3_Access.Get (Result, Row => 0, Column => 0);
 
@@ -2553,15 +2554,15 @@ package body Mat_Conversion_Tests is
          View_Y   : constant OpenCV.Core.Mat :=
            Source_Y.Region ((X => 1, Y => 0, Width => 2, Height => 3));
       begin
-         Source_X.Set_To (OpenCV.Core.Make_Scalar (1.0));
-         Source_Y.Set_To (OpenCV.Core.Make_Scalar (0.0));
+         Source_X.Set_To (OpenCV.Make_Scalar (1.0));
+         Source_Y.Set_To (OpenCV.Make_Scalar (0.0));
          OpenCV.Core.Float32_Access.Set (Source_X, 0, 1, 0.0);
          OpenCV.Core.Float32_Access.Set (Source_Y, 0, 1, 1.0);
          AUnit.Assertions.Assert
            (not View_X.Is_Continuous and then not View_Y.Is_Continuous,
             "Phase test Regions must be non-continuous");
          Result :=
-           OpenCV.Core.Phase (View_X, View_Y, Units => OpenCV.Core.Degrees);
+           OpenCV.Core.Phase (View_X, View_Y, Units => OpenCV.Degrees);
          OpenCV.Core.Float32_Access.Set (Source_X, 0, 1, 100.0);
          OpenCV.Core.Float32_Access.Set (Source_Y, 0, 1, 200.0);
       end;
@@ -2915,7 +2916,7 @@ package body Mat_Conversion_Tests is
       OpenCV.Core.Float32_Access.Set (Y, 0, 2, 0.0);
       OpenCV.Core.Float32_Access.Set (Y, 0, 3, -1.0);
       Degrees :=
-        OpenCV.Core.Cart_To_Polar (X, Y, Units => OpenCV.Core.Degrees);
+        OpenCV.Core.Cart_To_Polar (X, Y, Units => OpenCV.Degrees);
       Default_Rad := OpenCV.Core.Cart_To_Polar (X, Y);
 
       AUnit.Assertions.Assert
@@ -3003,9 +3004,9 @@ package body Mat_Conversion_Tests is
       OpenCV.Core.Float32_Access.Set (Y, 0, 0, 4.0);
       OpenCV.Core.Float32_Access.Set (Y, 0, 1, 1.0);
       OpenCV.Core.Float32_Access.Set (Y, 0, 2, 1.0);
-      Polar := OpenCV.Core.Cart_To_Polar (X, Y, Units => OpenCV.Core.Degrees);
+      Polar := OpenCV.Core.Cart_To_Polar (X, Y, Units => OpenCV.Degrees);
       Expected_M := OpenCV.Core.Magnitude (X, Y);
-      Expected_A := OpenCV.Core.Phase (X, Y, Units => OpenCV.Core.Degrees);
+      Expected_A := OpenCV.Core.Phase (X, Y, Units => OpenCV.Degrees);
 
       AUnit.Assertions.Assert
         (Approximately_Equal
@@ -3102,7 +3103,7 @@ package body Mat_Conversion_Tests is
         (X, Row => 0, Column => 0, Value => (3.0, 0.0, -1.0));
       OpenCV.Core.Float32_Vec3_Access.Set
         (Y, Row => 0, Column => 0, Value => (4.0, 1.0, 0.0));
-      Result := OpenCV.Core.Cart_To_Polar (X, Y, Units => OpenCV.Core.Degrees);
+      Result := OpenCV.Core.Cart_To_Polar (X, Y, Units => OpenCV.Degrees);
       Magnitude_P :=
         OpenCV.Core.Float32_Vec3_Access.Get
           (Result.Magnitude, Row => 0, Column => 0);
@@ -3145,8 +3146,8 @@ package body Mat_Conversion_Tests is
          View_Y   : constant OpenCV.Core.Mat :=
            Source_Y.Region ((X => 1, Y => 0, Width => 2, Height => 3));
       begin
-         Source_X.Set_To (OpenCV.Core.Make_Scalar (3.0));
-         Source_Y.Set_To (OpenCV.Core.Make_Scalar (4.0));
+         Source_X.Set_To (OpenCV.Make_Scalar (3.0));
+         Source_Y.Set_To (OpenCV.Make_Scalar (4.0));
          OpenCV.Core.Float32_Access.Set (Source_X, 0, 1, 5.0);
          OpenCV.Core.Float32_Access.Set (Source_Y, 0, 1, 12.0);
          AUnit.Assertions.Assert
@@ -3194,11 +3195,11 @@ package body Mat_Conversion_Tests is
            Columns      => 1,
            Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
       Result     : OpenCV.Core.Polar_Coordinates;
-      Angle_Copy : OpenCV.Core.Float32_Value;
+      Angle_Copy : OpenCV.Float32_Value;
    begin
       OpenCV.Core.Float32_Access.Set (X, 0, 0, 0.0);
       OpenCV.Core.Float32_Access.Set (Y, 0, 0, 1.0);
-      Result := OpenCV.Core.Cart_To_Polar (X, Y, Units => OpenCV.Core.Degrees);
+      Result := OpenCV.Core.Cart_To_Polar (X, Y, Units => OpenCV.Degrees);
       Angle_Copy := OpenCV.Core.Float32_Access.Get (Result.Angle, 0, 0);
       OpenCV.Core.Float32_Access.Set (Result.Magnitude, 0, 0, 42.0);
 
@@ -3443,11 +3444,11 @@ package body Mat_Conversion_Tests is
       end loop;
       OpenCV.Core.Float32_Access.Set (Angle, 0, 0, 0.0);
       OpenCV.Core.Float32_Access.Set
-        (Angle, 0, 1, OpenCV.Core.Float32_Value (Half_Pi));
+        (Angle, 0, 1, OpenCV.Float32_Value (Half_Pi));
       OpenCV.Core.Float32_Access.Set
-        (Angle, 0, 2, OpenCV.Core.Float32_Value (Ada.Numerics.Pi));
+        (Angle, 0, 2, OpenCV.Float32_Value (Ada.Numerics.Pi));
       OpenCV.Core.Float32_Access.Set
-        (Angle, 0, 3, OpenCV.Core.Float32_Value (Three_Halves_Pi));
+        (Angle, 0, 3, OpenCV.Float32_Value (Three_Halves_Pi));
       Result := OpenCV.Core.Polar_To_Cart (Magnitude, Angle);
       AUnit.Assertions.Assert
         (Result.X.Rows = 1
@@ -3533,14 +3534,14 @@ package body Mat_Conversion_Tests is
       OpenCV.Core.Float32_Access.Set (Degrees, 0, 3, 270.0);
       OpenCV.Core.Float32_Access.Set (Radians, 0, 0, 0.0);
       OpenCV.Core.Float32_Access.Set
-        (Radians, 0, 1, OpenCV.Core.Float32_Value (Half_Pi));
+        (Radians, 0, 1, OpenCV.Float32_Value (Half_Pi));
       OpenCV.Core.Float32_Access.Set
-        (Radians, 0, 2, OpenCV.Core.Float32_Value (Ada.Numerics.Pi));
+        (Radians, 0, 2, OpenCV.Float32_Value (Ada.Numerics.Pi));
       OpenCV.Core.Float32_Access.Set
-        (Radians, 0, 3, OpenCV.Core.Float32_Value (Three_Halves_Pi));
+        (Radians, 0, 3, OpenCV.Float32_Value (Three_Halves_Pi));
       Degree_XY :=
         OpenCV.Core.Polar_To_Cart
-          (Magnitude, Degrees, Units => OpenCV.Core.Degrees);
+          (Magnitude, Degrees, Units => OpenCV.Degrees);
       Default_Rad := OpenCV.Core.Polar_To_Cart (Magnitude, Radians);
       AUnit.Assertions.Assert
         (Approximately_Equal
@@ -3592,7 +3593,7 @@ package body Mat_Conversion_Tests is
       OpenCV.Core.Float32_Access.Set (Angle, 0, 1, 90.0);
       OpenCV.Core.Float32_Access.Set (Angle, 0, 2, 180.0);
       Result :=
-        OpenCV.Core.Polar_To_Cart (Angle, Units => OpenCV.Core.Degrees);
+        OpenCV.Core.Polar_To_Cart (Angle, Units => OpenCV.Degrees);
       AUnit.Assertions.Assert
         (Approximately_Equal
            (Long_Float (OpenCV.Core.Float32_Access.Get (Result.X, 0, 0)),
@@ -3649,10 +3650,10 @@ package body Mat_Conversion_Tests is
       OpenCV.Core.Float32_Access.Set (Angle, 0, 1, 90.0);
       Default_Result :=
         OpenCV.Core.Polar_To_Cart
-          (Default_Empty, Angle, Units => OpenCV.Core.Degrees);
+          (Default_Empty, Angle, Units => OpenCV.Degrees);
       Typed_Result :=
         OpenCV.Core.Polar_To_Cart
-          (Typed_Empty, Angle, Units => OpenCV.Core.Degrees);
+          (Typed_Empty, Angle, Units => OpenCV.Degrees);
       AUnit.Assertions.Assert
         (Default_Empty.Is_Empty
          and then Typed_Empty.Is_Empty
@@ -3699,9 +3700,9 @@ package body Mat_Conversion_Tests is
       OpenCV.Core.Float32_Access.Set (Magnitude, 0, 0, 0.0);
       OpenCV.Core.Float32_Access.Set (Magnitude, 0, 1, 0.0);
       OpenCV.Core.Float32_Access.Set
-        (Angle, 0, 0, OpenCV.Core.Float32_Value (Half_Pi));
+        (Angle, 0, 0, OpenCV.Float32_Value (Half_Pi));
       OpenCV.Core.Float32_Access.Set
-        (Angle, 0, 1, OpenCV.Core.Float32_Value (Ada.Numerics.Pi));
+        (Angle, 0, 1, OpenCV.Float32_Value (Ada.Numerics.Pi));
       Result := OpenCV.Core.Polar_To_Cart (Magnitude, Angle);
       AUnit.Assertions.Assert
         (Approximately_Equal
@@ -3800,8 +3801,8 @@ package body Mat_Conversion_Tests is
       Angle             : OpenCV.Core.Mat;
       Result            : OpenCV.Core.Cartesian_Coordinates;
    begin
-      Float32_Magnitude.Set_To (OpenCV.Core.Make_Scalar (2.0));
-      Float32_Angle.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Float32_Magnitude.Set_To (OpenCV.Make_Scalar (2.0));
+      Float32_Angle.Set_To (OpenCV.Make_Scalar (0.0));
       Magnitude := Float32_Magnitude.Convert_To (Depth => OpenCV.Core.Float64);
       Angle := Float32_Angle.Convert_To (Depth => OpenCV.Core.Float64);
       Result := OpenCV.Core.Polar_To_Cart (Magnitude, Angle);
@@ -3841,7 +3842,7 @@ package body Mat_Conversion_Tests is
         (Angle, Row => 0, Column => 0, Value => (0.0, 90.0, 180.0));
       Result :=
         OpenCV.Core.Polar_To_Cart
-          (Magnitude, Angle, Units => OpenCV.Core.Degrees);
+          (Magnitude, Angle, Units => OpenCV.Degrees);
       X_Value :=
         OpenCV.Core.Float32_Vec3_Access.Get (Result.X, Row => 0, Column => 0);
       Y_Value :=
@@ -3879,13 +3880,13 @@ package body Mat_Conversion_Tests is
            Columns      => 1,
            Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
       Result    : OpenCV.Core.Cartesian_Coordinates;
-      Y_Copy    : OpenCV.Core.Float32_Value;
+      Y_Copy    : OpenCV.Float32_Value;
    begin
       OpenCV.Core.Float32_Access.Set (Magnitude, 0, 0, 2.0);
       OpenCV.Core.Float32_Access.Set (Angle, 0, 0, 90.0);
       Result :=
         OpenCV.Core.Polar_To_Cart
-          (Magnitude, Angle, Units => OpenCV.Core.Degrees);
+          (Magnitude, Angle, Units => OpenCV.Degrees);
       Y_Copy := OpenCV.Core.Float32_Access.Get (Result.Y, 0, 0);
       OpenCV.Core.Float32_Access.Set (Result.X, 0, 0, 42.0);
       AUnit.Assertions.Assert
@@ -3922,15 +3923,15 @@ package body Mat_Conversion_Tests is
          View_A   : constant OpenCV.Core.Mat :=
            Source_A.Region ((X => 1, Y => 0, Width => 2, Height => 3));
       begin
-         Source_M.Set_To (OpenCV.Core.Make_Scalar (2.0));
-         Source_A.Set_To (OpenCV.Core.Make_Scalar (0.0));
+         Source_M.Set_To (OpenCV.Make_Scalar (2.0));
+         Source_A.Set_To (OpenCV.Make_Scalar (0.0));
          OpenCV.Core.Float32_Access.Set (Source_A, 0, 1, 90.0);
          AUnit.Assertions.Assert
            (not View_M.Is_Continuous and then not View_A.Is_Continuous,
             "Polar_To_Cart test Regions must be non-continuous");
          Result :=
            OpenCV.Core.Polar_To_Cart
-             (View_M, View_A, Units => OpenCV.Core.Degrees);
+             (View_M, View_A, Units => OpenCV.Degrees);
          OpenCV.Core.Float32_Access.Set (Source_M, 0, 1, 100.0);
          OpenCV.Core.Float32_Access.Set (Source_A, 0, 1, 200.0);
       end;
@@ -4254,7 +4255,7 @@ package body Mat_Conversion_Tests is
               (Image,
                Row,
                Column,
-               OpenCV.Core.Float32_Value (Row * 3 + Column) + 0.25);
+               OpenCV.Float32_Value (Row * 3 + Column) + 0.25);
          end loop;
       end loop;
 
@@ -4296,7 +4297,7 @@ package body Mat_Conversion_Tests is
               (Source,
                Row,
                Column,
-               OpenCV.Core.Float32_Value (Row * 10 + Column));
+               OpenCV.Float32_Value (Row * 10 + Column));
          end loop;
       end loop;
 

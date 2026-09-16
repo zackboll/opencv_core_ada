@@ -146,7 +146,27 @@ Choose between runtime typing, Ada generics, tagged types, and ordinary overload
 
 ## Public Package Hierarchy
 
-The `opencvcore_ada` crate owns the root `OpenCV` Ada package.
+The `opencv_core` crate owns the root `OpenCV` Ada package and still
+distributes it.
+
+`OpenCV` owns the shared public value types reused by Core, Imgproc,
+Geometry, and future module crates:
+
+- numeric value subtypes: `UInt8_Value`, `UInt16_Value`, `Int16_Value`,
+  `Int32_Value`, `Float32_Value`, `Float64_Value`
+- integer coordinates and geometry: `Point_Coordinate`, `Size_Coordinate`,
+  `Point`, `Point_Array`, `Size`, `Rect`
+- floating-point geometry: `Float32_Point`, `Float32_Size`, `Rotated_Rect`
+- shared scalar: `Scalar`, `Make_Scalar`
+- shared options: `Border_Kind`, `Angle_Unit`
+
+`OpenCV.Core` owns `Mat`, matrix-specific types such as `Depth_Type`,
+`Mat_Type`, `Channel_Count`, `Mat_Size`, `Dimension_Array`, `Index_Array`,
+`Index_Range`, `Index_Range_Array`, `Float16_Value`, and Core operations.
+
+Do not redeclare the shared root value types in `OpenCV.Core` or in
+downstream crates. Do not introduce compatibility aliases in Core for
+names that have moved to `OpenCV`.
 
 Expose the Core API primarily under:
 

@@ -18,7 +18,7 @@ package body Linear_Program_Tests is
    procedure Set
      (M    : in out OpenCV.Core.Mat;
       R, C : Natural;
-      V    : OpenCV.Core.Float32_Value) is
+      V    : OpenCV.Float32_Value) is
    begin
       OpenCV.Core.Float32_Access.Set (M, R, C, V);
    end Set;
@@ -103,7 +103,7 @@ package body Linear_Program_Tests is
         OpenCV.Core.Create (4, 5, (OpenCV.Core.Float32, 1));
       R    : OpenCV.Core.Linear_Program_Result;
    begin
-      O.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      O.Set_To (OpenCV.Make_Scalar (1.0));
       Set (U, 0, 0, -1.0);
       Set (U, 0, 1, 0.0);
       Set (I, 0, 0, 1.0);
@@ -113,8 +113,8 @@ package body Linear_Program_Tests is
          and then OpenCV.Core.Solve_Linear_Program (O, I).Status
                   = OpenCV.Core.Infeasible,
          "LP must distinguish unbounded and infeasible");
-      MO.Set_To (OpenCV.Core.Make_Scalar (1.0));
-      MC.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      MO.Set_To (OpenCV.Make_Scalar (1.0));
+      MC.Set_To (OpenCV.Make_Scalar (1.0));
       R := OpenCV.Core.Solve_Linear_Program (MO, MC);
       AUnit.Assertions.Assert
         (R.Status = OpenCV.Core.Multiple_Optima
@@ -123,7 +123,7 @@ package body Linear_Program_Tests is
          and then Approximately_Equal
                     (Value (R.Solution, 0) + Value (R.Solution, 1), 1.0),
          "Multiple optimum must be feasible");
-      LO.Set_To (OpenCV.Core.Make_Scalar (3.0));
+      LO.Set_To (OpenCV.Make_Scalar (3.0));
       Set (LO, 3, 0, 4.0);
       Set (LC, 0, 0, 0.0);
       Set (LC, 0, 1, 1.0);
@@ -179,8 +179,8 @@ package body Linear_Program_Tests is
          AUnit.Assertions.Assert
            (not OV.Is_Continuous and then not CV.Is_Continuous,
             "LP Regions must be non-contiguous");
-         OP.Set_To (OpenCV.Core.Make_Scalar (99.0));
-         CP.Set_To (OpenCV.Core.Make_Scalar (99.0));
+         OP.Set_To (OpenCV.Make_Scalar (99.0));
+         CP.Set_To (OpenCV.Make_Scalar (99.0));
       end;
       AUnit.Assertions.Assert
         (R.Status = OpenCV.Core.Unique_Optimum
@@ -232,9 +232,9 @@ package body Linear_Program_Tests is
          pragma Unreferenced (X);
       end Bad_Tolerance;
    begin
-      O.Set_To (OpenCV.Core.Make_Scalar (1.0));
-      C.Set_To (OpenCV.Core.Make_Scalar (1.0));
-      Z.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      O.Set_To (OpenCV.Make_Scalar (1.0));
+      C.Set_To (OpenCV.Make_Scalar (1.0));
+      Z.Set_To (OpenCV.Make_Scalar (0.0));
       NaN := Z.Divide (Z);
       AUnit.Assertions.Assert
         (OpenCV.Core.Solve_Linear_Program (O, C, 0.0).Status

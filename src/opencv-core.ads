@@ -22,9 +22,6 @@ package OpenCV.Core is
 
    type Flip_Kind is (Vertical, Horizontal, Both_Axes);
 
-   type Border_Kind is
-     (Constant_Border, Replicate, Reflect, Reflect_101, Wrap);
-
    type Rotation_Kind is (Clockwise_90, Half_Turn, Counterclockwise_90);
 
    type Reduction_Axis is (Across_Rows, Across_Columns);
@@ -33,8 +30,6 @@ package OpenCV.Core is
 
    --  Selects which equal extremum is reported by Arg_Minimum and Arg_Maximum.
    type Extremum_Occurrence is (First_Occurrence, Last_Occurrence);
-
-   type Angle_Unit is (Radians, Degrees);
 
    --  Sort axis names describe the values being ordered, not a reduction.
    --  Each_Row sorts the columns of every row independently, left to right.
@@ -81,11 +76,6 @@ package OpenCV.Core is
    type Mat_Size is
      new Interfaces.Integer_64 range 0 .. Interfaces.Integer_64'Last;
 
-   type Size_Coordinate is
-     new Interfaces.Integer_32 range 0 .. Interfaces.Integer_32'Last;
-
-   type Point_Coordinate is new Interfaces.Integer_32;
-
    --  A border interpolation either selects a zero-based source coordinate or
    --  indicates that an out-of-range Constant_Border coordinate has no donor.
    type Border_Interpolation_Result (Uses_Constant : Boolean := False) is
@@ -105,11 +95,6 @@ package OpenCV.Core is
       Stop  : Size_Coordinate := 0;
    end record;
 
-   type Size is record
-      Width  : Size_Coordinate := 0;
-      Height : Size_Coordinate := 0;
-   end record;
-
    --  N-dimensional Mat shape. Iteration order maps directly to OpenCV
    --  dimensions regardless of the array's index bounds.
    type Dimension_Array is array (Positive range <>) of Size_Coordinate;
@@ -119,47 +104,6 @@ package OpenCV.Core is
    --  N-dimensional Mat index ranges. Iteration order maps directly to
    --  OpenCV dimensions regardless of the array's index bounds.
    type Index_Range_Array is array (Positive range <>) of Index_Range;
-
-   type Point is record
-      X : Point_Coordinate := 0;
-      Y : Point_Coordinate := 0;
-   end record;
-
-   --  A zero-based, value-semantic sequence of points. An empty result has
-   --  the null range 1 .. 0.
-   type Point_Array is array (Natural range <>) of Point;
-
-   --  CV_8U, CV_16U, CV_16S, CV_32S, CV_32F, CV_64F, and CV_16F element
-   --  value domains used by typed Mat accessors.
-   subtype UInt8_Value is Interfaces.Unsigned_8;
-   subtype UInt16_Value is Interfaces.Unsigned_16;
-   subtype Int16_Value is Interfaces.Integer_16;
-   subtype Int32_Value is Interfaces.Integer_32;
-   subtype Float32_Value is Interfaces.IEEE_Float_32;
-   subtype Float64_Value is Interfaces.IEEE_Float_64;
-
-   --  Value-semantic 2-D point with binary32 coordinates. This is the
-   --  shared Core representation for OpenCV floating-point 2-D points.
-   type Float32_Point is record
-      X : Float32_Value := 0.0;
-      Y : Float32_Value := 0.0;
-   end record;
-
-   --  Value-semantic two-dimensional binary32 extent. Individual operations
-   --  define whether negative dimensions are meaningful.
-   type Float32_Size is record
-      Width  : Float32_Value := 0.0;
-      Height : Float32_Value := 0.0;
-   end record;
-
-   --  Value-semantic rotated rectangle with binary32 native OpenCV fields.
-   --  Angle_Degrees is deliberately not normalized because different OpenCV
-   --  operations and versions can use distinct equivalent representations.
-   type Rotated_Rect is record
-      Center        : Float32_Point := (X => 0.0, Y => 0.0);
-      Size          : Float32_Size := (Width => 0.0, Height => 0.0);
-      Angle_Degrees : Float32_Value := 0.0;
-   end record;
 
    --  Exact IEEE-754 binary16 encoding used by OpenCV CV_16F. This is
    --  the stored 16-bit pattern, not Short_Float, Float, Integer_16, or
@@ -208,13 +152,6 @@ package OpenCV.Core is
       Channels : Channel_Count;
    end record;
 
-   type Scalar is record
-      Component_0 : Long_Float := 0.0;
-      Component_1 : Long_Float := 0.0;
-      Component_2 : Long_Float := 0.0;
-      Component_3 : Long_Float := 0.0;
-   end record;
-
    type Min_Max_Result is record
       Minimum          : Long_Float;
       Maximum          : Long_Float;
@@ -238,24 +175,6 @@ package OpenCV.Core is
             First_Invalid : Point;
       end case;
    end record;
-
-   --  Axis-aligned rectangle with a signed origin and nonnegative size.
-   --  OpenCV rectangle origins may be negative. Width and Height remain
-   --  nonnegative in this Ada value model. A Rect is not restricted merely
-   --  because Mat ROI operations require nonnegative origins; Mat.Region
-   --  enforces that ROI-specific constraint itself.
-   type Rect is record
-      X      : Point_Coordinate := 0;
-      Y      : Point_Coordinate := 0;
-      Width  : Size_Coordinate := 0;
-      Height : Size_Coordinate := 0;
-   end record;
-
-   function Make_Scalar
-     (Component_0 : Long_Float;
-      Component_1 : Long_Float := 0.0;
-      Component_2 : Long_Float := 0.0;
-      Component_3 : Long_Float := 0.0) return Scalar;
 
    type Mat is tagged private;
 

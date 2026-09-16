@@ -1,5 +1,6 @@
 with AUnit.Assertions;
 with AUnit.Test_Caller;
+with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
 with Mat_Test_Support;
@@ -21,9 +22,9 @@ package body Linear_Discriminant_Analysis_Tests is
      (Samples : in out OpenCV.Core.Mat; Row : Natural; X, Y : Long_Float) is
    begin
       OpenCV.Core.Float32_Access.Set
-        (Samples, Row, 0, OpenCV.Core.Float32_Value (X));
+        (Samples, Row, 0, OpenCV.Float32_Value (X));
       OpenCV.Core.Float32_Access.Set
-        (Samples, Row, 1, OpenCV.Core.Float32_Value (Y));
+        (Samples, Row, 1, OpenCV.Float32_Value (Y));
    end Set_Point;
 
    function Labels
@@ -41,7 +42,7 @@ package body Linear_Discriminant_Analysis_Tests is
            (Source,
             (if Row_Vector then 0 else Index - Values'First),
             (if Row_Vector then Index - Values'First else 0),
-            OpenCV.Core.Float32_Value (Values (Index)));
+            OpenCV.Float32_Value (Values (Index)));
       end loop;
       return Source.Convert_To (OpenCV.Core.Int32);
    end Labels;
@@ -404,15 +405,15 @@ package body Linear_Discriminant_Analysis_Tests is
       Expected           : OpenCV.Core.Mat;
       Saved_Result       : OpenCV.Core.Mat;
    begin
-      Sample_Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Sample_Parent.Set_To (OpenCV.Make_Scalar (99.0));
       Samples :=
         Sample_Parent.Region ((X => 0, Y => 0, Width => 2, Height => 6));
       Fill_Three_Classes (Samples);
-      Basis_Parent.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Basis_Parent.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.Float32_Access.Set (Basis_Parent, 0, 0, 2.0);
       OpenCV.Core.Float32_Access.Set (Basis_Parent, 0, 1, 1.0);
       OpenCV.Core.Float32_Access.Set
-        (Basis_Parent, 1, 0, OpenCV.Core.Float32_Value (-1.0));
+        (Basis_Parent, 1, 0, OpenCV.Float32_Value (-1.0));
       OpenCV.Core.Float32_Access.Set (Basis_Parent, 1, 1, 3.0);
       Basis.Eigenvectors :=
         Basis_Parent.Region ((X => 0, Y => 0, Width => 2, Height => 2));
@@ -422,7 +423,7 @@ package body Linear_Discriminant_Analysis_Tests is
       Snapshot := Samples.Clone;
       Basis_Snapshot := Basis.Eigenvectors.Clone;
       Projected := Samples.LDA_Project (Basis);
-      Coordinates_Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Coordinates_Parent.Set_To (OpenCV.Make_Scalar (99.0));
       Coordinates :=
         Coordinates_Parent.Region ((X => 0, Y => 0, Width => 2, Height => 6));
       for Row in 0 .. 5 loop
@@ -449,8 +450,8 @@ package body Linear_Discriminant_Analysis_Tests is
          and then Mats_Approximately_Equal (Basis.Eigenvectors, Basis_Snapshot)
          and then Mats_Approximately_Equal (Reconstructed, Expected),
          "LDA operations must support Regions and preserve inputs");
-      Sample_Parent.Set_To (OpenCV.Core.Make_Scalar (-77.0));
-      Basis_Parent_64.Set_To (OpenCV.Core.Make_Scalar (-77.0));
+      Sample_Parent.Set_To (OpenCV.Make_Scalar (-77.0));
+      Basis_Parent_64.Set_To (OpenCV.Make_Scalar (-77.0));
       AUnit.Assertions.Assert
         (Mats_Approximately_Equal (Reconstructed, Saved_Result),
          "LDA results must own independent storage");

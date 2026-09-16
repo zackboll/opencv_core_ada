@@ -1,6 +1,7 @@
 with AUnit.Assertions;
 with AUnit.Test_Caller;
 with Interfaces;
+with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
 with OpenCV.Core.Float32_Vec3;
@@ -15,7 +16,7 @@ package body Mat_Range_Tests is
    use type OpenCV.Core.Depth_Type;
    use type OpenCV.Core.Channel_Count;
 
-   use type OpenCV.Core.Point_Coordinate;
+   use type OpenCV.Point_Coordinate;
 
    use Mat_Test_Support;
    use type OpenCV.Core.Float32_Access.Float32_Classification;
@@ -151,9 +152,9 @@ package body Mat_Range_Tests is
       Image       : OpenCV.Core.Mat;
       Result      : OpenCV.Core.Range_Check_Result;
    begin
-      Numerator.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      Numerator.Set_To (OpenCV.Make_Scalar (1.0));
       OpenCV.Core.Float32_Access.Set (Numerator, 1, 0, 0.0);
-      Denominator.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      Denominator.Set_To (OpenCV.Make_Scalar (1.0));
       OpenCV.Core.Float32_Access.Set (Denominator, 1, 0, 0.0);
       Image := Numerator.Divide (Denominator);
       Result := Image.Check_Range;
@@ -180,8 +181,8 @@ package body Mat_Range_Tests is
       Image       : OpenCV.Core.Mat;
       Result      : OpenCV.Core.Range_Check_Result;
    begin
-      Numerator.Set_To (OpenCV.Core.Make_Scalar (1.0));
-      Denominator.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      Numerator.Set_To (OpenCV.Make_Scalar (1.0));
+      Denominator.Set_To (OpenCV.Make_Scalar (1.0));
       OpenCV.Core.Float32_Access.Set (Denominator, 0, 1, 0.0);
       Image := Numerator.Divide (Denominator);
       Result := Image.Check_Range;
@@ -206,7 +207,7 @@ package body Mat_Range_Tests is
       Result : OpenCV.Core.Range_Check_Result;
    begin
       OpenCV.Core.Float32_Access.Set
-        (Image, 0, 0, OpenCV.Core.Float32_Value'Last);
+        (Image, 0, 0, OpenCV.Float32_Value'Last);
       Result := Image.Check_Range;
 
       AUnit.Assertions.Assert
@@ -236,11 +237,11 @@ package body Mat_Range_Tests is
       Bounded     : OpenCV.Core.Range_Check_Result;
       Invalid     : OpenCV.Core.Range_Check_Result;
    begin
-      Finite.Set_To (OpenCV.Core.Make_Scalar (1.5));
+      Finite.Set_To (OpenCV.Make_Scalar (1.5));
       Finite_Ok := Finite.Check_Range;
       Bounded := Finite.Check_Range (Minimum => 1.5, Maximum => 2.0);
-      Numerator.Set_To (OpenCV.Core.Make_Scalar (0.0));
-      Denominator.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Numerator.Set_To (OpenCV.Make_Scalar (0.0));
+      Denominator.Set_To (OpenCV.Make_Scalar (0.0));
       Invalid32 := Numerator.Divide (Denominator);
       Invalid64 := Invalid32.Convert_To (OpenCV.Core.Float64);
       Invalid := Invalid64.Check_Range;
@@ -264,7 +265,7 @@ package body Mat_Range_Tests is
       View   : OpenCV.Core.Mat;
       Result : OpenCV.Core.Range_Check_Result;
    begin
-      Source.Set_To (OpenCV.Core.Make_Scalar (5.0));
+      Source.Set_To (OpenCV.Make_Scalar (5.0));
       View := Source.Region ((X => 1, Y => 1, Width => 4, Height => 3));
       OpenCV.Core.UInt8_Access.Set (View, 1, 2, 40);
 
@@ -387,8 +388,8 @@ package body Mat_Range_Tests is
         OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
       Image       : OpenCV.Core.Mat;
    begin
-      Numerator.Set_To (OpenCV.Core.Make_Scalar (0.0));
-      Denominator.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Numerator.Set_To (OpenCV.Make_Scalar (0.0));
+      Denominator.Set_To (OpenCV.Make_Scalar (0.0));
       Image := Numerator.Divide (Denominator);
 
       AUnit.Assertions.Assert
@@ -411,8 +412,8 @@ package body Mat_Range_Tests is
         OpenCV.Core.Create (2, 3, (OpenCV.Core.Float32, 1));
       Image       : OpenCV.Core.Mat;
    begin
-      Numerator.Set_To (OpenCV.Core.Make_Scalar (1.0));
-      Denominator.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      Numerator.Set_To (OpenCV.Make_Scalar (1.0));
+      Denominator.Set_To (OpenCV.Make_Scalar (1.0));
       OpenCV.Core.Float32_Access.Set (Numerator, 0, 2, 0.0);
       OpenCV.Core.Float32_Access.Set (Denominator, 0, 2, 0.0);
       OpenCV.Core.Float32_Access.Set (Numerator, 1, 0, 0.0);
@@ -540,8 +541,8 @@ package body Mat_Range_Tests is
       Parent      : OpenCV.Core.Mat;
       View        : OpenCV.Core.Mat;
    begin
-      Numerator.Set_To (OpenCV.Core.Make_Scalar (1.0));
-      Denominator.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      Numerator.Set_To (OpenCV.Make_Scalar (1.0));
+      Denominator.Set_To (OpenCV.Make_Scalar (1.0));
       OpenCV.Core.Float32_Access.Set (Numerator, 2, 3, 0.0);
       OpenCV.Core.Float32_Access.Set (Denominator, 2, 3, 0.0);
       OpenCV.Core.Float32_Access.Set (Numerator, 0, 0, 0.0);
@@ -617,8 +618,8 @@ package body Mat_Range_Tests is
       Original    : OpenCV.Core.Mat;
       Copy        : OpenCV.Core.Mat;
    begin
-      Numerator.Set_To (OpenCV.Core.Make_Scalar (0.0));
-      Denominator.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Numerator.Set_To (OpenCV.Make_Scalar (0.0));
+      Denominator.Set_To (OpenCV.Make_Scalar (0.0));
       Original := Numerator.Divide (Denominator);
       Copy := Original.Clone;
       Copy.Patch_NaNs (3.0);

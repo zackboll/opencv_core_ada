@@ -1,5 +1,6 @@
 with AUnit.Assertions;
 with AUnit.Test_Caller;
+with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
 with OpenCV.Core.UInt8_Access;
@@ -19,9 +20,9 @@ package body K_Nearest_Neighbor_Tests is
      (Image : in out OpenCV.Core.Mat; Row : Natural; X, Y : Long_Float) is
    begin
       OpenCV.Core.Float32_Access.Set
-        (Image, Row, 0, OpenCV.Core.Float32_Value (X));
+        (Image, Row, 0, OpenCV.Float32_Value (X));
       OpenCV.Core.Float32_Access.Set
-        (Image, Row, 1, OpenCV.Core.Float32_Value (Y));
+        (Image, Row, 1, OpenCV.Float32_Value (Y));
    end Set_Float_Row;
 
    procedure Float32_Distances_And_Ordering (Test : in out Mat_Test_Fixture) is
@@ -91,8 +92,8 @@ package body K_Nearest_Neighbor_Tests is
          Distances_Before : constant OpenCV.Core.Mat := Result.Distances.Clone;
          Indices_Before   : constant OpenCV.Core.Mat := Result.Indices.Clone;
       begin
-         Queries.Set_To (OpenCV.Core.Make_Scalar (99.0));
-         Candidates.Set_To (OpenCV.Core.Make_Scalar (99.0));
+         Queries.Set_To (OpenCV.Make_Scalar (99.0));
+         Candidates.Set_To (OpenCV.Make_Scalar (99.0));
          AUnit.Assertions.Assert
            (Result.Distances.Rows = Distances_Before.Rows
             and then Result.Distances.Columns = Distances_Before.Columns

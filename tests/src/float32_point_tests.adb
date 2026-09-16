@@ -1,11 +1,11 @@
 with AUnit.Assertions;
 with AUnit.Test_Caller;
 with AUnit.Test_Fixtures;
-with OpenCV.Core;
+with OpenCV;
 
 package body Float32_Point_Tests is
 
-   use type OpenCV.Core.Float32_Value;
+   use type OpenCV.Float32_Value;
 
    type Fixture is new AUnit.Test_Fixtures.Test_Fixture with null record;
    package Caller is new AUnit.Test_Caller (Fixture);
@@ -13,7 +13,7 @@ package body Float32_Point_Tests is
 
    procedure Default_Is_Zero (Test : in out Fixture) is
       pragma Unreferenced (Test);
-      Point : OpenCV.Core.Float32_Point;
+      Point : OpenCV.Float32_Point;
    begin
       AUnit.Assertions.Assert (Point.X = 0.0, "default X must be 0.0");
       AUnit.Assertions.Assert (Point.Y = 0.0, "default Y must be 0.0");
@@ -21,7 +21,7 @@ package body Float32_Point_Tests is
 
    procedure Fractional_Coordinates (Test : in out Fixture) is
       pragma Unreferenced (Test);
-      Point : constant OpenCV.Core.Float32_Point := (X => 1.5, Y => -2.25);
+      Point : constant OpenCV.Float32_Point := (X => 1.5, Y => -2.25);
    begin
       AUnit.Assertions.Assert (Point.X = 1.5, "fractional X must be retained");
       AUnit.Assertions.Assert
@@ -30,26 +30,26 @@ package body Float32_Point_Tests is
 
    procedure Negative_Coordinates (Test : in out Fixture) is
       pragma Unreferenced (Test);
-      Point : constant OpenCV.Core.Float32_Point :=
-        (X => -8.0, Y => OpenCV.Core.Float32_Value'First);
+      Point : constant OpenCV.Float32_Point :=
+        (X => -8.0, Y => OpenCV.Float32_Value'First);
    begin
       AUnit.Assertions.Assert (Point.X = -8.0, "negative X must be retained");
       AUnit.Assertions.Assert
-        (Point.Y = OpenCV.Core.Float32_Value'First,
+        (Point.Y = OpenCV.Float32_Value'First,
          "minimum finite Y must be retained");
    end Negative_Coordinates;
 
    procedure Finite_Limits (Test : in out Fixture) is
       pragma Unreferenced (Test);
-      Point : constant OpenCV.Core.Float32_Point :=
-        (X => OpenCV.Core.Float32_Value'Last,
-         Y => OpenCV.Core.Float32_Value'First);
+      Point : constant OpenCV.Float32_Point :=
+        (X => OpenCV.Float32_Value'Last,
+         Y => OpenCV.Float32_Value'First);
    begin
       AUnit.Assertions.Assert
-        (Point.X = OpenCV.Core.Float32_Value'Last,
+        (Point.X = OpenCV.Float32_Value'Last,
          "maximum finite X must be retained");
       AUnit.Assertions.Assert
-        (Point.Y = OpenCV.Core.Float32_Value'First,
+        (Point.Y = OpenCV.Float32_Value'First,
          "minimum finite Y must be retained");
    end Finite_Limits;
 

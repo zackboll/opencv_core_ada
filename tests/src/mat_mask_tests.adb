@@ -1,6 +1,7 @@
 with AUnit.Assertions;
 with AUnit.Test_Caller;
 with Interfaces;
+with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
 with OpenCV.Core.UInt8_Access;
@@ -16,7 +17,7 @@ package body Mat_Mask_Tests is
    use type OpenCV.Core.Depth_Type;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Mat_Size;
-   use type OpenCV.Core.Point;
+   use type OpenCV.Point;
    use type OpenCV.Core.UInt8_Vec3.Vector;
 
    use Mat_Test_Support;
@@ -66,12 +67,12 @@ package body Mat_Mask_Tests is
         OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
       Infinity, And_Result, Xor_Result, Not_Result : OpenCV.Core.Mat;
    begin
-      Int16_Left.Set_To (OpenCV.Core.Make_Scalar (-1.0));
-      Int16_Right.Set_To (OpenCV.Core.Make_Scalar (255.0));
+      Int16_Left.Set_To (OpenCV.Make_Scalar (-1.0));
+      Int16_Right.Set_To (OpenCV.Make_Scalar (255.0));
       Int16_And := Int16_Left.Bitwise_And (Int16_Right);
       Int16_Not := Int16_Right.Bitwise_Not;
       OpenCV.Core.Float32_Access.Set (Numerator, 0, 0, 1.0);
-      Zeroes.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Zeroes.Set_To (OpenCV.Make_Scalar (0.0));
       Infinity := Numerator.Divide (Zeroes);
       And_Result := Infinity.Bitwise_And (Infinity);
       Xor_Result := Infinity.Bitwise_Xor (Infinity);
@@ -98,8 +99,8 @@ package body Mat_Mask_Tests is
       Result                                             : OpenCV.Core.Mat;
       Empty_Left, Empty_Right, Empty_Binary, Empty_Unary : OpenCV.Core.Mat;
    begin
-      Left.Set_To (OpenCV.Core.Make_Scalar (240.0));
-      Right.Set_To (OpenCV.Core.Make_Scalar (15.0));
+      Left.Set_To (OpenCV.Make_Scalar (240.0));
+      Right.Set_To (OpenCV.Make_Scalar (15.0));
       Result :=
         Left.Region ((1, 0, 2, 3)).Bitwise_Or (Right.Region ((1, 0, 2, 3)));
       OpenCV.Core.UInt8_Access.Set (Left, 0, 1, 0);
@@ -171,8 +172,8 @@ package body Mat_Mask_Tests is
         OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
       And_Result, Or_Result, Xor_Result, Not_Result : OpenCV.Core.Mat;
    begin
-      Left.Set_To (OpenCV.Core.Make_Scalar (170.0));
-      Right.Set_To (OpenCV.Core.Make_Scalar (15.0));
+      Left.Set_To (OpenCV.Make_Scalar (170.0));
+      Right.Set_To (OpenCV.Make_Scalar (15.0));
       OpenCV.Core.UInt8_Access.Set (Mask, 0, 0, 0);
       OpenCV.Core.UInt8_Access.Set (Mask, 0, 1, 1);
       OpenCV.Core.UInt8_Access.Set (Mask, 1, 0, 255);
@@ -212,12 +213,12 @@ package body Mat_Mask_Tests is
         (Vec_Right, 0, 0, (16#0F#, 16#F0#, 16#55#));
       OpenCV.Core.UInt8_Vec3_Access.Set (Vec_Left, 0, 1, (1, 2, 3));
       OpenCV.Core.UInt8_Vec3_Access.Set (Vec_Right, 0, 1, (4, 5, 6));
-      Vec_Mask.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Vec_Mask.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.UInt8_Access.Set (Vec_Mask, 0, 0, 1);
       Vec_Result := Vec_Left.Bitwise_Xor (Vec_Right, Vec_Mask);
-      Source.Set_To (OpenCV.Core.Make_Scalar (240.0));
-      Other.Set_To (OpenCV.Core.Make_Scalar (15.0));
-      Mask_Parent.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Source.Set_To (OpenCV.Make_Scalar (240.0));
+      Other.Set_To (OpenCV.Make_Scalar (15.0));
+      Mask_Parent.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.UInt8_Access.Set (Mask_Parent, 0, 1, 255);
       OpenCV.Core.UInt8_Access.Set (Mask_Parent, 1, 2, 1);
       Region_Result :=
@@ -379,11 +380,11 @@ package body Mat_Mask_Tests is
       OpenCV.Core.UInt8_Access.Set (Source, 0, 2, 15);
       OpenCV.Core.UInt8_Access.Set (Source, 0, 3, 20);
       OpenCV.Core.UInt8_Access.Set (Source, 0, 4, 21);
-      Other.Set_To (OpenCV.Core.Make_Scalar (255.0));
+      Other.Set_To (OpenCV.Make_Scalar (255.0));
       Range_Mask :=
         Source.In_Range
-          (Lower => OpenCV.Core.Make_Scalar (10.0),
-           Upper => OpenCV.Core.Make_Scalar (20.0));
+          (Lower => OpenCV.Make_Scalar (10.0),
+           Upper => OpenCV.Make_Scalar (20.0));
       Applied := Source.Bitwise_And (Other, Range_Mask);
       OpenCV.Core.UInt8_Access.Set (Source, 0, 2, 0);
 
@@ -419,7 +420,7 @@ package body Mat_Mask_Tests is
       OpenCV.Core.Float32_Access.Set (Float_Image, 0, 3, 1.25);
       Float_Mask :=
         Float_Image.In_Range
-          (OpenCV.Core.Make_Scalar (-1.0), OpenCV.Core.Make_Scalar (1.0));
+          (OpenCV.Make_Scalar (-1.0), OpenCV.Make_Scalar (1.0));
       OpenCV.Core.Float32_Vec3_Access.Set (Vec_Image, 0, 0, (1.0, 2.0, 3.0));
       OpenCV.Core.Float32_Vec3_Access.Set (Vec_Image, 0, 1, (0.0, 2.0, 3.0));
       OpenCV.Core.Float32_Vec3_Access.Set (Vec_Image, 0, 2, (1.0, 4.0, 3.0));
@@ -427,16 +428,16 @@ package body Mat_Mask_Tests is
       OpenCV.Core.Float32_Vec3_Access.Set (Vec_Image, 0, 4, (1.0, 2.0, 3.0));
       Vec_Mask :=
         Vec_Image.In_Range
-          (OpenCV.Core.Make_Scalar (1.0, 2.0, 3.0),
-           OpenCV.Core.Make_Scalar (1.0, 2.0, 3.0));
-      Region_Source.Set_To (OpenCV.Core.Make_Scalar (0.0));
+          (OpenCV.Make_Scalar (1.0, 2.0, 3.0),
+           OpenCV.Make_Scalar (1.0, 2.0, 3.0));
+      Region_Source.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.UInt8_Access.Set (Region_Source, 0, 1, 10);
       OpenCV.Core.UInt8_Access.Set (Region_Source, 0, 2, 20);
       OpenCV.Core.UInt8_Access.Set (Region_Source, 1, 1, 15);
       OpenCV.Core.UInt8_Access.Set (Region_Source, 1, 2, 25);
       Region_Mask :=
         Region_Source.Region ((1, 0, 2, 2)).In_Range
-          (OpenCV.Core.Make_Scalar (10.0), OpenCV.Core.Make_Scalar (20.0));
+          (OpenCV.Make_Scalar (10.0), OpenCV.Make_Scalar (20.0));
 
       AUnit.Assertions.Assert
         (OpenCV.Core.UInt8_Access.Get (Float_Mask, 0, 0) = 0
@@ -470,14 +471,14 @@ package body Mat_Mask_Tests is
       procedure Empty_Source is
          X : constant OpenCV.Core.Mat :=
            Empty.In_Range
-             (OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+             (OpenCV.Make_Scalar (0.0), OpenCV.Make_Scalar (1.0));
       begin
          pragma Unreferenced (X);
       end Empty_Source;
       procedure Too_Many_Channels is
          X : constant OpenCV.Core.Mat :=
            Five_Channel.In_Range
-             (OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (255.0));
+             (OpenCV.Make_Scalar (0.0), OpenCV.Make_Scalar (255.0));
       begin
          pragma Unreferenced (X);
       end Too_Many_Channels;
@@ -485,11 +486,11 @@ package body Mat_Mask_Tests is
       OpenCV.Core.Float32_Access.Set (Numerator, 0, 0, 0.0);
       OpenCV.Core.Float32_Access.Set (Numerator, 0, 1, 1.0);
       OpenCV.Core.Float32_Access.Set (Numerator, 0, 2, -1.0);
-      Zeroes.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Zeroes.Set_To (OpenCV.Make_Scalar (0.0));
       Nonfinite := Numerator.Divide (Zeroes);
       Mask :=
         Nonfinite.In_Range
-          (OpenCV.Core.Make_Scalar (-1.0), OpenCV.Core.Make_Scalar (1.0));
+          (OpenCV.Make_Scalar (-1.0), OpenCV.Make_Scalar (1.0));
 
       AUnit.Assertions.Assert
         (OpenCV.Core.UInt8_Access.Get (Mask, 0, 0) = 0
@@ -531,7 +532,7 @@ package body Mat_Mask_Tests is
       Ge := Left.Compare (Right, OpenCV.Core.Greater_Or_Equal);
 
       Other := OpenCV.Core.Create (1, 4, (OpenCV.Core.UInt8, 1));
-      Other.Set_To (OpenCV.Core.Make_Scalar (255.0));
+      Other.Set_To (OpenCV.Make_Scalar (255.0));
       Applied := Left.Bitwise_And (Other, Ge);
       OpenCV.Core.UInt8_Access.Set (Left, 0, 1, 0);
 
@@ -597,8 +598,8 @@ package body Mat_Mask_Tests is
       Eq := Left.Compare (Right, OpenCV.Core.Equal);
       Ne := Left.Compare (Right, OpenCV.Core.Not_Equal);
 
-      Region_Left.Set_To (OpenCV.Core.Make_Scalar (0.0));
-      Region_Right.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Region_Left.Set_To (OpenCV.Make_Scalar (0.0));
+      Region_Right.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.UInt8_Access.Set (Region_Left, 0, 1, 10);
       OpenCV.Core.UInt8_Access.Set (Region_Left, 0, 2, 20);
       OpenCV.Core.UInt8_Access.Set (Region_Left, 1, 1, 30);
@@ -616,9 +617,9 @@ package body Mat_Mask_Tests is
       OpenCV.Core.Float32_Access.Set (Numerator, 0, 0, 0.0);
       OpenCV.Core.Float32_Access.Set (Numerator, 0, 1, 1.0);
       OpenCV.Core.Float32_Access.Set (Numerator, 0, 2, -1.0);
-      Zeroes.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Zeroes.Set_To (OpenCV.Make_Scalar (0.0));
       Nonfinite := Numerator.Divide (Zeroes);
-      Finite.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Finite.Set_To (OpenCV.Make_Scalar (0.0));
       Nan_Eq := Nonfinite.Compare (Finite, OpenCV.Core.Equal);
 
       AUnit.Assertions.Assert
@@ -706,7 +707,7 @@ package body Mat_Mask_Tests is
         OpenCV.Core.Create (2, 3, (OpenCV.Core.UInt8, 1));
       Count : OpenCV.Core.Mat_Size;
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Image.Set_To (OpenCV.Make_Scalar (0.0));
       Count := Image.Count_Non_Zero;
       AUnit.Assertions.Assert
         (Count = 0, "Count_Non_Zero must return 0 for all-zero UInt8 Mat");
@@ -728,7 +729,7 @@ package body Mat_Mask_Tests is
            Columns      => 3,
            Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Image.Set_To (OpenCV.Make_Scalar (0.0));
       AUnit.Assertions.Assert
         (not Image.Has_Non_Zero,
          "Has_Non_Zero must return False for an all-zero matrix");
@@ -774,9 +775,9 @@ package body Mat_Mask_Tests is
       Image : OpenCV.Core.Mat :=
         OpenCV.Core.Create (3, 4, (OpenCV.Core.UInt8, 1));
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Image.Set_To (OpenCV.Make_Scalar (0.0));
       declare
-         Empty : constant OpenCV.Core.Point_Array := Image.Find_Non_Zero;
+         Empty : constant OpenCV.Point_Array := Image.Find_Non_Zero;
       begin
          AUnit.Assertions.Assert
            (Empty'Length = 0,
@@ -788,7 +789,7 @@ package body Mat_Mask_Tests is
       OpenCV.Core.UInt8_Access.Set (Image, 1, 2, 3);
       OpenCV.Core.UInt8_Access.Set (Image, 2, 1, 4);
       declare
-         Points : constant OpenCV.Core.Point_Array := Image.Find_Non_Zero;
+         Points : constant OpenCV.Point_Array := Image.Find_Non_Zero;
       begin
          AUnit.Assertions.Assert
            (Points'First = 0
@@ -812,8 +813,8 @@ package body Mat_Mask_Tests is
       Threshold : OpenCV.Core.Mat :=
         OpenCV.Core.Create (2, 3, (OpenCV.Core.UInt8, 1));
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
-      Threshold.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Image.Set_To (OpenCV.Make_Scalar (0.0));
+      Threshold.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.UInt8_Access.Set (Image, 0, 0, 1);
       OpenCV.Core.UInt8_Access.Set (Image, 0, 1, 5);
       OpenCV.Core.UInt8_Access.Set (Image, 1, 2, 9);
@@ -821,11 +822,11 @@ package body Mat_Mask_Tests is
       OpenCV.Core.UInt8_Access.Set (Threshold, 0, 1, 5);
       OpenCV.Core.UInt8_Access.Set (Threshold, 1, 2, 8);
       declare
-         Compare_Points : constant OpenCV.Core.Point_Array :=
+         Compare_Points : constant OpenCV.Point_Array :=
            Image.Compare (Threshold, OpenCV.Core.Greater_Than).Find_Non_Zero;
-         Range_Points   : constant OpenCV.Core.Point_Array :=
+         Range_Points   : constant OpenCV.Point_Array :=
            Image.In_Range
-             (OpenCV.Core.Make_Scalar (5.0), OpenCV.Core.Make_Scalar (9.0))
+             (OpenCV.Make_Scalar (5.0), OpenCV.Make_Scalar (9.0))
              .Find_Non_Zero;
       begin
          AUnit.Assertions.Assert
@@ -847,17 +848,17 @@ package body Mat_Mask_Tests is
         OpenCV.Core.Create (3, 5, (OpenCV.Core.UInt8, 1));
       Region      : OpenCV.Core.Mat;
    begin
-      Float_Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
-      Parent.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Float_Image.Set_To (OpenCV.Make_Scalar (0.0));
+      Parent.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.Float32_Access.Set (Float_Image, 0, 1, -1.5);
       OpenCV.Core.UInt8_Access.Set (Parent, 0, 2, 1);
       OpenCV.Core.UInt8_Access.Set (Parent, 1, 1, 2);
       OpenCV.Core.UInt8_Access.Set (Parent, 2, 3, 3);
       Region := Parent.Region ((X => 1, Y => 0, Width => 3, Height => 3));
       declare
-         Float_Points  : constant OpenCV.Core.Point_Array :=
+         Float_Points  : constant OpenCV.Point_Array :=
            Float_Image.Find_Non_Zero;
-         Region_Points : constant OpenCV.Core.Point_Array :=
+         Region_Points : constant OpenCV.Point_Array :=
            Region.Find_Non_Zero;
       begin
          AUnit.Assertions.Assert
@@ -886,20 +887,20 @@ package body Mat_Mask_Tests is
         OpenCV.Core.Create (1, 1, (OpenCV.Core.Float16, 1));
       Empty_Image   : OpenCV.Core.Mat;
       procedure Check_Multi_Channel is
-         Points : constant OpenCV.Core.Point_Array :=
+         Points : constant OpenCV.Point_Array :=
            Multi_Channel.Find_Non_Zero;
       begin
          pragma Unreferenced (Points);
       end Check_Multi_Channel;
       procedure Check_Float16 is
-         Points : constant OpenCV.Core.Point_Array :=
+         Points : constant OpenCV.Point_Array :=
            Float16_Image.Find_Non_Zero;
       begin
          pragma Unreferenced (Points);
       end Check_Float16;
    begin
       declare
-         Points : constant OpenCV.Core.Point_Array :=
+         Points : constant OpenCV.Point_Array :=
            Empty_Image.Find_Non_Zero;
       begin
          AUnit.Assertions.Assert
@@ -923,15 +924,15 @@ package body Mat_Mask_Tests is
         OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
       Multi_Channel_Mask : constant OpenCV.Core.Mat :=
         OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 3));
-      Value              : constant OpenCV.Core.Scalar :=
-        OpenCV.Core.Make_Scalar (10.0, 20.0, 30.0);
+      Value              : constant OpenCV.Scalar :=
+        OpenCV.Make_Scalar (10.0, 20.0, 30.0);
 
       procedure Set_With_Multi_Channel_Mask is
       begin
          Image.Set_To (Value, Multi_Channel_Mask);
       end Set_With_Multi_Channel_Mask;
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (1.0, 2.0, 3.0));
+      Image.Set_To (OpenCV.Make_Scalar (1.0, 2.0, 3.0));
       OpenCV.Core.UInt8_Access.Set (Mask, 0, 0, 0);
       OpenCV.Core.UInt8_Access.Set (Mask, 0, 1, 1);
       OpenCV.Core.UInt8_Access.Set (Mask, 1, 0, 255);
@@ -961,9 +962,9 @@ package body Mat_Mask_Tests is
       Destination : OpenCV.Core.Mat :=
         OpenCV.Core.Create (1, 1, (OpenCV.Core.Float32, 1));
    begin
-      Source.Set_To (OpenCV.Core.Make_Scalar (1.0, 2.0, 3.0));
+      Source.Set_To (OpenCV.Make_Scalar (1.0, 2.0, 3.0));
       Source.Copy_To (Destination);
-      Source.Set_To (OpenCV.Core.Make_Scalar (4.0, 5.0, 6.0));
+      Source.Set_To (OpenCV.Make_Scalar (4.0, 5.0, 6.0));
 
       AUnit.Assertions.Assert
         (Destination.Rows = 2
@@ -984,8 +985,8 @@ package body Mat_Mask_Tests is
         OpenCV.Core.Create (2, 4, (OpenCV.Core.UInt8, 1));
       Source, Destination               : OpenCV.Core.Mat;
    begin
-      Source_Parent.Set_To (OpenCV.Core.Make_Scalar (0.0));
-      Destination_Parent.Set_To (OpenCV.Core.Make_Scalar (9.0));
+      Source_Parent.Set_To (OpenCV.Make_Scalar (0.0));
+      Destination_Parent.Set_To (OpenCV.Make_Scalar (9.0));
       OpenCV.Core.UInt8_Access.Set (Source_Parent, 0, 1, 1);
       OpenCV.Core.UInt8_Access.Set (Source_Parent, 0, 2, 2);
       OpenCV.Core.UInt8_Access.Set (Source_Parent, 1, 1, 3);
@@ -1022,12 +1023,12 @@ package body Mat_Mask_Tests is
       OpenCV.Core.UInt8_Access.Set (Source, 0, 1, 2);
       OpenCV.Core.UInt8_Access.Set (Source, 1, 0, 3);
       OpenCV.Core.UInt8_Access.Set (Source, 1, 1, 4);
-      Mask.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Mask.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.UInt8_Access.Set (Mask, 0, 1, 1);
       OpenCV.Core.UInt8_Access.Set (Mask, 1, 0, 255);
       Existing_Destination :=
         OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
-      Existing_Destination.Set_To (OpenCV.Core.Make_Scalar (9.0));
+      Existing_Destination.Set_To (OpenCV.Make_Scalar (9.0));
       Source.Copy_To (New_Destination, Mask);
       Source.Copy_To (Existing_Destination, Mask);
 
@@ -1065,16 +1066,16 @@ package body Mat_Mask_Tests is
    begin
       OpenCV.Core.UInt8_Vec3_Access.Set (Source, 0, 0, (1, 2, 3));
       OpenCV.Core.UInt8_Vec3_Access.Set (Source, 0, 1, (4, 5, 6));
-      Compare_Source.Set_To (OpenCV.Core.Make_Scalar (0.0));
-      Compare_Threshold.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Compare_Source.Set_To (OpenCV.Make_Scalar (0.0));
+      Compare_Threshold.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.UInt8_Access.Set (Compare_Source, 0, 1, 1);
       Mask :=
         Compare_Source.Compare (Compare_Threshold, OpenCV.Core.Greater_Than);
       Destination := OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 3));
-      Destination.Set_To (OpenCV.Core.Make_Scalar (9.0, 9.0, 9.0));
+      Destination.Set_To (OpenCV.Make_Scalar (9.0, 9.0, 9.0));
       Source.Copy_To (Destination, Mask);
       Zero_Mask := OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 1));
-      Zero_Mask.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Zero_Mask.Set_To (OpenCV.Make_Scalar (0.0));
       Source.Copy_To (Destination, Zero_Mask);
       Empty_Source.Copy_To (Empty_Destination, Empty_Mask);
 

@@ -1,11 +1,11 @@
 with AUnit.Assertions;
 with AUnit.Test_Caller;
 with AUnit.Test_Fixtures;
-with OpenCV.Core;
+with OpenCV;
 
 package body Rotated_Rect_Tests is
 
-   use type OpenCV.Core.Float32_Value;
+   use type OpenCV.Float32_Value;
 
    type Fixture is new AUnit.Test_Fixtures.Test_Fixture with null record;
    package Caller is new AUnit.Test_Caller (Fixture);
@@ -13,7 +13,7 @@ package body Rotated_Rect_Tests is
 
    procedure Float32_Size_Defaults (Test : in out Fixture) is
       pragma Unreferenced (Test);
-      Value : OpenCV.Core.Float32_Size;
+      Value : OpenCV.Float32_Size;
    begin
       AUnit.Assertions.Assert
         (Value.Width = 0.0, "default width must be zero");
@@ -23,7 +23,7 @@ package body Rotated_Rect_Tests is
 
    procedure Float32_Size_Fractional (Test : in out Fixture) is
       pragma Unreferenced (Test);
-      Value : constant OpenCV.Core.Float32_Size :=
+      Value : constant OpenCV.Float32_Size :=
         (Width => 1.5, Height => -2.25);
    begin
       AUnit.Assertions.Assert (Value.Width = 1.5, "fractional width retained");
@@ -33,7 +33,7 @@ package body Rotated_Rect_Tests is
 
    procedure Rotated_Rect_Defaults (Test : in out Fixture) is
       pragma Unreferenced (Test);
-      Value : OpenCV.Core.Rotated_Rect;
+      Value : OpenCV.Rotated_Rect;
    begin
       AUnit.Assertions.Assert (Value.Center.X = 0.0, "default center X");
       AUnit.Assertions.Assert (Value.Center.Y = 0.0, "default center Y");
@@ -44,7 +44,7 @@ package body Rotated_Rect_Tests is
 
    procedure Fractional_Negative_Center (Test : in out Fixture) is
       pragma Unreferenced (Test);
-      Value : constant OpenCV.Core.Rotated_Rect :=
+      Value : constant OpenCV.Rotated_Rect :=
         (Center        => (X => -1.25, Y => 3.5),
          Size          => (Width => 0.0, Height => 0.0),
          Angle_Degrees => 0.0);
@@ -55,7 +55,7 @@ package body Rotated_Rect_Tests is
 
    procedure Aggregate_Size (Test : in out Fixture) is
       pragma Unreferenced (Test);
-      Value : constant OpenCV.Core.Rotated_Rect :=
+      Value : constant OpenCV.Rotated_Rect :=
         (Center        => (X => 0.0, Y => 0.0),
          Size          => (Width => 7.25, Height => 4.5),
          Angle_Degrees => 0.0);
@@ -66,7 +66,7 @@ package body Rotated_Rect_Tests is
 
    procedure Positive_Angle (Test : in out Fixture) is
       pragma Unreferenced (Test);
-      Value : constant OpenCV.Core.Rotated_Rect :=
+      Value : constant OpenCV.Rotated_Rect :=
         (Center        => (X => 0.0, Y => 0.0),
          Size          => (Width => 0.0, Height => 0.0),
          Angle_Degrees => 123.5);
@@ -77,7 +77,7 @@ package body Rotated_Rect_Tests is
 
    procedure Negative_Angle (Test : in out Fixture) is
       pragma Unreferenced (Test);
-      Value : constant OpenCV.Core.Rotated_Rect :=
+      Value : constant OpenCV.Rotated_Rect :=
         (Center        => (X => 0.0, Y => 0.0),
          Size          => (Width => 0.0, Height => 0.0),
          Angle_Degrees => -271.25);

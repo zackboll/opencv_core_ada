@@ -2,6 +2,7 @@ with AUnit.Assertions;
 with AUnit.Test_Caller;
 with Interfaces;
 with Mat_Test_Support;
+with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
 with OpenCV.Core.Float32_Vec3;
@@ -15,10 +16,10 @@ package body Mat_Transform_Tests is
    use type Interfaces.IEEE_Float_32;
    use type Interfaces.Unsigned_8;
    use type OpenCV.Core.Channel_Count;
-   use type OpenCV.Core.Border_Kind;
+   use type OpenCV.Border_Kind;
    use type OpenCV.Core.Depth_Type;
-   use type OpenCV.Core.Point_Coordinate;
-   use type OpenCV.Core.Size_Coordinate;
+   use type OpenCV.Point_Coordinate;
+   use type OpenCV.Size_Coordinate;
    use type OpenCV.Core.UInt8_Vec3.Vector;
    use type OpenCV.Core.Float32_Vec3.Vector;
 
@@ -854,16 +855,16 @@ package body Mat_Transform_Tests is
               Bottom => 0,
               Left   => 2,
               Right  => 2,
-              Kind   => OpenCV.Core.Constant_Border,
-              Value  => OpenCV.Core.Make_Scalar (9.0));
+              Kind   => OpenCV.Constant_Border,
+              Value  => OpenCV.Make_Scalar (9.0));
          Replicate_Result   : constant OpenCV.Core.Mat :=
-           Source.Copy_Make_Border (0, 0, 2, 2, OpenCV.Core.Replicate);
+           Source.Copy_Make_Border (0, 0, 2, 2, OpenCV.Replicate);
          Reflect_Result     : constant OpenCV.Core.Mat :=
-           Source.Copy_Make_Border (0, 0, 2, 2, OpenCV.Core.Reflect);
+           Source.Copy_Make_Border (0, 0, 2, 2, OpenCV.Reflect);
          Reflect_101_Result : constant OpenCV.Core.Mat :=
-           Source.Copy_Make_Border (0, 0, 2, 2, OpenCV.Core.Reflect_101);
+           Source.Copy_Make_Border (0, 0, 2, 2, OpenCV.Reflect_101);
          Wrap_Result        : constant OpenCV.Core.Mat :=
-           Source.Copy_Make_Border (0, 0, 2, 2, OpenCV.Core.Wrap);
+           Source.Copy_Make_Border (0, 0, 2, 2, OpenCV.Wrap);
       begin
          AUnit.Assertions.Assert
            (Constant_Result.Rows = 1
@@ -912,8 +913,8 @@ package body Mat_Transform_Tests is
               Bottom => 1,
               Left   => 1,
               Right  => 1,
-              Kind   => OpenCV.Core.Constant_Border,
-              Value  => OpenCV.Core.Make_Scalar (10.0, 20.0, 30.0));
+              Kind   => OpenCV.Constant_Border,
+              Value  => OpenCV.Make_Scalar (10.0, 20.0, 30.0));
       begin
          AUnit.Assertions.Assert
            (Result.Rows = 3
@@ -949,7 +950,7 @@ package body Mat_Transform_Tests is
               Bottom => 0,
               Left   => 0,
               Right  => 0,
-              Kind   => OpenCV.Core.Replicate);
+              Kind   => OpenCV.Replicate);
       end Border_Too_Large;
    begin
       declare
@@ -970,14 +971,14 @@ package body Mat_Transform_Tests is
                  Bottom => 0,
                  Left   => 1,
                  Right  => 1,
-                 Kind   => OpenCV.Core.Replicate);
+                 Kind   => OpenCV.Replicate);
             Isolated_Result : constant OpenCV.Core.Mat :=
               Region.Copy_Make_Border
                 (Top      => 0,
                  Bottom   => 0,
                  Left     => 1,
                  Right    => 1,
-                 Kind     => OpenCV.Core.Replicate,
+                 Kind     => OpenCV.Replicate,
                  Isolated => True);
          begin
             Result := Isolated_Result;
@@ -999,7 +1000,7 @@ package body Mat_Transform_Tests is
 
       declare
          Empty_Result : constant OpenCV.Core.Mat :=
-           Empty.Copy_Make_Border (0, 0, 0, 0, OpenCV.Core.Constant_Border);
+           Empty.Copy_Make_Border (0, 0, 0, 0, OpenCV.Constant_Border);
       begin
          AUnit.Assertions.Assert
            (OpenCV.Core.UInt8_Access.Get (Result, 0, 0) = 99
@@ -1019,14 +1020,14 @@ package body Mat_Transform_Tests is
    is
       pragma Unreferenced (Test);
       Kinds     :
-        constant array (Positive range <>) of OpenCV.Core.Border_Kind :=
-          (OpenCV.Core.Constant_Border,
-           OpenCV.Core.Replicate,
-           OpenCV.Core.Reflect,
-           OpenCV.Core.Reflect_101,
-           OpenCV.Core.Wrap);
+        constant array (Positive range <>) of OpenCV.Border_Kind :=
+          (OpenCV.Constant_Border,
+           OpenCV.Replicate,
+           OpenCV.Reflect,
+           OpenCV.Reflect_101,
+           OpenCV.Wrap);
       Positions :
-        constant array (Positive range <>) of OpenCV.Core.Point_Coordinate :=
+        constant array (Positive range <>) of OpenCV.Point_Coordinate :=
           (0, 3, 7);
    begin
       for Kind of Kinds loop
@@ -1039,7 +1040,7 @@ package body Mat_Transform_Tests is
                AUnit.Assertions.Assert
                  (not Interpolation.Uses_Constant
                   and then Interpolation.Index
-                           = OpenCV.Core.Size_Coordinate (Position)
+                           = OpenCV.Size_Coordinate (Position)
                   and then Interpolation.Index < 8,
                   "In-range border interpolation must return its"
                   & " source coordinate");
@@ -1054,9 +1055,9 @@ package body Mat_Transform_Tests is
       pragma Unreferenced (Test);
 
       procedure Assert_Index
-        (Position : OpenCV.Core.Point_Coordinate;
-         Kind     : OpenCV.Core.Border_Kind;
-         Expected : OpenCV.Core.Size_Coordinate)
+        (Position : OpenCV.Point_Coordinate;
+         Kind     : OpenCV.Border_Kind;
+         Expected : OpenCV.Size_Coordinate)
       is
          Interpolation : constant OpenCV.Core.Border_Interpolation_Result :=
            OpenCV.Core.Border_Interpolate (Position, 8, Kind);
@@ -1069,32 +1070,32 @@ package body Mat_Transform_Tests is
             & " valid donor index");
       end Assert_Index;
    begin
-      Assert_Index (-1, OpenCV.Core.Replicate, 0);
-      Assert_Index (-100, OpenCV.Core.Replicate, 0);
-      Assert_Index (8, OpenCV.Core.Replicate, 7);
-      Assert_Index (100, OpenCV.Core.Replicate, 7);
+      Assert_Index (-1, OpenCV.Replicate, 0);
+      Assert_Index (-100, OpenCV.Replicate, 0);
+      Assert_Index (8, OpenCV.Replicate, 7);
+      Assert_Index (100, OpenCV.Replicate, 7);
 
-      Assert_Index (-1, OpenCV.Core.Reflect, 0);
-      Assert_Index (-2, OpenCV.Core.Reflect, 1);
-      Assert_Index (8, OpenCV.Core.Reflect, 7);
-      Assert_Index (9, OpenCV.Core.Reflect, 6);
-      Assert_Index (-18, OpenCV.Core.Reflect, 1);
-      Assert_Index (25, OpenCV.Core.Reflect, 6);
+      Assert_Index (-1, OpenCV.Reflect, 0);
+      Assert_Index (-2, OpenCV.Reflect, 1);
+      Assert_Index (8, OpenCV.Reflect, 7);
+      Assert_Index (9, OpenCV.Reflect, 6);
+      Assert_Index (-18, OpenCV.Reflect, 1);
+      Assert_Index (25, OpenCV.Reflect, 6);
 
-      Assert_Index (-1, OpenCV.Core.Reflect_101, 1);
-      Assert_Index (-2, OpenCV.Core.Reflect_101, 2);
-      Assert_Index (8, OpenCV.Core.Reflect_101, 6);
-      Assert_Index (9, OpenCV.Core.Reflect_101, 5);
-      Assert_Index (-18, OpenCV.Core.Reflect_101, 4);
-      Assert_Index (25, OpenCV.Core.Reflect_101, 3);
+      Assert_Index (-1, OpenCV.Reflect_101, 1);
+      Assert_Index (-2, OpenCV.Reflect_101, 2);
+      Assert_Index (8, OpenCV.Reflect_101, 6);
+      Assert_Index (9, OpenCV.Reflect_101, 5);
+      Assert_Index (-18, OpenCV.Reflect_101, 4);
+      Assert_Index (25, OpenCV.Reflect_101, 3);
 
-      Assert_Index (-1, OpenCV.Core.Wrap, 7);
-      Assert_Index (-8, OpenCV.Core.Wrap, 0);
-      Assert_Index (-9, OpenCV.Core.Wrap, 7);
-      Assert_Index (8, OpenCV.Core.Wrap, 0);
-      Assert_Index (9, OpenCV.Core.Wrap, 1);
-      Assert_Index (-25, OpenCV.Core.Wrap, 7);
-      Assert_Index (25, OpenCV.Core.Wrap, 1);
+      Assert_Index (-1, OpenCV.Wrap, 7);
+      Assert_Index (-8, OpenCV.Wrap, 0);
+      Assert_Index (-9, OpenCV.Wrap, 7);
+      Assert_Index (8, OpenCV.Wrap, 0);
+      Assert_Index (9, OpenCV.Wrap, 1);
+      Assert_Index (-25, OpenCV.Wrap, 7);
+      Assert_Index (25, OpenCV.Wrap, 1);
    end Border_Interpolate_Extrapolation_Mappings;
 
    procedure Border_Interpolate_Constant_And_Length_One
@@ -1102,13 +1103,13 @@ package body Mat_Transform_Tests is
    is
       pragma Unreferenced (Test);
       Kinds     :
-        constant array (Positive range <>) of OpenCV.Core.Border_Kind :=
-          (OpenCV.Core.Replicate,
-           OpenCV.Core.Reflect,
-           OpenCV.Core.Reflect_101,
-           OpenCV.Core.Wrap);
+        constant array (Positive range <>) of OpenCV.Border_Kind :=
+          (OpenCV.Replicate,
+           OpenCV.Reflect,
+           OpenCV.Reflect_101,
+           OpenCV.Wrap);
       Positions :
-        constant array (Positive range <>) of OpenCV.Core.Point_Coordinate :=
+        constant array (Positive range <>) of OpenCV.Point_Coordinate :=
           (-7, 0, 7);
    begin
       for Position of Positions loop
@@ -1129,17 +1130,17 @@ package body Mat_Transform_Tests is
 
       declare
          In_Range : constant OpenCV.Core.Border_Interpolation_Result :=
-           OpenCV.Core.Border_Interpolate (0, 8, OpenCV.Core.Constant_Border);
+           OpenCV.Core.Border_Interpolate (0, 8, OpenCV.Constant_Border);
          At_End   : constant OpenCV.Core.Border_Interpolation_Result :=
-           OpenCV.Core.Border_Interpolate (7, 8, OpenCV.Core.Constant_Border);
+           OpenCV.Core.Border_Interpolate (7, 8, OpenCV.Constant_Border);
          Before   : constant OpenCV.Core.Border_Interpolation_Result :=
-           OpenCV.Core.Border_Interpolate (-1, 8, OpenCV.Core.Constant_Border);
+           OpenCV.Core.Border_Interpolate (-1, 8, OpenCV.Constant_Border);
          After    : constant OpenCV.Core.Border_Interpolation_Result :=
-           OpenCV.Core.Border_Interpolate (8, 8, OpenCV.Core.Constant_Border);
+           OpenCV.Core.Border_Interpolate (8, 8, OpenCV.Constant_Border);
          One      : constant OpenCV.Core.Border_Interpolation_Result :=
-           OpenCV.Core.Border_Interpolate (0, 1, OpenCV.Core.Constant_Border);
+           OpenCV.Core.Border_Interpolate (0, 1, OpenCV.Constant_Border);
          Outside  : constant OpenCV.Core.Border_Interpolation_Result :=
-           OpenCV.Core.Border_Interpolate (-7, 1, OpenCV.Core.Constant_Border);
+           OpenCV.Core.Border_Interpolate (-7, 1, OpenCV.Constant_Border);
       begin
          AUnit.Assertions.Assert
            (not In_Range.Uses_Constant
@@ -1166,7 +1167,7 @@ package body Mat_Transform_Tests is
       procedure Reflect_First is
          Ignored : constant OpenCV.Core.Border_Interpolation_Result :=
            OpenCV.Core.Border_Interpolate
-             (OpenCV.Core.Point_Coordinate'First, 8, OpenCV.Core.Reflect);
+             (OpenCV.Point_Coordinate'First, 8, OpenCV.Reflect);
       begin
          null;
       end Reflect_First;
@@ -1174,7 +1175,7 @@ package body Mat_Transform_Tests is
       procedure Reflect_101_First is
          Ignored : constant OpenCV.Core.Border_Interpolation_Result :=
            OpenCV.Core.Border_Interpolate
-             (OpenCV.Core.Point_Coordinate'First, 8, OpenCV.Core.Reflect_101);
+             (OpenCV.Point_Coordinate'First, 8, OpenCV.Reflect_101);
       begin
          null;
       end Reflect_101_First;
@@ -1182,7 +1183,7 @@ package body Mat_Transform_Tests is
       procedure Unsafe_Wrap is
          Ignored : constant OpenCV.Core.Border_Interpolation_Result :=
            OpenCV.Core.Border_Interpolate
-             (OpenCV.Core.Point_Coordinate'First, 8, OpenCV.Core.Wrap);
+             (OpenCV.Point_Coordinate'First, 8, OpenCV.Wrap);
       begin
          null;
       end Unsafe_Wrap;
@@ -1190,7 +1191,7 @@ package body Mat_Transform_Tests is
       procedure Length_One_Minimum_Wrap is
          Ignored : constant OpenCV.Core.Border_Interpolation_Result :=
            OpenCV.Core.Border_Interpolate
-             (OpenCV.Core.Point_Coordinate'First, 1, OpenCV.Core.Wrap);
+             (OpenCV.Point_Coordinate'First, 1, OpenCV.Wrap);
       begin
          null;
       end Length_One_Minimum_Wrap;
@@ -1212,16 +1213,16 @@ package body Mat_Transform_Tests is
       declare
          Reflect_Safe : constant OpenCV.Core.Border_Interpolation_Result :=
            OpenCV.Core.Border_Interpolate
-             (OpenCV.Core.Point_Coordinate'First + 1,
+             (OpenCV.Point_Coordinate'First + 1,
               Maximum_Length,
-              OpenCV.Core.Reflect);
+              OpenCV.Reflect);
          Wrap_Safe    : constant OpenCV.Core.Border_Interpolation_Result :=
            OpenCV.Core.Border_Interpolate
-             (OpenCV.Core.Point_Coordinate'First + 8, 8, OpenCV.Core.Wrap);
+             (OpenCV.Point_Coordinate'First + 8, 8, OpenCV.Wrap);
       begin
          AUnit.Assertions.Assert
            (not Reflect_Safe.Uses_Constant
-            and then Reflect_Safe.Index = OpenCV.Core.Size_Coordinate'Last - 1
+            and then Reflect_Safe.Index = OpenCV.Size_Coordinate'Last - 1
             and then not Wrap_Safe.Uses_Constant
             and then Wrap_Safe.Index = 0,
             "Coordinates nearest the Reflect and Wrap overflow boundaries"
@@ -1232,21 +1233,21 @@ package body Mat_Transform_Tests is
    procedure Border_Interpolate_Int32_Maximum (Test : in out Mat_Test_Fixture)
    is
       pragma Unreferenced (Test);
-      Kinds : constant array (Positive range <>) of OpenCV.Core.Border_Kind :=
-        (OpenCV.Core.Constant_Border,
-         OpenCV.Core.Replicate,
-         OpenCV.Core.Reflect,
-         OpenCV.Core.Reflect_101,
-         OpenCV.Core.Wrap);
+      Kinds : constant array (Positive range <>) of OpenCV.Border_Kind :=
+        (OpenCV.Constant_Border,
+         OpenCV.Replicate,
+         OpenCV.Reflect,
+         OpenCV.Reflect_101,
+         OpenCV.Wrap);
    begin
       for Kind of Kinds loop
          declare
             Interpolation : constant OpenCV.Core.Border_Interpolation_Result :=
               OpenCV.Core.Border_Interpolate
-                (OpenCV.Core.Point_Coordinate'Last, 8, Kind);
+                (OpenCV.Point_Coordinate'Last, 8, Kind);
          begin
             AUnit.Assertions.Assert
-              ((if Kind = OpenCV.Core.Constant_Border
+              ((if Kind = OpenCV.Constant_Border
                 then Interpolation.Uses_Constant
                 else
                   not Interpolation.Uses_Constant
@@ -2474,7 +2475,7 @@ package body Mat_Transform_Tests is
         (Index_At (Inspected, 0, 0) = 1
          and then Index_At (Inspect_Sort_Indices (Indices), 0, 0) = 1,
          "Mutating Source after Sort_Indices must not change the result");
-      Indices.Set_To (OpenCV.Core.Make_Scalar (9.0));
+      Indices.Set_To (OpenCV.Make_Scalar (9.0));
       AUnit.Assertions.Assert
         (OpenCV.Core.Float32_Access.Get (Source, 0, 1) = 1.0
          and then OpenCV.Core.Float32_Access.Get (Source, 0, 2) = 2.0,
@@ -2751,7 +2752,7 @@ package body Mat_Transform_Tests is
         OpenCV.Core.Create (4, 5, (OpenCV.Core.Float32, 1));
       Region : OpenCV.Core.Mat;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Parent.Set_To (OpenCV.Make_Scalar (99.0));
       Region := Parent.Region ((X => 1, Y => 1, Width => 3, Height => 3));
       OpenCV.Core.Float32_Access.Set (Region, 0, 0, 1.0);
       OpenCV.Core.Float32_Access.Set (Region, 0, 1, 2.0);
@@ -2963,7 +2964,7 @@ package body Mat_Transform_Tests is
       pragma Unreferenced (Test);
       Image : OpenCV.Core.Mat := Nonzero_3x3;
    begin
-      Image.Set_Identity (OpenCV.Core.Make_Scalar (2.5));
+      Image.Set_Identity (OpenCV.Make_Scalar (2.5));
 
       AUnit.Assertions.Assert
         (Matches_3x3 (Image, 2.5, 0.0, 0.0, 0.0, 2.5, 0.0, 0.0, 0.0, 2.5),
@@ -2975,7 +2976,7 @@ package body Mat_Transform_Tests is
       Image : OpenCV.Core.Mat :=
         OpenCV.Core.Create (2, 4, (OpenCV.Core.Float32, 1));
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (9.0));
+      Image.Set_To (OpenCV.Make_Scalar (9.0));
       Image.Set_Identity;
 
       AUnit.Assertions.Assert
@@ -2999,7 +3000,7 @@ package body Mat_Transform_Tests is
       Image : OpenCV.Core.Mat :=
         OpenCV.Core.Create (4, 2, (OpenCV.Core.Float32, 1));
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (9.0));
+      Image.Set_To (OpenCV.Make_Scalar (9.0));
       Image.Set_Identity;
 
       AUnit.Assertions.Assert
@@ -3026,8 +3027,8 @@ package body Mat_Transform_Tests is
       Col : OpenCV.Core.Mat :=
         OpenCV.Core.Create (3, 1, (OpenCV.Core.Float32, 1));
    begin
-      Row.Set_To (OpenCV.Core.Make_Scalar (9.0));
-      Col.Set_To (OpenCV.Core.Make_Scalar (9.0));
+      Row.Set_To (OpenCV.Make_Scalar (9.0));
+      Col.Set_To (OpenCV.Make_Scalar (9.0));
       Row.Set_Identity;
       Col.Set_Identity;
 
@@ -3075,9 +3076,9 @@ package body Mat_Transform_Tests is
       Diagonal : constant OpenCV.Core.Float32_Vec3.Vector := (2.0, 3.0, 4.0);
       Zero     : constant OpenCV.Core.Float32_Vec3.Vector := (0.0, 0.0, 0.0);
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (9.0, 8.0, 7.0));
+      Image.Set_To (OpenCV.Make_Scalar (9.0, 8.0, 7.0));
       Image.Set_Identity
-        (OpenCV.Core.Make_Scalar
+        (OpenCV.Make_Scalar
            (Component_0 => 2.0, Component_1 => 3.0, Component_2 => 4.0));
 
       AUnit.Assertions.Assert
@@ -3098,8 +3099,8 @@ package body Mat_Transform_Tests is
       Ch2   : OpenCV.Core.Mat;
       Ch3   : OpenCV.Core.Mat;
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (9.0, 8.0, 7.0, 6.0));
-      Image.Set_Identity (OpenCV.Core.Make_Scalar (2.0, 3.0, 4.0, 5.0));
+      Image.Set_To (OpenCV.Make_Scalar (9.0, 8.0, 7.0, 6.0));
+      Image.Set_Identity (OpenCV.Make_Scalar (2.0, 3.0, 4.0, 5.0));
 
       AUnit.Assertions.Assert
         (Image.Channels = 4 and then Image.Depth = OpenCV.Core.Float32,
@@ -3155,8 +3156,8 @@ package body Mat_Transform_Tests is
       Image : OpenCV.Core.Mat :=
         OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (9.0));
-      Image.Set_Identity (OpenCV.Core.Make_Scalar (7.0));
+      Image.Set_To (OpenCV.Make_Scalar (9.0));
+      Image.Set_Identity (OpenCV.Make_Scalar (7.0));
 
       AUnit.Assertions.Assert
         (Image.Depth = OpenCV.Core.UInt8
@@ -3176,8 +3177,8 @@ package body Mat_Transform_Tests is
       Image : OpenCV.Core.Mat :=
         OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (9.0));
-      Image.Set_Identity (OpenCV.Core.Make_Scalar (7.6));
+      Image.Set_To (OpenCV.Make_Scalar (9.0));
+      Image.Set_Identity (OpenCV.Make_Scalar (7.6));
 
       AUnit.Assertions.Assert
         (OpenCV.Core.UInt8_Access.Get (Image, 0, 0) = 8
@@ -3192,8 +3193,8 @@ package body Mat_Transform_Tests is
         OpenCV.Core.Create (2, 2, (OpenCV.Core.Int32, 1));
       Inspected : OpenCV.Core.Mat;
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (99.0));
-      Image.Set_Identity (OpenCV.Core.Make_Scalar (7.0));
+      Image.Set_To (OpenCV.Make_Scalar (99.0));
+      Image.Set_Identity (OpenCV.Make_Scalar (7.0));
 
       AUnit.Assertions.Assert
         (Image.Depth = OpenCV.Core.Int32
@@ -3217,8 +3218,8 @@ package body Mat_Transform_Tests is
         OpenCV.Core.Create (2, 2, (OpenCV.Core.Float64, 1));
       Inspected : OpenCV.Core.Mat;
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (9.0));
-      Image.Set_Identity (OpenCV.Core.Make_Scalar (2.5));
+      Image.Set_To (OpenCV.Make_Scalar (9.0));
+      Image.Set_Identity (OpenCV.Make_Scalar (2.5));
 
       AUnit.Assertions.Assert
         (Image.Depth = OpenCV.Core.Float64
@@ -3241,8 +3242,8 @@ package body Mat_Transform_Tests is
         OpenCV.Core.Create (2, 2, (OpenCV.Core.Float16, 1));
       Inspected : OpenCV.Core.Mat;
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (9.0));
-      Image.Set_Identity (OpenCV.Core.Make_Scalar (2.0));
+      Image.Set_To (OpenCV.Make_Scalar (9.0));
+      Image.Set_Identity (OpenCV.Make_Scalar (2.0));
 
       AUnit.Assertions.Assert
         (Image.Depth = OpenCV.Core.Float16
@@ -3266,7 +3267,7 @@ package body Mat_Transform_Tests is
         OpenCV.Core.Create (4, 5, (OpenCV.Core.Float32, 1));
       Region : OpenCV.Core.Mat;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Parent.Set_To (OpenCV.Make_Scalar (99.0));
       Region := Parent.Region ((X => 1, Y => 1, Width => 3, Height => 2));
 
       AUnit.Assertions.Assert
@@ -3749,7 +3750,7 @@ package body Mat_Transform_Tests is
         OpenCV.Core.Create (2, 6, (OpenCV.Core.Float32, 1));
    begin
       OpenCV.Core.Float32_Vec3_Access.Set (Source, 0, 0, (1.0, 2.0, 3.0));
-      Parent.Set_To (OpenCV.Core.Make_Scalar (9.0));
+      Parent.Set_To (OpenCV.Make_Scalar (9.0));
       OpenCV.Core.Float32_Access.Set (Parent, 0, 1, 1.0);
       OpenCV.Core.Float32_Access.Set (Parent, 0, 2, 0.0);
       OpenCV.Core.Float32_Access.Set (Parent, 0, 3, 0.0);
@@ -4341,8 +4342,8 @@ package body Mat_Transform_Tests is
         OpenCV.Core.Create (2, 4, (OpenCV.Core.Float32, 1));
       Matrix : constant OpenCV.Core.Mat := Genuine_C2_Matrix;
    begin
-      Xs.Set_To (OpenCV.Core.Make_Scalar (9.0));
-      Ys.Set_To (OpenCV.Core.Make_Scalar (8.0));
+      Xs.Set_To (OpenCV.Make_Scalar (9.0));
+      Ys.Set_To (OpenCV.Make_Scalar (8.0));
       OpenCV.Core.Float32_Access.Set (Xs, 0, 1, 2.0);
       OpenCV.Core.Float32_Access.Set (Ys, 0, 1, 4.0);
       OpenCV.Core.Float32_Access.Set (Xs, 0, 2, 0.0);
@@ -4390,7 +4391,7 @@ package body Mat_Transform_Tests is
       Parent : OpenCV.Core.Mat :=
         OpenCV.Core.Create (3, 5, (OpenCV.Core.Float32, 1));
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (9.0));
+      Parent.Set_To (OpenCV.Make_Scalar (9.0));
       OpenCV.Core.Float32_Access.Set (Parent, 0, 1, 2.0);
       OpenCV.Core.Float32_Access.Set (Parent, 0, 2, 0.0);
       OpenCV.Core.Float32_Access.Set (Parent, 0, 3, 10.0);
@@ -4434,7 +4435,7 @@ package body Mat_Transform_Tests is
       Matrix : OpenCV.Core.Mat := Genuine_C2_Matrix;
       Result : OpenCV.Core.Mat := Source.Perspective_Transform (Matrix);
    begin
-      Source.Set_To (OpenCV.Core.Make_Scalar (9.0, 8.0));
+      Source.Set_To (OpenCV.Make_Scalar (9.0, 8.0));
       OpenCV.Core.Float32_Access.Set (Matrix, 0, 0, 0.0);
       AUnit.Assertions.Assert
         (C2_Component (Result, 0, 0, 0) = 7.0
@@ -4442,7 +4443,7 @@ package body Mat_Transform_Tests is
          and then C2_Component (Result, 0, 0, 1) = 10.0,
          "Mutating Self or Transform_Matrix must not change Result");
 
-      Result.Set_To (OpenCV.Core.Make_Scalar (-1.0, -2.0));
+      Result.Set_To (OpenCV.Make_Scalar (-1.0, -2.0));
       AUnit.Assertions.Assert
         (C2_Component (Source, 0, 0, 0) = 9.0
          and then C2_Component (Source, 1, 0, 0) = 8.0
@@ -4869,7 +4870,7 @@ package body Mat_Transform_Tests is
       Source : OpenCV.Core.Mat :=
         OpenCV.Core.Create (4, 4, (OpenCV.Core.Float32, 1));
    begin
-      Source.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Source.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.Float32_Access.Set (Source, 0, 0, 1.0);
 
       declare
@@ -4916,7 +4917,7 @@ package body Mat_Transform_Tests is
       Expected_DC    : constant Long_Float :=
         Constant_Value * Long_Float (Rows) * Long_Float (Columns);
    begin
-      Source.Set_To (OpenCV.Core.Make_Scalar (Constant_Value));
+      Source.Set_To (OpenCV.Make_Scalar (Constant_Value));
 
       declare
          Spectrum : constant OpenCV.Core.Mat :=
@@ -5030,7 +5031,7 @@ package body Mat_Transform_Tests is
       Parent : OpenCV.Core.Mat :=
         OpenCV.Core.Create (3, 4, (OpenCV.Core.Float32, 1));
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Parent.Set_To (OpenCV.Make_Scalar (99.0));
       OpenCV.Core.Float32_Access.Set (Parent, 0, 1, 1.0);
       OpenCV.Core.Float32_Access.Set (Parent, 0, 2, 2.0);
       OpenCV.Core.Float32_Access.Set (Parent, 1, 1, 3.0);
@@ -5085,7 +5086,7 @@ package body Mat_Transform_Tests is
         Spectrum.Inverse_Real_Discrete_Fourier_Transform;
       Before   : constant OpenCV.Core.Mat_Array := Spectrum.Split;
    begin
-      Spectrum.Set_To (OpenCV.Core.Make_Scalar (123.0, 456.0));
+      Spectrum.Set_To (OpenCV.Make_Scalar (123.0, 456.0));
       AUnit.Assertions.Assert
         (OpenCV.Core.Float32_Access.Get (Source, 0, 0) = 1.0
          and then OpenCV.Core.Float32_Access.Get (Source, 1, 2) = 6.0,
@@ -5338,7 +5339,7 @@ package body Mat_Transform_Tests is
       Parent : OpenCV.Core.Mat :=
         OpenCV.Core.Create (3, 5, (OpenCV.Core.Float32, 1));
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Parent.Set_To (OpenCV.Make_Scalar (99.0));
       for Row in 0 .. 2 loop
          for Column in 0 .. 2 loop
             OpenCV.Core.Float32_Access.Set
@@ -5363,12 +5364,12 @@ package body Mat_Transform_Tests is
             and then DFT_Float32_C1_Close (Restored, Original, 0.000_1)
             and then DFT_Float32_C1_Close (Source, Original, 0.0),
             "Packed DFT must accept a Region and leave its source unchanged");
-         Packed.Set_To (OpenCV.Core.Make_Scalar (-7.0));
+         Packed.Set_To (OpenCV.Make_Scalar (-7.0));
          AUnit.Assertions.Assert
            (DFT_Float32_C1_Close (Restored, Original, 0.000_1)
             and then DFT_Float32_C1_Close (Source, Original, 0.0),
             "Packed and inverse results must own storage independently");
-         Restored.Set_To (OpenCV.Core.Make_Scalar (-9.0));
+         Restored.Set_To (OpenCV.Make_Scalar (-9.0));
          AUnit.Assertions.Assert
            (DFT_Float32_C1_Close (Source, Original, 0.0),
             "Mutating inverse output must not alter source storage");
@@ -5465,15 +5466,15 @@ package body Mat_Transform_Tests is
       for Row in 0 .. Source32.Rows - 1 loop
          declare
             Expected32 : constant OpenCV.Core.Mat :=
-              Source32.Row_View (OpenCV.Core.Size_Coordinate (Row))
+              Source32.Row_View (OpenCV.Size_Coordinate (Row))
                 .Packed_Discrete_Fourier_Transform;
             Actual32   : constant OpenCV.Core.Mat :=
-              Packed32.Row_View (OpenCV.Core.Size_Coordinate (Row));
+              Packed32.Row_View (OpenCV.Size_Coordinate (Row));
             Expected64 : constant OpenCV.Core.Mat :=
-              Source64.Row_View (OpenCV.Core.Size_Coordinate (Row))
+              Source64.Row_View (OpenCV.Size_Coordinate (Row))
                 .Packed_Discrete_Fourier_Transform;
             Actual64   : constant OpenCV.Core.Mat :=
-              Packed64.Row_View (OpenCV.Core.Size_Coordinate (Row));
+              Packed64.Row_View (OpenCV.Size_Coordinate (Row));
          begin
             All_Rows_Match :=
               All_Rows_Match
@@ -5539,7 +5540,7 @@ package body Mat_Transform_Tests is
       Parent : OpenCV.Core.Mat :=
         OpenCV.Core.Create (3, 7, (OpenCV.Core.Float32, 1));
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Parent.Set_To (OpenCV.Make_Scalar (99.0));
       for Row in 0 .. 2 loop
          for Column in 0 .. 4 loop
             OpenCV.Core.Float32_Access.Set
@@ -5563,11 +5564,11 @@ package body Mat_Transform_Tests is
             and then DFT_Float32_C1_Close (Restored, Original, 0.000_1)
             and then DFT_Float32_C1_Close (Source, Original, 0.0),
             "Packed DFT_ROWS must support Regions and leave Self unchanged");
-         Packed.Set_To (OpenCV.Core.Make_Scalar (-7.0));
+         Packed.Set_To (OpenCV.Make_Scalar (-7.0));
          AUnit.Assertions.Assert
            (DFT_Float32_C1_Close (Restored, Original, 0.000_1),
             "Packed row inverse output must not share packed storage");
-         Restored.Set_To (OpenCV.Core.Make_Scalar (-9.0));
+         Restored.Set_To (OpenCV.Make_Scalar (-9.0));
          AUnit.Assertions.Assert
            (DFT_Float32_C1_Close (Source, Original, 0.0),
             "Packed row results must own independent storage");
@@ -5670,15 +5671,15 @@ package body Mat_Transform_Tests is
       for Row in 0 .. Source32.Rows - 1 loop
          declare
             Expected32 : constant OpenCV.Core.Mat :=
-              Source32.Row_View (OpenCV.Core.Size_Coordinate (Row))
+              Source32.Row_View (OpenCV.Size_Coordinate (Row))
                 .Discrete_Fourier_Transform;
             Actual32   : constant OpenCV.Core.Mat :=
-              Rows32.Row_View (OpenCV.Core.Size_Coordinate (Row));
+              Rows32.Row_View (OpenCV.Size_Coordinate (Row));
             Expected64 : constant OpenCV.Core.Mat :=
-              Source64.Row_View (OpenCV.Core.Size_Coordinate (Row))
+              Source64.Row_View (OpenCV.Size_Coordinate (Row))
                 .Discrete_Fourier_Transform;
             Actual64   : constant OpenCV.Core.Mat :=
-              Rows64.Row_View (OpenCV.Core.Size_Coordinate (Row));
+              Rows64.Row_View (OpenCV.Size_Coordinate (Row));
          begin
             All_Rows_Match :=
               All_Rows_Match
@@ -5752,11 +5753,11 @@ package body Mat_Transform_Tests is
          and then DFT_Float32_C2_Close (Restored, Source, 0.000_1),
          "C2 DFT_ROWS plus scaled complex inverse must round-trip both"
          & " components");
-      Spectrum.Set_To (OpenCV.Core.Make_Scalar (99.0, -99.0));
+      Spectrum.Set_To (OpenCV.Make_Scalar (99.0, -99.0));
       AUnit.Assertions.Assert
         (DFT_Float32_C2_Close (Restored, Source, 0.000_1),
          "Mutating a row-wise spectrum must not alter its returned inverse");
-      Restored.Set_To (OpenCV.Core.Make_Scalar (0.0, 0.0));
+      Restored.Set_To (OpenCV.Make_Scalar (0.0, 0.0));
       AUnit.Assertions.Assert
         (OpenCV.Core.Float32_Access.Get (Source.Split (0), 0, 0) = 1.0,
          "Returned row-wise Mats must own storage independently"
@@ -5768,7 +5769,7 @@ package body Mat_Transform_Tests is
       Parent : OpenCV.Core.Mat :=
         OpenCV.Core.Create (3, 5, (OpenCV.Core.Float32, 1));
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (50.0));
+      Parent.Set_To (OpenCV.Make_Scalar (50.0));
       for Row in 0 .. 2 loop
          for Column in 0 .. 2 loop
             OpenCV.Core.Float32_Access.Set
@@ -5961,8 +5962,8 @@ package body Mat_Transform_Tests is
               Bottom => 0,
               Left   => 0,
               Right  => Optimal - Minimum,
-              Kind   => OpenCV.Core.Constant_Border,
-              Value  => OpenCV.Core.Make_Scalar (0.0));
+              Kind   => OpenCV.Constant_Border,
+              Value  => OpenCV.Make_Scalar (0.0));
          Spectrum : constant OpenCV.Core.Mat :=
            Padded.Discrete_Fourier_Transform;
       begin
@@ -5993,8 +5994,8 @@ package body Mat_Transform_Tests is
       Imaginary_Part : OpenCV.Core.Mat :=
         OpenCV.Core.Create (Rows, Columns, (Depth, 1));
    begin
-      Real_Part.Set_To (OpenCV.Core.Make_Scalar (1.0));
-      Imaginary_Part.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Real_Part.Set_To (OpenCV.Make_Scalar (1.0));
+      Imaginary_Part.Set_To (OpenCV.Make_Scalar (0.0));
       return Complex_Spectrum_From_Reals (Real_Part, Imaginary_Part);
    end Unit_Complex_Spectrum;
 
@@ -6086,7 +6087,7 @@ package body Mat_Transform_Tests is
         Sample_Complex_Right.Convert_To (OpenCV.Core.Float64);
       Result : constant OpenCV.Core.Mat :=
         OpenCV.Core.Multiply_Spectra (Left, Right);
-      Value  : constant OpenCV.Core.Scalar := Result.Mean;
+      Value  : constant OpenCV.Scalar := Result.Mean;
    begin
       AUnit.Assertions.Assert
         (Result.Rows = 1
@@ -6186,16 +6187,16 @@ package body Mat_Transform_Tests is
               Bottom => 0,
               Left   => 0,
               Right  => Length - A.Columns,
-              Kind   => OpenCV.Core.Constant_Border,
-              Value  => OpenCV.Core.Make_Scalar (0.0));
+              Kind   => OpenCV.Constant_Border,
+              Value  => OpenCV.Make_Scalar (0.0));
          Padded_B : constant OpenCV.Core.Mat :=
            B.Copy_Make_Border
              (Top    => 0,
               Bottom => 0,
               Left   => 0,
               Right  => Length - B.Columns,
-              Kind   => OpenCV.Core.Constant_Border,
-              Value  => OpenCV.Core.Make_Scalar (0.0));
+              Kind   => OpenCV.Constant_Border,
+              Value  => OpenCV.Make_Scalar (0.0));
          Product  : constant OpenCV.Core.Mat :=
            OpenCV.Core.Multiply_Spectra
              (Padded_A.Discrete_Fourier_Transform,
@@ -6245,10 +6246,10 @@ package body Mat_Transform_Tests is
       Right_Parent_Imag : OpenCV.Core.Mat :=
         OpenCV.Core.Create (3, 4, (OpenCV.Core.Float32, 1));
    begin
-      Left_Parent_Real.Set_To (OpenCV.Core.Make_Scalar (99.0));
-      Left_Parent_Imag.Set_To (OpenCV.Core.Make_Scalar (88.0));
-      Right_Parent_Real.Set_To (OpenCV.Core.Make_Scalar (77.0));
-      Right_Parent_Imag.Set_To (OpenCV.Core.Make_Scalar (66.0));
+      Left_Parent_Real.Set_To (OpenCV.Make_Scalar (99.0));
+      Left_Parent_Imag.Set_To (OpenCV.Make_Scalar (88.0));
+      Right_Parent_Real.Set_To (OpenCV.Make_Scalar (77.0));
+      Right_Parent_Imag.Set_To (OpenCV.Make_Scalar (66.0));
       OpenCV.Core.Float32_Access.Set (Left_Parent_Real, 0, 1, 2.0);
       OpenCV.Core.Float32_Access.Set (Left_Parent_Imag, 0, 1, 3.0);
       OpenCV.Core.Float32_Access.Set (Left_Parent_Real, 0, 2, 1.0);
@@ -6299,7 +6300,7 @@ package body Mat_Transform_Tests is
             and then Complex_Channels_Close
                        (Right_Parent, 2, 3, 77.0, 66.0, 0.000_1),
             "Multiply_Spectra must leave Regions and parents unchanged");
-         Result.Set_To (OpenCV.Core.Make_Scalar (12.0, 34.0));
+         Result.Set_To (OpenCV.Make_Scalar (12.0, 34.0));
          AUnit.Assertions.Assert
            (Complex_Channels_Close (Left, 0, 0, 2.0, 3.0, 0.000_1)
             and then Complex_Channels_Close (Right, 0, 0, 4.0, 5.0, 0.000_1),
@@ -6315,7 +6316,7 @@ package body Mat_Transform_Tests is
       Right  : constant OpenCV.Core.Mat := Sample_Complex_Right;
       Result : OpenCV.Core.Mat := OpenCV.Core.Multiply_Spectra (Left, Right);
    begin
-      Result.Set_To (OpenCV.Core.Make_Scalar (50.0, 60.0));
+      Result.Set_To (OpenCV.Make_Scalar (50.0, 60.0));
       AUnit.Assertions.Assert
         (Complex_Channels_Close (Left, 0, 0, 2.0, 3.0, 0.000_1)
          and then Complex_Channels_Close (Right, 0, 0, 4.0, 5.0, 0.000_1),
@@ -6597,7 +6598,7 @@ package body Mat_Transform_Tests is
                and then Right_Packed.Abs_Diff (Right_Before).Norm = 0.0,
                "Non-contiguous packed Regions must match the full-complex"
                & " oracle and remain unchanged");
-            Product.Set_To (OpenCV.Core.Make_Scalar (-17.0));
+            Product.Set_To (OpenCV.Make_Scalar (-17.0));
             AUnit.Assertions.Assert
               (Left_Packed.Abs_Diff (Left_Before).Norm = 0.0
                and then Right_Packed.Abs_Diff (Right_Before).Norm = 0.0,
@@ -6706,22 +6707,22 @@ package body Mat_Transform_Tests is
          declare
             Expected_Row           : constant OpenCV.Core.Mat :=
               OpenCV.Core.Multiply_Spectra
-                (Left.Row_View (OpenCV.Core.Size_Coordinate (Row))
+                (Left.Row_View (OpenCV.Size_Coordinate (Row))
                    .Discrete_Fourier_Transform,
-                 Right.Row_View (OpenCV.Core.Size_Coordinate (Row))
+                 Right.Row_View (OpenCV.Size_Coordinate (Row))
                    .Discrete_Fourier_Transform,
                  Kind)
                 .Inverse_Real_Discrete_Fourier_Transform;
             Destination_Row        : OpenCV.Core.Mat :=
-              Expected.Row_View (OpenCV.Core.Size_Coordinate (Row));
+              Expected.Row_View (OpenCV.Size_Coordinate (Row));
             Independent_Packed_Row : constant OpenCV.Core.Mat :=
               OpenCV.Core.Multiply_Packed_Spectra
-                (Left_Packed.Row_View (OpenCV.Core.Size_Coordinate (Row)),
-                 Right_Packed.Row_View (OpenCV.Core.Size_Coordinate (Row)),
+                (Left_Packed.Row_View (OpenCV.Size_Coordinate (Row)),
+                 Right_Packed.Row_View (OpenCV.Size_Coordinate (Row)),
                  Kind);
          begin
             Expected_Row.Copy_To (Destination_Row);
-            if Product.Row_View (OpenCV.Core.Size_Coordinate (Row)).Abs_Diff
+            if Product.Row_View (OpenCV.Size_Coordinate (Row)).Abs_Diff
                  (Independent_Packed_Row)
                  .Norm
               >= Tolerance
@@ -6881,7 +6882,7 @@ package body Mat_Transform_Tests is
                      < 0.001,
             "Row-wise packed multiplication must support non-contiguous"
             & " Regions and preserve C1 shape and depth");
-         Result.Set_To (OpenCV.Core.Make_Scalar (-99.0));
+         Result.Set_To (OpenCV.Make_Scalar (-99.0));
          AUnit.Assertions.Assert
            (Left_Region.Abs_Diff (Left_Original).Norm = 0.0
             and then Right_Region.Abs_Diff (Right_Original).Norm = 0.0
@@ -7070,7 +7071,7 @@ package body Mat_Transform_Tests is
            Source.Discrete_Cosine_Transform;
          Restored   : constant OpenCV.Core.Mat :=
            Spectrum.Inverse_Discrete_Cosine_Transform;
-         Difference : constant OpenCV.Core.Scalar :=
+         Difference : constant OpenCV.Scalar :=
            Restored.Abs_Diff (Source).Mean;
       begin
          AUnit.Assertions.Assert
@@ -7121,7 +7122,7 @@ package body Mat_Transform_Tests is
       Source : OpenCV.Core.Mat :=
         OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
    begin
-      Source.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      Source.Set_To (OpenCV.Make_Scalar (1.0));
 
       declare
          Spectrum : constant OpenCV.Core.Mat :=
@@ -7168,7 +7169,7 @@ package body Mat_Transform_Tests is
       Parent : OpenCV.Core.Mat :=
         OpenCV.Core.Create (3, 4, (OpenCV.Core.Float32, 1));
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Parent.Set_To (OpenCV.Make_Scalar (99.0));
       OpenCV.Core.Float32_Access.Set (Parent, 0, 1, 1.0);
       OpenCV.Core.Float32_Access.Set (Parent, 0, 2, 2.0);
       OpenCV.Core.Float32_Access.Set (Parent, 1, 1, 3.0);
@@ -7511,8 +7512,8 @@ package body Mat_Transform_Tests is
               Bottom => 0,
               Left   => 0,
               Right  => Optimal - Minimum,
-              Kind   => OpenCV.Core.Constant_Border,
-              Value  => OpenCV.Core.Make_Scalar (0.0));
+              Kind   => OpenCV.Constant_Border,
+              Value  => OpenCV.Make_Scalar (0.0));
          Spectrum : constant OpenCV.Core.Mat :=
            Padded.Discrete_Cosine_Transform;
          Restored : constant OpenCV.Core.Mat :=
@@ -7581,15 +7582,15 @@ package body Mat_Transform_Tests is
       for Row in 0 .. Source32.Rows - 1 loop
          declare
             Expected32 : constant OpenCV.Core.Mat :=
-              Source32.Row_View (OpenCV.Core.Size_Coordinate (Row))
+              Source32.Row_View (OpenCV.Size_Coordinate (Row))
                 .Discrete_Cosine_Transform;
             Actual32   : constant OpenCV.Core.Mat :=
-              Rows32.Row_View (OpenCV.Core.Size_Coordinate (Row));
+              Rows32.Row_View (OpenCV.Size_Coordinate (Row));
             Expected64 : constant OpenCV.Core.Mat :=
-              Source64.Row_View (OpenCV.Core.Size_Coordinate (Row))
+              Source64.Row_View (OpenCV.Size_Coordinate (Row))
                 .Discrete_Cosine_Transform;
             Actual64   : constant OpenCV.Core.Mat :=
-              Rows64.Row_View (OpenCV.Core.Size_Coordinate (Row));
+              Rows64.Row_View (OpenCV.Size_Coordinate (Row));
          begin
             All_Rows_Match :=
               All_Rows_Match
@@ -7673,7 +7674,7 @@ package body Mat_Transform_Tests is
       Parent : OpenCV.Core.Mat :=
         OpenCV.Core.Create (3, 6, (OpenCV.Core.Float32, 1));
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Parent.Set_To (OpenCV.Make_Scalar (99.0));
       for Row in 0 .. 2 loop
          for Column in 0 .. 3 loop
             OpenCV.Core.Float32_Access.Set
@@ -7695,7 +7696,7 @@ package body Mat_Transform_Tests is
            (not Source.Is_Continuous
             and then DCT_Float32_C1_Close (Restored, Original, 0.000_1),
             "DCT_ROWS must round-trip a non-contiguous Region");
-         Spectrum.Set_To (OpenCV.Core.Make_Scalar (-50.0));
+         Spectrum.Set_To (OpenCV.Make_Scalar (-50.0));
          AUnit.Assertions.Assert
            (DCT_Float32_C1_Close (Source, Original, 0.000_1)
             and then DCT_Float32_C1_Close (Restored, Original, 0.000_1)

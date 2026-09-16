@@ -1,6 +1,7 @@
 with AUnit.Assertions;
 with AUnit.Test_Caller;
 with Interfaces;
+with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
 with OpenCV.Core.Float32_Vec3;
@@ -64,7 +65,7 @@ package body Random_Tests is
    begin
       OpenCV.Core.Set_Random_Seed (12345);
       Image.Fill_Uniform
-        (OpenCV.Core.Make_Scalar (-2.0), OpenCV.Core.Make_Scalar (3.0));
+        (OpenCV.Make_Scalar (-2.0), OpenCV.Make_Scalar (3.0));
       for Row in 0 .. Image.Rows - 1 loop
          for Column in 0 .. Image.Columns - 1 loop
             declare
@@ -97,12 +98,12 @@ package body Random_Tests is
    begin
       OpenCV.Core.Set_Random_Seed (6789);
       A.Fill_Uniform
-        (OpenCV.Core.Make_Scalar (-10.0), OpenCV.Core.Make_Scalar (10.0));
+        (OpenCV.Make_Scalar (-10.0), OpenCV.Make_Scalar (10.0));
       B.Fill_Uniform
-        (OpenCV.Core.Make_Scalar (-10.0), OpenCV.Core.Make_Scalar (10.0));
+        (OpenCV.Make_Scalar (-10.0), OpenCV.Make_Scalar (10.0));
       OpenCV.Core.Set_Random_Seed (6789);
       Replay.Fill_Uniform
-        (OpenCV.Core.Make_Scalar (-10.0), OpenCV.Core.Make_Scalar (10.0));
+        (OpenCV.Make_Scalar (-10.0), OpenCV.Make_Scalar (10.0));
       for Row in 0 .. A.Rows - 1 loop
          for Column in 0 .. A.Columns - 1 loop
             Same_Replay :=
@@ -133,10 +134,10 @@ package body Random_Tests is
    begin
       OpenCV.Core.Set_Random_Seed (42);
       Color.Fill_Uniform
-        (OpenCV.Core.Make_Scalar (-2.0, 10.0, 100.0),
-         OpenCV.Core.Make_Scalar (-1.0, 20.0, 101.0));
+        (OpenCV.Make_Scalar (-2.0, 10.0, 100.0),
+         OpenCV.Make_Scalar (-1.0, 20.0, 101.0));
       Bytes.Fill_Uniform
-        (OpenCV.Core.Make_Scalar (10.0), OpenCV.Core.Make_Scalar (20.0));
+        (OpenCV.Make_Scalar (10.0), OpenCV.Make_Scalar (20.0));
       for Row in 0 .. Color.Rows - 1 loop
          for Column in 0 .. Color.Columns - 1 loop
             declare
@@ -170,7 +171,7 @@ package body Random_Tests is
    begin
       OpenCV.Core.Set_Random_Seed (91);
       Image.Fill_Uniform
-        (OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+        (OpenCV.Make_Scalar (0.0), OpenCV.Make_Scalar (1.0));
       AUnit.Assertions.Assert
         (Image.Depth = OpenCV.Core.Float16 and then Image.Rows = 2,
          "Uniform fill must support Float16");
@@ -190,15 +191,15 @@ package body Random_Tests is
    begin
       OpenCV.Core.Set_Random_Seed (222);
       A.Fill_Normal
-        (OpenCV.Core.Make_Scalar (10.0), OpenCV.Core.Make_Scalar (2.0));
+        (OpenCV.Make_Scalar (10.0), OpenCV.Make_Scalar (2.0));
       OpenCV.Core.Set_Random_Seed (222);
       B.Fill_Normal
-        (OpenCV.Core.Make_Scalar (10.0), OpenCV.Core.Make_Scalar (2.0));
+        (OpenCV.Make_Scalar (10.0), OpenCV.Make_Scalar (2.0));
       Color.Fill_Normal
-        (OpenCV.Core.Make_Scalar (1.0, 2.0, 3.0),
-         OpenCV.Core.Make_Scalar (0.0, 0.0, 0.0));
+        (OpenCV.Make_Scalar (1.0, 2.0, 3.0),
+         OpenCV.Make_Scalar (0.0, 0.0, 0.0));
       Bytes.Fill_Normal
-        (OpenCV.Core.Make_Scalar (300.0), OpenCV.Core.Make_Scalar (0.0));
+        (OpenCV.Make_Scalar (300.0), OpenCV.Make_Scalar (0.0));
       for Row in 0 .. A.Rows - 1 loop
          for Column in 0 .. A.Columns - 1 loop
             Same :=
@@ -245,22 +246,22 @@ package body Random_Tests is
       procedure Uniform_Empty is
       begin
          Empty.Fill_Uniform
-           (OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+           (OpenCV.Make_Scalar (0.0), OpenCV.Make_Scalar (1.0));
       end Uniform_Empty;
       procedure Uniform_Typed_Empty is
       begin
          Typed_Empty.Fill_Uniform
-           (OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+           (OpenCV.Make_Scalar (0.0), OpenCV.Make_Scalar (1.0));
       end Uniform_Typed_Empty;
       procedure Normal_Half is
       begin
          Half.Fill_Normal
-           (OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+           (OpenCV.Make_Scalar (0.0), OpenCV.Make_Scalar (1.0));
       end Normal_Half;
       procedure Uniform_Many is
       begin
          Many.Fill_Uniform
-           (OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+           (OpenCV.Make_Scalar (0.0), OpenCV.Make_Scalar (1.0));
       end Uniform_Many;
    begin
       Typed_Empty := OpenCV.Core.Create (0, 0, (OpenCV.Core.Float32, 1));
@@ -288,10 +289,10 @@ package body Random_Tests is
         Parent.Region ((1, 1, 3, 2));
       Outside_Unchanged, Inside_Changed : Boolean := True;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (-99.0));
+      Parent.Set_To (OpenCV.Make_Scalar (-99.0));
       OpenCV.Core.Set_Random_Seed (777);
       Region.Fill_Uniform
-        (OpenCV.Core.Make_Scalar (1.0), OpenCV.Core.Make_Scalar (2.0));
+        (OpenCV.Make_Scalar (1.0), OpenCV.Make_Scalar (2.0));
       for Row in 0 .. Parent.Rows - 1 loop
          for Column in 0 .. Parent.Columns - 1 loop
             declare
@@ -533,7 +534,7 @@ package body Random_Tests is
       Vector : OpenCV.Core.Mat :=
         OpenCV.Core.Create (1, 8, (OpenCV.Core.Float16, 1));
    begin
-      Vector.Set_To (OpenCV.Core.Make_Scalar (2.0));
+      Vector.Set_To (OpenCV.Make_Scalar (2.0));
       Vector.Shuffle;
       AUnit.Assertions.Assert
         (Vector.Rows = 1
@@ -680,29 +681,29 @@ package body Random_Tests is
    begin
       Default_A.Fill_Uniform
         (Default_Generator_A,
-         OpenCV.Core.Make_Scalar (-1.0),
-         OpenCV.Core.Make_Scalar (1.0));
+         OpenCV.Make_Scalar (-1.0),
+         OpenCV.Make_Scalar (1.0));
       Default_B.Fill_Uniform
         (Default_Generator_B,
-         OpenCV.Core.Make_Scalar (-1.0),
-         OpenCV.Core.Make_Scalar (1.0));
+         OpenCV.Make_Scalar (-1.0),
+         OpenCV.Make_Scalar (1.0));
       Zero.Fill_Uniform
         (Zero_Generator,
-         OpenCV.Core.Make_Scalar (-1.0),
-         OpenCV.Core.Make_Scalar (1.0));
+         OpenCV.Make_Scalar (-1.0),
+         OpenCV.Make_Scalar (1.0));
       Replay_A.Fill_Uniform
         (Generator,
-         OpenCV.Core.Make_Scalar (-1.0),
-         OpenCV.Core.Make_Scalar (1.0));
+         OpenCV.Make_Scalar (-1.0),
+         OpenCV.Make_Scalar (1.0));
       Advance.Fill_Normal
         (Generator,
-         OpenCV.Core.Make_Scalar (0.0),
-         OpenCV.Core.Make_Scalar (1.0));
+         OpenCV.Make_Scalar (0.0),
+         OpenCV.Make_Scalar (1.0));
       OpenCV.Core.Reseed (Generator, 12_345);
       Replay_B.Fill_Uniform
         (Generator,
-         OpenCV.Core.Make_Scalar (-1.0),
-         OpenCV.Core.Make_Scalar (1.0));
+         OpenCV.Make_Scalar (-1.0),
+         OpenCV.Make_Scalar (1.0));
       AUnit.Assertions.Assert
         (Float_Mats_Equal (Default_A, Default_B)
          and then Float_Mats_Equal (Default_A, Zero)
@@ -724,16 +725,16 @@ package body Random_Tests is
         OpenCV.Core.Random_Number_Generator;
    begin
       Initial.Fill_Uniform
-        (G1, OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+        (G1, OpenCV.Make_Scalar (0.0), OpenCV.Make_Scalar (1.0));
       G2 := G1;
       First_A.Fill_Uniform
-        (G1, OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+        (G1, OpenCV.Make_Scalar (0.0), OpenCV.Make_Scalar (1.0));
       First_B.Fill_Uniform
-        (G2, OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+        (G2, OpenCV.Make_Scalar (0.0), OpenCV.Make_Scalar (1.0));
       Second_A.Fill_Uniform
-        (G1, OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+        (G1, OpenCV.Make_Scalar (0.0), OpenCV.Make_Scalar (1.0));
       Second_B.Fill_Uniform
-        (G2, OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+        (G2, OpenCV.Make_Scalar (0.0), OpenCV.Make_Scalar (1.0));
       AUnit.Assertions.Assert
         (Float_Mats_Equal (First_A, First_B)
          and then Float_Mats_Equal (Second_A, Second_B),
@@ -760,28 +761,28 @@ package body Random_Tests is
    begin
       OpenCV.Core.Set_Random_Seed (1_234);
       Uniform_Default.Fill_Uniform
-        (OpenCV.Core.Make_Scalar (-2.0), OpenCV.Core.Make_Scalar (3.0));
+        (OpenCV.Make_Scalar (-2.0), OpenCV.Make_Scalar (3.0));
       Uniform_Explicit.Fill_Uniform
         (Uniform_Generator,
-         OpenCV.Core.Make_Scalar (-2.0),
-         OpenCV.Core.Make_Scalar (3.0));
+         OpenCV.Make_Scalar (-2.0),
+         OpenCV.Make_Scalar (3.0));
       OpenCV.Core.Set_Random_Seed (1_234);
       Normal_Default.Fill_Normal
-        (OpenCV.Core.Make_Scalar (1.0), OpenCV.Core.Make_Scalar (2.0));
+        (OpenCV.Make_Scalar (1.0), OpenCV.Make_Scalar (2.0));
       Normal_Explicit.Fill_Normal
         (Normal_Generator,
-         OpenCV.Core.Make_Scalar (1.0),
-         OpenCV.Core.Make_Scalar (2.0));
+         OpenCV.Make_Scalar (1.0),
+         OpenCV.Make_Scalar (2.0));
       OpenCV.Core.Set_Random_Seed (77);
       Default_Reference.Fill_Uniform
-        (OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+        (OpenCV.Make_Scalar (0.0), OpenCV.Make_Scalar (1.0));
       OpenCV.Core.Set_Random_Seed (77);
       Scratch.Fill_Uniform
         (Uniform_Generator,
-         OpenCV.Core.Make_Scalar (0.0),
-         OpenCV.Core.Make_Scalar (1.0));
+         OpenCV.Make_Scalar (0.0),
+         OpenCV.Make_Scalar (1.0));
       Default_Observed.Fill_Uniform
-        (OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+        (OpenCV.Make_Scalar (0.0), OpenCV.Make_Scalar (1.0));
       AUnit.Assertions.Assert
         (Float_Mats_Equal (Uniform_Default, Uniform_Explicit)
          and then Float_Mats_Equal (Normal_Default, Normal_Explicit)
@@ -806,7 +807,7 @@ package body Random_Tests is
       procedure Invalid_Fill is
       begin
          Invalid.Fill_Uniform
-           (G1, OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+           (G1, OpenCV.Make_Scalar (0.0), OpenCV.Make_Scalar (1.0));
       end Invalid_Fill;
    begin
       for Column in 0 .. 31 loop
@@ -825,9 +826,9 @@ package body Random_Tests is
         (Invalid_Fill'Access,
          "invalid explicit fills must raise OpenCV_Error");
       A.Fill_Uniform
-        (G1, OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+        (G1, OpenCV.Make_Scalar (0.0), OpenCV.Make_Scalar (1.0));
       B.Fill_Uniform
-        (G2, OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+        (G2, OpenCV.Make_Scalar (0.0), OpenCV.Make_Scalar (1.0));
       AUnit.Assertions.Assert
         (UInt8_Mats_Equal (Default_Vector, Explicit_A)
          and then UInt8_Mats_Equal (Explicit_A, Explicit_B)
@@ -858,9 +859,9 @@ package body Random_Tests is
           OpenCV.Core.Make_Random_Number_Generator (987);
    begin
       Different_A.Fill_Uniform
-        (G1, OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+        (G1, OpenCV.Make_Scalar (0.0), OpenCV.Make_Scalar (1.0));
       Different_B.Fill_Uniform
-        (G2, OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+        (G2, OpenCV.Make_Scalar (0.0), OpenCV.Make_Scalar (1.0));
       for Column in 0 .. 15 loop
          OpenCV.Core.UInt8_Access.Set
            (Vector_A, 0, Column, Interfaces.Unsigned_8 (Column));
@@ -869,22 +870,22 @@ package body Random_Tests is
       end loop;
       First_A.Fill_Uniform
         (Replay_A,
-         OpenCV.Core.Make_Scalar (-1.0),
-         OpenCV.Core.Make_Scalar (1.0));
+         OpenCV.Make_Scalar (-1.0),
+         OpenCV.Make_Scalar (1.0));
       Vector_A.Shuffle (Replay_A);
       Second_A.Fill_Normal
         (Replay_A,
-         OpenCV.Core.Make_Scalar (0.0),
-         OpenCV.Core.Make_Scalar (1.0));
+         OpenCV.Make_Scalar (0.0),
+         OpenCV.Make_Scalar (1.0));
       First_B.Fill_Uniform
         (Replay_B,
-         OpenCV.Core.Make_Scalar (-1.0),
-         OpenCV.Core.Make_Scalar (1.0));
+         OpenCV.Make_Scalar (-1.0),
+         OpenCV.Make_Scalar (1.0));
       Vector_B.Shuffle (Replay_B);
       Second_B.Fill_Normal
         (Replay_B,
-         OpenCV.Core.Make_Scalar (0.0),
-         OpenCV.Core.Make_Scalar (1.0));
+         OpenCV.Make_Scalar (0.0),
+         OpenCV.Make_Scalar (1.0));
       AUnit.Assertions.Assert
         (not Float_Mats_Equal (Different_A, Different_B)
          and then Float_Mats_Equal (First_A, First_B)
@@ -912,16 +913,16 @@ package body Random_Tests is
         OpenCV.Core.Make_Random_Number_Generator (456);
       Outside_Intact                : Boolean := True;
    begin
-      Uniform_Parent.Set_To (OpenCV.Core.Make_Scalar (-99.0));
-      Normal_Parent.Set_To (OpenCV.Core.Make_Scalar (-99.0));
+      Uniform_Parent.Set_To (OpenCV.Make_Scalar (-99.0));
+      Normal_Parent.Set_To (OpenCV.Make_Scalar (-99.0));
       Uniform_Region.Fill_Uniform
         (Generator,
-         OpenCV.Core.Make_Scalar (1.0),
-         OpenCV.Core.Make_Scalar (2.0));
+         OpenCV.Make_Scalar (1.0),
+         OpenCV.Make_Scalar (2.0));
       Normal_Region.Fill_Normal
         (Generator,
-         OpenCV.Core.Make_Scalar (0.0),
-         OpenCV.Core.Make_Scalar (1.0));
+         OpenCV.Make_Scalar (0.0),
+         OpenCV.Make_Scalar (1.0));
       for Row in 0 .. 7 loop
          OpenCV.Core.UInt8_Access.Set
            (Shuffle_Parent, Row, 0, Interfaces.Unsigned_8 (Row + 1));
@@ -1133,11 +1134,11 @@ package body Random_Tests is
    begin
       OpenCV.Core.Next_Random (G1, First_1);
       A.Fill_Uniform
-        (G1, OpenCV.Core.Make_Scalar (-1.0), OpenCV.Core.Make_Scalar (1.0));
+        (G1, OpenCV.Make_Scalar (-1.0), OpenCV.Make_Scalar (1.0));
       OpenCV.Core.Uniform_Random (G1, -2.0, 3.0, Last_1);
       OpenCV.Core.Next_Random (G2, First_2);
       B.Fill_Uniform
-        (G2, OpenCV.Core.Make_Scalar (-1.0), OpenCV.Core.Make_Scalar (1.0));
+        (G2, OpenCV.Make_Scalar (-1.0), OpenCV.Make_Scalar (1.0));
       OpenCV.Core.Uniform_Random (G2, -2.0, 3.0, Last_2);
       AUnit.Assertions.Assert
         (First_1 = First_2
@@ -1164,14 +1165,14 @@ package body Random_Tests is
    begin
       OpenCV.Core.Set_Random_Seed (321);
       Reference.Fill_Uniform
-        (OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+        (OpenCV.Make_Scalar (0.0), OpenCV.Make_Scalar (1.0));
       OpenCV.Core.Set_Random_Seed (321);
       OpenCV.Core.Next_Random (Explicit, N1);
       OpenCV.Core.Uniform_Random (Explicit, -1.0, 1.0, Value);
       OpenCV.Core.Next_Random (Explicit, N1);
       OpenCV.Core.Uniform_Random (Explicit, -1.0, 1.0, Value);
       Observed.Fill_Uniform
-        (OpenCV.Core.Make_Scalar (0.0), OpenCV.Core.Make_Scalar (1.0));
+        (OpenCV.Make_Scalar (0.0), OpenCV.Make_Scalar (1.0));
       OpenCV.Core.Next_Random (Default_Generator, N1);
       OpenCV.Core.Next_Random (Zero_Generator, N2);
       OpenCV.Core.Uniform_Random (Default_Generator, 0.0, 1.0, U1);

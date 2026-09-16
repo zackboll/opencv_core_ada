@@ -2,6 +2,7 @@ with AUnit.Assertions;
 with AUnit.Test_Caller;
 with Ada.Numerics.Long_Elementary_Functions;
 with Interfaces;
+with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
 with OpenCV.Core.Float32_Vec3;
@@ -17,7 +18,7 @@ package body Mat_Reduction_Tests is
    use type Interfaces.Unsigned_8;
    use type OpenCV.Core.Depth_Type;
    use type OpenCV.Core.Channel_Count;
-   use type OpenCV.Core.Point_Coordinate;
+   use type OpenCV.Point_Coordinate;
    use type OpenCV.Core.UInt8_Vec3.Vector;
    use type OpenCV.Core.Float32_Vec3.Vector;
 
@@ -33,7 +34,7 @@ package body Mat_Reduction_Tests is
           (Rows         => 2,
            Columns      => 2,
            Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
-      Result : OpenCV.Core.Scalar;
+      Result : OpenCV.Scalar;
    begin
       OpenCV.Core.Float32_Access.Set (Image, 0, 0, 1.0);
       OpenCV.Core.Float32_Access.Set (Image, 0, 1, 2.0);
@@ -360,7 +361,7 @@ package body Mat_Reduction_Tests is
         OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
       Vec_Image   : OpenCV.Core.Mat :=
         OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 3));
-      Result      : OpenCV.Core.Scalar;
+      Result      : OpenCV.Scalar;
    begin
       OpenCV.Core.Float32_Access.Set (Float_Image, 0, 0, 1.25);
       OpenCV.Core.Float32_Access.Set (Float_Image, 1, 1, -2.5);
@@ -391,13 +392,13 @@ package body Mat_Reduction_Tests is
         OpenCV.Core.Create (1, 1, (OpenCV.Core.Float16, 1));
 
       procedure Trace_Five_Channel_Image is
-         Result : constant OpenCV.Core.Scalar := Five_Channel_Image.Trace;
+         Result : constant OpenCV.Scalar := Five_Channel_Image.Trace;
       begin
          pragma Unreferenced (Result);
       end Trace_Five_Channel_Image;
 
       procedure Trace_Float16_Image is
-         Result : constant OpenCV.Core.Scalar := Float16_Image.Trace;
+         Result : constant OpenCV.Scalar := Float16_Image.Trace;
       begin
          pragma Unreferenced (Result);
       end Trace_Float16_Image;
@@ -438,7 +439,7 @@ package body Mat_Reduction_Tests is
    end Trace_Handles_Regions_Empty_And_Invalid_Types;
 
    procedure Fill_2x2
-     (Image : in out OpenCV.Core.Mat; A, B, C, D : OpenCV.Core.Float32_Value)
+     (Image : in out OpenCV.Core.Mat; A, B, C, D : OpenCV.Float32_Value)
    is
    begin
       OpenCV.Core.Float32_Access.Set (Image, 0, 0, A);
@@ -448,7 +449,7 @@ package body Mat_Reduction_Tests is
    end Fill_2x2;
 
    function Unchanged_2x2
-     (Image : OpenCV.Core.Mat; A, B, C, D : OpenCV.Core.Float32_Value)
+     (Image : OpenCV.Core.Mat; A, B, C, D : OpenCV.Float32_Value)
       return Boolean
    is (OpenCV.Core.Float32_Access.Get (Image, 0, 0) = A
        and then OpenCV.Core.Float32_Access.Get (Image, 0, 1) = B
@@ -531,7 +532,7 @@ package body Mat_Reduction_Tests is
       Image : OpenCV.Core.Mat :=
         OpenCV.Core.Create (4, 4, (OpenCV.Core.Float32, 1));
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Image.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.Float32_Access.Set (Image, 0, 0, 2.0);
       OpenCV.Core.Float32_Access.Set (Image, 0, 1, 1.0);
       OpenCV.Core.Float32_Access.Set (Image, 1, 1, 3.0);
@@ -559,7 +560,7 @@ package body Mat_Reduction_Tests is
         OpenCV.Core.Create (4, 4, (OpenCV.Core.Float32, 1));
       Value : Long_Float;
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Image.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.Float32_Access.Set (Image, 0, 0, 1.0);
       OpenCV.Core.Float32_Access.Set (Image, 0, 1, 2.0);
       OpenCV.Core.Float32_Access.Set (Image, 0, 2, 3.0);
@@ -601,7 +602,7 @@ package body Mat_Reduction_Tests is
         OpenCV.Core.Create (3, 4, (OpenCV.Core.Float32, 1));
       Region : OpenCV.Core.Mat;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Parent.Set_To (OpenCV.Make_Scalar (99.0));
       Region := Parent.Region ((X => 1, Y => 0, Width => 2, Height => 2));
       Fill_2x2 (Region, 4.0, 7.0, 2.0, 6.0);
 
@@ -832,7 +833,7 @@ package body Mat_Reduction_Tests is
         OpenCV.Core.Create (4, 4, (OpenCV.Core.Float32, 1));
       Result : OpenCV.Core.Inversion_Result;
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Image.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.Float32_Access.Set (Image, 0, 1, 1.0);
       OpenCV.Core.Float32_Access.Set (Image, 1, 0, 1.0);
       OpenCV.Core.Float32_Access.Set (Image, 1, 1, 1.0);
@@ -902,7 +903,7 @@ package body Mat_Reduction_Tests is
         OpenCV.Core.Create (4, 4, (OpenCV.Core.Float32, 1));
       Result : OpenCV.Core.Inversion_Result;
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Image.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.Float32_Access.Set (Image, 0, 0, 1.0);
       OpenCV.Core.Float32_Access.Set (Image, 0, 1, 2.0);
       OpenCV.Core.Float32_Access.Set (Image, 0, 2, 3.0);
@@ -971,7 +972,7 @@ package body Mat_Reduction_Tests is
         OpenCV.Core.Create (3, 4, (OpenCV.Core.Float32, 1));
       Result : OpenCV.Core.Inversion_Result;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Parent.Set_To (OpenCV.Make_Scalar (99.0));
 
       declare
          Region : OpenCV.Core.Mat :=
@@ -1146,14 +1147,14 @@ package body Mat_Reduction_Tests is
    end Invert_Rejects_Empty_And_Invalid_Types;
 
    procedure Fill_Column_2
-     (Image : in out OpenCV.Core.Mat; A, B : OpenCV.Core.Float32_Value) is
+     (Image : in out OpenCV.Core.Mat; A, B : OpenCV.Float32_Value) is
    begin
       OpenCV.Core.Float32_Access.Set (Image, 0, 0, A);
       OpenCV.Core.Float32_Access.Set (Image, 1, 0, B);
    end Fill_Column_2;
 
    function Unchanged_Column_2
-     (Image : OpenCV.Core.Mat; A, B : OpenCV.Core.Float32_Value) return Boolean
+     (Image : OpenCV.Core.Mat; A, B : OpenCV.Float32_Value) return Boolean
    is (OpenCV.Core.Float32_Access.Get (Image, 0, 0) = A
        and then OpenCV.Core.Float32_Access.Get (Image, 1, 0) = B);
 
@@ -1239,7 +1240,7 @@ package body Mat_Reduction_Tests is
       OpenCV.Core.Float32_Access.Set (Coefficients, 2, 0, 5.0);
       OpenCV.Core.Float32_Access.Set (Coefficients, 2, 1, 6.0);
       OpenCV.Core.Float32_Access.Set (Coefficients, 2, 2, 0.0);
-      RHS.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      RHS.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.Float32_Access.Set (RHS, 0, 0, 1.0);
       Result := Coefficients.Solve (RHS);
 
@@ -1272,7 +1273,7 @@ package body Mat_Reduction_Tests is
         OpenCV.Core.Create (4, 1, (OpenCV.Core.Float32, 1));
       Result       : OpenCV.Core.Solve_Result;
    begin
-      Coefficients.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Coefficients.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.Float32_Access.Set (Coefficients, 0, 1, 1.0);
       OpenCV.Core.Float32_Access.Set (Coefficients, 1, 0, 1.0);
       OpenCV.Core.Float32_Access.Set (Coefficients, 1, 1, 1.0);
@@ -1283,7 +1284,7 @@ package body Mat_Reduction_Tests is
       OpenCV.Core.Float32_Access.Set (Coefficients, 3, 1, 1.0);
       OpenCV.Core.Float32_Access.Set (Coefficients, 3, 2, 1.0);
       OpenCV.Core.Float32_Access.Set (Coefficients, 3, 3, 1.0);
-      RHS.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      RHS.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.Float32_Access.Set (RHS, 0, 0, 1.0);
       Result := Coefficients.Solve (RHS);
 
@@ -1365,7 +1366,7 @@ package body Mat_Reduction_Tests is
         OpenCV.Core.Create (4, 1, (OpenCV.Core.Float32, 1));
       Result       : OpenCV.Core.Solve_Result;
    begin
-      Coefficients.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Coefficients.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.Float32_Access.Set (Coefficients, 0, 0, 1.0);
       OpenCV.Core.Float32_Access.Set (Coefficients, 0, 1, 2.0);
       OpenCV.Core.Float32_Access.Set (Coefficients, 0, 2, 3.0);
@@ -1378,7 +1379,7 @@ package body Mat_Reduction_Tests is
       OpenCV.Core.Float32_Access.Set (Coefficients, 2, 2, 6.0);
       OpenCV.Core.Float32_Access.Set (Coefficients, 3, 1, 7.0);
       OpenCV.Core.Float32_Access.Set (Coefficients, 3, 3, 8.0);
-      RHS.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      RHS.Set_To (OpenCV.Make_Scalar (1.0));
       Result := Coefficients.Solve (RHS);
 
       AUnit.Assertions.Assert
@@ -1424,8 +1425,8 @@ package body Mat_Reduction_Tests is
         OpenCV.Core.Create (3, 3, (OpenCV.Core.Float32, 1));
       Result   : OpenCV.Core.Solve_Result;
    begin
-      Parent_A.Set_To (OpenCV.Core.Make_Scalar (99.0));
-      Parent_B.Set_To (OpenCV.Core.Make_Scalar (88.0));
+      Parent_A.Set_To (OpenCV.Make_Scalar (99.0));
+      Parent_B.Set_To (OpenCV.Make_Scalar (88.0));
 
       declare
          Region_A : OpenCV.Core.Mat :=
@@ -1649,7 +1650,7 @@ package body Mat_Reduction_Tests is
 
    procedure Fill_2x3
      (Image            : in out OpenCV.Core.Mat;
-      A, B, C, D, E, F : OpenCV.Core.Float32_Value) is
+      A, B, C, D, E, F : OpenCV.Float32_Value) is
    begin
       OpenCV.Core.Float32_Access.Set (Image, 0, 0, A);
       OpenCV.Core.Float32_Access.Set (Image, 0, 1, B);
@@ -1660,7 +1661,7 @@ package body Mat_Reduction_Tests is
    end Fill_2x3;
 
    function Unchanged_2x3
-     (Image : OpenCV.Core.Mat; A, B, C, D, E, F : OpenCV.Core.Float32_Value)
+     (Image : OpenCV.Core.Mat; A, B, C, D, E, F : OpenCV.Float32_Value)
       return Boolean
    is (OpenCV.Core.Float32_Access.Get (Image, 0, 0) = A
        and then OpenCV.Core.Float32_Access.Get (Image, 0, 1) = B
@@ -1671,7 +1672,7 @@ package body Mat_Reduction_Tests is
 
    procedure Fill_3x2
      (Image            : in out OpenCV.Core.Mat;
-      A, B, C, D, E, F : OpenCV.Core.Float32_Value) is
+      A, B, C, D, E, F : OpenCV.Float32_Value) is
    begin
       OpenCV.Core.Float32_Access.Set (Image, 0, 0, A);
       OpenCV.Core.Float32_Access.Set (Image, 0, 1, B);
@@ -1682,7 +1683,7 @@ package body Mat_Reduction_Tests is
    end Fill_3x2;
 
    function Unchanged_3x2
-     (Image : OpenCV.Core.Mat; A, B, C, D, E, F : OpenCV.Core.Float32_Value)
+     (Image : OpenCV.Core.Mat; A, B, C, D, E, F : OpenCV.Float32_Value)
       return Boolean
    is (OpenCV.Core.Float32_Access.Get (Image, 0, 0) = A
        and then OpenCV.Core.Float32_Access.Get (Image, 0, 1) = B
@@ -1692,7 +1693,7 @@ package body Mat_Reduction_Tests is
        and then OpenCV.Core.Float32_Access.Get (Image, 2, 1) = F);
 
    function Product_2x2
-     (Image : OpenCV.Core.Mat; A, B, C, D : OpenCV.Core.Float32_Value)
+     (Image : OpenCV.Core.Mat; A, B, C, D : OpenCV.Float32_Value)
       return Boolean
    is (Image.Rows = 2
        and then Image.Columns = 2
@@ -1736,7 +1737,7 @@ package body Mat_Reduction_Tests is
       Result : OpenCV.Core.Mat;
    begin
       Fill_2x3 (Left, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
-      Right.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      Right.Set_To (OpenCV.Make_Scalar (1.0));
       Result := Left.Matrix_Multiply (Right);
 
       AUnit.Assertions.Assert
@@ -1954,8 +1955,8 @@ package body Mat_Reduction_Tests is
         OpenCV.Core.Create (4, 4, (OpenCV.Core.Float32, 1));
       Result       : OpenCV.Core.Mat;
    begin
-      Parent_Left.Set_To (OpenCV.Core.Make_Scalar (99.0));
-      Parent_Right.Set_To (OpenCV.Core.Make_Scalar (88.0));
+      Parent_Left.Set_To (OpenCV.Make_Scalar (99.0));
+      Parent_Right.Set_To (OpenCV.Make_Scalar (88.0));
 
       declare
          Left  : OpenCV.Core.Mat :=
@@ -2353,8 +2354,8 @@ package body Mat_Reduction_Tests is
         OpenCV.Core.Create (4, 4, (OpenCV.Core.Float32, 1));
       Result       : Long_Float;
    begin
-      Parent_Left.Set_To (OpenCV.Core.Make_Scalar (99.0));
-      Parent_Right.Set_To (OpenCV.Core.Make_Scalar (88.0));
+      Parent_Left.Set_To (OpenCV.Make_Scalar (99.0));
+      Parent_Right.Set_To (OpenCV.Make_Scalar (88.0));
 
       declare
          Left  : OpenCV.Core.Mat :=
@@ -2458,26 +2459,26 @@ package body Mat_Reduction_Tests is
    end Dot_Product_Rejects_Mismatched_Shape_And_Type;
 
    procedure Fill_1x2
-     (Image : in out OpenCV.Core.Mat; A, B : OpenCV.Core.Float32_Value) is
+     (Image : in out OpenCV.Core.Mat; A, B : OpenCV.Float32_Value) is
    begin
       OpenCV.Core.Float32_Access.Set (Image, 0, 0, A);
       OpenCV.Core.Float32_Access.Set (Image, 0, 1, B);
    end Fill_1x2;
 
    function Unchanged_1x2
-     (Image : OpenCV.Core.Mat; A, B : OpenCV.Core.Float32_Value) return Boolean
+     (Image : OpenCV.Core.Mat; A, B : OpenCV.Float32_Value) return Boolean
    is (OpenCV.Core.Float32_Access.Get (Image, 0, 0) = A
        and then OpenCV.Core.Float32_Access.Get (Image, 0, 1) = B);
 
    procedure Fill_2x1
-     (Image : in out OpenCV.Core.Mat; A, B : OpenCV.Core.Float32_Value) is
+     (Image : in out OpenCV.Core.Mat; A, B : OpenCV.Float32_Value) is
    begin
       OpenCV.Core.Float32_Access.Set (Image, 0, 0, A);
       OpenCV.Core.Float32_Access.Set (Image, 1, 0, B);
    end Fill_2x1;
 
    function Unchanged_2x1
-     (Image : OpenCV.Core.Mat; A, B : OpenCV.Core.Float32_Value) return Boolean
+     (Image : OpenCV.Core.Mat; A, B : OpenCV.Float32_Value) return Boolean
    is (OpenCV.Core.Float32_Access.Get (Image, 0, 0) = A
        and then OpenCV.Core.Float32_Access.Get (Image, 1, 0) = B);
 
@@ -2664,9 +2665,9 @@ package body Mat_Reduction_Tests is
         OpenCV.Core.Create (4, 5, (OpenCV.Core.Float32, 1));
       Result        : Long_Float;
    begin
-      Parent_Self.Set_To (OpenCV.Core.Make_Scalar (99.0));
-      Parent_Other.Set_To (OpenCV.Core.Make_Scalar (88.0));
-      Parent_Icovar.Set_To (OpenCV.Core.Make_Scalar (77.0));
+      Parent_Self.Set_To (OpenCV.Make_Scalar (99.0));
+      Parent_Other.Set_To (OpenCV.Make_Scalar (88.0));
+      Parent_Icovar.Set_To (OpenCV.Make_Scalar (77.0));
 
       declare
          Self               : OpenCV.Core.Mat :=
@@ -2928,7 +2929,7 @@ package body Mat_Reduction_Tests is
    end Mahalanobis_Distance_Rejects_Invalid_Inputs;
 
    procedure Fill_3x1
-     (Image : in out OpenCV.Core.Mat; A, B, C : OpenCV.Core.Float32_Value) is
+     (Image : in out OpenCV.Core.Mat; A, B, C : OpenCV.Float32_Value) is
    begin
       OpenCV.Core.Float32_Access.Set (Image, 0, 0, A);
       OpenCV.Core.Float32_Access.Set (Image, 1, 0, B);
@@ -2936,14 +2937,14 @@ package body Mat_Reduction_Tests is
    end Fill_3x1;
 
    function Unchanged_3x1
-     (Image : OpenCV.Core.Mat; A, B, C : OpenCV.Core.Float32_Value)
+     (Image : OpenCV.Core.Mat; A, B, C : OpenCV.Float32_Value)
       return Boolean
    is (OpenCV.Core.Float32_Access.Get (Image, 0, 0) = A
        and then OpenCV.Core.Float32_Access.Get (Image, 1, 0) = B
        and then OpenCV.Core.Float32_Access.Get (Image, 2, 0) = C);
 
    procedure Fill_1x3
-     (Image : in out OpenCV.Core.Mat; A, B, C : OpenCV.Core.Float32_Value) is
+     (Image : in out OpenCV.Core.Mat; A, B, C : OpenCV.Float32_Value) is
    begin
       OpenCV.Core.Float32_Access.Set (Image, 0, 0, A);
       OpenCV.Core.Float32_Access.Set (Image, 0, 1, B);
@@ -2951,7 +2952,7 @@ package body Mat_Reduction_Tests is
    end Fill_1x3;
 
    function Unchanged_1x3
-     (Image : OpenCV.Core.Mat; A, B, C : OpenCV.Core.Float32_Value)
+     (Image : OpenCV.Core.Mat; A, B, C : OpenCV.Float32_Value)
       return Boolean
    is (OpenCV.Core.Float32_Access.Get (Image, 0, 0) = A
        and then OpenCV.Core.Float32_Access.Get (Image, 0, 1) = B
@@ -3103,8 +3104,8 @@ package body Mat_Reduction_Tests is
         OpenCV.Core.Create (3, 3, (OpenCV.Core.Float32, 1));
       Result       : OpenCV.Core.Mat;
    begin
-      Parent_Self.Set_To (OpenCV.Core.Make_Scalar (99.0));
-      Parent_Other.Set_To (OpenCV.Core.Make_Scalar (88.0));
+      Parent_Self.Set_To (OpenCV.Make_Scalar (99.0));
+      Parent_Other.Set_To (OpenCV.Make_Scalar (88.0));
 
       declare
          Self  : OpenCV.Core.Mat :=
@@ -3502,8 +3503,8 @@ package body Mat_Reduction_Tests is
       Result : OpenCV.Core.Mat;
    begin
       Fill_2x3 (Left, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
-      Right.Set_To (OpenCV.Core.Make_Scalar (1.0));
-      Addend.Set_To (OpenCV.Core.Make_Scalar (2.0));
+      Right.Set_To (OpenCV.Make_Scalar (1.0));
+      Addend.Set_To (OpenCV.Make_Scalar (2.0));
       Result :=
         OpenCV.Core.Matrix_Multiply_Add
           (Left, Right, Addend, Product_Scale => 1.0, Addend_Scale => 1.0);
@@ -3677,9 +3678,9 @@ package body Mat_Reduction_Tests is
         OpenCV.Core.Create (3, 4, (OpenCV.Core.Float32, 1));
       Result        : OpenCV.Core.Mat;
    begin
-      Parent_Left.Set_To (OpenCV.Core.Make_Scalar (99.0));
-      Parent_Right.Set_To (OpenCV.Core.Make_Scalar (88.0));
-      Parent_Addend.Set_To (OpenCV.Core.Make_Scalar (77.0));
+      Parent_Left.Set_To (OpenCV.Make_Scalar (99.0));
+      Parent_Right.Set_To (OpenCV.Make_Scalar (88.0));
+      Parent_Addend.Set_To (OpenCV.Make_Scalar (77.0));
 
       declare
          Left   : OpenCV.Core.Mat :=
@@ -3966,7 +3967,7 @@ package body Mat_Reduction_Tests is
 
    function Product_3x3
      (Image                     : OpenCV.Core.Mat;
-      A, B, C, D, E, F, G, H, I : OpenCV.Core.Float32_Value) return Boolean
+      A, B, C, D, E, F, G, H, I : OpenCV.Float32_Value) return Boolean
    is (Image.Rows = 3
        and then Image.Columns = 3
        and then Image.Depth = OpenCV.Core.Float32
@@ -4271,7 +4272,7 @@ package body Mat_Reduction_Tests is
         OpenCV.Core.Create (3, 5, (OpenCV.Core.Float32, 1));
       Result : OpenCV.Core.Mat;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Parent.Set_To (OpenCV.Make_Scalar (99.0));
 
       declare
          Source : OpenCV.Core.Mat :=
@@ -5048,8 +5049,8 @@ package body Mat_Reduction_Tests is
         OpenCV.Core.Create (4, 6, (OpenCV.Core.Float32, 1));
       Result        : OpenCV.Core.Mat;
    begin
-      Source_Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
-      Delta_Parent.Set_To (OpenCV.Core.Make_Scalar (77.0));
+      Source_Parent.Set_To (OpenCV.Make_Scalar (99.0));
+      Delta_Parent.Set_To (OpenCV.Make_Scalar (77.0));
 
       declare
          Source : OpenCV.Core.Mat :=
@@ -5116,7 +5117,7 @@ package body Mat_Reduction_Tests is
    end Transposed_Product_With_Delta_Result_Independence;
 
    function Covariance_Mean_1x2
-     (Image : OpenCV.Core.Mat; A, B : OpenCV.Core.Float32_Value) return Boolean
+     (Image : OpenCV.Core.Mat; A, B : OpenCV.Float32_Value) return Boolean
    is (Image.Rows = 1
        and then Image.Columns = 2
        and then Image.Depth = OpenCV.Core.Float32
@@ -5129,7 +5130,7 @@ package body Mat_Reduction_Tests is
                    Long_Float (B)));
 
    function Covariance_Mean_2x1
-     (Image : OpenCV.Core.Mat; A, B : OpenCV.Core.Float32_Value) return Boolean
+     (Image : OpenCV.Core.Mat; A, B : OpenCV.Float32_Value) return Boolean
    is (Image.Rows = 2
        and then Image.Columns = 1
        and then Image.Depth = OpenCV.Core.Float32
@@ -5288,7 +5289,7 @@ package body Mat_Reduction_Tests is
         OpenCV.Core.Create (4, 4, (OpenCV.Core.Float32, 1));
       Result : OpenCV.Core.Covariance_Result;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Parent.Set_To (OpenCV.Make_Scalar (99.0));
       declare
          Source : OpenCV.Core.Mat :=
            Parent.Region ((X => 1, Y => 0, Width => 2, Height => 3));
@@ -5497,7 +5498,7 @@ package body Mat_Reduction_Tests is
    function Satisfies_Eigen_Equation
      (Source : OpenCV.Core.Mat;
       Result : OpenCV.Core.Eigen_Decomposition_Result;
-      Index  : OpenCV.Core.Size_Coordinate) return Boolean
+      Index  : OpenCV.Size_Coordinate) return Boolean
    is
       Vector : constant OpenCV.Core.Mat :=
         Result.Eigenvectors.Row_View (Index);
@@ -5507,7 +5508,7 @@ package body Mat_Reduction_Tests is
         OpenCV.Core.Create (Source.Rows, 1, (Source.Depth, Source.Channels));
       Right  : OpenCV.Core.Mat;
    begin
-      Zero.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Zero.Set_To (OpenCV.Make_Scalar (0.0));
       Right :=
         Vector.Transpose.Scale_Add
           (Scale => Eigenvalue_At (Result.Eigenvalues, Integer (Index)),
@@ -5640,7 +5641,7 @@ package body Mat_Reduction_Tests is
         OpenCV.Core.Create (4, 4, (OpenCV.Core.Float32, 1));
       Result : OpenCV.Core.Eigen_Decomposition_Result;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Parent.Set_To (OpenCV.Make_Scalar (99.0));
       declare
          Source : OpenCV.Core.Mat :=
            Parent.Region ((X => 1, Y => 1, Width => 2, Height => 2));
@@ -5933,9 +5934,9 @@ package body Mat_Reduction_Tests is
       Parent                 : OpenCV.Core.Mat :=
         OpenCV.Core.Create (4, 4, (OpenCV.Core.Float32, 1));
       Result                 : OpenCV.Core.Eigen_Decomposition_Result;
-      First_Vector_Component : OpenCV.Core.Float32_Value;
+      First_Vector_Component : OpenCV.Float32_Value;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Parent.Set_To (OpenCV.Make_Scalar (99.0));
       declare
          Source : OpenCV.Core.Mat :=
            Parent.Region ((X => 1, Y => 1, Width => 2, Height => 2));
@@ -6076,7 +6077,7 @@ package body Mat_Reduction_Tests is
        and then OpenCV.Core.Float32_Access.Get (Image, 3, 1) = 4.0);
 
    function PCA_Mean_1x2
-     (Image : OpenCV.Core.Mat; A, B : OpenCV.Core.Float32_Value) return Boolean
+     (Image : OpenCV.Core.Mat; A, B : OpenCV.Float32_Value) return Boolean
    is (Image.Rows = 1
        and then Image.Columns = 2
        and then Image.Depth = OpenCV.Core.Float32
@@ -6089,7 +6090,7 @@ package body Mat_Reduction_Tests is
                    Long_Float (B)));
 
    function PCA_Mean_2x1
-     (Image : OpenCV.Core.Mat; A, B : OpenCV.Core.Float32_Value) return Boolean
+     (Image : OpenCV.Core.Mat; A, B : OpenCV.Float32_Value) return Boolean
    is (Image.Rows = 2
        and then Image.Columns = 1
        and then Image.Depth = OpenCV.Core.Float32
@@ -6339,7 +6340,7 @@ package body Mat_Reduction_Tests is
         OpenCV.Core.Create (5, 4, (OpenCV.Core.Float32, 1));
       Result : OpenCV.Core.Principal_Component_Analysis_Result;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Parent.Set_To (OpenCV.Make_Scalar (99.0));
       declare
          Source : OpenCV.Core.Mat :=
            Parent.Region ((X => 1, Y => 0, Width => 2, Height => 4));
@@ -6898,7 +6899,7 @@ package body Mat_Reduction_Tests is
       Expected   : OpenCV.Core.Principal_Component_Analysis_Result;
       Result     : OpenCV.Core.Principal_Component_Analysis_Result;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Parent.Set_To (OpenCV.Make_Scalar (99.0));
       Fill_PCA_Retained_Variance_Row_Samples (Contiguous);
       Expected :=
         Contiguous.Principal_Component_Analysis (Retained_Variance => 0.80);
@@ -7433,7 +7434,7 @@ package body Mat_Reduction_Tests is
       Basis      : OpenCV.Core.Principal_Component_Analysis_Result;
       Expected   : OpenCV.Core.Mat;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Parent.Set_To (OpenCV.Make_Scalar (99.0));
       Fill_PCA_Row_Samples (Contiguous);
       Basis := Contiguous.Principal_Component_Analysis;
       Expected := Contiguous.PCA_Project (Basis);
@@ -7855,7 +7856,7 @@ package body Mat_Reduction_Tests is
           (Rows         => 1,
            Columns      => 2,
            Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
-      Result : OpenCV.Core.Scalar;
+      Result : OpenCV.Scalar;
    begin
       OpenCV.Core.UInt8_Vec3_Access.Set (Image, 0, 0, (1, 10, 100));
       OpenCV.Core.UInt8_Vec3_Access.Set (Image, 0, 1, (3, 14, 104));
@@ -7945,7 +7946,7 @@ package body Mat_Reduction_Tests is
               (Source,
                Row,
                Column,
-               OpenCV.Core.UInt8_Value (Row * 4 + Column));
+               OpenCV.UInt8_Value (Row * 4 + Column));
          end loop;
       end loop;
 
@@ -7981,7 +7982,7 @@ package body Mat_Reduction_Tests is
               (Source,
                Row,
                Column,
-               OpenCV.Core.Float32_Value (Row * 3 + Column + 1));
+               OpenCV.Float32_Value (Row * 3 + Column + 1));
          end loop;
       end loop;
 
@@ -8020,7 +8021,7 @@ package body Mat_Reduction_Tests is
       end Compute_Empty_Std_Dev;
 
       procedure Compute_Five_Channel_Mean is
-         Result : constant OpenCV.Core.Scalar := Five_Channel_Image.Mean;
+         Result : constant OpenCV.Scalar := Five_Channel_Image.Mean;
       begin
          pragma Unreferenced (Result);
       end Compute_Five_Channel_Mean;
@@ -8057,7 +8058,7 @@ package body Mat_Reduction_Tests is
         OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
       Mask   : OpenCV.Core.Mat :=
         OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
-      Result : OpenCV.Core.Scalar;
+      Result : OpenCV.Scalar;
    begin
       OpenCV.Core.UInt8_Access.Set (Image, 0, 0, 10);
       OpenCV.Core.UInt8_Access.Set (Image, 0, 1, 20);
@@ -8084,7 +8085,7 @@ package body Mat_Reduction_Tests is
         OpenCV.Core.Create (1, 3, (OpenCV.Core.UInt8, 3));
       Mask   : OpenCV.Core.Mat :=
         OpenCV.Core.Create (1, 3, (OpenCV.Core.UInt8, 1));
-      Result : OpenCV.Core.Scalar;
+      Result : OpenCV.Scalar;
    begin
       OpenCV.Core.UInt8_Vec3_Access.Set (Image, 0, 0, (1, 10, 100));
       OpenCV.Core.UInt8_Vec3_Access.Set (Image, 0, 1, (5, 50, 50));
@@ -8112,17 +8113,17 @@ package body Mat_Reduction_Tests is
       Threshold                : OpenCV.Core.Mat :=
         OpenCV.Core.Create (1, 4, (OpenCV.Core.UInt8, 1));
       Compare_Mask, Range_Mask : OpenCV.Core.Mat;
-      Compare_Mean, Range_Mean : OpenCV.Core.Scalar;
+      Compare_Mean, Range_Mean : OpenCV.Scalar;
    begin
       OpenCV.Core.UInt8_Access.Set (Image, 0, 0, 1);
       OpenCV.Core.UInt8_Access.Set (Image, 0, 1, 5);
       OpenCV.Core.UInt8_Access.Set (Image, 0, 2, 10);
       OpenCV.Core.UInt8_Access.Set (Image, 0, 3, 20);
-      Threshold.Set_To (OpenCV.Core.Make_Scalar (5.0));
+      Threshold.Set_To (OpenCV.Make_Scalar (5.0));
       Compare_Mask := Image.Compare (Threshold, OpenCV.Core.Greater_Than);
       Range_Mask :=
         Image.In_Range
-          (OpenCV.Core.Make_Scalar (5.0), OpenCV.Core.Make_Scalar (10.0));
+          (OpenCV.Make_Scalar (5.0), OpenCV.Make_Scalar (10.0));
       Compare_Mean := Image.Mean (Compare_Mask);
       Range_Mean := Image.Mean (Range_Mask);
 
@@ -8145,9 +8146,9 @@ package body Mat_Reduction_Tests is
       View, Mask_View        : OpenCV.Core.Mat;
       Zero_Mask              : OpenCV.Core.Mat :=
         OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
-      Region_Mean, Zero_Mean : OpenCV.Core.Scalar;
+      Region_Mean, Zero_Mean : OpenCV.Scalar;
    begin
-      Source.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Source.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.UInt8_Access.Set (Source, 0, 0, 1);
       OpenCV.Core.UInt8_Access.Set (Source, 0, 1, 2);
       OpenCV.Core.UInt8_Access.Set (Source, 0, 2, 3);
@@ -8157,7 +8158,7 @@ package body Mat_Reduction_Tests is
       OpenCV.Core.UInt8_Access.Set (Source, 2, 0, 7);
       OpenCV.Core.UInt8_Access.Set (Source, 2, 1, 30);
       OpenCV.Core.UInt8_Access.Set (Source, 2, 2, 40);
-      Mask_Parent.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Mask_Parent.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.UInt8_Access.Set (Mask_Parent, 1, 1, 255);
       OpenCV.Core.UInt8_Access.Set (Mask_Parent, 1, 2, 1);
       OpenCV.Core.UInt8_Access.Set (Mask_Parent, 2, 1, 1);
@@ -8166,7 +8167,7 @@ package body Mat_Reduction_Tests is
       Mask_View :=
         Mask_Parent.Region ((X => 1, Y => 1, Width => 2, Height => 2));
       Region_Mean := View.Mean (Mask_View);
-      Zero_Mask.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Zero_Mask.Set_To (OpenCV.Make_Scalar (0.0));
       Zero_Mean := View.Mean (Zero_Mask);
 
       AUnit.Assertions.Assert
@@ -8203,34 +8204,34 @@ package body Mat_Reduction_Tests is
       Five_Mask                : constant OpenCV.Core.Mat :=
         OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
       Empty_Source, Empty_Mask : OpenCV.Core.Mat;
-      Empty_Result             : OpenCV.Core.Scalar;
+      Empty_Result             : OpenCV.Scalar;
 
       procedure Float_Depth is
-         Result : constant OpenCV.Core.Scalar := Source.Mean (Float_Mask);
+         Result : constant OpenCV.Scalar := Source.Mean (Float_Mask);
       begin
          pragma Unreferenced (Result);
       end Float_Depth;
 
       procedure Multi_Channel is
-         Result : constant OpenCV.Core.Scalar := Source.Mean (Multi_Mask);
+         Result : constant OpenCV.Scalar := Source.Mean (Multi_Mask);
       begin
          pragma Unreferenced (Result);
       end Multi_Channel;
 
       procedure Wrong_Rows is
-         Result : constant OpenCV.Core.Scalar := Source.Mean (Rows_Mask);
+         Result : constant OpenCV.Scalar := Source.Mean (Rows_Mask);
       begin
          pragma Unreferenced (Result);
       end Wrong_Rows;
 
       procedure Wrong_Columns is
-         Result : constant OpenCV.Core.Scalar := Source.Mean (Columns_Mask);
+         Result : constant OpenCV.Scalar := Source.Mean (Columns_Mask);
       begin
          pragma Unreferenced (Result);
       end Wrong_Columns;
 
       procedure Too_Many_Channels is
-         Result : constant OpenCV.Core.Scalar := Five_Channel.Mean (Five_Mask);
+         Result : constant OpenCV.Scalar := Five_Channel.Mean (Five_Mask);
       begin
          pragma Unreferenced (Result);
       end Too_Many_Channels;
@@ -8328,7 +8329,7 @@ package body Mat_Reduction_Tests is
       OpenCV.Core.UInt8_Access.Set (Image, 0, 1, 5);
       OpenCV.Core.UInt8_Access.Set (Image, 0, 2, 10);
       OpenCV.Core.UInt8_Access.Set (Image, 0, 3, 20);
-      Threshold.Set_To (OpenCV.Core.Make_Scalar (5.0));
+      Threshold.Set_To (OpenCV.Make_Scalar (5.0));
       Mask := Image.Compare (Threshold, OpenCV.Core.Greater_Than);
       Result := Image.Mean_Std_Dev (Mask);
 
@@ -8352,12 +8353,12 @@ package body Mat_Reduction_Tests is
         OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
       Region_Result, Zero_Result : OpenCV.Core.Mean_Std_Dev_Result;
    begin
-      Source.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Source.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.UInt8_Access.Set (Source, 1, 1, 10);
       OpenCV.Core.UInt8_Access.Set (Source, 1, 2, 20);
       OpenCV.Core.UInt8_Access.Set (Source, 2, 1, 30);
       OpenCV.Core.UInt8_Access.Set (Source, 2, 2, 40);
-      Mask_Parent.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Mask_Parent.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.UInt8_Access.Set (Mask_Parent, 1, 1, 255);
       OpenCV.Core.UInt8_Access.Set (Mask_Parent, 1, 2, 1);
       OpenCV.Core.UInt8_Access.Set (Mask_Parent, 2, 1, 1);
@@ -8365,7 +8366,7 @@ package body Mat_Reduction_Tests is
       Mask_View :=
         Mask_Parent.Region ((X => 1, Y => 1, Width => 2, Height => 2));
       Region_Result := View.Mean_Std_Dev (Mask_View);
-      Zero_Mask.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Zero_Mask.Set_To (OpenCV.Make_Scalar (0.0));
       Zero_Result := View.Mean_Std_Dev (Zero_Mask);
 
       AUnit.Assertions.Assert
@@ -8539,11 +8540,11 @@ package body Mat_Reduction_Tests is
       OpenCV.Core.UInt8_Access.Set (Image, 0, 1, 5);
       OpenCV.Core.UInt8_Access.Set (Image, 0, 2, 10);
       OpenCV.Core.UInt8_Access.Set (Image, 0, 3, 20);
-      Threshold.Set_To (OpenCV.Core.Make_Scalar (5.0));
+      Threshold.Set_To (OpenCV.Make_Scalar (5.0));
       Compare_Mask := Image.Compare (Threshold, OpenCV.Core.Greater_Than);
       Range_Mask :=
         Image.In_Range
-          (OpenCV.Core.Make_Scalar (5.0), OpenCV.Core.Make_Scalar (10.0));
+          (OpenCV.Make_Scalar (5.0), OpenCV.Make_Scalar (10.0));
 
       AUnit.Assertions.Assert
         (Approximately_Equal (Image.Norm (Compare_Mask, OpenCV.Core.L1), 30.0)
@@ -8562,12 +8563,12 @@ package body Mat_Reduction_Tests is
         OpenCV.Core.Create (3, 3, (OpenCV.Core.UInt8, 1));
       View, Mask  : OpenCV.Core.Mat;
    begin
-      Source.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Source.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.UInt8_Vec3_Access.Set (Source, 1, 1, (1, 2, 3));
       OpenCV.Core.UInt8_Vec3_Access.Set (Source, 1, 2, (4, 5, 6));
       OpenCV.Core.UInt8_Vec3_Access.Set (Source, 2, 1, (7, 8, 9));
       OpenCV.Core.UInt8_Vec3_Access.Set (Source, 2, 2, (10, 11, 12));
-      Mask_Parent.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Mask_Parent.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.UInt8_Access.Set (Mask_Parent, 1, 1, 1);
       OpenCV.Core.UInt8_Access.Set (Mask_Parent, 2, 2, 255);
       View := Source.Region ((X => 1, Y => 1, Width => 2, Height => 2));
@@ -8603,8 +8604,8 @@ package body Mat_Reduction_Tests is
          pragma Unreferenced (Result);
       end Compute_Invalid_Mask;
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (7.0));
-      Zero_Mask.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Image.Set_To (OpenCV.Make_Scalar (7.0));
+      Zero_Mask.Set_To (OpenCV.Make_Scalar (0.0));
 
       AUnit.Assertions.Assert
         (Image.Norm (Zero_Mask, OpenCV.Core.L1) = 0.0
@@ -8636,7 +8637,7 @@ package body Mat_Reduction_Tests is
               (Source,
                Row,
                Column,
-               OpenCV.Core.UInt8_Value (Row * 4 + Column));
+               OpenCV.UInt8_Value (Row * 4 + Column));
          end loop;
       end loop;
 
@@ -8690,7 +8691,7 @@ package body Mat_Reduction_Tests is
            Columns      => 2,
            Element_Type => (Depth => OpenCV.Core.Float16, Channels => 1));
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (3.0));
+      Image.Set_To (OpenCV.Make_Scalar (3.0));
 
       AUnit.Assertions.Assert
         (Approximately_Equal (Image.Norm (OpenCV.Core.L1), 12.0)
@@ -8840,7 +8841,7 @@ package body Mat_Reduction_Tests is
               (Source,
                Row,
                Column,
-               OpenCV.Core.Float32_Value (Row * 10 + Column));
+               OpenCV.Float32_Value (Row * 10 + Column));
          end loop;
       end loop;
 
@@ -8910,7 +8911,7 @@ package body Mat_Reduction_Tests is
            Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
       Zero_Result  : OpenCV.Core.Mat;
    begin
-      Zero_Source.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Zero_Source.Set_To (OpenCV.Make_Scalar (0.0));
       Empty_Result := Empty_Source.Normalize;
       Zero_Result :=
         Zero_Source.Normalize (Kind => OpenCV.Core.L2, Alpha => 5.0);
@@ -8936,7 +8937,7 @@ package body Mat_Reduction_Tests is
            Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
       Result : OpenCV.Core.Min_Max_Result;
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (50.0));
+      Image.Set_To (OpenCV.Make_Scalar (50.0));
       OpenCV.Core.UInt8_Access.Set (Image, Row => 1, Column => 3, Value => 4);
       OpenCV.Core.UInt8_Access.Set
         (Image, Row => 2, Column => 0, Value => 220);
@@ -8965,7 +8966,7 @@ package body Mat_Reduction_Tests is
            Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
       Result : OpenCV.Core.Min_Max_Result;
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (0.25));
+      Image.Set_To (OpenCV.Make_Scalar (0.25));
       OpenCV.Core.Float32_Access.Set
         (Image, Row => 0, Column => 2, Value => -3.5);
       OpenCV.Core.Float32_Access.Set
@@ -8994,7 +8995,7 @@ package body Mat_Reduction_Tests is
            Element_Type => (Depth => OpenCV.Core.Int32, Channels => 1));
       Result : OpenCV.Core.Min_Max_Result;
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (-100.0));
+      Image.Set_To (OpenCV.Make_Scalar (-100.0));
       Result := Image.Min_Max_Loc;
 
       AUnit.Assertions.Assert
@@ -9014,7 +9015,7 @@ package body Mat_Reduction_Tests is
       View   : OpenCV.Core.Mat;
       Result : OpenCV.Core.Min_Max_Result;
    begin
-      Source.Set_To (OpenCV.Core.Make_Scalar (100.0));
+      Source.Set_To (OpenCV.Make_Scalar (100.0));
       View := Source.Region ((X => 1, Y => 1, Width => 4, Height => 3));
       OpenCV.Core.UInt8_Access.Set (View, Row => 0, Column => 3, Value => 2);
       OpenCV.Core.UInt8_Access.Set (View, Row => 2, Column => 0, Value => 240);
@@ -9046,7 +9047,7 @@ package body Mat_Reduction_Tests is
       View   : OpenCV.Core.Mat;
       Result : OpenCV.Core.Min_Max_Result;
    begin
-      Source.Set_To (OpenCV.Core.Make_Scalar (30.0));
+      Source.Set_To (OpenCV.Make_Scalar (30.0));
       View := Source.Row_View (1);
       OpenCV.Core.UInt8_Access.Set (View, Row => 0, Column => 3, Value => 1);
       OpenCV.Core.UInt8_Access.Set (View, Row => 0, Column => 0, Value => 99);
@@ -9120,10 +9121,10 @@ package body Mat_Reduction_Tests is
         OpenCV.Core.Create (3, 4, (OpenCV.Core.UInt8, 1));
       Result : OpenCV.Core.Min_Max_Result;
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (50.0));
+      Image.Set_To (OpenCV.Make_Scalar (50.0));
       OpenCV.Core.UInt8_Access.Set (Image, 1, 3, 4);
       OpenCV.Core.UInt8_Access.Set (Image, 2, 0, 220);
-      Mask.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Mask.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.UInt8_Access.Set (Mask, 1, 3, 1);
       OpenCV.Core.UInt8_Access.Set (Mask, 2, 0, 255);
       Result := Image.Min_Max_Loc (Mask);
@@ -9156,7 +9157,7 @@ package body Mat_Reduction_Tests is
       OpenCV.Core.UInt8_Access.Set (Image, 1, 2, 250);
       Mask :=
         Image.In_Range
-          (OpenCV.Core.Make_Scalar (10.0), OpenCV.Core.Make_Scalar (60.0));
+          (OpenCV.Make_Scalar (10.0), OpenCV.Make_Scalar (60.0));
       Result := Image.Min_Max_Loc (Mask);
 
       AUnit.Assertions.Assert
@@ -9181,12 +9182,12 @@ package body Mat_Reduction_Tests is
       View, Mask  : OpenCV.Core.Mat;
       Result      : OpenCV.Core.Min_Max_Result;
    begin
-      Source.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Source.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.UInt8_Access.Set (Source, 1, 1, 10);
       OpenCV.Core.UInt8_Access.Set (Source, 1, 2, 20);
       OpenCV.Core.UInt8_Access.Set (Source, 2, 1, 30);
       OpenCV.Core.UInt8_Access.Set (Source, 2, 2, 40);
-      Mask_Parent.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Mask_Parent.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.UInt8_Access.Set (Mask_Parent, 1, 2, 1);
       OpenCV.Core.UInt8_Access.Set (Mask_Parent, 2, 1, 255);
       View := Source.Region ((X => 1, Y => 1, Width => 2, Height => 2));
@@ -9217,8 +9218,8 @@ package body Mat_Reduction_Tests is
         OpenCV.Core.Create (2, 2, (OpenCV.Core.UInt8, 1));
       Result : OpenCV.Core.Min_Max_Result;
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (42.0));
-      Mask.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Image.Set_To (OpenCV.Make_Scalar (42.0));
+      Mask.Set_To (OpenCV.Make_Scalar (0.0));
       Result := Image.Min_Max_Loc (Mask);
 
       AUnit.Assertions.Assert
@@ -9286,9 +9287,9 @@ package body Mat_Reduction_Tests is
           (Rows         => 2,
            Columns      => 3,
            Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
-      Total : OpenCV.Core.Scalar;
+      Total : OpenCV.Scalar;
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (10.0));
+      Image.Set_To (OpenCV.Make_Scalar (10.0));
       Total := Image.Sum;
 
       AUnit.Assertions.Assert
@@ -9308,9 +9309,9 @@ package body Mat_Reduction_Tests is
           (Rows         => 2,
            Columns      => 2,
            Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 3));
-      Total : OpenCV.Core.Scalar;
+      Total : OpenCV.Scalar;
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (1.0, 2.0, 3.0));
+      Image.Set_To (OpenCV.Make_Scalar (1.0, 2.0, 3.0));
       Total := Image.Sum;
 
       AUnit.Assertions.Assert
@@ -9334,9 +9335,9 @@ package body Mat_Reduction_Tests is
           (Rows         => 2,
            Columns      => 3,
            Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
-      Total : OpenCV.Core.Scalar;
+      Total : OpenCV.Scalar;
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (1.25));
+      Image.Set_To (OpenCV.Make_Scalar (1.25));
       Total := Image.Sum;
 
       AUnit.Assertions.Assert
@@ -9593,7 +9594,7 @@ package body Mat_Reduction_Tests is
         OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
       Expected   : OpenCV.Core.Singular_Value_Decomposition_Result;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Parent.Set_To (OpenCV.Make_Scalar (99.0));
       Fill_Tall_SVD_Source (Contiguous);
       Expected := Contiguous.Singular_Value_Decomposition;
       declare
@@ -9807,7 +9808,7 @@ package body Mat_Reduction_Tests is
    begin
       Fill_3x2 (Source, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0);
       Fill_3x1 (RHS, 1.0, 2.0, 4.0);
-      Zero.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Zero.Set_To (OpenCV.Make_Scalar (0.0));
       Basis := Source.Singular_Value_Decomposition;
       X := OpenCV.Core.SVD_Back_Substitute (Basis, RHS);
       Residual := Source.Matrix_Multiply (X).Subtract (RHS);
@@ -9988,7 +9989,7 @@ package body Mat_Reduction_Tests is
    begin
       Fill_2x2 (Source, 2.0, 0.0, 0.0, 4.0);
       Fill_2x1 (Contiguous, 4.0, 8.0);
-      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Parent.Set_To (OpenCV.Make_Scalar (99.0));
       Basis := Source.Singular_Value_Decomposition;
       Expected := OpenCV.Core.SVD_Back_Substitute (Basis, Contiguous);
       declare
@@ -10040,9 +10041,9 @@ package body Mat_Reduction_Tests is
       Original := Source.Singular_Value_Decomposition;
       Expected := OpenCV.Core.SVD_Back_Substitute (Original, RHS);
 
-      W_Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
-      U_Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
-      VT_Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      W_Parent.Set_To (OpenCV.Make_Scalar (99.0));
+      U_Parent.Set_To (OpenCV.Make_Scalar (99.0));
+      VT_Parent.Set_To (OpenCV.Make_Scalar (99.0));
 
       Region_Basis.Singular_Values :=
         W_Parent.Region ((X => 1, Y => 1, Width => 1, Height => 2));
@@ -10480,7 +10481,7 @@ package body Mat_Reduction_Tests is
         OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
       Result : OpenCV.Core.Mat;
    begin
-      Source.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Source.Set_To (OpenCV.Make_Scalar (0.0));
       Result := Source.Pseudo_Inverse;
 
       AUnit.Assertions.Assert
@@ -10557,7 +10558,7 @@ package body Mat_Reduction_Tests is
         OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
       Expected   : OpenCV.Core.Mat;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Parent.Set_To (OpenCV.Make_Scalar (99.0));
       Fill_Tall_Pinv_Source (Contiguous);
       Expected := Contiguous.Pseudo_Inverse;
       declare
@@ -10806,7 +10807,7 @@ package body Mat_Reduction_Tests is
       Source : OpenCV.Core.Mat :=
         OpenCV.Core.Create (3, 2, (OpenCV.Core.Float32, 1));
    begin
-      Source.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Source.Set_To (OpenCV.Make_Scalar (0.0));
       AUnit.Assertions.Assert
         (Source.Reciprocal_Condition_Number = 0.0,
          "A non-empty zero matrix must return rcond 0.0 rather than 0 / 0");
@@ -10871,7 +10872,7 @@ package body Mat_Reduction_Tests is
         OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
       Expected   : Long_Float;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Parent.Set_To (OpenCV.Make_Scalar (99.0));
       Fill_2x2 (Contiguous, 4.0, 0.0, 0.0, 2.0);
       Expected := Contiguous.Reciprocal_Condition_Number;
       declare
@@ -10997,7 +10998,7 @@ package body Mat_Reduction_Tests is
    is (Source.Matrix_Multiply (Solution).Norm);
 
    function Float32_Abs
-     (Value : OpenCV.Core.Float32_Value) return OpenCV.Core.Float32_Value
+     (Value : OpenCV.Float32_Value) return OpenCV.Float32_Value
    is (if Value < 0.0 then -Value else Value);
 
    procedure SVD_Solve_Zero_Wide_Exact_Null_Space
@@ -11183,7 +11184,7 @@ package body Mat_Reduction_Tests is
         OpenCV.Core.Create (2, 2, (OpenCV.Core.Float32, 1));
       Result : OpenCV.Core.Mat;
    begin
-      Source.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Source.Set_To (OpenCV.Make_Scalar (0.0));
       Result := Source.SVD_Solve_Zero;
 
       AUnit.Assertions.Assert
@@ -11225,7 +11226,7 @@ package body Mat_Reduction_Tests is
       Parent : OpenCV.Core.Mat :=
         OpenCV.Core.Create (5, 5, (OpenCV.Core.Float32, 1));
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (99.0));
+      Parent.Set_To (OpenCV.Make_Scalar (99.0));
       declare
          Source : OpenCV.Core.Mat :=
            Parent.Region ((X => 1, Y => 1, Width => 3, Height => 2));
@@ -11362,8 +11363,8 @@ package body Mat_Reduction_Tests is
       Expected : constant Long_Float :=
         20.0 * Log (100.0 / Sqrt (2.0)) / Log (10.0);
    begin
-      Left.Set_To (OpenCV.Core.Make_Scalar (0.0));
-      Right.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Left.Set_To (OpenCV.Make_Scalar (0.0));
+      Right.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.UInt8_Access.Set (Right, 0, 1, 2);
 
       AUnit.Assertions.Assert
@@ -11385,7 +11386,7 @@ package body Mat_Reduction_Tests is
       Expected       : constant Long_Float :=
         20.0 * Log (255.0 / Double_Epsilon) / Log (10.0);
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (42.0));
+      Image.Set_To (OpenCV.Make_Scalar (42.0));
 
       AUnit.Assertions.Assert
         (Approximately_Equal
@@ -11410,8 +11411,8 @@ package body Mat_Reduction_Tests is
       Expected : constant Long_Float :=
         20.0 * Log (10.0 / Sqrt (2.0)) / Log (10.0);
    begin
-      Left32.Set_To (OpenCV.Core.Make_Scalar (0.0));
-      Right32.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Left32.Set_To (OpenCV.Make_Scalar (0.0));
+      Right32.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.Float32_Access.Set (Right32, 0, 1, 2.0);
       Left64 := Left32.Convert_To (OpenCV.Core.Float64);
       Right64 := Right32.Convert_To (OpenCV.Core.Float64);
@@ -11449,8 +11450,8 @@ package body Mat_Reduction_Tests is
       Expected : constant Long_Float :=
         20.0 * Log (100.0 / Sqrt (2.0)) / Log (10.0);
    begin
-      Left8.Set_To (OpenCV.Core.Make_Scalar (0.0));
-      Right8.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Left8.Set_To (OpenCV.Make_Scalar (0.0));
+      Right8.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.UInt8_Access.Set (Right8, 0, 1, 2);
       Left32 := Left8.Convert_To (OpenCV.Core.Int32);
       Right32 := Right8.Convert_To (OpenCV.Core.Int32);
@@ -11519,8 +11520,8 @@ package body Mat_Reduction_Tests is
       Right        : OpenCV.Core.Mat;
       Expected     : constant Long_Float := 20.0 * Log (255.0) / Log (10.0);
    begin
-      Left_Parent.Set_To (OpenCV.Core.Make_Scalar (20.0));
-      Right_Parent.Set_To (OpenCV.Core.Make_Scalar (21.0));
+      Left_Parent.Set_To (OpenCV.Make_Scalar (20.0));
+      Right_Parent.Set_To (OpenCV.Make_Scalar (21.0));
       Left := Left_Parent.Region ((X => 1, Y => 0, Width => 2, Height => 2));
       Right := Right_Parent.Region ((X => 1, Y => 0, Width => 2, Height => 2));
 

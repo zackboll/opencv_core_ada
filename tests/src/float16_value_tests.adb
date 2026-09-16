@@ -3,6 +3,7 @@ with AUnit.Test_Caller;
 with Ada.Unchecked_Conversion;
 with Interfaces;
 with Mat_Test_Support;
+with OpenCV;
 with OpenCV.Core;
 
 package body Float16_Value_Tests is
@@ -11,7 +12,7 @@ package body Float16_Value_Tests is
 
    use type Interfaces.Unsigned_16;
    use type Interfaces.Unsigned_32;
-   use type OpenCV.Core.Float32_Value;
+   use type OpenCV.Float32_Value;
 
    subtype Fixture is Mat_Test_Support.Mat_Test_Fixture;
 
@@ -21,15 +22,15 @@ package body Float16_Value_Tests is
 
    function Float32_To_Bits is new
      Ada.Unchecked_Conversion
-       (OpenCV.Core.Float32_Value,
+       (OpenCV.Float32_Value,
         Interfaces.Unsigned_32);
    function Bits_To_Float32 is new
      Ada.Unchecked_Conversion
        (Interfaces.Unsigned_32,
-        OpenCV.Core.Float32_Value);
+        OpenCV.Float32_Value);
 
    function Float32_Bits_Of
-     (Value : OpenCV.Core.Float32_Value) return Interfaces.Unsigned_32
+     (Value : OpenCV.Float32_Value) return Interfaces.Unsigned_32
    is
       pragma Suppress (Validity_Check);
    begin
@@ -37,7 +38,7 @@ package body Float16_Value_Tests is
    end Float32_Bits_Of;
 
    function Float32_From_Bits
-     (Bits : Interfaces.Unsigned_32) return OpenCV.Core.Float32_Value
+     (Bits : Interfaces.Unsigned_32) return OpenCV.Float32_Value
    is
       pragma Suppress (Validity_Check);
    begin
@@ -85,7 +86,7 @@ package body Float16_Value_Tests is
    end Assert_Float16_Bits;
 
    procedure Assert_Float32_Bits
-     (Value    : OpenCV.Core.Float32_Value;
+     (Value    : OpenCV.Float32_Value;
       Expected : Interfaces.Unsigned_32;
       Message  : String)
    is
@@ -315,11 +316,11 @@ package body Float16_Value_Tests is
    procedure To_Float16_Rounds_Representative_Values (Test : in out Fixture) is
       pragma Unreferenced (Test);
       pragma Suppress (Validity_Check);
-      Positive_Infinity : constant OpenCV.Core.Float32_Value :=
+      Positive_Infinity : constant OpenCV.Float32_Value :=
         Float32_From_Bits (16#7F80_0000#);
-      Negative_Infinity : constant OpenCV.Core.Float32_Value :=
+      Negative_Infinity : constant OpenCV.Float32_Value :=
         Float32_From_Bits (16#FF80_0000#);
-      Negative_Zero     : constant OpenCV.Core.Float32_Value :=
+      Negative_Zero     : constant OpenCV.Float32_Value :=
         Float32_From_Bits (16#8000_0000#);
    begin
       Assert_Float16_Bits
@@ -360,14 +361,14 @@ package body Float16_Value_Tests is
       pragma Unreferenced (Test);
       --  Midpoint between 1.0 (16#3C00#, even LSB) and the next binary16
       --  value 16#3C01#. Exact binary32 encoding of 1 + 2^-11.
-      Midpoint_Even_Lower : constant OpenCV.Core.Float32_Value :=
+      Midpoint_Even_Lower : constant OpenCV.Float32_Value :=
         Float32_From_Bits (16#3F80_1000#);
-      Just_Below_Even     : constant OpenCV.Core.Float32_Value :=
+      Just_Below_Even     : constant OpenCV.Float32_Value :=
         Float32_From_Bits (16#3F80_0FFF#);
-      Just_Above_Even     : constant OpenCV.Core.Float32_Value :=
+      Just_Above_Even     : constant OpenCV.Float32_Value :=
         Float32_From_Bits (16#3F80_1001#);
       --  Midpoint between 1 + 2^-10 (16#3C01#, odd LSB) and 16#3C02#.
-      Midpoint_Odd_Lower  : constant OpenCV.Core.Float32_Value :=
+      Midpoint_Odd_Lower  : constant OpenCV.Float32_Value :=
         Float32_From_Bits (16#3F80_3000#);
    begin
       Assert_Float16_Bits
@@ -391,18 +392,18 @@ package body Float16_Value_Tests is
    procedure To_Float16_Rounds_Subnormals_And_Underflow (Test : in out Fixture)
    is
       pragma Unreferenced (Test);
-      Two_To_Minus_24     : constant OpenCV.Core.Float32_Value :=
+      Two_To_Minus_24     : constant OpenCV.Float32_Value :=
         Float32_From_Bits (16#3380_0000#);
-      Two_To_Minus_25     : constant OpenCV.Core.Float32_Value :=
+      Two_To_Minus_25     : constant OpenCV.Float32_Value :=
         Float32_From_Bits (16#3300_0000#);
-      Just_Above_2_M_25   : constant OpenCV.Core.Float32_Value :=
+      Just_Above_2_M_25   : constant OpenCV.Float32_Value :=
         Float32_From_Bits (16#3300_0001#);
-      Largest_Subnormal32 : constant OpenCV.Core.Float32_Value :=
+      Largest_Subnormal32 : constant OpenCV.Float32_Value :=
         OpenCV.Core.To_Float32 (Value_Of (16#03FF#));
-      Smallest_Normal32   : constant OpenCV.Core.Float32_Value :=
+      Smallest_Normal32   : constant OpenCV.Float32_Value :=
         OpenCV.Core.To_Float32 (Value_Of (16#0400#));
       --  Midpoint between 16#03FF# and 16#0400#: binary32 16#387F_E000#.
-      Subnormal_Midpoint  : constant OpenCV.Core.Float32_Value :=
+      Subnormal_Midpoint  : constant OpenCV.Float32_Value :=
         Float32_From_Bits (16#387F_E000#);
    begin
       Assert_Float16_Bits
@@ -433,12 +434,12 @@ package body Float16_Value_Tests is
 
    procedure To_Float16_Overflows_At_Finite_Boundary (Test : in out Fixture) is
       pragma Unreferenced (Test);
-      Maximum_Finite      : constant OpenCV.Core.Float32_Value := 65_504.0;
+      Maximum_Finite      : constant OpenCV.Float32_Value := 65_504.0;
       --  Midpoint between 65504 and infinity is 65520. 0x7BFF is odd, so
       --  the tie rounds up and overflows to infinity.
-      Just_Below_Midpoint : constant OpenCV.Core.Float32_Value :=
+      Just_Below_Midpoint : constant OpenCV.Float32_Value :=
         Float32_From_Bits (16#477F_EFFF#);
-      Overflow_Midpoint   : constant OpenCV.Core.Float32_Value :=
+      Overflow_Midpoint   : constant OpenCV.Float32_Value :=
         Float32_From_Bits (16#477F_F000#);
    begin
       Assert_Float16_Bits

@@ -1,6 +1,7 @@
 with AUnit.Assertions;
 with AUnit.Test_Caller;
 with Interfaces;
+with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.Float16_Access;
 with OpenCV.Core.Float16_Buffer_Access;
@@ -21,7 +22,7 @@ package body Mat_Arithmetic_Tests is
 
    use type OpenCV.Core.Depth_Type;
    use type OpenCV.Core.Channel_Count;
-   use type OpenCV.Core.Size_Coordinate;
+   use type OpenCV.Size_Coordinate;
    use type OpenCV.Core.Float32_Access.Float32_Classification;
    use type OpenCV.Core.UInt8_Vec3.Vector;
 
@@ -549,8 +550,8 @@ package body Mat_Arithmetic_Tests is
       Sum        : OpenCV.Core.Mat;
       Difference : OpenCV.Core.Mat;
    begin
-      Left.Set_To (OpenCV.Core.Make_Scalar (1_000.0));
-      Right.Set_To (OpenCV.Core.Make_Scalar (-250.0));
+      Left.Set_To (OpenCV.Make_Scalar (1_000.0));
+      Right.Set_To (OpenCV.Make_Scalar (-250.0));
       Sum := Left.Add (Right);
       Difference := Left.Subtract (Right);
 
@@ -570,8 +571,8 @@ package body Mat_Arithmetic_Tests is
         OpenCV.Core.Create (3, 3, (OpenCV.Core.Float32, 1));
       Result : OpenCV.Core.Mat;
    begin
-      Left.Set_To (OpenCV.Core.Make_Scalar (1.0));
-      Right.Set_To (OpenCV.Core.Make_Scalar (2.0));
+      Left.Set_To (OpenCV.Make_Scalar (1.0));
+      Right.Set_To (OpenCV.Make_Scalar (2.0));
       Result := Left.Region ((1, 0, 2, 3)).Add (Right.Region ((1, 0, 2, 3)));
       OpenCV.Core.Float32_Access.Set (Left, 0, 1, 9.0);
       OpenCV.Core.Float32_Access.Set (Result, 0, 1, 7.0);
@@ -728,12 +729,12 @@ package body Mat_Arithmetic_Tests is
       Float_Result        : OpenCV.Core.Mat;
    begin
       OpenCV.Core.UInt8_Access.Set (Integer_Numerator, 0, 0, 20);
-      Integer_Denominator.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Integer_Denominator.Set_To (OpenCV.Make_Scalar (0.0));
       Integer_Result := Integer_Numerator.Divide (Integer_Denominator);
       OpenCV.Core.Float32_Access.Set (Float_Numerator, 0, 0, 1.0);
       OpenCV.Core.Float32_Access.Set (Float_Numerator, 0, 1, -1.0);
       OpenCV.Core.Float32_Access.Set (Float_Numerator, 0, 2, 0.0);
-      Float_Denominator.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Float_Denominator.Set_To (OpenCV.Make_Scalar (0.0));
       Float_Result := Float_Numerator.Divide (Float_Denominator);
       AUnit.Assertions.Assert
         (OpenCV.Core.UInt8_Access.Get (Integer_Result, 0, 0) = 0,
@@ -765,7 +766,7 @@ package body Mat_Arithmetic_Tests is
       OpenCV.Core.Float32_Access.Set (Numerator, 0, 2, -1.0);
       OpenCV.Core.Float32_Access.Set (Numerator, 0, 3, 0.0);
       OpenCV.Core.Float32_Access.Set (Finite_Image, 0, 0, 2.0);
-      Denominator.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Denominator.Set_To (OpenCV.Make_Scalar (0.0));
       Result := Numerator.Divide (Denominator);
 
       AUnit.Assertions.Assert
@@ -794,8 +795,8 @@ package body Mat_Arithmetic_Tests is
       Product  : OpenCV.Core.Mat;
       Quotient : OpenCV.Core.Mat;
    begin
-      Left.Set_To (OpenCV.Core.Make_Scalar (6.0));
-      Right.Set_To (OpenCV.Core.Make_Scalar (2.0));
+      Left.Set_To (OpenCV.Make_Scalar (6.0));
+      Right.Set_To (OpenCV.Make_Scalar (2.0));
       Product :=
         Left.Region ((1, 0, 2, 3)).Multiply (Right.Region ((1, 0, 2, 3)));
       Quotient :=
@@ -870,8 +871,8 @@ package body Mat_Arithmetic_Tests is
          pragma Unreferenced (Ignored);
       end Multiply_Mismatched_Channels;
    begin
-      Int16_Left.Set_To (OpenCV.Core.Make_Scalar (-12.0));
-      Int16_Right.Set_To (OpenCV.Core.Make_Scalar (3.0));
+      Int16_Left.Set_To (OpenCV.Make_Scalar (-12.0));
+      Int16_Right.Set_To (OpenCV.Make_Scalar (3.0));
       Product := Int16_Left.Multiply (Int16_Right);
       Quotient := Int16_Left.Divide (Int16_Right);
       Empty_Product := Empty_Left.Multiply (Empty_Right);
@@ -939,8 +940,8 @@ package body Mat_Arithmetic_Tests is
       OpenCV.Core.UInt8_Vec3_Access.Set (UInt8_Left, 0, 0, (10, 250, 50));
       OpenCV.Core.UInt8_Vec3_Access.Set (UInt8_Right, 0, 0, (200, 20, 80));
       UInt8_Result := UInt8_Left.Abs_Diff (UInt8_Right);
-      Int16_Left.Set_To (OpenCV.Core.Make_Scalar (-32_768.0));
-      Int16_Right.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Int16_Left.Set_To (OpenCV.Make_Scalar (-32_768.0));
+      Int16_Right.Set_To (OpenCV.Make_Scalar (0.0));
       Int16_Result := Int16_Left.Abs_Diff (Int16_Right);
 
       AUnit.Assertions.Assert
@@ -964,15 +965,15 @@ package body Mat_Arithmetic_Tests is
       Nonfinite                             : OpenCV.Core.Mat;
       Empty_Left, Empty_Right, Empty_Result : OpenCV.Core.Mat;
    begin
-      Left.Set_To (OpenCV.Core.Make_Scalar (8.0));
-      Right.Set_To (OpenCV.Core.Make_Scalar (3.0));
+      Left.Set_To (OpenCV.Make_Scalar (8.0));
+      Right.Set_To (OpenCV.Make_Scalar (3.0));
       Result :=
         Left.Region ((1, 0, 2, 3)).Abs_Diff (Right.Region ((1, 0, 2, 3)));
       OpenCV.Core.Float32_Access.Set (Left, 0, 1, 99.0);
       OpenCV.Core.Float32_Access.Set (Result, 0, 1, 9.0);
       OpenCV.Core.Float32_Access.Set (Numerator, 0, 0, 1.0);
       OpenCV.Core.Float32_Access.Set (Numerator, 0, 1, 0.0);
-      Zeros.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Zeros.Set_To (OpenCV.Make_Scalar (0.0));
       Nonfinite := Numerator.Divide (Zeros);
       Empty_Result := Empty_Left.Abs_Diff (Empty_Right);
 
@@ -1050,8 +1051,8 @@ package body Mat_Arithmetic_Tests is
         OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
       Result      : OpenCV.Core.Mat;
    begin
-      Left.Set_To (OpenCV.Core.Make_Scalar (10.0));
-      Right.Set_To (OpenCV.Core.Make_Scalar (20.0));
+      Left.Set_To (OpenCV.Make_Scalar (10.0));
+      Right.Set_To (OpenCV.Make_Scalar (20.0));
       Result :=
         Left.Add_Weighted
           (Alpha => 0.25, Right => Right, Beta => 0.75, Gamma => 2.0);
@@ -1088,8 +1089,8 @@ package body Mat_Arithmetic_Tests is
       Saturated :=
         UInt8_Left.Add_Weighted
           (Alpha => 2.0, Right => UInt8_Right, Beta => 2.0, Gamma => 100.0);
-      Int16_Left.Set_To (OpenCV.Core.Make_Scalar (-10.0));
-      Int16_Right.Set_To (OpenCV.Core.Make_Scalar (20.0));
+      Int16_Left.Set_To (OpenCV.Make_Scalar (-10.0));
+      Int16_Right.Set_To (OpenCV.Make_Scalar (20.0));
       Int16_Result :=
         Int16_Left.Add_Weighted
           (Alpha => 0.5, Right => Int16_Right, Beta => 0.5);
@@ -1111,8 +1112,8 @@ package body Mat_Arithmetic_Tests is
       Result                                : OpenCV.Core.Mat;
       Empty_Left, Empty_Right, Empty_Result : OpenCV.Core.Mat;
    begin
-      Left.Set_To (OpenCV.Core.Make_Scalar (4.0));
-      Right.Set_To (OpenCV.Core.Make_Scalar (12.0));
+      Left.Set_To (OpenCV.Make_Scalar (4.0));
+      Right.Set_To (OpenCV.Make_Scalar (12.0));
       Result :=
         Left.Region ((1, 0, 2, 3)).Add_Weighted
           (Alpha => 0.25,
@@ -1237,11 +1238,11 @@ package body Mat_Arithmetic_Tests is
       OpenCV.Core.UInt8_Access.Set (UInt8_Left, 0, 0, 10);
       OpenCV.Core.UInt8_Access.Set (UInt8_Right, 0, 0, 3);
       Rounded := UInt8_Left.Scale_Add (Scale => 0.5, Right => UInt8_Right);
-      Int16_Left.Set_To (OpenCV.Core.Make_Scalar (20_000.0));
-      Int16_Right.Set_To (OpenCV.Core.Make_Scalar (20_000.0));
+      Int16_Left.Set_To (OpenCV.Make_Scalar (20_000.0));
+      Int16_Right.Set_To (OpenCV.Make_Scalar (20_000.0));
       Int16_High := Int16_Left.Scale_Add (Scale => 2.0, Right => Int16_Right);
-      Int16_Left.Set_To (OpenCV.Core.Make_Scalar (-20_000.0));
-      Int16_Right.Set_To (OpenCV.Core.Make_Scalar (-20_000.0));
+      Int16_Left.Set_To (OpenCV.Make_Scalar (-20_000.0));
+      Int16_Right.Set_To (OpenCV.Make_Scalar (-20_000.0));
       Int16_Low := Int16_Left.Scale_Add (Scale => 2.0, Right => Int16_Right);
 
       AUnit.Assertions.Assert
@@ -1268,10 +1269,10 @@ package body Mat_Arithmetic_Tests is
       OpenCV.Core.Float32_Access.Set (Right, 0, 0, 2.5);
       OpenCV.Core.Float32_Access.Set (Right, 0, 1, 3.0);
       Result := Left.Scale_Add (Scale => 2.0, Right => Right);
-      Numerator.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Numerator.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.Float32_Access.Set (Numerator, 0, 1, 1.0);
-      Zeroes.Set_To (OpenCV.Core.Make_Scalar (0.0));
-      Finite.Set_To (OpenCV.Core.Make_Scalar (2.0));
+      Zeroes.Set_To (OpenCV.Make_Scalar (0.0));
+      Finite.Set_To (OpenCV.Make_Scalar (2.0));
       Nonfinite := Numerator.Divide (Zeroes);
       Scaled_Nonfinite := Nonfinite.Scale_Add (Scale => 2.0, Right => Finite);
 
@@ -1414,8 +1415,8 @@ package body Mat_Arithmetic_Tests is
         OpenCV.Core.Create (1, 1, (OpenCV.Core.Int32, 1));
       Result : OpenCV.Core.Mat;
    begin
-      Left.Set_To (OpenCV.Core.Make_Scalar (1_000.0));
-      Right.Set_To (OpenCV.Core.Make_Scalar (250.0));
+      Left.Set_To (OpenCV.Make_Scalar (1_000.0));
+      Right.Set_To (OpenCV.Make_Scalar (250.0));
       Result := Left.Scale_Add (Scale => 2.0, Right => Right);
 
       AUnit.Assertions.Assert
@@ -1433,8 +1434,8 @@ package body Mat_Arithmetic_Tests is
         OpenCV.Core.Create (1, 1, (OpenCV.Core.Float64, 1));
       Result : OpenCV.Core.Mat;
    begin
-      Left.Set_To (OpenCV.Core.Make_Scalar (1.5));
-      Right.Set_To (OpenCV.Core.Make_Scalar (0.25));
+      Left.Set_To (OpenCV.Make_Scalar (1.5));
+      Right.Set_To (OpenCV.Make_Scalar (0.25));
       Result := Left.Scale_Add (Scale => 2.5, Right => Right);
 
       AUnit.Assertions.Assert
@@ -1832,7 +1833,7 @@ package body Mat_Arithmetic_Tests is
       Assert_Stored_Bits
         (Result, 1, 4, 16#0000#, "negative cancellation must be +0");
 
-      Zero.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Zero.Set_To (OpenCV.Make_Scalar (0.0));
       Result := Left.Scale_Add (Scale => 0.5, Right => Zero);
       Assert_Stored_Bits
         (Result, 1, 1, 16#0000#, "half a minimum subnormal must underflow");
@@ -1925,8 +1926,8 @@ package body Mat_Arithmetic_Tests is
          Left, Right : OpenCV.Core.Mat :=
            OpenCV.Core.Create (3, 3, (OpenCV.Core.UInt8, 3));
       begin
-         Left.Set_To (OpenCV.Core.Make_Scalar (9.0, 8.0, 7.0));
-         Right.Set_To (OpenCV.Core.Make_Scalar (4.0, 5.0, 6.0));
+         Left.Set_To (OpenCV.Make_Scalar (9.0, 8.0, 7.0));
+         Right.Set_To (OpenCV.Make_Scalar (4.0, 5.0, 6.0));
          OpenCV.Core.UInt8_Vec3_Access.Set (Left, 0, 1, (1, 9, 3));
          OpenCV.Core.UInt8_Vec3_Access.Set (Right, 0, 1, (4, 2, 6));
          Minimum :=
@@ -1960,10 +1961,10 @@ package body Mat_Arithmetic_Tests is
         OpenCV.Core.Create (1, 2, (OpenCV.Core.Float32, 1));
       Nonfinite, Minimum, Maximum : OpenCV.Core.Mat;
    begin
-      Numerator.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Numerator.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.Float32_Access.Set (Numerator, 0, 1, 1.0);
-      Zeroes.Set_To (OpenCV.Core.Make_Scalar (0.0));
-      Finite.Set_To (OpenCV.Core.Make_Scalar (2.0));
+      Zeroes.Set_To (OpenCV.Make_Scalar (0.0));
+      Finite.Set_To (OpenCV.Make_Scalar (2.0));
       Nonfinite := Numerator.Divide (Zeroes);
       Minimum := Nonfinite.Minimum (Finite);
       Maximum := Nonfinite.Maximum (Finite);
@@ -2743,9 +2744,9 @@ package body Mat_Arithmetic_Tests is
             for Axis_2 in 0 .. 3 loop
                declare
                   Indices    : constant OpenCV.Core.Index_Array :=
-                    (OpenCV.Core.Size_Coordinate (Axis_0),
-                     OpenCV.Core.Size_Coordinate (Axis_1),
-                     OpenCV.Core.Size_Coordinate (Axis_2));
+                    (OpenCV.Size_Coordinate (Axis_0),
+                     OpenCV.Size_Coordinate (Axis_1),
+                     OpenCV.Size_Coordinate (Axis_2));
                   Position   : constant Natural :=
                     Axis_0 * 12 + Axis_1 * 4 + Axis_2;
                   Left_Bits  : constant Interfaces.Unsigned_16 :=
@@ -2775,9 +2776,9 @@ package body Mat_Arithmetic_Tests is
             for Axis_2 in 0 .. 3 loop
                declare
                   Indices    : constant OpenCV.Core.Index_Array :=
-                    (OpenCV.Core.Size_Coordinate (Axis_0),
-                     OpenCV.Core.Size_Coordinate (Axis_1),
-                     OpenCV.Core.Size_Coordinate (Axis_2));
+                    (OpenCV.Size_Coordinate (Axis_0),
+                     OpenCV.Size_Coordinate (Axis_1),
+                     OpenCV.Size_Coordinate (Axis_2));
                   Position   : constant Natural :=
                     Axis_0 * 12 + Axis_1 * 4 + Axis_2;
                   Left_Bits  : constant Interfaces.Unsigned_16 :=

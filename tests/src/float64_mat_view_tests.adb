@@ -2,6 +2,7 @@ with AUnit.Assertions;
 with AUnit.Test_Caller;
 with Interfaces;
 with Mat_Test_Support;
+with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.Float64_Access;
 with OpenCV.Core.Float64_Buffer_Access;
@@ -15,7 +16,7 @@ package body Float64_Mat_View_Tests is
    use type OpenCV.Core.Depth_Type;
    use type Interfaces.IEEE_Float_32;
    use type OpenCV.Core.Float64_Access.Float64_Classification;
-   use type OpenCV.Core.Float64_Value;
+   use type OpenCV.Float64_Value;
    use type OpenCV.Core.Float64_Row_Access.Row_Array;
    use type OpenCV.Core.Mat_Size;
    use Mat_Test_Support;
@@ -28,10 +29,10 @@ package body Float64_Mat_View_Tests is
      (Test : in out Fixture)
    is
       pragma Unreferenced (Test);
-      First    : constant OpenCV.Core.Float64_Value := 1.0;
-      Distinct : OpenCV.Core.Float64_Value := First;
-      First_32 : OpenCV.Core.Float32_Value := 0.0;
-      Other_32 : OpenCV.Core.Float32_Value := 0.0;
+      First    : constant OpenCV.Float64_Value := 1.0;
+      Distinct : OpenCV.Float64_Value := First;
+      First_32 : OpenCV.Float32_Value := 0.0;
+      Other_32 : OpenCV.Float32_Value := 0.0;
       Data     : aliased OpenCV.Core.Float64_Mat_View.Buffer_Array :=
         (37 => First,
          38 => Distinct,
@@ -117,8 +118,8 @@ package body Float64_Mat_View_Tests is
    begin
       Distinct := First + 2.0**(-40);
       Data (38) := Distinct;
-      First_32 := OpenCV.Core.Float32_Value (First);
-      Other_32 := OpenCV.Core.Float32_Value (Distinct);
+      First_32 := OpenCV.Float32_Value (First);
+      Other_32 := OpenCV.Float32_Value (Distinct);
       OpenCV.Core.Float64_Mat_View.With_Writable_Mat_View
         (Data, Rows => 2, Columns => 4, Process => Process'Access);
       AUnit.Assertions.Assert
@@ -168,7 +169,7 @@ package body Float64_Mat_View_Tests is
       OpenCV.Core.Float64_Access.Set (Numerator, 0, 0, 1.0);
       OpenCV.Core.Float64_Access.Set (Numerator, 0, 1, -1.0);
       OpenCV.Core.Float64_Access.Set (Numerator, 0, 2, 0.0);
-      Denominator.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Denominator.Set_To (OpenCV.Make_Scalar (0.0));
       Nonfinite := Numerator.Divide (Denominator);
       OpenCV.Core.Float64_Buffer_Access.With_Read_Only_Buffer
         (Nonfinite, Copy_Nonfinite'Access);
@@ -255,9 +256,9 @@ package body Float64_Mat_View_Tests is
      (Test : in out Fixture)
    is
       pragma Unreferenced (Test);
-      Sentinel : constant OpenCV.Core.Float64_Value := -9_876.5;
-      First    : constant OpenCV.Core.Float64_Value := 1.0;
-      Distinct : OpenCV.Core.Float64_Value := First;
+      Sentinel : constant OpenCV.Float64_Value := -9_876.5;
+      First    : constant OpenCV.Float64_Value := 1.0;
+      Distinct : OpenCV.Float64_Value := First;
       Data     : aliased OpenCV.Core.Float64_Mat_View.Buffer_Array :=
         (37 .. 54 => Sentinel);
       Clone    : OpenCV.Core.Mat;
@@ -331,8 +332,8 @@ package body Float64_Mat_View_Tests is
          AUnit.Assertions.Assert
            (OpenCV.Core.Float64_Access.Get (Image, 1, 0) = First
             and then OpenCV.Core.Float64_Access.Get (Image, 1, 1) = Distinct
-            and then OpenCV.Core.Float32_Value (First)
-                     = OpenCV.Core.Float32_Value (Distinct)
+            and then OpenCV.Float32_Value (First)
+                     = OpenCV.Float32_Value (Distinct)
             and then OpenCV.Core.Float64_Access.Classify (Image, 0, 0)
                      = OpenCV.Core.Float64_Access.Positive_Infinity
             and then OpenCV.Core.Float64_Access.Classify (Image, 0, 1)
@@ -376,7 +377,7 @@ package body Float64_Mat_View_Tests is
             and then OpenCV.Core.Float64_Access.Get (Clone, 1, 1) = 71.125
             and then OpenCV.Core.Float64_Access.Get (Clone, 2, 3) = 33.0,
             "Clone must copy logical values into continuous owned storage");
-         Image.Set_To (OpenCV.Core.Make_Scalar (4.5));
+         Image.Set_To (OpenCV.Make_Scalar (4.5));
          AUnit.Assertions.Assert
            (Padding_Is_Intact,
             "An OpenCV logical-element operation must preserve row padding");
@@ -404,7 +405,7 @@ package body Float64_Mat_View_Tests is
          OpenCV.Core.Float64_Access.Set (Numerator, 0, 0, 1.0);
          OpenCV.Core.Float64_Access.Set (Numerator, 0, 1, -1.0);
          OpenCV.Core.Float64_Access.Set (Numerator, 0, 2, 0.0);
-         Denominator.Set_To (OpenCV.Core.Make_Scalar (0.0));
+         Denominator.Set_To (OpenCV.Make_Scalar (0.0));
          Nonfinite := Numerator.Divide (Denominator);
          OpenCV.Core.Float64_Buffer_Access.With_Read_Only_Buffer
            (Nonfinite, Copy_Nonfinite'Access);

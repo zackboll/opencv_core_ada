@@ -1,6 +1,7 @@
 with AUnit.Assertions;
 with AUnit.Test_Caller;
 with Interfaces;
+with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
 with OpenCV.Core.Float32_Vec3;
@@ -511,12 +512,12 @@ package body Mat_Channel_Tests is
       OpenCV.Core.Float32_Access.Set (Float_Source, 0, 0, 9.5);
       Float_Destination.Insert_Channel (Float_Source, 1);
 
-      Source_Parent.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      Source_Parent.Set_To (OpenCV.Make_Scalar (1.0));
       OpenCV.Core.UInt8_Access.Set (Source_Parent, 0, 1, 41);
       OpenCV.Core.UInt8_Access.Set (Source_Parent, 0, 2, 42);
       OpenCV.Core.UInt8_Access.Set (Source_Parent, 1, 1, 43);
       OpenCV.Core.UInt8_Access.Set (Source_Parent, 1, 2, 44);
-      Destination_Parent.Set_To (OpenCV.Core.Make_Scalar (10.0, 20.0, 30.0));
+      Destination_Parent.Set_To (OpenCV.Make_Scalar (10.0, 20.0, 30.0));
 
       declare
          Source_Region      : constant OpenCV.Core.Mat :=
@@ -687,8 +688,8 @@ package body Mat_Channel_Tests is
       --  Mix_Channels leaves un-routed destination channels unchanged. Create
       --  does not initialize Mat storage, so define nonzero sentinels for
       --  both untouched channels and the explicit zero-fill destination.
-      Destinations (10).Set_To (OpenCV.Core.Make_Scalar (91.0, 92.0, 93.0));
-      Destinations (11).Set_To (OpenCV.Core.Make_Scalar (81.0, 82.0, 83.0));
+      Destinations (10).Set_To (OpenCV.Make_Scalar (91.0, 92.0, 93.0));
+      Destinations (11).Set_To (OpenCV.Make_Scalar (81.0, 82.0, 83.0));
       OpenCV.Core.UInt8_Vec3_Access.Set (Sources (5), 0, 0, (11, 12, 0));
       OpenCV.Core.UInt8_Vec3_Access.Set (Sources (5), 0, 1, (21, 22, 0));
       OpenCV.Core.UInt8_Access.Set (Sources (6), 0, 0, 13);

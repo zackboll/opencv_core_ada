@@ -1,5 +1,6 @@
 with AUnit.Assertions;
 with AUnit.Test_Caller;
+with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
 with Mat_Test_Support;
@@ -117,11 +118,11 @@ package body Mat_Least_Squares_Tests is
    begin
       for Row in 0 .. 2 loop
          OpenCV.Core.Float32_Access.Set
-           (A, Row, 0, OpenCV.Core.Float32_Value (Row + 1));
+           (A, Row, 0, OpenCV.Float32_Value (Row + 1));
          OpenCV.Core.Float32_Access.Set
-           (A, Row, 1, OpenCV.Core.Float32_Value (Row + 1));
+           (A, Row, 1, OpenCV.Float32_Value (Row + 1));
          OpenCV.Core.Float32_Access.Set
-           (B, Row, 0, OpenCV.Core.Float32_Value (2 * (Row + 1)));
+           (B, Row, 0, OpenCV.Float32_Value (2 * (Row + 1)));
       end loop;
       X := A.Solve_Least_Squares (B);
       declare
@@ -231,8 +232,8 @@ package body Mat_Least_Squares_Tests is
             "Least-squares Regions must be genuinely non-contiguous");
          Result := A.Solve_Least_Squares (B);
          Saved := Result.Clone;
-         A.Set_To (OpenCV.Core.Make_Scalar (99.0));
-         B.Set_To (OpenCV.Core.Make_Scalar (88.0));
+         A.Set_To (OpenCV.Make_Scalar (99.0));
+         B.Set_To (OpenCV.Make_Scalar (88.0));
          AUnit.Assertions.Assert
            (Result.Abs_Diff (Saved).Norm (OpenCV.Core.L2) = 0.0,
             "Least-squares result must own storage independent of inputs");

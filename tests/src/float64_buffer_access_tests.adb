@@ -2,6 +2,7 @@ with Ada.Exceptions;
 with AUnit.Assertions;
 with AUnit.Test_Caller;
 with Mat_Test_Support;
+with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.Float64_Access;
 with OpenCV.Core.Float64_Buffer_Access;
@@ -10,8 +11,8 @@ with OpenCV.Core.Float64_Row_Access;
 package body Float64_Buffer_Access_Tests is
 
    use type Ada.Exceptions.Exception_Id;
-   use type OpenCV.Core.Float32_Value;
-   use type OpenCV.Core.Float64_Value;
+   use type OpenCV.Float32_Value;
+   use type OpenCV.Float64_Value;
    use type OpenCV.Core.Float64_Access.Float64_Classification;
    use Mat_Test_Support;
 
@@ -33,10 +34,10 @@ package body Float64_Buffer_Access_Tests is
      (Test : in out Fixture)
    is
       pragma Unreferenced (Test);
-      First    : constant OpenCV.Core.Float64_Value := 1.0;
-      Distinct : OpenCV.Core.Float64_Value;
-      First_32 : OpenCV.Core.Float32_Value;
-      Other_32 : OpenCV.Core.Float32_Value;
+      First    : constant OpenCV.Float64_Value := 1.0;
+      Distinct : OpenCV.Float64_Value;
+      First_32 : OpenCV.Float32_Value;
+      Other_32 : OpenCV.Float32_Value;
       Image    : OpenCV.Core.Mat := Float64_Image (2, 3);
 
       procedure Inspect
@@ -60,8 +61,8 @@ package body Float64_Buffer_Access_Tests is
       end Inspect;
    begin
       Distinct := First + 2.0**(-40);
-      First_32 := OpenCV.Core.Float32_Value (First);
-      Other_32 := OpenCV.Core.Float32_Value (Distinct);
+      First_32 := OpenCV.Float32_Value (First);
+      Other_32 := OpenCV.Float32_Value (Distinct);
       AUnit.Assertions.Assert
         (First /= Distinct and then First_32 = Other_32,
          "The precision values must be distinct in binary64 but not binary32");
@@ -106,7 +107,7 @@ package body Float64_Buffer_Access_Tests is
             "Borrowed Float64 row access must observe whole-buffer writes");
       end Inspect_Row;
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      Image.Set_To (OpenCV.Make_Scalar (1.0));
       Alias := Image;
       Copy := Image.Clone;
       OpenCV.Core.Float64_Buffer_Access.With_Writable_Buffer
@@ -148,11 +149,11 @@ package body Float64_Buffer_Access_Tests is
    begin
       for Column in 0 .. 3 loop
          OpenCV.Core.Float64_Access.Set
-           (Single_Row, 0, Column, OpenCV.Core.Float64_Value (Column + 1));
+           (Single_Row, 0, Column, OpenCV.Float64_Value (Column + 1));
       end loop;
       for Row in 0 .. 2 loop
          OpenCV.Core.Float64_Access.Set
-           (Single_Col, Row, 0, OpenCV.Core.Float64_Value ((Row + 1) * 10));
+           (Single_Col, Row, 0, OpenCV.Float64_Value ((Row + 1) * 10));
       end loop;
       OpenCV.Core.Float64_Buffer_Access.With_Read_Only_Buffer
         (Single_Row, Inspect_Row'Access);
@@ -185,7 +186,7 @@ package body Float64_Buffer_Access_Tests is
       OpenCV.Core.Float64_Access.Set (Numerator, 0, 0, 1.0);
       OpenCV.Core.Float64_Access.Set (Numerator, 0, 1, -1.0);
       OpenCV.Core.Float64_Access.Set (Numerator, 0, 2, 0.0);
-      Denominator.Set_To (OpenCV.Core.Make_Scalar (0.0));
+      Denominator.Set_To (OpenCV.Make_Scalar (0.0));
       Nonfinite := Numerator.Divide (Denominator);
       OpenCV.Core.Float64_Buffer_Access.With_Read_Only_Buffer
         (Nonfinite, Transfer'Access);
@@ -233,7 +234,7 @@ package body Float64_Buffer_Access_Tests is
            (Strided, Mark'Access);
       end Borrow_Strided;
    begin
-      Parent.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      Parent.Set_To (OpenCV.Make_Scalar (1.0));
       AUnit.Assertions.Assert
         (Continuous.Is_Continuous and then not Strided.Is_Continuous,
          "Region fixtures must exercise both continuity cases");
@@ -302,7 +303,7 @@ package body Float64_Buffer_Access_Tests is
          raise Borrowed_Buffer_Callback_Error;
       end Mutate;
    begin
-      Image.Set_To (OpenCV.Core.Make_Scalar (1.0));
+      Image.Set_To (OpenCV.Make_Scalar (1.0));
       begin
          OpenCV.Core.Float64_Buffer_Access.With_Writable_Buffer
            (Image, Mutate'Access);
