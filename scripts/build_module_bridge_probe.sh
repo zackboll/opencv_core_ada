@@ -127,14 +127,17 @@ case "$probe_kind" in
 
         link_import_library=$probe_import_library
         link_opencv_core=$opencv_core_link_option
+        link_lifetime_object=$lifetime_object
 
         # Native MinGW g++.exe accepts MSYS paths inconsistently. Preserve the
         # path conversion used by the previously validated Windows CI build.
         if command -v cygpath >/dev/null 2>&1; then
             compile_source=$(cygpath -m "$source")
             compile_object=$(cygpath -m "$object")
+            lifetime_object=$(cygpath -m "$lifetime_object")
             compile_bridge_include=$(cygpath -m "$bridge_include")
             link_object=$compile_object
+            link_lifetime_object=$lifetime_object
             link_library=$(cygpath -m "$probe_library")
             link_import_library=$(cygpath -m "$probe_import_library")
             link_core_shim=$(cygpath -m "$core_shim_library")
@@ -169,9 +172,16 @@ case "$probe_kind" in
 
         env -u CPATH -u C_INCLUDE_PATH -u CPLUS_INCLUDE_PATH \
             -u LIBRARY_PATH -u GCC_EXEC_PREFIX -u COMPILER_PATH \
+            "$cxx_driver" -c -std=c++17 -Wall -Wextra -Wpedantic -Werror \
+            "-I$compile_bridge_include" "$include_switch" \
+            -o "$lifetime_object" "$lifetime_source"
+
+        env -u CPATH -u C_INCLUDE_PATH -u CPLUS_INCLUDE_PATH \
+            -u LIBRARY_PATH -u GCC_EXEC_PREFIX -u COMPILER_PATH \
             "$cxx_driver" -shared -o "$link_library" \
             "-Wl,--out-implib,$link_import_library" \
-            "$link_object" "$link_core_shim" "$link_opencv_core"
+            "$link_object" "$link_lifetime_object" \
+            "$link_core_shim" "$link_opencv_core"
         ;;
     darwin)
         env -u CPATH -u C_INCLUDE_PATH -u CPLUS_INCLUDE_PATH \
@@ -183,18 +193,19 @@ case "$probe_kind" in
 
         env -u CPATH -u C_INCLUDE_PATH -u CPLUS_INCLUDE_PATH \
             -u LIBRARY_PATH -u GCC_EXEC_PREFIX -u COMPILER_PATH \
-            "$cxx_driver" -dynamiclib -isysroot "$cxx_sysroot" \
-            -Wl,-install_name,@rpath/libopencv_core_module_bridge_probe.dylib \
-            -Wl,-rpath,@loader_path -o "$link_library" "$link_object" \
-            "$link_core_shim" "$library_search_switch" \
-            "$opencv_core_link_option" "$cxx_runtime_switch"
-
-        env -u CPATH -u C_INCLUDE_PATH -u CPLUS_INCLUDE_PATH \
-            -u LIBRARY_PATH -u GCC_EXEC_PREFIX -u COMPILER_PATH \
             "$cxx_driver" -c -std=c++17 -Wall -Wextra -Wpedantic -Werror \
             -Wno-error=c11-extensions \
             "-I$compile_bridge_include" "$include_switch" \
             -isysroot "$cxx_sysroot" -o "$lifetime_object" "$lifetime_source"
+
+        env -u CPATH -u C_INCLUDE_PATH -u CPLUS_INCLUDE_PATH \
+            -u LIBRARY_PATH -u GCC_EXEC_PREFIX -u COMPILER_PATH \
+            "$cxx_driver" -dynamiclib -isysroot "$cxx_sysroot" \
+            -Wl,-install_name,@rpath/libopencv_core_module_bridge_probe.dylib \
+            -Wl,-rpath,@loader_path -o "$link_library" \
+            "$link_object" "$lifetime_object" \
+            "$link_core_shim" "$library_search_switch" \
+            "$opencv_core_link_option" "$cxx_runtime_switch"
         ;;
     static)
         env -u CPATH -u C_INCLUDE_PATH -u CPLUS_INCLUDE_PATH \
