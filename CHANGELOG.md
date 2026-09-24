@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+- Completed the single-channel integer access plane: UInt16 and Int16 now have
+  continuous-buffer borrowing plus packed and row-strided caller-owned Mat
+  views; Int32 now also has copied and borrowed rows, continuous-buffer
+  borrowing, and packed or row-strided caller-owned Mat views.
+- Tightened the strided external-view capacity contract to match OpenCV's
+  `datalimit = datastart + step * rows` header extent. Migrate buffers that
+  stopped after the final logical element by allocating complete
+  `Rows * Row_Stride` backing elements, including final-row padding.
+- Established feature/corrective branch development through real open pull
+  requests. Local validation precedes submission, auto-merge remains disabled,
+  and corrective review work continues on the same PR branch.
+
 ## 0.2.0
 
 Source-breaking release. This is not a relocation-only drop: it also

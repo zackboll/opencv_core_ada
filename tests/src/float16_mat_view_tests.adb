@@ -431,14 +431,16 @@ package body Float16_Mat_View_Tests is
       pragma Unreferenced (Test);
       Sentinel : constant OpenCV.Core.Float16_Value := Value_Of (16#DEAD#);
       Data     : aliased OpenCV.Core.Float16_Mat_View.Buffer_Array :=
-        (37 .. 52 => Sentinel);
+        (37 .. 54 => Sentinel);
       Clone    : OpenCV.Core.Mat;
 
       function Padding_Is_Intact return Boolean
       is (Bits_Of (Data (41)) = 16#DEAD#
           and then Bits_Of (Data (42)) = 16#DEAD#
           and then Bits_Of (Data (47)) = 16#DEAD#
-          and then Bits_Of (Data (48)) = 16#DEAD#);
+          and then Bits_Of (Data (48)) = 16#DEAD#
+          and then Bits_Of (Data (53)) = 16#DEAD#
+          and then Bits_Of (Data (54)) = 16#DEAD#);
 
       procedure Process (Image : in out OpenCV.Core.Mat) is
          Readback       : OpenCV.Core.Float16_Row_Access.Row_Array (8 .. 11);
@@ -576,7 +578,8 @@ package body Float16_Mat_View_Tests is
          11 => Value_Of (16#8000#),
          12 => Value_Of (16#0001#),
          13 => Value_Of (16#03FF#),
-         14 => Value_Of (16#DEAD#));
+         14 => Value_Of (16#DEAD#),
+         15 => Value_Of (16#DEAD#));
       One_Column : aliased OpenCV.Core.Float16_Mat_View.Buffer_Array :=
         (20 => Value_Of (16#3C00#),
          21 => Value_Of (16#DEAD#),
@@ -584,7 +587,9 @@ package body Float16_Mat_View_Tests is
          23 => Value_Of (16#BC00#),
          24 => Value_Of (16#DEAD#),
          25 => Value_Of (16#DEAD#),
-         26 => Value_Of (16#7BFF#));
+         26 => Value_Of (16#7BFF#),
+         27 => Value_Of (16#DEAD#),
+         28 => Value_Of (16#DEAD#));
       Tight      : aliased OpenCV.Core.Float16_Mat_View.Buffer_Array :=
         (1 => Value_Of (16#0000#),
          2 => Value_Of (16#8000#),
@@ -593,7 +598,7 @@ package body Float16_Mat_View_Tests is
          5 => Value_Of (16#0400#),
          6 => Value_Of (16#3C00#));
       Minimum    : aliased OpenCV.Core.Float16_Mat_View.Buffer_Array :=
-        (1 .. 16 => Value_Of (16#DEAD#));
+        (1 .. 18 => Value_Of (16#DEAD#));
 
       procedure Check_One_Row (Image : in out OpenCV.Core.Mat) is
          procedure Inspect_Buffer
@@ -676,6 +681,10 @@ package body Float16_Mat_View_Tests is
       Assert_Bits (Minimum (5), 16#DEAD#, "minimum storage first-row padding");
       Assert_Bits
         (Minimum (11), 16#DEAD#, "minimum storage second-row padding");
+      Assert_Bits
+        (Minimum (18),
+         16#DEAD#,
+         "complete final-row padding remains untouched");
    end Strided_View_Handles_Special_Shapes_And_Minimum_Storage;
 
    procedure Invalid_Strided_Layouts_Do_Not_Invoke_Callback
@@ -683,6 +692,8 @@ package body Float16_Mat_View_Tests is
    is
       pragma Unreferenced (Test);
       Data    : aliased OpenCV.Core.Float16_Mat_View.Buffer_Array :=
+        (1 .. 16 => Value_Of (16#3C00#));
+      Short   : aliased OpenCV.Core.Float16_Mat_View.Buffer_Array :=
         (1 .. 15 => Value_Of (16#3C00#));
       Invoked : Boolean := False;
 
@@ -701,8 +712,14 @@ package body Float16_Mat_View_Tests is
       procedure Short_Buffer is
       begin
          OpenCV.Core.Float16_Mat_View.With_Writable_Strided_Mat_View
-           (Data, 3, 4, 6, Mark'Access);
+           (Short, 3, 4, 6, Mark'Access);
       end Short_Buffer;
+
+      procedure Logical_End_Only is
+      begin
+         OpenCV.Core.Float16_Mat_View.With_Writable_Strided_Mat_View
+           (Data, 3, 4, 6, Mark'Access);
+      end Logical_End_Only;
 
       procedure Capacity_Overflow is
       begin
@@ -712,6 +729,9 @@ package body Float16_Mat_View_Tests is
    begin
       Assert_Raises_OpenCV_Error (Short_Stride'Access, "Float16 short stride");
       Assert_Raises_OpenCV_Error (Short_Buffer'Access, "Float16 short buffer");
+      Assert_Raises_OpenCV_Error
+        (Logical_End_Only'Access,
+         "Float16 logical-end-only capacity omits final-row padding");
       Assert_Raises_OpenCV_Error
         (Capacity_Overflow'Access, "Float16 strided capacity overflow");
       AUnit.Assertions.Assert

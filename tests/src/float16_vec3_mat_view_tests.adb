@@ -487,7 +487,7 @@ package body Float16_Vec3_Mat_View_Tests is
       Sentinel : constant OpenCV.Core.Float16_Vec3.Vector :=
         Pixel (16#DEAD#, 16#BEEF#, 16#CAFE#);
       Data     : aliased OpenCV.Core.Float16_Vec3_Mat_View.Buffer_Array :=
-        (37 .. 49 => Sentinel);
+        (37 .. 51 => Sentinel);
       Clone    : OpenCV.Core.Mat;
 
       function Padding_Is_Intact return Boolean
@@ -502,7 +502,13 @@ package body Float16_Vec3_Mat_View_Tests is
           and then Bits_Of (Data (45) (2)) = 16#CAFE#
           and then Bits_Of (Data (46) (0)) = 16#DEAD#
           and then Bits_Of (Data (46) (1)) = 16#BEEF#
-          and then Bits_Of (Data (46) (2)) = 16#CAFE#);
+          and then Bits_Of (Data (46) (2)) = 16#CAFE#
+          and then Bits_Of (Data (50) (0)) = 16#DEAD#
+          and then Bits_Of (Data (50) (1)) = 16#BEEF#
+          and then Bits_Of (Data (50) (2)) = 16#CAFE#
+          and then Bits_Of (Data (51) (0)) = 16#DEAD#
+          and then Bits_Of (Data (51) (1)) = 16#BEEF#
+          and then Bits_Of (Data (51) (2)) = 16#CAFE#);
 
       procedure Process (Image : in out OpenCV.Core.Mat) is
          Readback       :
@@ -659,7 +665,8 @@ package body Float16_Vec3_Mat_View_Tests is
          11 => Pixel (16#03FF#, 16#0400#, 16#3C00#),
          12 => Pixel (16#BC00#, 16#7BFF#, 16#FBFF#),
          13 => Pixel (16#7C00#, 16#FC00#, 16#7C01#),
-         14 => Pixel (16#DEAD#, 16#BEEF#, 16#CAFE#));
+         14 => Pixel (16#DEAD#, 16#BEEF#, 16#CAFE#),
+         15 => Pixel (16#DEAD#, 16#BEEF#, 16#CAFE#));
       One_Column : aliased OpenCV.Core.Float16_Vec3_Mat_View.Buffer_Array :=
         (20 => Pixel (16#3C00#, 16#BC00#, 16#7BFF#),
          21 => Pixel (16#DEAD#, 16#BEEF#, 16#CAFE#),
@@ -667,7 +674,9 @@ package body Float16_Vec3_Mat_View_Tests is
          23 => Pixel (16#FBFF#, 16#7C00#, 16#FC00#),
          24 => Pixel (16#DEAD#, 16#BEEF#, 16#CAFE#),
          25 => Pixel (16#DEAD#, 16#BEEF#, 16#CAFE#),
-         26 => Pixel (16#7C01#, 16#7E00#, 16#FC01#));
+         26 => Pixel (16#7C01#, 16#7E00#, 16#FC01#),
+         27 => Pixel (16#DEAD#, 16#BEEF#, 16#CAFE#),
+         28 => Pixel (16#DEAD#, 16#BEEF#, 16#CAFE#));
       Tight      : aliased OpenCV.Core.Float16_Vec3_Mat_View.Buffer_Array :=
         (1 => Pixel (16#0000#, 16#8000#, 16#0001#),
          2 => Pixel (16#03FF#, 16#0400#, 16#3C00#),
@@ -676,7 +685,7 @@ package body Float16_Vec3_Mat_View_Tests is
          5 => Pixel (16#7E00#, 16#FC01#, 16#7E55#),
          6 => Pixel (16#0001#, 16#03FF#, 16#0400#));
       Minimum    : aliased OpenCV.Core.Float16_Vec3_Mat_View.Buffer_Array :=
-        (1 .. 13 => Pixel (16#DEAD#, 16#BEEF#, 16#CAFE#));
+        (1 .. 15 => Pixel (16#DEAD#, 16#BEEF#, 16#CAFE#));
 
       procedure Check_One_Row (Image : in out OpenCV.Core.Mat) is
          procedure Inspect_Buffer
@@ -788,6 +797,10 @@ package body Float16_Vec3_Mat_View_Tests is
         (Minimum (9),
          Pixel (16#DEAD#, 16#BEEF#, 16#CAFE#),
          "minimum storage second-row padding");
+      Assert_Component_Bits
+        (Minimum (15),
+         Pixel (16#DEAD#, 16#BEEF#, 16#CAFE#),
+         "complete final-row padding remains untouched");
    end Strided_View_Handles_Special_Shapes_And_Minimum_Storage;
 
    procedure Invalid_Strided_Layouts_Do_Not_Invoke_Callback
@@ -795,7 +808,9 @@ package body Float16_Vec3_Mat_View_Tests is
    is
       pragma Unreferenced (Test);
       Data    : aliased OpenCV.Core.Float16_Vec3_Mat_View.Buffer_Array :=
-        (1 .. 15 => Pixel (16#3C00#, 16#3C00#, 16#3C00#));
+        (1 .. 16 => Pixel (16#3C00#, 16#3C00#, 16#3C00#));
+      Short   : aliased OpenCV.Core.Float16_Vec3_Mat_View.Buffer_Array :=
+        (1 .. 14 => Pixel (16#3C00#, 16#3C00#, 16#3C00#));
       Invoked : Boolean := False;
 
       procedure Mark (Image : in out OpenCV.Core.Mat) is
@@ -813,8 +828,14 @@ package body Float16_Vec3_Mat_View_Tests is
       procedure Short_Buffer is
       begin
          OpenCV.Core.Float16_Vec3_Mat_View.With_Writable_Strided_Mat_View
-           (Data, 3, 4, 6, Mark'Access);
+           (Short, 3, 4, 6, Mark'Access);
       end Short_Buffer;
+
+      procedure Logical_End_Only is
+      begin
+         OpenCV.Core.Float16_Vec3_Mat_View.With_Writable_Strided_Mat_View
+           (Data, 3, 4, 6, Mark'Access);
+      end Logical_End_Only;
 
       procedure Capacity_Overflow is
       begin
@@ -826,6 +847,9 @@ package body Float16_Vec3_Mat_View_Tests is
         (Short_Stride'Access, "Float16 Vec3 short stride");
       Assert_Raises_OpenCV_Error
         (Short_Buffer'Access, "Float16 Vec3 short buffer");
+      Assert_Raises_OpenCV_Error
+        (Logical_End_Only'Access,
+         "Float16 Vec3 logical-end-only capacity omits final-row padding");
       Assert_Raises_OpenCV_Error
         (Capacity_Overflow'Access, "Float16 Vec3 strided capacity overflow");
       AUnit.Assertions.Assert

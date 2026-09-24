@@ -5,6 +5,8 @@ on:
     branches:
       - main
       - release/opencv_core-0.2.0
+      - feature/**
+      - corrective/**
   pull_request:
   workflow_dispatch:
 

@@ -18,7 +18,7 @@ translation of the C++ headers.
 >
 > **Development status:** active, pre-1.0 API.
 >
-> **Current test baseline:** 1232 AUnit tests, with Ada and C++ warnings promoted
+> **Current test baseline:** 1246 AUnit tests, with Ada and C++ warnings promoted
 > to errors. GitHub Actions exercises the full test suite against four OpenCV
 > compatibility targets, plus a native Ubuntu 24.04 ARM64 job.
 >
@@ -359,7 +359,7 @@ The test crate carries development-only dependencies such as AUnit, GNATprove,
 and GNATcov. They are intentionally not dependencies of the public library
 crate.
 
-At the time of this README update, the full suite contains **1232 AUnit tests**.
+At the time of this README update, the full suite contains **1246 AUnit tests**.
 Coverage includes ordinary behavior, invalid input, shape/depth/channel
 compatibility, empty Mats, non-contiguous Regions, shallow-versus-independent
 ownership, callback lifetimes, arbitrary Ada array lower bounds, failure
@@ -534,7 +534,7 @@ end External_Buffer_Example;
 `Data'Length` must equal `Rows * Columns`. The Ada lower bound is arbitrary.
 The temporary `Mat` does not own the caller's storage.
 
-### Wrap row-strided Float32 or Float64 storage
+### Wrap row-strided caller-owned storage
 
 `OpenCV.Core.Float32_Mat_View` also provides a row-strided overload:
 
@@ -564,10 +564,40 @@ OpenCV.Core.Float64_Mat_View.With_Writable_Strided_Mat_View
 ```
 
 `Row_Stride` is the number of `Float64_Value` elements from the start of one
-logical row to the next and must be at least `Columns`. `Data'Length` may be
-larger than, but must be at least, `(Rows - 1) * Row_Stride + Columns`; padding
-after the final row need not exist. Padding and extra trailing storage are not
-logical Mat elements and are left untouched.
+logical row to the next and must be at least `Columns`. `Data'Length` must be
+at least `Rows * Row_Stride`, including a complete final-row stride. A buffer
+that reaches only the last logical element is rejected. Padding and extra
+trailing storage are not logical Mat elements and are left untouched.
+
+The same full-stride rule applies to the integer C1 view packages. For example,
+this UInt16 buffer contains two complete six-element strides for a `2 x 4`
+logical Mat. The two padding elements after each logical row remain outside the
+Mat and must still exist after the final row:
+
+```ada
+with OpenCV.Core;
+with OpenCV.Core.UInt16_Access;
+with OpenCV.Core.UInt16_Mat_View;
+
+procedure Padded_UInt16_Example is
+   Data : aliased OpenCV.Core.UInt16_Mat_View.Buffer_Array :=
+     (11 => 10, 12 => 20, 13 => 30, 14 => 40, 15 => 999, 16 => 999,
+      17 => 50, 18 => 60, 19 => 70, 20 => 80, 21 => 999, 22 => 999);
+
+   procedure Process (Image : in out OpenCV.Core.Mat) is
+   begin
+      OpenCV.Core.UInt16_Access.Set
+        (Image, Row => 1, Column => 2, Value => 65_535);
+      --  Data (19) changes immediately. Padding Data (15), Data (16),
+      --  Data (21), and Data (22) remains outside the logical Mat.
+   end Process;
+begin
+   OpenCV.Core.UInt16_Mat_View.With_Writable_Strided_Mat_View
+     (Data, Rows => 2, Columns => 4, Row_Stride => 6,
+      Process => Process'Access);
+   --  The caller still owns Data. The temporary Mat was callback-scoped.
+end Padded_UInt16_Example;
+```
 
 ---
 
@@ -609,8 +639,9 @@ normal OpenCV reference counting.
 
 ### Copied row access
 
-The UInt8, UInt16, Int16, Float32, Float64, UInt8 Vec3, and Float32 Vec3
-row packages provide `Read_Row` / `Write_Row` APIs. Caller arrays may use
+The UInt8, UInt16, Int16, Int32, Float16, Float32, and Float64 C1 row packages,
+plus the UInt8, Float16, and Float32 Vec3 row packages, provide `Read_Row` /
+`Write_Row` APIs. Caller arrays may use
 arbitrary lower bounds; values map in iteration order to matrix columns.
 
 These are copy-based APIs and are useful when the caller wants an ordinary Ada
@@ -618,7 +649,7 @@ array with no borrowed lifetime.
 
 ### Scoped zero-copy row borrowing
 
-The same seven row-access families provide:
+The same ten row-access families provide:
 
 ```text
 With_Read_Only_Row
@@ -635,7 +666,7 @@ finalized. The lease is a lifetime mechanism, not thread synchronization.
 
 ### Scoped continuous whole-buffer borrowing
 
-The seven matching buffer-access packages provide:
+The ten matching buffer-access packages provide:
 
 ```text
 With_Read_Only_Buffer
@@ -653,10 +684,13 @@ buffer access likewise overlays native CV_16FC3 pixels as packed
 
 ### Caller-owned buffer -> temporary `Mat`
 
-The seven Mat-view packages provide the reverse zero-copy direction:
+The ten Mat-view packages provide the reverse zero-copy direction:
 
 ```text
 OpenCV.Core.UInt8_Mat_View
+OpenCV.Core.UInt16_Mat_View
+OpenCV.Core.Int16_Mat_View
+OpenCV.Core.Int32_Mat_View
 OpenCV.Core.Float32_Mat_View
 OpenCV.Core.Float64_Mat_View
 OpenCV.Core.Float16_Mat_View
@@ -669,12 +703,13 @@ OpenCV.Core.Float16_Vec3_Mat_View
 actual caller-owned Ada array. The public buffer formal is explicitly
 `aliased in out`, so the native header directly denotes the caller's storage.
 
-Packed views are available for all seven typed layouts above. Float16 C1,
-Float32 C1, Float64 C1, and Float16 C3 also support explicit row strides,
+Packed views are available for all ten typed layouts above. UInt16, Int16,
+Int32, Float16, Float32, and Float64 C1, plus Float16 C3, support explicit row
+strides,
 allowing a Mat to represent the logical columns of padded caller-owned rows
-without copying their padding. Float16 C1, Float64 C1, and Float16 C3 use
-`With_Writable_Strided_Mat_View` and measure `Row_Stride` in complete Ada
-elements (`Float16_Value`, `Float64_Value`, or `Float16_Vec3.Vector`).
+without copying their padding. Except for the established Float32 overload,
+these packages use `With_Writable_Strided_Mat_View` and measure `Row_Stride` in
+complete Ada elements rather than bytes.
 
 Important lifetime rule: a temporary external-buffer Mat may not create a
 shallow alias that could outlive the callback. Ordinary `Mat` assignment and
@@ -704,9 +739,9 @@ Direct typed access currently concentrates on ten common layouts:
 | Layout | 2-D Get/Set | N-D Get/Set | Classification | Copied row | Borrowed row | Continuous buffer borrow | Packed caller buffer -> `Mat` | Strided caller buffer -> `Mat` |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | UInt8 C1 | `UInt8_Access` | `UInt8_Access` | — | `UInt8_Row_Access` | `UInt8_Row_Access` | `UInt8_Buffer_Access` | `UInt8_Mat_View` | — |
-| UInt16 C1 | `UInt16_Access` | `UInt16_Access` | — | `UInt16_Row_Access` | `UInt16_Row_Access` | — | — | — |
-| Int16 C1 | `Int16_Access` | `Int16_Access` | — | `Int16_Row_Access` | `Int16_Row_Access` | — | — | — |
-| Int32 C1 | `Int32_Access` | `Int32_Access` | — | — | — | — | — | — |
+| UInt16 C1 | `UInt16_Access` | `UInt16_Access` | — | `UInt16_Row_Access` | `UInt16_Row_Access` | `UInt16_Buffer_Access` | `UInt16_Mat_View` | `UInt16_Mat_View` |
+| Int16 C1 | `Int16_Access` | `Int16_Access` | — | `Int16_Row_Access` | `Int16_Row_Access` | `Int16_Buffer_Access` | `Int16_Mat_View` | `Int16_Mat_View` |
+| Int32 C1 | `Int32_Access` | `Int32_Access` | — | `Int32_Row_Access` | `Int32_Row_Access` | `Int32_Buffer_Access` | `Int32_Mat_View` | `Int32_Mat_View` |
 | Float16 C1 | `Float16_Access` | `Float16_Access` | `Float16_Value` helpers | `Float16_Row_Access` | `Float16_Row_Access` | `Float16_Buffer_Access` | `Float16_Mat_View` | `Float16_Mat_View` |
 | Float32 C1 | `Float32_Access` | `Float32_Access` | — | `Float32_Row_Access` | `Float32_Row_Access` | `Float32_Buffer_Access` | `Float32_Mat_View` | `Float32_Mat_View` |
 | Float64 C1 | `Float64_Access` | `Float64_Access` | `Float64_Access` | `Float64_Row_Access` | `Float64_Row_Access` | `Float64_Buffer_Access` | `Float64_Mat_View` | `Float64_Mat_View` |
@@ -728,17 +763,22 @@ OpenCV channel indices, not RGB or BGR names.
 
 `UInt16_Access` provides scalar 2-D and N-D Get/Set for single-channel `CV_16U`
 Mats. `UInt16_Row_Access` adds copied and callback-scoped zero-copy row access
-for 2-D C1 Mats, including non-contiguous Regions. Whole-buffer borrowing and
-caller-owned Mat views are not yet provided for UInt16.
+for 2-D C1 Mats, including non-contiguous Regions. `UInt16_Buffer_Access` adds
+continuous whole-buffer borrowing, and `UInt16_Mat_View` adds packed and
+row-strided callback-scoped caller-owned views.
 
 `Int16_Access` provides scalar 2-D and N-D Get/Set for single-channel `CV_16S`
 Mats. `Int16_Row_Access` adds copied and callback-scoped zero-copy row access
-for 2-D C1 Mats, including non-contiguous Regions. Whole-buffer borrowing and
-caller-owned Mat views are not yet provided for Int16.
+for 2-D C1 Mats, including non-contiguous Regions. `Int16_Buffer_Access` adds
+continuous whole-buffer borrowing, and `Int16_Mat_View` adds packed and
+row-strided callback-scoped caller-owned views.
 
 `Int32_Access` provides scalar 2-D and N-D Get/Set for single-channel `CV_32S`
-Mats. Copied row access, borrowed row access, whole-buffer borrowing, and
-caller-owned Mat views are not yet provided for Int32.
+Mats. `Int32_Row_Access` adds copied and callback-scoped zero-copy row access,
+`Int32_Buffer_Access` adds continuous whole-buffer borrowing, and
+`Int32_Mat_View` adds packed and row-strided callback-scoped caller-owned views.
+All paths preserve exact signed 32-bit values without floating-point
+intermediates.
 
 `Float16_Access` provides scalar 2-D and N-D Get/Set for single-channel
 `CV_16F` Mats. Access is bit-preserving: every binary16 encoding, including
@@ -1528,10 +1568,10 @@ The current limitations are intentional and help keep the public API coherent:
 
 2. **No public `SparseMat` or `UMat` abstraction.**
 
-3. **Typed direct/zero-copy access is focused on UInt8 and Float32 C1/C3, plus UInt16/Int16/Int32/Float16 C1, Float16 C3 2-D Get/Set, rows, continuous buffers, and packed or row-strided views, and Float64 C1.**
-   UInt16 C1 has 2-D and N-D Get/Set plus copied and borrowed 2-D row access.
-   Int16 C1 has 2-D and N-D Get/Set plus copied and borrowed 2-D row access.
-   Int32 C1 has 2-D and N-D Get/Set. Float16 C1 has 2-D and N-D Get/Set that
+3. **Typed direct/zero-copy access is focused on UInt8 and Float32 C1/C3, plus UInt16/Int16/Int32/Float16 C1, Float16 C3, and Float64 C1.**
+   UInt16, Int16, and Int32 C1 have 2-D and N-D Get/Set, copied and borrowed
+   2-D rows, continuous whole-buffer borrowing, and packed or row-strided
+   2-D caller-buffer views. Float16 C1 has 2-D and N-D Get/Set that
    preserve the exact binary16 encoding, plus copied and borrowed 2-D row
    access, continuous 2-D whole-buffer borrowing, and packed or row-strided
    2-D caller-buffer views. Float16 C3 has 2-D Vec3 Get/Set, copied and
@@ -1549,9 +1589,11 @@ The current limitations are intentional and help keep the public API coherent:
    buffer borrowing, and packed or strided external caller-buffer Mat views.
 
 4. **External caller-buffer views are writable and callback-scoped.**  
-   Packed 2-D views are available for UInt8, Float16, and Float32 C1/C3, plus Float64 C1.
-   Row-strided external storage is exposed for Float16 C1/C3, Float32 C1, and
-   Float64 C1.
+   Packed 2-D views are available for UInt8, UInt16, Int16, Int32, Float16,
+   Float32, and Float64 C1, plus UInt8, Float16, and Float32 C3. Row-strided
+   external storage is exposed for UInt16, Int16, Int32, Float16, Float32, and
+   Float64 C1, plus Float16 C3. Strided backing storage must contain a complete
+   `Rows * Row_Stride` element extent, including final-row padding.
    Arbitrary N-D strides, multi-channel Float64 external views, and a separate
    read-only external Mat abstraction are not yet exposed.
 
@@ -1697,6 +1739,19 @@ For typed zero-copy work, additional rules apply:
 ---
 
 ## Contributing
+
+New work starts on a feature branch, or on a corrective branch for focused
+repairs. A larger cohesive vertical bundle is acceptable when its public API,
+ABI, ownership, tests, and documentation are reviewed together; unrelated
+speculative batches and broad rewrites remain prohibited.
+
+Complete local formatting, builds, and tests before final submission. Cline
+then commits and pushes the source branch and opens a real pull request against
+`main`. Pull requests remain open and unmerged pending review, with auto-merge
+disabled. Corrective review work continues on the same pull-request branch and
+must be revalidated at its new head. Completion reports identify the exact
+locally tested and pushed source SHA rather than relying only on a PR merge-ref
+result.
 
 Contributions should preserve the central abstraction boundary:
 

@@ -1493,21 +1493,39 @@ opencv_core_status opencv_core_mat_create_external_2d_strided(
             return invalid_argument(
                 "external strided Mat view row stride is incompatible with scalar size");
         }
+        // ABI safety: OpenCV 4.10 Mat::Mat(rows, cols, type, data, step) sets
+        // datalimit = datastart + step * rows before any logical-element
+        // operation. Checking only through the last logical element leaves
+        // the final-row padding outside the caller-declared capacity while
+        // the header still spans it.
         size_t required_capacity_bytes = 0;
-        if (!checked_size_mul(static_cast<size_t>(rows - 1), row_stride,
-                              &required_capacity_bytes) ||
-            required_capacity_bytes >
-                std::numeric_limits<size_t>::max() - logical_row_bytes) {
+        if (!checked_size_mul(static_cast<size_t>(rows), row_stride,
+                              &required_capacity_bytes)) {
             return invalid_argument(
                 "external strided Mat view required capacity exceeds native size range");
         }
-        required_capacity_bytes += logical_row_bytes;
-        if (byte_count < static_cast<uint64_t>(required_capacity_bytes)) {
+        uint64_t required_capacity_abi = 0;
+        if (!size_to_abi(required_capacity_bytes, required_capacity_abi)) {
+            return invalid_argument(
+                "external strided Mat view required capacity exceeds C ABI range");
+        }
+        if (byte_count < required_capacity_abi) {
             return invalid_argument(
                 "external strided Mat view backing storage is too short");
         }
         if (data == nullptr) {
             return invalid_argument("external strided Mat view data must not be null");
+        }
+
+        // ABI safety: OpenCV forms datastart + step * rows while constructing
+        // the header. Reject an address-span wrap before that pointer
+        // arithmetic can occur. This does not verify the real allocation;
+        // raw callers must still report truthful capacity and live storage.
+        const uintptr_t data_address = reinterpret_cast<uintptr_t>(data);
+        if (required_capacity_bytes >
+            std::numeric_limits<uintptr_t>::max() - data_address) {
+            return invalid_argument(
+                "external strided Mat view address extent exceeds native range");
         }
 
         const size_t scalar_alignment = CV_ELEM_SIZE1(opencv_depth);
@@ -5624,6 +5642,63 @@ opencv_core_mat_write_int16_row(opencv_core_mat_handle *mat, int32_t row,
     }
 }
 
+opencv_core_status
+opencv_core_mat_read_int32_row(const opencv_core_mat_handle *mat, int32_t row,
+                               int32_t *data, uint64_t element_count) {
+    clear_error();
+
+    if (data == nullptr && element_count != 0) {
+        return invalid_argument(
+            "data must not be null when element_count is nonzero");
+    }
+
+    try {
+        const int32_t *row_data = nullptr;
+        std::size_t byte_count = 0;
+        const opencv_core_status status =
+            prepare_row(mat, row, element_count, CV_32S,
+                        "Mat depth must be Int32", row_data, byte_count);
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        if (byte_count != 0) {
+            std::memcpy(data, row_data, byte_count);
+        }
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_write_int32_row(opencv_core_mat_handle *mat, int32_t row,
+                                const int32_t *data, uint64_t element_count) {
+    clear_error();
+
+    if (data == nullptr && element_count != 0) {
+        return invalid_argument(
+            "data must not be null when element_count is nonzero");
+    }
+
+    try {
+        const int32_t *row_data = nullptr;
+        std::size_t byte_count = 0;
+        const opencv_core_status status =
+            prepare_row(mat, row, element_count, CV_32S,
+                        "Mat depth must be Int32", row_data, byte_count);
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        if (byte_count != 0) {
+            std::memcpy(const_cast<int32_t *>(row_data), data, byte_count);
+        }
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
 
 opencv_core_status
 opencv_core_mat_read_float32_row(const opencv_core_mat_handle *mat,
