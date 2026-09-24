@@ -206,7 +206,8 @@ package body External_View_C_ABI_Tests is
       Result.Add_Test
         (Caller.Create
            ("External-view C ABI enforces complete stride capacity",
-            Full_Stride_Capacity_Is_Enforced_With_Null_Output_On_Failure'Access));
+            Full_Stride_Capacity_Is_Enforced_With_Null_Output_On_Failure
+              'Access));
       Result.Add_Test
         (Caller.Create
            ("External-view C ABI rejects an incompatible stride",

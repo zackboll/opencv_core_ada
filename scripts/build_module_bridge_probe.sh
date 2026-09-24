@@ -22,7 +22,12 @@ case "$cxx_driver" in
     */*)
         ;;
     *)
-        cxx_driver=$(command -v "$cxx_driver")
+        resolved_driver=$(PATH=$(printf '%s' "$PATH" | tr ':' '\n' | grep -v '/gnat_native' | paste -sd: -) command -v "$cxx_driver" || true)
+        if [ -z "$resolved_driver" ]; then
+            echo "error: could not resolve external C++ driver: $cxx_driver" >&2
+            exit 1
+        fi
+        cxx_driver=$resolved_driver
         ;;
 esac
 include_switch=$(config_value Include_Switch)

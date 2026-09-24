@@ -740,7 +740,8 @@ package body Integer_Buffer_Access_Tests is
       Result.Add_Test
         (Caller.Create
            ("Integer buffers accept continuous and reject strided Regions",
-            Continuous_Regions_Are_Accepted_And_Strided_Regions_Rejected'Access));
+            Continuous_Regions_Are_Accepted_And_Strided_Regions_Rejected
+              'Access));
       Result.Add_Test
         (Caller.Create
            ("Integer buffers validate empty type channels and dimensions",
