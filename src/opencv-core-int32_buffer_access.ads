@@ -8,10 +8,13 @@ package OpenCV.Core.Int32_Buffer_Access is
    --  aliased callback formal guarantees that Data is passed by
    --  reference and directly denotes the borrowed Mat for the duration
    --  of Process. The ordinary lifetime of the view is the callback.
-   --  Data is a flat zero-based row-major array of Mat elements:
-   --  Data'First = 0, Data'Last = Natural (Image.Total) - 1, and
+   --  Data is a flat row-major array of Mat elements. For a nonempty
+   --  buffer, Data'First = 0, Data'Last = Natural (Image.Total) - 1, and
    --  Data'Length = Natural (Image.Total). Element
    --  Data (Row * Image.Columns + Column) denotes Image (Row, Column).
+   --  A correctly typed empty Mat still invokes Process once. Its array
+   --  has Data'Length = 0 and the null range 1 .. 0, so no element may
+   --  be indexed.
    --  There are no row separators or inter-row padding. Image must be
    --  continuous; a nonempty non-continuous Mat raises OpenCV_Error
    --  before Process is invoked. A continuous Region is accepted even
@@ -27,7 +30,9 @@ package OpenCV.Core.Int32_Buffer_Access is
      (Image   : Mat;
       Process : not null access procedure (Data : aliased Buffer_Array));
 
-   --  As With_Read_Only_Buffer, except Process receives an in-out view.
+   --  As With_Read_Only_Buffer, including the nonempty zero-based range
+   --  and the empty 1 .. 0 null range, except Process receives an in-out
+   --  view.
    --  Writes through Data mutate the actual Mat storage immediately.
    --  There is no write-back phase. A write through Data is visible
    --  through Image and any shallow alias before Process returns, and

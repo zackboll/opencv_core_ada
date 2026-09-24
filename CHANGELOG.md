@@ -13,6 +13,10 @@
 - Established feature/corrective branch development through real open pull
   requests. Local validation precedes submission, auto-merge remains disabled,
   and corrective review work continues on the same PR branch.
+- Corrected integer zero-copy regression coverage: required-capacity overflow
+  is tested separately from stride narrowing, borrow-lease tests release every
+  ordinary owner before observing poisoned storage, and empty integer buffers
+  document and test the `1 .. 0` null range.
 
 ## 0.2.0
 

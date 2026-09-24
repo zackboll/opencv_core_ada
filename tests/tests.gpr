@@ -78,7 +78,9 @@ project Tests is
                 "-lopencv_core_module_bridge_probe",
                 "-Wl,-rpath,@loader_path/../../lib");
          when "Static_PIC" =>
-            null;
+            for Switches ("Ada") use
+              ("-L" & OpenCV_Core'Project_Dir & "lib",
+               "-linteger_borrow_lifetime_probe");
       end case;
    end Linker;
 

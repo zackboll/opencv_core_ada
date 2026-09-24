@@ -1,5 +1,7 @@
+with Ada.Exceptions;
 with AUnit.Assertions;
 with AUnit.Test_Caller;
+with Integer_Borrow_Lifetime_Probe;
 with Mat_Test_Support;
 with OpenCV;
 with OpenCV.Core;
@@ -12,11 +14,16 @@ with OpenCV.Core.UInt16_Buffer_Access;
 
 package body Integer_Buffer_Access_Tests is
 
+   use type Ada.Exceptions.Exception_Id;
    use type OpenCV.Int16_Value;
    use type OpenCV.Int32_Value;
    use type OpenCV.UInt16_Value;
    use type OpenCV.Core.Depth_Type;
+   use type OpenCV.Core.Mat_Size;
+   use type OpenCV.Core.UInt16_Buffer_Access.Buffer_Array;
    use Mat_Test_Support;
+
+   Callback_Error : exception;
 
    subtype Fixture is Mat_Test_Fixture;
    package Caller is new AUnit.Test_Caller (Fixture);
@@ -225,23 +232,26 @@ package body Integer_Buffer_Access_Tests is
       procedure Empty_U
         (Data : aliased OpenCV.Core.UInt16_Buffer_Access.Buffer_Array) is
       begin
-         if Data'Length = 0 then
-            Empty_Count := Empty_Count + 1;
-         end if;
+         AUnit.Assertions.Assert
+           (Data'First = 1 and then Data'Last = 0 and then Data'Length = 0,
+            "Empty UInt16 read-only buffer uses the 1 .. 0 null range");
+         Empty_Count := Empty_Count + 1;
       end Empty_U;
       procedure Empty_I
         (Data : aliased OpenCV.Core.Int16_Buffer_Access.Buffer_Array) is
       begin
-         if Data'Length = 0 then
-            Empty_Count := Empty_Count + 1;
-         end if;
+         AUnit.Assertions.Assert
+           (Data'First = 1 and then Data'Last = 0 and then Data'Length = 0,
+            "Empty Int16 read-only buffer uses the 1 .. 0 null range");
+         Empty_Count := Empty_Count + 1;
       end Empty_I;
       procedure Empty_L
         (Data : aliased OpenCV.Core.Int32_Buffer_Access.Buffer_Array) is
       begin
-         if Data'Length = 0 then
-            Empty_Count := Empty_Count + 1;
-         end if;
+         AUnit.Assertions.Assert
+           (Data'First = 1 and then Data'Last = 0 and then Data'Length = 0,
+            "Empty Int32 read-only buffer uses the 1 .. 0 null range");
+         Empty_Count := Empty_Count + 1;
       end Empty_L;
       procedure Mark_L
         (Data : aliased OpenCV.Core.Int32_Buffer_Access.Buffer_Array)
@@ -333,7 +343,83 @@ package body Integer_Buffer_Access_Tests is
          "Invalid integer buffers must suppress callback");
    end Empty_Type_And_Dimension_Validation_Covers_All_Families;
 
-   procedure Borrow_Lease_Retains_Storage_When_Another_Header_Is_Rebound
+   procedure Writable_Empty_Buffers_Use_The_Null_Range (Test : in out Fixture)
+   is
+      pragma Unreferenced (Test);
+      U_Empty     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.UInt16, 1));
+      I_Empty     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Int16, 1));
+      L_Empty     : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.Int32, 1));
+      Empty_Count : Natural := 0;
+
+      procedure Empty_U
+        (Data : aliased in out OpenCV.Core.UInt16_Buffer_Access.Buffer_Array)
+      is
+      begin
+         AUnit.Assertions.Assert
+           (Data'First = 1 and then Data'Last = 0 and then Data'Length = 0,
+            "Empty UInt16 writable buffer uses the 1 .. 0 null range");
+         Empty_Count := Empty_Count + 1;
+      end Empty_U;
+      procedure Empty_I
+        (Data : aliased in out OpenCV.Core.Int16_Buffer_Access.Buffer_Array) is
+      begin
+         AUnit.Assertions.Assert
+           (Data'First = 1 and then Data'Last = 0 and then Data'Length = 0,
+            "Empty Int16 writable buffer uses the 1 .. 0 null range");
+         Empty_Count := Empty_Count + 1;
+      end Empty_I;
+      procedure Empty_L
+        (Data : aliased in out OpenCV.Core.Int32_Buffer_Access.Buffer_Array) is
+      begin
+         AUnit.Assertions.Assert
+           (Data'First = 1 and then Data'Last = 0 and then Data'Length = 0,
+            "Empty Int32 writable buffer uses the 1 .. 0 null range");
+         Empty_Count := Empty_Count + 1;
+      end Empty_L;
+   begin
+      OpenCV.Core.UInt16_Buffer_Access.With_Writable_Buffer
+        (U_Empty, Empty_U'Access);
+      OpenCV.Core.Int16_Buffer_Access.With_Writable_Buffer
+        (I_Empty, Empty_I'Access);
+      OpenCV.Core.Int32_Buffer_Access.With_Writable_Buffer
+        (L_Empty, Empty_L'Access);
+      AUnit.Assertions.Assert
+        (Empty_Count = 3,
+         "Each typed empty writable integer buffer must invoke callback once");
+   end Writable_Empty_Buffers_Use_The_Null_Range;
+
+   procedure UInt16_Read_Only_Buffer_Exposes_Row_Major_Values
+     (Test : in out Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.UInt16, 1));
+
+      procedure Inspect
+        (Data : aliased OpenCV.Core.UInt16_Buffer_Access.Buffer_Array) is
+      begin
+         AUnit.Assertions.Assert
+           (Data'First = 0 and then Data'Last = 5 and then Data'Length = 6,
+            "Nonempty UInt16 read-only buffer must be zero-based");
+         AUnit.Assertions.Assert
+           (Data = (0, 1, 32_768, 65_534, 65_535, 7),
+            "UInt16 read-only buffer must expose row-major stored values");
+      end Inspect;
+   begin
+      OpenCV.Core.UInt16_Access.Set (Image, 0, 0, 0);
+      OpenCV.Core.UInt16_Access.Set (Image, 0, 1, 1);
+      OpenCV.Core.UInt16_Access.Set (Image, 0, 2, 32_768);
+      OpenCV.Core.UInt16_Access.Set (Image, 1, 0, 65_534);
+      OpenCV.Core.UInt16_Access.Set (Image, 1, 1, 65_535);
+      OpenCV.Core.UInt16_Access.Set (Image, 1, 2, 7);
+      OpenCV.Core.UInt16_Buffer_Access.With_Read_Only_Buffer
+        (Image, Inspect'Access);
+   end UInt16_Read_Only_Buffer_Exposes_Row_Major_Values;
+
+   procedure Alias_Rebind_Leaves_Source_Header_Owning_Storage
      (Test : in out Fixture)
    is
       pragma Unreferenced (Test);
@@ -355,9 +441,295 @@ package body Integer_Buffer_Access_Tests is
         (OpenCV.Core.Int32_Access.Get (Image, 0, 0) = 16_777_217
          and then OpenCV.Core.Int32_Access.Get (Image, 0, 1)
                   = OpenCV.Int32_Value'Last
-         and then Alias.Depth = OpenCV.Core.UInt16,
-         "Borrow lease must retain ordinary OpenCV-owned storage");
-   end Borrow_Lease_Retains_Storage_When_Another_Header_Is_Rebound;
+         and then Alias.Depth = OpenCV.Core.UInt16
+         and then Alias.Total = 1,
+         "Rebinding only an alias still leaves Image owning the allocation");
+   end Alias_Rebind_Leaves_Source_Header_Owning_Storage;
+
+   procedure Read_Only_Lease_Retains_Released_UInt16_Storage
+     (Test : in out Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt16, 1));
+      Alias : OpenCV.Core.Mat;
+
+      procedure Inspect
+        (Data : aliased OpenCV.Core.UInt16_Buffer_Access.Buffer_Array)
+      is
+         Replacement : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create (1, 1, (OpenCV.Core.Int16, 1));
+         Empty       : OpenCV.Core.Mat;
+      begin
+         AUnit.Assertions.Assert
+           (Data (0) = 65_535 and then Data (1) = 7,
+            "UInt16 borrow must expose the original values at entry");
+         Image := Replacement;
+         Alias := Empty;
+         AUnit.Assertions.Assert
+           (Image.Depth = OpenCV.Core.Int16
+            and then Alias.Is_Empty
+            and then Data (0) = 65_535
+            and then Data (1) = 7,
+            "The UInt16 borrow lease must retain the released allocation");
+      end Inspect;
+   begin
+      Integer_Borrow_Lifetime_Probe.Arm;
+      OpenCV.Core.UInt16_Access.Set (Image, 0, 0, 65_535);
+      OpenCV.Core.UInt16_Access.Set (Image, 0, 1, 7);
+      Alias := Image;
+      OpenCV.Core.UInt16_Buffer_Access.With_Read_Only_Buffer
+        (Image, Inspect'Access);
+      AUnit.Assertions.Assert
+        (Image.Depth = OpenCV.Core.Int16 and then Alias.Is_Empty,
+         "UInt16 headers must retain their rebound state after the callback");
+      Integer_Borrow_Lifetime_Probe.Disarm;
+   exception
+      when others =>
+         Integer_Borrow_Lifetime_Probe.Disarm;
+         raise;
+   end Read_Only_Lease_Retains_Released_UInt16_Storage;
+
+   procedure Read_Only_Lease_Retains_Released_Int16_Storage
+     (Test : in out Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Int16, 1));
+      Alias : OpenCV.Core.Mat;
+
+      procedure Inspect
+        (Data : aliased OpenCV.Core.Int16_Buffer_Access.Buffer_Array)
+      is
+         Replacement : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt16, 1));
+         Empty       : OpenCV.Core.Mat;
+      begin
+         AUnit.Assertions.Assert
+           (Data (0) = OpenCV.Int16_Value'First and then Data (1) = -7,
+            "Int16 borrow must expose the original values at entry");
+         Image := Replacement;
+         Alias := Empty;
+         AUnit.Assertions.Assert
+           (Image.Depth = OpenCV.Core.UInt16
+            and then Alias.Is_Empty
+            and then Data (0) = OpenCV.Int16_Value'First
+            and then Data (1) = -7,
+            "The Int16 borrow lease must retain the released allocation");
+      end Inspect;
+   begin
+      Integer_Borrow_Lifetime_Probe.Arm;
+      OpenCV.Core.Int16_Access.Set (Image, 0, 0, OpenCV.Int16_Value'First);
+      OpenCV.Core.Int16_Access.Set (Image, 0, 1, -7);
+      Alias := Image;
+      OpenCV.Core.Int16_Buffer_Access.With_Read_Only_Buffer
+        (Image, Inspect'Access);
+      Integer_Borrow_Lifetime_Probe.Disarm;
+   exception
+      when others =>
+         Integer_Borrow_Lifetime_Probe.Disarm;
+         raise;
+   end Read_Only_Lease_Retains_Released_Int16_Storage;
+
+   procedure Writable_Lease_Retains_Released_Int32_Storage
+     (Test : in out Fixture)
+   is
+      pragma Unreferenced (Test);
+      Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Int32, 1));
+      Alias : OpenCV.Core.Mat;
+
+      procedure Mutate
+        (Data : aliased in out OpenCV.Core.Int32_Buffer_Access.Buffer_Array)
+      is
+         Replacement : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt16, 1));
+         Empty       : OpenCV.Core.Mat;
+      begin
+         AUnit.Assertions.Assert
+           (Data (0) = 3 and then Data (1) = 4,
+            "Int32 borrow must expose the original values before release");
+         Image := Replacement;
+         Alias := Empty;
+         AUnit.Assertions.Assert
+           (Image.Depth = OpenCV.Core.UInt16
+            and then Image.Total = 1
+            and then Alias.Is_Empty,
+            "Releasing both ordinary owners must leave the Int32 lease");
+         Data (0) := 16_777_217;
+         Data (1) := OpenCV.Int32_Value'Last;
+         AUnit.Assertions.Assert
+           (Data (0) = 16_777_217 and then Data (1) = OpenCV.Int32_Value'Last,
+            "Writes through the leased Int32 array must remain usable");
+      end Mutate;
+   begin
+      Integer_Borrow_Lifetime_Probe.Arm;
+      OpenCV.Core.Int32_Access.Set (Image, 0, 0, 3);
+      OpenCV.Core.Int32_Access.Set (Image, 0, 1, 4);
+      Alias := Image;
+      OpenCV.Core.Int32_Buffer_Access.With_Writable_Buffer
+        (Image, Mutate'Access);
+      AUnit.Assertions.Assert
+        (Image.Depth = OpenCV.Core.UInt16 and then Alias.Is_Empty,
+         "Int32 headers must retain their rebound state after the callback");
+      Integer_Borrow_Lifetime_Probe.Disarm;
+   exception
+      when others =>
+         Integer_Borrow_Lifetime_Probe.Disarm;
+         raise;
+   end Writable_Lease_Retains_Released_Int32_Storage;
+
+   procedure Whole_Buffer_Callback_Exceptions_Propagate (Test : in out Fixture)
+   is
+      pragma Unreferenced (Test);
+      U16      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt16, 1));
+      I16      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Int16, 1));
+      I32      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Int32, 1));
+      Raised   : Boolean := False;
+      Identity : Ada.Exceptions.Exception_Id := Ada.Exceptions.Null_Id;
+
+      procedure Fail_Read_U
+        (Data : aliased OpenCV.Core.UInt16_Buffer_Access.Buffer_Array) is
+      begin
+         AUnit.Assertions.Assert
+           (Data (0) = 1 and then Data (1) = 2, "UInt16 read-only values");
+         raise Callback_Error;
+      end Fail_Read_U;
+      procedure Fail_Read_I
+        (Data : aliased OpenCV.Core.Int16_Buffer_Access.Buffer_Array) is
+      begin
+         AUnit.Assertions.Assert (Data (0) = -3, "Int16 read-only value");
+         raise Callback_Error;
+      end Fail_Read_I;
+      procedure Fail_Read_L
+        (Data : aliased OpenCV.Core.Int32_Buffer_Access.Buffer_Array) is
+      begin
+         AUnit.Assertions.Assert
+           (Data (0) = 16_777_217, "Int32 read-only value");
+         raise Callback_Error;
+      end Fail_Read_L;
+      procedure Fail_Write_U
+        (Data : aliased in out OpenCV.Core.UInt16_Buffer_Access.Buffer_Array)
+      is
+      begin
+         Data (0) := 65_535;
+         raise Callback_Error;
+      end Fail_Write_U;
+      procedure Fail_Write_I
+        (Data : aliased in out OpenCV.Core.Int16_Buffer_Access.Buffer_Array) is
+      begin
+         Data (1) := OpenCV.Int16_Value'First;
+         raise Callback_Error;
+      end Fail_Write_I;
+      procedure Fail_Write_L
+        (Data : aliased in out OpenCV.Core.Int32_Buffer_Access.Buffer_Array) is
+      begin
+         Data (0) := OpenCV.Int32_Value'Last;
+         raise Callback_Error;
+      end Fail_Write_L;
+      procedure Read_Again_U
+        (Data : aliased OpenCV.Core.UInt16_Buffer_Access.Buffer_Array) is
+      begin
+         AUnit.Assertions.Assert
+           (Data (0) = 65_535 and then Data (1) = 9,
+            "A later UInt16 borrow must succeed after the exception");
+      end Read_Again_U;
+      procedure Read_Again_I
+        (Data : aliased OpenCV.Core.Int16_Buffer_Access.Buffer_Array) is
+      begin
+         AUnit.Assertions.Assert
+           (Data (1) = OpenCV.Int16_Value'First,
+            "A later Int16 borrow must succeed after the exception");
+      end Read_Again_I;
+      procedure Read_Again_L
+        (Data : aliased OpenCV.Core.Int32_Buffer_Access.Buffer_Array) is
+      begin
+         AUnit.Assertions.Assert
+           (Data (0) = OpenCV.Int32_Value'Last,
+            "A later Int32 borrow must succeed after the exception");
+      end Read_Again_L;
+
+      procedure Expect (Attempt : not null access procedure) is
+      begin
+         Raised := False;
+         Identity := Ada.Exceptions.Null_Id;
+         begin
+            Attempt.all;
+         exception
+            when Error : Callback_Error =>
+               Raised := True;
+               Identity := Ada.Exceptions.Exception_Identity (Error);
+         end;
+         AUnit.Assertions.Assert
+           (Raised and then Identity = Callback_Error'Identity,
+            "Whole-buffer callback exceptions must propagate unchanged");
+      end Expect;
+
+      procedure Read_U is
+      begin
+         OpenCV.Core.UInt16_Buffer_Access.With_Read_Only_Buffer
+           (U16, Fail_Read_U'Access);
+      end Read_U;
+      procedure Read_I is
+      begin
+         OpenCV.Core.Int16_Buffer_Access.With_Read_Only_Buffer
+           (I16, Fail_Read_I'Access);
+      end Read_I;
+      procedure Read_L is
+      begin
+         OpenCV.Core.Int32_Buffer_Access.With_Read_Only_Buffer
+           (I32, Fail_Read_L'Access);
+      end Read_L;
+      procedure Write_U is
+      begin
+         OpenCV.Core.UInt16_Buffer_Access.With_Writable_Buffer
+           (U16, Fail_Write_U'Access);
+      end Write_U;
+      procedure Write_I is
+      begin
+         OpenCV.Core.Int16_Buffer_Access.With_Writable_Buffer
+           (I16, Fail_Write_I'Access);
+      end Write_I;
+      procedure Write_L is
+      begin
+         OpenCV.Core.Int32_Buffer_Access.With_Writable_Buffer
+           (I32, Fail_Write_L'Access);
+      end Write_L;
+   begin
+      OpenCV.Core.UInt16_Access.Set (U16, 0, 0, 1);
+      OpenCV.Core.UInt16_Access.Set (U16, 0, 1, 2);
+      OpenCV.Core.Int16_Access.Set (I16, 0, 0, -3);
+      OpenCV.Core.Int16_Access.Set (I16, 0, 1, 4);
+      OpenCV.Core.Int32_Access.Set (I32, 0, 0, 16_777_217);
+      OpenCV.Core.Int32_Access.Set (I32, 0, 1, 5);
+      Expect (Read_U'Access);
+      Expect (Read_I'Access);
+      Expect (Read_L'Access);
+      Expect (Write_U'Access);
+      Expect (Write_I'Access);
+      Expect (Write_L'Access);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt16_Access.Get (U16, 0, 0) = 65_535
+         and then OpenCV.Core.UInt16_Access.Get (U16, 0, 1) = 2
+         and then OpenCV.Core.Int16_Access.Get (I16, 0, 1)
+                  = OpenCV.Int16_Value'First
+         and then OpenCV.Core.Int32_Access.Get (I32, 0, 0)
+                  = OpenCV.Int32_Value'Last,
+         "Writes completed before a whole-buffer exception must remain");
+      OpenCV.Core.UInt16_Access.Set (U16, 0, 1, 9);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt16_Access.Get (U16, 0, 1) = 9,
+         "The Mat must remain usable after a whole-buffer exception");
+      OpenCV.Core.UInt16_Buffer_Access.With_Read_Only_Buffer
+        (U16, Read_Again_U'Access);
+      OpenCV.Core.Int16_Buffer_Access.With_Read_Only_Buffer
+        (I16, Read_Again_I'Access);
+      OpenCV.Core.Int32_Buffer_Access.With_Read_Only_Buffer
+        (I32, Read_Again_L'Access);
+   end Whole_Buffer_Callback_Exceptions_Propagate;
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
@@ -368,17 +740,39 @@ package body Integer_Buffer_Access_Tests is
       Result.Add_Test
         (Caller.Create
            ("Integer buffers accept continuous and reject strided Regions",
-            Continuous_Regions_Are_Accepted_And_Strided_Regions_Rejected
-              'Access));
+            Continuous_Regions_Are_Accepted_And_Strided_Regions_Rejected'Access));
       Result.Add_Test
         (Caller.Create
            ("Integer buffers validate empty type channels and dimensions",
             Empty_Type_And_Dimension_Validation_Covers_All_Families'Access));
       Result.Add_Test
         (Caller.Create
-           ("Integer buffer borrow lease retains storage across rebind",
-            Borrow_Lease_Retains_Storage_When_Another_Header_Is_Rebound
-              'Access));
+           ("Integer empty writable buffers use the null range",
+            Writable_Empty_Buffers_Use_The_Null_Range'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt16 read-only buffer exposes row-major values",
+            UInt16_Read_Only_Buffer_Exposes_Row_Major_Values'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Integer alias rebind leaves source owning storage",
+            Alias_Rebind_Leaves_Source_Header_Owning_Storage'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt16 buffer lease retains storage after ordinary release",
+            Read_Only_Lease_Retains_Released_UInt16_Storage'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Int16 buffer lease retains storage after ordinary release",
+            Read_Only_Lease_Retains_Released_Int16_Storage'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Int32 buffer lease retains storage after ordinary release",
+            Writable_Lease_Retains_Released_Int32_Storage'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Integer whole-buffer callback exceptions propagate",
+            Whole_Buffer_Callback_Exceptions_Propagate'Access));
       return Result'Access;
    end Suite;
 

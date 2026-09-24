@@ -18,7 +18,7 @@ translation of the C++ headers.
 >
 > **Development status:** active, pre-1.0 API.
 >
-> **Current test baseline:** 1246 AUnit tests, with Ada and C++ warnings promoted
+> **Current test baseline:** 1255 AUnit tests, with Ada and C++ warnings promoted
 > to errors. GitHub Actions exercises the full test suite against four OpenCV
 > compatibility targets, plus a native Ubuntu 24.04 ARM64 job.
 >
@@ -359,7 +359,7 @@ The test crate carries development-only dependencies such as AUnit, GNATprove,
 and GNATcov. They are intentionally not dependencies of the public library
 crate.
 
-At the time of this README update, the full suite contains **1246 AUnit tests**.
+At the time of this README update, the full suite contains **1255 AUnit tests**.
 Coverage includes ordinary behavior, invalid input, shape/depth/channel
 compatibility, empty Mats, non-contiguous Regions, shallow-versus-independent
 ownership, callback lifetimes, arbitrary Ada array lower bounds, failure
