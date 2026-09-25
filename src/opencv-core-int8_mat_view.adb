@@ -1,16 +1,21 @@
 with OpenCV.Core.Internal.Typed_External_Mat_View;
 
-package body OpenCV.Core.UInt8_Mat_View is
+package body OpenCV.Core.Int8_Mat_View is
+
+   pragma
+     Compile_Time_Error
+       (Int8_Value'Size /= 8,
+        "Int8_Value must be exactly 8 bits to alias CV_8S storage");
 
    package Viewing is new
      OpenCV.Core.Internal.Typed_External_Mat_View
-       (Element_Type             => UInt8_Value,
+       (Element_Type             => Int8_Value,
         Buffer_Array             => Buffer_Array,
-        Required_Depth           => UInt8,
+        Required_Depth           => Int8,
         Required_Channels        => 1,
         Expected_Element_Bits    => 8,
         Native_Element_Alignment => 1,
-        Type_Name                => "UInt8");
+        Type_Name                => "Int8");
 
    procedure With_Writable_Mat_View
      (Data    : aliased in out Buffer_Array;
@@ -32,4 +37,4 @@ package body OpenCV.Core.UInt8_Mat_View is
         (Data, Rows, Columns, Row_Stride, Process);
    end With_Writable_Strided_Mat_View;
 
-end OpenCV.Core.UInt8_Mat_View;
+end OpenCV.Core.Int8_Mat_View;

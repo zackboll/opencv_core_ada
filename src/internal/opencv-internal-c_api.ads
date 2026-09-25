@@ -21,6 +21,7 @@ package OpenCV.Internal.C_API is
 
    subtype C_Int32 is Interfaces.Integer_32;
    subtype C_UInt8 is Interfaces.Unsigned_8;
+   subtype C_Int8 is Interfaces.Integer_8;
    subtype C_UInt16 is Interfaces.Unsigned_16;
    subtype C_Int16 is Interfaces.Integer_16;
    subtype C_UInt32 is Interfaces.Unsigned_32;
@@ -771,6 +772,15 @@ package OpenCV.Internal.C_API is
      (Self : Mat_Handle; Row, Column : C_Int32; Value : C_UInt8) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_set_uint8";
 
+   function Mat_Get_Int8
+     (Self : Mat_Handle; Row, Column : C_Int32; Result : access C_Int8)
+      return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_get_int8";
+
+   function Mat_Set_Int8
+     (Self : Mat_Handle; Row, Column : C_Int32; Value : C_Int8) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_set_int8";
+
    function Mat_Get_UInt16
      (Self : Mat_Handle; Row, Column : C_Int32; Result : access C_UInt16)
       return Status
@@ -935,6 +945,26 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_set_uint8_nd";
 
+   function Mat_Get_Int8_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Result          : access C_Int8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_int8_nd";
+
+   function Mat_Set_Int8_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Value           : C_Int8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_int8_nd";
+
    function Mat_Get_UInt16_ND
      (Self            : Mat_Handle;
       Dimension_Count : C_Int32;
@@ -1034,6 +1064,26 @@ package OpenCV.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_core_mat_write_uint8_row";
+
+   function Mat_Read_Int8_Row
+     (Self          : Mat_Handle;
+      Row           : C_Int32;
+      Data          : System.Address;
+      Element_Count : C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_read_int8_row";
+
+   function Mat_Write_Int8_Row
+     (Self          : Mat_Handle;
+      Row           : C_Int32;
+      Data          : System.Address;
+      Element_Count : C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_write_int8_row";
 
    function Mat_Read_UInt16_Row
      (Self          : Mat_Handle;

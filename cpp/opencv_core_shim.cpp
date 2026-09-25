@@ -4633,6 +4633,67 @@ opencv_core_mat_set_uint8(opencv_core_mat_handle *mat, int32_t row,
     }
 }
 
+static_assert(sizeof(int8_t) == 1, "CV_8S Int8 accessors require 8-bit int8_t");
+
+opencv_core_status
+opencv_core_mat_get_int8(const opencv_core_mat_handle *mat, int32_t row,
+                         int32_t column, int8_t *out_value) {
+    clear_error();
+
+    if (out_value == nullptr) {
+        return invalid_argument("out_value must not be null");
+    }
+
+    *out_value = 0;
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        const opencv_core_status status =
+            validate_typed_at(mat->value, row, column, CV_8S, 1,
+                              "Mat depth must be Int8",
+                              "Mat must have exactly one channel");
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        *out_value =
+            mat->value.at<int8_t>(static_cast<int>(row),
+                                  static_cast<int>(column));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_set_int8(opencv_core_mat_handle *mat, int32_t row,
+                         int32_t column, int8_t value) {
+    clear_error();
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        const opencv_core_status status =
+            validate_typed_at(mat->value, row, column, CV_8S, 1,
+                              "Mat depth must be Int8",
+                              "Mat must have exactly one channel");
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        mat->value.at<int8_t>(static_cast<int>(row),
+                              static_cast<int>(column)) = value;
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
 opencv_core_status
 opencv_core_mat_get_uint16(const opencv_core_mat_handle *mat, int32_t row,
                            int32_t column, uint16_t *out_value) {
@@ -5127,6 +5188,62 @@ opencv_core_mat_set_uint8_nd(opencv_core_mat_handle *mat, int32_t ndims,
 }
 
 opencv_core_status
+opencv_core_mat_get_int8_nd(const opencv_core_mat_handle *mat, int32_t ndims,
+                            const int32_t *indices, int8_t *out_value) {
+    clear_error();
+
+    if (out_value == nullptr) {
+        return invalid_argument("out_value must not be null");
+    }
+
+    *out_value = 0;
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        int opencv_indices[maximum_mat_dimensions];
+        const opencv_core_status status =
+            prepare_nd_typed_at(mat->value, ndims, indices, opencv_indices,
+                                sizeof(int8_t));
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        *out_value = mat->value.at<int8_t>(opencv_indices);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_set_int8_nd(opencv_core_mat_handle *mat, int32_t ndims,
+                            const int32_t *indices, int8_t value) {
+    clear_error();
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        int opencv_indices[maximum_mat_dimensions];
+        const opencv_core_status status =
+            prepare_nd_typed_at(mat->value, ndims, indices, opencv_indices,
+                                sizeof(int8_t));
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        mat->value.at<int8_t>(opencv_indices) = value;
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_get_uint16_nd(const opencv_core_mat_handle *mat, int32_t ndims,
                               const int32_t *indices, uint16_t *out_value) {
     clear_error();
@@ -5526,6 +5643,64 @@ opencv_core_mat_write_uint8_row(opencv_core_mat_handle *mat, int32_t row,
     }
 }
  
+opencv_core_status
+opencv_core_mat_read_int8_row(const opencv_core_mat_handle *mat, int32_t row,
+                              int8_t *data, uint64_t element_count) {
+    clear_error();
+
+    if (data == nullptr && element_count != 0) {
+        return invalid_argument(
+            "data must not be null when element_count is nonzero");
+    }
+
+    try {
+        const int8_t *row_data = nullptr;
+        std::size_t byte_count = 0;
+        const opencv_core_status status =
+            prepare_row(mat, row, element_count, CV_8S,
+                        "Mat depth must be Int8", row_data, byte_count);
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        if (byte_count != 0) {
+            std::memcpy(data, row_data, byte_count);
+        }
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_write_int8_row(opencv_core_mat_handle *mat, int32_t row,
+                               const int8_t *data, uint64_t element_count) {
+    clear_error();
+
+    if (data == nullptr && element_count != 0) {
+        return invalid_argument(
+            "data must not be null when element_count is nonzero");
+    }
+
+    try {
+        const int8_t *row_data = nullptr;
+        std::size_t byte_count = 0;
+        const opencv_core_status status =
+            prepare_row(mat, row, element_count, CV_8S,
+                        "Mat depth must be Int8", row_data, byte_count);
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        if (byte_count != 0) {
+            std::memcpy(const_cast<int8_t *>(row_data), data, byte_count);
+        }
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
 opencv_core_status
 opencv_core_mat_read_uint16_row(const opencv_core_mat_handle *mat, int32_t row,
                                 uint16_t *data, uint64_t element_count) {
