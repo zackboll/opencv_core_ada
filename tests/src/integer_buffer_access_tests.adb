@@ -49,21 +49,12 @@ package body Integer_Buffer_Access_Tests is
          "The original allocation must be deallocated exactly once");
    end Assert_Target_Released_Once;
 
-   procedure Finish_Observation is
+   procedure Finish_Started_Observation (Started : Boolean) is
    begin
-      Integer_Borrow_Lifetime_Probe.Finish;
-   exception
-      when Integer_Borrow_Lifetime_Probe.Probe_Error =>
-         raise;
-      when others =>
-         begin
-            Integer_Borrow_Lifetime_Probe.Finish;
-         exception
-            when Integer_Borrow_Lifetime_Probe.Probe_Error =>
-               null;
-         end;
-         raise;
-   end Finish_Observation;
+      if Started then
+         Integer_Borrow_Lifetime_Probe.Finish;
+      end if;
+   end Finish_Started_Observation;
 
    Callback_Error : exception;
 
@@ -492,46 +483,53 @@ package body Integer_Buffer_Access_Tests is
      (Test : in out Fixture)
    is
       pragma Unreferenced (Test);
-      Image : OpenCV.Core.Mat;
-      Alias : OpenCV.Core.Mat;
+      Started : Boolean := False;
+   begin
+      declare
+         Image : OpenCV.Core.Mat;
+         Alias : OpenCV.Core.Mat;
 
-      procedure Inspect
-        (Data : aliased OpenCV.Core.UInt16_Buffer_Access.Buffer_Array)
-      is
-         Replacement : OpenCV.Core.Mat;
-         Empty       : OpenCV.Core.Mat;
+         procedure Inspect
+           (Data : aliased OpenCV.Core.UInt16_Buffer_Access.Buffer_Array)
+         is
+            Replacement : OpenCV.Core.Mat;
+            Empty       : OpenCV.Core.Mat;
+         begin
+            Image := Replacement;
+            Alias := Empty;
+            Assert_Target_Still_Leased;
+            AUnit.Assertions.Assert
+              (Data (0) = 65_535 and then Data (1) = 7,
+               "The leased UInt16 allocation must still expose its values");
+            Replacement := OpenCV.Core.Create (1, 1, (OpenCV.Core.Int16, 1));
+            Image := Replacement;
+            AUnit.Assertions.Assert
+              (Image.Depth = OpenCV.Core.Int16 and then Alias.Is_Empty,
+               "UInt16 headers must show their rebound state"
+               & " during the lease");
+         end Inspect;
       begin
-         Image := Replacement;
-         Alias := Empty;
-         Assert_Target_Still_Leased;
-         AUnit.Assertions.Assert
-           (Data (0) = 65_535 and then Data (1) = 7,
-            "The leased UInt16 allocation must still expose its values");
-         Replacement := OpenCV.Core.Create (1, 1, (OpenCV.Core.Int16, 1));
-         Image := Replacement;
+         Integer_Borrow_Lifetime_Probe.Begin_Observation;
+         Started := True;
+         Image := OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt16, 1));
+         Assert_Target_Attached;
+
+         Integer_Borrow_Lifetime_Probe.Restore_Default_Allocator;
+         OpenCV.Core.UInt16_Access.Set (Image, 0, 0, 65_535);
+         OpenCV.Core.UInt16_Access.Set (Image, 0, 1, 7);
+         Alias := Image;
+         OpenCV.Core.UInt16_Buffer_Access.With_Read_Only_Buffer
+           (Image, Inspect'Access);
+         Assert_Target_Released_Once;
          AUnit.Assertions.Assert
            (Image.Depth = OpenCV.Core.Int16 and then Alias.Is_Empty,
-            "UInt16 headers must show their rebound state during the lease");
-      end Inspect;
-   begin
-      Integer_Borrow_Lifetime_Probe.Begin_Observation;
-      Image := OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt16, 1));
-      Assert_Target_Attached;
-
-      Integer_Borrow_Lifetime_Probe.Restore_Default_Allocator;
-      OpenCV.Core.UInt16_Access.Set (Image, 0, 0, 65_535);
-      OpenCV.Core.UInt16_Access.Set (Image, 0, 1, 7);
-      Alias := Image;
-      OpenCV.Core.UInt16_Buffer_Access.With_Read_Only_Buffer
-        (Image, Inspect'Access);
-      Assert_Target_Released_Once;
-      AUnit.Assertions.Assert
-        (Image.Depth = OpenCV.Core.Int16 and then Alias.Is_Empty,
-         "UInt16 headers must retain their rebound state after the callback");
-      Finish_Observation;
+            "UInt16 headers must retain their rebound state"
+            & " after the callback");
+      end;
+      Finish_Started_Observation (Started);
    exception
       when others =>
-         Finish_Observation;
+         Finish_Started_Observation (Started);
          raise;
    end Read_Only_Lease_Retains_Released_UInt16_Storage;
 
@@ -539,46 +537,52 @@ package body Integer_Buffer_Access_Tests is
      (Test : in out Fixture)
    is
       pragma Unreferenced (Test);
-      Image : OpenCV.Core.Mat;
-      Alias : OpenCV.Core.Mat;
+      Started : Boolean := False;
+   begin
+      declare
+         Image : OpenCV.Core.Mat;
+         Alias : OpenCV.Core.Mat;
 
-      procedure Inspect
-        (Data : aliased OpenCV.Core.Int16_Buffer_Access.Buffer_Array)
-      is
-         Replacement : OpenCV.Core.Mat;
-         Empty       : OpenCV.Core.Mat;
+         procedure Inspect
+           (Data : aliased OpenCV.Core.Int16_Buffer_Access.Buffer_Array)
+         is
+            Replacement : OpenCV.Core.Mat;
+            Empty       : OpenCV.Core.Mat;
+         begin
+            Image := Replacement;
+            Alias := Empty;
+            Assert_Target_Still_Leased;
+            AUnit.Assertions.Assert
+              (Data (0) = OpenCV.Int16_Value'First and then Data (1) = -7,
+               "The leased Int16 allocation must still expose its values");
+            Replacement := OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt16, 1));
+            Image := Replacement;
+            AUnit.Assertions.Assert
+              (Image.Depth = OpenCV.Core.UInt16 and then Alias.Is_Empty,
+               "Int16 headers must show their rebound state during the lease");
+         end Inspect;
       begin
-         Image := Replacement;
-         Alias := Empty;
-         Assert_Target_Still_Leased;
-         AUnit.Assertions.Assert
-           (Data (0) = OpenCV.Int16_Value'First and then Data (1) = -7,
-            "The leased Int16 allocation must still expose its values");
-         Replacement := OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt16, 1));
-         Image := Replacement;
+         Integer_Borrow_Lifetime_Probe.Begin_Observation;
+         Started := True;
+         Image := OpenCV.Core.Create (1, 2, (OpenCV.Core.Int16, 1));
+         Assert_Target_Attached;
+
+         Integer_Borrow_Lifetime_Probe.Restore_Default_Allocator;
+         OpenCV.Core.Int16_Access.Set (Image, 0, 0, OpenCV.Int16_Value'First);
+         OpenCV.Core.Int16_Access.Set (Image, 0, 1, -7);
+         Alias := Image;
+         OpenCV.Core.Int16_Buffer_Access.With_Read_Only_Buffer
+           (Image, Inspect'Access);
+         Assert_Target_Released_Once;
          AUnit.Assertions.Assert
            (Image.Depth = OpenCV.Core.UInt16 and then Alias.Is_Empty,
-            "Int16 headers must show their rebound state during the lease");
-      end Inspect;
-   begin
-      Integer_Borrow_Lifetime_Probe.Begin_Observation;
-      Image := OpenCV.Core.Create (1, 2, (OpenCV.Core.Int16, 1));
-      Assert_Target_Attached;
-
-      Integer_Borrow_Lifetime_Probe.Restore_Default_Allocator;
-      OpenCV.Core.Int16_Access.Set (Image, 0, 0, OpenCV.Int16_Value'First);
-      OpenCV.Core.Int16_Access.Set (Image, 0, 1, -7);
-      Alias := Image;
-      OpenCV.Core.Int16_Buffer_Access.With_Read_Only_Buffer
-        (Image, Inspect'Access);
-      Assert_Target_Released_Once;
-      AUnit.Assertions.Assert
-        (Image.Depth = OpenCV.Core.UInt16 and then Alias.Is_Empty,
-         "Int16 headers must retain their rebound state after the callback");
-      Finish_Observation;
+            "Int16 headers must retain their rebound state"
+            & " after the callback");
+      end;
+      Finish_Started_Observation (Started);
    exception
       when others =>
-         Finish_Observation;
+         Finish_Started_Observation (Started);
          raise;
    end Read_Only_Lease_Retains_Released_Int16_Storage;
 
@@ -586,53 +590,60 @@ package body Integer_Buffer_Access_Tests is
      (Test : in out Fixture)
    is
       pragma Unreferenced (Test);
-      Image : OpenCV.Core.Mat;
-      Alias : OpenCV.Core.Mat;
-
-      procedure Mutate
-        (Data : aliased in out OpenCV.Core.Int32_Buffer_Access.Buffer_Array)
-      is
-         Replacement : OpenCV.Core.Mat;
-         Empty       : OpenCV.Core.Mat;
-      begin
-         Image := Replacement;
-         Alias := Empty;
-         Assert_Target_Still_Leased;
-         AUnit.Assertions.Assert
-           (Data (0) = 3 and then Data (1) = 4,
-            "The leased Int32 allocation must still expose its values");
-         Data (0) := 16_777_217;
-         Data (1) := OpenCV.Int32_Value'Last;
-         AUnit.Assertions.Assert
-           (Data (0) = 16_777_217 and then Data (1) = OpenCV.Int32_Value'Last,
-            "Writes through the leased Int32 array must remain usable");
-         Replacement := OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt16, 1));
-         Image := Replacement;
-         AUnit.Assertions.Assert
-           (Image.Depth = OpenCV.Core.UInt16
-            and then Image.Total = 1
-            and then Alias.Is_Empty,
-            "Releasing both ordinary owners must leave the Int32 lease");
-      end Mutate;
+      Started : Boolean := False;
    begin
-      Integer_Borrow_Lifetime_Probe.Begin_Observation;
-      Image := OpenCV.Core.Create (1, 2, (OpenCV.Core.Int32, 1));
-      Assert_Target_Attached;
-      Integer_Borrow_Lifetime_Probe.Restore_Default_Allocator;
-      OpenCV.Core.Int32_Access.Set (Image, 0, 0, 3);
-      OpenCV.Core.Int32_Access.Set (Image, 0, 1, 4);
+      declare
+         Image : OpenCV.Core.Mat;
+         Alias : OpenCV.Core.Mat;
 
-      Alias := Image;
-      OpenCV.Core.Int32_Buffer_Access.With_Writable_Buffer
-        (Image, Mutate'Access);
-      Assert_Target_Released_Once;
-      AUnit.Assertions.Assert
-        (Image.Depth = OpenCV.Core.UInt16 and then Alias.Is_Empty,
-         "Int32 headers must retain their rebound state after the callback");
-      Finish_Observation;
+         procedure Mutate
+           (Data : aliased in out OpenCV.Core.Int32_Buffer_Access.Buffer_Array)
+         is
+            Replacement : OpenCV.Core.Mat;
+            Empty       : OpenCV.Core.Mat;
+         begin
+            Image := Replacement;
+            Alias := Empty;
+            Assert_Target_Still_Leased;
+            AUnit.Assertions.Assert
+              (Data (0) = 3 and then Data (1) = 4,
+               "The leased Int32 allocation must still expose its values");
+            Data (0) := 16_777_217;
+            Data (1) := OpenCV.Int32_Value'Last;
+            AUnit.Assertions.Assert
+              (Data (0) = 16_777_217
+               and then Data (1) = OpenCV.Int32_Value'Last,
+               "Writes through the leased Int32 array must remain usable");
+            Replacement := OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt16, 1));
+            Image := Replacement;
+            AUnit.Assertions.Assert
+              (Image.Depth = OpenCV.Core.UInt16
+               and then Image.Total = 1
+               and then Alias.Is_Empty,
+               "Releasing both ordinary owners must leave the Int32 lease");
+         end Mutate;
+      begin
+         Integer_Borrow_Lifetime_Probe.Begin_Observation;
+         Started := True;
+         Image := OpenCV.Core.Create (1, 2, (OpenCV.Core.Int32, 1));
+         Assert_Target_Attached;
+         Integer_Borrow_Lifetime_Probe.Restore_Default_Allocator;
+         OpenCV.Core.Int32_Access.Set (Image, 0, 0, 3);
+         OpenCV.Core.Int32_Access.Set (Image, 0, 1, 4);
+
+         Alias := Image;
+         OpenCV.Core.Int32_Buffer_Access.With_Writable_Buffer
+           (Image, Mutate'Access);
+         Assert_Target_Released_Once;
+         AUnit.Assertions.Assert
+           (Image.Depth = OpenCV.Core.UInt16 and then Alias.Is_Empty,
+            "Int32 headers must retain their rebound state"
+            & " after the callback");
+      end;
+      Finish_Started_Observation (Started);
    exception
       when others =>
-         Finish_Observation;
+         Finish_Started_Observation (Started);
          raise;
    end Writable_Lease_Retains_Released_Int32_Storage;
 
@@ -640,35 +651,47 @@ package body Integer_Buffer_Access_Tests is
      (Test : in out Fixture)
    is
       pragma Unreferenced (Test);
-      Image       : OpenCV.Core.Mat;
-      Replacement : OpenCV.Core.Mat;
+      Started : Boolean := False;
    begin
-      Integer_Borrow_Lifetime_Probe.Begin_Observation;
-      Image := OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 1));
-      Assert_Target_Attached;
+      declare
+         Image       : OpenCV.Core.Mat;
+         Replacement : OpenCV.Core.Mat;
+      begin
+         Integer_Borrow_Lifetime_Probe.Begin_Observation;
+         Started := True;
+         Image := OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 1));
+         Assert_Target_Attached;
 
-      Integer_Borrow_Lifetime_Probe.Restore_Default_Allocator;
-      Replacement := OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
-      AUnit.Assertions.Assert
-        (not Image.Is_Empty
-         and then Integer_Borrow_Lifetime_Probe.Target_Live
-         and then Integer_Borrow_Lifetime_Probe.Deallocation_Count = 0,
-         "A replacement allocation must not count as the original release");
+         Integer_Borrow_Lifetime_Probe.Restore_Default_Allocator;
+         Replacement := OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+         AUnit.Assertions.Assert
+           (not Image.Is_Empty
+            and then Integer_Borrow_Lifetime_Probe.Target_Live
+            and then Integer_Borrow_Lifetime_Probe.Deallocation_Count = 0,
+            "A replacement allocation must not count as the original release");
 
-      Image := Replacement;
-      Assert_Target_Released_Once;
-      Finish_Observation;
+         Image := Replacement;
+         Assert_Target_Released_Once;
+      end;
+      Finish_Started_Observation (Started);
+      Started := False;
 
-      Integer_Borrow_Lifetime_Probe.Begin_Observation;
-      Image := OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
-      Assert_Target_Attached;
+      declare
+         Image : OpenCV.Core.Mat;
+         pragma Unreferenced (Image);
+      begin
+         Integer_Borrow_Lifetime_Probe.Begin_Observation;
+         Started := True;
+         Image := OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+         Assert_Target_Attached;
 
-      Image := OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
-      Assert_Target_Released_Once;
-      Finish_Observation;
+         Image := OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
+         Assert_Target_Released_Once;
+      end;
+      Finish_Started_Observation (Started);
    exception
       when others =>
-         Finish_Observation;
+         Finish_Started_Observation (Started);
          raise;
    end Observer_Sees_Ordinary_Release_Exactly_Once;
 
@@ -676,63 +699,194 @@ package body Integer_Buffer_Access_Tests is
      (Test : in out Fixture)
    is
       pragma Unreferenced (Test);
-      Image : OpenCV.Core.Mat;
-      Alias : OpenCV.Core.Mat;
-
-      procedure Fail
-        (Data : aliased OpenCV.Core.Int32_Buffer_Access.Buffer_Array)
-      is
-         Empty : OpenCV.Core.Mat;
-      begin
-         Image := Empty;
-         Alias := Empty;
-         Assert_Target_Still_Leased;
-         AUnit.Assertions.Assert
-           (Data (0) = 11 and then Data (1) = 22,
-            "The leased Int32 allocation must be readable before failure");
-         raise Callback_Error;
-      end Fail;
+      Started : Boolean := False;
    begin
-      Integer_Borrow_Lifetime_Probe.Begin_Observation;
-      Image := OpenCV.Core.Create (1, 2, (OpenCV.Core.Int32, 1));
-      Assert_Target_Attached;
-      Integer_Borrow_Lifetime_Probe.Restore_Default_Allocator;
-      OpenCV.Core.Int32_Access.Set (Image, 0, 0, 11);
-      OpenCV.Core.Int32_Access.Set (Image, 0, 1, 22);
+      declare
+         Image : OpenCV.Core.Mat;
+         Alias : OpenCV.Core.Mat;
 
-      Alias := Image;
+         procedure Fail
+           (Data : aliased OpenCV.Core.Int32_Buffer_Access.Buffer_Array)
+         is
+            Empty : OpenCV.Core.Mat;
+         begin
+            Image := Empty;
+            Alias := Empty;
+            Assert_Target_Still_Leased;
+            AUnit.Assertions.Assert
+              (Data (0) = 11 and then Data (1) = 22,
+               "The leased Int32 allocation must be readable before failure");
+            raise Callback_Error;
+         end Fail;
       begin
-         OpenCV.Core.Int32_Buffer_Access.With_Read_Only_Buffer
-           (Image, Fail'Access);
-         AUnit.Assertions.Assert
-           (False, "The callback exception must propagate");
-      exception
-         when Callback_Error =>
-            null;
-      end;
-      Assert_Target_Released_Once;
-      AUnit.Assertions.Assert
-        (Image.Is_Empty and then Alias.Is_Empty,
-         "Exception unwinding must leave both rebound headers empty");
-      Finish_Observation;
+         Integer_Borrow_Lifetime_Probe.Begin_Observation;
+         Started := True;
+         Image := OpenCV.Core.Create (1, 2, (OpenCV.Core.Int32, 1));
+         Assert_Target_Attached;
+         Integer_Borrow_Lifetime_Probe.Restore_Default_Allocator;
+         OpenCV.Core.Int32_Access.Set (Image, 0, 0, 11);
+         OpenCV.Core.Int32_Access.Set (Image, 0, 1, 22);
 
-      Integer_Borrow_Lifetime_Probe.Begin_Observation;
-      Image := OpenCV.Core.Create (1, 1, (OpenCV.Core.Int32, 1));
-      Assert_Target_Attached;
+         Alias := Image;
+         begin
+            OpenCV.Core.Int32_Buffer_Access.With_Read_Only_Buffer
+              (Image, Fail'Access);
+            AUnit.Assertions.Assert
+              (False, "The callback exception must propagate");
+         exception
+            when Callback_Error =>
+               null;
+         end;
+         Assert_Target_Released_Once;
+         AUnit.Assertions.Assert
+           (Image.Is_Empty and then Alias.Is_Empty,
+            "Exception unwinding must leave both rebound headers empty");
+      end;
+      Finish_Started_Observation (Started);
+      Started := False;
 
       declare
-         Empty : OpenCV.Core.Mat;
+         Image : OpenCV.Core.Mat;
+         pragma Unreferenced (Image);
       begin
-         Image := Empty;
-      end;
+         Integer_Borrow_Lifetime_Probe.Begin_Observation;
+         Started := True;
+         Image := OpenCV.Core.Create (1, 1, (OpenCV.Core.Int32, 1));
+         Assert_Target_Attached;
 
-      Assert_Target_Released_Once;
-      Finish_Observation;
+         declare
+            Empty : OpenCV.Core.Mat;
+         begin
+            Image := Empty;
+         end;
+
+         Assert_Target_Released_Once;
+      end;
+      Finish_Started_Observation (Started);
    exception
       when others =>
-         Finish_Observation;
+         Finish_Started_Observation (Started);
          raise;
    end Lease_Exception_Releases_Original_Allocation_Once;
+
+   procedure Finish_While_Live_Keeps_Session_Until_Release
+     (Test : in out Fixture)
+   is
+      pragma Unreferenced (Test);
+      Started : Boolean := False;
+   begin
+      declare
+         Image : OpenCV.Core.Mat;
+         pragma Unreferenced (Image);
+      begin
+         Integer_Borrow_Lifetime_Probe.Begin_Observation;
+         Started := True;
+         Image := OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt16, 1));
+         Assert_Target_Attached;
+
+         begin
+            Integer_Borrow_Lifetime_Probe.Finish;
+            AUnit.Assertions.Assert
+              (False, "Finish must reject a target that is still live");
+         exception
+            when Integer_Borrow_Lifetime_Probe.Probe_Error =>
+               null;
+         end;
+         Assert_Target_Attached;
+
+         begin
+            Integer_Borrow_Lifetime_Probe.Begin_Observation;
+            AUnit.Assertions.Assert
+              (False, "A nested observation must be rejected");
+         exception
+            when Integer_Borrow_Lifetime_Probe.Probe_Error =>
+               null;
+         end;
+         Assert_Target_Attached;
+
+         declare
+            Empty : OpenCV.Core.Mat;
+         begin
+            Image := Empty;
+         end;
+         Assert_Target_Released_Once;
+      end;
+      Finish_Started_Observation (Started);
+      Started := False;
+
+      declare
+         Image : OpenCV.Core.Mat;
+         pragma Unreferenced (Image);
+      begin
+         Integer_Borrow_Lifetime_Probe.Begin_Observation;
+         Started := True;
+         Image := OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt16, 1));
+         Assert_Target_Attached;
+         declare
+            Empty : OpenCV.Core.Mat;
+         begin
+            Image := Empty;
+         end;
+         Assert_Target_Released_Once;
+      end;
+      Finish_Started_Observation (Started);
+   exception
+      when others =>
+         Finish_Started_Observation (Started);
+         raise;
+   end Finish_While_Live_Keeps_Session_Until_Release;
+
+   Early_Failure : exception;
+
+   procedure Early_Failure_Releases_Before_Finish (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Started  : Boolean := False;
+      Identity : Ada.Exceptions.Exception_Id := Ada.Exceptions.Null_Id;
+   begin
+      begin
+         declare
+            Image : OpenCV.Core.Mat;
+            pragma Unreferenced (Image);
+         begin
+            Integer_Borrow_Lifetime_Probe.Begin_Observation;
+            Started := True;
+            Image := OpenCV.Core.Create (1, 2, (OpenCV.Core.Int16, 1));
+            Assert_Target_Attached;
+            raise Early_Failure;
+         end;
+      exception
+         when Error : Early_Failure =>
+            Identity := Ada.Exceptions.Exception_Identity (Error);
+            Assert_Target_Released_Once;
+      end;
+
+      AUnit.Assertions.Assert
+        (Identity = Early_Failure'Identity,
+         "Early observation failure must preserve the original exception");
+      Finish_Started_Observation (Started);
+      Started := False;
+
+      declare
+         Image : OpenCV.Core.Mat;
+         pragma Unreferenced (Image);
+      begin
+         Integer_Borrow_Lifetime_Probe.Begin_Observation;
+         Started := True;
+         Image := OpenCV.Core.Create (1, 1, (OpenCV.Core.Int16, 1));
+         Assert_Target_Attached;
+         declare
+            Empty : OpenCV.Core.Mat;
+         begin
+            Image := Empty;
+         end;
+         Assert_Target_Released_Once;
+      end;
+      Finish_Started_Observation (Started);
+   exception
+      when others =>
+         Finish_Started_Observation (Started);
+         raise;
+   end Early_Failure_Releases_Before_Finish;
 
    procedure Whole_Buffer_Callback_Exceptions_Propagate (Test : in out Fixture)
    is
@@ -937,6 +1091,14 @@ package body Integer_Buffer_Access_Tests is
         (Caller.Create
            ("Integer buffer lease releases once on callback exception",
             Lease_Exception_Releases_Original_Allocation_Once'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Finish while live keeps the observation until release",
+            Finish_While_Live_Keeps_Session_Until_Release'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Early observation failure releases before finish",
+            Early_Failure_Releases_Before_Finish'Access));
 
       Result.Add_Test
         (Caller.Create

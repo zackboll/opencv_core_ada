@@ -17,6 +17,9 @@ package Integer_Borrow_Lifetime_Probe is
    function Target_Captured return Boolean;
    function Target_Live return Boolean;
    function Deallocation_Count return Natural;
+   --  Byte size of the captured target. Intended for the small fixture
+   --  allocations used by these tests; the foreign size is uint64_t and is
+   --  checked into Natural after the import.
    function Target_Size return Natural;
 
 end Integer_Borrow_Lifetime_Probe;

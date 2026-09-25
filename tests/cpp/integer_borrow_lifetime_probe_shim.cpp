@@ -30,9 +30,10 @@ namespace {
 // translation unit, not in the UMatData, and is not cleared when the block is
 // destroyed. The observer does not retain a cv::Mat or bump a reference count.
 //
-// The upstream allocator pointer is kept until Finish, including after the
-// default allocator is restored, so a still-live target can deallocate through
-// this object and then through the original allocator.
+// The upstream allocator pointer is kept until a successful Finish, including
+// after the default allocator is restored, so a still-live target can
+// deallocate through this object and then through the original allocator.
+// Finish must not clear that delegation while the target is still live.
 
 constexpr std::uint8_t Status_Ok = 0;
 constexpr std::uint8_t Status_Nested = 1;
@@ -155,17 +156,18 @@ integer_borrow_lifetime_probe_finish(void) {
       return Status_Inactive;
    }
 
-   std::uint8_t status = Status_Ok;
    try {
       Restore_Default_Allocator();
    } catch (...) {
-      status = Status_Inactive;
+      // Leave upstream, target identity, counters, and the session intact so
+      // the still-live block can still reach the original deallocator.
+      return Status_Inactive;
    }
 
-   // Drop delegation state only after the observed block has been released.
-   // A target that is still live would otherwise lose its upstream allocator.
+   // A live target still dispatches release through this observer. Clearing
+   // upstream here would drop the real deallocation.
    if (target != nullptr) {
-      status = Status_Still_Live;
+      return Status_Still_Live;
    }
 
    session_active = false;
@@ -175,7 +177,7 @@ integer_borrow_lifetime_probe_finish(void) {
    target = nullptr;
    target_size = 0;
    target_deallocations = 0;
-   return status;
+   return Status_Ok;
 }
 
 INTEGER_BORROW_PROBE_EXPORT std::uint8_t
