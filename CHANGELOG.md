@@ -14,9 +14,14 @@
   requests. Local validation precedes submission, auto-merge remains disabled,
   and corrective review work continues on the same PR branch.
 - Corrected integer zero-copy regression coverage: required-capacity overflow
-  is tested separately from stride narrowing, borrow-lease tests release every
-  ordinary owner before observing poisoned storage, and empty integer buffers
-  document and test the `1 .. 0` null range.
+  is tested separately from stride narrowing, and empty integer buffers
+  document and test the `1 .. 0` null range. Borrow-lease tests observe the
+  original allocation's release rather than reading poisoned storage. The
+  observation records that the allocation stays live after ordinary owners
+  are released and is deallocated once when the lease ends, including when
+  the callback raises. This is allocator-event evidence, not a proof that
+  freed memory was never accessed.
+
 
 ## 0.2.0
 

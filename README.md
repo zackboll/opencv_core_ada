@@ -662,7 +662,12 @@ the active logical row is exposed; inter-row padding is never exposed.
 
 A shallow `Mat` lease is retained during the callback so the underlying OpenCV
 allocation cannot disappear merely because another header is rebound or
-finalized. The lease is a lifetime mechanism, not thread synchronization.
+finalized. Integer whole-buffer tests observe that specific allocation: it
+remains live after the ordinary owners are released, and its deallocation is
+observed exactly once when the lease ends. That is test instrumentation, not
+a formal lifetime proof. The lease is a lifetime mechanism, not thread
+synchronization.
+
 
 ### Scoped continuous whole-buffer borrowing
 
