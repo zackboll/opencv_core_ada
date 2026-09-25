@@ -49,12 +49,39 @@ package body Integer_Buffer_Access_Tests is
          "The original allocation must be deallocated exactly once");
    end Assert_Target_Released_Once;
 
-   procedure Finish_Started_Observation (Started : Boolean) is
+   Probe_Cleanup_Error : exception;
+
+   Observation_Cleanup_Fails : Boolean := False;
+
+   procedure Finish_Started_Observation (Started : in out Boolean) is
    begin
       if Started then
+         if Observation_Cleanup_Fails then
+            raise Probe_Cleanup_Error
+              with "deliberate observation cleanup failure";
+         end if;
          Integer_Borrow_Lifetime_Probe.Finish;
+         Started := False;
       end if;
    end Finish_Started_Observation;
+
+   procedure Cleanup_Started_Observation
+     (Started : in out Boolean; Original : Ada.Exceptions.Exception_Occurrence)
+   is
+   begin
+      if Started then
+         begin
+            Integer_Borrow_Lifetime_Probe.Finish;
+            Started := False;
+         exception
+            when others =>
+               --  A failing Finish must not replace the exception already
+               --  being handled, and it must not be attempted again.
+               Started := False;
+         end;
+      end if;
+      Ada.Exceptions.Reraise_Occurrence (Original);
+   end Cleanup_Started_Observation;
 
    Callback_Error : exception;
 
@@ -526,11 +553,12 @@ package body Integer_Buffer_Access_Tests is
             "UInt16 headers must retain their rebound state"
             & " after the callback");
       end;
-      Finish_Started_Observation (Started);
-   exception
-      when others =>
+      begin
          Finish_Started_Observation (Started);
-         raise;
+      exception
+         when Original : others =>
+            Cleanup_Started_Observation (Started, Original);
+      end;
    end Read_Only_Lease_Retains_Released_UInt16_Storage;
 
    procedure Read_Only_Lease_Retains_Released_Int16_Storage
@@ -579,11 +607,12 @@ package body Integer_Buffer_Access_Tests is
             "Int16 headers must retain their rebound state"
             & " after the callback");
       end;
-      Finish_Started_Observation (Started);
-   exception
-      when others =>
+      begin
          Finish_Started_Observation (Started);
-         raise;
+      exception
+         when Original : others =>
+            Cleanup_Started_Observation (Started, Original);
+      end;
    end Read_Only_Lease_Retains_Released_Int16_Storage;
 
    procedure Writable_Lease_Retains_Released_Int32_Storage
@@ -640,11 +669,12 @@ package body Integer_Buffer_Access_Tests is
             "Int32 headers must retain their rebound state"
             & " after the callback");
       end;
-      Finish_Started_Observation (Started);
-   exception
-      when others =>
+      begin
          Finish_Started_Observation (Started);
-         raise;
+      exception
+         when Original : others =>
+            Cleanup_Started_Observation (Started, Original);
+      end;
    end Writable_Lease_Retains_Released_Int32_Storage;
 
    procedure Observer_Sees_Ordinary_Release_Exactly_Once
@@ -674,7 +704,6 @@ package body Integer_Buffer_Access_Tests is
          Assert_Target_Released_Once;
       end;
       Finish_Started_Observation (Started);
-      Started := False;
 
       declare
          Image : OpenCV.Core.Mat;
@@ -688,11 +717,12 @@ package body Integer_Buffer_Access_Tests is
          Image := OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
          Assert_Target_Released_Once;
       end;
-      Finish_Started_Observation (Started);
-   exception
-      when others =>
+      begin
          Finish_Started_Observation (Started);
-         raise;
+      exception
+         when Original : others =>
+            Cleanup_Started_Observation (Started, Original);
+      end;
    end Observer_Sees_Ordinary_Release_Exactly_Once;
 
    procedure Lease_Exception_Releases_Original_Allocation_Once
@@ -743,7 +773,6 @@ package body Integer_Buffer_Access_Tests is
             "Exception unwinding must leave both rebound headers empty");
       end;
       Finish_Started_Observation (Started);
-      Started := False;
 
       declare
          Image : OpenCV.Core.Mat;
@@ -762,11 +791,12 @@ package body Integer_Buffer_Access_Tests is
 
          Assert_Target_Released_Once;
       end;
-      Finish_Started_Observation (Started);
-   exception
-      when others =>
+      begin
          Finish_Started_Observation (Started);
-         raise;
+      exception
+         when Original : others =>
+            Cleanup_Started_Observation (Started, Original);
+      end;
    end Lease_Exception_Releases_Original_Allocation_Once;
 
    procedure Finish_While_Live_Keeps_Session_Until_Release
@@ -812,7 +842,6 @@ package body Integer_Buffer_Access_Tests is
          Assert_Target_Released_Once;
       end;
       Finish_Started_Observation (Started);
-      Started := False;
 
       declare
          Image : OpenCV.Core.Mat;
@@ -829,11 +858,12 @@ package body Integer_Buffer_Access_Tests is
          end;
          Assert_Target_Released_Once;
       end;
-      Finish_Started_Observation (Started);
-   exception
-      when others =>
+      begin
          Finish_Started_Observation (Started);
-         raise;
+      exception
+         when Original : others =>
+            Cleanup_Started_Observation (Started, Original);
+      end;
    end Finish_While_Live_Keeps_Session_Until_Release;
 
    Early_Failure : exception;
@@ -864,7 +894,6 @@ package body Integer_Buffer_Access_Tests is
         (Identity = Early_Failure'Identity,
          "Early observation failure must preserve the original exception");
       Finish_Started_Observation (Started);
-      Started := False;
 
       declare
          Image : OpenCV.Core.Mat;
@@ -881,12 +910,102 @@ package body Integer_Buffer_Access_Tests is
          end;
          Assert_Target_Released_Once;
       end;
-      Finish_Started_Observation (Started);
-   exception
-      when others =>
+      begin
          Finish_Started_Observation (Started);
-         raise;
+      exception
+         when Original : others =>
+            Cleanup_Started_Observation (Started, Original);
+      end;
    end Early_Failure_Releases_Before_Finish;
+
+   procedure Observation_Cleanup_Preserves_Primary_Exception
+     (Test : in out Fixture)
+   is
+      pragma Unreferenced (Test);
+
+      Primary_Error : exception;
+      Attempts      : Natural := 0;
+
+      procedure Counted_Finish (Started : in out Boolean) is
+      begin
+         Attempts := Attempts + 1;
+         Finish_Started_Observation (Started);
+      end Counted_Finish;
+
+      procedure Counted_Cleanup
+        (Started  : in out Boolean;
+         Original : Ada.Exceptions.Exception_Occurrence) is
+      begin
+         if Started then
+            Attempts := Attempts + 1;
+         end if;
+         Cleanup_Started_Observation (Started, Original);
+      end Counted_Cleanup;
+
+      procedure Run_Primary is
+         Started : Boolean := True;
+         Failed  : Boolean := False;
+      begin
+         begin
+            raise Primary_Error with "primary observation failure";
+         exception
+            when Original : others =>
+               Failed := True;
+               Counted_Cleanup (Started, Original);
+         end;
+         if not Failed then
+            Counted_Finish (Started);
+         end if;
+      end Run_Primary;
+
+      procedure Run_Normal_Failure is
+         Started : Boolean := True;
+      begin
+         Counted_Finish (Started);
+      end Run_Normal_Failure;
+   begin
+      Observation_Cleanup_Fails := True;
+      Attempts := 0;
+      begin
+         Run_Primary;
+         AUnit.Assertions.Assert
+           (False, "The primary observation failure must propagate");
+      exception
+         when Error : Primary_Error =>
+            AUnit.Assertions.Assert
+              (Ada.Exceptions.Exception_Identity (Error)
+               = Primary_Error'Identity
+               and then Ada.Exceptions.Exception_Message (Error)
+                        = "primary observation failure",
+               "Cleanup must preserve the primary exception identity"
+               & " and message");
+         when Probe_Cleanup_Error =>
+            AUnit.Assertions.Assert
+              (False,
+               "Cleanup failure must not replace the primary exception");
+      end;
+      AUnit.Assertions.Assert
+        (Attempts = 1, "Exceptional cleanup must be attempted exactly once");
+
+      Attempts := 0;
+      begin
+         Run_Normal_Failure;
+         AUnit.Assertions.Assert
+           (False, "A normal Finish failure must propagate");
+      exception
+         when Error : Probe_Cleanup_Error =>
+            AUnit.Assertions.Assert
+              (Ada.Exceptions.Exception_Message (Error)
+               = "deliberate observation cleanup failure",
+               "A normal Finish failure must remain visible");
+         when Primary_Error =>
+            AUnit.Assertions.Assert
+              (False, "A normal Finish failure must not become Primary_Error");
+      end;
+      AUnit.Assertions.Assert
+        (Attempts = 1, "A failing normal Finish must not be retried");
+      Observation_Cleanup_Fails := False;
+   end Observation_Cleanup_Preserves_Primary_Exception;
 
    procedure Whole_Buffer_Callback_Exceptions_Propagate (Test : in out Fixture)
    is
@@ -1099,6 +1218,10 @@ package body Integer_Buffer_Access_Tests is
         (Caller.Create
            ("Early observation failure releases before finish",
             Early_Failure_Releases_Before_Finish'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Observation cleanup preserves the primary exception",
+            Observation_Cleanup_Preserves_Primary_Exception'Access));
 
       Result.Add_Test
         (Caller.Create
