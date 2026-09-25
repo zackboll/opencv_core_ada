@@ -857,7 +857,34 @@ opencv_core_status prepare_nd_typed_at(const cv::Mat &mat, int32_t ndims,
     return OPENCV_CORE_OK;
 }
 
+// ABI safety: Vec3 N-D access uses Mat::at<cv::Vec<T,3>>(const int*) or
+// Mat::ptr(const int*). Both rely on CV_DbgAssert and then form an
+// unchecked address. A same-size but different depth or channel layout
+// would reinterpret those bytes as the requested Vec3 type.
+opencv_core_status prepare_nd_vec3_at(const cv::Mat &mat, int32_t ndims,
+                                      const int32_t *indices,
+                                      int opencv_indices[], int expected_depth,
+                                      std::size_t expected_elem_size,
+                                      const char *depth_message) {
+    const opencv_core_status status = prepare_nd_typed_at(
+        mat, ndims, indices, opencv_indices, expected_elem_size);
+    if (status != OPENCV_CORE_OK) {
+        return status;
+    }
+
+    if (mat.depth() != expected_depth) {
+        return invalid_argument(depth_message);
+    }
+
+    if (mat.channels() != 3) {
+        return invalid_argument("Mat must have exactly three channels");
+    }
+
+    return OPENCV_CORE_OK;
+}
+
 #if CV_VERSION_MAJOR > 4 || (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 10)
+
 using opencv_core_float16_storage = cv::hfloat;
 #else
 using opencv_core_float16_storage = cv::float16_t;
@@ -6414,6 +6441,217 @@ opencv_core_mat_set_float16_vec3(opencv_core_mat_handle *mat, int32_t row,
         unsigned char *const pixel =
             mat->value.ptr(static_cast<int>(row)) +
             static_cast<std::size_t>(column) * mat->value.elemSize();
+        std::memcpy(pixel + 0, &value->component_0, 2);
+        std::memcpy(pixel + 2, &value->component_1, 2);
+        std::memcpy(pixel + 4, &value->component_2, 2);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_get_uint8_vec3_nd(const opencv_core_mat_handle *mat,
+                                  int32_t ndims, const int32_t *indices,
+                                  opencv_core_uint8_vec3 *out_value) {
+    clear_error();
+
+    if (out_value == nullptr) {
+        return invalid_argument("out_value must not be null");
+    }
+
+    *out_value = {0, 0, 0};
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        int opencv_indices[maximum_mat_dimensions];
+        const opencv_core_status status = prepare_nd_vec3_at(
+            mat->value, ndims, indices, opencv_indices, CV_8U,
+            sizeof(cv::Vec<uint8_t, 3>), "Mat depth must be UInt8");
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        *out_value = from_opencv_vec3(
+            mat->value.at<cv::Vec<uint8_t, 3>>(opencv_indices));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_set_uint8_vec3_nd(opencv_core_mat_handle *mat, int32_t ndims,
+                                  const int32_t *indices,
+                                  const opencv_core_uint8_vec3 *value) {
+    clear_error();
+
+    if (value == nullptr) {
+        return invalid_argument("value must not be null");
+    }
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        int opencv_indices[maximum_mat_dimensions];
+        const opencv_core_status status = prepare_nd_vec3_at(
+            mat->value, ndims, indices, opencv_indices, CV_8U,
+            sizeof(cv::Vec<uint8_t, 3>), "Mat depth must be UInt8");
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        assign_vec(mat->value.at<cv::Vec<uint8_t, 3>>(opencv_indices),
+                   to_opencv_vec3(*value));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_get_float32_vec3_nd(const opencv_core_mat_handle *mat,
+                                    int32_t ndims, const int32_t *indices,
+                                    opencv_core_float32_vec3 *out_value) {
+    clear_error();
+
+    if (out_value == nullptr) {
+        return invalid_argument("out_value must not be null");
+    }
+
+    *out_value = {0.0F, 0.0F, 0.0F};
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        int opencv_indices[maximum_mat_dimensions];
+        const opencv_core_status status = prepare_nd_vec3_at(
+            mat->value, ndims, indices, opencv_indices, CV_32F,
+            sizeof(cv::Vec<float, 3>), "Mat depth must be Float32");
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        *out_value = from_opencv_vec3(
+            mat->value.at<cv::Vec<float, 3>>(opencv_indices));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_set_float32_vec3_nd(opencv_core_mat_handle *mat,
+                                    int32_t ndims, const int32_t *indices,
+                                    const opencv_core_float32_vec3 *value) {
+    clear_error();
+
+    if (value == nullptr) {
+        return invalid_argument("value must not be null");
+    }
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        int opencv_indices[maximum_mat_dimensions];
+        const opencv_core_status status = prepare_nd_vec3_at(
+            mat->value, ndims, indices, opencv_indices, CV_32F,
+            sizeof(cv::Vec<float, 3>), "Mat depth must be Float32");
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        assign_vec(mat->value.at<cv::Vec<float, 3>>(opencv_indices),
+                   to_opencv_vec3(*value));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_get_float16_vec3_nd(const opencv_core_mat_handle *mat,
+                                    int32_t ndims, const int32_t *indices,
+                                    opencv_core_float16_vec3 *out_value) {
+    clear_error();
+
+    if (out_value == nullptr) {
+        return invalid_argument("out_value must not be null");
+    }
+
+    *out_value = {0, 0, 0};
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        int opencv_indices[maximum_mat_dimensions];
+        const opencv_core_status status = prepare_nd_vec3_at(
+            mat->value, ndims, indices, opencv_indices, CV_16F, 6,
+            "Mat depth must be Float16");
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        // ABI safety: Mat::ptr(const int*) addresses one native CV_16FC3
+        // pixel. Exactly six bytes are copied so a padded half C++ object
+        // cannot widen the store or canonicalise binary16 bits.
+        if (mat->value.elemSize1() != 2 || mat->value.elemSize() != 6) {
+            return invalid_argument(
+                "Mat element size does not match a Float16 Vec3 pixel");
+        }
+
+        const unsigned char *const pixel = mat->value.ptr(opencv_indices);
+        std::memcpy(&out_value->component_0, pixel + 0, 2);
+        std::memcpy(&out_value->component_1, pixel + 2, 2);
+        std::memcpy(&out_value->component_2, pixel + 4, 2);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_set_float16_vec3_nd(opencv_core_mat_handle *mat,
+                                    int32_t ndims, const int32_t *indices,
+                                    const opencv_core_float16_vec3 *value) {
+    clear_error();
+
+    if (value == nullptr) {
+        return invalid_argument("value must not be null");
+    }
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    try {
+        int opencv_indices[maximum_mat_dimensions];
+        const opencv_core_status status = prepare_nd_vec3_at(
+            mat->value, ndims, indices, opencv_indices, CV_16F, 6,
+            "Mat depth must be Float16");
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+
+        // ABI safety: the shim writes exactly six bytes at the N-D pixel.
+        // An 8-byte store would overwrite the next element or padding.
+        if (mat->value.elemSize1() != 2 || mat->value.elemSize() != 6) {
+            return invalid_argument(
+                "Mat element size does not match a Float16 Vec3 pixel");
+        }
+
+        unsigned char *const pixel = mat->value.ptr(opencv_indices);
         std::memcpy(pixel + 0, &value->component_0, 2);
         std::memcpy(pixel + 2, &value->component_1, 2);
         std::memcpy(pixel + 4, &value->component_2, 2);

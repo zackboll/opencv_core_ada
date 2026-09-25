@@ -1245,6 +1245,79 @@ package body OpenCV.Core.Internal.Typed_Access is
       Raise_On_Error (Status, "UInt8 Vec3 typed Mat write");
    end Set_UInt8_Vec3;
 
+   function Get_UInt8_Vec3
+     (Image : Mat; Indices : Index_Array) return OpenCV.Core.UInt8_Vec3.Vector
+   is
+      Result : aliased OpenCV.Internal.C_API.UInt8_Vec3 := (others => 0);
+      Status : OpenCV.Internal.C_API.Status;
+   begin
+      if Indices'Length = 0 then
+         Status :=
+           OpenCV.Internal.C_API.Mat_Get_UInt8_Vec3_ND
+             (Self            => Image.Handle,
+              Dimension_Count => 0,
+              Indices         => null,
+              Result          => Result'Access);
+      else
+         declare
+            C_Indices :
+              OpenCV.Internal.C_API.C_Int32_Array (0 .. Indices'Length - 1);
+         begin
+            Fill_C_Indices (Indices, C_Indices);
+            Status :=
+              OpenCV.Internal.C_API.Mat_Get_UInt8_Vec3_ND
+                (Self            => Image.Handle,
+                 Dimension_Count =>
+                   OpenCV.Internal.C_API.C_Int32 (Indices'Length),
+                 Indices         => C_Indices (C_Indices'First)'Access,
+                 Result          => Result'Access);
+         end;
+      end if;
+
+      Raise_On_Error (Status, "UInt8 Vec3 typed Mat N-dimensional read");
+      return
+        (0 => UInt8_Value (Result.Component_0),
+         1 => UInt8_Value (Result.Component_1),
+         2 => UInt8_Value (Result.Component_2));
+   end Get_UInt8_Vec3;
+
+   procedure Set_UInt8_Vec3
+     (Image   : in out Mat;
+      Indices : Index_Array;
+      Value   : OpenCV.Core.UInt8_Vec3.Vector)
+   is
+      C_Value : aliased constant OpenCV.Internal.C_API.UInt8_Vec3 :=
+        (Component_0 => OpenCV.Internal.C_API.C_UInt8 (Value (0)),
+         Component_1 => OpenCV.Internal.C_API.C_UInt8 (Value (1)),
+         Component_2 => OpenCV.Internal.C_API.C_UInt8 (Value (2)));
+      Status  : OpenCV.Internal.C_API.Status;
+   begin
+      if Indices'Length = 0 then
+         Status :=
+           OpenCV.Internal.C_API.Mat_Set_UInt8_Vec3_ND
+             (Self            => Image.Handle,
+              Dimension_Count => 0,
+              Indices         => null,
+              Value           => C_Value'Access);
+      else
+         declare
+            C_Indices :
+              OpenCV.Internal.C_API.C_Int32_Array (0 .. Indices'Length - 1);
+         begin
+            Fill_C_Indices (Indices, C_Indices);
+            Status :=
+              OpenCV.Internal.C_API.Mat_Set_UInt8_Vec3_ND
+                (Self            => Image.Handle,
+                 Dimension_Count =>
+                   OpenCV.Internal.C_API.C_Int32 (Indices'Length),
+                 Indices         => C_Indices (C_Indices'First)'Access,
+                 Value           => C_Value'Access);
+         end;
+      end if;
+
+      Raise_On_Error (Status, "UInt8 Vec3 typed Mat N-dimensional write");
+   end Set_UInt8_Vec3;
+
    function Get_Float32_Vec3
      (Image : Mat; Row, Column : Integer)
       return OpenCV.Core.Float32_Vec3.Vector
@@ -1283,6 +1356,81 @@ package body OpenCV.Core.Internal.Typed_Access is
    begin
       Raise_On_Error (Status, "Float32 Vec3 typed Mat write");
    end Set_Float32_Vec3;
+
+   function Get_Float32_Vec3
+     (Image : Mat; Indices : Index_Array)
+      return OpenCV.Core.Float32_Vec3.Vector
+   is
+      Result : aliased OpenCV.Internal.C_API.Float32_Vec3 := (others => 0.0);
+      Status : OpenCV.Internal.C_API.Status;
+   begin
+      if Indices'Length = 0 then
+         Status :=
+           OpenCV.Internal.C_API.Mat_Get_Float32_Vec3_ND
+             (Self            => Image.Handle,
+              Dimension_Count => 0,
+              Indices         => null,
+              Result          => Result'Access);
+      else
+         declare
+            C_Indices :
+              OpenCV.Internal.C_API.C_Int32_Array (0 .. Indices'Length - 1);
+         begin
+            Fill_C_Indices (Indices, C_Indices);
+            Status :=
+              OpenCV.Internal.C_API.Mat_Get_Float32_Vec3_ND
+                (Self            => Image.Handle,
+                 Dimension_Count =>
+                   OpenCV.Internal.C_API.C_Int32 (Indices'Length),
+                 Indices         => C_Indices (C_Indices'First)'Access,
+                 Result          => Result'Access);
+         end;
+      end if;
+
+      Raise_On_Error (Status, "Float32 Vec3 typed Mat N-dimensional read");
+      return
+        (0 => Float32_Value (Result.Component_0),
+         1 => Float32_Value (Result.Component_1),
+         2 => Float32_Value (Result.Component_2));
+   end Get_Float32_Vec3;
+
+   procedure Set_Float32_Vec3
+     (Image   : in out Mat;
+      Indices : Index_Array;
+      Value   : OpenCV.Core.Float32_Vec3.Vector)
+   is
+      C_Value : aliased constant OpenCV.Internal.C_API.Float32_Vec3 :=
+        (Component_0 => OpenCV.Internal.C_API.C_Float32 (Value (0)),
+         Component_1 => OpenCV.Internal.C_API.C_Float32 (Value (1)),
+         Component_2 => OpenCV.Internal.C_API.C_Float32 (Value (2)));
+      Status  : OpenCV.Internal.C_API.Status;
+   begin
+      if Indices'Length = 0 then
+         Status :=
+           OpenCV.Internal.C_API.Mat_Set_Float32_Vec3_ND
+             (Self            => Image.Handle,
+              Dimension_Count => 0,
+              Indices         => null,
+              Value           => C_Value'Access);
+      else
+         declare
+            C_Indices :
+              OpenCV.Internal.C_API.C_Int32_Array (0 .. Indices'Length - 1);
+         begin
+            Fill_C_Indices (Indices, C_Indices);
+            Status :=
+              OpenCV.Internal.C_API.Mat_Set_Float32_Vec3_ND
+                (Self            => Image.Handle,
+                 Dimension_Count =>
+                   OpenCV.Internal.C_API.C_Int32 (Indices'Length),
+                 Indices         => C_Indices (C_Indices'First)'Access,
+                 Value           => C_Value'Access);
+         end;
+      end if;
+
+      Raise_On_Error (Status, "Float32 Vec3 typed Mat N-dimensional write");
+   end Set_Float32_Vec3;
+
    function Get_Float16_Vec3
      (Image : Mat; Row, Column : Integer)
       return OpenCV.Core.Float16_Vec3.Vector
@@ -1323,6 +1471,83 @@ package body OpenCV.Core.Internal.Typed_Access is
            Value  => C_Value'Access);
    begin
       Raise_On_Error (Status, "Float16 Vec3 typed Mat write");
+   end Set_Float16_Vec3;
+
+   function Get_Float16_Vec3
+     (Image : Mat; Indices : Index_Array)
+      return OpenCV.Core.Float16_Vec3.Vector
+   is
+      Result : aliased OpenCV.Internal.C_API.Float16_Vec3 := (others => 0);
+      Status : OpenCV.Internal.C_API.Status;
+   begin
+      if Indices'Length = 0 then
+         Status :=
+           OpenCV.Internal.C_API.Mat_Get_Float16_Vec3_ND
+             (Self            => Image.Handle,
+              Dimension_Count => 0,
+              Indices         => null,
+              Result          => Result'Access);
+      else
+         declare
+            C_Indices :
+              OpenCV.Internal.C_API.C_Int32_Array (0 .. Indices'Length - 1);
+         begin
+            Fill_C_Indices (Indices, C_Indices);
+            Status :=
+              OpenCV.Internal.C_API.Mat_Get_Float16_Vec3_ND
+                (Self            => Image.Handle,
+                 Dimension_Count =>
+                   OpenCV.Internal.C_API.C_Int32 (Indices'Length),
+                 Indices         => C_Indices (C_Indices'First)'Access,
+                 Result          => Result'Access);
+         end;
+      end if;
+
+      Raise_On_Error (Status, "Float16 Vec3 typed Mat N-dimensional read");
+      return
+        (0 => Float16_From_Bits (Interfaces.Unsigned_16 (Result.Component_0)),
+         1 => Float16_From_Bits (Interfaces.Unsigned_16 (Result.Component_1)),
+         2 => Float16_From_Bits (Interfaces.Unsigned_16 (Result.Component_2)));
+   end Get_Float16_Vec3;
+
+   procedure Set_Float16_Vec3
+     (Image   : in out Mat;
+      Indices : Index_Array;
+      Value   : OpenCV.Core.Float16_Vec3.Vector)
+   is
+      C_Value : aliased constant OpenCV.Internal.C_API.Float16_Vec3 :=
+        (Component_0 =>
+           OpenCV.Internal.C_API.C_UInt16 (Float16_Bits (Value (0))),
+         Component_1 =>
+           OpenCV.Internal.C_API.C_UInt16 (Float16_Bits (Value (1))),
+         Component_2 =>
+           OpenCV.Internal.C_API.C_UInt16 (Float16_Bits (Value (2))));
+      Status  : OpenCV.Internal.C_API.Status;
+   begin
+      if Indices'Length = 0 then
+         Status :=
+           OpenCV.Internal.C_API.Mat_Set_Float16_Vec3_ND
+             (Self            => Image.Handle,
+              Dimension_Count => 0,
+              Indices         => null,
+              Value           => C_Value'Access);
+      else
+         declare
+            C_Indices :
+              OpenCV.Internal.C_API.C_Int32_Array (0 .. Indices'Length - 1);
+         begin
+            Fill_C_Indices (Indices, C_Indices);
+            Status :=
+              OpenCV.Internal.C_API.Mat_Set_Float16_Vec3_ND
+                (Self            => Image.Handle,
+                 Dimension_Count =>
+                   OpenCV.Internal.C_API.C_Int32 (Indices'Length),
+                 Indices         => C_Indices (C_Indices'First)'Access,
+                 Value           => C_Value'Access);
+         end;
+      end if;
+
+      Raise_On_Error (Status, "Float16 Vec3 typed Mat N-dimensional write");
    end Set_Float16_Vec3;
 
 end OpenCV.Core.Internal.Typed_Access;

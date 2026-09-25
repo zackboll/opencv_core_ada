@@ -42,6 +42,7 @@ with Int8_Row_Access_Tests;
 with Int8_Buffer_Access_Tests;
 with Int8_Mat_View_Tests;
 with Strided_View_Gap_Tests;
+with Vec3_ND_Access_Tests;
 
 package body Mat_Tests is
 
@@ -93,6 +94,7 @@ package body Mat_Tests is
       Result.Add_Test (Int8_Buffer_Access_Tests.Suite);
       Result.Add_Test (Int8_Mat_View_Tests.Suite);
       Result.Add_Test (Strided_View_Gap_Tests.Suite);
+      Result.Add_Test (Vec3_ND_Access_Tests.Suite);
       return Result'Access;
    end Suite;
 

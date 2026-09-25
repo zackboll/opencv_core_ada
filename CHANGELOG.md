@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Added N-D `Index_Array` Get/Set to `UInt8_Vec3_Access`,
+  `Float16_Vec3_Access`, and `Float32_Vec3_Access`. One vector remains one
+  complete three-channel element. Float16 N-D access copies the stored
+  binary16 component encodings without numeric conversion.
 - Added the complete Int8 C1 typed data plane: `OpenCV.Int8_Value`, 2-D and
   N-D Get/Set, copied and borrowed rows, continuous-buffer borrowing, and
   packed or row-strided caller-owned Mat views. Values stay in the signed

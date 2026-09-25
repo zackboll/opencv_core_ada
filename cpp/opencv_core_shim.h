@@ -1264,6 +1264,49 @@ opencv_core_mat_set_float16_vec3(opencv_core_mat_handle *mat,
                                  const opencv_core_float16_vec3 *value);
 
 /*
+ * Read or write one three-channel element using N-dimensional zero-based
+ * indices. ndims is the number of values in indices, in iteration order.
+ * indices must be non-null when ndims is positive. One Vec3 value is one
+ * complete OpenCV element. Depth and channel layout are validated before
+ * pointer formation; element size alone is not accepted.
+ */
+opencv_core_status
+opencv_core_mat_get_uint8_vec3_nd(const opencv_core_mat_handle *mat,
+                                  int32_t ndims, const int32_t *indices,
+                                  opencv_core_uint8_vec3 *out_value);
+
+opencv_core_status
+opencv_core_mat_set_uint8_vec3_nd(opencv_core_mat_handle *mat, int32_t ndims,
+                                  const int32_t *indices,
+                                  const opencv_core_uint8_vec3 *value);
+
+opencv_core_status
+opencv_core_mat_get_float32_vec3_nd(const opencv_core_mat_handle *mat,
+                                    int32_t ndims, const int32_t *indices,
+                                    opencv_core_float32_vec3 *out_value);
+
+opencv_core_status
+opencv_core_mat_set_float32_vec3_nd(opencv_core_mat_handle *mat,
+                                    int32_t ndims, const int32_t *indices,
+                                    const opencv_core_float32_vec3 *value);
+
+/*
+ * Read or write one three-channel CV_16F element as raw binary16 encodings.
+ * After N-D index validation, the selected pixel is addressed with
+ * Mat::ptr(const int*) and exactly six bytes are copied. OpenCV half C++
+ * types are not used.
+ */
+opencv_core_status
+opencv_core_mat_get_float16_vec3_nd(const opencv_core_mat_handle *mat,
+                                    int32_t ndims, const int32_t *indices,
+                                    opencv_core_float16_vec3 *out_value);
+
+opencv_core_status
+opencv_core_mat_set_float16_vec3_nd(opencv_core_mat_handle *mat,
+                                    int32_t ndims, const int32_t *indices,
+                                    const opencv_core_float16_vec3 *value);
+
+/*
  * Copy one complete row of a two-dimensional, exactly three-channel Mat.
  * element_count is the logical Vec3 element count and must equal mat columns.
  * data is a flat scalar buffer ordered as column0.component0,
