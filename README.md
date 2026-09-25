@@ -18,7 +18,7 @@ translation of the C++ headers.
 >
 > **Development status:** active, pre-1.0 API.
 >
-> **Current test baseline:** 1277 AUnit tests, with Ada and C++ warnings promoted
+> **Current test baseline:** 1285 AUnit tests, with Ada and C++ warnings promoted
 > to errors. GitHub Actions exercises the full test suite against four OpenCV
 > compatibility targets, plus a native Ubuntu 24.04 ARM64 job.
 >
@@ -753,9 +753,9 @@ Direct typed access currently concentrates on eleven common layouts:
 | Float16 C1 | `Float16_Access` | `Float16_Access` | `Float16_Value` helpers | `Float16_Row_Access` | `Float16_Row_Access` | `Float16_Buffer_Access` | `Float16_Mat_View` | `Float16_Mat_View` |
 | Float32 C1 | `Float32_Access` | `Float32_Access` | — | `Float32_Row_Access` | `Float32_Row_Access` | `Float32_Buffer_Access` | `Float32_Mat_View` | `Float32_Mat_View` |
 | Float64 C1 | `Float64_Access` | `Float64_Access` | `Float64_Access` | `Float64_Row_Access` | `Float64_Row_Access` | `Float64_Buffer_Access` | `Float64_Mat_View` | `Float64_Mat_View` |
-| UInt8 C3 | `UInt8_Vec3_Access` | — | — | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Buffer_Access` | `UInt8_Vec3_Mat_View` | `UInt8_Vec3_Mat_View` |
-| Float16 C3 | `Float16_Vec3_Access` | — | — | `Float16_Vec3_Row_Access` | `Float16_Vec3_Row_Access` | `Float16_Vec3_Buffer_Access` | `Float16_Vec3_Mat_View` | `Float16_Vec3_Mat_View` |
-| Float32 C3 | `Float32_Vec3_Access` | — | — | `Float32_Vec3_Row_Access` | `Float32_Vec3_Row_Access` | `Float32_Vec3_Buffer_Access` | `Float32_Vec3_Mat_View` | `Float32_Vec3_Mat_View` |
+| UInt8 C3 | `UInt8_Vec3_Access` | `UInt8_Vec3_Access` | — | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Buffer_Access` | `UInt8_Vec3_Mat_View` | `UInt8_Vec3_Mat_View` |
+| Float16 C3 | `Float16_Vec3_Access` | `Float16_Vec3_Access` | — | `Float16_Vec3_Row_Access` | `Float16_Vec3_Row_Access` | `Float16_Vec3_Buffer_Access` | `Float16_Vec3_Mat_View` | `Float16_Vec3_Mat_View` |
+| Float32 C3 | `Float32_Vec3_Access` | `Float32_Vec3_Access` | — | `Float32_Vec3_Row_Access` | `Float32_Vec3_Row_Access` | `Float32_Vec3_Buffer_Access` | `Float32_Vec3_Mat_View` | `Float32_Vec3_Mat_View` |
 
 For Vec3 APIs, **one Ada vector is one complete OpenCV element/pixel**, not one
 scalar channel:
@@ -765,9 +765,11 @@ scalar channel:
 - Float32 Vec3: 96 bits / 12 bytes per element, native scalar alignment 4.
 
 The predefined Vec3 packages are component-oriented and do not impose RGB,
-BGR, XYZ, or any other semantic channel interpretation. `Float16_Vec3`
-is an exact three-component binary16 pixel type: indices `0 .. 2` are
-OpenCV channel indices, not RGB or BGR names.
+BGR, XYZ, or any other semantic channel interpretation. All three predefined
+Vec3 layouts support 2-D Row/Column Get/Set and N-D `Index_Array` Get/Set.
+One vector remains one complete OpenCV element. `Float16_Vec3` is an exact
+three-component binary16 pixel type: indices `0 .. 2` are OpenCV channel
+indices, not RGB or BGR names.
 
 `UInt16_Access` provides scalar 2-D and N-D Get/Set for single-channel `CV_16U`
 Mats. `UInt16_Row_Access` adds copied and callback-scoped zero-copy row access
@@ -817,8 +819,9 @@ views. `Add`, `Subtract`, `Multiply`, `Divide`, `Abs_Diff`, `Minimum`, and
 `Maximum` additionally support Float16 with native OpenCV 5.x arithmetic and
 an internal Float32 compatibility path on OpenCV 4.x. This does not add broad OpenCV 4.x FP16
 algorithm coverage.
-`Float16_Vec3` / `Float16_Vec3_Access` add exact-bit 2-D Get/Set for ordinary
-three-channel `CV_16FC3` Mats. `Float16_Vec3_Row_Access` adds copied and
+`Float16_Vec3` / `Float16_Vec3_Access` add exact-bit 2-D and N-D Get/Set for
+ordinary three-channel `CV_16FC3` Mats. N-D `Index_Array` access addresses one
+complete six-byte pixel and preserves every binary16 component encoding. `Float16_Vec3_Row_Access` adds copied and
 callback-scoped zero-copy row access for 2-D C3 Mats, including non-contiguous
 Regions, and likewise preserves exact binary16 component bits without converting
 through Float32. `Float16_Vec3_Buffer_Access` adds callback-scoped zero-copy
@@ -831,7 +834,7 @@ C3 FP16 storage/access data plane is now complete: exact-bit pixel Get/Set,
 copied rows, borrowed zero-copy rows, continuous whole-buffer borrowing, packed
 caller-owned Mat views, and row-strided caller-owned Mat views. `Add`,
 `Subtract`, `Multiply`, and `Divide` support Float16 C3 with the same
-native-or-fallback policy as C1. This does not add N-D C3 access or broad OpenCV 4.x FP16 algorithm coverage. Component 0, 1,
+native-or-fallback policy as C1. This does not add broad OpenCV 4.x FP16 algorithm coverage. Component 0, 1,
 and 2 correspond to OpenCV channels 0, 1, and 2; Core does not assign RGB or
 BGR meaning.
 
@@ -1579,8 +1582,9 @@ The current limitations are intentional and help keep the public API coherent:
 
 1. **The dense public `Mat` model is primarily 2-D.**  
    N-dimensional construction, UInt8/Int8/UInt16/Int16/Int32/Float16/Float32/Float64 C1
-   Get/Set, and `Slice` views are available. N-D reshape and dimension-dropping
-   scalar indexing are not yet exposed as a complete Ada model.
+   Get/Set, UInt8/Float16/Float32 C3 Vec3 Get/Set, and `Slice` views are available.
+   N-D reshape and dimension-dropping scalar indexing are not yet exposed as a
+   complete Ada model.
 
 2. **No public `SparseMat` or `UMat` abstraction.**
 
@@ -1591,10 +1595,14 @@ The current limitations are intentional and help keep the public API coherent:
    without unsigned or floating-point intermediates. Float16 C1 has 2-D and N-D Get/Set that
    preserve the exact binary16 encoding, plus copied and borrowed 2-D row
    access, continuous 2-D whole-buffer borrowing, and packed or row-strided
-   2-D caller-buffer views. Float16 C3 has 2-D Vec3 Get/Set, copied and
+   2-D caller-buffer views. Float16 C3 has 2-D and N-D Vec3 Get/Set, copied and
    borrowed 2-D rows, continuous 2-D whole-buffer borrowing, and packed or
    row-strided 2-D caller-buffer views that preserve exact binary16 encodings
-   per channel; N-D C3 access is not yet provided. Float64 C1 has 2-D and
+   per channel. UInt8 C3 and Float32 C3 likewise have 2-D and N-D Vec3 Get/Set.
+   One vector remains one complete three-channel element; N-D access does not
+   flatten channels into scalar indices. Rows, whole-buffer borrowing, and
+   external views remain 2-D concepts; arbitrary N-D external strides are not
+   supported. Float64 C1 has 2-D and
    N-D Get/Set, classification, 2-D row access, continuous 2-D whole-buffer
    borrowing, and packed or row-strided 2-D caller-buffer views. Other OpenCV
    depths are available to general Mat operations but do not yet have the same
@@ -1602,8 +1610,10 @@ The current limitations are intentional and help keep the public API coherent:
    representation, IEEE-754 classification helpers, numeric
    Float32 <-> Float16 conversion, scalar C1 2-D/N-D Get/Set, copied and
    borrowed row access, continuous buffer borrowing, packed or strided
-   external caller-buffer Mat views, and C3 2-D Vec3 Get/Set, rows, continuous
-   buffer borrowing, and packed or strided external caller-buffer Mat views.
+   external caller-buffer Mat views, and C3 2-D and N-D Vec3 Get/Set plus 2-D
+   rows, continuous buffer borrowing, and packed or strided external
+   caller-buffer Mat views. Vec2, Vec4, and other multi-channel typed families
+   are not provided.
 
 4. **External caller-buffer views are writable and callback-scoped.**  
    Packed 2-D views are available for UInt8, Int8, UInt16, Int16, Int32, Float16,

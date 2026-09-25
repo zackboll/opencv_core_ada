@@ -1268,6 +1268,66 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_set_float16_vec3";
 
+   function Mat_Get_UInt8_Vec3_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Result          : access UInt8_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_uint8_vec3_nd";
+
+   function Mat_Set_UInt8_Vec3_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Value           : access constant UInt8_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_uint8_vec3_nd";
+
+   function Mat_Get_Float32_Vec3_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Result          : access Float32_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_float32_vec3_nd";
+
+   function Mat_Set_Float32_Vec3_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Value           : access constant Float32_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_float32_vec3_nd";
+
+   function Mat_Get_Float16_Vec3_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Result          : access Float16_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_float16_vec3_nd";
+
+   function Mat_Set_Float16_Vec3_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Value           : access constant Float16_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_float16_vec3_nd";
+
    function Mat_Set_Float32_Vec3
      (Self   : Mat_Handle;
       Row    : C_Int32;
