@@ -143,14 +143,22 @@ package body Int8_Access_Tests is
 
    procedure Two_And_Three_Dimensional_Indexing (Test : in out Fixture) is
       pragma Unreferenced (Test);
-      Plane   : OpenCV.Core.Mat := Int8_Image (1, 4);
-      Volume  : OpenCV.Core.Mat :=
+      Plane          : OpenCV.Core.Mat := Int8_Image (1, 4);
+      Volume         : OpenCV.Core.Mat :=
         OpenCV.Core.Create
           (Shape        => (2, 3, 4),
            Element_Type => (Depth => OpenCV.Core.Int8, Channels => 1));
-      Indices : constant OpenCV.Core.Index_Array (8 .. 10) := (1, 2, 3);
-      Alias   : OpenCV.Core.Mat;
-      Copy    : OpenCV.Core.Mat;
+      Wrong_Depth    : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape        => (2, 3, 4),
+           Element_Type => (Depth => OpenCV.Core.UInt8, Channels => 1));
+      Wrong_Channels : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape        => (2, 3, 4),
+           Element_Type => (Depth => OpenCV.Core.Int8, Channels => 2));
+      Indices        : constant OpenCV.Core.Index_Array (8 .. 10) := (1, 2, 3);
+      Alias          : OpenCV.Core.Mat;
+      Copy           : OpenCV.Core.Mat;
 
       procedure Read_Short is
       begin
@@ -158,18 +166,35 @@ package body Int8_Access_Tests is
            (OpenCV.Core.Int8_Access.Get (Volume, Indices => (1, 2)) = 0,
             "A short Int8 index list unexpectedly succeeded");
       end Read_Short;
+      procedure Write_Short is
+      begin
+         OpenCV.Core.Int8_Access.Set (Volume, Indices => (1, 2), Value => 1);
+      end Write_Short;
       procedure Read_Past is
       begin
          AUnit.Assertions.Assert
            (OpenCV.Core.Int8_Access.Get (Volume, Indices => (0, 3, 0)) = 0,
             "An out-of-range Int8 axis unexpectedly succeeded");
       end Read_Past;
+      procedure Write_Past is
+      begin
+         OpenCV.Core.Int8_Access.Set
+           (Volume, Indices => (0, 3, 0), Value => 1);
+      end Write_Past;
       procedure Read_Wrong_Depth is
       begin
          AUnit.Assertions.Assert
-           (OpenCV.Core.Int8_Access.Get (Plane, Indices => (0, 0)) = 0,
+           (OpenCV.Core.Int8_Access.Get (Wrong_Depth, Indices => (0, 0, 0))
+            = 0,
             "A wrong-depth Int8 N-D read unexpectedly succeeded");
       end Read_Wrong_Depth;
+      procedure Read_Wrong_Channels is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Int8_Access.Get (Wrong_Channels, Indices => (0, 0, 0))
+            = 0,
+            "A multi-channel Int8 N-D read unexpectedly succeeded");
+      end Read_Wrong_Channels;
    begin
       Plane.Set_To (OpenCV.Make_Scalar (0.0));
       OpenCV.Core.Int8_Access.Set (Plane, Indices => (0, 0), Value => -128);
@@ -197,14 +222,15 @@ package body Int8_Access_Tests is
                   = 0,
          "3-D Int8 access must honor bounds, aliases, and clones");
 
-      Plane := OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 1));
-      Volume :=
-        OpenCV.Core.Create
-          (Shape        => (2, 2, 2),
-           Element_Type => (Depth => OpenCV.Core.Int8, Channels => 2));
+      --  Volume stays Int8 C1 (2, 3, 4), so index-count and axis-range checks
+      --  are not masked by an earlier depth or channel rejection.
       Assert_Raises_OpenCV_Error (Read_Short'Access, "Int8 index count");
+      Assert_Raises_OpenCV_Error (Write_Short'Access, "Int8 Set index count");
       Assert_Raises_OpenCV_Error (Read_Past'Access, "Int8 axis range");
+      Assert_Raises_OpenCV_Error (Write_Past'Access, "Int8 Set axis range");
       Assert_Raises_OpenCV_Error (Read_Wrong_Depth'Access, "Int8 N-D depth");
+      Assert_Raises_OpenCV_Error
+        (Read_Wrong_Channels'Access, "Int8 N-D channels");
    end Two_And_Three_Dimensional_Indexing;
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is

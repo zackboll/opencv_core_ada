@@ -129,8 +129,11 @@ package body Strided_View_Gap_Tests is
       AUnit.Assertions.Assert
         (Close (Data (10), Pixel (-4.25, 5.5, 6.75))
          and then Close (Data (6), Pixel (1.5, -2.5, 3.5))
-         and then Close (Data (8), Pixel (1.5, -2.5, 3.5)),
-         "Float32 Vec3 padding pixels must remain untouched");
+         and then Close (Data (7), Pixel (1.5, -2.5, 3.5))
+         and then Close (Data (11), Pixel (1.5, -2.5, 3.5))
+         and then Close (Data (12), Pixel (1.5, -2.5, 3.5)),
+         "Float32 Vec3 logical pixel 10 must change and first-row and"
+         & " final-row padding must remain untouched");
    end Float32_Vec3_Stride_Counts_Complete_Pixels;
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
