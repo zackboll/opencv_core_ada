@@ -39,14 +39,13 @@ package body OpenCV.Core.Float16_Vec3_Mat_View is
 
    package Viewing is new
      OpenCV.Core.Internal.Typed_External_Mat_View
-       (Element_Type                 => OpenCV.Core.Float16_Vec3.Vector,
-        Buffer_Array                 => Buffer_Array,
-        Required_Depth               => Float16,
-        Required_Channels            => 3,
-        Expected_Element_Bits        => 48,
-        Native_Element_Alignment     => 2,
-        Type_Name                    => "Float16 Vec3",
-        Require_Complete_Row_Strides => False);
+       (Element_Type             => OpenCV.Core.Float16_Vec3.Vector,
+        Buffer_Array             => Buffer_Array,
+        Required_Depth           => Float16,
+        Required_Channels        => 3,
+        Expected_Element_Bits    => 48,
+        Native_Element_Alignment => 2,
+        Type_Name                => "Float16 Vec3");
 
    procedure With_Writable_Mat_View
      (Data    : aliased in out Buffer_Array;

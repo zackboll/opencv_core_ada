@@ -185,25 +185,17 @@ package body OpenCV.Core.Internal.Typed_External_Mat_View is
             & " Columns");
       end if;
 
-      if Rows > 1
-        and then Row_Stride_Elements > (Natural'Last - Columns) / (Rows - 1)
-      then
+      --  OpenCV's external-data constructor sets
+      --  datalimit = datastart + step * rows, so the final row's trailing
+      --  stride padding is part of the header extent even though it is not
+      --  a logical Mat element.
+      if Row_Stride_Elements > Natural'Last / Rows then
          Raise_Invalid_View
            (Type_Name
-            & " strided external Mat view required element capacity exceeds"
+            & " strided external Mat view complete row strides exceed"
             & " the representable range");
       end if;
-      Required_Element_Capacity := (Rows - 1) * Row_Stride_Elements + Columns;
-
-      if Require_Complete_Row_Strides then
-         if Row_Stride_Elements > Natural'Last / Rows then
-            Raise_Invalid_View
-              (Type_Name
-               & " strided external Mat view complete row strides exceed"
-               & " the representable range");
-         end if;
-         Required_Element_Capacity := Rows * Row_Stride_Elements;
-      end if;
+      Required_Element_Capacity := Rows * Row_Stride_Elements;
 
       if Data'Length < Required_Element_Capacity then
          Raise_Invalid_View

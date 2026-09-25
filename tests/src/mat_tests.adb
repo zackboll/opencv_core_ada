@@ -33,6 +33,10 @@ with Float64_Row_Access_Tests;
 with Float64_Buffer_Access_Tests;
 with Float64_Mat_View_Tests;
 with Module_Interop_Tests;
+with Integer_Row_Access_Tests;
+with Integer_Buffer_Access_Tests;
+with Integer_Mat_View_Tests;
+with External_View_C_ABI_Tests;
 
 package body Mat_Tests is
 
@@ -75,6 +79,10 @@ package body Mat_Tests is
       Result.Add_Test (Float64_Buffer_Access_Tests.Suite);
       Result.Add_Test (Float64_Mat_View_Tests.Suite);
       Result.Add_Test (Module_Interop_Tests.Suite);
+      Result.Add_Test (Integer_Row_Access_Tests.Suite);
+      Result.Add_Test (Integer_Buffer_Access_Tests.Suite);
+      Result.Add_Test (Integer_Mat_View_Tests.Suite);
+      Result.Add_Test (External_View_C_ABI_Tests.Suite);
       return Result'Access;
    end Suite;
 

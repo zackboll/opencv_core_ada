@@ -4,6 +4,12 @@
 
 Work in small, reviewable steps.
 
+Start new work on a feature branch, or on a corrective branch for focused
+repairs. Do not develop directly on `main` or a release branch. Larger cohesive
+vertical bundles are allowed when their API, ABI, ownership, tests, and
+documentation form one reviewable change; unrelated speculative batches and
+broad rewrites remain prohibited.
+
 Before modifying code:
 
 - inspect the relevant existing source files
@@ -283,6 +289,22 @@ A feature is not complete merely because the C++ shim compiles.
 
 Prefer one integrated, tested binding over many partially implemented
 declarations.
+
+## Pull Request Review Gate
+
+After local formatting, builds, tests, and any applicable proof complete:
+
+1. commit the cohesive work on its feature or corrective branch
+2. push that exact tested branch head
+3. open a real pull request against `main`
+4. leave the pull request open and unmerged for review
+5. do not enable auto-merge
+6. continue corrective review work on the same pull-request branch
+7. revalidate and repush every corrective head before reporting completion
+
+Completion reports must identify the exact locally tested SHA, pushed branch
+SHA, and pull-request head SHA. A successful check on a PR merge ref is not
+evidence for a different source head.
 
 Keep each feature small enough that its:
 

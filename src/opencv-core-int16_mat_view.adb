@@ -1,16 +1,16 @@
 with OpenCV.Core.Internal.Typed_External_Mat_View;
 
-package body OpenCV.Core.Float64_Mat_View is
+package body OpenCV.Core.Int16_Mat_View is
 
    package Viewing is new
      OpenCV.Core.Internal.Typed_External_Mat_View
-       (Element_Type             => Float64_Value,
+       (Element_Type             => Int16_Value,
         Buffer_Array             => Buffer_Array,
-        Required_Depth           => Float64,
+        Required_Depth           => Int16,
         Required_Channels        => 1,
-        Expected_Element_Bits    => 64,
-        Native_Element_Alignment => 8,
-        Type_Name                => "Float64");
+        Expected_Element_Bits    => 16,
+        Native_Element_Alignment => 2,
+        Type_Name                => "Int16");
 
    procedure With_Writable_Mat_View
      (Data    : aliased in out Buffer_Array;
@@ -32,4 +32,4 @@ package body OpenCV.Core.Float64_Mat_View is
         (Data, Rows, Columns, Row_Stride, Process);
    end With_Writable_Strided_Mat_View;
 
-end OpenCV.Core.Float64_Mat_View;
+end OpenCV.Core.Int16_Mat_View;

@@ -6,7 +6,6 @@ generic
    Expected_Element_Bits : Positive;
    Native_Element_Alignment : Positive;
    Type_Name : String;
-   Require_Complete_Row_Strides : Boolean := True;
 package OpenCV.Core.Internal.Typed_External_Mat_View is
 
    --  Invokes Process with a temporary Mat whose pixels alias Data.
@@ -18,7 +17,9 @@ package OpenCV.Core.Internal.Typed_External_Mat_View is
       Process : not null access procedure (Image : in out Mat));
 
    --  Invokes Process with a temporary Mat whose logical rows alias Data at
-   --  Row_Stride_Elements complete Buffer_Array elements apart.
+   --  Row_Stride_Elements complete Buffer_Array elements apart. Data must
+   --  contain a complete stride for every row, including padding after the
+   --  final logical row: Data'Length >= Rows * Row_Stride_Elements.
    procedure With_Writable_Strided_Mat_View
      (Data                : aliased in out Buffer_Array;
       Rows                : Positive;

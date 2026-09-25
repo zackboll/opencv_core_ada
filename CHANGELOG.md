@@ -1,5 +1,28 @@
 # Changelog
 
+## Unreleased
+
+- Completed the single-channel integer access plane: UInt16 and Int16 now have
+  continuous-buffer borrowing plus packed and row-strided caller-owned Mat
+  views; Int32 now also has copied and borrowed rows, continuous-buffer
+  borrowing, and packed or row-strided caller-owned Mat views.
+- Tightened the strided external-view capacity contract to match OpenCV's
+  `datalimit = datastart + step * rows` header extent. Migrate buffers that
+  stopped after the final logical element by allocating complete
+  `Rows * Row_Stride` backing elements, including final-row padding.
+- Established feature/corrective branch development through real open pull
+  requests. Local validation precedes submission, auto-merge remains disabled,
+  and corrective review work continues on the same PR branch.
+- Corrected integer zero-copy regression coverage: required-capacity overflow
+  is tested separately from stride narrowing, and empty integer buffers
+  document and test the `1 .. 0` null range. Borrow-lease tests observe the
+  original allocation's release rather than reading poisoned storage. The
+  observation records that the allocation stays live after ordinary owners
+  are released and is deallocated once when the lease ends, including when
+  the callback raises. This is allocator-event evidence, not a proof that
+  freed memory was never accessed.
+
+
 ## 0.2.0
 
 Source-breaking release. This is not a relocation-only drop: it also

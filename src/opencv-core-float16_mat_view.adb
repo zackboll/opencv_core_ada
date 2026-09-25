@@ -9,14 +9,13 @@ package body OpenCV.Core.Float16_Mat_View is
 
    package Viewing is new
      OpenCV.Core.Internal.Typed_External_Mat_View
-       (Element_Type                 => Float16_Value,
-        Buffer_Array                 => Buffer_Array,
-        Required_Depth               => Float16,
-        Required_Channels            => 1,
-        Expected_Element_Bits        => 16,
-        Native_Element_Alignment     => 2,
-        Type_Name                    => "Float16",
-        Require_Complete_Row_Strides => False);
+       (Element_Type             => Float16_Value,
+        Buffer_Array             => Buffer_Array,
+        Required_Depth           => Float16,
+        Required_Channels        => 1,
+        Expected_Element_Bits    => 16,
+        Native_Element_Alignment => 2,
+        Type_Name                => "Float16");
 
    procedure With_Writable_Mat_View
      (Data    : aliased in out Buffer_Array;

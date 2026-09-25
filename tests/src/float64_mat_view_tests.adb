@@ -445,7 +445,7 @@ package body Float64_Mat_View_Tests is
    is
       pragma Unreferenced (Test);
       One_Row    : aliased OpenCV.Core.Float64_Mat_View.Buffer_Array :=
-        (10 => 1.0, 11 => 2.0, 12 => 3.0, 13 => 4.0, 14 => 900.0);
+        (10 => 1.0, 11 => 2.0, 12 => 3.0, 13 => 4.0, 14 => 900.0, 15 => 900.0);
       One_Column : aliased OpenCV.Core.Float64_Mat_View.Buffer_Array :=
         (20 => 1.0,
          21 => 700.0,
@@ -453,7 +453,9 @@ package body Float64_Mat_View_Tests is
          23 => 2.0,
          24 => 700.0,
          25 => 700.0,
-         26 => 3.0);
+         26 => 3.0,
+         27 => 700.0,
+         28 => 700.0);
       Tight      : aliased OpenCV.Core.Float64_Mat_View.Buffer_Array :=
         (1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
 
@@ -503,6 +505,8 @@ package body Float64_Mat_View_Tests is
    is
       pragma Unreferenced (Test);
       Data    : aliased OpenCV.Core.Float64_Mat_View.Buffer_Array :=
+        (1 .. 16 => 1.0);
+      Short   : aliased OpenCV.Core.Float64_Mat_View.Buffer_Array :=
         (1 .. 15 => 1.0);
       Invoked : Boolean := False;
 
@@ -521,8 +525,14 @@ package body Float64_Mat_View_Tests is
       procedure Short_Buffer is
       begin
          OpenCV.Core.Float64_Mat_View.With_Writable_Strided_Mat_View
-           (Data, 3, 4, 6, Mark'Access);
+           (Short, 3, 4, 6, Mark'Access);
       end Short_Buffer;
+
+      procedure Logical_End_Only is
+      begin
+         OpenCV.Core.Float64_Mat_View.With_Writable_Strided_Mat_View
+           (Data, 3, 4, 6, Mark'Access);
+      end Logical_End_Only;
 
       procedure Capacity_Overflow is
       begin
@@ -532,6 +542,9 @@ package body Float64_Mat_View_Tests is
    begin
       Assert_Raises_OpenCV_Error (Short_Stride'Access, "Float64 short stride");
       Assert_Raises_OpenCV_Error (Short_Buffer'Access, "Float64 short buffer");
+      Assert_Raises_OpenCV_Error
+        (Logical_End_Only'Access,
+         "Float64 logical-end-only capacity omits final-row padding");
       Assert_Raises_OpenCV_Error
         (Capacity_Overflow'Access, "Float64 strided capacity overflow");
       AUnit.Assertions.Assert

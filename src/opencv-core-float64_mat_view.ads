@@ -22,8 +22,8 @@ package OpenCV.Core.Float64_Mat_View is
    --  Data with Row_Stride Float64 elements between logical row starts.
    --  Row_Stride must be at least Columns. Image (Row, Column) maps to
    --  Data (Data'First + Row * Row_Stride + Column). Data'Length must be at
-   --  least (Rows - 1) * Row_Stride + Columns; final-row padding need not be
-   --  present. Padding and extra trailing storage are outside the logical Mat.
+   --  least Rows * Row_Stride, including padding after the final logical row.
+   --  Padding and extra trailing storage are outside the logical Mat.
    --  No data is copied. Ownership, callback lifetime, and escape rules are
    --  identical to With_Writable_Mat_View; Clone is the safe escape path.
    procedure With_Writable_Strided_Mat_View
