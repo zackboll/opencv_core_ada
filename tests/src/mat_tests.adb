@@ -37,6 +37,11 @@ with Integer_Row_Access_Tests;
 with Integer_Buffer_Access_Tests;
 with Integer_Mat_View_Tests;
 with External_View_C_ABI_Tests;
+with Int8_Access_Tests;
+with Int8_Row_Access_Tests;
+with Int8_Buffer_Access_Tests;
+with Int8_Mat_View_Tests;
+with Strided_View_Gap_Tests;
 
 package body Mat_Tests is
 
@@ -83,6 +88,11 @@ package body Mat_Tests is
       Result.Add_Test (Integer_Buffer_Access_Tests.Suite);
       Result.Add_Test (Integer_Mat_View_Tests.Suite);
       Result.Add_Test (External_View_C_ABI_Tests.Suite);
+      Result.Add_Test (Int8_Access_Tests.Suite);
+      Result.Add_Test (Int8_Row_Access_Tests.Suite);
+      Result.Add_Test (Int8_Buffer_Access_Tests.Suite);
+      Result.Add_Test (Int8_Mat_View_Tests.Suite);
+      Result.Add_Test (Strided_View_Gap_Tests.Suite);
       return Result'Access;
    end Suite;
 

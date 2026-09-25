@@ -9,10 +9,11 @@ package OpenCV is
    --  matrix-specific abstractions; other module crates reuse these
    --  values without redeclaring them.
 
-   --  CV_8U, CV_16U, CV_16S, CV_32S, CV_32F, and CV_64F element
+   --  CV_8U, CV_8S, CV_16U, CV_16S, CV_32S, CV_32F, and CV_64F element
    --  value domains used by typed Mat accessors and shared numeric
    --  APIs. Float16 remains Core-specific.
    subtype UInt8_Value is Interfaces.Unsigned_8;
+   subtype Int8_Value is Interfaces.Integer_8;
    subtype UInt16_Value is Interfaces.Unsigned_16;
    subtype Int16_Value is Interfaces.Integer_16;
    subtype Int32_Value is Interfaces.Integer_32;

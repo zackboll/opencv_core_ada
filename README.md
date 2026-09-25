@@ -18,7 +18,7 @@ translation of the C++ headers.
 >
 > **Development status:** active, pre-1.0 API.
 >
-> **Current test baseline:** 1255 AUnit tests, with Ada and C++ warnings promoted
+> **Current test baseline:** 1277 AUnit tests, with Ada and C++ warnings promoted
 > to errors. GitHub Actions exercises the full test suite against four OpenCV
 > compatibility targets, plus a native Ubuntu 24.04 ARM64 job.
 >
@@ -359,7 +359,7 @@ The test crate carries development-only dependencies such as AUnit, GNATprove,
 and GNATcov. They are intentionally not dependencies of the public library
 crate.
 
-At the time of this README update, the full suite contains **1255 AUnit tests**.
+At the time of this README update, the full suite contains **1277 AUnit tests**.
 Coverage includes ordinary behavior, invalid input, shape/depth/channel
 compatibility, empty Mats, non-contiguous Regions, shallow-versus-independent
 ownership, callback lifetimes, arbitrary Ada array lower bounds, failure
@@ -450,8 +450,9 @@ crates. The `opencv_core` crate still distributes the parent package.
 `OpenCV.Core` continues to own `Mat` and matrix-specific abstractions.
 
 Shared root types include numeric value subtypes (`OpenCV.UInt8_Value`,
-`OpenCV.UInt16_Value`, `OpenCV.Int16_Value`, `OpenCV.Int32_Value`,
-`OpenCV.Float32_Value`, `OpenCV.Float64_Value`), integer coordinates
+`OpenCV.Int8_Value`, `OpenCV.UInt16_Value`, `OpenCV.Int16_Value`,
+`OpenCV.Int32_Value`, `OpenCV.Float32_Value`, `OpenCV.Float64_Value`),
+integer coordinates
 and geometry (`OpenCV.Point_Coordinate`, `OpenCV.Size_Coordinate`,
 `OpenCV.Point`, `OpenCV.Point_Array`, `OpenCV.Size`, `OpenCV.Rect`),
 floating-point geometry (`OpenCV.Float32_Point`, `OpenCV.Float32_Size`,
@@ -639,7 +640,7 @@ normal OpenCV reference counting.
 
 ### Copied row access
 
-The UInt8, UInt16, Int16, Int32, Float16, Float32, and Float64 C1 row packages,
+The UInt8, Int8, UInt16, Int16, Int32, Float16, Float32, and Float64 C1 row packages,
 plus the UInt8, Float16, and Float32 Vec3 row packages, provide `Read_Row` /
 `Write_Row` APIs. Caller arrays may use
 arbitrary lower bounds; values map in iteration order to matrix columns.
@@ -649,7 +650,7 @@ array with no borrowed lifetime.
 
 ### Scoped zero-copy row borrowing
 
-The same ten row-access families provide:
+The same eleven row-access families provide:
 
 ```text
 With_Read_Only_Row
@@ -671,7 +672,7 @@ synchronization.
 
 ### Scoped continuous whole-buffer borrowing
 
-The ten matching buffer-access packages provide:
+The eleven matching buffer-access packages provide:
 
 ```text
 With_Read_Only_Buffer
@@ -689,10 +690,11 @@ buffer access likewise overlays native CV_16FC3 pixels as packed
 
 ### Caller-owned buffer -> temporary `Mat`
 
-The ten Mat-view packages provide the reverse zero-copy direction:
+The eleven Mat-view packages provide the reverse zero-copy direction:
 
 ```text
 OpenCV.Core.UInt8_Mat_View
+OpenCV.Core.Int8_Mat_View
 OpenCV.Core.UInt16_Mat_View
 OpenCV.Core.Int16_Mat_View
 OpenCV.Core.Int32_Mat_View
@@ -708,13 +710,13 @@ OpenCV.Core.Float16_Vec3_Mat_View
 actual caller-owned Ada array. The public buffer formal is explicitly
 `aliased in out`, so the native header directly denotes the caller's storage.
 
-Packed views are available for all ten typed layouts above. UInt16, Int16,
-Int32, Float16, Float32, and Float64 C1, plus Float16 C3, support explicit row
-strides,
-allowing a Mat to represent the logical columns of padded caller-owned rows
-without copying their padding. Except for the established Float32 overload,
-these packages use `With_Writable_Strided_Mat_View` and measure `Row_Stride` in
-complete Ada elements rather than bytes.
+Packed views are available for all eleven typed layouts above. Every listed
+layout also supports an explicit row stride, allowing a Mat to represent the
+logical columns of padded caller-owned rows without copying their padding.
+Except for the established Float32 overload, these packages use
+`With_Writable_Strided_Mat_View` and measure `Row_Stride` in complete Ada
+elements rather than bytes. For UInt8 and Float32 C3, one element is one
+complete Vec3 pixel, not one scalar channel.
 
 Important lifetime rule: a temporary external-buffer Mat may not create a
 shallow alias that could outlive the callback. Ordinary `Mat` assignment and
@@ -739,20 +741,21 @@ non-contiguous multirow strided view before invoking its callback.
 
 ## Typed access matrix
 
-Direct typed access currently concentrates on ten common layouts:
+Direct typed access currently concentrates on eleven common layouts:
 
 | Layout | 2-D Get/Set | N-D Get/Set | Classification | Copied row | Borrowed row | Continuous buffer borrow | Packed caller buffer -> `Mat` | Strided caller buffer -> `Mat` |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| UInt8 C1 | `UInt8_Access` | `UInt8_Access` | — | `UInt8_Row_Access` | `UInt8_Row_Access` | `UInt8_Buffer_Access` | `UInt8_Mat_View` | — |
+| UInt8 C1 | `UInt8_Access` | `UInt8_Access` | — | `UInt8_Row_Access` | `UInt8_Row_Access` | `UInt8_Buffer_Access` | `UInt8_Mat_View` | `UInt8_Mat_View` |
+| Int8 C1 | `Int8_Access` | `Int8_Access` | — | `Int8_Row_Access` | `Int8_Row_Access` | `Int8_Buffer_Access` | `Int8_Mat_View` | `Int8_Mat_View` |
 | UInt16 C1 | `UInt16_Access` | `UInt16_Access` | — | `UInt16_Row_Access` | `UInt16_Row_Access` | `UInt16_Buffer_Access` | `UInt16_Mat_View` | `UInt16_Mat_View` |
 | Int16 C1 | `Int16_Access` | `Int16_Access` | — | `Int16_Row_Access` | `Int16_Row_Access` | `Int16_Buffer_Access` | `Int16_Mat_View` | `Int16_Mat_View` |
 | Int32 C1 | `Int32_Access` | `Int32_Access` | — | `Int32_Row_Access` | `Int32_Row_Access` | `Int32_Buffer_Access` | `Int32_Mat_View` | `Int32_Mat_View` |
 | Float16 C1 | `Float16_Access` | `Float16_Access` | `Float16_Value` helpers | `Float16_Row_Access` | `Float16_Row_Access` | `Float16_Buffer_Access` | `Float16_Mat_View` | `Float16_Mat_View` |
 | Float32 C1 | `Float32_Access` | `Float32_Access` | — | `Float32_Row_Access` | `Float32_Row_Access` | `Float32_Buffer_Access` | `Float32_Mat_View` | `Float32_Mat_View` |
 | Float64 C1 | `Float64_Access` | `Float64_Access` | `Float64_Access` | `Float64_Row_Access` | `Float64_Row_Access` | `Float64_Buffer_Access` | `Float64_Mat_View` | `Float64_Mat_View` |
-| UInt8 C3 | `UInt8_Vec3_Access` | — | — | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Buffer_Access` | `UInt8_Vec3_Mat_View` | — |
+| UInt8 C3 | `UInt8_Vec3_Access` | — | — | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Buffer_Access` | `UInt8_Vec3_Mat_View` | `UInt8_Vec3_Mat_View` |
 | Float16 C3 | `Float16_Vec3_Access` | — | — | `Float16_Vec3_Row_Access` | `Float16_Vec3_Row_Access` | `Float16_Vec3_Buffer_Access` | `Float16_Vec3_Mat_View` | `Float16_Vec3_Mat_View` |
-| Float32 C3 | `Float32_Vec3_Access` | — | — | `Float32_Vec3_Row_Access` | `Float32_Vec3_Row_Access` | `Float32_Vec3_Buffer_Access` | `Float32_Vec3_Mat_View` | — |
+| Float32 C3 | `Float32_Vec3_Access` | — | — | `Float32_Vec3_Row_Access` | `Float32_Vec3_Row_Access` | `Float32_Vec3_Buffer_Access` | `Float32_Vec3_Mat_View` | `Float32_Vec3_Mat_View` |
 
 For Vec3 APIs, **one Ada vector is one complete OpenCV element/pixel**, not one
 scalar channel:
@@ -771,6 +774,14 @@ Mats. `UInt16_Row_Access` adds copied and callback-scoped zero-copy row access
 for 2-D C1 Mats, including non-contiguous Regions. `UInt16_Buffer_Access` adds
 continuous whole-buffer borrowing, and `UInt16_Mat_View` adds packed and
 row-strided callback-scoped caller-owned views.
+
+`Int8_Access` provides scalar 2-D and N-D Get/Set for single-channel `CV_8S`
+Mats. `Int8_Row_Access` adds copied and callback-scoped zero-copy row access
+for 2-D C1 Mats, including non-contiguous Regions. `Int8_Buffer_Access` adds
+continuous whole-buffer borrowing, and `Int8_Mat_View` adds packed and
+row-strided callback-scoped caller-owned views. All paths preserve the exact
+signed 8-bit domain, `-128 .. 127`, without unsigned or floating-point
+intermediates.
 
 `Int16_Access` provides scalar 2-D and N-D Get/Set for single-channel `CV_16S`
 Mats. `Int16_Row_Access` adds copied and callback-scoped zero-copy row access
@@ -1567,16 +1578,17 @@ GNATprove is supplied by the separate `tests` Alire environment.
 The current limitations are intentional and help keep the public API coherent:
 
 1. **The dense public `Mat` model is primarily 2-D.**  
-   N-dimensional construction, UInt8/UInt16/Int16/Int32/Float16/Float32/Float64 C1
+   N-dimensional construction, UInt8/Int8/UInt16/Int16/Int32/Float16/Float32/Float64 C1
    Get/Set, and `Slice` views are available. N-D reshape and dimension-dropping
    scalar indexing are not yet exposed as a complete Ada model.
 
 2. **No public `SparseMat` or `UMat` abstraction.**
 
-3. **Typed direct/zero-copy access is focused on UInt8 and Float32 C1/C3, plus UInt16/Int16/Int32/Float16 C1, Float16 C3, and Float64 C1.**
-   UInt16, Int16, and Int32 C1 have 2-D and N-D Get/Set, copied and borrowed
+3. **Typed direct/zero-copy access is focused on UInt8 and Float32 C1/C3, plus Int8/UInt16/Int16/Int32/Float16 C1, Float16 C3, and Float64 C1.**
+   Int8, UInt16, Int16, and Int32 C1 have 2-D and N-D Get/Set, copied and borrowed
    2-D rows, continuous whole-buffer borrowing, and packed or row-strided
-   2-D caller-buffer views. Float16 C1 has 2-D and N-D Get/Set that
+   2-D caller-buffer views. Int8 preserves the exact signed domain `-128 .. 127`
+   without unsigned or floating-point intermediates. Float16 C1 has 2-D and N-D Get/Set that
    preserve the exact binary16 encoding, plus copied and borrowed 2-D row
    access, continuous 2-D whole-buffer borrowing, and packed or row-strided
    2-D caller-buffer views. Float16 C3 has 2-D Vec3 Get/Set, copied and
@@ -1594,10 +1606,10 @@ The current limitations are intentional and help keep the public API coherent:
    buffer borrowing, and packed or strided external caller-buffer Mat views.
 
 4. **External caller-buffer views are writable and callback-scoped.**  
-   Packed 2-D views are available for UInt8, UInt16, Int16, Int32, Float16,
+   Packed 2-D views are available for UInt8, Int8, UInt16, Int16, Int32, Float16,
    Float32, and Float64 C1, plus UInt8, Float16, and Float32 C3. Row-strided
-   external storage is exposed for UInt16, Int16, Int32, Float16, Float32, and
-   Float64 C1, plus Float16 C3. Strided backing storage must contain a complete
+   external storage is exposed for the same layouts. C3 row strides count
+   complete Vec3 pixels, not scalar channels. Strided backing storage must contain a complete
    `Rows * Row_Stride` element extent, including final-row padding.
    Arbitrary N-D strides, multi-channel Float64 external views, and a separate
    read-only external Mat abstraction are not yet exposed.

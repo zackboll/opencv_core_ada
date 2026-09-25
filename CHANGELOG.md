@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Added the complete Int8 C1 typed data plane: `OpenCV.Int8_Value`, 2-D and
+  N-D Get/Set, copied and borrowed rows, continuous-buffer borrowing, and
+  packed or row-strided caller-owned Mat views. Values stay in the signed
+  domain `-128 .. 127` with no unsigned or floating-point conversion.
+- Added row-strided caller-owned views for UInt8 C1, UInt8 C3, and Float32 C3.
+  C3 row strides count complete Vec3 pixels, not scalar channels.
+
 - Completed the single-channel integer access plane: UInt16 and Int16 now have
   continuous-buffer borrowing plus packed and row-strided caller-owned Mat
   views; Int32 now also has copied and borrowed rows, continuous-buffer

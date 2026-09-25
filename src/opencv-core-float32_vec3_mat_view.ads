@@ -18,4 +18,20 @@ package OpenCV.Core.Float32_Vec3_Mat_View is
       Columns : Positive;
       Process : not null access procedure (Image : in out Mat));
 
+   --  Invokes Process with a temporary writable CV_32FC3 Mat that aliases
+   --  Data with Row_Stride complete Float32_Vec3 pixels between logical row
+   --  starts. Row_Stride counts pixels, not scalar channels and not bytes.
+   --  Row_Stride must be at least Columns. Image (Row, Column) maps to
+   --  Data (Data'First + Row * Row_Stride + Column). Data'Length must be at
+   --  least Rows * Row_Stride, including padding pixels after the final
+   --  logical row. Padding and extra trailing pixels are outside the logical
+   --  Mat. No data is copied. Ownership, callback lifetime, and escape rules
+   --  are identical to With_Writable_Mat_View; Clone is the safe escape path.
+   procedure With_Writable_Strided_Mat_View
+     (Data       : aliased in out Buffer_Array;
+      Rows       : Positive;
+      Columns    : Positive;
+      Row_Stride : Positive;
+      Process    : not null access procedure (Image : in out Mat));
+
 end OpenCV.Core.Float32_Vec3_Mat_View;

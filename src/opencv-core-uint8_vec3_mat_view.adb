@@ -43,4 +43,15 @@ package body OpenCV.Core.UInt8_Vec3_Mat_View is
       Viewing.With_Writable_Mat_View (Data, Rows, Columns, Process);
    end With_Writable_Mat_View;
 
+   procedure With_Writable_Strided_Mat_View
+     (Data       : aliased in out Buffer_Array;
+      Rows       : Positive;
+      Columns    : Positive;
+      Row_Stride : Positive;
+      Process    : not null access procedure (Image : in out Mat)) is
+   begin
+      Viewing.With_Writable_Strided_Mat_View
+        (Data, Rows, Columns, Row_Stride, Process);
+   end With_Writable_Strided_Mat_View;
+
 end OpenCV.Core.UInt8_Vec3_Mat_View;

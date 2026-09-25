@@ -14,6 +14,16 @@ package OpenCV.Core.Internal.Typed_Access is
    procedure Set_UInt8
      (Image : in out Mat; Indices : Index_Array; Value : UInt8_Value);
 
+   function Get_Int8 (Image : Mat; Row, Column : Integer) return Int8_Value;
+
+   procedure Set_Int8
+     (Image : in out Mat; Row, Column : Integer; Value : Int8_Value);
+
+   function Get_Int8 (Image : Mat; Indices : Index_Array) return Int8_Value;
+
+   procedure Set_Int8
+     (Image : in out Mat; Indices : Index_Array; Value : Int8_Value);
+
    function Get_UInt16
      (Image : Mat; Row, Column : Integer) return UInt16_Value;
 
@@ -85,6 +95,10 @@ package OpenCV.Core.Internal.Typed_Access is
      array (Natural range <>) of OpenCV.Internal.C_API.C_UInt8
    with Convention => C;
 
+   type Int8_Row_Buffer is
+     array (Natural range <>) of OpenCV.Internal.C_API.C_Int8
+   with Convention => C;
+
    type UInt16_Row_Buffer is
      array (Natural range <>) of OpenCV.Internal.C_API.C_UInt16
    with Convention => C;
@@ -116,6 +130,12 @@ package OpenCV.Core.Internal.Typed_Access is
 
    procedure Write_UInt8_Row
      (Image : in out Mat; Row : Integer; Data : UInt8_Row_Buffer);
+
+   procedure Read_Int8_Row
+     (Image : Mat; Row : Integer; Data : out Int8_Row_Buffer);
+
+   procedure Write_Int8_Row
+     (Image : in out Mat; Row : Integer; Data : Int8_Row_Buffer);
 
    procedure Read_Int16_Row
      (Image : Mat; Row : Integer; Data : out Int16_Row_Buffer);
