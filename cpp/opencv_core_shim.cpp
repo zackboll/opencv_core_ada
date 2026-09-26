@@ -4232,8 +4232,9 @@ opencv_core_mat_reshape_nd(const opencv_core_mat_handle *source,
     }
 
     // ABI safety: reshape writes (channels-1) into the Mat channel bit field.
-    // Values outside 1 .. CV_CN_MAX wrap that encoding. OpenCV checks the
-    // upper bound only with CV_Assert, which is absent from release builds.
+    // Values outside 1 .. CV_CN_MAX must not reach that encoding. Validate
+    // explicitly at the stable C ABI, independent of OpenCV's CV_Assert
+    // checks (which run in both Debug and Release builds).
     if (channels < 1 || channels > OPENCV_CORE_MAX_CHANNELS) {
         return invalid_argument("channels must be in the range 1 .. 512");
     }
@@ -4243,8 +4244,9 @@ opencv_core_mat_reshape_nd(const opencv_core_mat_handle *source,
     }
 
     // ABI safety: OpenCV indexes newsz[0 .. ndims-1] and stores the result in
-    // a 32-slot dimension table. A larger ndims reads past the caller buffer
-    // or overflows that table. CV_Assert does not reject this in release builds.
+    // a 32-slot dimension table. Reject a larger ndims at the stable C ABI
+    // before dimension handling, independently of OpenCV's assertion/error
+    // behavior, to prevent out-of-bounds access to the table or caller buffer.
     if (ndims > maximum_mat_dimensions) {
         return invalid_argument(
             "dimension count exceeds OpenCV's 32-dimension limit");
@@ -4268,11 +4270,11 @@ opencv_core_mat_reshape_nd(const opencv_core_mat_handle *source,
         int opencv_sizes[maximum_mat_dimensions];
         size_t target_elements = 1;
         for (int32_t index = 0; index < ndims; ++index) {
-            // ABI safety: OpenCV 4.1/4.10 treat a zero extent as "copy this
-            // source dimension" and only CV_Assert that an extent is
-            // nonnegative. A negative extent or a zero sentinel would either
-            // fail that debug-only assert or silently change the requested
-            // shape before the scalar-count comparison.
+            // ABI safety: OpenCV 4.1/4.10 use zero as a preserve-dimension
+            // sentinel and CV_Assert that extents are nonnegative in both
+            // Debug and Release builds. Reject malformed extents explicitly
+            // under the binding's stable invalid-argument contract, before
+            // a zero sentinel can change the requested shape and scalar count.
             if (sizes[index] <= 0) {
                 return invalid_argument(
                     "N-D reshape extents must be positive");
