@@ -250,6 +250,9 @@ opencv_core_mat_create_2d(int32_t rows, int32_t columns, int32_t depth,
  * Creates an N-dimensional Mat. ndims is the number of extents in sizes, in
  * iteration order. sizes must be non-null when ndims is positive. Depth and
  * channel identifiers follow the stable C ABI, not OpenCV packed type codes.
+ * ndims must not exceed 32 nor the linked OpenCV's native Mat dimension
+ * capacity (MatShape::MAX_DIMS = 10 on OpenCV 5.0); a larger count returns
+ * OPENCV_CORE_ERROR_INVALID_ARGUMENT before native construction.
  */
 opencv_core_status
 opencv_core_mat_create_nd(int32_t ndims, const int32_t *sizes, int32_t depth,
@@ -288,6 +291,24 @@ opencv_core_mat_create_external_2d_strided(
     int32_t rows, int32_t columns, int32_t depth, int32_t channels,
     void *data, uint64_t byte_count, uint64_t row_stride_bytes,
     opencv_core_mat_handle **out_mat);
+
+/*
+ * Creates a temporary packed N-dimensional Mat header over caller-owned
+ * storage. ndims must be in 2 .. 32 and must not exceed the linked OpenCV's
+ * native Mat dimension capacity (MatShape::MAX_DIMS = 10 on OpenCV 5.0);
+ * sizes must hold ndims positive extents in dimension order. OpenCV computes
+ * packed continuous steps; the final dimension varies fastest. byte_count
+ * must equal product(sizes) * elemSize() exactly. data must be non-null and
+ * aligned to the selected scalar depth. The header does not allocate, copy,
+ * or own the buffer, and has the same temporary external-view lifetime rules
+ * as opencv_core_mat_create_external_2d. The shim cannot discover the real
+ * allocation size; the caller must supply truthful, live storage.
+ */
+opencv_core_status
+opencv_core_mat_create_external_nd(int32_t ndims, const int32_t *sizes,
+                                   int32_t depth, int32_t channels,
+                                   void *data, uint64_t byte_count,
+                                   opencv_core_mat_handle **out_mat);
 
 opencv_core_status
 opencv_core_mat_copy(const opencv_core_mat_handle *source,
@@ -907,7 +928,9 @@ opencv_core_mat_reshape(const opencv_core_mat_handle *source, int32_t channels,
 /*
  * Creates a distinct Mat header by invoking the native N-D Mat::reshape
  * overload. channels must be in 1 .. OPENCV_CORE_MAX_CHANNELS. ndims is the
- * number of extents in sizes and must be in 2 .. 32. sizes must be non-null,
+ * number of extents in sizes and must be in 2 .. 32, and must not exceed the
+ * linked OpenCV's native Mat dimension capacity (MatShape::MAX_DIMS = 10 on
+ * OpenCV 5.0), checked before native reshape. sizes must be non-null,
  * and every extent must be positive: a zero extent is not an OpenCV
  * preserve-dimension sentinel. The source must be continuous and nonempty,
  * and the target scalar count (product of sizes, times channels) must equal

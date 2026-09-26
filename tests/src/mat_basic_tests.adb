@@ -1,9 +1,11 @@
 with AUnit.Assertions;
 with AUnit.Test_Caller;
+with Ada.Exceptions;
 with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.UInt8_Access;
 with Mat_Test_Support;
+with Module_Bridge_Probe;
 with Interfaces;
 
 package body Mat_Basic_Tests is
@@ -760,6 +762,36 @@ package body Mat_Basic_Tests is
          "Extent on a default empty Mat must raise OpenCV_Error");
    end Default_Empty_Mat_Has_Zero_Dimension_Count;
 
+   function Contains (Source, Fragment : String) return Boolean
+   is (Source'Length >= Fragment'Length
+       and then (for some Offset in 0 .. Source'Length - Fragment'Length =>
+                   Source
+                     (Source'First
+                      + Offset
+                      .. Source'First + Offset + Fragment'Length - 1)
+                   = Fragment));
+
+   --  Runs Make (Count), which must raise OpenCV_Error, and returns the
+   --  exception message. Fails the test if no OpenCV_Error is raised.
+   function Rejection_Message
+     (Make  :
+        not null access function (Count : Positive) return OpenCV.Core.Mat;
+      Count : Positive) return String is
+   begin
+      declare
+         Unused : constant OpenCV.Core.Mat := Make (Count);
+      begin
+         pragma Unreferenced (Unused);
+      end;
+      AUnit.Assertions.Assert
+        (False,
+         "a" & Count'Image & "-dimensional request must raise OpenCV_Error");
+      return "";
+   exception
+      when Error : OpenCV.OpenCV_Error =>
+         return Ada.Exceptions.Exception_Message (Error);
+   end Rejection_Message;
+
    procedure N_Dimensional_Create_Rejects_Unsafe_Shapes
      (Test : in out Mat_Test_Fixture)
    is
@@ -792,7 +824,53 @@ package body Mat_Basic_Tests is
            OpenCV.Core.Create
              (Shape, (Depth => OpenCV.Core.UInt8, Channels => 1));
       end Create_Too_Many_Dimensions;
+
+      --  Creates a (1, .., 1, 2) UInt8 Mat of Count dimensions.
+      function Create_Tall (Count : Positive) return OpenCV.Core.Mat is
+         Shape : OpenCV.Core.Dimension_Array (1 .. Count) := (others => 1);
+      begin
+         Shape (Count) := 2;
+         return
+           OpenCV.Core.Create
+             (Shape, (Depth => OpenCV.Core.UInt8, Channels => 1));
+      end Create_Tall;
+
+      procedure Assert_Tall (Count : Positive) is
+         Image : constant OpenCV.Core.Mat := Create_Tall (Count);
+      begin
+         AUnit.Assertions.Assert
+           (Image.Dimension_Count = Count
+            and then Image.Extent (Count) = 2
+            and then Image.Total = 2,
+            "N-D Create must build a" & Count'Image & "-dimensional Mat");
+      end Assert_Tall;
    begin
+      --  10 dimensions fit every supported OpenCV's native Mat capacity.
+      Assert_Tall (10);
+
+      if Module_Bridge_Probe.OpenCV_Major_Version < 5 then
+         --  OpenCV 4.x retains the historic 32-dimensional limit.
+         Assert_Tall (11);
+         Assert_Tall (32);
+      else
+         --  OpenCV 5.0's native MatShape capacity is 10 dimensions. The shim
+         --  rejects longer shapes before native construction; the
+         --  diagnostic identifies that guard rather than an OpenCV assert.
+         declare
+            Diagnostic : constant String :=
+              Rejection_Message (Create_Tall'Access, 11);
+         begin
+            AUnit.Assertions.Assert
+              (Contains
+                 (Diagnostic,
+                  "exceeds this OpenCV version's native Mat limit"),
+               "OpenCV 5 N-D Create must reject 11 dimensions before native"
+               & " construction; diagnostic was '"
+               & Diagnostic
+               & "'");
+         end;
+      end if;
+
       Assert_Raises_OpenCV_Error
         (Create_One_Dimension'Access,
          "N-D Create must reject a 1-D shape that OpenCV would promote");

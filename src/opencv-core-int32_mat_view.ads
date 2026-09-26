@@ -18,6 +18,24 @@ package OpenCV.Core.Int32_Mat_View is
       Columns : Positive;
       Process : not null access procedure (Image : in out Mat));
 
+   --  Invokes Process with a temporary writable packed N-dimensional
+   --  CV_32SC1 Mat that aliases Data. Shape'Length must be in 2 .. 32 and
+   --  every extent must be positive; Shape iteration order maps directly to
+   --  OpenCV dimension order regardless of Shape'First. Data'Length must
+   --  equal product (Shape) exactly. Storage is packed and continuous with
+   --  the final dimension varying fastest: zero-based index (I1, .., In)
+   --  is Data (Data'First + ((I1 * D2 + I2) * D3 + ..) * Dn + In). Neither
+   --  Ada lower bound is exposed through the Mat. Shape => (Rows, Columns)
+   --  has the same geometry as the Rows/Columns overload. No data is
+   --  copied and the caller retains ownership. Callback lifetime and escape
+   --  rules are identical to the Rows/Columns overload: shallow copies,
+   --  Slice, and Reshape are rejected; Clone is the independent escape path.
+   --  Arbitrary N-D strides are not supported.
+   procedure With_Writable_Mat_View
+     (Data    : aliased in out Buffer_Array;
+      Shape   : Dimension_Array;
+      Process : not null access procedure (Image : in out Mat));
+
    --  Invokes Process with a temporary writable CV_32SC1 Mat that aliases
    --  Data with Row_Stride Int32 elements between logical row starts.
    --  Row_Stride must be at least Columns. Image (Row, Column) maps to

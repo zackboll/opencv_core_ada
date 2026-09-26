@@ -52,9 +52,23 @@ namespace {
 
 constexpr std::size_t error_message_capacity = 1024;
 constexpr int maximum_jacobi_dimension = 8460;
-// OpenCV's established Mat dimensionality limit across 4.1 through 5.0.
+// Historic CV_MAX_DIM dimensionality: the size of the shim's fixed scratch
+// arrays and the raw C ABI dimension-count domain across 4.1 through 5.0.
 // CV_MAX_DIM is not a stable C++ API symbol on 4.1/4.6 (C API only).
 constexpr int maximum_mat_dimensions = 32;
+// Dimension count that may safely be passed to native operations which
+// establish a new Mat shape (constructor, reshape). OpenCV 5.0 stores size
+// and step in fixed MatShape::MAX_DIMS-slot arrays, smaller than CV_MAX_DIM.
+#if CV_VERSION_MAJOR >= 5
+constexpr int native_maximum_mat_dimensions =
+    static_cast<int>(cv::MatShape::MAX_DIMS);
+static_assert(cv::MatShape::MAX_DIMS == 10,
+              "review OpenCV 5 native Mat dimension compatibility");
+#else
+constexpr int native_maximum_mat_dimensions = maximum_mat_dimensions;
+#endif
+static_assert(native_maximum_mat_dimensions <= maximum_mat_dimensions,
+              "native Mat dimension capacity must fit the shim scratch arrays");
 thread_local char last_error_message[error_message_capacity] = "";
 
 void clear_error() noexcept {
@@ -1536,6 +1550,16 @@ opencv_core_mat_create_nd(int32_t ndims, const int32_t *sizes, int32_t depth,
             "dimension count exceeds OpenCV's 32-dimension limit");
     }
 
+    // ABI safety: compatibility guard. OpenCV 5.0 stores the new shape and
+    // steps in fixed MatShape::MAX_DIMS (10) slot arrays, smaller than the
+    // historic 32-slot domain. Keep larger counts away from native shape
+    // construction instead of relying on OpenCV to reject them.
+    if (ndims > native_maximum_mat_dimensions) {
+        return invalid_argument(
+            "N-D Mat dimension count exceeds this OpenCV version's native"
+            " Mat limit");
+    }
+
     if (ndims > 0 && sizes == nullptr) {
         return invalid_argument("sizes must not be null when ndims is positive");
     }
@@ -1746,6 +1770,143 @@ opencv_core_status opencv_core_mat_create_external_2d_strided(
             new opencv_core_mat_handle(cv::Mat(
                 static_cast<int>(rows), static_cast<int>(columns), type, data,
                 row_stride)));
+        handle->temporary_external_view = true;
+        *out_mat = handle.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_create_external_nd(int32_t ndims, const int32_t *sizes,
+                                   int32_t depth, int32_t channels,
+                                   void *data, uint64_t byte_count,
+                                   opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    // ABI safety: ndims > 32 would overflow the shim's fixed extent array
+    // and OpenCV's CV_MAX_DIM-sized header storage while the shim reads
+    // sizes[0 .. ndims-1]. ndims < 2 has no stable packed-view geometry
+    // across supported versions: a non-positive count gives no element
+    // extent for the exact byte-count relation, and OpenCV 4.x promotes a
+    // 1-D header to 2-D while 5.0 keeps it 1-D.
+    if (ndims < 2 || ndims > maximum_mat_dimensions) {
+        return invalid_argument(
+            "external N-D Mat view dimension count must be in 2 .. 32");
+    }
+
+    // ABI safety: compatibility guard. OpenCV 5.0 stores the new shape and
+    // steps in fixed MatShape::MAX_DIMS (10) slot arrays, smaller than the
+    // historic 32-slot domain. Keep larger counts away from the native
+    // external-data constructor instead of relying on OpenCV to reject them.
+    if (ndims > native_maximum_mat_dimensions) {
+        return invalid_argument(
+            "external N-D Mat view dimension count exceeds this OpenCV"
+            " version's native Mat limit");
+    }
+
+    if (sizes == nullptr) {
+        return invalid_argument("external N-D Mat view sizes must not be null");
+    }
+
+    int opencv_sizes[maximum_mat_dimensions];
+    for (int32_t index = 0; index < ndims; ++index) {
+        // ABI safety: OpenCV finalizeHdr forms
+        // dataend += (size[i] - 1) * step[i] over caller storage; a zero or
+        // negative extent makes that pointer arithmetic leave the caller
+        // buffer, and a negative extent also corrupts the unsigned
+        // byte-count product computed below.
+        if (sizes[index] < 1) {
+            return invalid_argument(
+                "external N-D Mat view extents must be positive");
+        }
+        opencv_sizes[index] = static_cast<int>(sizes[index]);
+    }
+
+    int opencv_depth = 0;
+    if (!to_opencv_depth(depth, opencv_depth)) {
+        return invalid_argument("depth is not a supported depth identifier");
+    }
+
+    // ABI safety: CV_MAKETYPE encodes (channels-1) into a bit field. Values
+    // outside 1 .. CV_CN_MAX produce a wrapped or truncated type before
+    // OpenCV sees the request.
+    if (channels < 1 || channels > OPENCV_CORE_MAX_CHANNELS) {
+        return invalid_argument("channels must be in the range 1 .. 512");
+    }
+
+    // ABI safety: every accepted shape has at least one element, so a null
+    // base would publish a non-empty header over address zero.
+    if (data == nullptr) {
+        return invalid_argument("external N-D Mat view data must not be null");
+    }
+
+    const size_t scalar_alignment = CV_ELEM_SIZE1(opencv_depth);
+    if (scalar_alignment == 0 ||
+        (reinterpret_cast<uintptr_t>(data) % scalar_alignment) != 0) {
+        return invalid_argument(
+            "external N-D Mat view data is not aligned for the selected depth");
+    }
+
+    try {
+        const int type = CV_MAKETYPE(opencv_depth, channels);
+        size_t element_count = 1;
+        for (int32_t index = 0; index < ndims; ++index) {
+            if (!checked_size_mul(element_count,
+                                  static_cast<size_t>(opencv_sizes[index]),
+                                  &element_count)) {
+                return invalid_argument(
+                    "external N-D Mat view element count exceeds the native"
+                    " size range");
+            }
+        }
+
+        size_t expected_bytes = 0;
+        if (!checked_size_mul(element_count,
+                              static_cast<size_t>(CV_ELEM_SIZE(type)),
+                              &expected_bytes)) {
+            return invalid_argument(
+                "external N-D Mat view byte count exceeds the native size"
+                " range");
+        }
+
+        uint64_t expected_bytes_abi = 0;
+        if (!size_to_abi(expected_bytes, expected_bytes_abi)) {
+            return invalid_argument(
+                "external N-D Mat view byte count exceeds the C ABI range");
+        }
+
+        if (byte_count != expected_bytes_abi) {
+            return invalid_argument(
+                "external N-D Mat view byte count must equal"
+                " product(sizes) * elemSize()");
+        }
+
+        // ABI safety: OpenCV forms datalimit = datastart + size[0] * step[0],
+        // which is data + expected_bytes for packed steps. Reject an
+        // address-span wrap before that pointer arithmetic can occur. This
+        // does not verify the real allocation; raw callers must still
+        // report truthful capacity and live storage.
+        const uintptr_t data_address = reinterpret_cast<uintptr_t>(data);
+        if (expected_bytes >
+            std::numeric_limits<uintptr_t>::max() - data_address) {
+            return invalid_argument(
+                "external N-D Mat view address extent exceeds native range");
+        }
+
+        // A null steps pointer selects OpenCV's automatically computed
+        // packed continuous steps in 4.1 through 5.0.
+        std::unique_ptr<opencv_core_mat_handle> handle(
+            new opencv_core_mat_handle(cv::Mat(static_cast<int>(ndims),
+                                               opencv_sizes, type, data,
+                                               nullptr)));
         handle->temporary_external_view = true;
         *out_mat = handle.release();
         return OPENCV_CORE_OK;
@@ -4430,6 +4591,17 @@ opencv_core_mat_reshape_nd(const opencv_core_mat_handle *source,
     if (ndims > maximum_mat_dimensions) {
         return invalid_argument(
             "dimension count exceeds OpenCV's 32-dimension limit");
+    }
+
+    // ABI safety: compatibility guard. OpenCV 5.0 reshape ends in setSize,
+    // which stores the target shape and steps in fixed MatShape::MAX_DIMS
+    // (10) slot arrays, smaller than the historic 32-slot domain. Keep
+    // larger target counts away from native reshape instead of relying on
+    // OpenCV to reject them.
+    if (ndims > native_maximum_mat_dimensions) {
+        return invalid_argument(
+            "N-D reshape dimension count exceeds this OpenCV version's native"
+            " Mat limit");
     }
 
     if (sizes == nullptr) {

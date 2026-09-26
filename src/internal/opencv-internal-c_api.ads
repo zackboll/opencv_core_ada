@@ -265,6 +265,19 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_create_external_2d_strided";
 
+   function Mat_Create_External_ND
+     (Dimension_Count : C_Int32;
+      Sizes           : access C_Int32;
+      Depth           : C_Int32;
+      Channels        : C_Int32;
+      Data            : System.Address;
+      Byte_Count      : C_UInt64;
+      Result          : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_create_external_nd";
+
    function Mat_Copy
      (Source : Mat_Handle; Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_copy";
