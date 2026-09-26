@@ -700,6 +700,9 @@ jobs:
 
   macos-arm64-macports:
     name: OpenCV macOS ARM64 (MacPorts)
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      github.event_name == 'workflow_dispatch'
     runs-on: macos-latest
 
     steps:
@@ -904,6 +907,9 @@ jobs:
 
   windows-x86_64-msys2:
     name: OpenCV Windows x86_64 (MSYS2)
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      github.event_name == 'workflow_dispatch'
     runs-on: windows-latest
     env:
       OPENCV_CORE_CI: "1"
