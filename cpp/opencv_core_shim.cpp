@@ -1755,6 +1755,133 @@ opencv_core_status opencv_core_mat_create_external_2d_strided(
 }
 
 opencv_core_status
+opencv_core_mat_create_external_nd(int32_t ndims, const int32_t *sizes,
+                                   int32_t depth, int32_t channels,
+                                   void *data, uint64_t byte_count,
+                                   opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    // ABI safety: ndims > 32 would overflow the shim's fixed extent array
+    // and OpenCV's CV_MAX_DIM-sized header storage while the shim reads
+    // sizes[0 .. ndims-1]. ndims < 2 has no stable packed-view geometry
+    // across supported versions: a non-positive count gives no element
+    // extent for the exact byte-count relation, and OpenCV 4.x promotes a
+    // 1-D header to 2-D while 5.0 keeps it 1-D.
+    if (ndims < 2 || ndims > maximum_mat_dimensions) {
+        return invalid_argument(
+            "external N-D Mat view dimension count must be in 2 .. 32");
+    }
+
+    if (sizes == nullptr) {
+        return invalid_argument("external N-D Mat view sizes must not be null");
+    }
+
+    int opencv_sizes[maximum_mat_dimensions];
+    for (int32_t index = 0; index < ndims; ++index) {
+        // ABI safety: OpenCV finalizeHdr forms
+        // dataend += (size[i] - 1) * step[i] over caller storage; a zero or
+        // negative extent makes that pointer arithmetic leave the caller
+        // buffer, and a negative extent also corrupts the unsigned
+        // byte-count product computed below.
+        if (sizes[index] < 1) {
+            return invalid_argument(
+                "external N-D Mat view extents must be positive");
+        }
+        opencv_sizes[index] = static_cast<int>(sizes[index]);
+    }
+
+    int opencv_depth = 0;
+    if (!to_opencv_depth(depth, opencv_depth)) {
+        return invalid_argument("depth is not a supported depth identifier");
+    }
+
+    // ABI safety: CV_MAKETYPE encodes (channels-1) into a bit field. Values
+    // outside 1 .. CV_CN_MAX produce a wrapped or truncated type before
+    // OpenCV sees the request.
+    if (channels < 1 || channels > OPENCV_CORE_MAX_CHANNELS) {
+        return invalid_argument("channels must be in the range 1 .. 512");
+    }
+
+    // ABI safety: every accepted shape has at least one element, so a null
+    // base would publish a non-empty header over address zero.
+    if (data == nullptr) {
+        return invalid_argument("external N-D Mat view data must not be null");
+    }
+
+    const size_t scalar_alignment = CV_ELEM_SIZE1(opencv_depth);
+    if (scalar_alignment == 0 ||
+        (reinterpret_cast<uintptr_t>(data) % scalar_alignment) != 0) {
+        return invalid_argument(
+            "external N-D Mat view data is not aligned for the selected depth");
+    }
+
+    try {
+        const int type = CV_MAKETYPE(opencv_depth, channels);
+        size_t element_count = 1;
+        for (int32_t index = 0; index < ndims; ++index) {
+            if (!checked_size_mul(element_count,
+                                  static_cast<size_t>(opencv_sizes[index]),
+                                  &element_count)) {
+                return invalid_argument(
+                    "external N-D Mat view element count exceeds the native"
+                    " size range");
+            }
+        }
+
+        size_t expected_bytes = 0;
+        if (!checked_size_mul(element_count,
+                              static_cast<size_t>(CV_ELEM_SIZE(type)),
+                              &expected_bytes)) {
+            return invalid_argument(
+                "external N-D Mat view byte count exceeds the native size"
+                " range");
+        }
+
+        uint64_t expected_bytes_abi = 0;
+        if (!size_to_abi(expected_bytes, expected_bytes_abi)) {
+            return invalid_argument(
+                "external N-D Mat view byte count exceeds the C ABI range");
+        }
+
+        if (byte_count != expected_bytes_abi) {
+            return invalid_argument(
+                "external N-D Mat view byte count must equal"
+                " product(sizes) * elemSize()");
+        }
+
+        // ABI safety: OpenCV forms datalimit = datastart + size[0] * step[0],
+        // which is data + expected_bytes for packed steps. Reject an
+        // address-span wrap before that pointer arithmetic can occur. This
+        // does not verify the real allocation; raw callers must still
+        // report truthful capacity and live storage.
+        const uintptr_t data_address = reinterpret_cast<uintptr_t>(data);
+        if (expected_bytes >
+            std::numeric_limits<uintptr_t>::max() - data_address) {
+            return invalid_argument(
+                "external N-D Mat view address extent exceeds native range");
+        }
+
+        // A null steps pointer selects OpenCV's automatically computed
+        // packed continuous steps in 4.1 through 5.0.
+        std::unique_ptr<opencv_core_mat_handle> handle(
+            new opencv_core_mat_handle(cv::Mat(static_cast<int>(ndims),
+                                               opencv_sizes, type, data,
+                                               nullptr)));
+        handle->temporary_external_view = true;
+        *out_mat = handle.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_copy(const opencv_core_mat_handle *source,
                      opencv_core_mat_handle **out_mat) {
     clear_error();
