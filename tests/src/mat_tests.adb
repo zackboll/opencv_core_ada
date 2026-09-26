@@ -45,6 +45,7 @@ with Strided_View_Gap_Tests;
 with Vec3_ND_Access_Tests;
 with Vec2_Access_Tests;
 with Float64_Vec3_Tests;
+with Vec4_Tests;
 with Mat_Shape_Tests;
 
 package body Mat_Tests is
@@ -100,6 +101,7 @@ package body Mat_Tests is
       Result.Add_Test (Vec3_ND_Access_Tests.Suite);
       Result.Add_Test (Vec2_Access_Tests.Suite);
       Result.Add_Test (Float64_Vec3_Tests.Suite);
+      Result.Add_Test (Vec4_Tests.Suite);
       Result.Add_Test (Mat_Shape_Tests.Suite);
       return Result'Access;
    end Suite;

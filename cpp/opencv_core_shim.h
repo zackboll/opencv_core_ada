@@ -74,6 +74,20 @@ typedef struct {
 typedef struct {
     float component_0;
     float component_1;
+    float component_2;
+    float component_3;
+} opencv_core_float32_vec4;
+
+typedef struct {
+    double component_0;
+    double component_1;
+    double component_2;
+    double component_3;
+} opencv_core_float64_vec4;
+
+typedef struct {
+    float component_0;
+    float component_1;
 } opencv_core_float32_vec2;
 
 typedef struct {
@@ -1305,6 +1319,32 @@ opencv_core_mat_set_float64_vec3(opencv_core_mat_handle *mat,
 OPENCV_CORE_DECLARE_VEC2_ACCESS(float32, float)
 OPENCV_CORE_DECLARE_VEC2_ACCESS(float64, double)
 #undef OPENCV_CORE_DECLARE_VEC2_ACCESS
+
+/* A Vec4 is one complete C4 Mat element; row buffers contain four scalars
+ * per element, and element_count counts complete elements. */
+#define OPENCV_CORE_DECLARE_VEC4_ACCESS(name, scalar)                         \
+    opencv_core_status opencv_core_mat_get_##name##_vec4(                     \
+        const opencv_core_mat_handle *mat, int32_t row, int32_t column,        \
+        opencv_core_##name##_vec4 *out_value);                                 \
+    opencv_core_status opencv_core_mat_set_##name##_vec4(                     \
+        opencv_core_mat_handle *mat, int32_t row, int32_t column,              \
+        const opencv_core_##name##_vec4 *value);                               \
+    opencv_core_status opencv_core_mat_get_##name##_vec4_nd(                  \
+        const opencv_core_mat_handle *mat, int32_t ndims,                      \
+        const int32_t *indices, opencv_core_##name##_vec4 *out_value);         \
+    opencv_core_status opencv_core_mat_set_##name##_vec4_nd(                  \
+        opencv_core_mat_handle *mat, int32_t ndims, const int32_t *indices,    \
+        const opencv_core_##name##_vec4 *value);                               \
+    opencv_core_status opencv_core_mat_read_##name##_vec4_row(                \
+        const opencv_core_mat_handle *mat, int32_t row, scalar *data,          \
+        uint64_t element_count);                                               \
+    opencv_core_status opencv_core_mat_write_##name##_vec4_row(               \
+        opencv_core_mat_handle *mat, int32_t row, const scalar *data,          \
+        uint64_t element_count);
+
+OPENCV_CORE_DECLARE_VEC4_ACCESS(float32, float)
+OPENCV_CORE_DECLARE_VEC4_ACCESS(float64, double)
+#undef OPENCV_CORE_DECLARE_VEC4_ACCESS
 
 opencv_core_status
 opencv_core_mat_set_float32_vec3(opencv_core_mat_handle *mat,
