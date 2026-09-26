@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Added complete Float32/Float64 C4 Vec4 typed access: 2-D and N-D elements,
+  copied/borrowed 2-D rows, continuous buffers, and packed/strided caller-owned
+  Mat views. Explicit four-scalar C ABI records preserve Float64 precision and
+  reject equal-size wrong layouts. Generalized shared N-D channel diagnostics
+  and native Vec3/Vec4 row validation. Transform C3-to-C4 and C4 identity
+  results can be inspected directly as Vec4; Merge/Split and Scalar interoperate.
+
 - Added Float64 C3 Vec3 typed 2-D/N-D access, copied and borrowed rows,
   continuous buffer borrowing, and packed/strided caller-owned Mat views.
   The C ABI transports three doubles component-wise, checks the 24-byte
