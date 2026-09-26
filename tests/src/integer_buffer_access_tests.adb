@@ -276,15 +276,19 @@ package body Integer_Buffer_Access_Tests is
         OpenCV.Core.Create (1, 2, (OpenCV.Core.Int16, 2));
       L_Multi         : constant OpenCV.Core.Mat :=
         OpenCV.Core.Create (1, 2, (OpenCV.Core.Int32, 2));
+      --  Continuous N-D Mats are accepted; a gapped N-D Slice is not.
       U_N_D           : constant OpenCV.Core.Mat :=
         OpenCV.Core.Create
-          (Shape => (2, 2, 2), Element_Type => (OpenCV.Core.UInt16, 1));
+          (Shape => (2, 2, 2), Element_Type => (OpenCV.Core.UInt16, 1))
+          .Slice (((0, 2), (1, 2), (0, 2)));
       I_N_D           : constant OpenCV.Core.Mat :=
         OpenCV.Core.Create
-          (Shape => (2, 2, 2), Element_Type => (OpenCV.Core.Int16, 1));
+          (Shape => (2, 2, 2), Element_Type => (OpenCV.Core.Int16, 1))
+          .Slice (((0, 2), (1, 2), (0, 2)));
       L_N_D           : constant OpenCV.Core.Mat :=
         OpenCV.Core.Create
-          (Shape => (2, 2, 2), Element_Type => (OpenCV.Core.Int32, 1));
+          (Shape => (2, 2, 2), Element_Type => (OpenCV.Core.Int32, 1))
+          .Slice (((0, 2), (1, 2), (0, 2)));
       Empty_Count     : Natural := 0;
       Invalid_Invoked : Boolean := False;
 
@@ -394,9 +398,17 @@ package body Integer_Buffer_Access_Tests is
       Assert_Raises_OpenCV_Error (U_Wrong_Channels'Access, "UInt16 C2 buffer");
       Assert_Raises_OpenCV_Error (I_Wrong_Channels'Access, "Int16 C2 buffer");
       Assert_Raises_OpenCV_Error (L_Wrong_Channels'Access, "Int32 C2 buffer");
-      Assert_Raises_OpenCV_Error (U_Wrong_Dimensions'Access, "UInt16 N-D");
-      Assert_Raises_OpenCV_Error (I_Wrong_Dimensions'Access, "Int16 N-D");
-      Assert_Raises_OpenCV_Error (L_Wrong_Dimensions'Access, "Int32 N-D");
+      AUnit.Assertions.Assert
+        (not U_N_D.Is_Continuous
+         and then not I_N_D.Is_Continuous
+         and then not L_N_D.Is_Continuous,
+         "The integer N-D Slice fixtures must be non-continuous");
+      Assert_Raises_OpenCV_Error
+        (U_Wrong_Dimensions'Access, "UInt16 gapped N-D Slice");
+      Assert_Raises_OpenCV_Error
+        (I_Wrong_Dimensions'Access, "Int16 gapped N-D Slice");
+      Assert_Raises_OpenCV_Error
+        (L_Wrong_Dimensions'Access, "Int32 gapped N-D Slice");
       AUnit.Assertions.Assert
         (not Invalid_Invoked,
          "Invalid integer buffers must suppress callback");

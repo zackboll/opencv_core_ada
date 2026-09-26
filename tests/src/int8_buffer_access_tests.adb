@@ -67,9 +67,11 @@ package body Int8_Buffer_Access_Tests is
         OpenCV.Core.Create (1, 2, (OpenCV.Core.UInt8, 1));
       Multi       : constant OpenCV.Core.Mat :=
         OpenCV.Core.Create (1, 2, (OpenCV.Core.Int8, 2));
+      --  Continuous N-D Mats are accepted; a gapped N-D Slice is not.
       Volume      : constant OpenCV.Core.Mat :=
         OpenCV.Core.Create
-          (Shape => (2, 2, 2), Element_Type => (OpenCV.Core.Int8, 1));
+          (Shape => (2, 2, 2), Element_Type => (OpenCV.Core.Int8, 1))
+          .Slice (((0, 2), (1, 2), (0, 2)));
       Empty_Count : Natural := 0;
       Invoked     : Boolean := False;
 
@@ -139,8 +141,11 @@ package body Int8_Buffer_Access_Tests is
         (Borrow_Strided'Access, "Int8 strided Region");
       Assert_Raises_OpenCV_Error (Borrow_Wrong'Access, "Int8 wrong depth");
       Assert_Raises_OpenCV_Error (Borrow_Multi'Access, "Int8 wrong channels");
+      AUnit.Assertions.Assert
+        (not Volume.Is_Continuous,
+         "The Int8 N-D Slice fixture must be non-continuous");
       Assert_Raises_OpenCV_Error
-        (Borrow_Volume'Access, "Int8 wrong dimensions");
+        (Borrow_Volume'Access, "Int8 gapped N-D Slice");
       AUnit.Assertions.Assert
         (not Invoked, "Rejected Int8 buffers must suppress callbacks");
    end Regions_Empties_And_Invalid_Types;

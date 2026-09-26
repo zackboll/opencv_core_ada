@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- Extended `With_Read_Only_Buffer` / `With_Writable_Buffer` in all sixteen
+  typed `*_Buffer_Access` packages (UInt8, Int8, UInt16, Int16, Int32,
+  Float16, Float32, Float64 C1; Float32/Float64 C2; UInt8/Float16/Float32/
+  Float64 C3; Float32/Float64 C4) to any continuous Mat, including genuine
+  N-D Mats and continuous N-D Slices. The flat array uses OpenCV element
+  order (final dimension fastest) and one entry per complete Mat element.
+  Non-contiguous Regions and N-D Slices are still rejected before the
+  callback runs. The public API is unchanged; this is source compatible.
+  Previously the typed borrow obtained its base address through the 2-D row
+  API, which rejected every N-D Mat.
+- Added the private C ABI operation `opencv_core_mat_borrow_contiguous_data`,
+  which returns `mat.data` and exactly `product(extents) * elemSize()` bytes
+  computed with checked `size_t` arithmetic. Zero-element Mats return a null
+  address and zero bytes. It is an implementation operation, not a public
+  pointer API. `opencv_core_mat_borrow_row_data` remains strictly 2-D.
+
 - Added complete Float32/Float64 C4 Vec4 typed access: 2-D and N-D elements,
   copied/borrowed 2-D rows, continuous buffers, and packed/strided caller-owned
   Mat views. Explicit four-scalar C ABI records preserve Float64 precision and
