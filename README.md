@@ -632,7 +632,7 @@ The public API includes no-copy views such as:
 - `Column_View`
 - row-range and column-range view overloads
 - `Slice`
-- `Reshape`
+- `Reshape`, including Shape-based N-D overloads
 - `Diagonal_View`
 
 For ordinary OpenCV-owned Mats, these headers retain the shared allocation by
@@ -943,7 +943,7 @@ Creation and structure:
 - `Column_View`
 - range views
 - `Slice`
-- `Reshape`
+- `Reshape`, including the existing 2-D overloads and Shape-based N-D overloads
 - `Diagonal_View`
 - `Diagonal_Matrix`
 
@@ -953,6 +953,9 @@ Metadata:
 - `Rows`
 - `Columns`
 - `Dimensions`
+- `Dimension_Count`
+- `Extent`
+- `Shape`
 - `Channels`
 - `Depth`
 - `Total`
@@ -966,6 +969,28 @@ Metadata:
 ```text
 Start <= index < Stop
 ```
+
+`Dimensions` is the 2-D `Size` view: width is `Columns` and height is `Rows`.
+`Shape` is the all-dimensional counterpart. It returns every extent in Mat
+dimension order, indexed `1 .. Dimension_Count`. A default Mat returns a null
+array. A typed empty `0 x 0` Mat returns two zero extents. A normal 2-D Mat
+returns `(Rows, Columns)`. A genuine N-D Mat reports `Extent` for every axis
+rather than `Rows` or `Columns`.
+
+Shape-based reshape creates another header over the same storage:
+
+```ada
+Volume := Image.Reshape (Shape => (2, 3, 4));
+Pixels := Scalars.Reshape (Channels => 3, Shape => (2, 2, 3));
+```
+
+The `Dimension_Array` is read in Ada iteration order, regardless of its lower
+bound. Every target extent must be nonzero: this API does not expose OpenCV's
+zero-sentinel "preserve this dimension" convention. The target dimension count
+must be `2 .. 32`. The scalar count, including channels, must stay identical,
+and depth is unchanged. Shape-based reshape requires continuous storage. The
+result shares storage; `Clone` creates independent storage. The existing
+`Reshape (Channels)` and `Reshape (Channels, Rows)` overloads are unchanged.
 
 ### Conversion and element-wise mathematics
 
@@ -1582,9 +1607,11 @@ The current limitations are intentional and help keep the public API coherent:
 
 1. **The dense public `Mat` model is primarily 2-D.**  
    N-dimensional construction, UInt8/Int8/UInt16/Int16/Int32/Float16/Float32/Float64 C1
-   Get/Set, UInt8/Float16/Float32 C3 Vec3 Get/Set, and `Slice` views are available.
-   N-D reshape and dimension-dropping scalar indexing are not yet exposed as a
-   complete Ada model.
+   Get/Set, UInt8/Float16/Float32 C3 Vec3 Get/Set, `Slice` views, `Shape`, and
+   Shape-based N-D reshape are available. Dimension-dropping scalar indexing is
+   not yet exposed as a complete Ada model. N-D row, whole-buffer, and
+   external-view APIs are not provided, and arbitrary N-D external strides
+   remain unsupported.
 
 2. **No public `SparseMat` or `UMat` abstraction.**
 

@@ -1173,6 +1173,89 @@ package body OpenCV.Core is
       Multiply_Within_Column_Range (Source_Channels);
    end Validate_Reshape_Shape;
 
+   procedure Validate_ND_Reshape
+     (Self : Mat; Requested_Channels : Channel_Count; Shape : Dimension_Array)
+   is
+      Maximum_OpenCV_Dimensions : constant := 32;
+      Source_Factors            : array (1 .. 2) of Mat_Size :=
+        (Self.Total, Mat_Size (Self.Channels));
+      Target_Count              : constant Natural := Shape'Length + 1;
+   begin
+      if Self.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Mat reshape requires a nonempty Mat");
+      end if;
+
+      if not Self.Is_Continuous then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "N-dimensional Mat reshape requires continuous storage");
+      end if;
+
+      if Shape'Length < 2 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "N-dimensional Mat reshape requires at least two dimensions");
+      end if;
+
+      if Shape'Length > Maximum_OpenCV_Dimensions then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "N-dimensional Mat reshape exceeds OpenCV's 32-dimension limit");
+      end if;
+
+      declare
+         Target_Factors : array (1 .. Target_Count) of Mat_Size;
+         Position       : Natural := 1;
+
+         procedure Cancel (Factor : in out Mat_Size) is
+            Common : Mat_Size;
+         begin
+            for Source of Source_Factors loop
+               if Factor = 1 then
+                  return;
+               end if;
+
+               Common := Greatest_Common_Divisor (Source, Factor);
+               Source := Source / Common;
+               Factor := Factor / Common;
+            end loop;
+         end Cancel;
+      begin
+         for Extent_Value of Shape loop
+            if Extent_Value = 0 then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  "N-dimensional Mat reshape extents must be nonzero");
+            end if;
+
+            Target_Factors (Position) := Mat_Size (Extent_Value);
+            Position := Position + 1;
+         end loop;
+
+         Target_Factors (Position) := Mat_Size (Requested_Channels);
+
+         for Factor of Target_Factors loop
+            Cancel (Factor);
+            if Factor /= 1 then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  "Mat reshape dimensions do not preserve scalar element"
+                  & " count");
+            end if;
+         end loop;
+
+         for Source of Source_Factors loop
+            if Source /= 1 then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  "Mat reshape dimensions do not preserve scalar element"
+                  & " count");
+            end if;
+         end loop;
+      end;
+   end Validate_ND_Reshape;
+
    function Reshape (Self : Mat; Channels : Channel_Count) return Mat is
       Result     : Mat;
       New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
@@ -1212,6 +1295,44 @@ package body OpenCV.Core is
            Result   => New_Handle'Access);
       Raise_On_Error (Status, "Mat reshape");
 
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Reshape;
+
+   function Reshape (Self : Mat; Shape : Dimension_Array) return Mat
+   is (Reshape (Self, Self.Channels, Shape));
+
+   function Reshape
+     (Self : Mat; Channels : Channel_Count; Shape : Dimension_Array) return Mat
+   is
+      Result     : Mat;
+      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_ND_Reshape (Self, Channels, Shape);
+
+      declare
+         Sizes    :
+           OpenCV.Internal.C_API.C_Int32_Array (0 .. Shape'Length - 1);
+         Position : Natural := 0;
+      begin
+         for Extent_Value of Shape loop
+            Sizes (Position) := OpenCV.Internal.C_API.C_Int32 (Extent_Value);
+            Position := Position + 1;
+         end loop;
+
+         Status :=
+           OpenCV.Internal.C_API.Mat_Reshape_ND
+             (Source          => Self.Handle,
+              Channels        => OpenCV.Internal.C_API.C_Int32 (Channels),
+              Dimension_Count => OpenCV.Internal.C_API.C_Int32 (Shape'Length),
+              Sizes           => Sizes (Sizes'First)'Access,
+              Result          => New_Handle'Access);
+      end;
+
+      Raise_On_Error (Status, "Mat reshape");
       OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
       Result.Handle := New_Handle;
       return Result;
@@ -3398,6 +3519,29 @@ package body OpenCV.Core is
    is (Size'
          (Width  => Size_Coordinate (Self.Columns),
           Height => Size_Coordinate (Self.Rows)));
+
+   function Shape (Self : Mat) return Dimension_Array is
+      Count : constant Natural := Self.Dimension_Count;
+   begin
+      if Count = 0 then
+         return (1 .. 0 => 0);
+      end if;
+
+      if Count = 2 then
+         return
+           (1 => Size_Coordinate (Self.Rows),
+            2 => Size_Coordinate (Self.Columns));
+      end if;
+
+      declare
+         Result : Dimension_Array (1 .. Count);
+      begin
+         for Axis in Result'Range loop
+            Result (Axis) := Self.Extent (Axis);
+         end loop;
+         return Result;
+      end;
+   end Shape;
 
    function Channels (Self : Mat) return Channel_Count is
       Value  : aliased OpenCV.Internal.C_API.C_Int32 := 0;

@@ -496,6 +496,21 @@ package OpenCV.Core is
    function Reshape
      (Self : Mat; Channels : Channel_Count; Rows : Positive) return Mat;
 
+   --  Creates a distinct Mat header sharing Self's storage for the requested
+   --  shape. Iteration order of Shape maps directly to OpenCV dimensions
+   --  regardless of Shape'First. The Shape-only overload preserves
+   --  Self.Channels. The explicit Channels overload changes the channel count
+   --  while reshaping. Depth is unchanged and no pixel storage is copied.
+   --  Self must be nonempty and continuous. Shape'Length must be in 2 .. 32,
+   --  and every extent must be positive: a zero extent is invalid rather than
+   --  an OpenCV preserve-dimension sentinel. The target scalar count,
+   --  product (Shape) * requested Channels, must equal Self.Total *
+   --  Self.Channels exactly.
+   function Reshape (Self : Mat; Shape : Dimension_Array) return Mat;
+   function Reshape
+     (Self : Mat; Channels : Channel_Count; Shape : Dimension_Array)
+      return Mat;
+
    --  Creates a distinct single-column Mat header sharing Self's storage for
    --  the selected diagonal. Offset zero selects the main diagonal; positive
    --  offsets select diagonals above it (Offset 1 starts at row 0, column 1),
@@ -1137,6 +1152,14 @@ package OpenCV.Core is
    function Is_Empty (Self : Mat) return Boolean;
    function Rows (Self : Mat) return Natural;
    function Columns (Self : Mat) return Natural;
+
+   --  Returns every extent in Mat dimension order, indexed 1 ..
+   --  Dimension_Count. A default Mat with Dimension_Count = 0 returns a null
+   --  Dimension_Array. A typed empty 0 x 0 2-D Mat returns two zero extents.
+   --  A normal 2-D Mat returns (1 => Rows, 2 => Columns). A genuine N-D Mat
+   --  returns Extent for every axis rather than Rows or Columns. Dimensions
+   --  remains the 2-D Size view.
+   function Shape (Self : Mat) return Dimension_Array;
 
    --  Returns OpenCV's Mat.dims. A genuine default empty Mat reports 0. A
    --  typed 2-D Mat, including Create (0, 0, ...), reports 2.

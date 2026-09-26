@@ -4211,6 +4211,141 @@ opencv_core_mat_reshape(const opencv_core_mat_handle *source, int32_t channels,
 }
 
 opencv_core_status
+opencv_core_mat_reshape_nd(const opencv_core_mat_handle *source,
+                            int32_t channels, int32_t ndims,
+                            const int32_t *sizes,
+                            opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (source == nullptr) {
+        return invalid_argument("source Mat handle must not be null");
+    }
+
+    if (reject_temporary_external_view(source) != OPENCV_CORE_OK) {
+        return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
+    }
+
+    // ABI safety: reshape writes (channels-1) into the Mat channel bit field.
+    // Values outside 1 .. CV_CN_MAX wrap that encoding. OpenCV checks the
+    // upper bound only with CV_Assert, which is absent from release builds.
+    if (channels < 1 || channels > OPENCV_CORE_MAX_CHANNELS) {
+        return invalid_argument("channels must be in the range 1 .. 512");
+    }
+
+    if (ndims < 2) {
+        return invalid_argument("N-D reshape requires at least two dimensions");
+    }
+
+    // ABI safety: OpenCV indexes newsz[0 .. ndims-1] and stores the result in
+    // a 32-slot dimension table. A larger ndims reads past the caller buffer
+    // or overflows that table. CV_Assert does not reject this in release builds.
+    if (ndims > maximum_mat_dimensions) {
+        return invalid_argument(
+            "dimension count exceeds OpenCV's 32-dimension limit");
+    }
+
+    if (sizes == nullptr) {
+        return invalid_argument("sizes must not be null");
+    }
+
+    try {
+        const cv::Mat &source_mat = source->value;
+
+        // ABI safety: OpenCV's N-D reshape reaches setSize and step arithmetic
+        // on a header with no storage when the source is empty. Reject that
+        // before constructing another header over a null data pointer.
+        if (source_mat.empty() || source_mat.data == nullptr) {
+            return invalid_argument(
+                "N-D reshape requires a nonempty source Mat");
+        }
+
+        int opencv_sizes[maximum_mat_dimensions];
+        size_t target_elements = 1;
+        for (int32_t index = 0; index < ndims; ++index) {
+            // ABI safety: OpenCV 4.1/4.10 treat a zero extent as "copy this
+            // source dimension" and only CV_Assert that an extent is
+            // nonnegative. A negative extent or a zero sentinel would either
+            // fail that debug-only assert or silently change the requested
+            // shape before the scalar-count comparison.
+            if (sizes[index] <= 0) {
+                return invalid_argument(
+                    "N-D reshape extents must be positive");
+            }
+
+            if (!checked_size_mul(target_elements,
+                                  static_cast<size_t>(sizes[index]),
+                                  &target_elements)) {
+                return invalid_argument(
+                    "N-D reshape target element count exceeds native size range");
+            }
+
+            opencv_sizes[index] = static_cast<int>(sizes[index]);
+        }
+
+        size_t target_scalars = 0;
+        if (!checked_size_mul(target_elements, static_cast<size_t>(channels),
+                              &target_scalars)) {
+            return invalid_argument(
+                "N-D reshape target scalar count exceeds native size range");
+        }
+
+        // ABI safety: OpenCV computes total() * channels() in size_t before
+        // comparing it with the target product. total() itself multiplies
+        // extents in size_t with no overflow check. Reject a wrapped source
+        // scalar count before that comparison can succeed incorrectly.
+        size_t source_elements = 1;
+        const int source_dims = source_mat.dims;
+        if (source_dims < 1 || source_dims > maximum_mat_dimensions) {
+            return invalid_argument("source Mat dimension count is invalid");
+        }
+        for (int index = 0; index < source_dims; ++index) {
+            const int extent = source_mat.size[index];
+            if (extent <= 0 ||
+                !checked_size_mul(source_elements, static_cast<size_t>(extent),
+                                  &source_elements)) {
+                return invalid_argument(
+                    "source Mat scalar count exceeds native size range");
+            }
+        }
+
+        const int source_channels = source_mat.channels();
+        if (source_channels < 1 ||
+            source_channels > OPENCV_CORE_MAX_CHANNELS) {
+            return invalid_argument("source Mat channel count is invalid");
+        }
+
+        size_t source_scalars = 0;
+        if (!checked_size_mul(source_elements,
+                              static_cast<size_t>(source_channels),
+                              &source_scalars)) {
+            return invalid_argument(
+                "source Mat scalar count exceeds native size range");
+        }
+
+        // ABI safety: OpenCV's scalar-count product can wrap size_t before
+        // comparing counts. This checked comparison prevents a wrapped match
+        // from constructing a header that addresses beyond source storage.
+        if (target_scalars != source_scalars) {
+            return invalid_argument(
+                "N-D reshape must preserve the source scalar count");
+        }
+
+        *out_mat = new opencv_core_mat_handle(source_mat.reshape(
+            static_cast<int>(channels), static_cast<int>(ndims),
+            opencv_sizes));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_diagonal_matrix(const opencv_core_mat_handle *diagonal,
                                 opencv_core_mat_handle **out_mat) {
     clear_error();

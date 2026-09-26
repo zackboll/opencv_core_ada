@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Added `Mat.Shape`, the all-dimensional counterpart of 2-D `Dimensions`.
+  The result uses bounds `1 .. Dimension_Count`.
+- Added Shape-based `Mat.Reshape` overloads. They create a distinct header
+  that shares storage, preserve scalar order, and may change channel count.
+  Target extents must be nonzero, the dimension count must be `2 .. 32`, the
+  scalar count including channels must stay identical, and the source must be
+  continuous. OpenCV's zero-extent preserve-dimension sentinel is not exposed.
+  The existing 2-D `Reshape` overloads are unchanged.
+- Added the C ABI operation `opencv_core_mat_reshape_nd`.
+
 - Added N-D `Index_Array` Get/Set to `UInt8_Vec3_Access`,
   `Float16_Vec3_Access`, and `Float32_Vec3_Access`. One vector remains one
   complete three-channel element. Float16 N-D access copies the stored
