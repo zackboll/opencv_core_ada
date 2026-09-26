@@ -741,7 +741,7 @@ non-contiguous multirow strided view before invoking its callback.
 
 ## Typed access matrix
 
-Direct typed access currently concentrates on eleven common layouts:
+Direct typed access currently concentrates on thirteen common layouts:
 
 | Layout | 2-D Get/Set | N-D Get/Set | Classification | Copied row | Borrowed row | Continuous buffer borrow | Packed caller buffer -> `Mat` | Strided caller buffer -> `Mat` |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -753,9 +753,19 @@ Direct typed access currently concentrates on eleven common layouts:
 | Float16 C1 | `Float16_Access` | `Float16_Access` | `Float16_Value` helpers | `Float16_Row_Access` | `Float16_Row_Access` | `Float16_Buffer_Access` | `Float16_Mat_View` | `Float16_Mat_View` |
 | Float32 C1 | `Float32_Access` | `Float32_Access` | — | `Float32_Row_Access` | `Float32_Row_Access` | `Float32_Buffer_Access` | `Float32_Mat_View` | `Float32_Mat_View` |
 | Float64 C1 | `Float64_Access` | `Float64_Access` | `Float64_Access` | `Float64_Row_Access` | `Float64_Row_Access` | `Float64_Buffer_Access` | `Float64_Mat_View` | `Float64_Mat_View` |
+| Float32 C2 | `Float32_Vec2_Access` | `Float32_Vec2_Access` | — | `Float32_Vec2_Row_Access` | `Float32_Vec2_Row_Access` | `Float32_Vec2_Buffer_Access` | `Float32_Vec2_Mat_View` | `Float32_Vec2_Mat_View` |
+| Float64 C2 | `Float64_Vec2_Access` | `Float64_Vec2_Access` | — | `Float64_Vec2_Row_Access` | `Float64_Vec2_Row_Access` | `Float64_Vec2_Buffer_Access` | `Float64_Vec2_Mat_View` | `Float64_Vec2_Mat_View` |
 | UInt8 C3 | `UInt8_Vec3_Access` | `UInt8_Vec3_Access` | — | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Buffer_Access` | `UInt8_Vec3_Mat_View` | `UInt8_Vec3_Mat_View` |
 | Float16 C3 | `Float16_Vec3_Access` | `Float16_Vec3_Access` | — | `Float16_Vec3_Row_Access` | `Float16_Vec3_Row_Access` | `Float16_Vec3_Buffer_Access` | `Float16_Vec3_Mat_View` | `Float16_Vec3_Mat_View` |
 | Float32 C3 | `Float32_Vec3_Access` | `Float32_Vec3_Access` | — | `Float32_Vec3_Row_Access` | `Float32_Vec3_Row_Access` | `Float32_Vec3_Buffer_Access` | `Float32_Vec3_Mat_View` | `Float32_Vec3_Mat_View` |
+
+For Float32 and Float64 Vec2 APIs, **one vector is one complete two-channel
+Mat element**. Components are indexed 0 and 1; the vector packages attach no
+semantic meaning to either channel. Both depths support 2-D and N-D Get/Set,
+copied and borrowed 2-D rows, continuous 2-D whole-buffer borrowing, and
+packed/row-strided caller-owned 2-D views. Strides count complete Vec2
+elements, not scalar channels. Borrowed references must not escape callbacks.
+Float32 C2 elements occupy 8 bytes; Float64 C2 elements occupy 16 bytes.
 
 For Vec3 APIs, **one Ada vector is one complete OpenCV element/pixel**, not one
 scalar channel:
@@ -1314,6 +1324,9 @@ support, plus orthonormal DCT support:
 Four forward Fourier forms are available: ordinary full-complex, ordinary
 packed CCS, row-wise full-complex, and row-wise packed CCS.
 `Discrete_Fourier_Transform` returns a full two-channel (`C2`) complex spectrum.
+Use `Float32_Vec2_Access` or `Float64_Vec2_Access` to inspect full-complex
+spectra: for these spectral APIs, component 0 is real and component 1 is
+imaginary. Vec2 values outside this context remain semantic-neutral.
 For real (`C1`) input, `Packed_Discrete_Fourier_Transform` returns OpenCV's
 native same-shape, same-depth packed CCS (`C1`) spectrum. The `_Rows` forms
 perform each row as an independent 1-D transform. In particular,
@@ -1615,7 +1628,7 @@ The current limitations are intentional and help keep the public API coherent:
 
 2. **No public `SparseMat` or `UMat` abstraction.**
 
-3. **Typed direct/zero-copy access is focused on UInt8 and Float32 C1/C3, plus Int8/UInt16/Int16/Int32/Float16 C1, Float16 C3, and Float64 C1.**
+3. **Typed direct/zero-copy access covers selected C1/C2/C3 layouts.**
    Int8, UInt16, Int16, and Int32 C1 have 2-D and N-D Get/Set, copied and borrowed
    2-D rows, continuous whole-buffer borrowing, and packed or row-strided
    2-D caller-buffer views. Int8 preserves the exact signed domain `-128 .. 127`
@@ -1639,16 +1652,18 @@ The current limitations are intentional and help keep the public API coherent:
    borrowed row access, continuous buffer borrowing, packed or strided
    external caller-buffer Mat views, and C3 2-D and N-D Vec3 Get/Set plus 2-D
    rows, continuous buffer borrowing, and packed or strided external
-   caller-buffer Mat views. Vec2, Vec4, and other multi-channel typed families
-   are not provided.
+   caller-buffer Mat views. Float32 and Float64 C2 now have complete Vec2
+   element, row, buffer, and external-view access. Vec4 and broader
+   multi-channel typed families remain unavailable.
 
 4. **External caller-buffer views are writable and callback-scoped.**  
    Packed 2-D views are available for UInt8, Int8, UInt16, Int16, Int32, Float16,
    Float32, and Float64 C1, plus UInt8, Float16, and Float32 C3. Row-strided
-   external storage is exposed for the same layouts. C3 row strides count
-   complete Vec3 pixels, not scalar channels. Strided backing storage must contain a complete
+   external storage is exposed for the same layouts and Float32/Float64 C2.
+   C2 and C3 row strides count complete vectors, not scalar channels.
+   Strided backing storage must contain a complete
    `Rows * Row_Stride` element extent, including final-row padding.
-   Arbitrary N-D strides, multi-channel Float64 external views, and a separate
+   Arbitrary N-D strides, broader Float64 Cn external views, and a separate
    read-only external Mat abstraction are not yet exposed.
 
 5. **Whole-buffer borrowing requires continuous 2-D storage.**

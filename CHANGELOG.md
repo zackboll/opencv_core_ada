@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Added Float32/Float64 C2 Vec2 typed 2-D and N-D element access, copied and
+  zero-copy borrowed rows, continuous buffer borrowing, and packed/strided
+  caller-owned views. C ABI uses explicit two-scalar structs and checks depth,
+  channels, element size, storage, and indices before typed OpenCV access.
+  Full-complex DFT spectra can now be inspected as Vec2 elements without
+  changing the existing spectral signatures.
+
 - Added `Mat.Shape`, the all-dimensional counterpart of 2-D `Dimensions`.
   The result uses bounds `1 .. Dimension_Count`.
 - Added Shape-based `Mat.Reshape` overloads. They create a distinct header
