@@ -1,4 +1,5 @@
 with Ada.Unchecked_Conversion;
+with Ada.Strings.Fixed;
 with AUnit.Assertions;
 with OpenCV.Core;
 with OpenCV.Core.Module_Interop;
@@ -64,13 +65,17 @@ package body Vec2_Access_Tests.Raw_ABI is
          AUnit.Assertions.Assert (S = C.Error_Invalid_Argument, "past extent");
       end Probe;
       procedure Wrong32 (H : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         Valid_Indices : aliased C.C_Int32_Array (0 .. 2) := (0, 0, 0);
       begin
          S :=
            C.Mat_Get_Float32_Vec2_ND
-             (Raw_Handle (H), 3, Idx (0)'Access, Out32'Access);
+             (Raw_Handle (H), 3, Valid_Indices (0)'Access, Out32'Access);
          AUnit.Assertions.Assert
-           (S = C.Error_Invalid_Argument,
-            "same-size Float64 C1 must not be read as Float32 C2");
+           (S = C.Error_Invalid_Argument
+            and then Ada.Strings.Fixed.Index
+                       (C.Last_Error_Message, "Mat depth must be Float32")
+                     /= 0,
+            "same-width layout must fail for Float32 depth, not bounds");
       end Wrong32;
       procedure Probe64 (H : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
          Raw : constant C.Mat_Handle := Raw_Handle (H);
