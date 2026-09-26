@@ -1265,6 +1265,17 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_borrow_row_data";
 
+   --  Complete logical storage of a continuous Mat of any dimensionality.
+   --  A zero-element Mat succeeds with a null address and zero bytes.
+   function Mat_Borrow_Contiguous_Data
+     (Self           : Mat_Handle;
+      Data           : access System.Address;
+      Out_Byte_Count : access C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_borrow_contiguous_data";
+
    function Mat_Get_UInt8_Vec3
      (Self   : Mat_Handle;
       Row    : C_Int32;

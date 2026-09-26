@@ -484,7 +484,7 @@ package body Float16_Vec3_Buffer_Access_Tests is
         (not Invoked, "Type validation must precede callback invocation");
    end Wrong_Layout_Does_Not_Invoke_Callback;
 
-   procedure Three_Dimensional_Mat_Is_Rejected_Before_Callback
+   procedure Three_Dimensional_Continuous_Mat_Is_Borrowed
      (Test : in out Fixture)
    is
       pragma Unreferenced (Test);
@@ -494,30 +494,23 @@ package body Float16_Vec3_Buffer_Access_Tests is
       Invoked : Boolean := False;
 
       procedure Mark
-        (Data : aliased OpenCV.Core.Float16_Vec3_Buffer_Access.Buffer_Array)
-      is
-         pragma Unreferenced (Data);
+        (Data : aliased OpenCV.Core.Float16_Vec3_Buffer_Access.Buffer_Array) is
       begin
          Invoked := True;
+         AUnit.Assertions.Assert
+           (Data'First = 0 and then Data'Length = 24,
+            "A continuous 2 x 3 x 4 Float16 C3 Mat must borrow 24 complete"
+            & " pixels, not 72 scalars");
       end Mark;
-
-      procedure Borrow is
-      begin
-         OpenCV.Core.Float16_Vec3_Buffer_Access.With_Read_Only_Buffer
-           (Image, Mark'Access);
-      end Borrow;
    begin
       AUnit.Assertions.Assert
         (Image.Is_Continuous and then Image.Dimension_Count = 3,
          "The dimensional fixture must be a continuous genuine 3-D Mat");
-      Assert_Raises_OpenCV_Error
-        (Borrow'Access,
-         "Float16 Vec3 whole-buffer access must match the established 2-D"
-         & " contract");
+      OpenCV.Core.Float16_Vec3_Buffer_Access.With_Read_Only_Buffer
+        (Image, Mark'Access);
       AUnit.Assertions.Assert
-        (not Invoked,
-         "Dimensional validation must precede callback invocation");
-   end Three_Dimensional_Mat_Is_Rejected_Before_Callback;
+        (Invoked, "A continuous N-D Float16 C3 buffer must invoke Process");
+   end Three_Dimensional_Continuous_Mat_Is_Borrowed;
 
    procedure Typed_Empty_Mat_Invokes_Callback_With_Empty_Array
      (Test : in out Fixture)
@@ -741,8 +734,8 @@ package body Float16_Vec3_Buffer_Access_Tests is
             Typed_Empty_Mat_Invokes_Callback_With_Empty_Array'Access));
       Result.Add_Test
         (Caller.Create
-           ("Float16 Vec3 buffer matches established 2-D dimensional contract",
-            Three_Dimensional_Mat_Is_Rejected_Before_Callback'Access));
+           ("Float16 Vec3 buffer borrows a continuous genuine 3-D Mat",
+            Three_Dimensional_Continuous_Mat_Is_Borrowed'Access));
       Result.Add_Test
         (Caller.Create
            ("Float16 Vec3 buffer reports enforced representation",

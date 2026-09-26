@@ -6345,6 +6345,104 @@ opencv_core_mat_borrow_row_data(opencv_core_mat_handle *mat, int32_t row,
 }
 
 opencv_core_status
+opencv_core_mat_borrow_contiguous_data(opencv_core_mat_handle *mat,
+                                       void **out_data,
+                                       uint64_t *out_byte_count) {
+    clear_error();
+
+    if (out_data != nullptr) {
+        *out_data = nullptr;
+    }
+    if (out_byte_count != nullptr) {
+        *out_byte_count = 0;
+    }
+
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+
+    if (out_data == nullptr) {
+        return invalid_argument("out_data must not be null");
+    }
+
+    if (out_byte_count == nullptr) {
+        return invalid_argument("out_byte_count must not be null");
+    }
+
+    try {
+        const cv::Mat &value = mat->value;
+
+        // ABI safety: the shim itself reads size.p[0 .. dims - 1]. A
+        // dimension count outside OpenCV's 0 .. 32 domain would index past
+        // the header's size array.
+        if (value.dims < 0 || value.dims > maximum_mat_dimensions) {
+            return invalid_argument("Mat dimension count is invalid");
+        }
+
+        // A default Mat has zero dimensions and zero logical elements;
+        // size.p must not be interpreted as an extent list.
+        if (value.dims == 0) {
+            return OPENCV_CORE_OK;
+        }
+
+        size_t element_count = 1;
+        for (int axis = 0; axis < value.dims; ++axis) {
+            const int extent = value.size.p[axis];
+            // ABI safety: a negative extent converted to size_t would wrap
+            // into a huge byte count that the caller would overlay.
+            if (extent < 0) {
+                return invalid_argument("Mat extent must not be negative");
+            }
+            if (!checked_size_mul(element_count, static_cast<size_t>(extent),
+                                  &element_count)) {
+                return invalid_argument(
+                    "Mat element count exceeds the native size range");
+            }
+        }
+
+        // No logical storage exists; never report or invent an address.
+        if (element_count == 0) {
+            return OPENCV_CORE_OK;
+        }
+
+        // ABI safety: the reported byte count asserts that
+        // element_count * elemSize() bytes starting at data are exactly
+        // the Mat's elements. That only holds for continuous storage; for
+        // a gapped N-D Slice or 2-D Region the span would include gap
+        // bytes and could extend past the end of the allocation.
+        if (!value.isContinuous()) {
+            return invalid_argument("Mat must be continuous");
+        }
+
+        // ABI safety: a nonempty overlay needs a real storage address.
+        if (value.data == nullptr) {
+            return invalid_argument("Mat has no storage");
+        }
+
+        size_t logical_bytes = 0;
+        if (!checked_size_mul(element_count, value.elemSize(),
+                              &logical_bytes)) {
+            return invalid_argument(
+                "Mat byte count exceeds the native size range");
+        }
+
+        uint64_t abi_byte_count = 0;
+        if (!size_to_abi(logical_bytes, abi_byte_count)) {
+            return invalid_argument(
+                "Mat byte count exceeds the C ABI size range");
+        }
+
+        *out_data = static_cast<void *>(value.data);
+        *out_byte_count = abi_byte_count;
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        *out_data = nullptr;
+        *out_byte_count = 0;
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_read_uint8_vec3_row(const opencv_core_mat_handle *mat,
                                     int32_t row, uint8_t *data,
                                     uint64_t element_count) {

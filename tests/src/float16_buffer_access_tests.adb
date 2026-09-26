@@ -543,7 +543,7 @@ package body Float16_Buffer_Access_Tests is
         (Invoked, "A typed empty Float16 Mat must invoke its callback");
    end Typed_Empty_Mat_Invokes_Callback_With_Empty_Array;
 
-   procedure Three_Dimensional_Mat_Is_Rejected_Before_Callback
+   procedure Three_Dimensional_Continuous_Mat_Is_Borrowed
      (Test : in out Fixture)
    is
       pragma Unreferenced (Test);
@@ -553,30 +553,22 @@ package body Float16_Buffer_Access_Tests is
       Invoked : Boolean := False;
 
       procedure Mark
-        (Data : aliased OpenCV.Core.Float16_Buffer_Access.Buffer_Array)
-      is
-         pragma Unreferenced (Data);
+        (Data : aliased OpenCV.Core.Float16_Buffer_Access.Buffer_Array) is
       begin
          Invoked := True;
+         AUnit.Assertions.Assert
+           (Data'First = 0 and then Data'Length = 24,
+            "A continuous 2 x 3 x 4 Float16 Mat must borrow 24 elements");
       end Mark;
-
-      procedure Borrow is
-      begin
-         OpenCV.Core.Float16_Buffer_Access.With_Read_Only_Buffer
-           (Image, Mark'Access);
-      end Borrow;
    begin
       AUnit.Assertions.Assert
         (Image.Is_Continuous and then Image.Dimension_Count = 3,
          "The dimensional fixture must be a continuous genuine 3-D Mat");
-      Assert_Raises_OpenCV_Error
-        (Borrow'Access,
-         "Float16 whole-buffer access must match the established 2-D"
-         & " contract");
+      OpenCV.Core.Float16_Buffer_Access.With_Read_Only_Buffer
+        (Image, Mark'Access);
       AUnit.Assertions.Assert
-        (not Invoked,
-         "Dimensional validation must precede callback invocation");
-   end Three_Dimensional_Mat_Is_Rejected_Before_Callback;
+        (Invoked, "A continuous N-D Float16 buffer must invoke Process");
+   end Three_Dimensional_Continuous_Mat_Is_Borrowed;
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
@@ -622,8 +614,8 @@ package body Float16_Buffer_Access_Tests is
             Typed_Empty_Mat_Invokes_Callback_With_Empty_Array'Access));
       Result.Add_Test
         (Caller.Create
-           ("Float16 buffer matches established 2-D dimensional contract",
-            Three_Dimensional_Mat_Is_Rejected_Before_Callback'Access));
+           ("Float16 buffer borrows a continuous genuine 3-D Mat",
+            Three_Dimensional_Continuous_Mat_Is_Borrowed'Access));
       return Result'Access;
    end Suite;
 

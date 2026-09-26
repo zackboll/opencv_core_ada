@@ -3,18 +3,23 @@ package OpenCV.Core.UInt8_Buffer_Access is
    type Buffer_Array is array (Natural range <>) of UInt8_Value;
 
    --  Invokes Process with a zero-copy view of a continuous UInt8 C1
-   --  Mat. Data directly aliases native OpenCV storage for the entire
+   --  Mat of any dimension count; genuine N-D Mats are supported.
+   --  Data directly aliases native OpenCV storage for the entire
    --  logical buffer; no pixel values are copied. The explicitly
    --  aliased callback formal guarantees that Data is passed by
    --  reference and directly denotes the borrowed Mat for the duration
    --  of Process. The ordinary lifetime of the view is the callback.
-   --  Data is a flat zero-based row-major array of Mat elements:
+   --  Data is one flat zero-based array of Mat elements in OpenCV
+   --  element order, final dimension varying fastest:
    --  Data'First = 0, Data'Last = Natural (Image.Total) - 1, and
-   --  Data'Length = Natural (Image.Total). Element
+   --  Data'Length = Natural (Image.Total). For Shape (D1, ..., Dn),
+   --  zero-based index (I1, ..., In) is Data offset
+   --  ((I1 * D2 + I2) * D3 + ...) * Dn + In. For a 2-D Mat, element
    --  Data (Row * Image.Columns + Column) denotes Image (Row, Column).
-   --  There are no row separators or inter-row padding. Image must be
-   --  continuous; a nonempty non-continuous Mat raises OpenCV_Error
-   --  before Process is invoked. A continuous Region is accepted even
+   --  There are no row separators, padding, or gaps. Image must be
+   --  continuous (Is_Continuous); a nonempty non-continuous Mat, such
+   --  as a gapped Region or Slice, raises OpenCV_Error before Process
+   --  is invoked. A continuous Region or N-D Slice is accepted even
    --  when it is a submatrix. The implementation holds one shallow Mat
    --  lease for the callback so referenced storage cannot disappear
    --  merely because another header is rebound or finalized. That lease

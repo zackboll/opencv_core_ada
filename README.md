@@ -18,7 +18,7 @@ translation of the C++ headers.
 >
 > **Development status:** active, pre-1.0 API.
 >
-> **Current test baseline:** 1339 AUnit tests, with Ada and C++ warnings promoted
+> **Current test baseline:** 1350 AUnit tests, with Ada and C++ warnings promoted
 > to errors. GitHub Actions exercises the full test suite against four OpenCV
 > compatibility targets, plus a native Ubuntu 24.04 ARM64 job.
 >
@@ -359,7 +359,7 @@ The test crate carries development-only dependencies such as AUnit, GNATprove,
 and GNATcov. They are intentionally not dependencies of the public library
 crate.
 
-At the time of this README update, the full suite contains **1339 AUnit tests**.
+At the time of this README update, the full suite contains **1350 AUnit tests**.
 Coverage includes ordinary behavior, invalid input, shape/depth/channel
 compatibility, empty Mats, non-contiguous Regions, shallow-versus-independent
 ownership, callback lifetimes, arbitrary Ada array lower bounds, failure
@@ -672,15 +672,27 @@ synchronization.
 
 ### Scoped continuous whole-buffer borrowing
 
-The eleven matching buffer-access packages provide:
+The sixteen matching buffer-access packages provide:
 
 ```text
 With_Read_Only_Buffer
 With_Writable_Buffer
 ```
 
-The callback receives a flat zero-based row-major array of `Image.Total`
-elements. Nonempty Mats must be continuous. Continuous Regions are accepted.
+The callback receives one flat zero-based array of `Natural (Image.Total)`
+elements. Nonempty Mats must be continuous (`Is_Continuous`); this applies to
+ordinary 2-D Mats and to genuine N-D Mats alike. Continuous Regions and
+continuous N-D `Slice` views are accepted; gapped Regions and gapped N-D
+Slices are rejected before the callback runs.
+
+Elements appear in ordinary OpenCV contiguous order: the final dimension
+varies fastest. For a Mat with `Shape => (D1, D2, ..., Dn)`, zero-based index
+`(I1, I2, ..., In)` is at flat offset
+`((I1 * D2 + I2) * D3 + ...) * Dn + In`. For example, in a `(2, 3, 4)` Mat,
+`(I, J, K)` is `Data (((I * 3) + J) * 4 + K)`. For a 2-D Mat this is the
+familiar `Data (Row * Image.Columns + Column)`. One array element is always
+one complete Mat element: a `(2, 3, 4)` Float64 C4 Mat yields
+`Data'Length = 24` Vec4 values, not 96 scalars.
 There is no per-row copy and no write-back phase. The callback lifetime bounds
 the borrowed view; callers must not retain a reference or address afterward.
 Float64 C1 buffer access directly overlays native CV_64F storage without
@@ -762,10 +774,16 @@ Direct typed access currently concentrates on sixteen common layouts:
 | Float32 C4 | `Float32_Vec4_Access` | `Float32_Vec4_Access` | — | `Float32_Vec4_Row_Access` | `Float32_Vec4_Row_Access` | `Float32_Vec4_Buffer_Access` | `Float32_Vec4_Mat_View` | `Float32_Vec4_Mat_View` |
 | Float64 C4 | `Float64_Vec4_Access` | `Float64_Vec4_Access` | — | `Float64_Vec4_Row_Access` | `Float64_Vec4_Row_Access` | `Float64_Vec4_Buffer_Access` | `Float64_Vec4_Mat_View` | `Float64_Vec4_Mat_View` |
 
+The **Continuous buffer borrow** column applies to every continuous Mat of the
+listed layout, including genuine N-D Mats and continuous N-D `Slice` views.
+The flat array uses OpenCV element order with the final dimension varying
+fastest (see "Scoped continuous whole-buffer borrowing" above). Row and
+caller-buffer columns remain 2-D concepts.
+
 For Float32 and Float64 Vec2 APIs, **one vector is one complete two-channel
 Mat element**. Components are indexed 0 and 1; the vector packages attach no
 semantic meaning to either channel. Both depths support 2-D and N-D Get/Set,
-copied and borrowed 2-D rows, continuous 2-D whole-buffer borrowing, and
+copied and borrowed 2-D rows, continuous 2-D or N-D whole-buffer borrowing, and
 packed/row-strided caller-owned 2-D views. Strides count complete Vec2
 elements, not scalar channels. Borrowed references must not escape callbacks.
 Float32 C2 elements occupy 8 bytes; Float64 C2 elements occupy 16 bytes.
@@ -828,7 +846,7 @@ signed zeros, subnormals, infinities, and NaN payloads, round-trips through
 callback-scoped zero-copy row access for 2-D C1 Mats, including
 non-contiguous Regions, and likewise preserves exact binary16 object bits
 without converting through Float32. `Float16_Buffer_Access` adds
-callback-scoped zero-copy whole-buffer borrowing for continuous 2-D C1
+callback-scoped zero-copy whole-buffer borrowing for continuous 2-D or N-D C1
 Mats. Non-contiguous Regions still require row access. `Float16_Mat_View`
 adds callback-scoped packed and row-strided caller-owned CV_16FC1 storage.
 Packed views overlay a contiguous Ada array. Row-strided views use
@@ -848,7 +866,7 @@ complete six-byte pixel and preserves every binary16 component encoding. `Float1
 callback-scoped zero-copy row access for 2-D C3 Mats, including non-contiguous
 Regions, and likewise preserves exact binary16 component bits without converting
 through Float32. `Float16_Vec3_Buffer_Access` adds callback-scoped zero-copy
-whole-buffer borrowing for continuous 2-D C3 Mats. `Float16_Vec3_Mat_View` adds
+whole-buffer borrowing for continuous 2-D or N-D C3 Mats. `Float16_Vec3_Mat_View` adds
 callback-scoped packed and row-strided caller-owned CV_16FC3 storage. Packed
 views overlay a contiguous Ada array of `Float16_Vec3.Vector` pixels.
 Row-strided views use `With_Writable_Strided_Mat_View` so a 2-D `Row_Stride`
@@ -865,7 +883,7 @@ BGR meaning.
 classification. `Float64_Row_Access` adds copied and callback-scoped zero-copy
 row access for 2-D C1 Mats, including non-contiguous Regions.
 `Float64_Buffer_Access` adds callback-scoped zero-copy whole-buffer borrowing
-for continuous 2-D Mats. `Float64_Mat_View` adds callback-scoped packed and
+for continuous 2-D or N-D Mats. `Float64_Mat_View` adds callback-scoped packed and
 row-strided caller-owned CV_64FC1 storage. Packed views overlay a contiguous
 Ada array. Row-strided views use `With_Writable_Strided_Mat_View` so a 2-D
 `Row_Stride` can skip padding between logical rows. Arbitrary N-D strides are
@@ -992,6 +1010,12 @@ Metadata:
 ```text
 Start <= index < Stop
 ```
+
+Continuous genuine N-D Mats, including continuous N-D `Slice` views, can also
+be borrowed as one flat typed array through every `*_Buffer_Access` package;
+the final dimension varies fastest. A gapped Slice (for example one that
+restricts a middle axis while keeping several outer blocks) is rejected
+before the callback runs.
 
 `Dimensions` is the 2-D `Size` view: width is `Columns` and height is `Rows`.
 `Shape` is the all-dimensional counterpart. It returns every extent in Mat
@@ -1641,10 +1665,12 @@ The current limitations are intentional and help keep the public API coherent:
    N-dimensional construction, UInt8/Int8/UInt16/Int16/Int32/Float16/Float32/Float64 C1
    Get/Set, Float32/Float64 C2 Vec2, UInt8/Float16/Float32/Float64 C3 Vec3,
    and Float32/Float64 C4 Vec4 Get/Set, `Slice` views, `Shape`, and
-   Shape-based N-D reshape are available. Dimension-dropping scalar indexing is
-   not yet exposed as a complete Ada model. N-D row, whole-buffer, and
-   external-view APIs are not provided, and arbitrary N-D external strides
-   remain unsupported.
+   Shape-based N-D reshape are available. Callback-scoped whole-buffer
+   borrowing is provided for continuous N-D Mats of every typed layout.
+   Dimension-dropping scalar indexing is not yet exposed as a complete Ada
+   model. N-D row APIs are not provided because a row is a 2-D concept. N-D
+   caller-owned external buffer views are not yet available, and arbitrary
+   N-D external strides remain unsupported.
 
 2. **No public `SparseMat` or `UMat` abstraction.**
 
@@ -1654,16 +1680,16 @@ The current limitations are intentional and help keep the public API coherent:
    2-D caller-buffer views. Int8 preserves the exact signed domain `-128 .. 127`
    without unsigned or floating-point intermediates. Float16 C1 has 2-D and N-D Get/Set that
    preserve the exact binary16 encoding, plus copied and borrowed 2-D row
-   access, continuous 2-D whole-buffer borrowing, and packed or row-strided
+   access, continuous 2-D/N-D whole-buffer borrowing, and packed or row-strided
    2-D caller-buffer views. Float16 C3 has 2-D and N-D Vec3 Get/Set, copied and
-   borrowed 2-D rows, continuous 2-D whole-buffer borrowing, and packed or
+   borrowed 2-D rows, continuous 2-D/N-D whole-buffer borrowing, and packed or
    row-strided 2-D caller-buffer views that preserve exact binary16 encodings
    per channel. UInt8 C3 and Float32 C3 likewise have 2-D and N-D Vec3 Get/Set.
-   One vector remains one complete three-channel element; N-D access does not
-   flatten channels into scalar indices. Rows, whole-buffer borrowing, and
+   One vector remains one complete three-channel element; neither N-D access
+   nor N-D buffer borrowing flattens channels into scalar indices. Rows and
    external views remain 2-D concepts; arbitrary N-D external strides are not
    supported. Float64 C1 has 2-D and
-   N-D Get/Set, classification, 2-D row access, continuous 2-D whole-buffer
+   N-D Get/Set, classification, 2-D row access, continuous 2-D/N-D whole-buffer
    borrowing, and packed or row-strided 2-D caller-buffer views. Other OpenCV
    depths are available to general Mat operations but do not yet have the same
    typed access families. Float16 now has an exact 16-bit public value
@@ -1674,7 +1700,7 @@ The current limitations are intentional and help keep the public API coherent:
    rows, continuous buffer borrowing, and packed or strided external
    caller-buffer Mat views. Float32 and Float64 C1/C2/C3/C4 have complete typed
    coverage. Float32/Float64 Vec4 are available; UInt8, Float16, and integer
-   Vec4 and C5+ typed families remain unavailable. N-D row, buffer, and
+   Vec4 and C5+ typed families remain unavailable. N-D row and N-D
    external-view APIs remain unavailable.
 
 4. **External caller-buffer views are writable and callback-scoped.**  
@@ -1687,9 +1713,12 @@ The current limitations are intentional and help keep the public API coherent:
    Arbitrary N-D strides, C5+ external views, and a separate
    read-only external Mat abstraction are not yet exposed.
 
-5. **Whole-buffer borrowing requires continuous 2-D storage.**
-   A typed empty Mat invokes the callback with an empty array. Use row borrowing
-   for non-contiguous 2-D Regions or row-strided Mats.
+5. **Whole-buffer borrowing requires continuous storage.**
+   Genuine continuous N-D Mats and continuous N-D Slices are supported, in
+   OpenCV element order with the final dimension varying fastest. A typed
+   empty Mat invokes the callback with an empty array. Use row borrowing for
+   non-contiguous 2-D Regions or row-strided Mats. A non-contiguous N-D Slice
+   has no row-based alternative; use `Clone` to obtain continuous storage.
 
 6. **Scalar-valued APIs represent at most four components.**  
    Operations returning `Scalar` validate channel limits rather than silently

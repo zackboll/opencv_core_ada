@@ -1267,6 +1267,27 @@ opencv_core_mat_borrow_row_data(opencv_core_mat_handle *mat, int32_t row,
                                 void **out_data, uint64_t *out_byte_count);
 
 /*
+ * Borrow the complete logical element storage of a continuous Mat of any
+ * dimensionality without copying pixels. This is an implementation
+ * operation for callback-scoped typed buffer borrowing; it is not a row
+ * API and does not transfer or extend ownership.
+ *
+ * On success for a Mat with at least one element, out_data is mat.data
+ * and out_byte_count is exactly product(all extents) * elemSize(),
+ * computed with checked size_t arithmetic. The Mat must be continuous and
+ * must have storage. A Mat with zero logical elements (including a
+ * default Mat with zero dimensions) succeeds with out_data = NULL and
+ * out_byte_count = 0; no storage is invented. On failure both outputs are
+ * NULL / 0. The returned address is valid only while the caller's Mat
+ * handle (or another header sharing the same storage) remains alive. The
+ * Mat header is not mutated and no pixel storage is allocated.
+ */
+opencv_core_status
+opencv_core_mat_borrow_contiguous_data(opencv_core_mat_handle *mat,
+                                       void **out_data,
+                                       uint64_t *out_byte_count);
+
+/*
  * Read or write one element of a two-dimensional, exactly three-channel Mat.
 
  * Row, column, and component numbering are zero-based. The ABI Vec structs

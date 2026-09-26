@@ -321,7 +321,7 @@ package body Float64_Buffer_Access_Tests is
          "Writes before a callback exception must remain visible");
    end Callback_Exception_Propagates_And_Preserves_Writes;
 
-   procedure Three_Dimensional_Mat_Is_Rejected_Before_Callback
+   procedure Three_Dimensional_Continuous_Mat_Is_Borrowed
      (Test : in out Fixture)
    is
       pragma Unreferenced (Test);
@@ -331,30 +331,22 @@ package body Float64_Buffer_Access_Tests is
       Invoked : Boolean := False;
 
       procedure Mark
-        (Data : aliased OpenCV.Core.Float64_Buffer_Access.Buffer_Array)
-      is
-         pragma Unreferenced (Data);
+        (Data : aliased OpenCV.Core.Float64_Buffer_Access.Buffer_Array) is
       begin
          Invoked := True;
+         AUnit.Assertions.Assert
+           (Data'First = 0 and then Data'Length = 24,
+            "A continuous 2 x 3 x 4 Float64 Mat must borrow 24 elements");
       end Mark;
-
-      procedure Borrow is
-      begin
-         OpenCV.Core.Float64_Buffer_Access.With_Read_Only_Buffer
-           (Image, Mark'Access);
-      end Borrow;
    begin
       AUnit.Assertions.Assert
         (Image.Is_Continuous and then Image.Dimension_Count = 3,
          "The dimensional fixture must be a continuous genuine 3-D Mat");
-      Assert_Raises_OpenCV_Error
-        (Borrow'Access,
-         "Float64 whole-buffer access must match the established 2-D"
-         & " contract");
+      OpenCV.Core.Float64_Buffer_Access.With_Read_Only_Buffer
+        (Image, Mark'Access);
       AUnit.Assertions.Assert
-        (not Invoked,
-         "Dimensional validation must precede callback invocation");
-   end Three_Dimensional_Mat_Is_Rejected_Before_Callback;
+        (Invoked, "A continuous N-D Float64 buffer must invoke Process");
+   end Three_Dimensional_Continuous_Mat_Is_Borrowed;
 
    procedure Typed_Empty_Mat_Invokes_Callback_With_Empty_Array
      (Test : in out Fixture)
@@ -410,8 +402,8 @@ package body Float64_Buffer_Access_Tests is
             Callback_Exception_Propagates_And_Preserves_Writes'Access));
       Result.Add_Test
         (Caller.Create
-           ("Float64 buffer matches established 2-D dimensional contract",
-            Three_Dimensional_Mat_Is_Rejected_Before_Callback'Access));
+           ("Float64 buffer borrows a continuous genuine 3-D Mat",
+            Three_Dimensional_Continuous_Mat_Is_Borrowed'Access));
       Result.Add_Test
         (Caller.Create
            ("Float64 typed empty buffer invokes callback with empty array",

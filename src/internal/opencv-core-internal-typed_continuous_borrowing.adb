@@ -1,5 +1,5 @@
 with Ada.Exceptions;
-with OpenCV.Core.Internal.Row_Data;
+with OpenCV.Core.Internal.Continuous_Data;
 with OpenCV.Internal.C_API;
 with System;
 with System.Address_To_Access_Conversions;
@@ -77,22 +77,6 @@ package body OpenCV.Core.Internal.Typed_Continuous_Borrowing is
       end if;
    end Validate_Borrow;
 
-   function Expected_Logical_Row_Bytes
-     (Column_Count : Natural) return OpenCV.Internal.C_API.C_UInt64
-   is
-      Columns : constant OpenCV.Internal.C_API.C_UInt64 :=
-        OpenCV.Internal.C_API.C_UInt64 (Column_Count);
-   begin
-      if Column_Count /= 0
-        and then Columns > OpenCV.Internal.C_API.C_UInt64'Last / Element_Bytes
-      then
-         Raise_Invalid_Access
-           (Type_Name & " row byte count exceeds the representable range");
-      end if;
-
-      return Columns * Element_Bytes;
-   end Expected_Logical_Row_Bytes;
-
    function Element_Count (Image : Mat) return Natural is
       Total : constant Mat_Size := Image.Total;
    begin
@@ -104,7 +88,12 @@ package body OpenCV.Core.Internal.Typed_Continuous_Borrowing is
       return Natural (Total);
    end Element_Count;
 
-   procedure Check_Total_Bytes (Count : Natural) is
+   --  Returns Count * Element_Bytes, the exact logical byte count of a
+   --  continuous buffer of Count typed elements, or raises when it is not
+   --  representable.
+   function Expected_Total_Bytes
+     (Count : Natural) return OpenCV.Internal.C_API.C_UInt64
+   is
       Elements : constant OpenCV.Internal.C_API.C_UInt64 :=
         OpenCV.Internal.C_API.C_UInt64 (Count);
    begin
@@ -114,26 +103,38 @@ package body OpenCV.Core.Internal.Typed_Continuous_Borrowing is
          Raise_Invalid_Access
            (Type_Name & " buffer byte count exceeds the representable range");
       end if;
-   end Check_Total_Bytes;
 
-   procedure Check_Borrowed_Row
-     (Borrowed     : OpenCV.Core.Internal.Row_Data.Borrowed_Row;
-      Column_Count : Natural)
+      return Elements * Element_Bytes;
+   end Expected_Total_Bytes;
+
+   --  Borrows the complete contiguous storage of a nonempty Lease and
+   --  verifies it describes exactly Count typed elements before any Ada
+   --  overlay is constructed.
+   function Borrow_Storage
+     (Lease : Mat; Count : Positive) return System.Address
    is
       use type System.Address;
+
+      Expected : constant OpenCV.Internal.C_API.C_UInt64 :=
+        Expected_Total_Bytes (Count);
+      Borrowed :
+        constant OpenCV.Core.Internal.Continuous_Data.Borrowed_Buffer :=
+          OpenCV.Core.Internal.Continuous_Data.Borrow (Lease);
    begin
-      if Borrowed.Byte_Count /= Expected_Logical_Row_Bytes (Column_Count) then
+      if Borrowed.Byte_Count /= Expected then
          Raise_Invalid_Access
            ("borrowed "
             & Type_Name
-            & " row byte count does not match Mat columns");
+            & " buffer byte count does not match Mat total");
       end if;
 
-      if Column_Count /= 0 and then Borrowed.Address = System.Null_Address then
+      if Borrowed.Address = System.Null_Address then
          Raise_Invalid_Access
            ("borrowed " & Type_Name & " buffer has no storage");
       end if;
-   end Check_Borrowed_Row;
+
+      return Borrowed.Address;
+   end Borrow_Storage;
 
    procedure With_Read_Only_Buffer
      (Image   : Mat;
@@ -147,8 +148,6 @@ package body OpenCV.Core.Internal.Typed_Continuous_Borrowing is
       declare
          Count : constant Natural := Element_Count (Lease);
       begin
-         Check_Total_Bytes (Count);
-
          if Count = 0 then
             declare
                Empty : aliased Buffer_Array (1 .. 0);
@@ -161,31 +160,24 @@ package body OpenCV.Core.Internal.Typed_Continuous_Borrowing is
          end if;
 
          declare
-            Borrowed : constant OpenCV.Core.Internal.Row_Data.Borrowed_Row :=
-              OpenCV.Core.Internal.Row_Data.Borrow_Row (Lease, 0);
+            subtype Current_Buffer is Buffer_Array (0 .. Count - 1);
+            package Buffer_Conversions is new
+              System.Address_To_Access_Conversions (Current_Buffer);
+            use type Buffer_Conversions.Object_Pointer;
+
+            Data : constant Buffer_Conversions.Object_Pointer :=
+              Buffer_Conversions.To_Pointer (Borrow_Storage (Lease, Count));
          begin
-            Check_Borrowed_Row (Borrowed, Lease.Columns);
+            if Data = null then
+               Raise_Invalid_Access
+                 ("borrowed " & Type_Name & " buffer has no storage");
+            end if;
 
             declare
-               subtype Current_Buffer is Buffer_Array (0 .. Count - 1);
-               package Buffer_Conversions is new
-                 System.Address_To_Access_Conversions (Current_Buffer);
-               use type Buffer_Conversions.Object_Pointer;
-
-               Data : constant Buffer_Conversions.Object_Pointer :=
-                 Buffer_Conversions.To_Pointer (Borrowed.Address);
+               View : constant access constant Buffer_Array :=
+                 Data.all'Unrestricted_Access;
             begin
-               if Data = null then
-                  Raise_Invalid_Access
-                    ("borrowed " & Type_Name & " buffer has no storage");
-               end if;
-
-               declare
-                  View : constant access constant Buffer_Array :=
-                    Data.all'Unrestricted_Access;
-               begin
-                  Process (View.all);
-               end;
+               Process (View.all);
             end;
          end;
       end;
@@ -203,8 +195,6 @@ package body OpenCV.Core.Internal.Typed_Continuous_Borrowing is
       declare
          Count : constant Natural := Element_Count (Lease);
       begin
-         Check_Total_Bytes (Count);
-
          if Count = 0 then
             declare
                Empty : aliased Buffer_Array (1 .. 0);
@@ -217,30 +207,24 @@ package body OpenCV.Core.Internal.Typed_Continuous_Borrowing is
          end if;
 
          declare
-            Borrowed : constant OpenCV.Core.Internal.Row_Data.Borrowed_Row :=
-              OpenCV.Core.Internal.Row_Data.Borrow_Row (Lease, 0);
+            subtype Current_Buffer is Buffer_Array (0 .. Count - 1);
+            package Buffer_Conversions is new
+              System.Address_To_Access_Conversions (Current_Buffer);
+            use type Buffer_Conversions.Object_Pointer;
+
+            Data : constant Buffer_Conversions.Object_Pointer :=
+              Buffer_Conversions.To_Pointer (Borrow_Storage (Lease, Count));
          begin
-            Check_Borrowed_Row (Borrowed, Lease.Columns);
+            if Data = null then
+               Raise_Invalid_Access
+                 ("borrowed " & Type_Name & " buffer has no storage");
+            end if;
 
             declare
-               subtype Current_Buffer is Buffer_Array (0 .. Count - 1);
-               package Buffer_Conversions is new
-                 System.Address_To_Access_Conversions (Current_Buffer);
-               use type Buffer_Conversions.Object_Pointer;
-               Data : constant Buffer_Conversions.Object_Pointer :=
-                 Buffer_Conversions.To_Pointer (Borrowed.Address);
+               View : constant access Buffer_Array :=
+                 Data.all'Unrestricted_Access;
             begin
-               if Data = null then
-                  Raise_Invalid_Access
-                    ("borrowed " & Type_Name & " buffer has no storage");
-               end if;
-
-               declare
-                  View : constant access Buffer_Array :=
-                    Data.all'Unrestricted_Access;
-               begin
-                  Process (View.all);
-               end;
+               Process (View.all);
             end;
          end;
       end;
