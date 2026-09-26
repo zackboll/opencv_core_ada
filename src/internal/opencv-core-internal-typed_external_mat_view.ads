@@ -37,4 +37,19 @@ package OpenCV.Core.Internal.Typed_External_Mat_View is
       Row_Stride_Elements : Positive;
       Process             : not null access procedure (Image : in out Mat));
 
+   --  Invokes Process with a temporary strided N-D Mat whose elements alias
+   --  Data. Shape'Length must be in 2 .. 32 with positive extents, and
+   --  Strides'Length must equal Shape'Length. Strides count complete
+   --  Buffer_Array elements; the final stride must be 1 and every outer
+   --  stride must cover its complete nested inner block:
+   --  Stride (I) >= Stride (I + 1) * Shape (I + 1). Zero-based index
+   --  (I1, .., In) is Data (Data'First + I1 * S1 + .. + In * Sn). Data must
+   --  contain the complete outer stride, including padding after the final
+   --  logical outer block: Data'Length >= Shape (first) * Stride (first).
+   procedure With_Writable_Strided_Mat_View
+     (Data    : aliased in out Buffer_Array;
+      Shape   : Dimension_Array;
+      Strides : Dimension_Stride_Array;
+      Process : not null access procedure (Image : in out Mat));
+
 end OpenCV.Core.Internal.Typed_External_Mat_View;

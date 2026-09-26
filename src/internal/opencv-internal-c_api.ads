@@ -37,6 +37,9 @@ package OpenCV.Internal.C_API is
    type C_Int32_Array is array (Natural range <>) of aliased C_Int32
    with Convention => C;
 
+   type C_UInt64_Array is array (Natural range <>) of aliased C_UInt64
+   with Convention => C;
+
    type Scalar is record
       Component_0 : C_Double;
       Component_1 : C_Double;
@@ -277,6 +280,22 @@ package OpenCV.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_core_mat_create_external_nd";
+
+   --  Element_Strides holds Dimension_Count complete-element strides; the
+   --  shim constructs its own full native size_t step array.
+   function Mat_Create_External_ND_Strided
+     (Dimension_Count : C_Int32;
+      Sizes           : access C_Int32;
+      Element_Strides : access C_UInt64;
+      Depth           : C_Int32;
+      Channels        : C_Int32;
+      Data            : System.Address;
+      Byte_Count      : C_UInt64;
+      Result          : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_create_external_nd_strided";
 
    function Mat_Copy
      (Source : Mat_Handle; Result : access Mat_Handle) return Status

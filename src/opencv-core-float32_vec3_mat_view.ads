@@ -31,8 +31,8 @@ package OpenCV.Core.Float32_Vec3_Mat_View is
    --  Rows/Columns overload. No data is copied and the caller retains
    --  ownership. Callback lifetime and escape rules are identical to the
    --  Rows/Columns overload: shallow copies, Slice, and Reshape are
-   --  rejected; Clone is the independent escape path. Arbitrary N-D strides
-   --  are not supported.
+   --  rejected; Clone is the independent escape path. Gapped N-D storage
+   --  uses With_Writable_Strided_Mat_View (Shape, Strides).
    procedure With_Writable_Mat_View
      (Data    : aliased in out Buffer_Array;
       Shape   : Dimension_Array;
@@ -53,5 +53,26 @@ package OpenCV.Core.Float32_Vec3_Mat_View is
       Columns    : Positive;
       Row_Stride : Positive;
       Process    : not null access procedure (Image : in out Mat));
+
+   --  Invokes Process with a temporary writable strided N-dimensional
+   --  CV_32FC3 Mat that aliases Data. Shape'Length must be in 2 .. 32 with
+   --  positive extents, and Strides supplies exactly one stride per
+   --  dimension in the same order; neither array's index bounds matter.
+   --  Strides count complete Float32_Vec3 pixels, not scalar channels and
+   --  not bytes. The final stride must be 1 and each outer stride must cover
+   --  its nested inner block: Strides (I) >= Strides (I + 1) * Shape (I + 1).
+   --  Zero-based index (I1, .., In) is Data (Data'First + I1 * S1 + .. +
+   --  In * Sn). Data'Length must be at least Shape (first) * Strides
+   --  (first) pixels, including padding after the final logical outer
+   --  block, which the native header covers. Extra trailing pixels are
+   --  allowed and are outside the header; padding is never touched.
+   --  Is_Continuous reports the actual layout. No data is copied and the
+   --  caller retains ownership. Shallow copies, Slice, Reshape, and output
+   --  handles are rejected; Clone is the independent escape path.
+   procedure With_Writable_Strided_Mat_View
+     (Data    : aliased in out Buffer_Array;
+      Shape   : Dimension_Array;
+      Strides : Dimension_Stride_Array;
+      Process : not null access procedure (Image : in out Mat));
 
 end OpenCV.Core.Float32_Vec3_Mat_View;
