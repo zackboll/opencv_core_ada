@@ -700,6 +700,9 @@ jobs:
 
   macos-arm64-macports:
     name: OpenCV macOS ARM64 (MacPorts)
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      github.event_name == 'workflow_dispatch'
     runs-on: macos-latest
 
     steps:
