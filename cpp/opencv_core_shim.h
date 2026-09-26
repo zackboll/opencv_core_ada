@@ -875,6 +875,22 @@ opencv_core_mat_reshape(const opencv_core_mat_handle *source, int32_t channels,
                         int32_t rows, opencv_core_mat_handle **out_mat);
 
 /*
+ * Creates a distinct Mat header by invoking the native N-D Mat::reshape
+ * overload. channels must be in 1 .. OPENCV_CORE_MAX_CHANNELS. ndims is the
+ * number of extents in sizes and must be in 2 .. 32. sizes must be non-null,
+ * and every extent must be positive: a zero extent is not an OpenCV
+ * preserve-dimension sentinel. The source must be continuous and nonempty,
+ * and the target scalar count (product of sizes, times channels) must equal
+ * the source scalar count. The returned header shares source storage and
+ * never copies data.
+ */
+opencv_core_status
+opencv_core_mat_reshape_nd(const opencv_core_mat_handle *source,
+                            int32_t channels, int32_t ndims,
+                            const int32_t *sizes,
+                            opencv_core_mat_handle **out_mat);
+
+/*
  * Creates an independent square diagonal matrix from a row or column vector.
  * The result has the source element type, including channel count, and its
  * off-diagonal elements are zero. Source and result do not share storage.

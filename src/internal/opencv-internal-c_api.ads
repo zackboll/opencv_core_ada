@@ -683,6 +683,14 @@ package OpenCV.Internal.C_API is
       Result   : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_reshape";
 
+   function Mat_Reshape_ND
+     (Source          : Mat_Handle;
+      Channels        : C_Int32;
+      Dimension_Count : C_Int32;
+      Sizes           : access constant C_Int32;
+      Result          : access Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_reshape_nd";
+
    function Mat_Diagonal_Matrix
      (Diagonal : Mat_Handle; Result : access Mat_Handle) return Status
    with
