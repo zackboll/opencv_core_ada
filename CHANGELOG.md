@@ -15,8 +15,18 @@
   N-D external strides remain unsupported. The same temporary external-view
   no-escape rules apply: shallow copies, `Slice`, `Reshape`, and output
   handles are rejected, while `Clone` is the independent escape path.
-  OpenCV 5.0 limits Mats to 10 dimensions; longer shapes are rejected by
-  OpenCV as `OpenCV_Error` before the callback runs.
+  OpenCV 5.0's native `MatShape` capacity is 10 dimensions; the binding
+  rejects longer shapes as `OpenCV_Error` before invoking the native
+  constructor, so the callback never runs. OpenCV 4.x retains the historic
+  32-dimensional limit. Public signatures are unchanged.
+- Enforced OpenCV 5.0's native Mat dimension capacity
+  (`MatShape::MAX_DIMS = 10`) in the C++ shim before every native path that
+  establishes a new Mat shape from a caller dimension count:
+  `opencv_core_mat_create_nd`, `opencv_core_mat_reshape_nd`, and
+  `opencv_core_mat_create_external_nd`. On OpenCV 5.0, N-D `Create`,
+  Shape-based `Reshape`, and packed N-D views with 11 .. 32 dimensions now
+  raise `OpenCV_Error` (raw ABI: invalid argument, null output) instead of
+  depending on OpenCV to reject them. OpenCV 4.x behavior is unchanged.
 - Added the private C ABI operation `opencv_core_mat_create_external_nd`,
   which builds the header with OpenCV's longstanding
   `Mat(int ndims, const int *sizes, int type, void *data, const size_t *steps)`

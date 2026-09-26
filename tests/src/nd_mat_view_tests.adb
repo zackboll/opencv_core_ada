@@ -891,32 +891,71 @@ package body ND_Mat_View_Tests is
          "a high-dimensional view write must reach caller Data");
    end View_High_Dimensional;
 
-   procedure High_Dimensional_Views_Follow_OpenCV (Test : in out Fixture) is
-      pragma Unreferenced (Test);
-      Invoked : Boolean;
+   --  Expects the binding to reject a Count-dimensional view before Process
+   --  runs, leaving caller Data unchanged.
+   procedure Expect_High_Dimensional_Rejected (Count : Positive) is
+      Storage : aliased OpenCV.Core.Int32_Mat_View.Buffer_Array :=
+        (0 => 41, 1 => 42);
+      Shape   : OpenCV.Core.Dimension_Array (1 .. Count) := (others => 1);
+      Invoked : Boolean := False;
 
-      procedure Thirty_Two is
+      procedure Process (Image : in out OpenCV.Core.Mat) is
+         pragma Unreferenced (Image);
       begin
-         View_High_Dimensional (32, Invoked);
-      end Thirty_Two;
+         Invoked := True;
+      end Process;
+
+      procedure Attempt is
+      begin
+         OpenCV.Core.Int32_Mat_View.With_Writable_Mat_View
+           (Storage, Shape, Process'Access);
+      end Attempt;
    begin
-      --  OpenCV 5.0 caps Mat dimensionality at MatShape::MAX_DIMS = 10.
-      View_High_Dimensional (10, Invoked);
+      Shape (Count) := 2;
+      Mat_Test_Support.Assert_Raises_OpenCV_Error
+        (Attempt'Access,
+         "a"
+         & Count'Image
+         & "-dimensional view above OpenCV 5's native"
+         & " Mat capacity must raise OpenCV_Error");
+      AUnit.Assertions.Assert
+        (not Invoked,
+         "a"
+         & Count'Image
+         & "-dimensional view rejected by the binding must"
+         & " not run Process");
+      AUnit.Assertions.Assert
+        (Storage (0) = 41 and then Storage (1) = 42,
+         "a rejected high-dimensional view must leave caller Data unchanged");
+   end Expect_High_Dimensional_Rejected;
+
+   procedure High_Dimensional_Views_Follow_Native_Limit (Test : in out Fixture)
+   is
+      pragma Unreferenced (Test);
+      Invoked_10 : Boolean;
+      Invoked_11 : Boolean;
+      Invoked_32 : Boolean;
+   begin
+      --  10 is within every supported OpenCV's native Mat capacity.
+      View_High_Dimensional (10, Invoked_10);
+      AUnit.Assertions.Assert
+        (Invoked_10, "a 10-dimensional view must run Process");
 
       if Module_Bridge_Probe.OpenCV_Major_Version < 5 then
-         View_High_Dimensional (32, Invoked);
-      else
-         --  32 passes the public 2 .. 32 contract and the shim's ABI
-         --  checks; OpenCV 5.0 itself rejects it, translated to OpenCV_Error
-         --  before a header is published or Process runs.
-         Mat_Test_Support.Assert_Raises_OpenCV_Error
-           (Thirty_Two'Access,
-            "OpenCV 5 must reject a 32-dimensional view as OpenCV_Error");
+         --  OpenCV 4.x retains the historic 32-dimensional limit.
+         View_High_Dimensional (11, Invoked_11);
+         View_High_Dimensional (32, Invoked_32);
          AUnit.Assertions.Assert
-           (not Invoked,
-            "a 32-dimensional view rejected by OpenCV 5 must not run Process");
+           (Invoked_11 and then Invoked_32,
+            "OpenCV 4.x must run Process for 11- and 32-dimensional views");
+      else
+         --  OpenCV 5.0's native MatShape capacity is 10 dimensions. The
+         --  binding itself rejects longer shapes before native construction
+         --  instead of relying on OpenCV to reject them.
+         Expect_High_Dimensional_Rejected (11);
+         Expect_High_Dimensional_Rejected (32);
       end if;
-   end High_Dimensional_Views_Follow_OpenCV;
+   end High_Dimensional_Views_Follow_Native_Limit;
 
    Process_Failure : exception;
 
@@ -1044,8 +1083,8 @@ package body ND_Mat_View_Tests is
             Invalid_Shapes_Rejected_Before_Process'Access));
       Result.Add_Test
         (Caller.Create
-           ("High-dimensional packed views follow OpenCV's dimension limit",
-            High_Dimensional_Views_Follow_OpenCV'Access));
+           ("High-dimensional packed views follow the native dimension limit",
+            High_Dimensional_Views_Follow_Native_Limit'Access));
       Result.Add_Test
         (Caller.Create
            ("N-D view Process exceptions propagate unchanged",

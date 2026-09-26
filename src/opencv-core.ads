@@ -481,7 +481,9 @@ package OpenCV.Core is
    --  Creates a genuine N-dimensional Mat. Dimension order follows Ada
    --  iteration order. At least two dimensions are required because OpenCV
    --  promotes a 1-D request to 2-D. Each extent must be nonzero, and the
-   --  dimension count must not exceed OpenCV's 32-dimension limit.
+   --  dimension count must not exceed OpenCV's 32-dimension limit. When the
+   --  linked OpenCV has a smaller native Mat capacity (10 on OpenCV 5.0),
+   --  longer shapes raise OpenCV_Error before native construction.
    function Create
      (Shape : Dimension_Array; Element_Type : Mat_Type) return Mat;
 
@@ -501,7 +503,9 @@ package OpenCV.Core is
    --  regardless of Shape'First. The Shape-only overload preserves
    --  Self.Channels. The explicit Channels overload changes the channel count
    --  while reshaping. Depth is unchanged and no pixel storage is copied.
-   --  Self must be nonempty and continuous. Shape'Length must be in 2 .. 32,
+   --  Self must be nonempty and continuous. Shape'Length must be in 2 .. 32
+   --  (and, on OpenCV 5.0, not exceed its native 10-dimension Mat capacity;
+   --  longer shapes raise OpenCV_Error before native reshape),
    --  and every extent must be positive: a zero extent is invalid rather than
    --  an OpenCV preserve-dimension sentinel. The target scalar count,
    --  product (Shape) * requested Channels, must equal Self.Total *

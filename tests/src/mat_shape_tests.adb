@@ -3,6 +3,7 @@ with AUnit.Test_Caller;
 with Ada.Unchecked_Conversion;
 with Interfaces;
 with Mat_Test_Support;
+with Module_Bridge_Probe;
 with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
@@ -480,12 +481,74 @@ package body Mat_Shape_Tests is
       begin
          pragma Unreferenced (Ignored);
       end Too_Many;
+
+      --  A (1, .., 1, 2, 2) target of Count dimensions preserves the four
+      --  source scalars.
+      function Tall_Shape (Count : Positive) return OpenCV.Core.Dimension_Array
+      is
+         Result : OpenCV.Core.Dimension_Array (1 .. Count) := (others => 1);
+      begin
+         Result (Count - 1) := 2;
+         Result (Count) := 2;
+         return Result;
+      end Tall_Shape;
+
+      procedure Assert_Tall_Reshape (Count : Positive) is
+         View : constant OpenCV.Core.Mat :=
+           Source.Reshape (Tall_Shape (Count));
+      begin
+         Assert_Shape (View, Tall_Shape (Count));
+      end Assert_Tall_Reshape;
+
+      procedure Eleven is
+         Ignored : constant OpenCV.Core.Mat :=
+           Source.Reshape (Tall_Shape (11));
+      begin
+         pragma Unreferenced (Ignored);
+      end Eleven;
+
+      Handle : aliased OpenCV.Internal.C_API.Mat_Handle;
+      Status : OpenCV.Internal.C_API.Status;
+
+      procedure Probe (Raw : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+         Sizes : aliased OpenCV.Internal.C_API.C_Int32_Array (0 .. 10) :=
+           (9 | 10 => 2, others => 1);
+      begin
+         Handle := Raw_Handle (Raw);
+         Status :=
+           OpenCV.Internal.C_API.Mat_Reshape_ND
+             (Raw_Handle (Raw), 1, 11, Sizes (0)'Access, Handle'Access);
+      end Probe;
    begin
       AUnit.Assertions.Assert
         (Source.Is_Continuous and then Source.Total = 4,
          "The 33-dimension fixture must be continuous with four scalars");
       Assert_Raises_OpenCV_Error
         (Too_Many'Access, "33 dimensions must be rejected");
+
+      --  10 dimensions fit every supported OpenCV's native Mat capacity.
+      Assert_Tall_Reshape (10);
+
+      if Module_Bridge_Probe.OpenCV_Major_Version < 5 then
+         --  OpenCV 4.x retains the historic 32-dimensional limit.
+         Assert_Tall_Reshape (11);
+         Assert_Tall_Reshape (32);
+      else
+         --  OpenCV 5.0's native MatShape capacity is 10 dimensions. The
+         --  binding rejects an 11-dimensional target before native reshape.
+         Assert_Raises_OpenCV_Error
+           (Eleven'Access,
+            "OpenCV 5 must reject an 11-dimensional reshape target");
+         OpenCV.Core.Module_Interop.With_Input_Handle (Source, Probe'Access);
+         Assert_ABI_Rejected
+           (Status, Handle, "exceeds this OpenCV version's native Mat limit");
+      end if;
+
+      AUnit.Assertions.Assert
+        (Source.Dimension_Count = 2
+         and then Source.Rows = 2
+         and then Source.Columns = 2,
+         "High-dimensional reshapes must leave the source header unchanged");
    end Reshape_Rejects_Thirty_Three_Dimensions;
 
    procedure Reshape_Rejects_Zero_Extent (Test : in out Fixture) is
@@ -883,7 +946,7 @@ package body Mat_Shape_Tests is
             Reshape_Rejects_Null_And_Short_Shapes'Access));
       Result.Add_Test
         (Caller.Create
-           ("Reshape rejects 33 dimensions",
+           ("Reshape rejects 33 dimensions and follows the native limit",
             Reshape_Rejects_Thirty_Three_Dimensions'Access));
       Result.Add_Test
         (Caller.Create

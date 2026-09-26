@@ -1,5 +1,6 @@
 with AUnit.Assertions;
 with Interfaces;
+with Module_Bridge_Probe;
 with OpenCV.Internal.C_API;
 with System;
 with System.Storage_Elements;
@@ -75,6 +76,11 @@ package body ND_Mat_View_Tests.Raw_ABI is
       Two_By_Three : aliased C.C_Int32_Array := (2, 3);
       One_D        : aliased C.C_Int32_Array := (0 => 6);
       Many         : aliased C.C_Int32_Array (0 .. 32) := (others => 1);
+      --  (1, .., 1, 2) shapes keep the element count at two (four bytes).
+      Eleven       : aliased C.C_Int32_Array (0 .. 10) :=
+        (10 => 2, others => 1);
+      Thirty_Two   : aliased C.C_Int32_Array (0 .. 31) :=
+        (31 => 2, others => 1);
       Zero         : aliased C.C_Int32_Array := (2, 0);
       Negative     : aliased C.C_Int32_Array := (2, -3);
       Huge         : aliased C.C_Int32_Array (0 .. 2) :=
@@ -92,6 +98,8 @@ package body ND_Mat_View_Tests.Raw_ABI is
       Extent_Text  : constant String := "extents must be positive";
       Channel_Text : constant String := "channels must be in the range";
       Byte_Text    : constant String := "byte count must equal";
+      Native_Text  : constant String :=
+        "exceeds this OpenCV version's native Mat limit";
    begin
       Status :=
         C.Mat_Create_External_ND
@@ -108,6 +116,14 @@ package body ND_Mat_View_Tests.Raw_ABI is
       Expect_Rejected
         (-1, One_D (0)'Access, U16, 1, Base, 12, Data, Count_Text);
       Expect_Rejected (33, Many (0)'Access, U16, 1, Base, 2, Data, Count_Text);
+      if Module_Bridge_Probe.OpenCV_Major_Version >= 5 then
+         --  OpenCV 5.0's native MatShape capacity is 10 dimensions; the shim
+         --  rejects longer shapes before the native constructor.
+         Expect_Rejected
+           (11, Eleven (0)'Access, U16, 1, Base, 4, Data, Native_Text);
+         Expect_Rejected
+           (32, Thirty_Two (0)'Access, U16, 1, Base, 4, Data, Native_Text);
+      end if;
       Expect_Rejected
         (2, null, U16, 1, Base, 12, Data, "sizes must not be null");
       Expect_Rejected (2, Zero (0)'Access, U16, 1, Base, 0, Data, Extent_Text);
@@ -281,6 +297,39 @@ package body ND_Mat_View_Tests.Raw_ABI is
          288,
          "raw 3-D packed view");
       C.Mat_Destroy (Handle);
+
+      --  Highest dimension count accepted natively by the linked OpenCV:
+      --  the historic 32 on 4.x, MatShape::MAX_DIMS = 10 on 5.0.
+      declare
+         Native_Limit : constant Positive :=
+           (if Module_Bridge_Probe.OpenCV_Major_Version >= 5 then 10 else 32);
+         Tall         : aliased C.C_Int32_Array (0 .. Native_Limit - 1) :=
+           (others => 1);
+      begin
+         Tall (Tall'Last) := 2;
+         Handle := C.Null_Mat_Handle;
+         AUnit.Assertions.Assert
+           (C.Mat_Create_External_ND
+              (C.C_Int32 (Native_Limit),
+               Tall (0)'Access,
+               C.Depth_UInt16,
+               1,
+               Plane (0)'Address,
+               4,
+               Handle'Access)
+            = C.Success
+            and then Handle /= C.Null_Mat_Handle,
+            "a raw packed view at the native dimension limit must be created");
+         Expect_View
+           (Handle,
+            Tall,
+            C.Depth_UInt16,
+            1,
+            Plane (0)'Address,
+            4,
+            "raw native-limit packed view");
+         C.Mat_Destroy (Handle);
+      end;
    end Check_Valid_Views;
 
    procedure Check_Temporary_View is

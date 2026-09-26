@@ -572,9 +572,13 @@ packages one `Data` entry is one complete Mat element, so a `(2, 3, 4)` Float64
 C4 view takes 24 `Vector` values, not 96 scalars. `Shape => (Rows, Columns)`
 produces the same 2-D geometry as the `Rows`/`Columns` overload, which is
 unchanged. Only packed storage is supported; row-strided views remain 2-D.
-OpenCV 5.0 itself limits a `Mat` to 10 dimensions (`MatShape::MAX_DIMS`); a
-longer shape passes Ada validation but is rejected by OpenCV as `OpenCV_Error`
-before `Process` runs, exactly as for N-D `Create`.
+OpenCV 5.0's native `MatShape` capacity is 10 dimensions
+(`MatShape::MAX_DIMS`). The binding rejects N-D construction, view, and
+reshape requests above that native capacity with `OpenCV_Error` before
+invoking the affected OpenCV constructor or reshape, so on OpenCV 5.0 an
+11 .. 32 dimensional view never runs `Process`. OpenCV 4.x retains the
+historic 32-dimensional limit. Public signatures are unchanged: the
+compatibility restriction is enforced below the Ada API, in the C++ shim.
 
 ### Wrap row-strided caller-owned storage
 
@@ -1092,7 +1096,9 @@ Pixels := Scalars.Reshape (Channels => 3, Shape => (2, 2, 3));
 The `Dimension_Array` is read in Ada iteration order, regardless of its lower
 bound. Every target extent must be nonzero: this API does not expose OpenCV's
 zero-sentinel "preserve this dimension" convention. The target dimension count
-must be `2 .. 32`. The scalar count, including channels, must stay identical,
+must be `2 .. 32` (on OpenCV 5.0, at most its native 10-dimension capacity;
+longer targets raise `OpenCV_Error` before native reshape). The scalar count,
+including channels, must stay identical,
 and depth is unchanged. Shape-based reshape requires continuous storage. The
 result shares storage; `Clone` creates independent storage. The existing
 `Reshape (Channels)` and `Reshape (Channels, Rows)` overloads are unchanged.
