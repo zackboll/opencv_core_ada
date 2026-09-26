@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+- Added a packed N-D `With_Writable_Mat_View (Data, Shape, Process)` overload
+  to all sixteen typed `*_Mat_View` packages (UInt8, Int8, UInt16, Int16,
+  Int32, Float16, Float32, Float64 C1; Float32/Float64 C2; UInt8/Float16/
+  Float32/Float64 C3; Float32/Float64 C4). It creates a callback-scoped,
+  continuous N-D Mat that directly aliases caller-owned Ada storage.
+  `Shape'Length` must be in 2 .. 32 with positive extents, and `Data'Length`
+  must equal `product (Shape)` complete elements exactly. Storage uses
+  OpenCV element order (final dimension fastest), matching N-D Get/Set and
+  N-D buffer borrowing; neither Ada lower bound is visible. The existing
+  `Rows`/`Columns` and 2-D row-strided overloads are unchanged, and arbitrary
+  N-D external strides remain unsupported. The same temporary external-view
+  no-escape rules apply: shallow copies, `Slice`, `Reshape`, and output
+  handles are rejected, while `Clone` is the independent escape path.
+  OpenCV 5.0 limits Mats to 10 dimensions; longer shapes are rejected by
+  OpenCV as `OpenCV_Error` before the callback runs.
+- Added the private C ABI operation `opencv_core_mat_create_external_nd`,
+  which builds the header with OpenCV's longstanding
+  `Mat(int ndims, const int *sizes, int type, void *data, const size_t *steps)`
+  constructor and null steps (packed layout, 4.1 through 5.0). It validates
+  dimension count, extents, depth, channels, data pointer, alignment, checked
+  `size_t` element/byte products, an exact byte count, and address-span wrap,
+  and always clears `*out_mat` on failure.
+
 - Extended `With_Read_Only_Buffer` / `With_Writable_Buffer` in all sixteen
   typed `*_Buffer_Access` packages (UInt8, Int8, UInt16, Int16, Int32,
   Float16, Float32, Float64 C1; Float32/Float64 C2; UInt8/Float16/Float32/

@@ -18,7 +18,7 @@ translation of the C++ headers.
 >
 > **Development status:** active, pre-1.0 API.
 >
-> **Current test baseline:** 1350 AUnit tests, with Ada and C++ warnings promoted
+> **Current test baseline:** 1363 AUnit tests, with Ada and C++ warnings promoted
 > to errors. GitHub Actions exercises the full test suite against four OpenCV
 > compatibility targets, plus a native Ubuntu 24.04 ARM64 job.
 >
@@ -359,7 +359,7 @@ The test crate carries development-only dependencies such as AUnit, GNATprove,
 and GNATcov. They are intentionally not dependencies of the public library
 crate.
 
-At the time of this README update, the full suite contains **1350 AUnit tests**.
+At the time of this README update, the full suite contains **1363 AUnit tests**.
 Coverage includes ordinary behavior, invalid input, shape/depth/channel
 compatibility, empty Mats, non-contiguous Regions, shallow-versus-independent
 ownership, callback lifetimes, arbitrary Ada array lower bounds, failure
@@ -535,6 +535,47 @@ end External_Buffer_Example;
 `Data'Length` must equal `Rows * Columns`. The Ada lower bound is arbitrary.
 The temporary `Mat` does not own the caller's storage.
 
+### Wrap caller-owned packed N-D storage in a temporary `Mat`
+
+Every `*_Mat_View` package also overloads `With_Writable_Mat_View` with a
+`Shape` parameter that selects a genuine packed N-dimensional `Mat`:
+
+```ada
+with OpenCV.Core;
+with OpenCV.Core.Float32_Access;
+with OpenCV.Core.Float32_Mat_View;
+
+procedure External_Volume_Example is
+   Volume : aliased OpenCV.Core.Float32_Mat_View.Buffer_Array :=
+     (11 .. 34 => 0.0);
+
+   procedure Process (Image : in out OpenCV.Core.Mat) is
+   begin
+      --  Image.Shape = (2, 3, 4) and Image.Is_Continuous.
+      OpenCV.Core.Float32_Access.Set (Image, (1, 2, 3), 1.5);
+      --  Volume (34) is now 1.5 immediately.
+   end Process;
+begin
+   OpenCV.Core.Float32_Mat_View.With_Writable_Mat_View
+     (Volume, Shape => (2, 3, 4), Process => Process'Access);
+end External_Volume_Example;
+```
+
+`Shape'Length` must be in `2 .. 32`, every extent must be positive, and
+`Data'Length` must equal `product (Shape)` exactly. Shape iteration order is
+OpenCV dimension order regardless of `Shape'First`, and neither Ada lower bound
+is visible through the `Mat`. The final dimension varies fastest: for
+`Shape => (D1, ..., Dn)` the zero-based index `(I1, ..., In)` is
+`Data (Data'First + ((I1 * D2 + I2) * D3 + ...) * Dn + In)`, the same order used
+by N-D `Get`/`Set` and N-D continuous buffer borrowing. For Vec2/Vec3/Vec4
+packages one `Data` entry is one complete Mat element, so a `(2, 3, 4)` Float64
+C4 view takes 24 `Vector` values, not 96 scalars. `Shape => (Rows, Columns)`
+produces the same 2-D geometry as the `Rows`/`Columns` overload, which is
+unchanged. Only packed storage is supported; row-strided views remain 2-D.
+OpenCV 5.0 itself limits a `Mat` to 10 dimensions (`MatShape::MAX_DIMS`); a
+longer shape passes Ada validation but is rejected by OpenCV as `OpenCV_Error`
+before `Process` runs, exactly as for N-D `Create`.
+
 ### Wrap row-strided caller-owned storage
 
 `OpenCV.Core.Float32_Mat_View` also provides a row-strided overload:
@@ -702,7 +743,7 @@ buffer access likewise overlays native CV_16FC3 pixels as packed
 
 ### Caller-owned buffer -> temporary `Mat`
 
-The eleven Mat-view packages provide the reverse zero-copy direction:
+The sixteen Mat-view packages provide the reverse zero-copy direction:
 
 ```text
 OpenCV.Core.UInt8_Mat_View
@@ -713,28 +754,41 @@ OpenCV.Core.Int32_Mat_View
 OpenCV.Core.Float32_Mat_View
 OpenCV.Core.Float64_Mat_View
 OpenCV.Core.Float16_Mat_View
+OpenCV.Core.Float32_Vec2_Mat_View
+OpenCV.Core.Float64_Vec2_Mat_View
 OpenCV.Core.UInt8_Vec3_Mat_View
 OpenCV.Core.Float32_Vec3_Mat_View
 OpenCV.Core.Float16_Vec3_Mat_View
+OpenCV.Core.Float64_Vec3_Mat_View
+OpenCV.Core.Float32_Vec4_Mat_View
+OpenCV.Core.Float64_Vec4_Mat_View
 ```
 
 `With_Writable_Mat_View` creates a callback-scoped `cv::Mat` header over the
 actual caller-owned Ada array. The public buffer formal is explicitly
 `aliased in out`, so the native header directly denotes the caller's storage.
 
-Packed views are available for all eleven typed layouts above. Every listed
-layout also supports an explicit row stride, allowing a Mat to represent the
-logical columns of padded caller-owned rows without copying their padding.
+Packed views are available for all sixteen typed layouts above, both as 2-D
+(`Rows`, `Columns`) and as genuine N-D (`Shape`, 2 .. 32 dimensions) views.
+Packed N-D views are always continuous, so the matching `*_Buffer_Access`
+package can borrow the same caller storage again inside the callback without
+copying. Every listed layout also supports an explicit row stride, allowing a
+2-D Mat to represent the logical columns of padded caller-owned rows without
+copying their padding. Row-strided caller-owned views remain 2-D; arbitrary
+N-D external strides are not available.
 Except for the established Float32 overload, these packages use
 `With_Writable_Strided_Mat_View` and measure `Row_Stride` in complete Ada
-elements rather than bytes. For UInt8 and Float32 C3, one element is one
-complete Vec3 pixel, not one scalar channel.
+elements rather than bytes. For Vec2/Vec3/Vec4 layouts, one element is one
+complete vector pixel, not one scalar channel.
 
 Important lifetime rule: a temporary external-buffer Mat may not create a
 shallow alias that could outlive the callback. Ordinary `Mat` assignment and
-no-copy view operations are therefore rejected for these temporary external
-views. `Clone` remains allowed because it creates independent OpenCV-owned
-storage that can safely outlive the callback.
+no-copy view operations (including `Region`, `Slice`, and `Reshape`) are
+therefore rejected for these temporary external views, whether 2-D or N-D.
+This is the external-buffer lifetime policy, not a missing N-D capability.
+`Clone` remains allowed because it creates independent OpenCV-owned storage
+that can safely outlive the callback, and a clone can then be sliced or
+reshaped normally.
 
 The external-data `Mat` header is destroyed at callback exit, including during
 exception unwinding; the caller's Ada array is never freed by OpenCV.
@@ -777,15 +831,18 @@ Direct typed access currently concentrates on sixteen common layouts:
 The **Continuous buffer borrow** column applies to every continuous Mat of the
 listed layout, including genuine N-D Mats and continuous N-D `Slice` views.
 The flat array uses OpenCV element order with the final dimension varying
-fastest (see "Scoped continuous whole-buffer borrowing" above). Row and
-caller-buffer columns remain 2-D concepts.
+fastest (see "Scoped continuous whole-buffer borrowing" above). The
+**Packed caller buffer -> `Mat`** column likewise covers both 2-D and genuine
+packed N-D caller storage in that same element order. The row columns and
+**Strided caller buffer -> `Mat`** remain 2-D concepts.
 
 For Float32 and Float64 Vec2 APIs, **one vector is one complete two-channel
 Mat element**. Components are indexed 0 and 1; the vector packages attach no
 semantic meaning to either channel. Both depths support 2-D and N-D Get/Set,
 copied and borrowed 2-D rows, continuous 2-D or N-D whole-buffer borrowing, and
-packed/row-strided caller-owned 2-D views. Strides count complete Vec2
-elements, not scalar channels. Borrowed references must not escape callbacks.
+packed 2-D/N-D and row-strided 2-D caller-owned views. Strides count complete
+Vec2 elements, not scalar channels. Borrowed references must not escape
+callbacks.
 Float32 C2 elements occupy 8 bytes; Float64 C2 elements occupy 16 bytes.
 
 For Vec3 APIs, **one Ada vector is one complete OpenCV element/pixel**, not one
@@ -807,8 +864,9 @@ indices, not RGB or BGR names.
 one Vec4 is one complete four-channel Mat element, not a single scalar.
 Neither package assigns RGBA, BGRA, or XYZW meanings to channels. Each has
 2-D/N-D Get/Set, copied and callback-scoped borrowed 2-D rows, continuous
-whole-buffer borrowing, and packed/row-strided caller-owned 2-D views.
-Row strides count complete Vec4 elements, including final-row padding.
+whole-buffer borrowing, packed 2-D/N-D caller-owned views, and row-strided
+2-D caller-owned views. Row strides count complete Vec4 elements, including
+final-row padding.
 Float32 C4 elements occupy 16 bytes; Float64 C4 elements occupy 32 bytes.
 Float32 and Float64 now have complete typed C1/C2/C3/C4 families.
 
@@ -1667,10 +1725,11 @@ The current limitations are intentional and help keep the public API coherent:
    and Float32/Float64 C4 Vec4 Get/Set, `Slice` views, `Shape`, and
    Shape-based N-D reshape are available. Callback-scoped whole-buffer
    borrowing is provided for continuous N-D Mats of every typed layout.
-   Dimension-dropping scalar indexing is not yet exposed as a complete Ada
-   model. N-D row APIs are not provided because a row is a 2-D concept. N-D
-   caller-owned external buffer views are not yet available, and arbitrary
-   N-D external strides remain unsupported.
+   Packed caller-owned external views support genuine N-D shapes for every
+   typed layout. Dimension-dropping scalar indexing is not yet exposed as a
+   complete Ada model. N-D row APIs are not provided because a row is a 2-D
+   concept. Arbitrary N-D external strides remain unsupported; caller-owned
+   row-strided views are 2-D only.
 
 2. **No public `SparseMat` or `UMat` abstraction.**
 
@@ -1687,10 +1746,12 @@ The current limitations are intentional and help keep the public API coherent:
    per channel. UInt8 C3 and Float32 C3 likewise have 2-D and N-D Vec3 Get/Set.
    One vector remains one complete three-channel element; neither N-D access
    nor N-D buffer borrowing flattens channels into scalar indices. Rows and
-   external views remain 2-D concepts; arbitrary N-D external strides are not
-   supported. Float64 C1 has 2-D and
-   N-D Get/Set, classification, 2-D row access, continuous 2-D/N-D whole-buffer
-   borrowing, and packed or row-strided 2-D caller-buffer views. Other OpenCV
+   row-strided external views remain 2-D concepts; packed external views
+   accept N-D shapes, but arbitrary N-D external strides are not supported.
+   Float64 C1 has 2-D and N-D Get/Set, classification, 2-D row access,
+   continuous 2-D/N-D whole-buffer borrowing, and packed or row-strided 2-D
+   caller-buffer views. Every packed caller-buffer view listed in this item
+   also accepts an N-D `Shape` (see item 4). Other OpenCV
    depths are available to general Mat operations but do not yet have the same
    typed access families. Float16 now has an exact 16-bit public value
    representation, IEEE-754 classification helpers, numeric
@@ -1700,13 +1761,16 @@ The current limitations are intentional and help keep the public API coherent:
    rows, continuous buffer borrowing, and packed or strided external
    caller-buffer Mat views. Float32 and Float64 C1/C2/C3/C4 have complete typed
    coverage. Float32/Float64 Vec4 are available; UInt8, Float16, and integer
-   Vec4 and C5+ typed families remain unavailable. N-D row and N-D
-   external-view APIs remain unavailable.
+   Vec4 and C5+ typed families remain unavailable. N-D row APIs and N-D
+   strided external views remain unavailable.
 
 4. **External caller-buffer views are writable and callback-scoped.**  
-   Packed 2-D views are available for UInt8, Int8, UInt16, Int16, Int32, Float16,
-   Float32, and Float64 C1, plus UInt8, Float16, Float32, and Float64 C3.
-   Row-strided storage is exposed for the same layouts and Float32/Float64 C2/C4.
+   Packed 2-D and packed N-D (`Shape`, 2 .. 32 dimensions) views are available
+   for UInt8, Int8, UInt16, Int16, Int32, Float16, Float32, and Float64 C1,
+   Float32/Float64 C2, UInt8/Float16/Float32/Float64 C3, and Float32/Float64
+   C4. Packed views require exact logical capacity: `Data'Length` equals
+   `Rows * Columns` or `product (Shape)`.
+   Row-strided storage is exposed for the same layouts but only in 2-D.
    C2, C3, and C4 row strides count complete vectors, not scalar channels.
    Strided backing storage must contain a complete
    `Rows * Row_Stride` element extent, including final-row padding.

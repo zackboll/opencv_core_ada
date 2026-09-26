@@ -154,6 +154,95 @@ package body OpenCV.Core.Internal.Typed_External_Mat_View is
       Process (Image);
    end With_Writable_Mat_View;
 
+   Maximum_OpenCV_Dimensions : constant := 32;
+
+   --  Validates the public packed N-D shape contract and returns
+   --  product (Shape) as a complete-element count. Every intermediate
+   --  product is checked against Natural'Last before it is formed, so the
+   --  result is exact and never wraps. Size_Coordinate already confines each
+   --  extent to OpenCV's signed int dimension domain.
+   function Packed_Element_Count (Shape : Dimension_Array) return Natural is
+      Count : Natural := 1;
+   begin
+      if Shape'Length < 2 then
+         Raise_Invalid_View
+           (Type_Name
+            & " external N-D Mat view requires at least two dimensions");
+      end if;
+
+      if Shape'Length > Maximum_OpenCV_Dimensions then
+         Raise_Invalid_View
+           (Type_Name
+            & " external N-D Mat view exceeds OpenCV's 32-dimension limit");
+      end if;
+
+      for Extent_Value of Shape loop
+         if Extent_Value = 0 then
+            Raise_Invalid_View
+              (Type_Name & " external N-D Mat view extents must be positive");
+         end if;
+      end loop;
+
+      for Extent_Value of Shape loop
+         if Natural (Extent_Value) > Natural'Last / Count then
+            Raise_Invalid_View
+              (Type_Name
+               & " external N-D Mat view element count exceeds the"
+               & " representable range");
+         end if;
+         Count := Count * Natural (Extent_Value);
+      end loop;
+
+      return Count;
+   end Packed_Element_Count;
+
+   procedure With_Writable_Mat_View
+     (Data    : aliased in out Buffer_Array;
+      Shape   : Dimension_Array;
+      Process : not null access procedure (Image : in out Mat))
+   is
+      Element_Count : constant Natural := Packed_Element_Count (Shape);
+      Byte_Count    : OpenCV.Internal.C_API.C_UInt64;
+      Sizes         :
+        OpenCV.Internal.C_API.C_Int32_Array (0 .. Shape'Length - 1);
+      Position      : Natural := 0;
+      Image         : Mat;
+      New_Handle    : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status        : OpenCV.Internal.C_API.Status;
+   begin
+      if Data'Length /= Element_Count then
+         Raise_Invalid_View
+           (Type_Name
+            & " external N-D Mat view requires Data'Length ="
+            & " product (Shape)");
+      end if;
+
+      for Extent_Value of Shape loop
+         Sizes (Position) := OpenCV.Internal.C_API.C_Int32 (Extent_Value);
+         Position := Position + 1;
+      end loop;
+
+      Byte_Count := Expected_Byte_Count (Element_Count);
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_Create_External_ND
+          (Dimension_Count => OpenCV.Internal.C_API.C_Int32 (Shape'Length),
+           Sizes           => Sizes (Sizes'First)'Access,
+           Depth           => To_C_Depth (Required_Depth),
+           Channels        =>
+             OpenCV.Internal.C_API.C_Int32 (Required_Channels),
+           Data            => Data (Data'First)'Address,
+           Byte_Count      => Byte_Count,
+           Result          => New_Handle'Access);
+      Raise_On_Error
+        (Status, Type_Name & " external N-D Mat view construction");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Image.Handle);
+      Image.Handle := New_Handle;
+      Process (Image);
+   end With_Writable_Mat_View;
+
    procedure With_Writable_Strided_Mat_View
      (Data                : aliased in out Buffer_Array;
       Rows                : Positive;
