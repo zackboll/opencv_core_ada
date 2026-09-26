@@ -504,6 +504,27 @@ from_opencv_vec3(const cv::Vec<float, 3> &value) noexcept {
     return {value[0], value[1], value[2]};
 }
 
+static_assert(sizeof(double) == 8 && sizeof(cv::Vec<double, 3>) == 24,
+              "Float64 C3 requires three contiguous 8-byte scalars");
+static_assert(CV_ELEM_SIZE(CV_64FC3) == 24,
+              "CV_64FC3 elements must occupy 24 bytes");
+static_assert(sizeof(opencv_core_float64_vec3) == 24 &&
+                  offsetof(opencv_core_float64_vec3, component_0) == 0 &&
+                  offsetof(opencv_core_float64_vec3, component_1) == 8 &&
+                  offsetof(opencv_core_float64_vec3, component_2) == 16,
+              "Float64 Vec3 C ABI must contain three contiguous doubles");
+
+cv::Vec<double, 3>
+to_opencv_vec3(const opencv_core_float64_vec3 &value) noexcept {
+    return cv::Vec<double, 3>(value.component_0, value.component_1,
+                              value.component_2);
+}
+
+opencv_core_float64_vec3
+from_opencv_vec3(const cv::Vec<double, 3> &value) noexcept {
+    return {value[0], value[1], value[2]};
+}
+
 template <typename T, int cn>
 void assign_vec(cv::Vec<T, cn> &dest, const cv::Vec<T, cn> &source) {
 #if CV_VERSION_MAJOR > 4 || (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 2)
@@ -685,10 +706,20 @@ prepare_vec3_row(const opencv_core_mat_handle *mat, int32_t row,
         return invalid_argument("element_count must equal Mat columns");
     }
 
-    if (element_count >
-        static_cast<uint64_t>(std::numeric_limits<std::size_t>::max() / 3)) {
+    // ABI safety: the shim indexes a row of Vec3 objects and a caller's
+    // scalar buffer; their byte extents must fit native size_t arithmetic.
+    if (element_count > static_cast<uint64_t>(
+                            std::numeric_limits<std::size_t>::max() /
+                            (3 * sizeof(T)))) {
         return invalid_argument(
-            "Vec3 scalar count exceeds the native size range");
+            "Vec3 row byte count exceeds the native size range");
+    }
+
+    // ABI safety: ptr<T> does not check the element layout or storage before
+    // the shim indexes the returned pointer as complete native Vec3 objects.
+    if (mat->value.elemSize() != sizeof(cv::Vec<T, 3>) ||
+        (element_count != 0 && mat->value.data == nullptr)) {
+        return invalid_argument("Mat has no matching Vec3 row storage");
     }
 
     row_data =
@@ -6431,6 +6462,66 @@ opencv_core_mat_write_float32_vec3_row(opencv_core_mat_handle *mat,
 }
 
 opencv_core_status
+opencv_core_mat_read_float64_vec3_row(const opencv_core_mat_handle *mat,
+                                      int32_t row, double *data,
+                                      uint64_t element_count) {
+    clear_error();
+    if (data == nullptr && element_count != 0) {
+        return invalid_argument("data must not be null when element_count is nonzero");
+    }
+    try {
+        const cv::Vec<double, 3> *row_data = nullptr;
+        const opencv_core_status status = prepare_vec3_row(
+            mat, row, element_count, CV_64F, "Mat depth must be Float64",
+            row_data);
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+        for (std::size_t column = 0;
+             column < static_cast<std::size_t>(element_count); ++column) {
+            const std::size_t offset = column * 3;
+            data[offset] = row_data[column][0];
+            data[offset + 1] = row_data[column][1];
+            data[offset + 2] = row_data[column][2];
+        }
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_write_float64_vec3_row(opencv_core_mat_handle *mat,
+                                       int32_t row, const double *data,
+                                       uint64_t element_count) {
+    clear_error();
+    if (data == nullptr && element_count != 0) {
+        return invalid_argument("data must not be null when element_count is nonzero");
+    }
+    try {
+        const cv::Vec<double, 3> *const_row_data = nullptr;
+        const opencv_core_status status = prepare_vec3_row(
+            mat, row, element_count, CV_64F, "Mat depth must be Float64",
+            const_row_data);
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+        cv::Vec<double, 3> *row_data =
+            const_cast<cv::Vec<double, 3> *>(const_row_data);
+        for (std::size_t column = 0;
+             column < static_cast<std::size_t>(element_count); ++column) {
+            const std::size_t offset = column * 3;
+            assign_vec(row_data[column],
+                       cv::Vec<double, 3>(data[offset], data[offset + 1],
+                                          data[offset + 2]));
+        }
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
 opencv_core_mat_read_float16_vec3_row(const opencv_core_mat_handle *mat,
                                       int32_t row, uint16_t *data,
                                       uint64_t element_count) {
@@ -6657,6 +6748,70 @@ opencv_core_mat_set_float32_vec3(opencv_core_mat_handle *mat, int32_t row,
     }
 }
 
+opencv_core_status
+opencv_core_mat_get_float64_vec3(const opencv_core_mat_handle *mat,
+                                 int32_t row, int32_t column,
+                                 opencv_core_float64_vec3 *out_value) {
+    clear_error();
+    if (out_value == nullptr) {
+        return invalid_argument("out_value must not be null");
+    }
+    *out_value = {0.0, 0.0, 0.0};
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+    try {
+        const opencv_core_status status = validate_typed_at(
+            mat->value, row, column, CV_64F, 3, "Mat depth must be Float64",
+            "Mat must have exactly three channels");
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+        // ABI safety: at<T> dereferences native storage without validating
+        // the element size or checking that its base pointer exists.
+        if (mat->value.elemSize() != sizeof(cv::Vec<double, 3>) ||
+            mat->value.data == nullptr) {
+            return invalid_argument("Mat has no matching Float64 Vec3 storage");
+        }
+        *out_value = from_opencv_vec3(
+            mat->value.at<cv::Vec<double, 3>>(row, column));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_set_float64_vec3(opencv_core_mat_handle *mat,
+                                 int32_t row, int32_t column,
+                                 const opencv_core_float64_vec3 *value) {
+    clear_error();
+    if (value == nullptr) {
+        return invalid_argument("value must not be null");
+    }
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+    try {
+        const opencv_core_status status = validate_typed_at(
+            mat->value, row, column, CV_64F, 3, "Mat depth must be Float64",
+            "Mat must have exactly three channels");
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+        // ABI safety: at<T> forms an unchecked typed reference into storage.
+        if (mat->value.elemSize() != sizeof(cv::Vec<double, 3>) ||
+            mat->value.data == nullptr) {
+            return invalid_argument("Mat has no matching Float64 Vec3 storage");
+        }
+        assign_vec(mat->value.at<cv::Vec<double, 3>>(row, column),
+                   to_opencv_vec3(*value));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
 static_assert(sizeof(opencv_core_float16_vec3) == 6,
               "opencv_core_float16_vec3 must be packed 6-byte ABI storage");
 static_assert(offsetof(opencv_core_float16_vec3, component_0) == 0,
@@ -6875,6 +7030,61 @@ opencv_core_mat_set_float32_vec3_nd(opencv_core_mat_handle *mat,
         }
 
         assign_vec(mat->value.at<cv::Vec<float, 3>>(opencv_indices),
+                   to_opencv_vec3(*value));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_get_float64_vec3_nd(const opencv_core_mat_handle *mat,
+                                    int32_t ndims, const int32_t *indices,
+                                    opencv_core_float64_vec3 *out_value) {
+    clear_error();
+    if (out_value == nullptr) {
+        return invalid_argument("out_value must not be null");
+    }
+    *out_value = {0.0, 0.0, 0.0};
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+    try {
+        int opencv_indices[maximum_mat_dimensions];
+        const opencv_core_status status = prepare_nd_vector_at(
+            mat->value, ndims, indices, opencv_indices, CV_64F, 3,
+            sizeof(cv::Vec<double, 3>), "Mat depth must be Float64");
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+        *out_value = from_opencv_vec3(
+            mat->value.at<cv::Vec<double, 3>>(opencv_indices));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status
+opencv_core_mat_set_float64_vec3_nd(opencv_core_mat_handle *mat,
+                                    int32_t ndims, const int32_t *indices,
+                                    const opencv_core_float64_vec3 *value) {
+    clear_error();
+    if (value == nullptr) {
+        return invalid_argument("value must not be null");
+    }
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+    try {
+        int opencv_indices[maximum_mat_dimensions];
+        const opencv_core_status status = prepare_nd_vector_at(
+            mat->value, ndims, indices, opencv_indices, CV_64F, 3,
+            sizeof(cv::Vec<double, 3>), "Mat depth must be Float64");
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+        assign_vec(mat->value.at<cv::Vec<double, 3>>(opencv_indices),
                    to_opencv_vec3(*value));
         return OPENCV_CORE_OK;
     } catch (...) {

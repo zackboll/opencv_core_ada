@@ -1914,6 +1914,8 @@ package OpenCV.Core is
    --  Continuity is not required; non-contiguous Regions are supported
    --  for both Self and Transform_Matrix. Inputs are unchanged. The
    --  result owns independent storage.
+   --  Float32 C2, Float64 C2, Float32 C3, and Float64 C3 results can be
+   --  inspected directly via their corresponding Vec2/Vec3_Access packages.
    function Perspective_Transform
      (Self : Mat; Transform_Matrix : Mat) return Mat;
 
