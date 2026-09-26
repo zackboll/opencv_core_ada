@@ -40,4 +40,13 @@ package body OpenCV.Core.Float32_Mat_View is
       Viewing.With_Writable_Mat_View (Data, Shape, Process);
    end With_Writable_Mat_View;
 
+   procedure With_Writable_Strided_Mat_View
+     (Data    : aliased in out Buffer_Array;
+      Shape   : Dimension_Array;
+      Strides : Dimension_Stride_Array;
+      Process : not null access procedure (Image : in out Mat)) is
+   begin
+      Viewing.With_Writable_Strided_Mat_View (Data, Shape, Strides, Process);
+   end With_Writable_Strided_Mat_View;
+
 end OpenCV.Core.Float32_Mat_View;

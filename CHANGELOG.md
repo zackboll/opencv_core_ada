@@ -2,6 +2,38 @@
 
 ## Unreleased
 
+- Added strided N-D caller-owned Mat views. A new public
+  `OpenCV.Core.Dimension_Stride_Array` (one `Positive` stride per dimension,
+  measured in complete Mat elements, never bytes) and a new
+  `With_Writable_Strided_Mat_View (Data, Shape, Strides, Process)` overload in
+  all sixteen typed `*_Mat_View` packages expose gapped N-D caller storage
+  without copying. For C2/C3/C4 layouts one stride unit is one complete
+  Vec2/Vec3/Vec4 element. Zero-based index `(I1, .., In)` maps to
+  `Data (Data'First + I1 * S1 + .. + In * Sn)`; no array lower bound is
+  visible. `Shape'Length` must be in 2 .. 32 (10 on OpenCV 5.0, enforced by
+  the shim), `Strides'Length = Shape'Length`, the final stride must be 1, and
+  each outer stride must cover its nested block
+  (`Strides (I) >= Strides (I + 1) * Shape (I + 1)`); overlapping or backwards
+  layouts are rejected before `Process` runs. `Data'Length` must be at least
+  `Shape (first) * Strides (first)`: OpenCV's header spans the complete outer
+  stride, so padding after the final logical outer block must exist; extra
+  trailing storage is allowed. Padding is never touched. `Is_Continuous`
+  reports the real layout (gapped views are non-continuous and whole-buffer
+  borrowing rejects them; packed-equivalent strides are continuous). The same
+  temporary external-view no-escape rules apply, and `Clone` returns
+  independent packed storage holding only the logical values. The existing
+  packed and 2-D row-strided overloads are unchanged.
+- Added the private C ABI operation
+  `opencv_core_mat_create_external_nd_strided`, taking `ndims` int32 extents
+  and `ndims` uint64 complete-element strides (no native `size_t` arrays cross
+  the ABI). It validates dimension count and the native dimension limit, null
+  pointers, extents, zero/final/nested strides, depth, channels, checked
+  `size_t` stride/byte/capacity/logical-end arithmetic, capacity against the
+  complete outer stride, data alignment, and address-span wrap, and always
+  clears `*out_mat` on failure. The shim builds its own full `ndims`-entry
+  native step array with the final entry set to `elemSize()`, because OpenCV
+  4.1 `setSize()` reads `_steps[ndims-1]` despite documenting `ndims-1` steps.
+
 - Added a packed N-D `With_Writable_Mat_View (Data, Shape, Process)` overload
   to all sixteen typed `*_Mat_View` packages (UInt8, Int8, UInt16, Int16,
   Int32, Float16, Float32, Float64 C1; Float32/Float64 C2; UInt8/Float16/
@@ -11,10 +43,10 @@
   must equal `product (Shape)` complete elements exactly. Storage uses
   OpenCV element order (final dimension fastest), matching N-D Get/Set and
   N-D buffer borrowing; neither Ada lower bound is visible. The existing
-  `Rows`/`Columns` and 2-D row-strided overloads are unchanged, and arbitrary
-  N-D external strides remain unsupported. The same temporary external-view
-  no-escape rules apply: shallow copies, `Slice`, `Reshape`, and output
-  handles are rejected, while `Clone` is the independent escape path.
+  `Rows`/`Columns` and 2-D row-strided overloads are unchanged. The same
+  temporary external-view no-escape rules apply: shallow copies, `Slice`,
+  `Reshape`, and output handles are rejected, while `Clone` is the
+  independent escape path.
   OpenCV 5.0's native `MatShape` capacity is 10 dimensions; the binding
   rejects longer shapes as `OpenCV_Error` before invoking the native
   constructor, so the callback never runs. OpenCV 4.x retains the historic

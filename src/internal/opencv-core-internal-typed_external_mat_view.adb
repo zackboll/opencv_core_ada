@@ -314,4 +314,165 @@ package body OpenCV.Core.Internal.Typed_External_Mat_View is
       Process (Image);
    end With_Writable_Strided_Mat_View;
 
+   --  Validates the public strided N-D contract and returns the complete
+   --  outer-stride element capacity Shape (first) * Strides (first). Every
+   --  product and sum is checked against Natural'Last before it is formed.
+   --  Shape and Strides are walked by logical position so neither array's
+   --  index bounds affect the geometry.
+   function Strided_Required_Capacity
+     (Shape : Dimension_Array; Strides : Dimension_Stride_Array) return Natural
+   is
+      Logical_End : Natural := 1;
+      Required    : Natural;
+      Term        : Natural;
+   begin
+      --  Also validates the dimension count and every extent.
+      declare
+         Unused_Packed : constant Natural := Packed_Element_Count (Shape);
+         pragma Unreferenced (Unused_Packed);
+      begin
+         null;
+      end;
+
+      if Strides'Length /= Shape'Length then
+         Raise_Invalid_View
+           (Type_Name
+            & " strided external N-D Mat view requires one stride per"
+            & " dimension");
+      end if;
+
+      if Strides (Strides'Last) /= 1 then
+         Raise_Invalid_View
+           (Type_Name
+            & " strided external N-D Mat view final stride must be 1");
+      end if;
+
+      for Offset in 0 .. Shape'Length - 2 loop
+         declare
+            Inner_Extent : constant Natural :=
+              Natural (Shape (Shape'First + Offset + 1));
+            Inner_Stride : constant Positive :=
+              Strides (Strides'First + Offset + 1);
+            Outer_Stride : constant Positive :=
+              Strides (Strides'First + Offset);
+         begin
+            if Inner_Stride > Natural'Last / Inner_Extent then
+               Raise_Invalid_View
+                 (Type_Name
+                  & " strided external N-D Mat view nested stride exceeds"
+                  & " the representable range");
+            end if;
+
+            if Outer_Stride < Inner_Stride * Inner_Extent then
+               Raise_Invalid_View
+                 (Type_Name
+                  & " strided external N-D Mat view stride is smaller than"
+                  & " its nested inner block");
+            end if;
+         end;
+      end loop;
+
+      --  OpenCV's external-data constructor sets
+      --  datalimit = datastart + size[0] * step[0], so padding after the
+      --  final logical outer block is part of the native header extent.
+      declare
+         Outer_Extent : constant Natural := Natural (Shape (Shape'First));
+         Outer_Stride : constant Positive := Strides (Strides'First);
+      begin
+         if Outer_Stride > Natural'Last / Outer_Extent then
+            Raise_Invalid_View
+              (Type_Name
+               & " strided external N-D Mat view complete outer stride"
+               & " exceeds the representable range");
+         end if;
+         Required := Outer_Extent * Outer_Stride;
+      end;
+
+      for Offset in 0 .. Shape'Length - 1 loop
+         declare
+            Span   : constant Natural :=
+              Natural (Shape (Shape'First + Offset)) - 1;
+            Stride : constant Positive := Strides (Strides'First + Offset);
+         begin
+            if Span /= 0 and then Stride > Natural'Last / Span then
+               Raise_Invalid_View
+                 (Type_Name
+                  & " strided external N-D Mat view logical extent exceeds"
+                  & " the representable range");
+            end if;
+            Term := Span * Stride;
+            if Term > Natural'Last - Logical_End then
+               Raise_Invalid_View
+                 (Type_Name
+                  & " strided external N-D Mat view logical extent exceeds"
+                  & " the representable range");
+            end if;
+            Logical_End := Logical_End + Term;
+         end;
+      end loop;
+
+      --  Implied by the nesting checks above; kept as an explicit guard
+      --  because the native header must cover every logical element.
+      if Logical_End > Required then
+         Raise_Invalid_View
+           (Type_Name
+            & " strided external N-D Mat view logical extent exceeds its"
+            & " outer stride");
+      end if;
+
+      return Required;
+   end Strided_Required_Capacity;
+
+   procedure With_Writable_Strided_Mat_View
+     (Data    : aliased in out Buffer_Array;
+      Shape   : Dimension_Array;
+      Strides : Dimension_Stride_Array;
+      Process : not null access procedure (Image : in out Mat))
+   is
+      Required_Capacity : constant Natural :=
+        Strided_Required_Capacity (Shape, Strides);
+      Byte_Count        : OpenCV.Internal.C_API.C_UInt64;
+      Sizes             :
+        OpenCV.Internal.C_API.C_Int32_Array (0 .. Shape'Length - 1);
+      Steps             :
+        OpenCV.Internal.C_API.C_UInt64_Array (0 .. Shape'Length - 1);
+      Image             : Mat;
+      New_Handle        : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+      Status            : OpenCV.Internal.C_API.Status;
+   begin
+      if Data'Length < Required_Capacity then
+         Raise_Invalid_View
+           (Type_Name
+            & " strided external N-D Mat view backing storage is too short");
+      end if;
+
+      for Offset in Sizes'Range loop
+         Sizes (Offset) :=
+           OpenCV.Internal.C_API.C_Int32 (Shape (Shape'First + Offset));
+         Steps (Offset) :=
+           OpenCV.Internal.C_API.C_UInt64 (Strides (Strides'First + Offset));
+      end loop;
+
+      Byte_Count := Expected_Byte_Count (Data'Length);
+
+      Status :=
+        OpenCV.Internal.C_API.Mat_Create_External_ND_Strided
+          (Dimension_Count => OpenCV.Internal.C_API.C_Int32 (Shape'Length),
+           Sizes           => Sizes (Sizes'First)'Access,
+           Element_Strides => Steps (Steps'First)'Access,
+           Depth           => To_C_Depth (Required_Depth),
+           Channels        =>
+             OpenCV.Internal.C_API.C_Int32 (Required_Channels),
+           Data            => Data (Data'First)'Address,
+           Byte_Count      => Byte_Count,
+           Result          => New_Handle'Access);
+      Raise_On_Error
+        (Status, Type_Name & " strided external N-D Mat view construction");
+
+      OpenCV.Internal.C_API.Mat_Destroy (Image.Handle);
+      Image.Handle := New_Handle;
+      Process (Image);
+   end With_Writable_Strided_Mat_View;
+
 end OpenCV.Core.Internal.Typed_External_Mat_View;

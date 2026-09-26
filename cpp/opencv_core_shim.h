@@ -310,6 +310,33 @@ opencv_core_mat_create_external_nd(int32_t ndims, const int32_t *sizes,
                                    void *data, uint64_t byte_count,
                                    opencv_core_mat_handle **out_mat);
 
+/*
+ * Creates a temporary strided N-dimensional Mat header over caller-owned
+ * storage. ndims must be in 2 .. 32 and must not exceed the linked OpenCV's
+ * native Mat dimension capacity (MatShape::MAX_DIMS = 10 on OpenCV 5.0).
+ * sizes holds ndims positive extents; element_strides holds ndims positive
+ * strides measured in COMPLETE Mat elements (elemSize() bytes), not bytes
+ * and not scalar channels. The final stride must be 1, and for every
+ * i < ndims-1, element_strides[i] >= element_strides[i+1] * sizes[i+1]
+ * (non-overlapping, nested layout). Zero-based index (i0, .., in) addresses
+ * element data + sum(ik * element_strides[k]) * elemSize().
+ *
+ * OpenCV sets datalimit = datastart + size[0] * step[0], so byte_count must
+ * cover sizes[0] * element_strides[0] complete elements, including padding
+ * after the final logical outer block; extra trailing capacity is allowed.
+ * data must be non-null and aligned to the selected scalar depth. The shim
+ * builds its own full ndims-entry native step array (the final entry is
+ * elemSize()); no native size_t array crosses this ABI. The header does not
+ * allocate, copy, or own the buffer and has the same temporary external-view
+ * lifetime rules as opencv_core_mat_create_external_2d. The shim cannot
+ * discover the real allocation size; the caller must supply truthful, live
+ * storage.
+ */
+opencv_core_status opencv_core_mat_create_external_nd_strided(
+    int32_t ndims, const int32_t *sizes, const uint64_t *element_strides,
+    int32_t depth, int32_t channels, void *data, uint64_t byte_count,
+    opencv_core_mat_handle **out_mat);
+
 opencv_core_status
 opencv_core_mat_copy(const opencv_core_mat_handle *source,
                      opencv_core_mat_handle **out_mat);

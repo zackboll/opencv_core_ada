@@ -98,6 +98,17 @@ package OpenCV.Core is
    --  N-dimensional Mat shape. Iteration order maps directly to OpenCV
    --  dimensions regardless of the array's index bounds.
    type Dimension_Array is array (Positive range <>) of Size_Coordinate;
+   --  Per-dimension strides for strided caller-owned N-D Mat views. One
+   --  stride is supplied for each Mat dimension, in the same iteration order
+   --  as the matching Dimension_Array; the array's index bounds are
+   --  irrelevant. Strides count COMPLETE Mat elements, never bytes: for
+   --  C2/C3/C4 layouts one stride unit is one complete Vec2/Vec3/Vec4
+   --  element, not one scalar channel. The final dimension's stride must be
+   --  exactly 1. For Shape (D1, .., Dn) and Strides (S1, .., Sn), zero-based
+   --  index (I1, .., In) denotes Data (Data'First + I1 * S1 + .. + In * Sn).
+   --  For example, Shape => (2, 3, 4) with Strides => (20, 6, 1) maps
+   --  (I, J, K) to Data (Data'First + I * 20 + J * 6 + K).
+   type Dimension_Stride_Array is array (Positive range <>) of Positive;
    --  Zero-based N-dimensional Mat indices. Iteration order maps directly
    --  to OpenCV dimensions regardless of the array's index bounds.
    type Index_Array is array (Positive range <>) of Size_Coordinate;

@@ -18,7 +18,7 @@ translation of the C++ headers.
 >
 > **Development status:** active, pre-1.0 API.
 >
-> **Current test baseline:** 1363 AUnit tests, with Ada and C++ warnings promoted
+> **Current test baseline:** 1377 AUnit tests, with Ada and C++ warnings promoted
 > to errors. GitHub Actions exercises the full test suite against four OpenCV
 > compatibility targets, plus a native Ubuntu 24.04 ARM64 job.
 >
@@ -359,7 +359,7 @@ The test crate carries development-only dependencies such as AUnit, GNATprove,
 and GNATcov. They are intentionally not dependencies of the public library
 crate.
 
-At the time of this README update, the full suite contains **1363 AUnit tests**.
+At the time of this README update, the full suite contains **1377 AUnit tests**.
 Coverage includes ordinary behavior, invalid input, shape/depth/channel
 compatibility, empty Mats, non-contiguous Regions, shallow-versus-independent
 ownership, callback lifetimes, arbitrary Ada array lower bounds, failure
@@ -571,7 +571,7 @@ by N-D `Get`/`Set` and N-D continuous buffer borrowing. For Vec2/Vec3/Vec4
 packages one `Data` entry is one complete Mat element, so a `(2, 3, 4)` Float64
 C4 view takes 24 `Vector` values, not 96 scalars. `Shape => (Rows, Columns)`
 produces the same 2-D geometry as the `Rows`/`Columns` overload, which is
-unchanged. Only packed storage is supported; row-strided views remain 2-D.
+unchanged. Gapped N-D storage uses the strided N-D overload described below.
 OpenCV 5.0's native `MatShape` capacity is 10 dimensions
 (`MatShape::MAX_DIMS`). The binding rejects N-D construction, view, and
 reshape requests above that native capacity with `OpenCV_Error` before
@@ -644,6 +644,68 @@ begin
    --  The caller still owns Data. The temporary Mat was callback-scoped.
 end Padded_UInt16_Example;
 ```
+
+### Wrap gapped (strided) N-D caller-owned storage
+
+Every `*_Mat_View` package also overloads `With_Writable_Strided_Mat_View`
+with a `Shape` and a `Strides : Dimension_Stride_Array`, supplying one stride
+per dimension:
+
+```ada
+with OpenCV.Core;
+with OpenCV.Core.Float32_Access;
+with OpenCV.Core.Float32_Mat_View;
+
+procedure Gapped_Volume_Example is
+   --  2 planes of 3 rows of 4 elements, each row padded to 6 elements and
+   --  each plane padded to 20 elements: 2 * 20 = 40 elements in total.
+   Volume : aliased OpenCV.Core.Float32_Mat_View.Buffer_Array :=
+     (0 .. 39 => 0.0);
+
+   procedure Process (Image : in out OpenCV.Core.Mat) is
+   begin
+      --  Image.Shape = (2, 3, 4); Image.Is_Continuous is False.
+      OpenCV.Core.Float32_Access.Set (Image, (1, 2, 3), 1.5);
+      --  Volume (1 * 20 + 2 * 6 + 3) = Volume (35) is now 1.5.
+   end Process;
+begin
+   OpenCV.Core.Float32_Mat_View.With_Writable_Strided_Mat_View
+     (Volume,
+      Shape   => (2, 3, 4),
+      Strides => (20, 6, 1),
+      Process => Process'Access);
+end Gapped_Volume_Example;
+```
+
+Strides are measured in **complete Mat elements**, never bytes. For Vec2,
+Vec3, and Vec4 packages one stride unit is one complete vector element (for
+example one 32-byte Float64 Vec4), not one scalar channel. For
+`Shape => (D1, ..., Dn)` and `Strides => (S1, ..., Sn)` the zero-based index
+`(I1, ..., In)` is `Data (Data'First + I1 * S1 + ... + In * Sn)`. The
+lower bounds of `Shape`, `Strides`, and `Data` are irrelevant.
+
+The contract is:
+
+- `Shape'Length` in `2 .. 32` (OpenCV 5.0: at most 10, enforced by the shim)
+  with positive extents, and `Strides'Length = Shape'Length`;
+- the final stride is exactly `1`;
+- every outer stride covers its complete nested block:
+  `Strides (I) >= Strides (I + 1) * Shape (I + 1)`, so overlapping or
+  backwards layouts are rejected;
+- `Data'Length >= Shape (first) * Strides (first)`. OpenCV's native header
+  spans the complete outer stride (`datalimit = data + size[0] * step[0]`),
+  so the padding after the final logical outer block must exist. Storage that
+  ends at the final logical element is rejected. Extra trailing storage beyond
+  that extent is allowed and lies outside the header.
+
+Padding is never a logical element and is never touched. `Is_Continuous`
+reports the actual layout: a gapped layout is non-continuous, so whole-buffer
+borrowing rejects it before its callback runs, while packed-equivalent strides
+such as `(12, 4, 1)` for `(2, 3, 4)` are continuous and can be borrowed.
+`Shape => (Rows, Columns)`, `Strides => (Row_Stride, 1)` has exactly the same
+geometry as the 2-D row-strided overload. Ownership, callback lifetime, and
+the no-escape rules are identical to the packed views; `Clone` returns
+independent packed storage holding only the logical values.
 
 ---
 
@@ -776,14 +838,17 @@ Packed views are available for all sixteen typed layouts above, both as 2-D
 (`Rows`, `Columns`) and as genuine N-D (`Shape`, 2 .. 32 dimensions) views.
 Packed N-D views are always continuous, so the matching `*_Buffer_Access`
 package can borrow the same caller storage again inside the callback without
-copying. Every listed layout also supports an explicit row stride, allowing a
-2-D Mat to represent the logical columns of padded caller-owned rows without
-copying their padding. Row-strided caller-owned views remain 2-D; arbitrary
-N-D external strides are not available.
-Except for the established Float32 overload, these packages use
-`With_Writable_Strided_Mat_View` and measure `Row_Stride` in complete Ada
-elements rather than bytes. For Vec2/Vec3/Vec4 layouts, one element is one
-complete vector pixel, not one scalar channel.
+copying. Every listed layout also supports strided storage, both as a 2-D
+explicit row stride and as genuine gapped N-D storage
+(`With_Writable_Strided_Mat_View (Data, Shape, Strides, Process)`), so a Mat
+can represent the logical elements of padded caller-owned rows, planes, or
+higher blocks without copying their padding. N-D strides are expressed in
+complete Mat elements, one per dimension, and the final dimension's stride is
+`1`. Except for the established Float32 2-D overload, the 2-D row-strided
+views use `With_Writable_Strided_Mat_View` and measure `Row_Stride` in
+complete Ada elements rather than bytes. For Vec2/Vec3/Vec4 layouts, one
+element (and one stride unit) is one complete vector pixel, not one scalar
+channel.
 
 Important lifetime rule: a temporary external-buffer Mat may not create a
 shallow alias that could outlive the callback. Ordinary `Mat` assignment and
@@ -797,10 +862,11 @@ reshaped normally.
 The external-data `Mat` header is destroyed at callback exit, including during
 exception unwinding; the caller's Ada array is never freed by OpenCV.
 
-For a row-strided external view, `Is_Continuous` reflects OpenCV's actual layout
-rules. A multirow view with padding is non-contiguous, so operations requiring a
-single packed buffer must reject it; row-based and other non-contiguous-aware
-operations can still be used.
+For a row-strided or N-D strided external view, `Is_Continuous` reflects
+OpenCV's actual layout rules. A view with padding between logical elements is
+non-contiguous, so operations requiring a single packed buffer must reject it;
+row-based, N-D element access, and other non-contiguous-aware operations can
+still be used. Strides that describe packed storage are continuous.
 
 Caller storage must remain alive throughout the callback, and OpenCV never
 owns or frees it. Row borrowing remains zero-copy and exposes exactly the
@@ -837,15 +903,17 @@ listed layout, including genuine N-D Mats and continuous N-D `Slice` views.
 The flat array uses OpenCV element order with the final dimension varying
 fastest (see "Scoped continuous whole-buffer borrowing" above). The
 **Packed caller buffer -> `Mat`** column likewise covers both 2-D and genuine
-packed N-D caller storage in that same element order. The row columns and
-**Strided caller buffer -> `Mat`** remain 2-D concepts.
+packed N-D caller storage in that same element order. **Strided caller buffer
+-> `Mat`** covers both 2-D row strides and genuine N-D element strides
+(`Dimension_Stride_Array`, one complete-element stride per dimension, final
+stride `1`). The row columns remain 2-D concepts.
 
 For Float32 and Float64 Vec2 APIs, **one vector is one complete two-channel
 Mat element**. Components are indexed 0 and 1; the vector packages attach no
 semantic meaning to either channel. Both depths support 2-D and N-D Get/Set,
 copied and borrowed 2-D rows, continuous 2-D or N-D whole-buffer borrowing, and
-packed 2-D/N-D and row-strided 2-D caller-owned views. Strides count complete
-Vec2 elements, not scalar channels. Borrowed references must not escape
+packed or strided 2-D/N-D caller-owned views. Strides count complete Vec2
+elements, not scalar channels. Borrowed references must not escape
 callbacks.
 Float32 C2 elements occupy 8 bytes; Float64 C2 elements occupy 16 bytes.
 
@@ -913,9 +981,9 @@ Mats. Non-contiguous Regions still require row access. `Float16_Mat_View`
 adds callback-scoped packed and row-strided caller-owned CV_16FC1 storage.
 Packed views overlay a contiguous Ada array. Row-strided views use
 `With_Writable_Strided_Mat_View` so a 2-D `Row_Stride` can skip padding
-between logical rows. Arbitrary N-D strides are not supported. The caller
-owns the backing storage, OpenCV does not free it, and it must remain alive
-for the callback lifetime. The main C1 FP16 data plane is now complete:
+between logical rows; the `Shape`/`Strides` overload adds gapped N-D storage.
+The caller owns the backing storage, OpenCV does not free it, and it must
+remain alive for the callback lifetime. The main C1 FP16 data plane is now complete:
 exact value representation, Float32 conversion, scalar access, row access,
 continuous-buffer borrowing, packed external views, and strided external
 views. `Add`, `Subtract`, `Multiply`, `Divide`, `Abs_Diff`, `Minimum`, and
@@ -948,9 +1016,9 @@ row access for 2-D C1 Mats, including non-contiguous Regions.
 for continuous 2-D or N-D Mats. `Float64_Mat_View` adds callback-scoped packed and
 row-strided caller-owned CV_64FC1 storage. Packed views overlay a contiguous
 Ada array. Row-strided views use `With_Writable_Strided_Mat_View` so a 2-D
-`Row_Stride` can skip padding between logical rows. Arbitrary N-D strides are
-not supported. The caller owns the backing storage, OpenCV does not free it,
-and it must remain alive for the callback lifetime.
+`Row_Stride` can skip padding between logical rows; the `Shape`/`Strides`
+overload adds gapped N-D storage. The caller owns the backing storage, OpenCV
+does not free it, and it must remain alive for the callback lifetime.
 
 Generic pure-Ada value abstractions are also provided:
 
@@ -1731,11 +1799,11 @@ The current limitations are intentional and help keep the public API coherent:
    and Float32/Float64 C4 Vec4 Get/Set, `Slice` views, `Shape`, and
    Shape-based N-D reshape are available. Callback-scoped whole-buffer
    borrowing is provided for continuous N-D Mats of every typed layout.
-   Packed caller-owned external views support genuine N-D shapes for every
-   typed layout. Dimension-dropping scalar indexing is not yet exposed as a
-   complete Ada model. N-D row APIs are not provided because a row is a 2-D
-   concept. Arbitrary N-D external strides remain unsupported; caller-owned
-   row-strided views are 2-D only.
+   Packed and strided (gapped) caller-owned external views support genuine
+   N-D shapes for every typed layout. Dimension-dropping scalar indexing and
+   a dimension-dropping view model are not yet exposed. N-D row APIs are not
+   provided because a row is a 2-D concept. OpenCV 5.0's native Mat shape
+   capacity remains 10 dimensions.
 
 2. **No public `SparseMat` or `UMat` abstraction.**
 
@@ -1751,13 +1819,14 @@ The current limitations are intentional and help keep the public API coherent:
    row-strided 2-D caller-buffer views that preserve exact binary16 encodings
    per channel. UInt8 C3 and Float32 C3 likewise have 2-D and N-D Vec3 Get/Set.
    One vector remains one complete three-channel element; neither N-D access
-   nor N-D buffer borrowing flattens channels into scalar indices. Rows and
-   row-strided external views remain 2-D concepts; packed external views
-   accept N-D shapes, but arbitrary N-D external strides are not supported.
+   nor N-D buffer borrowing flattens channels into scalar indices. Rows
+   remain 2-D concepts; packed and strided external views accept N-D shapes,
+   with strides counted in complete vectors.
    Float64 C1 has 2-D and N-D Get/Set, classification, 2-D row access,
    continuous 2-D/N-D whole-buffer borrowing, and packed or row-strided 2-D
    caller-buffer views. Every packed caller-buffer view listed in this item
-   also accepts an N-D `Shape` (see item 4). Other OpenCV
+   also accepts an N-D `Shape`, and every strided view an N-D `Shape` with
+   per-dimension `Strides` (see item 4). Other OpenCV
    depths are available to general Mat operations but do not yet have the same
    typed access families. Float16 now has an exact 16-bit public value
    representation, IEEE-754 classification helpers, numeric
@@ -1767,8 +1836,8 @@ The current limitations are intentional and help keep the public API coherent:
    rows, continuous buffer borrowing, and packed or strided external
    caller-buffer Mat views. Float32 and Float64 C1/C2/C3/C4 have complete typed
    coverage. Float32/Float64 Vec4 are available; UInt8, Float16, and integer
-   Vec4 and C5+ typed families remain unavailable. N-D row APIs and N-D
-   strided external views remain unavailable.
+   Vec4 and C5+ typed families remain unavailable. N-D row APIs remain
+   unavailable.
 
 4. **External caller-buffer views are writable and callback-scoped.**  
    Packed 2-D and packed N-D (`Shape`, 2 .. 32 dimensions) views are available
@@ -1776,12 +1845,15 @@ The current limitations are intentional and help keep the public API coherent:
    Float32/Float64 C2, UInt8/Float16/Float32/Float64 C3, and Float32/Float64
    C4. Packed views require exact logical capacity: `Data'Length` equals
    `Rows * Columns` or `product (Shape)`.
-   Row-strided storage is exposed for the same layouts but only in 2-D.
-   C2, C3, and C4 row strides count complete vectors, not scalar channels.
-   Strided backing storage must contain a complete
-   `Rows * Row_Stride` element extent, including final-row padding.
-   Arbitrary N-D strides, C5+ external views, and a separate
-   read-only external Mat abstraction are not yet exposed.
+   Strided storage is exposed for the same layouts both as 2-D row strides
+   and as N-D per-dimension strides (`Dimension_Stride_Array`). C2, C3, and C4
+   strides count complete vectors, not scalar channels. N-D strides require a
+   final stride of `1` and non-overlapping nesting. Strided backing storage
+   must contain the complete outer extent (`Rows * Row_Stride` or
+   `Shape (first) * Strides (first)` elements), including padding after the
+   final logical row or outer block. Remaining constraints: views are
+   writable and callback-scoped only, there is no separate read-only external
+   Mat abstraction, and C5+ typed external layouts are not available.
 
 5. **Whole-buffer borrowing requires continuous storage.**
    Genuine continuous N-D Mats and continuous N-D Slices are supported, in

@@ -1915,6 +1915,229 @@ opencv_core_mat_create_external_nd(int32_t ndims, const int32_t *sizes,
     }
 }
 
+opencv_core_status opencv_core_mat_create_external_nd_strided(
+    int32_t ndims, const int32_t *sizes, const uint64_t *element_strides,
+    int32_t depth, int32_t channels, void *data, uint64_t byte_count,
+    opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    // ABI safety: ndims > 32 would overflow the shim's fixed extent and step
+    // arrays while the shim reads sizes/element_strides[0 .. ndims-1].
+    // ndims < 2 has no stable geometry across supported versions: OpenCV 4.x
+    // promotes a 1-D header to 2-D while 5.0 keeps it 1-D.
+    if (ndims < 2 || ndims > maximum_mat_dimensions) {
+        return invalid_argument(
+            "external strided N-D Mat view dimension count must be in 2 .. 32");
+    }
+
+    // ABI safety: compatibility guard. OpenCV 5.0 stores the new shape and
+    // steps in fixed MatShape::MAX_DIMS (10) slot arrays, smaller than the
+    // historic 32-slot domain. Keep larger counts away from the native
+    // external-data constructor instead of relying on OpenCV to reject them.
+    if (ndims > native_maximum_mat_dimensions) {
+        return invalid_argument(
+            "external strided N-D Mat view dimension count exceeds this"
+            " OpenCV version's native Mat limit");
+    }
+
+    if (sizes == nullptr) {
+        return invalid_argument(
+            "external strided N-D Mat view sizes must not be null");
+    }
+
+    if (element_strides == nullptr) {
+        return invalid_argument(
+            "external strided N-D Mat view strides must not be null");
+    }
+
+    int opencv_sizes[maximum_mat_dimensions];
+    for (int32_t index = 0; index < ndims; ++index) {
+        // ABI safety: OpenCV finalizeHdr forms
+        // dataend += (size[i] - 1) * step[i] over caller storage; a zero or
+        // negative extent makes that pointer arithmetic leave the caller
+        // buffer, and a negative extent also corrupts the unsigned capacity
+        // products computed below.
+        if (sizes[index] < 1) {
+            return invalid_argument(
+                "external strided N-D Mat view extents must be positive");
+        }
+        opencv_sizes[index] = static_cast<int>(sizes[index]);
+    }
+
+    int opencv_depth = 0;
+    if (!to_opencv_depth(depth, opencv_depth)) {
+        return invalid_argument("depth is not a supported depth identifier");
+    }
+
+    // ABI safety: CV_MAKETYPE encodes (channels-1) into a bit field. Values
+    // outside 1 .. CV_CN_MAX produce a wrapped or truncated type before
+    // OpenCV sees the request.
+    if (channels < 1 || channels > OPENCV_CORE_MAX_CHANNELS) {
+        return invalid_argument("channels must be in the range 1 .. 512");
+    }
+
+    for (int32_t index = 0; index < ndims; ++index) {
+        // ABI safety: a zero stride aliases distinct logical elements onto
+        // the same caller storage and, for the outer dimension, makes
+        // datalimit = datastart + size[0] * step[0] precede the logical data.
+        if (element_strides[index] == 0) {
+            return invalid_argument(
+                "external strided N-D Mat view strides must be positive");
+        }
+    }
+
+    // ABI safety: OpenCV 4.1 through 5.0 always install elemSize() as the
+    // final native step, whatever the caller supplies. A final stride other
+    // than one element would make the shim's capacity and logical-end
+    // arithmetic describe a different layout than the header addresses.
+    if (element_strides[ndims - 1] != 1) {
+        return invalid_argument(
+            "external strided N-D Mat view final stride must be 1");
+    }
+
+    // ABI safety: OpenCV does not check that steps nest (4.1 through 5.0;
+    // 5.0 has that assertion commented out). A stride smaller than its
+    // complete inner block overlaps distinct logical elements and lets the
+    // final logical element fall outside datalimit = size[0] * step[0].
+    for (int32_t index = 0; index + 1 < ndims; ++index) {
+        const uint64_t inner_extent =
+            static_cast<uint64_t>(opencv_sizes[index + 1]);
+        const uint64_t inner_stride = element_strides[index + 1];
+        if (inner_stride >
+            std::numeric_limits<uint64_t>::max() / inner_extent) {
+            return invalid_argument(
+                "external strided N-D Mat view nested stride exceeds the C"
+                " ABI range");
+        }
+        if (element_strides[index] < inner_stride * inner_extent) {
+            return invalid_argument(
+                "external strided N-D Mat view stride is smaller than its"
+                " nested inner block");
+        }
+    }
+
+    try {
+        const int type = CV_MAKETYPE(opencv_depth, channels);
+        const size_t element_size = CV_ELEM_SIZE(type);
+
+        // Full ndims-entry native step array. OpenCV documents the steps
+        // argument as ndims-1 entries, but OpenCV 4.1 setSize() evaluates
+        // _steps[i] % esz1 for i == ndims-1 before substituting elemSize()
+        // (4.6/4.10/5.0 guard that read), so a short array would be read one
+        // element past its end on 4.1. The final entry is set to elemSize().
+        // Every entry is a whole number of elements, hence a multiple of
+        // esz1 as setSize() requires.
+        size_t opencv_steps[maximum_mat_dimensions];
+        for (int32_t index = 0; index < ndims; ++index) {
+            if (element_strides[index] > std::numeric_limits<size_t>::max()) {
+                return invalid_argument(
+                    "external strided N-D Mat view stride exceeds the native"
+                    " size range");
+            }
+            if (!checked_size_mul(static_cast<size_t>(element_strides[index]),
+                                  element_size, &opencv_steps[index])) {
+                return invalid_argument(
+                    "external strided N-D Mat view byte stride exceeds the"
+                    " native size range");
+            }
+        }
+        opencv_steps[ndims - 1] = element_size;
+
+        // ABI safety: OpenCV finalizeHdr sets
+        // datalimit = datastart + size[0] * step[0], so the complete outer
+        // stride (including padding after the final logical outer block) is
+        // part of the native header extent and must be caller capacity.
+        size_t required_capacity_elements = 0;
+        size_t required_capacity_bytes = 0;
+        if (!checked_size_mul(static_cast<size_t>(opencv_sizes[0]),
+                              static_cast<size_t>(element_strides[0]),
+                              &required_capacity_elements) ||
+            !checked_size_mul(required_capacity_elements, element_size,
+                              &required_capacity_bytes)) {
+            return invalid_argument(
+                "external strided N-D Mat view required capacity exceeds the"
+                " native size range");
+        }
+
+        // ABI safety: finalizeHdr also forms dataend from
+        // (size[i] - 1) * step[i]. Confirm with checked arithmetic that the
+        // final logical element lies within the declared header extent.
+        size_t logical_end_elements = 1;
+        for (int32_t index = 0; index < ndims; ++index) {
+            size_t term = 0;
+            if (!checked_size_mul(
+                    static_cast<size_t>(opencv_sizes[index] - 1),
+                    static_cast<size_t>(element_strides[index]), &term) ||
+                !checked_size_add(logical_end_elements, term,
+                                  &logical_end_elements)) {
+                return invalid_argument(
+                    "external strided N-D Mat view logical extent exceeds the"
+                    " native size range");
+            }
+        }
+        if (logical_end_elements > required_capacity_elements) {
+            return invalid_argument(
+                "external strided N-D Mat view logical extent exceeds its"
+                " outer stride");
+        }
+
+        uint64_t required_capacity_abi = 0;
+        if (!size_to_abi(required_capacity_bytes, required_capacity_abi)) {
+            return invalid_argument(
+                "external strided N-D Mat view required capacity exceeds the"
+                " C ABI range");
+        }
+        if (byte_count < required_capacity_abi) {
+            return invalid_argument(
+                "external strided N-D Mat view backing storage is too short");
+        }
+
+        // ABI safety: every accepted shape has at least one element, so a
+        // null base would publish a non-empty header over address zero.
+        if (data == nullptr) {
+            return invalid_argument(
+                "external strided N-D Mat view data must not be null");
+        }
+
+        const size_t scalar_alignment = CV_ELEM_SIZE1(opencv_depth);
+        if (scalar_alignment == 0 ||
+            (reinterpret_cast<uintptr_t>(data) % scalar_alignment) != 0) {
+            return invalid_argument(
+                "external strided N-D Mat view data is not aligned for the"
+                " selected depth");
+        }
+
+        // ABI safety: OpenCV forms datalimit = data + size[0] * step[0].
+        // Reject an address-span wrap of that complete outer extent (not
+        // merely the last logical element) before the pointer arithmetic
+        // occurs. This does not verify the real allocation; raw callers must
+        // still report truthful capacity and live storage.
+        const uintptr_t data_address = reinterpret_cast<uintptr_t>(data);
+        if (required_capacity_bytes >
+            std::numeric_limits<uintptr_t>::max() - data_address) {
+            return invalid_argument(
+                "external strided N-D Mat view address extent exceeds native"
+                " range");
+        }
+
+        std::unique_ptr<opencv_core_mat_handle> handle(
+            new opencv_core_mat_handle(cv::Mat(static_cast<int>(ndims),
+                                               opencv_sizes, type, data,
+                                               opencv_steps)));
+        handle->temporary_external_view = true;
+        *out_mat = handle.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
 opencv_core_status
 opencv_core_mat_copy(const opencv_core_mat_handle *source,
                      opencv_core_mat_handle **out_mat) {
