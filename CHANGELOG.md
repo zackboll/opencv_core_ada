@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Added Float64 C3 Vec3 typed 2-D/N-D access, copied and borrowed rows,
+  continuous buffer borrowing, and packed/strided caller-owned Mat views.
+  The C ABI transports three doubles component-wise, checks the 24-byte
+  layout and rejects same-width wrong-depth Mats. Perspective_Transform
+  and Transform results can now be inspected directly without narrowing.
+
 - Added Float32/Float64 C2 Vec2 typed 2-D and N-D element access, copied and
   zero-copy borrowed rows, continuous buffer borrowing, and packed/strided
   caller-owned views. C ABI uses explicit two-scalar structs and checks depth,

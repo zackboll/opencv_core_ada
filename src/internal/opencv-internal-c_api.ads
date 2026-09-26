@@ -68,6 +68,15 @@ package OpenCV.Internal.C_API is
    end record
    with Convention => C;
 
+   type Float64_Vec3 is record
+      Component_0 : C_Float64;
+      Component_1 : C_Float64;
+      Component_2 : C_Float64;
+   end record
+   with Convention => C;
+   pragma
+     Compile_Time_Error (Float64_Vec3'Size /= 192, "C Vec3 size mismatch");
+
    type Float32_Vec2 is record
       Component_0 : C_Float32;
       Component_1 : C_Float32;
@@ -1374,6 +1383,58 @@ package OpenCV.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_core_mat_get_float32_vec3";
+
+   function Mat_Get_Float64_Vec3
+     (Self : Mat_Handle; Row, Column : C_Int32; Result : access Float64_Vec3)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_float64_vec3";
+   function Mat_Set_Float64_Vec3
+     (Self        : Mat_Handle;
+      Row, Column : C_Int32;
+      Value       : access constant Float64_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_float64_vec3";
+   function Mat_Get_Float64_Vec3_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Result          : access Float64_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_float64_vec3_nd";
+   function Mat_Set_Float64_Vec3_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Value           : access constant Float64_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_float64_vec3_nd";
+   function Mat_Read_Float64_Vec3_Row
+     (Self          : Mat_Handle;
+      Row           : C_Int32;
+      Data          : System.Address;
+      Element_Count : C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_read_float64_vec3_row";
+   function Mat_Write_Float64_Vec3_Row
+     (Self          : Mat_Handle;
+      Row           : C_Int32;
+      Data          : System.Address;
+      Element_Count : C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_write_float64_vec3_row";
 
    --  Each uint16_t component is the stored IEEE binary16 encoding.
    function Mat_Get_Float16_Vec3

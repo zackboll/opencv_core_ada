@@ -66,6 +66,12 @@ typedef struct {
 } opencv_core_float32_vec3;
 
 typedef struct {
+    double component_0;
+    double component_1;
+    double component_2;
+} opencv_core_float64_vec3;
+
+typedef struct {
     float component_0;
     float component_1;
 } opencv_core_float32_vec2;
@@ -1267,6 +1273,15 @@ opencv_core_mat_get_float32_vec3(const opencv_core_mat_handle *mat,
                                  int32_t row, int32_t column,
                                  opencv_core_float32_vec3 *out_value);
 
+opencv_core_status
+opencv_core_mat_get_float64_vec3(const opencv_core_mat_handle *mat,
+                                 int32_t row, int32_t column,
+                                 opencv_core_float64_vec3 *out_value);
+opencv_core_status
+opencv_core_mat_set_float64_vec3(opencv_core_mat_handle *mat,
+                                 int32_t row, int32_t column,
+                                 const opencv_core_float64_vec3 *value);
+
 #define OPENCV_CORE_DECLARE_VEC2_ACCESS(name, scalar)                         \
     opencv_core_status opencv_core_mat_get_##name##_vec2(                     \
         const opencv_core_mat_handle *mat, int32_t row, int32_t column,        \
@@ -1340,6 +1355,15 @@ opencv_core_mat_set_float32_vec3_nd(opencv_core_mat_handle *mat,
                                     int32_t ndims, const int32_t *indices,
                                     const opencv_core_float32_vec3 *value);
 
+opencv_core_status
+opencv_core_mat_get_float64_vec3_nd(const opencv_core_mat_handle *mat,
+                                    int32_t ndims, const int32_t *indices,
+                                    opencv_core_float64_vec3 *out_value);
+opencv_core_status
+opencv_core_mat_set_float64_vec3_nd(opencv_core_mat_handle *mat,
+                                    int32_t ndims, const int32_t *indices,
+                                    const opencv_core_float64_vec3 *value);
+
 /*
  * Read or write one three-channel CV_16F element as raw binary16 encodings.
  * After N-D index validation, the selected pixel is addressed with
@@ -1381,6 +1405,17 @@ opencv_core_mat_read_float32_vec3_row(const opencv_core_mat_handle *mat,
 opencv_core_status
 opencv_core_mat_write_float32_vec3_row(opencv_core_mat_handle *mat,
                                        int32_t row, const float *data,
+                                       uint64_t element_count);
+
+/* element_count counts complete C3 elements; data contains three doubles
+ * per element, channel 0, 1, 2 for each successive column. */
+opencv_core_status
+opencv_core_mat_read_float64_vec3_row(const opencv_core_mat_handle *mat,
+                                      int32_t row, double *data,
+                                      uint64_t element_count);
+opencv_core_status
+opencv_core_mat_write_float64_vec3_row(opencv_core_mat_handle *mat,
+                                       int32_t row, const double *data,
                                        uint64_t element_count);
 
 /*

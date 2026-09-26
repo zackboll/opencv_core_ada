@@ -10,6 +10,102 @@ package body OpenCV.Core.Internal.Typed_Access is
      (Indices : Index_Array;
       Result  : in out OpenCV.Internal.C_API.C_Int32_Array);
 
+   function Get_Float64_Vec3
+     (Image : Mat; Row, Column : Integer) return Float64_Vec3.Vector
+   is
+      V : aliased OpenCV.Internal.C_API.Float64_Vec3 := (others => 0.0);
+      S : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Get_Float64_Vec3
+          (Image.Handle,
+           OpenCV.Internal.C_API.C_Int32 (Row),
+           OpenCV.Internal.C_API.C_Int32 (Column),
+           V'Access);
+   begin
+      Raise_On_Error (S, "Float64 Vec3 read");
+      return
+        (0 => Float64_Value (V.Component_0),
+         1 => Float64_Value (V.Component_1),
+         2 => Float64_Value (V.Component_2));
+   end Get_Float64_Vec3;
+
+   procedure Set_Float64_Vec3
+     (Image : in out Mat; Row, Column : Integer; Value : Float64_Vec3.Vector)
+   is
+      V : aliased constant OpenCV.Internal.C_API.Float64_Vec3 :=
+        (OpenCV.Internal.C_API.C_Float64 (Value (0)),
+         OpenCV.Internal.C_API.C_Float64 (Value (1)),
+         OpenCV.Internal.C_API.C_Float64 (Value (2)));
+      S : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Set_Float64_Vec3
+          (Image.Handle,
+           OpenCV.Internal.C_API.C_Int32 (Row),
+           OpenCV.Internal.C_API.C_Int32 (Column),
+           V'Access);
+   begin
+      Raise_On_Error (S, "Float64 Vec3 write");
+   end Set_Float64_Vec3;
+
+   function Get_Float64_Vec3
+     (Image : Mat; Indices : Index_Array) return Float64_Vec3.Vector
+   is
+      V : aliased OpenCV.Internal.C_API.Float64_Vec3 := (others => 0.0);
+      S : OpenCV.Internal.C_API.Status;
+   begin
+      if Indices'Length = 0 then
+         S :=
+           OpenCV.Internal.C_API.Mat_Get_Float64_Vec3_ND
+             (Image.Handle, 0, null, V'Access);
+      else
+         declare
+            C_Indices :
+              OpenCV.Internal.C_API.C_Int32_Array (0 .. Indices'Length - 1);
+         begin
+            Fill_C_Indices (Indices, C_Indices);
+            S :=
+              OpenCV.Internal.C_API.Mat_Get_Float64_Vec3_ND
+                (Image.Handle,
+                 OpenCV.Internal.C_API.C_Int32 (Indices'Length),
+                 C_Indices (C_Indices'First)'Access,
+                 V'Access);
+         end;
+      end if;
+      Raise_On_Error (S, "Float64 Vec3 N-D read");
+      return
+        (0 => Float64_Value (V.Component_0),
+         1 => Float64_Value (V.Component_1),
+         2 => Float64_Value (V.Component_2));
+   end Get_Float64_Vec3;
+
+   procedure Set_Float64_Vec3
+     (Image : in out Mat; Indices : Index_Array; Value : Float64_Vec3.Vector)
+   is
+      V : aliased constant OpenCV.Internal.C_API.Float64_Vec3 :=
+        (OpenCV.Internal.C_API.C_Float64 (Value (0)),
+         OpenCV.Internal.C_API.C_Float64 (Value (1)),
+         OpenCV.Internal.C_API.C_Float64 (Value (2)));
+      S : OpenCV.Internal.C_API.Status;
+   begin
+      if Indices'Length = 0 then
+         S :=
+           OpenCV.Internal.C_API.Mat_Set_Float64_Vec3_ND
+             (Image.Handle, 0, null, V'Access);
+      else
+         declare
+            C_Indices :
+              OpenCV.Internal.C_API.C_Int32_Array (0 .. Indices'Length - 1);
+         begin
+            Fill_C_Indices (Indices, C_Indices);
+            S :=
+              OpenCV.Internal.C_API.Mat_Set_Float64_Vec3_ND
+                (Image.Handle,
+                 OpenCV.Internal.C_API.C_Int32 (Indices'Length),
+                 C_Indices (C_Indices'First)'Access,
+                 V'Access);
+         end;
+      end if;
+      Raise_On_Error (S, "Float64 Vec3 N-D write");
+   end Set_Float64_Vec3;
+
    function Get_Float32_Vec2
      (Image : Mat; Row, Column : Integer) return Float32_Vec2.Vector
    is
@@ -1426,6 +1522,40 @@ package body OpenCV.Core.Internal.Typed_Access is
    begin
       Raise_On_Error (Status, "Float32 Vec3 typed Mat row write");
    end Write_Float32_Vec3_Row;
+
+   procedure Read_Float64_Vec3_Row
+     (Image : Mat; Row : Integer; Data : out Float64_Row_Buffer)
+   is
+      pragma
+        Warnings
+          (GNAT,
+           Off,
+           Data,
+           Reason =>
+             "Data is written by the imported C Vec3 row-read operation"
+             & " through its address.");
+      S : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Read_Float64_Vec3_Row
+          (Image.Handle,
+           OpenCV.Internal.C_API.C_Int32 (Row),
+           Address_Of (Data),
+           OpenCV.Internal.C_API.C_UInt64 (Data'Length / 3));
+   begin
+      Raise_On_Error (S, "Float64 Vec3 row read");
+   end Read_Float64_Vec3_Row;
+
+   procedure Write_Float64_Vec3_Row
+     (Image : in out Mat; Row : Integer; Data : Float64_Row_Buffer)
+   is
+      S : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Write_Float64_Vec3_Row
+          (Image.Handle,
+           OpenCV.Internal.C_API.C_Int32 (Row),
+           Address_Of (Data),
+           OpenCV.Internal.C_API.C_UInt64 (Data'Length / 3));
+   begin
+      Raise_On_Error (S, "Float64 Vec3 row write");
+   end Write_Float64_Vec3_Row;
 
    procedure Read_Float16_Vec3_Row
      (Image : Mat; Row : Integer; Data : out Float16_Row_Buffer)

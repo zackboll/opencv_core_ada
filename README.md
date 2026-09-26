@@ -18,7 +18,7 @@ translation of the C++ headers.
 >
 > **Development status:** active, pre-1.0 API.
 >
-> **Current test baseline:** 1322 AUnit tests, with Ada and C++ warnings promoted
+> **Current test baseline:** 1330 AUnit tests, with Ada and C++ warnings promoted
 > to errors. GitHub Actions exercises the full test suite against four OpenCV
 > compatibility targets, plus a native Ubuntu 24.04 ARM64 job.
 >
@@ -741,7 +741,7 @@ non-contiguous multirow strided view before invoking its callback.
 
 ## Typed access matrix
 
-Direct typed access currently concentrates on thirteen common layouts:
+Direct typed access currently concentrates on fourteen common layouts:
 
 | Layout | 2-D Get/Set | N-D Get/Set | Classification | Copied row | Borrowed row | Continuous buffer borrow | Packed caller buffer -> `Mat` | Strided caller buffer -> `Mat` |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -758,6 +758,7 @@ Direct typed access currently concentrates on thirteen common layouts:
 | UInt8 C3 | `UInt8_Vec3_Access` | `UInt8_Vec3_Access` | — | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Row_Access` | `UInt8_Vec3_Buffer_Access` | `UInt8_Vec3_Mat_View` | `UInt8_Vec3_Mat_View` |
 | Float16 C3 | `Float16_Vec3_Access` | `Float16_Vec3_Access` | — | `Float16_Vec3_Row_Access` | `Float16_Vec3_Row_Access` | `Float16_Vec3_Buffer_Access` | `Float16_Vec3_Mat_View` | `Float16_Vec3_Mat_View` |
 | Float32 C3 | `Float32_Vec3_Access` | `Float32_Vec3_Access` | — | `Float32_Vec3_Row_Access` | `Float32_Vec3_Row_Access` | `Float32_Vec3_Buffer_Access` | `Float32_Vec3_Mat_View` | `Float32_Vec3_Mat_View` |
+| Float64 C3 | `Float64_Vec3_Access` | `Float64_Vec3_Access` | — | `Float64_Vec3_Row_Access` | `Float64_Vec3_Row_Access` | `Float64_Vec3_Buffer_Access` | `Float64_Vec3_Mat_View` | `Float64_Vec3_Mat_View` |
 
 For Float32 and Float64 Vec2 APIs, **one vector is one complete two-channel
 Mat element**. Components are indexed 0 and 1; the vector packages attach no
@@ -772,10 +773,11 @@ scalar channel:
 
 - UInt8 Vec3: 24 bits / 3 bytes per element, native alignment 1;
 - Float16 Vec3: 48 bits / 6 bytes per element, native scalar alignment 2;
-- Float32 Vec3: 96 bits / 12 bytes per element, native scalar alignment 4.
+- Float32 Vec3: 96 bits / 12 bytes per element, native scalar alignment 4;
+- Float64 Vec3: 192 bits / 24 bytes per element, native scalar alignment 8.
 
 The predefined Vec3 packages are component-oriented and do not impose RGB,
-BGR, XYZ, or any other semantic channel interpretation. All three predefined
+BGR, XYZ, or any other semantic channel interpretation. All four predefined
 Vec3 layouts support 2-D Row/Column Get/Set and N-D `Index_Array` Get/Set.
 One vector remains one complete OpenCV element. `Float16_Vec3` is an exact
 three-component binary16 pixel type: indices `0 .. 2` are OpenCV channel
@@ -1208,6 +1210,10 @@ Range/non-finite operations:
 
 - `Transform`
 - `Perspective_Transform`
+
+`Perspective_Transform` outputs can be inspected directly with
+`Float32_Vec2_Access` for Float32 C2, `Float64_Vec2_Access` for Float64 C2,
+`Float32_Vec3_Access` for Float32 C3, and `Float64_Vec3_Access` for Float64 C3.
 
 These transform channel vectors stored at each element. They are not image
 resampling/warping operations; those belong in an `imgproc` binding.
@@ -1652,18 +1658,18 @@ The current limitations are intentional and help keep the public API coherent:
    borrowed row access, continuous buffer borrowing, packed or strided
    external caller-buffer Mat views, and C3 2-D and N-D Vec3 Get/Set plus 2-D
    rows, continuous buffer borrowing, and packed or strided external
-   caller-buffer Mat views. Float32 and Float64 C2 now have complete Vec2
-   element, row, buffer, and external-view access. Vec4 and broader
-   multi-channel typed families remain unavailable.
+   caller-buffer Mat views. Float32 and Float64 C2 have complete Vec2
+   coverage; Float64 C1, C2, and C3 have typed coverage. Float64 C4+ and
+   Vec4 typed families remain unavailable.
 
 4. **External caller-buffer views are writable and callback-scoped.**  
    Packed 2-D views are available for UInt8, Int8, UInt16, Int16, Int32, Float16,
-   Float32, and Float64 C1, plus UInt8, Float16, and Float32 C3. Row-strided
-   external storage is exposed for the same layouts and Float32/Float64 C2.
+   Float32, and Float64 C1, plus UInt8, Float16, Float32, and Float64 C3.
+   Row-strided storage is exposed for the same layouts and Float32/Float64 C2.
    C2 and C3 row strides count complete vectors, not scalar channels.
    Strided backing storage must contain a complete
    `Rows * Row_Stride` element extent, including final-row padding.
-   Arbitrary N-D strides, broader Float64 Cn external views, and a separate
+   Arbitrary N-D strides, Float64 C4+ external views, and a separate
    read-only external Mat abstraction are not yet exposed.
 
 5. **Whole-buffer borrowing requires continuous 2-D storage.**
