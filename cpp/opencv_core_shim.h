@@ -65,6 +65,16 @@ typedef struct {
     float component_2;
 } opencv_core_float32_vec3;
 
+typedef struct {
+    float component_0;
+    float component_1;
+} opencv_core_float32_vec2;
+
+typedef struct {
+    double component_0;
+    double component_1;
+} opencv_core_float64_vec2;
+
 /*
  * Raw IEEE-754 binary16 encodings for a three-channel CV_16F pixel.
  * Each uint16_t member is the stored 16-bit pattern, not an integer
@@ -1256,6 +1266,30 @@ opencv_core_status
 opencv_core_mat_get_float32_vec3(const opencv_core_mat_handle *mat,
                                  int32_t row, int32_t column,
                                  opencv_core_float32_vec3 *out_value);
+
+#define OPENCV_CORE_DECLARE_VEC2_ACCESS(name, scalar)                         \
+    opencv_core_status opencv_core_mat_get_##name##_vec2(                     \
+        const opencv_core_mat_handle *mat, int32_t row, int32_t column,        \
+        opencv_core_##name##_vec2 *out_value);                                 \
+    opencv_core_status opencv_core_mat_set_##name##_vec2(                     \
+        opencv_core_mat_handle *mat, int32_t row, int32_t column,              \
+        const opencv_core_##name##_vec2 *value);                               \
+    opencv_core_status opencv_core_mat_get_##name##_vec2_nd(                  \
+        const opencv_core_mat_handle *mat, int32_t ndims,                      \
+        const int32_t *indices, opencv_core_##name##_vec2 *out_value);         \
+    opencv_core_status opencv_core_mat_set_##name##_vec2_nd(                  \
+        opencv_core_mat_handle *mat, int32_t ndims, const int32_t *indices,    \
+        const opencv_core_##name##_vec2 *value);                               \
+    opencv_core_status opencv_core_mat_read_##name##_vec2_row(                \
+        const opencv_core_mat_handle *mat, int32_t row, scalar *data,          \
+        uint64_t element_count);                                               \
+    opencv_core_status opencv_core_mat_write_##name##_vec2_row(               \
+        opencv_core_mat_handle *mat, int32_t row, const scalar *data,          \
+        uint64_t element_count);
+
+OPENCV_CORE_DECLARE_VEC2_ACCESS(float32, float)
+OPENCV_CORE_DECLARE_VEC2_ACCESS(float64, double)
+#undef OPENCV_CORE_DECLARE_VEC2_ACCESS
 
 opencv_core_status
 opencv_core_mat_set_float32_vec3(opencv_core_mat_handle *mat,
