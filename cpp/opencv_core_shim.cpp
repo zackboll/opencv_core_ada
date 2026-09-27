@@ -1307,6 +1307,24 @@ opencv_core_status lookup_indexed_node(
     return OPENCV_CORE_OK;
 }
 
+opencv_core_status classify_file_node(const cv::FileNode &node,
+                                      int32_t *out_kind) {
+    if (node.isInt()) {
+        *out_kind = OPENCV_CORE_FILE_NODE_KIND_INTEGER;
+    } else if (node.isReal()) {
+        *out_kind = OPENCV_CORE_FILE_NODE_KIND_REAL;
+    } else if (node.isString()) {
+        *out_kind = OPENCV_CORE_FILE_NODE_KIND_STRING;
+    } else if (node.isSeq()) {
+        *out_kind = OPENCV_CORE_FILE_NODE_KIND_SEQUENCE;
+    } else if (node.isMap()) {
+        *out_kind = OPENCV_CORE_FILE_NODE_KIND_MAPPING;
+    } else {
+        return invalid_argument("file node has an unsupported kind");
+    }
+    return OPENCV_CORE_OK;
+}
+
 opencv_core_status copy_std_string(const std::string &value, char *buffer,
                                    uint64_t capacity, uint64_t *out_length) {
     uint64_t length = 0;
@@ -12143,7 +12161,50 @@ opencv_core_status opencv_core_file_storage_map_key_at(
     }
 }
 
+opencv_core_status opencv_core_file_storage_node_kind(
+    const opencv_core_file_storage_handle *storage, const char *name,
+    int32_t *out_kind) {
+    clear_error();
+    if (out_kind != nullptr) {
+        *out_kind = OPENCV_CORE_FILE_NODE_KIND_INVALID;
+    }
+    if (out_kind == nullptr || storage == nullptr || name == nullptr) {
+        return invalid_argument("node kind requires storage, name and out_kind");
+    }
+    try {
+        cv::FileNode node;
+        const opencv_core_status status = lookup_named_node(*storage, name, node);
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+        return classify_file_node(node, out_kind);
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
 
+opencv_core_status opencv_core_file_storage_node_kind_at(
+    const opencv_core_file_storage_handle *storage, uint64_t index,
+    int32_t *out_kind) {
+    clear_error();
+    if (out_kind != nullptr) {
+        *out_kind = OPENCV_CORE_FILE_NODE_KIND_INVALID;
+    }
+    if (out_kind == nullptr || storage == nullptr) {
+        return invalid_argument("node kind requires storage and out_kind");
+    }
+    try {
+        cv::FileNode node;
+        const opencv_core_status status =
+            lookup_indexed_node(*storage, index, node);
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+        return classify_file_node(node, out_kind);
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
 
 opencv_core_status
 opencv_core_file_storage_read_mat_at(
