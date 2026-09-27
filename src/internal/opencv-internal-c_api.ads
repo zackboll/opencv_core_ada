@@ -37,6 +37,9 @@ package OpenCV.Internal.C_API is
    type C_Int32_Array is array (Natural range <>) of aliased C_Int32
    with Convention => C;
 
+   type C_UInt8_Array is array (Natural range <>) of aliased C_UInt8
+   with Convention => C;
+
    type C_UInt64_Array is array (Natural range <>) of aliased C_UInt64
    with Convention => C;
 
@@ -747,6 +750,21 @@ package OpenCV.Internal.C_API is
       Stops           : access C_Int32;
       Result          : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_slice_nd";
+
+   --  Drop_Flags, Starts, and Stops each hold Dimension_Count entries.
+   --  Drop flag 0 retains [Start, Stop); 1 fixes Start and drops the
+   --  dimension (Stop must be Start + 1). The result is a temporary view.
+   function Mat_Select_ND_View
+     (Source          : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Drop_Flags      : access C_UInt8;
+      Starts          : access C_Int32;
+      Stops           : access C_Int32;
+      Result          : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_select_nd_view";
 
    function Mat_Reshape
      (Source   : Mat_Handle;

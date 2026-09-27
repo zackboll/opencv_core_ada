@@ -116,6 +116,28 @@ package OpenCV.Core is
    --  OpenCV dimensions regardless of the array's index bounds.
    type Index_Range_Array is array (Positive range <>) of Index_Range;
 
+   --  Per-dimension selector for With_Selected_View. Keep_Range retains the
+   --  dimension restricted to the half-open interval Bounds; Fix_Index
+   --  selects the single zero-based Index and drops the dimension from the
+   --  result.
+   type Dimension_Selection_Kind is (Keep_Range, Fix_Index);
+
+   type Dimension_Selection (Kind : Dimension_Selection_Kind := Keep_Range) is
+   record
+      case Kind is
+         when Keep_Range =>
+            Bounds : Index_Range;
+
+         when Fix_Index =>
+            Index : Size_Coordinate;
+      end case;
+   end record;
+
+   --  One selector per source dimension. Iteration order maps directly to
+   --  source dimensions regardless of the array's index bounds.
+   type Dimension_Selection_Array is
+     array (Positive range <>) of Dimension_Selection;
+
    --  Exact IEEE-754 binary16 encoding used by OpenCV CV_16F. This is
    --  the stored 16-bit pattern, not Short_Float, Float, Integer_16, or
    --  a numeric Unsigned_16 value. Classification inspects the binary16
@@ -1216,6 +1238,57 @@ package OpenCV.Core is
    --  4.1 through 5.0. The result keeps Self's depth, channel count, and
    --  dimension count; each extent becomes Stop - Start.
    function Slice (Self : Mat; Ranges : Index_Range_Array) return Mat;
+
+   --  Invokes Process with a zero-copy, callback-scoped view of Self that
+   --  fixes selected dimensions to one index and DROPS them from the result,
+   --  while other dimensions keep ordinary half-open ranges. Exactly one
+   --  selector is required for every source dimension, in iteration order;
+   --  the array's index bounds are irrelevant.
+   --
+   --  Keep_Range retains its dimension restricted to Bounds, which must
+   --  satisfy Start < Stop <= that source extent (empty ranges are
+   --  rejected). Fix_Index requires Index < that source extent and removes
+   --  the dimension. The result has one dimension per Keep_Range, in source
+   --  order, with extent Stop - Start. Self's depth and channel count are
+   --  preserved; one element of a C2/C3/C4 Mat remains one complete vector.
+   --
+   --  For example, a source of Shape (2, 3, 2, 4) with selections
+   --  (Fix_Index 1, Keep_Range [0, 3), Fix_Index 1, Keep_Range [0, 4))
+   --  yields a View of Shape (3, 4) whose coordinate (J, K) is source
+   --  coordinate (1, J, 1, K).
+   --
+   --  Requirements, each raising OpenCV_Error before Process is invoked:
+   --  Self is nonempty with at least three dimensions; at least one
+   --  dimension is fixed; at least two dimensions are kept, so the View has
+   --  at least two dimensions (no 1-D or scalar View is produced, and a
+   --  one-dimensional result is never promoted to 1 x N or N x 1); and the
+   --  FINAL source dimension is kept. The final-dimension rule is an OpenCV
+   --  Mat representation requirement, not an implementation shortcut:
+   --  OpenCV always uses elemSize() as the step of a Mat's last dimension,
+   --  so if the source's final axis were dropped the new last axis would
+   --  generally have a larger stride that no ordinary Mat header can
+   --  describe without copying.
+   --
+   --  View shares Self's storage; no data is copied. Writes through View
+   --  immediately modify Self and writes through Self are immediately
+   --  visible through View. Retained source strides are inherited, so View
+   --  may be continuous (for example when only leading dimensions are
+   --  dropped) or gapped (dropping a middle dimension keeps the outer
+   --  stride). Is_Continuous reports the actual layout, and whole-buffer
+   --  borrowing rejects a gapped View while 2-D row borrowing still works.
+   --
+   --  View is valid only during Process. It keeps Self's allocation alive
+   --  for the callback even if Self is rebound or finalized, but it is a
+   --  temporary view: shallow copies, Slice, Reshape, and Module_Interop
+   --  output handles are rejected. Clone is the escape path and returns
+   --  independent storage. Self must not itself be a temporary caller-buffer
+   --  Mat view; Clone it first to select from owned storage. Exceptions
+   --  raised by Process propagate unchanged, and writes completed through
+   --  View before the exception remain visible in Self.
+   procedure With_Selected_View
+     (Self       : in out Mat;
+      Selections : Dimension_Selection_Array;
+      Process    : not null access procedure (View : in out Mat));
 
    --  Sets the calling thread's OpenCV default RNG state. Reseeding that
    --  thread with the same Seed restarts its sequence. Fill_Uniform,
