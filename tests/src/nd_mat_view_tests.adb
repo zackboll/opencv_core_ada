@@ -32,6 +32,10 @@ with OpenCV.Core.UInt8_Vec4_Access;
 with OpenCV.Core.UInt8_Vec4_Buffer_Access;
 with OpenCV.Core.UInt8_Vec4_Mat_View;
 with OpenCV.Core.UInt16_Vec4;
+with OpenCV.Core.UInt16_Vec3;
+with OpenCV.Core.UInt16_Vec3_Access;
+with OpenCV.Core.UInt16_Vec3_Buffer_Access;
+with OpenCV.Core.UInt16_Vec3_Mat_View;
 with OpenCV.Core.UInt16_Vec4_Access;
 with OpenCV.Core.UInt16_Vec4_Buffer_Access;
 with OpenCV.Core.UInt16_Vec4_Mat_View;
@@ -156,6 +160,11 @@ package body ND_Mat_View_Tests is
    is (F16 (16#0001# + Interfaces.Unsigned_16 (O)),
        F16 (16#8000# + Interfaces.Unsigned_16 (O)),
        F16 (16#7C01# + Interfaces.Unsigned_16 (O)));
+
+   function U16_Vec3_At (O : Natural) return OpenCV.Core.UInt16_Vec3.Vector
+   is (OpenCV.UInt16_Value (O),
+       OpenCV.UInt16_Value (32768 + O),
+       OpenCV.UInt16_Value (65535 - O));
 
    function F32_Vec3_At (O : Natural) return OpenCV.Core.Float32_Vec3.Vector
    is (Float32_At (O), Float32_At (O) + 0.25, -Float32_At (O));
@@ -338,6 +347,20 @@ package body ND_Mat_View_Tests is
         OpenCV.Core.UInt8_Vec3_Mat_View.With_Read_Only_Strided_Mat_View,
         OpenCV.Core.UInt8_Vec3_Mat_View.With_Read_Only_Strided_Mat_View,
         OpenCV.Core.UInt8_Vec3_Buffer_Access.With_Read_Only_Buffer);
+   package RO_U16V3 is new
+     Read_Only_Mat_View_Checks
+       (OpenCV.Core.UInt16_Vec3.Vector,
+        OpenCV.Core.UInt16_Vec3_Mat_View.Buffer_Array,
+        OpenCV.Core.UInt16_Vec3_Buffer_Access.Buffer_Array,
+        (OpenCV.Core.UInt16, 3),
+        "UInt16 C3",
+        U16_Vec3_At,
+        OpenCV.Core.UInt16_Vec3_Access.Get,
+        OpenCV.Core.UInt16_Vec3_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.UInt16_Vec3_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.UInt16_Vec3_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.UInt16_Vec3_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.UInt16_Vec3_Buffer_Access.With_Read_Only_Buffer);
    package RO_F16V3 is new
      Read_Only_Mat_View_Checks
        (OpenCV.Core.Float16_Vec3.Vector,
@@ -604,6 +627,20 @@ package body ND_Mat_View_Tests is
         OpenCV.Core.UInt8_Vec3_Buffer_Access.With_Read_Only_Buffer,
         OpenCV.Core.UInt8_Vec3_Buffer_Access.With_Writable_Buffer);
 
+   package U16_Vec3_Checks is new
+     ND_Mat_View_Checks
+       (OpenCV.Core.UInt16_Vec3.Vector,
+        OpenCV.Core.UInt16_Vec3_Mat_View.Buffer_Array,
+        OpenCV.Core.UInt16_Vec3_Buffer_Access.Buffer_Array,
+        (OpenCV.Core.UInt16, 3),
+        "UInt16 C3",
+        U16_Vec3_At,
+        OpenCV.Core.UInt16_Vec3_Access.Get,
+        OpenCV.Core.UInt16_Vec3_Access.Set,
+        OpenCV.Core.UInt16_Vec3_Mat_View.With_Writable_Mat_View,
+        OpenCV.Core.UInt16_Vec3_Mat_View.With_Writable_Mat_View,
+        OpenCV.Core.UInt16_Vec3_Buffer_Access.With_Read_Only_Buffer,
+        OpenCV.Core.UInt16_Vec3_Buffer_Access.With_Writable_Buffer);
    package F16_Vec3_Checks is new
      ND_Mat_View_Checks
        (OpenCV.Core.Float16_Vec3.Vector,
@@ -746,6 +783,7 @@ package body ND_Mat_View_Tests is
       F64_Vec2_Checks.Check_Volume;
       U8_Vec3_Checks.Check_Volume;
       F16_Vec3_Checks.Check_Volume;
+      U16_Vec3_Checks.Check_Volume;
       F32_Vec3_Checks.Check_Volume;
       F64_Vec3_Checks.Check_Volume;
       U8_Vec4_Checks.Check_Volume;
@@ -770,6 +808,7 @@ package body ND_Mat_View_Tests is
       F64_Vec2_Checks.Check_Two_Dimensional_Shape;
       U8_Vec3_Checks.Check_Two_Dimensional_Shape;
       F16_Vec3_Checks.Check_Two_Dimensional_Shape;
+      U16_Vec3_Checks.Check_Two_Dimensional_Shape;
       F32_Vec3_Checks.Check_Two_Dimensional_Shape;
       F64_Vec3_Checks.Check_Two_Dimensional_Shape;
       U8_Vec4_Checks.Check_Two_Dimensional_Shape;
@@ -793,6 +832,7 @@ package body ND_Mat_View_Tests is
       F64_Vec2_Checks.Check_No_Escape_And_Clone;
       U8_Vec3_Checks.Check_No_Escape_And_Clone;
       F16_Vec3_Checks.Check_No_Escape_And_Clone;
+      U16_Vec3_Checks.Check_No_Escape_And_Clone;
       F32_Vec3_Checks.Check_No_Escape_And_Clone;
       F64_Vec3_Checks.Check_No_Escape_And_Clone;
       U8_Vec4_Checks.Check_No_Escape_And_Clone;
@@ -1363,6 +1403,7 @@ package body ND_Mat_View_Tests is
       RO_F64V2.Check_Packed;
       RO_U8V3.Check_Packed;
       RO_F16V3.Check_Packed;
+      RO_U16V3.Check_Packed;
       RO_F32V3.Check_Packed;
       RO_F64V3.Check_Packed;
       RO_U8V4.Check_Packed;
@@ -1386,6 +1427,7 @@ package body ND_Mat_View_Tests is
       RO_F64V2.Check_Strided;
       RO_U8V3.Check_Strided;
       RO_F16V3.Check_Strided;
+      RO_U16V3.Check_Strided;
       RO_F32V3.Check_Strided;
       RO_F64V3.Check_Strided;
       RO_U8V4.Check_Strided;
@@ -1567,7 +1609,7 @@ package body ND_Mat_View_Tests is
    begin
       Result.Add_Test
         (Caller.Create
-           ("Read-only packed 2-D/N-D constant views alias all 18 layouts",
+           ("Read-only packed 2-D/N-D constant views alias all 19 layouts",
             Read_Only_Packed_All_Layouts'Access));
       Result.Add_Test
         (Caller.Create
@@ -1583,7 +1625,7 @@ package body ND_Mat_View_Tests is
             Read_Only_Invalid_Capacity_Rejects_Before_Process'Access));
       Result.Add_Test
         (Caller.Create
-           ("Read-only gapped and packed strides cover all 18 layouts",
+           ("Read-only gapped and packed strides cover all 19 layouts",
             Read_Only_Strided_All_Layouts'Access));
       Result.Add_Test
         (Caller.Create
@@ -1603,15 +1645,15 @@ package body ND_Mat_View_Tests is
             C1_Volumes_Alias_Caller_Storage'Access));
       Result.Add_Test
         (Caller.Create
-           ("C2/C3/C4 N-D views alias caller storage for all 10 packages",
+           ("C2/C3/C4 N-D views alias caller storage for all 11 packages",
             Vector_Volumes_Alias_Caller_Storage'Access));
       Result.Add_Test
         (Caller.Create
-           ("Shape (2, 3) views match Rows/Columns views for all 18 packages",
+           ("Shape (2, 3) views match Rows/Columns views for all 19 packages",
             Two_Dimensional_Shape_Matches_Rows_Columns'Access));
       Result.Add_Test
         (Caller.Create
-           ("N-D views reject Slice/Reshape and Clone independently (x18)",
+           ("N-D views reject Slice/Reshape and Clone independently (x19)",
             Views_Reject_Shallow_Escape_And_Clone'Access));
       Result.Add_Test
         (Caller.Create

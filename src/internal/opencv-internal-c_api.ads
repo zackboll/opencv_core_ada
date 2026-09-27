@@ -137,6 +137,16 @@ package OpenCV.Internal.C_API is
    end record
    with Convention => C;
 
+   type UInt16_Vec3 is record
+      Component_0 : C_UInt16;
+      Component_1 : C_UInt16;
+      Component_2 : C_UInt16;
+   end record
+   with Convention => C;
+   pragma
+     Compile_Time_Error
+       (UInt16_Vec3'Size /= 48, "C UInt16 Vec3 size mismatch");
+
    Depth_UInt8   : constant C_Int32 := 0;
    Depth_Int8    : constant C_Int32 := 1;
    Depth_UInt16  : constant C_Int32 := 2;
@@ -1754,6 +1764,59 @@ package OpenCV.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_core_mat_set_float16_vec3";
+
+   --  Native UInt16 C3 access, one complete vector per Mat element.
+   function Mat_Get_UInt16_Vec3
+     (Self : Mat_Handle; Row, Column : C_Int32; Result : access UInt16_Vec3)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_uint16_vec3";
+   function Mat_Set_UInt16_Vec3
+     (Self        : Mat_Handle;
+      Row, Column : C_Int32;
+      Value       : access constant UInt16_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_uint16_vec3";
+   function Mat_Get_UInt16_Vec3_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Result          : access UInt16_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_uint16_vec3_nd";
+   function Mat_Set_UInt16_Vec3_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Value           : access constant UInt16_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_uint16_vec3_nd";
+   function Mat_Read_UInt16_Vec3_Row
+     (Self          : Mat_Handle;
+      Row           : C_Int32;
+      Data          : System.Address;
+      Element_Count : C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_read_uint16_vec3_row";
+   function Mat_Write_UInt16_Vec3_Row
+     (Self          : Mat_Handle;
+      Row           : C_Int32;
+      Data          : System.Address;
+      Element_Count : C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_write_uint16_vec3_row";
 
    function Mat_Get_UInt8_Vec3_ND
      (Self            : Mat_Handle;

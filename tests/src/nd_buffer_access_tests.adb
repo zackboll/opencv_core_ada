@@ -26,6 +26,9 @@ with OpenCV.Core.UInt8_Vec4;
 with OpenCV.Core.UInt8_Vec4_Access;
 with OpenCV.Core.UInt8_Vec4_Buffer_Access;
 with OpenCV.Core.UInt16_Vec4;
+with OpenCV.Core.UInt16_Vec3;
+with OpenCV.Core.UInt16_Vec3_Access;
+with OpenCV.Core.UInt16_Vec3_Buffer_Access;
 with OpenCV.Core.UInt16_Vec4_Access;
 with OpenCV.Core.UInt16_Vec4_Buffer_Access;
 with OpenCV.Core.Float32_Vec4_Access;
@@ -127,6 +130,11 @@ package body ND_Buffer_Access_Tests is
    is (F16 (16#3C00# + Interfaces.Unsigned_16 (O)),
        F16 (16#BC00# + Interfaces.Unsigned_16 (O)),
        F16 (16#7C01# + Interfaces.Unsigned_16 (O)));
+
+   function U16_Vec3_At (O : Natural) return OpenCV.Core.UInt16_Vec3.Vector
+   is (OpenCV.UInt16_Value (O),
+       OpenCV.UInt16_Value (32768 + O),
+       OpenCV.UInt16_Value (65535 - O));
 
    function F32_Vec3_At (O : Natural) return OpenCV.Core.Float32_Vec3.Vector
    is (Float32_At (O), Float32_At (O) + 0.25, -Float32_At (O));
@@ -289,6 +297,17 @@ package body ND_Buffer_Access_Tests is
         OpenCV.Core.UInt8_Vec3_Buffer_Access.With_Read_Only_Buffer,
         OpenCV.Core.UInt8_Vec3_Buffer_Access.With_Writable_Buffer);
 
+   package U16_Vec3_Checks is new
+     ND_Buffer_Checks
+       (OpenCV.Core.UInt16_Vec3.Vector,
+        OpenCV.Core.UInt16_Vec3_Buffer_Access.Buffer_Array,
+        (OpenCV.Core.UInt16, 3),
+        "UInt16 C3",
+        U16_Vec3_At,
+        OpenCV.Core.UInt16_Vec3_Access.Get,
+        OpenCV.Core.UInt16_Vec3_Access.Set,
+        OpenCV.Core.UInt16_Vec3_Buffer_Access.With_Read_Only_Buffer,
+        OpenCV.Core.UInt16_Vec3_Buffer_Access.With_Writable_Buffer);
    package F16_Vec3_Checks is new
      ND_Buffer_Checks
        (OpenCV.Core.Float16_Vec3.Vector,
@@ -451,6 +470,7 @@ package body ND_Buffer_Access_Tests is
    begin
       U8_Vec3_Checks.Check_Volume;
       F16_Vec3_Checks.Check_Volume;
+      U16_Vec3_Checks.Check_Volume;
       F32_Vec3_Checks.Check_Volume;
       F64_Vec3_Checks.Check_Volume;
    end Vec3_Volumes;
@@ -484,6 +504,7 @@ package body ND_Buffer_Access_Tests is
       F64_Vec2_Checks.Check_Continuous_Slice;
       U8_Vec3_Checks.Check_Continuous_Slice;
       F16_Vec3_Checks.Check_Continuous_Slice;
+      U16_Vec3_Checks.Check_Continuous_Slice;
       F32_Vec3_Checks.Check_Continuous_Slice;
       F64_Vec3_Checks.Check_Continuous_Slice;
       U8_Vec4_Checks.Check_Continuous_Slice;
@@ -507,6 +528,7 @@ package body ND_Buffer_Access_Tests is
       F64_Vec2_Checks.Check_Gapped_Slice;
       U8_Vec3_Checks.Check_Gapped_Slice;
       F16_Vec3_Checks.Check_Gapped_Slice;
+      U16_Vec3_Checks.Check_Gapped_Slice;
       F32_Vec3_Checks.Check_Gapped_Slice;
       F64_Vec3_Checks.Check_Gapped_Slice;
       U8_Vec4_Checks.Check_Gapped_Slice;

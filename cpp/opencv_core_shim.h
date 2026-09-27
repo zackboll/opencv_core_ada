@@ -60,6 +60,12 @@ typedef struct {
 } opencv_core_uint8_vec3;
 
 typedef struct {
+    uint16_t component_0;
+    uint16_t component_1;
+    uint16_t component_2;
+} opencv_core_uint16_vec3;
+
+typedef struct {
     float component_0;
     float component_1;
     float component_2;
@@ -1399,6 +1405,15 @@ opencv_core_mat_set_uint8_vec3(opencv_core_mat_handle *mat, int32_t row,
                                const opencv_core_uint8_vec3 *value);
 
 opencv_core_status
+opencv_core_mat_get_uint16_vec3(const opencv_core_mat_handle *mat, int32_t row,
+                                int32_t column,
+                                opencv_core_uint16_vec3 *out_value);
+opencv_core_status
+opencv_core_mat_set_uint16_vec3(opencv_core_mat_handle *mat, int32_t row,
+                                int32_t column,
+                                const opencv_core_uint16_vec3 *value);
+
+opencv_core_status
 opencv_core_mat_get_float32_vec3(const opencv_core_mat_handle *mat,
                                  int32_t row, int32_t column,
                                  opencv_core_float32_vec3 *out_value);
@@ -1504,6 +1519,15 @@ opencv_core_mat_set_uint8_vec3_nd(opencv_core_mat_handle *mat, int32_t ndims,
                                   const opencv_core_uint8_vec3 *value);
 
 opencv_core_status
+opencv_core_mat_get_uint16_vec3_nd(const opencv_core_mat_handle *mat,
+                                   int32_t ndims, const int32_t *indices,
+                                   opencv_core_uint16_vec3 *out_value);
+opencv_core_status
+opencv_core_mat_set_uint16_vec3_nd(opencv_core_mat_handle *mat, int32_t ndims,
+                                   const int32_t *indices,
+                                   const opencv_core_uint16_vec3 *value);
+
+opencv_core_status
 opencv_core_mat_get_float32_vec3_nd(const opencv_core_mat_handle *mat,
                                     int32_t ndims, const int32_t *indices,
                                     opencv_core_float32_vec3 *out_value);
@@ -1554,6 +1578,15 @@ opencv_core_status
 opencv_core_mat_write_uint8_vec3_row(opencv_core_mat_handle *mat,
                                      int32_t row, const uint8_t *data,
                                      uint64_t element_count);
+
+opencv_core_status
+opencv_core_mat_read_uint16_vec3_row(const opencv_core_mat_handle *mat,
+                                     int32_t row, uint16_t *data,
+                                     uint64_t element_count);
+opencv_core_status
+opencv_core_mat_write_uint16_vec3_row(opencv_core_mat_handle *mat, int32_t row,
+                                      const uint16_t *data,
+                                      uint64_t element_count);
 
 opencv_core_status
 opencv_core_mat_read_float32_vec3_row(const opencv_core_mat_handle *mat,
