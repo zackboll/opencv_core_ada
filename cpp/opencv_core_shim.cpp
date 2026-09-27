@@ -525,6 +525,30 @@ static_assert(sizeof(uint16_t) == 2 && sizeof(cv::Vec<uint16_t, 3>) == 6 &&
                   alignof(cv::Vec<uint16_t, 3>) <= 2,
               "UInt16 Vec3 native storage requires two-byte alignment");
 
+static_assert(sizeof(int16_t) == 2 && sizeof(short) == 2,
+              "Int16 C ABI must match OpenCV short");
+static_assert(sizeof(opencv_core_int16_vec3) == 6 &&
+                  offsetof(opencv_core_int16_vec3, component_0) == 0 &&
+                  offsetof(opencv_core_int16_vec3, component_1) == 2 &&
+                  offsetof(opencv_core_int16_vec3, component_2) == 4 &&
+                  sizeof(cv::Vec<short, 3>) == 6 &&
+                  CV_ELEM_SIZE(CV_16SC3) == 6 &&
+                  alignof(opencv_core_int16_vec3) <= 2 &&
+                  alignof(short) == 2 &&
+                  alignof(cv::Vec<short, 3>) <= 2,
+              "Int16 Vec3 ABI and native layout mismatch");
+
+cv::Vec<short, 3>
+to_opencv_vec3(const opencv_core_int16_vec3 &value) noexcept {
+    return cv::Vec<short, 3>(value.component_0, value.component_1,
+                             value.component_2);
+}
+
+opencv_core_int16_vec3
+from_opencv_vec3(const cv::Vec<short, 3> &value) noexcept {
+    return {value[0], value[1], value[2]};
+}
+
 cv::Vec<uint16_t, 3>
 to_opencv_vec3(const opencv_core_uint16_vec3 &value) noexcept {
     return cv::Vec<uint16_t, 3>(value.component_0, value.component_1,
@@ -593,6 +617,16 @@ static_assert(sizeof(uint16_t) == 2 && sizeof(cv::Vec<uint16_t, 4>) == 8 &&
                   CV_ELEM_SIZE(CV_16UC4) == 8 &&
                   alignof(cv::Vec<uint16_t, 4>) <= 2,
               "UInt16 Vec4 native storage requires two-byte alignment");
+static_assert(sizeof(opencv_core_int16_vec4) == 8 &&
+                  offsetof(opencv_core_int16_vec4, component_0) == 0 &&
+                  offsetof(opencv_core_int16_vec4, component_1) == 2 &&
+                  offsetof(opencv_core_int16_vec4, component_2) == 4 &&
+                  offsetof(opencv_core_int16_vec4, component_3) == 6 &&
+                  sizeof(cv::Vec<short, 4>) == 8 &&
+                  CV_ELEM_SIZE(CV_16SC4) == 8 &&
+                  alignof(opencv_core_int16_vec4) <= 2 &&
+                  alignof(cv::Vec<short, 4>) <= 2,
+              "Int16 Vec4 ABI and native layout mismatch");
 static_assert(sizeof(opencv_core_float32_vec4) == 16 &&
                   offsetof(opencv_core_float32_vec4, component_0) == 0 &&
                   offsetof(opencv_core_float32_vec4, component_1) == 4 &&
@@ -1016,6 +1050,14 @@ static_assert(sizeof(opencv_core_uint16_vec2) == 4 &&
                   CV_ELEM_SIZE(CV_16UC2) == 4 &&
                   alignof(cv::Vec<uint16_t, 2>) <= 2,
               "UInt16 Vec2 layout must be two contiguous words");
+static_assert(sizeof(opencv_core_int16_vec2) == 4 &&
+                  offsetof(opencv_core_int16_vec2, component_0) == 0 &&
+                  offsetof(opencv_core_int16_vec2, component_1) == 2 &&
+                  sizeof(cv::Vec<short, 2>) == 4 &&
+                  CV_ELEM_SIZE(CV_16SC2) == 4 &&
+                  alignof(opencv_core_int16_vec2) <= 2 &&
+                  alignof(cv::Vec<short, 2>) <= 2,
+              "Int16 Vec2 ABI and native layout mismatch");
 
 template <typename T, typename Abi>
 opencv_core_status vec2_get(const opencv_core_mat_handle *mat, int32_t row,
@@ -7322,6 +7364,56 @@ opencv_core_mat_read_uint16_vec3_row(const opencv_core_mat_handle *mat,
 }
 
 opencv_core_status
+opencv_core_mat_read_int16_vec3_row(const opencv_core_mat_handle *mat,
+                                    int32_t row, int16_t *data,
+                                    uint64_t element_count) {
+    clear_error();
+    if (data == nullptr && element_count != 0)
+        return invalid_argument("data must not be null when element_count is nonzero");
+    try {
+        const cv::Vec<short, 3> *row_data = nullptr;
+        // ABI safety: prepare_vector_row checks typed storage and buffer arithmetic before indexing.
+        const auto status = prepare_vector_row(
+            mat, row, element_count, CV_16S, "Mat depth must be Int16",
+            "Mat must have exactly three channels", row_data);
+        if (status != OPENCV_CORE_OK) return status;
+        for (std::size_t column = 0;
+             column < static_cast<std::size_t>(element_count); ++column) {
+            const std::size_t offset = column * 3;
+            data[offset] = row_data[column][0];
+            data[offset + 1] = row_data[column][1];
+            data[offset + 2] = row_data[column][2];
+        }
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status
+opencv_core_mat_write_int16_vec3_row(opencv_core_mat_handle *mat,
+                                     int32_t row, const int16_t *data,
+                                     uint64_t element_count) {
+    clear_error();
+    if (data == nullptr && element_count != 0)
+        return invalid_argument("data must not be null when element_count is nonzero");
+    try {
+        const cv::Vec<short, 3> *const_row_data = nullptr;
+        // ABI safety: prepare_vector_row checks typed storage and buffer arithmetic before indexing.
+        const auto status = prepare_vector_row(
+            mat, row, element_count, CV_16S, "Mat depth must be Int16",
+            "Mat must have exactly three channels", const_row_data);
+        if (status != OPENCV_CORE_OK) return status;
+        auto *row_data = const_cast<cv::Vec<short, 3> *>(const_row_data);
+        for (std::size_t column = 0;
+             column < static_cast<std::size_t>(element_count); ++column) {
+            const std::size_t offset = column * 3;
+            assign_vec(row_data[column], cv::Vec<short, 3>(
+                data[offset], data[offset + 1], data[offset + 2]));
+        }
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status
 opencv_core_mat_write_uint16_vec3_row(opencv_core_mat_handle *mat, int32_t row,
                                       const uint16_t *data,
                                       uint64_t element_count) {
@@ -7641,6 +7733,7 @@ OPENCV_CORE_DEFINE_VEC2(float32, float, CV_32F, "Mat depth must be Float32")
 OPENCV_CORE_DEFINE_VEC2(float64, double, CV_64F, "Mat depth must be Float64")
 OPENCV_CORE_DEFINE_VEC2(uint8, uint8_t, CV_8U, "Mat depth must be UInt8")
 OPENCV_CORE_DEFINE_VEC2(uint16, uint16_t, CV_16U, "Mat depth must be UInt16")
+OPENCV_CORE_DEFINE_VEC2(int16, short, CV_16S, "Mat depth must be Int16")
 #undef OPENCV_CORE_DEFINE_VEC2
 
 extern "C++" {
@@ -7795,6 +7888,7 @@ opencv_core_status vec4_row(const opencv_core_mat_handle *mat, int32_t row,
 
 OPENCV_CORE_DEFINE_VEC4(uint8, uint8_t, CV_8U, "Mat depth must be UInt8")
 OPENCV_CORE_DEFINE_VEC4(uint16, uint16_t, CV_16U, "Mat depth must be UInt16")
+OPENCV_CORE_DEFINE_VEC4(int16, short, CV_16S, "Mat depth must be Int16")
 OPENCV_CORE_DEFINE_VEC4(float32, float, CV_32F, "Mat depth must be Float32")
 OPENCV_CORE_DEFINE_VEC4(float64, double, CV_64F, "Mat depth must be Float64")
 #undef OPENCV_CORE_DEFINE_VEC4
@@ -7821,6 +7915,49 @@ opencv_core_mat_get_uint16_vec3(const opencv_core_mat_handle *mat, int32_t row,
     } catch (...) {
         return translate_current_exception();
     }
+}
+
+opencv_core_status
+opencv_core_mat_get_int16_vec3(const opencv_core_mat_handle *mat, int32_t row,
+                               int32_t column,
+                               opencv_core_int16_vec3 *out_value) {
+    clear_error();
+    if (out_value == nullptr) return invalid_argument("out_value must not be null");
+    *out_value = {0, 0, 0};
+    if (mat == nullptr) return invalid_argument("Mat handle must not be null");
+    try {
+        // ABI safety: Mat::at dereferences a typed address without release-build bounds checks.
+        const auto status = validate_typed_at(
+            mat->value, row, column, CV_16S, 3, "Mat depth must be Int16",
+            "Mat must have exactly three channels");
+        if (status != OPENCV_CORE_OK) return status;
+        // ABI safety: a full typed pixel must exist before dereferencing it.
+        if (mat->value.data == nullptr || mat->value.elemSize() != sizeof(cv::Vec<short, 3>))
+            return invalid_argument("Mat has no matching Int16 Vec3 storage");
+        *out_value = from_opencv_vec3(mat->value.at<cv::Vec<short, 3>>(row, column));
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status
+opencv_core_mat_set_int16_vec3(opencv_core_mat_handle *mat, int32_t row,
+                               int32_t column,
+                               const opencv_core_int16_vec3 *value) {
+    clear_error();
+    if (value == nullptr) return invalid_argument("value must not be null");
+    if (mat == nullptr) return invalid_argument("Mat handle must not be null");
+    try {
+        // ABI safety: Mat::at forms an unchecked typed address in release builds.
+        const auto status = validate_typed_at(
+            mat->value, row, column, CV_16S, 3, "Mat depth must be Int16",
+            "Mat must have exactly three channels");
+        if (status != OPENCV_CORE_OK) return status;
+        // ABI safety: the typed assignment writes a complete pixel.
+        if (mat->value.data == nullptr || mat->value.elemSize() != sizeof(cv::Vec<short, 3>))
+            return invalid_argument("Mat has no matching Int16 Vec3 storage");
+        assign_vec(mat->value.at<cv::Vec<short, 3>>(row, column), to_opencv_vec3(*value));
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
 }
 
 opencv_core_status
@@ -8163,6 +8300,47 @@ opencv_core_mat_get_uint16_vec3_nd(const opencv_core_mat_handle *mat,
     } catch (...) {
         return translate_current_exception();
     }
+}
+
+opencv_core_status
+opencv_core_mat_get_int16_vec3_nd(const opencv_core_mat_handle *mat,
+                                  int32_t ndims, const int32_t *indices,
+                                  opencv_core_int16_vec3 *out_value) {
+    clear_error();
+    if (out_value == nullptr) return invalid_argument("out_value must not be null");
+    *out_value = {0, 0, 0};
+    if (mat == nullptr) return invalid_argument("Mat handle must not be null");
+    try {
+        int converted[maximum_mat_dimensions];
+        // ABI safety: validate index count, coordinates and exact typed storage before ptr formation.
+        const auto status = prepare_nd_vector_at(
+            mat->value, ndims, indices, converted, CV_16S, 3,
+            sizeof(cv::Vec<short, 3>), "Mat depth must be Int16",
+            "Mat must have exactly three channels");
+        if (status != OPENCV_CORE_OK) return status;
+        *out_value = from_opencv_vec3(mat->value.at<cv::Vec<short, 3>>(converted));
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status
+opencv_core_mat_set_int16_vec3_nd(opencv_core_mat_handle *mat, int32_t ndims,
+                                  const int32_t *indices,
+                                  const opencv_core_int16_vec3 *value) {
+    clear_error();
+    if (value == nullptr) return invalid_argument("value must not be null");
+    if (mat == nullptr) return invalid_argument("Mat handle must not be null");
+    try {
+        int converted[maximum_mat_dimensions];
+        // ABI safety: validate index count, coordinates and exact typed storage before ptr formation.
+        const auto status = prepare_nd_vector_at(
+            mat->value, ndims, indices, converted, CV_16S, 3,
+            sizeof(cv::Vec<short, 3>), "Mat depth must be Int16",
+            "Mat must have exactly three channels");
+        if (status != OPENCV_CORE_OK) return status;
+        assign_vec(mat->value.at<cv::Vec<short, 3>>(converted), to_opencv_vec3(*value));
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
 }
 
 opencv_core_status

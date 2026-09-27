@@ -11,9 +11,39 @@ with OpenCV.Core.UInt8_Vec3;
 with OpenCV.Core.UInt16_Vec3;
 with OpenCV.Core.UInt8_Vec4;
 with OpenCV.Core.UInt16_Vec4;
+with OpenCV.Core.Int16_Vec2;
+with OpenCV.Core.Int16_Vec3;
+with OpenCV.Core.Int16_Vec4;
 with OpenCV.Internal.C_API;
 
 package OpenCV.Core.Internal.Typed_Access is
+
+   function Get_Int16_Vec2
+     (Image : Mat; Row, Column : Integer) return Int16_Vec2.Vector;
+   procedure Set_Int16_Vec2
+     (Image : in out Mat; Row, Column : Integer; Value : Int16_Vec2.Vector);
+   function Get_Int16_Vec2
+     (Image : Mat; Indices : Index_Array) return Int16_Vec2.Vector;
+   procedure Set_Int16_Vec2
+     (Image : in out Mat; Indices : Index_Array; Value : Int16_Vec2.Vector);
+
+   function Get_Int16_Vec3
+     (Image : Mat; Row, Column : Integer) return Int16_Vec3.Vector;
+   procedure Set_Int16_Vec3
+     (Image : in out Mat; Row, Column : Integer; Value : Int16_Vec3.Vector);
+   function Get_Int16_Vec3
+     (Image : Mat; Indices : Index_Array) return Int16_Vec3.Vector;
+   procedure Set_Int16_Vec3
+     (Image : in out Mat; Indices : Index_Array; Value : Int16_Vec3.Vector);
+
+   function Get_Int16_Vec4
+     (Image : Mat; Row, Column : Integer) return Int16_Vec4.Vector;
+   procedure Set_Int16_Vec4
+     (Image : in out Mat; Row, Column : Integer; Value : Int16_Vec4.Vector);
+   function Get_Int16_Vec4
+     (Image : Mat; Indices : Index_Array) return Int16_Vec4.Vector;
+   procedure Set_Int16_Vec4
+     (Image : in out Mat; Indices : Index_Array; Value : Int16_Vec4.Vector);
 
    function Get_UInt8_Vec2
      (Image : Mat; Row, Column : Integer) return UInt8_Vec2.Vector;
@@ -187,6 +217,19 @@ package OpenCV.Core.Internal.Typed_Access is
    type Int16_Row_Buffer is
      array (Natural range <>) of OpenCV.Internal.C_API.C_Int16
    with Convention => C;
+
+   procedure Read_Int16_Vec2_Row
+     (Image : Mat; Row : Integer; Data : out Int16_Row_Buffer);
+   procedure Write_Int16_Vec2_Row
+     (Image : in out Mat; Row : Integer; Data : Int16_Row_Buffer);
+   procedure Read_Int16_Vec3_Row
+     (Image : Mat; Row : Integer; Data : out Int16_Row_Buffer);
+   procedure Write_Int16_Vec3_Row
+     (Image : in out Mat; Row : Integer; Data : Int16_Row_Buffer);
+   procedure Read_Int16_Vec4_Row
+     (Image : Mat; Row : Integer; Data : out Int16_Row_Buffer);
+   procedure Write_Int16_Vec4_Row
+     (Image : in out Mat; Row : Integer; Data : Int16_Row_Buffer);
 
    type Int32_Row_Buffer is
      array (Natural range <>) of OpenCV.Internal.C_API.C_Int32
