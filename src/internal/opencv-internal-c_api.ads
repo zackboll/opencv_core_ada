@@ -2459,6 +2459,24 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_file_storage_sequence_length";
 
+   function File_Storage_Map_Length
+     (Self : File_Storage_Handle; Out_Length : access C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_file_storage_map_length";
+
+   function File_Storage_Map_Key_At
+     (Self       : File_Storage_Handle;
+      Index      : C_UInt64;
+      Buffer     : System.Address;
+      Capacity   : C_UInt64;
+      Out_Length : access C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_file_storage_map_key_at";
+
    function File_Storage_Read_Mat_At
      (Self : File_Storage_Handle; Index : C_UInt64; Result : access Mat_Handle)
       return Status

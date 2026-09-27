@@ -1226,6 +1226,14 @@ cv::FileNode current_read_context(
     return storage.read_context_stack.back();
 }
 
+cv::FileNode current_map_context(
+    const opencv_core_file_storage_handle &storage) {
+    if (storage.read_context_stack.empty()) {
+        return storage.value.root();
+    }
+    return storage.read_context_stack.back();
+}
+
 void assign_file_node(cv::FileNode &dest, const cv::FileNode &source) {
 #if CV_VERSION_MAJOR > 4 || (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 2)
     dest = source;
@@ -1299,14 +1307,8 @@ opencv_core_status lookup_indexed_node(
     return OPENCV_CORE_OK;
 }
 
-opencv_core_status copy_file_node_string(const cv::FileNode &node,
-                                         char *buffer, uint64_t capacity,
-                                         uint64_t *out_length) {
-    if (!node.isString()) {
-        return invalid_argument("file node is not a string");
-    }
-
-    const std::string value = node.string();
+opencv_core_status copy_std_string(const std::string &value, char *buffer,
+                                   uint64_t capacity, uint64_t *out_length) {
     uint64_t length = 0;
     if (!size_to_abi(value.size(), length)) {
         return invalid_argument("stored string exceeds the ABI size range");
@@ -1328,6 +1330,15 @@ opencv_core_status copy_file_node_string(const cv::FileNode &node,
 
     *out_length = length;
     return OPENCV_CORE_OK;
+}
+
+opencv_core_status copy_file_node_string(const cv::FileNode &node,
+                                         char *buffer, uint64_t capacity,
+                                         uint64_t *out_length) {
+    if (!node.isString()) {
+        return invalid_argument("file node is not a string");
+    }
+    return copy_std_string(node.string(), buffer, capacity, out_length);
 }
 
 // A default Ada Mat is a genuine cv::Mat() (dims == 0, empty()). Typed
@@ -12074,6 +12085,59 @@ opencv_core_file_storage_sequence_length(
 
         *out_length = length;
         return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status opencv_core_file_storage_map_length(
+    const opencv_core_file_storage_handle *storage, uint64_t *out_length) {
+    clear_error();
+    if (out_length != nullptr) {
+        *out_length = 0;
+    }
+    if (out_length == nullptr || storage == nullptr) {
+        return invalid_argument("map length requires storage and out_length");
+    }
+    try {
+        const cv::FileNode context = current_map_context(*storage);
+        if (!context.isMap()) {
+            return invalid_argument("map length requires a mapping read context");
+        }
+        uint64_t length = 0;
+        if (!size_to_abi(context.size(), length)) {
+            return invalid_argument("map length exceeds the ABI size range");
+        }
+        *out_length = length;
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status opencv_core_file_storage_map_key_at(
+    const opencv_core_file_storage_handle *storage, uint64_t index,
+    char *buffer, uint64_t capacity, uint64_t *out_length) {
+    clear_error();
+    if (out_length != nullptr) {
+        *out_length = 0;
+    }
+    if (out_length == nullptr || storage == nullptr ||
+        (buffer == nullptr && capacity != 0)) {
+        return invalid_argument("invalid map key arguments");
+    }
+    try {
+        const cv::FileNode context = current_map_context(*storage);
+        if (!context.isMap()) {
+            return invalid_argument("map key requires a mapping read context");
+        }
+        const std::vector<cv::String> keys = context.keys();
+        // ABI safety: indexing the shim-owned vector out of bounds is undefined.
+        if (index >= keys.size()) {
+            return invalid_argument("map key index is out of range");
+        }
+        return copy_std_string(keys[static_cast<std::size_t>(index)], buffer,
+                               capacity, out_length);
     } catch (...) {
         return translate_current_exception();
     }

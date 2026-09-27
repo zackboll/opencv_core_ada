@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Added `OpenCV.Core.Persistence.Map_Length` and `Map_Key` for read-only
+  root and entered mappings. Zero-based keys follow OpenCV iteration order;
+  returned Ada strings own their bytes and enumeration preserves navigation.
+
 - Added callback-scoped dimension-dropping N-D selected views. New public
   `OpenCV.Core.Dimension_Selection_Kind` (`Keep_Range`, `Fix_Index`),
   discriminated `Dimension_Selection` (`Bounds : Index_Range` for

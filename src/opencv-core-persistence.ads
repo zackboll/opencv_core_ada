@@ -11,7 +11,7 @@ private with OpenCV.Internal.C_API;
 --  in an explicit XML, YAML, or JSON format. Open_Memory reads a
 --  previously serialized document and lets OpenCV auto-detect the
 --  format from the text. Gzip, append, explicit disk format flags,
---  comments, FLOW formatting, custom type names, map key enumeration,
+--  comments, FLOW formatting, custom type names,
 --  and a public FileNode API are not part of this slice.
 --
 --  File_Storage is limited and not copyable. Exactly one Ada object
@@ -29,9 +29,10 @@ private with OpenCV.Internal.C_API;
 --  Write borrows the source value for the duration of the call and does
 --  not modify it. Read operations return independently owned Ada values
 --  that remain valid after the storage is finalized. A missing name
---  raises OpenCV_Error. Stored 0, 0.0, empty String, empty Mat, empty
---  mapping, and empty sequence values are present nodes and remain
---  distinguishable from absence.
+--  raises OpenCV_Error. Stored 0, 0.0, empty String, empty Mat, and
+--  empty sequence values remain distinguishable from absence. Empty
+--  mapping preservation depends on OpenCV and the persistence format;
+--  a node parsed as a mapping with no entries has Map_Length zero.
 --
 --  Integer persistence uses OpenCV's signed 32-bit integer file node.
 --  Write rejects an Ada Integer outside that domain with OpenCV_Error
@@ -189,6 +190,19 @@ package OpenCV.Core.Persistence is
    --  Returns FileNode::size of the current sequence. Valid only
    --  while the current read context is a sequence.
    function Sequence_Length (Self : File_Storage) return Natural;
+
+   --  Counts entries at the implicit root (stream 0) or in the entered
+   --  mapping. A current mapping with no entries has length zero. Self
+   --  must be open Read_Only; a sequence context raises OpenCV_Error.
+   --  Navigation is unchanged.
+   function Map_Length (Self : File_Storage) return Natural;
+
+   --  Returns the zero-based Index key in OpenCV's FileNode mapping
+   --  iteration order (not sorted). The String is independently owned.
+   --  Requires open Read_Only storage and Index < Map_Length (Self);
+   --  a sequence context or out-of-range index raises OpenCV_Error.
+   --  Navigation is unchanged.
+   function Map_Key (Self : File_Storage; Index : Natural) return String;
 
    --  Reads the named Mat. Self must be an open Read_Only storage. The
    --  result owns independent storage and does not depend on Self.

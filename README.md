@@ -18,7 +18,7 @@ translation of the C++ headers.
 >
 > **Development status:** active, pre-1.0 API.
 >
-> **Current test baseline:** 1396 AUnit tests, with Ada and C++ warnings promoted
+> **Current test baseline:** 1399 AUnit tests, with Ada and C++ warnings promoted
 > to errors. GitHub Actions exercises the full test suite against four OpenCV
 > compatibility targets, plus a native Ubuntu 24.04 ARM64 job.
 >
@@ -359,7 +359,7 @@ The test crate carries development-only dependencies such as AUnit, GNATprove,
 and GNATcov. They are intentionally not dependencies of the public library
 crate.
 
-At the time of this README update, the full suite contains **1396 AUnit tests**.
+At the time of this README update, the full suite contains **1399 AUnit tests**.
 Coverage includes ordinary behavior, invalid input, shape/depth/channel
 compatibility, empty Mats, non-contiguous Regions, shallow-versus-independent
 ownership, callback lifetimes, arbitrary Ada array lower bounds, failure
@@ -1704,6 +1704,7 @@ Reading:
 - named/indexed `Enter_Sequence`
 - `Leave_Structure`
 - `Sequence_Length`
+- `Map_Length` and zero-based `Map_Key` (root or entered map)
 - named/indexed `Read_Mat`
 - named/indexed `Read_Integer`
 - named/indexed `Read_Real`
@@ -1741,6 +1742,20 @@ The implicit FileStorage root is a mapping. Hierarchy is navigated by the
 controlled `File_Storage` object itself; no public `FileNode` lifetime is
 exposed.
 
+For an open read-only storage, keys at the root or entered mapping are returned
+as independent Ada strings in OpenCV's mapping iteration order, not sorted.
+When the current node is a mapping with no entries, `Map_Length` returns zero;
+map enumeration in a sequence context is invalid. For example:
+
+```ada
+Count := Reader.Map_Length;
+if Count > 0 then
+   for I in 0 .. Count - 1 loop
+      Put_Line (Reader.Map_Key (I));
+   end loop;
+end if;
+```
+
 ### Type policy and edge conditions
 
 The API avoids surprising lossy conversions:
@@ -1756,8 +1771,10 @@ string node  -> Read_String     allowed
 other node   -> Read_String     rejected
 ```
 
-Missing nodes raise `OpenCV_Error`; actual stored zero, empty string, empty Mat,
-empty map, and empty sequence remain distinguishable from absence.
+Missing nodes raise `OpenCV_Error`; stored zero, empty string, empty Mat, and
+empty sequence remain distinguishable from absence. Empty mapping preservation
+depends on OpenCV and the persistence format; when OpenCV parses a node as a
+mapping with no entries, `Map_Length` reports zero.
 
 Integer writes use OpenCV's signed 32-bit file node. The binding currently
 supports the write range:
@@ -1953,8 +1970,8 @@ The current limitations are intentional and help keep the public API coherent:
     Wrapped modes use strong Ada types or deliberately narrower operations.
 
 12. **Persistence hides `FileNode`.**  
-    Nested maps and sequences are supported, but map-key enumeration, public
-    FileNode iterators, file append mode, Base64, comments, gzip controls, FLOW
+    Nested maps and sequences are supported, but public FileNode iterators,
+    file append mode, Base64, comments, gzip controls, FLOW
     formatting, and raw persistence APIs are not part of the current slice.
 
 13. **The spectral API is deliberately focused.**
