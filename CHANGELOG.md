@@ -1,6 +1,12 @@
 # Changelog
 
 ## Unreleased
+- Added UInt8 C2 / Vec2b and UInt16 C2 / Vec2w typed 2-D/N-D Get/Set,
+  copied and leased zero-copy rows and continuous buffers, writable and
+  read-only packed/strided 2-D/N-D external views. One vector is one complete
+  two-channel element. Verified same-byte wrong-layout rejection and
+  Merge/Split, Scalar, and C2 identity/channel-expanding Transform behavior.
+
 - Added UInt16 C3 / Vec3w typed 2-D/N-D Get/Set, copied and borrowed rows,
   continuous buffers, writable/read-only packed and strided caller-owned views,
   and Merge/Split, Scalar, and C3-to-C3/C4 Transform interoperability.

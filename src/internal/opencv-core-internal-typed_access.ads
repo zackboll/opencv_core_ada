@@ -5,6 +5,8 @@ with OpenCV.Core.Float32_Vec4;
 with OpenCV.Core.Float64_Vec4;
 with OpenCV.Core.Float32_Vec2;
 with OpenCV.Core.Float64_Vec2;
+with OpenCV.Core.UInt8_Vec2;
+with OpenCV.Core.UInt16_Vec2;
 with OpenCV.Core.UInt8_Vec3;
 with OpenCV.Core.UInt16_Vec3;
 with OpenCV.Core.UInt8_Vec4;
@@ -12,6 +14,24 @@ with OpenCV.Core.UInt16_Vec4;
 with OpenCV.Internal.C_API;
 
 package OpenCV.Core.Internal.Typed_Access is
+
+   function Get_UInt8_Vec2
+     (Image : Mat; Row, Column : Integer) return UInt8_Vec2.Vector;
+   procedure Set_UInt8_Vec2
+     (Image : in out Mat; Row, Column : Integer; Value : UInt8_Vec2.Vector);
+   function Get_UInt8_Vec2
+     (Image : Mat; Indices : Index_Array) return UInt8_Vec2.Vector;
+   procedure Set_UInt8_Vec2
+     (Image : in out Mat; Indices : Index_Array; Value : UInt8_Vec2.Vector);
+
+   function Get_UInt16_Vec2
+     (Image : Mat; Row, Column : Integer) return UInt16_Vec2.Vector;
+   procedure Set_UInt16_Vec2
+     (Image : in out Mat; Row, Column : Integer; Value : UInt16_Vec2.Vector);
+   function Get_UInt16_Vec2
+     (Image : Mat; Indices : Index_Array) return UInt16_Vec2.Vector;
+   procedure Set_UInt16_Vec2
+     (Image : in out Mat; Indices : Index_Array; Value : UInt16_Vec2.Vector);
 
    function Get_UInt8_Vec4
      (Image : Mat; Row, Column : Integer) return UInt8_Vec4.Vector;
@@ -233,6 +253,15 @@ package OpenCV.Core.Internal.Typed_Access is
 
    procedure Write_Float16_Row
      (Image : in out Mat; Row : Integer; Data : Float16_Row_Buffer);
+
+   procedure Read_UInt8_Vec2_Row
+     (Image : Mat; Row : Integer; Data : out UInt8_Row_Buffer);
+   procedure Write_UInt8_Vec2_Row
+     (Image : in out Mat; Row : Integer; Data : UInt8_Row_Buffer);
+   procedure Read_UInt16_Vec2_Row
+     (Image : Mat; Row : Integer; Data : out UInt16_Row_Buffer);
+   procedure Write_UInt16_Vec2_Row
+     (Image : in out Mat; Row : Integer; Data : UInt16_Row_Buffer);
 
    procedure Read_UInt8_Vec3_Row
      (Image : Mat; Row : Integer; Data : out UInt8_Row_Buffer);
