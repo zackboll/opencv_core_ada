@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Added UInt8 C4 / Vec4b typed access: 2-D/N-D Get/Set, copied and
+  zero-copy borrowed rows and continuous buffers, writable and read-only
+  packed/strided 2-D/N-D caller-owned views, and Merge/Split, Scalar and
+  Transform interoperability.
+
 - Added read-only zero-copy caller-owned external Mat views to all sixteen
   typed layouts: packed and strided 2-D/N-D, including aliased constant data.
   Mode-in callbacks prevent normal Ada mutation; the existing temporary-view

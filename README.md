@@ -18,7 +18,7 @@ translation of the C++ headers.
 >
 > **Development status:** active, pre-1.0 API.
 >
-> **Current test baseline:** 1407 AUnit tests, with Ada and C++ warnings promoted
+> **Current test baseline:** 1411 AUnit tests, with Ada and C++ warnings promoted
 > to errors. GitHub Actions exercises the full test suite against four OpenCV
 > compatibility targets, plus a native Ubuntu 24.04 ARM64 job.
 >
@@ -359,7 +359,7 @@ The test crate carries development-only dependencies such as AUnit, GNATprove,
 and GNATcov. They are intentionally not dependencies of the public library
 crate.
 
-At the time of this README update, the full suite contains **1407 AUnit tests**.
+At the time of this README update, the full suite contains **1411 AUnit tests**.
 Coverage includes ordinary behavior, invalid input, shape/depth/channel
 compatibility, empty Mats, non-contiguous Regions, shallow-versus-independent
 ownership, callback lifetimes, arbitrary Ada array lower bounds, failure
@@ -582,7 +582,7 @@ compatibility restriction is enforced below the Ada API, in the C++ shim.
 
 ### Read-only caller-owned storage
 
-The same sixteen typed `*_Mat_View` packages also provide
+The same seventeen typed `*_Mat_View` packages also provide
 `With_Read_Only_Mat_View` (packed 2-D and N-D) and
 `With_Read_Only_Strided_Mat_View` (row-strided 2-D and arbitrary-strided N-D).
 For example, an aliased constant may be passed without copying pixels:
@@ -880,7 +880,7 @@ synchronization.
 
 ### Scoped continuous whole-buffer borrowing
 
-The sixteen matching buffer-access packages provide:
+The seventeen matching buffer-access packages provide:
 
 ```text
 With_Read_Only_Buffer
@@ -910,7 +910,7 @@ buffer access likewise overlays native CV_16FC3 pixels as packed
 
 ### Caller-owned buffer -> temporary `Mat`
 
-The sixteen Mat-view packages provide the reverse zero-copy direction:
+The seventeen Mat-view packages provide the reverse zero-copy direction:
 
 ```text
 OpenCV.Core.UInt8_Mat_View
@@ -927,6 +927,7 @@ OpenCV.Core.UInt8_Vec3_Mat_View
 OpenCV.Core.Float32_Vec3_Mat_View
 OpenCV.Core.Float16_Vec3_Mat_View
 OpenCV.Core.Float64_Vec3_Mat_View
+OpenCV.Core.UInt8_Vec4_Mat_View
 OpenCV.Core.Float32_Vec4_Mat_View
 OpenCV.Core.Float64_Vec4_Mat_View
 ```
@@ -935,7 +936,7 @@ OpenCV.Core.Float64_Vec4_Mat_View
 actual caller-owned Ada array. The public buffer formal is explicitly
 `aliased in out`, so the native header directly denotes the caller's storage.
 
-Packed views are available for all sixteen typed layouts above, both as 2-D
+Packed views are available for all seventeen typed layouts above, both as 2-D
 (`Rows`, `Columns`) and as genuine N-D (`Shape`, 2 .. 32 dimensions) views.
 Packed N-D views are always continuous, so the matching `*_Buffer_Access`
 package can borrow the same caller storage again inside the callback without
@@ -978,7 +979,7 @@ non-contiguous multirow strided view before invoking its callback.
 
 ## Typed access matrix
 
-Direct typed access currently concentrates on sixteen common layouts:
+Direct typed access currently concentrates on seventeen common layouts:
 
 | Layout | 2-D Get/Set | N-D Get/Set | Classification | Copied row | Borrowed row | Continuous buffer borrow | Packed caller buffer -> `Mat` | Strided caller buffer -> `Mat` |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -996,6 +997,7 @@ Direct typed access currently concentrates on sixteen common layouts:
 | Float16 C3 | `Float16_Vec3_Access` | `Float16_Vec3_Access` | — | `Float16_Vec3_Row_Access` | `Float16_Vec3_Row_Access` | `Float16_Vec3_Buffer_Access` | `Float16_Vec3_Mat_View` | `Float16_Vec3_Mat_View` |
 | Float32 C3 | `Float32_Vec3_Access` | `Float32_Vec3_Access` | — | `Float32_Vec3_Row_Access` | `Float32_Vec3_Row_Access` | `Float32_Vec3_Buffer_Access` | `Float32_Vec3_Mat_View` | `Float32_Vec3_Mat_View` |
 | Float64 C3 | `Float64_Vec3_Access` | `Float64_Vec3_Access` | — | `Float64_Vec3_Row_Access` | `Float64_Vec3_Row_Access` | `Float64_Vec3_Buffer_Access` | `Float64_Vec3_Mat_View` | `Float64_Vec3_Mat_View` |
+| UInt8 C4 | `UInt8_Vec4_Access` | `UInt8_Vec4_Access` | — | `UInt8_Vec4_Row_Access` | `UInt8_Vec4_Row_Access` | `UInt8_Vec4_Buffer_Access` | `UInt8_Vec4_Mat_View` | `UInt8_Vec4_Mat_View` |
 | Float32 C4 | `Float32_Vec4_Access` | `Float32_Vec4_Access` | — | `Float32_Vec4_Row_Access` | `Float32_Vec4_Row_Access` | `Float32_Vec4_Buffer_Access` | `Float32_Vec4_Mat_View` | `Float32_Vec4_Mat_View` |
 | Float64 C4 | `Float64_Vec4_Access` | `Float64_Vec4_Access` | — | `Float64_Vec4_Row_Access` | `Float64_Vec4_Row_Access` | `Float64_Vec4_Buffer_Access` | `Float64_Vec4_Mat_View` | `Float64_Vec4_Mat_View` |
 
@@ -1033,14 +1035,16 @@ One vector remains one complete OpenCV element. `Float16_Vec3` is an exact
 three-component binary16 pixel type: indices `0 .. 2` are OpenCV channel
 indices, not RGB or BGR names.
 
-`Float32_Vec4` and `Float64_Vec4` provide semantic-neutral components `0 .. 3`:
+`UInt8_Vec4`, `Float32_Vec4`, and `Float64_Vec4` provide semantic-neutral
+components `0 .. 3`:
 one Vec4 is one complete four-channel Mat element, not a single scalar.
 Neither package assigns RGBA, BGRA, or XYZW meanings to channels. Each has
 2-D/N-D Get/Set, copied and callback-scoped borrowed 2-D rows, continuous
 whole-buffer borrowing, packed 2-D/N-D caller-owned views, and row-strided
 2-D caller-owned views. Row strides count complete Vec4 elements, including
 final-row padding.
-Float32 C4 elements occupy 16 bytes; Float64 C4 elements occupy 32 bytes.
+UInt8 C4 elements occupy 4 bytes; Float32 C4 elements occupy 16 bytes;
+Float64 C4 elements occupy 32 bytes.
 Float32 and Float64 now have complete typed C1/C2/C3/C4 families.
 
 `UInt16_Access` provides scalar 2-D and N-D Get/Set for single-channel `CV_16U`
@@ -1483,8 +1487,9 @@ Range/non-finite operations:
 `Perspective_Transform` outputs can be inspected directly with
 `Float32_Vec2_Access` for Float32 C2, `Float64_Vec2_Access` for Float64 C2,
 `Float32_Vec3_Access` for Float32 C3, and `Float64_Vec3_Access` for Float64 C3.
-`Transform` C4 outputs can be inspected directly with `Float32_Vec4_Access`
-or `Float64_Vec4_Access`, without splitting channels or narrowing Float64.
+`Transform` C4 outputs can be inspected directly with `UInt8_Vec4_Access`,
+`Float32_Vec4_Access`, or `Float64_Vec4_Access`, without splitting channels or
+narrowing Float64.
 
 These transform channel vectors stored at each element. They are not image
 resampling/warping operations; those belong in an `imgproc` binding.
@@ -1991,14 +1996,14 @@ The current limitations are intentional and help keep the public API coherent:
    external caller-buffer Mat views, and C3 2-D and N-D Vec3 Get/Set plus 2-D
    rows, continuous buffer borrowing, and packed or strided external
    caller-buffer Mat views. Float32 and Float64 C1/C2/C3/C4 have complete typed
-   coverage. Float32/Float64 Vec4 are available; UInt8, Float16, and integer
-   Vec4 and C5+ typed families remain unavailable. N-D row APIs remain
-   unavailable.
+   coverage. UInt8/Float32/Float64 Vec4 are available; Int8, UInt16, Int16,
+   Int32, Float16 Vec4 and C5+ typed families remain unavailable. N-D row
+   APIs remain unavailable.
 
 4. **External caller-buffer views are callback-scoped.**
    Packed 2-D and packed N-D (`Shape`, 2 .. 32 dimensions) views are available
    for UInt8, Int8, UInt16, Int16, Int32, Float16, Float32, and Float64 C1,
-   Float32/Float64 C2, UInt8/Float16/Float32/Float64 C3, and Float32/Float64
+   Float32/Float64 C2, UInt8/Float16/Float32/Float64 C3, and UInt8/Float32/Float64
    C4. Packed views require exact logical capacity: `Data'Length` equals
    `Rows * Columns` or `product (Shape)`.
    Strided storage is exposed for the same layouts both as 2-D row strides
@@ -2244,7 +2249,7 @@ Ada API across the supported 4.1-5.0 compatibility range:
   explicit deep cloning;
 - typed C1 element access for UInt8, Int8, UInt16, Int16, Int32, Float16,
   Float32 and Float64; C2 Vec2 for Float32/Float64; C3 Vec3 for
-  UInt8/Float16/Float32/Float64; and C4 Vec4 for Float32/Float64;
+  UInt8/Float16/Float32/Float64; and C4 Vec4 for UInt8/Float32/Float64;
 - copied rows plus scoped zero-copy row and continuous-buffer borrowing;
 - callback-scoped zero-copy packed and row-strided caller-owned `Mat` views
   for the supported typed C1/C2/C3/C4 layouts;
