@@ -72,6 +72,12 @@ typedef struct {
 } opencv_core_int16_vec3;
 
 typedef struct {
+    int32_t component_0;
+    int32_t component_1;
+    int32_t component_2;
+} opencv_core_int32_vec3;
+
+typedef struct {
     float component_0;
     float component_1;
     float component_2;
@@ -103,6 +109,13 @@ typedef struct {
     int16_t component_2;
     int16_t component_3;
 } opencv_core_int16_vec4;
+
+typedef struct {
+    int32_t component_0;
+    int32_t component_1;
+    int32_t component_2;
+    int32_t component_3;
+} opencv_core_int32_vec4;
 
 typedef struct {
     float component_0;
@@ -142,6 +155,11 @@ typedef struct {
     int16_t component_0;
     int16_t component_1;
 } opencv_core_int16_vec2;
+
+typedef struct {
+    int32_t component_0;
+    int32_t component_1;
+} opencv_core_int32_vec2;
 
 /*
  * Raw IEEE-754 binary16 encodings for a three-channel CV_16F pixel.
@@ -1449,6 +1467,13 @@ opencv_core_mat_set_int16_vec3(opencv_core_mat_handle *mat, int32_t row,
                                int32_t column, const opencv_core_int16_vec3 *value);
 
 opencv_core_status
+opencv_core_mat_get_int32_vec3(const opencv_core_mat_handle *mat, int32_t row,
+                               int32_t column, opencv_core_int32_vec3 *out_value);
+opencv_core_status
+opencv_core_mat_set_int32_vec3(opencv_core_mat_handle *mat, int32_t row,
+                               int32_t column, const opencv_core_int32_vec3 *value);
+
+opencv_core_status
 opencv_core_mat_get_float32_vec3(const opencv_core_mat_handle *mat,
                                  int32_t row, int32_t column,
                                  opencv_core_float32_vec3 *out_value);
@@ -1487,6 +1512,7 @@ OPENCV_CORE_DECLARE_VEC2_ACCESS(float64, double)
 OPENCV_CORE_DECLARE_VEC2_ACCESS(uint8, uint8_t)
 OPENCV_CORE_DECLARE_VEC2_ACCESS(uint16, uint16_t)
 OPENCV_CORE_DECLARE_VEC2_ACCESS(int16, int16_t)
+OPENCV_CORE_DECLARE_VEC2_ACCESS(int32, int32_t)
 #undef OPENCV_CORE_DECLARE_VEC2_ACCESS
 
 /* A Vec4 is one complete C4 Mat element; row buffers contain four scalars
@@ -1514,6 +1540,7 @@ OPENCV_CORE_DECLARE_VEC2_ACCESS(int16, int16_t)
 OPENCV_CORE_DECLARE_VEC4_ACCESS(uint8, uint8_t)
 OPENCV_CORE_DECLARE_VEC4_ACCESS(uint16, uint16_t)
 OPENCV_CORE_DECLARE_VEC4_ACCESS(int16, int16_t)
+OPENCV_CORE_DECLARE_VEC4_ACCESS(int32, int32_t)
 OPENCV_CORE_DECLARE_VEC4_ACCESS(float32, float)
 OPENCV_CORE_DECLARE_VEC4_ACCESS(float64, double)
 #undef OPENCV_CORE_DECLARE_VEC4_ACCESS
@@ -1574,6 +1601,15 @@ opencv_core_status
 opencv_core_mat_set_int16_vec3_nd(opencv_core_mat_handle *mat, int32_t ndims,
                                   const int32_t *indices,
                                   const opencv_core_int16_vec3 *value);
+
+opencv_core_status
+opencv_core_mat_get_int32_vec3_nd(const opencv_core_mat_handle *mat,
+                                  int32_t ndims, const int32_t *indices,
+                                  opencv_core_int32_vec3 *out_value);
+opencv_core_status
+opencv_core_mat_set_int32_vec3_nd(opencv_core_mat_handle *mat, int32_t ndims,
+                                  const int32_t *indices,
+                                  const opencv_core_int32_vec3 *value);
 
 opencv_core_status
 opencv_core_mat_get_float32_vec3_nd(const opencv_core_mat_handle *mat,
@@ -1643,6 +1679,15 @@ opencv_core_mat_read_int16_vec3_row(const opencv_core_mat_handle *mat,
 opencv_core_status
 opencv_core_mat_write_int16_vec3_row(opencv_core_mat_handle *mat, int32_t row,
                                      const int16_t *data,
+                                     uint64_t element_count);
+
+opencv_core_status
+opencv_core_mat_read_int32_vec3_row(const opencv_core_mat_handle *mat,
+                                    int32_t row, int32_t *data,
+                                    uint64_t element_count);
+opencv_core_status
+opencv_core_mat_write_int32_vec3_row(opencv_core_mat_handle *mat, int32_t row,
+                                     const int32_t *data,
                                      uint64_t element_count);
 
 opencv_core_status
