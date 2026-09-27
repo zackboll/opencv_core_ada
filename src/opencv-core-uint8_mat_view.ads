@@ -79,4 +79,27 @@ package OpenCV.Core.UInt8_Mat_View is
       Strides : Dimension_Stride_Array;
       Process : not null access procedure (Image : in out Mat));
 
+   --  Read-only caller-owned zero-copy views. Data may be an aliased constant.
+   --  Geometry, capacity, element order, and bounds follow the corresponding
+   --  writable overloads above (including complete final-stride padding).
+   --  Mode-in Image cannot be passed to normal mutating Ada APIs. Memory is
+   --  not OS-protected. Shallow escape is rejected; Clone is independent.
+   --  Module_Interop input handles and input-only Core operations are allowed.
+   procedure With_Read_Only_Mat_View
+     (Data          : aliased Buffer_Array;
+      Rows, Columns : Positive;
+      Process       : not null access procedure (Image : Mat));
+   procedure With_Read_Only_Mat_View
+     (Data    : aliased Buffer_Array;
+      Shape   : Dimension_Array;
+      Process : not null access procedure (Image : Mat));
+   procedure With_Read_Only_Strided_Mat_View
+     (Data                      : aliased Buffer_Array;
+      Rows, Columns, Row_Stride : Positive;
+      Process                   : not null access procedure (Image : Mat));
+   procedure With_Read_Only_Strided_Mat_View
+     (Data    : aliased Buffer_Array;
+      Shape   : Dimension_Array;
+      Strides : Dimension_Stride_Array;
+      Process : not null access procedure (Image : Mat));
 end OpenCV.Core.UInt8_Mat_View;

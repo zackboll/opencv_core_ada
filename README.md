@@ -18,7 +18,7 @@ translation of the C++ headers.
 >
 > **Development status:** active, pre-1.0 API.
 >
-> **Current test baseline:** 1402 AUnit tests, with Ada and C++ warnings promoted
+> **Current test baseline:** 1407 AUnit tests, with Ada and C++ warnings promoted
 > to errors. GitHub Actions exercises the full test suite against four OpenCV
 > compatibility targets, plus a native Ubuntu 24.04 ARM64 job.
 >
@@ -359,7 +359,7 @@ The test crate carries development-only dependencies such as AUnit, GNATprove,
 and GNATcov. They are intentionally not dependencies of the public library
 crate.
 
-At the time of this README update, the full suite contains **1402 AUnit tests**.
+At the time of this README update, the full suite contains **1407 AUnit tests**.
 Coverage includes ordinary behavior, invalid input, shape/depth/channel
 compatibility, empty Mats, non-contiguous Regions, shallow-versus-independent
 ownership, callback lifetimes, arbitrary Ada array lower bounds, failure
@@ -579,6 +579,46 @@ invoking the affected OpenCV constructor or reshape, so on OpenCV 5.0 an
 11 .. 32 dimensional view never runs `Process`. OpenCV 4.x retains the
 historic 32-dimensional limit. Public signatures are unchanged: the
 compatibility restriction is enforced below the Ada API, in the C++ shim.
+
+### Read-only caller-owned storage
+
+The same sixteen typed `*_Mat_View` packages also provide
+`With_Read_Only_Mat_View` (packed 2-D and N-D) and
+`With_Read_Only_Strided_Mat_View` (row-strided 2-D and arbitrary-strided N-D).
+For example, an aliased constant may be passed without copying pixels:
+
+```ada
+with Ada.Text_IO;
+with OpenCV;
+with OpenCV.Core;
+with OpenCV.Core.UInt8_Access;
+with OpenCV.Core.UInt8_Mat_View;
+
+procedure Inspect_Constant_Example is
+   Data : aliased constant OpenCV.Core.UInt8_Mat_View.Buffer_Array :=
+     (11 => 1, 12 => 2, 13 => 3, 14 => 4, 15 => 5, 16 => 6);
+
+   procedure Inspect (Image : OpenCV.Core.Mat) is
+   begin
+      Ada.Text_IO.Put_Line
+        (OpenCV.UInt8_Value'Image
+           (OpenCV.Core.UInt8_Access.Get (Image, 1, 2)));
+   end Inspect;
+begin
+   OpenCV.Core.UInt8_Mat_View.With_Read_Only_Mat_View
+     (Data, Rows => 2, Columns => 3, Process => Inspect'Access);
+end Inspect_Constant_Example;
+```
+
+Read-only views provide zero-copy input to Core algorithms and cooperating Ada
+OpenCV modules via `Module_Interop.With_Input_Handle`. The callback receives
+`Image` by mode `in`, so normal in-place Ada operations and output handles
+requiring `in out Mat` cannot accept it. This is an Ada capability restriction,
+**not** OS/page protection: the native external-data header uses OpenCV's
+mutable pointer representation. The caller retains ownership; shallow escape
+is rejected and `Clone` creates independent storage. Read-only views obey the
+same geometry, full-stride capacity, and callback lifetime rules as writable
+views. Input-only operations remain available during the callback.
 
 ### Wrap row-strided caller-owned storage
 
@@ -1955,7 +1995,7 @@ The current limitations are intentional and help keep the public API coherent:
    Vec4 and C5+ typed families remain unavailable. N-D row APIs remain
    unavailable.
 
-4. **External caller-buffer views are writable and callback-scoped.**  
+4. **External caller-buffer views are callback-scoped.**
    Packed 2-D and packed N-D (`Shape`, 2 .. 32 dimensions) views are available
    for UInt8, Int8, UInt16, Int16, Int32, Float16, Float32, and Float64 C1,
    Float32/Float64 C2, UInt8/Float16/Float32/Float64 C3, and Float32/Float64
@@ -1967,9 +2007,9 @@ The current limitations are intentional and help keep the public API coherent:
    final stride of `1` and non-overlapping nesting. Strided backing storage
    must contain the complete outer extent (`Rows * Row_Stride` or
    `Shape (first) * Strides (first)` elements), including padding after the
-   final logical row or outer block. Remaining constraints: views are
-   writable and callback-scoped only, there is no separate read-only external
-   Mat abstraction, and C5+ typed external layouts are not available.
+   final logical row or outer block. Both read-only and writable scoped views
+   exist; read-only is an Ada mode/capability restriction, not page protection.
+   C5+ typed external layouts are not available.
 
 5. **Whole-buffer borrowing requires continuous storage.**
    Genuine continuous N-D Mats and continuous N-D Slices are supported, in

@@ -55,4 +55,34 @@ package body OpenCV.Core.Float32_Vec4_Mat_View is
       Viewing.With_Writable_Strided_Mat_View (Data, Shape, Strides, Process);
    end With_Writable_Strided_Mat_View;
 
+   procedure With_Read_Only_Mat_View
+     (Data          : aliased Buffer_Array;
+      Rows, Columns : Positive;
+      Process       : not null access procedure (Image : Mat)) is
+   begin
+      Viewing.With_Read_Only_Mat_View (Data, Rows, Columns, Process);
+   end With_Read_Only_Mat_View;
+   procedure With_Read_Only_Mat_View
+     (Data    : aliased Buffer_Array;
+      Shape   : Dimension_Array;
+      Process : not null access procedure (Image : Mat)) is
+   begin
+      Viewing.With_Read_Only_Mat_View (Data, Shape, Process);
+   end With_Read_Only_Mat_View;
+   procedure With_Read_Only_Strided_Mat_View
+     (Data                      : aliased Buffer_Array;
+      Rows, Columns, Row_Stride : Positive;
+      Process                   : not null access procedure (Image : Mat)) is
+   begin
+      Viewing.With_Read_Only_Strided_Mat_View
+        (Data, Rows, Columns, Row_Stride, Process);
+   end With_Read_Only_Strided_Mat_View;
+   procedure With_Read_Only_Strided_Mat_View
+     (Data    : aliased Buffer_Array;
+      Shape   : Dimension_Array;
+      Strides : Dimension_Stride_Array;
+      Process : not null access procedure (Image : Mat)) is
+   begin
+      Viewing.With_Read_Only_Strided_Mat_View (Data, Shape, Strides, Process);
+   end With_Read_Only_Strided_Mat_View;
 end OpenCV.Core.Float32_Vec4_Mat_View;

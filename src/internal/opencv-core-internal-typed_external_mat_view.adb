@@ -116,16 +116,14 @@ package body OpenCV.Core.Internal.Typed_External_Mat_View is
       return Rows * Columns;
    end Expected_Element_Count;
 
-   procedure With_Writable_Mat_View
-     (Data    : aliased in out Buffer_Array;
-      Rows    : Positive;
-      Columns : Positive;
-      Process : not null access procedure (Image : in out Mat))
+   procedure Create_Packed_2D
+     (Data          : aliased Buffer_Array;
+      Rows, Columns : Positive;
+      Image         : in out Mat)
    is
       Element_Count : constant Natural :=
         Expected_Element_Count (Rows, Columns);
       Byte_Count    : OpenCV.Internal.C_API.C_UInt64;
-      Image         : Mat;
       New_Handle    : aliased OpenCV.Internal.C_API.Mat_Handle :=
         OpenCV.Internal.C_API.Null_Mat_Handle;
       Status        : OpenCV.Internal.C_API.Status;
@@ -151,8 +149,34 @@ package body OpenCV.Core.Internal.Typed_External_Mat_View is
 
       OpenCV.Internal.C_API.Mat_Destroy (Image.Handle);
       Image.Handle := New_Handle;
+   end Create_Packed_2D;
+
+   --  The writable callback, not this forwarding wrapper, may modify Data.
+   pragma Warnings (Off, "formal parameter \""Data\"" is not modified");
+   pragma Warnings (Off, "mode could be");
+   procedure With_Writable_Mat_View
+     (Data          : aliased in out Buffer_Array;
+      Rows, Columns : Positive;
+      Process       : not null access procedure (Image : in out Mat))
+   is
+      Image : Mat;
+   begin
+      Create_Packed_2D (Data, Rows, Columns, Image);
       Process (Image);
    end With_Writable_Mat_View;
+   pragma Warnings (On, "formal parameter \""Data\"" is not modified");
+   pragma Warnings (On, "mode could be");
+
+   procedure With_Read_Only_Mat_View
+     (Data          : aliased Buffer_Array;
+      Rows, Columns : Positive;
+      Process       : not null access procedure (Image : Mat))
+   is
+      Image : Mat;
+   begin
+      Create_Packed_2D (Data, Rows, Columns, Image);
+      Process (Image);
+   end With_Read_Only_Mat_View;
 
    Maximum_OpenCV_Dimensions : constant := 32;
 
@@ -196,17 +220,14 @@ package body OpenCV.Core.Internal.Typed_External_Mat_View is
       return Count;
    end Packed_Element_Count;
 
-   procedure With_Writable_Mat_View
-     (Data    : aliased in out Buffer_Array;
-      Shape   : Dimension_Array;
-      Process : not null access procedure (Image : in out Mat))
+   procedure Create_Packed_ND
+     (Data : aliased Buffer_Array; Shape : Dimension_Array; Image : in out Mat)
    is
       Element_Count : constant Natural := Packed_Element_Count (Shape);
       Byte_Count    : OpenCV.Internal.C_API.C_UInt64;
       Sizes         :
         OpenCV.Internal.C_API.C_Int32_Array (0 .. Shape'Length - 1);
       Position      : Natural := 0;
-      Image         : Mat;
       New_Handle    : aliased OpenCV.Internal.C_API.Mat_Handle :=
         OpenCV.Internal.C_API.Null_Mat_Handle;
       Status        : OpenCV.Internal.C_API.Status;
@@ -240,20 +261,42 @@ package body OpenCV.Core.Internal.Typed_External_Mat_View is
 
       OpenCV.Internal.C_API.Mat_Destroy (Image.Handle);
       Image.Handle := New_Handle;
+   end Create_Packed_ND;
+
+   pragma Warnings (Off, "formal parameter \""Data\"" is not modified");
+   pragma Warnings (Off, "mode could be");
+   procedure With_Writable_Mat_View
+     (Data    : aliased in out Buffer_Array;
+      Shape   : Dimension_Array;
+      Process : not null access procedure (Image : in out Mat))
+   is
+      Image : Mat;
+   begin
+      Create_Packed_ND (Data, Shape, Image);
       Process (Image);
    end With_Writable_Mat_View;
+   pragma Warnings (On, "formal parameter \""Data\"" is not modified");
+   pragma Warnings (On, "mode could be");
 
-   procedure With_Writable_Strided_Mat_View
-     (Data                : aliased in out Buffer_Array;
-      Rows                : Positive;
-      Columns             : Positive;
-      Row_Stride_Elements : Positive;
-      Process             : not null access procedure (Image : in out Mat))
+   procedure With_Read_Only_Mat_View
+     (Data    : aliased Buffer_Array;
+      Shape   : Dimension_Array;
+      Process : not null access procedure (Image : Mat))
+   is
+      Image : Mat;
+   begin
+      Create_Packed_ND (Data, Shape, Image);
+      Process (Image);
+   end With_Read_Only_Mat_View;
+
+   procedure Create_Strided_2D
+     (Data                               : aliased Buffer_Array;
+      Rows, Columns, Row_Stride_Elements : Positive;
+      Image                              : in out Mat)
    is
       Required_Element_Capacity : Natural;
       Byte_Count                : OpenCV.Internal.C_API.C_UInt64;
       Row_Stride_Bytes          : OpenCV.Internal.C_API.C_UInt64;
-      Image                     : Mat;
       New_Handle                : aliased OpenCV.Internal.C_API.Mat_Handle :=
         OpenCV.Internal.C_API.Null_Mat_Handle;
       Status                    : OpenCV.Internal.C_API.Status;
@@ -311,8 +354,35 @@ package body OpenCV.Core.Internal.Typed_External_Mat_View is
 
       OpenCV.Internal.C_API.Mat_Destroy (Image.Handle);
       Image.Handle := New_Handle;
+   end Create_Strided_2D;
+
+   pragma Warnings (Off, "formal parameter \""Data\"" is not modified");
+   pragma Warnings (Off, "mode could be");
+   procedure With_Writable_Strided_Mat_View
+     (Data                               : aliased in out Buffer_Array;
+      Rows, Columns, Row_Stride_Elements : Positive;
+      Process                            :
+        not null access procedure (Image : in out Mat))
+   is
+      Image : Mat;
+   begin
+      Create_Strided_2D (Data, Rows, Columns, Row_Stride_Elements, Image);
       Process (Image);
    end With_Writable_Strided_Mat_View;
+   pragma Warnings (On, "formal parameter \""Data\"" is not modified");
+   pragma Warnings (On, "mode could be");
+
+   procedure With_Read_Only_Strided_Mat_View
+     (Data                               : aliased Buffer_Array;
+      Rows, Columns, Row_Stride_Elements : Positive;
+      Process                            :
+        not null access procedure (Image : Mat))
+   is
+      Image : Mat;
+   begin
+      Create_Strided_2D (Data, Rows, Columns, Row_Stride_Elements, Image);
+      Process (Image);
+   end With_Read_Only_Strided_Mat_View;
 
    --  Validates the public strided N-D contract and returns the complete
    --  outer-stride element capacity Shape (first) * Strides (first). Every
@@ -423,11 +493,11 @@ package body OpenCV.Core.Internal.Typed_External_Mat_View is
       return Required;
    end Strided_Required_Capacity;
 
-   procedure With_Writable_Strided_Mat_View
-     (Data    : aliased in out Buffer_Array;
+   procedure Create_Strided_ND
+     (Data    : aliased Buffer_Array;
       Shape   : Dimension_Array;
       Strides : Dimension_Stride_Array;
-      Process : not null access procedure (Image : in out Mat))
+      Image   : in out Mat)
    is
       Required_Capacity : constant Natural :=
         Strided_Required_Capacity (Shape, Strides);
@@ -436,7 +506,6 @@ package body OpenCV.Core.Internal.Typed_External_Mat_View is
         OpenCV.Internal.C_API.C_Int32_Array (0 .. Shape'Length - 1);
       Steps             :
         OpenCV.Internal.C_API.C_UInt64_Array (0 .. Shape'Length - 1);
-      Image             : Mat;
       New_Handle        : aliased OpenCV.Internal.C_API.Mat_Handle :=
         OpenCV.Internal.C_API.Null_Mat_Handle;
       Status            : OpenCV.Internal.C_API.Status;
@@ -472,7 +541,34 @@ package body OpenCV.Core.Internal.Typed_External_Mat_View is
 
       OpenCV.Internal.C_API.Mat_Destroy (Image.Handle);
       Image.Handle := New_Handle;
+   end Create_Strided_ND;
+
+   pragma Warnings (Off, "formal parameter \""Data\"" is not modified");
+   pragma Warnings (Off, "mode could be");
+   procedure With_Writable_Strided_Mat_View
+     (Data    : aliased in out Buffer_Array;
+      Shape   : Dimension_Array;
+      Strides : Dimension_Stride_Array;
+      Process : not null access procedure (Image : in out Mat))
+   is
+      Image : Mat;
+   begin
+      Create_Strided_ND (Data, Shape, Strides, Image);
       Process (Image);
    end With_Writable_Strided_Mat_View;
+   pragma Warnings (On, "formal parameter \""Data\"" is not modified");
+   pragma Warnings (On, "mode could be");
+
+   procedure With_Read_Only_Strided_Mat_View
+     (Data    : aliased Buffer_Array;
+      Shape   : Dimension_Array;
+      Strides : Dimension_Stride_Array;
+      Process : not null access procedure (Image : Mat))
+   is
+      Image : Mat;
+   begin
+      Create_Strided_ND (Data, Shape, Strides, Image);
+      Process (Image);
+   end With_Read_Only_Strided_Mat_View;
 
 end OpenCV.Core.Internal.Typed_External_Mat_View;

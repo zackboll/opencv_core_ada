@@ -4,6 +4,7 @@ with Interfaces;
 with Mat_Test_Support;
 with Module_Bridge_Probe;
 with ND_Mat_View_Checks;
+with Read_Only_Mat_View_Checks;
 with ND_Mat_View_Tests.Raw_ABI;
 with OpenCV;
 with OpenCV.Core;
@@ -162,6 +163,231 @@ package body ND_Mat_View_Tests is
        -2.0 - OpenCV.Float64_Value (O) * Fine,
        3.0 + 2.0**(-44),
        -Float64_At (O));
+
+   package RO_U8 is new
+     Read_Only_Mat_View_Checks
+       (OpenCV.UInt8_Value,
+        OpenCV.Core.UInt8_Mat_View.Buffer_Array,
+        OpenCV.Core.UInt8_Buffer_Access.Buffer_Array,
+        (OpenCV.Core.UInt8, 1),
+        "UInt8 C1",
+        UInt8_At,
+        OpenCV.Core.UInt8_Access.Get,
+        OpenCV.Core.UInt8_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.UInt8_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.UInt8_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.UInt8_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.UInt8_Buffer_Access.With_Read_Only_Buffer);
+   package RO_I8 is new
+     Read_Only_Mat_View_Checks
+       (OpenCV.Int8_Value,
+        OpenCV.Core.Int8_Mat_View.Buffer_Array,
+        OpenCV.Core.Int8_Buffer_Access.Buffer_Array,
+        (OpenCV.Core.Int8, 1),
+        "Int8 C1",
+        Int8_At,
+        OpenCV.Core.Int8_Access.Get,
+        OpenCV.Core.Int8_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.Int8_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.Int8_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.Int8_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.Int8_Buffer_Access.With_Read_Only_Buffer);
+   package RO_U16 is new
+     Read_Only_Mat_View_Checks
+       (OpenCV.UInt16_Value,
+        OpenCV.Core.UInt16_Mat_View.Buffer_Array,
+        OpenCV.Core.UInt16_Buffer_Access.Buffer_Array,
+        (OpenCV.Core.UInt16, 1),
+        "UInt16 C1",
+        UInt16_At,
+        OpenCV.Core.UInt16_Access.Get,
+        OpenCV.Core.UInt16_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.UInt16_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.UInt16_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.UInt16_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.UInt16_Buffer_Access.With_Read_Only_Buffer);
+   package RO_I16 is new
+     Read_Only_Mat_View_Checks
+       (OpenCV.Int16_Value,
+        OpenCV.Core.Int16_Mat_View.Buffer_Array,
+        OpenCV.Core.Int16_Buffer_Access.Buffer_Array,
+        (OpenCV.Core.Int16, 1),
+        "Int16 C1",
+        Int16_At,
+        OpenCV.Core.Int16_Access.Get,
+        OpenCV.Core.Int16_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.Int16_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.Int16_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.Int16_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.Int16_Buffer_Access.With_Read_Only_Buffer);
+   package RO_I32 is new
+     Read_Only_Mat_View_Checks
+       (OpenCV.Int32_Value,
+        OpenCV.Core.Int32_Mat_View.Buffer_Array,
+        OpenCV.Core.Int32_Buffer_Access.Buffer_Array,
+        (OpenCV.Core.Int32, 1),
+        "Int32 C1",
+        Int32_At,
+        OpenCV.Core.Int32_Access.Get,
+        OpenCV.Core.Int32_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.Int32_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.Int32_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.Int32_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.Int32_Buffer_Access.With_Read_Only_Buffer);
+   package RO_F16 is new
+     Read_Only_Mat_View_Checks
+       (OpenCV.Core.Float16_Value,
+        OpenCV.Core.Float16_Mat_View.Buffer_Array,
+        OpenCV.Core.Float16_Buffer_Access.Buffer_Array,
+        (OpenCV.Core.Float16, 1),
+        "Float16 C1",
+        Float16_At,
+        OpenCV.Core.Float16_Access.Get,
+        OpenCV.Core.Float16_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.Float16_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.Float16_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.Float16_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.Float16_Buffer_Access.With_Read_Only_Buffer);
+   package RO_F32 is new
+     Read_Only_Mat_View_Checks
+       (OpenCV.Float32_Value,
+        OpenCV.Core.Float32_Mat_View.Buffer_Array,
+        OpenCV.Core.Float32_Buffer_Access.Buffer_Array,
+        (OpenCV.Core.Float32, 1),
+        "Float32 C1",
+        Float32_At,
+        OpenCV.Core.Float32_Access.Get,
+        OpenCV.Core.Float32_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.Float32_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.Float32_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.Float32_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.Float32_Buffer_Access.With_Read_Only_Buffer);
+   package RO_F64 is new
+     Read_Only_Mat_View_Checks
+       (OpenCV.Float64_Value,
+        OpenCV.Core.Float64_Mat_View.Buffer_Array,
+        OpenCV.Core.Float64_Buffer_Access.Buffer_Array,
+        (OpenCV.Core.Float64, 1),
+        "Float64 C1",
+        Float64_At,
+        OpenCV.Core.Float64_Access.Get,
+        OpenCV.Core.Float64_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.Float64_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.Float64_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.Float64_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.Float64_Buffer_Access.With_Read_Only_Buffer);
+   package RO_F32V2 is new
+     Read_Only_Mat_View_Checks
+       (OpenCV.Core.Float32_Vec2.Vector,
+        OpenCV.Core.Float32_Vec2_Mat_View.Buffer_Array,
+        OpenCV.Core.Float32_Vec2_Buffer_Access.Buffer_Array,
+        (OpenCV.Core.Float32, 2),
+        "Float32 C2",
+        F32_Vec2_At,
+        OpenCV.Core.Float32_Vec2_Access.Get,
+        OpenCV.Core.Float32_Vec2_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.Float32_Vec2_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.Float32_Vec2_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.Float32_Vec2_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.Float32_Vec2_Buffer_Access.With_Read_Only_Buffer);
+   package RO_F64V2 is new
+     Read_Only_Mat_View_Checks
+       (OpenCV.Core.Float64_Vec2.Vector,
+        OpenCV.Core.Float64_Vec2_Mat_View.Buffer_Array,
+        OpenCV.Core.Float64_Vec2_Buffer_Access.Buffer_Array,
+        (OpenCV.Core.Float64, 2),
+        "Float64 C2",
+        F64_Vec2_At,
+        OpenCV.Core.Float64_Vec2_Access.Get,
+        OpenCV.Core.Float64_Vec2_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.Float64_Vec2_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.Float64_Vec2_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.Float64_Vec2_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.Float64_Vec2_Buffer_Access.With_Read_Only_Buffer);
+   package RO_U8V3 is new
+     Read_Only_Mat_View_Checks
+       (OpenCV.Core.UInt8_Vec3.Vector,
+        OpenCV.Core.UInt8_Vec3_Mat_View.Buffer_Array,
+        OpenCV.Core.UInt8_Vec3_Buffer_Access.Buffer_Array,
+        (OpenCV.Core.UInt8, 3),
+        "UInt8 C3",
+        U8_Vec3_At,
+        OpenCV.Core.UInt8_Vec3_Access.Get,
+        OpenCV.Core.UInt8_Vec3_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.UInt8_Vec3_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.UInt8_Vec3_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.UInt8_Vec3_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.UInt8_Vec3_Buffer_Access.With_Read_Only_Buffer);
+   package RO_F16V3 is new
+     Read_Only_Mat_View_Checks
+       (OpenCV.Core.Float16_Vec3.Vector,
+        OpenCV.Core.Float16_Vec3_Mat_View.Buffer_Array,
+        OpenCV.Core.Float16_Vec3_Buffer_Access.Buffer_Array,
+        (OpenCV.Core.Float16, 3),
+        "Float16 C3",
+        F16_Vec3_At,
+        OpenCV.Core.Float16_Vec3_Access.Get,
+        OpenCV.Core.Float16_Vec3_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.Float16_Vec3_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.Float16_Vec3_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.Float16_Vec3_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.Float16_Vec3_Buffer_Access.With_Read_Only_Buffer);
+   package RO_F32V3 is new
+     Read_Only_Mat_View_Checks
+       (OpenCV.Core.Float32_Vec3.Vector,
+        OpenCV.Core.Float32_Vec3_Mat_View.Buffer_Array,
+        OpenCV.Core.Float32_Vec3_Buffer_Access.Buffer_Array,
+        (OpenCV.Core.Float32, 3),
+        "Float32 C3",
+        F32_Vec3_At,
+        OpenCV.Core.Float32_Vec3_Access.Get,
+        OpenCV.Core.Float32_Vec3_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.Float32_Vec3_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.Float32_Vec3_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.Float32_Vec3_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.Float32_Vec3_Buffer_Access.With_Read_Only_Buffer);
+   package RO_F64V3 is new
+     Read_Only_Mat_View_Checks
+       (OpenCV.Core.Float64_Vec3.Vector,
+        OpenCV.Core.Float64_Vec3_Mat_View.Buffer_Array,
+        OpenCV.Core.Float64_Vec3_Buffer_Access.Buffer_Array,
+        (OpenCV.Core.Float64, 3),
+        "Float64 C3",
+        F64_Vec3_At,
+        OpenCV.Core.Float64_Vec3_Access.Get,
+        OpenCV.Core.Float64_Vec3_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.Float64_Vec3_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.Float64_Vec3_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.Float64_Vec3_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.Float64_Vec3_Buffer_Access.With_Read_Only_Buffer);
+   package RO_F32V4 is new
+     Read_Only_Mat_View_Checks
+       (OpenCV.Core.Float32_Vec4.Vector,
+        OpenCV.Core.Float32_Vec4_Mat_View.Buffer_Array,
+        OpenCV.Core.Float32_Vec4_Buffer_Access.Buffer_Array,
+        (OpenCV.Core.Float32, 4),
+        "Float32 C4",
+        F32_Vec4_At,
+        OpenCV.Core.Float32_Vec4_Access.Get,
+        OpenCV.Core.Float32_Vec4_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.Float32_Vec4_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.Float32_Vec4_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.Float32_Vec4_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.Float32_Vec4_Buffer_Access.With_Read_Only_Buffer);
+   package RO_F64V4 is new
+     Read_Only_Mat_View_Checks
+       (OpenCV.Core.Float64_Vec4.Vector,
+        OpenCV.Core.Float64_Vec4_Mat_View.Buffer_Array,
+        OpenCV.Core.Float64_Vec4_Buffer_Access.Buffer_Array,
+        (OpenCV.Core.Float64, 4),
+        "Float64 C4",
+        F64_Vec4_At,
+        OpenCV.Core.Float64_Vec4_Access.Get,
+        OpenCV.Core.Float64_Vec4_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.Float64_Vec4_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.Float64_Vec4_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.Float64_Vec4_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.Float64_Vec4_Buffer_Access.With_Read_Only_Buffer);
 
    --  One instance per typed Mat_View package.
 
@@ -1039,8 +1265,239 @@ package body ND_Mat_View_Tests is
          "N-D external view input borrowing must work and output must not");
    end Module_Interop_Is_Input_Only;
 
+   procedure Read_Only_Packed_All_Layouts (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+   begin
+      RO_U8.Check_Packed;
+      RO_I8.Check_Packed;
+      RO_U16.Check_Packed;
+      RO_I16.Check_Packed;
+      RO_I32.Check_Packed;
+      RO_F16.Check_Packed;
+      RO_F32.Check_Packed;
+      RO_F64.Check_Packed;
+      RO_F32V2.Check_Packed;
+      RO_F64V2.Check_Packed;
+      RO_U8V3.Check_Packed;
+      RO_F16V3.Check_Packed;
+      RO_F32V3.Check_Packed;
+      RO_F64V3.Check_Packed;
+      RO_F32V4.Check_Packed;
+      RO_F64V4.Check_Packed;
+   end Read_Only_Packed_All_Layouts;
+
+   procedure Read_Only_Strided_All_Layouts (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+   begin
+      RO_U8.Check_Strided;
+      RO_I8.Check_Strided;
+      RO_U16.Check_Strided;
+      RO_I16.Check_Strided;
+      RO_I32.Check_Strided;
+      RO_F16.Check_Strided;
+      RO_F32.Check_Strided;
+      RO_F64.Check_Strided;
+      RO_F32V2.Check_Strided;
+      RO_F64V2.Check_Strided;
+      RO_U8V3.Check_Strided;
+      RO_F16V3.Check_Strided;
+      RO_F32V3.Check_Strided;
+      RO_F64V3.Check_Strided;
+      RO_F32V4.Check_Strided;
+      RO_F64V4.Check_Strided;
+   end Read_Only_Strided_All_Layouts;
+
+   procedure Read_Only_Clone_No_Escape_And_Module_Input (Test : in out Fixture)
+   is
+      pragma Unreferenced (Test);
+      Data          : aliased OpenCV.Core.UInt8_Mat_View.Buffer_Array :=
+        (11 => 1, 12 => 2, 13 => 3, 14 => 4, 15 => 5, 16 => 6);
+      Copy          : OpenCV.Core.Mat;
+      Input_Invoked : Boolean := False;
+
+      procedure Inspect (Image : OpenCV.Core.Mat) is
+         procedure Input (Handle : OpenCV.Core.Module_Interop.Input_Mat_Handle)
+         is
+            Observation : Module_Bridge_Probe.Input_Observation;
+         begin
+            Module_Bridge_Probe.Inspect (Handle, Observation);
+            Input_Invoked :=
+              Observation.Rows = 2
+              and then Observation.Columns = 3
+              and then Observation.Value = 1;
+         end Input;
+         procedure Shallow_Copy is
+            Other : constant OpenCV.Core.Mat := Image;
+         begin
+            AUnit.Assertions.Assert (Other.Rows = 2, "unreachable copy");
+         end Shallow_Copy;
+         procedure Slice_View is
+            Other : constant OpenCV.Core.Mat := Image.Slice (((0, 2), (0, 3)));
+         begin
+            AUnit.Assertions.Assert (Other.Rows = 2, "unreachable slice");
+         end Slice_View;
+         procedure Reshaped is
+            Other : constant OpenCV.Core.Mat := Image.Reshape (1, 3);
+         begin
+            AUnit.Assertions.Assert (Other.Rows = 3, "unreachable reshape");
+         end Reshaped;
+         procedure Region_View is
+            Other : constant OpenCV.Core.Mat :=
+              Image.Region ((X => 0, Y => 0, Width => 2, Height => 2));
+         begin
+            AUnit.Assertions.Assert (Other.Rows = 2, "unreachable region");
+         end Region_View;
+      begin
+         OpenCV.Core.Module_Interop.With_Input_Handle (Image, Input'Access);
+         Mat_Test_Support.Assert_Raises_OpenCV_Error
+           (Shallow_Copy'Access, "read-only shallow copy must reject");
+         Mat_Test_Support.Assert_Raises_OpenCV_Error
+           (Slice_View'Access, "read-only slice must reject");
+         Mat_Test_Support.Assert_Raises_OpenCV_Error
+           (Reshaped'Access, "read-only reshape must reject");
+         Mat_Test_Support.Assert_Raises_OpenCV_Error
+           (Region_View'Access, "read-only region must reject");
+         Copy := Image.Clone;
+      end Inspect;
+   begin
+      OpenCV.Core.UInt8_Mat_View.With_Read_Only_Mat_View
+        (Data, 2, 3, Inspect'Access);
+      AUnit.Assertions.Assert
+        (Input_Invoked and then Data (11) = 1,
+         "module input works without changing caller data");
+      Data (11) := 90;
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt8_Access.Get (Copy, 0, 0) = 1,
+         "Clone retains original pixel after caller write");
+      OpenCV.Core.UInt8_Access.Set (Copy, 0, 0, 42);
+      AUnit.Assertions.Assert
+        (Data (11) = 90, "Clone writes cannot change caller data");
+      AUnit.Assertions.Assert
+        (Copy.Slice (((0, 2), (0, 3))).Rows = 2
+         and then Copy.Reshape (1, 3).Rows = 3,
+         "owned Clone supports shallow views");
+   end Read_Only_Clone_No_Escape_And_Module_Input;
+
+   procedure Read_Only_Float16_Exact_Bits (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Data   : aliased constant OpenCV.Core.Float16_Mat_View.Buffer_Array :=
+        (11 => F16 (16#7C01#),
+         12 => F16 (16#8000#),
+         13 => F16 (16#0001#),
+         14 => F16 (16#03FF#));
+      Pixels :
+        aliased constant OpenCV.Core.Float16_Vec3_Mat_View.Buffer_Array :=
+          (11 .. 14 => (F16 (16#7C01#), F16 (16#8000#), F16 (16#0001#)));
+      procedure Inspect (Image : OpenCV.Core.Mat) is
+         procedure Buffer
+           (B : aliased OpenCV.Core.Float16_Buffer_Access.Buffer_Array) is
+         begin
+            for I in 0 .. 3 loop
+               AUnit.Assertions.Assert
+                 (Bits (B (I)) = Bits (Data (11 + I)),
+                  "exact Float16 buffer bits");
+            end loop;
+         end Buffer;
+      begin
+         for I in 0 .. 3 loop
+            AUnit.Assertions.Assert
+              (Bits
+                 (OpenCV.Core.Float16_Access.Get
+                    (Image, (0, OpenCV.Size_Coordinate (I), 0)))
+               = Bits (Data (11 + I)),
+               "exact Float16 N-D Get bits");
+         end loop;
+         OpenCV.Core.Float16_Buffer_Access.With_Read_Only_Buffer
+           (Image, Buffer'Access);
+      end Inspect;
+      procedure Inspect_Pixels (Image : OpenCV.Core.Mat) is
+         V : constant OpenCV.Core.Float16_Vec3.Vector :=
+           OpenCV.Core.Float16_Vec3_Access.Get (Image, (0, 0, 0));
+         procedure Buffer
+           (B : aliased OpenCV.Core.Float16_Vec3_Buffer_Access.Buffer_Array) is
+         begin
+            AUnit.Assertions.Assert
+              (Bits (B (0) (0)) = 16#7C01#
+               and then Bits (B (0) (1)) = 16#8000#
+               and then Bits (B (0) (2)) = 16#0001#,
+               "exact Float16 C3 borrowed bits");
+         end Buffer;
+      begin
+         AUnit.Assertions.Assert
+           (Bits (V (0)) = 16#7C01#
+            and then Bits (V (1)) = 16#8000#
+            and then Bits (V (2)) = 16#0001#,
+            "exact Float16 C3 Get bits");
+         OpenCV.Core.Float16_Vec3_Buffer_Access.With_Read_Only_Buffer
+           (Image, Buffer'Access);
+      end Inspect_Pixels;
+   begin
+      OpenCV.Core.Float16_Mat_View.With_Read_Only_Mat_View
+        (Data, (1, 4, 1), Inspect'Access);
+      OpenCV.Core.Float16_Vec3_Mat_View.With_Read_Only_Mat_View
+        (Pixels, (2, 2, 1), Inspect_Pixels'Access);
+   end Read_Only_Float16_Exact_Bits;
+
+   procedure Read_Only_Invalid_Capacity_Rejects_Before_Process
+     (Test : in out Fixture)
+   is
+      pragma Unreferenced (Test);
+      Data    : aliased constant OpenCV.Core.UInt8_Mat_View.Buffer_Array :=
+        (11 .. 16 => 7);
+      Invoked : Boolean := False;
+      procedure Inspect (Image : OpenCV.Core.Mat) is
+         pragma Unreferenced (Image);
+      begin
+         Invoked := True;
+      end Inspect;
+      procedure Bad_Packed is
+      begin
+         OpenCV.Core.UInt8_Mat_View.With_Read_Only_Mat_View
+           (Data, (2, 4), Inspect'Access);
+      end Bad_Packed;
+      procedure Bad_Stride is
+      begin
+         OpenCV.Core.UInt8_Mat_View.With_Read_Only_Strided_Mat_View
+           (Data, 2, 3, 5, Inspect'Access);
+      end Bad_Stride;
+      procedure Bad_ND_Stride is
+      begin
+         OpenCV.Core.UInt8_Mat_View.With_Read_Only_Strided_Mat_View
+           (Data, (2, 3), (2, 1), Inspect'Access);
+      end Bad_ND_Stride;
+   begin
+      Mat_Test_Support.Assert_Raises_OpenCV_Error
+        (Bad_Packed'Access, "read-only packed capacity mismatch");
+      Mat_Test_Support.Assert_Raises_OpenCV_Error
+        (Bad_Stride'Access, "read-only complete row stride required");
+      Mat_Test_Support.Assert_Raises_OpenCV_Error
+        (Bad_ND_Stride'Access, "read-only nested stride must not overlap");
+      AUnit.Assertions.Assert
+        (not Invoked, "invalid views never call Process");
+   end Read_Only_Invalid_Capacity_Rejects_Before_Process;
+
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
+      Result.Add_Test
+        (Caller.Create
+           ("Read-only packed 2-D/N-D constant views alias all 16 layouts",
+            Read_Only_Packed_All_Layouts'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Read-only Clone, shallow rejection, and module input",
+            Read_Only_Clone_No_Escape_And_Module_Input'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Read-only Float16 C1/C3 preserve exact bits",
+            Read_Only_Float16_Exact_Bits'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Read-only invalid shape and strides reject before callback",
+            Read_Only_Invalid_Capacity_Rejects_Before_Process'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Read-only gapped and packed strides cover all 16 layouts",
+            Read_Only_Strided_All_Layouts'Access));
       Result.Add_Test
         (Caller.Create
            ("External N-D view raw ABI rejects malformed requests",

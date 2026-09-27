@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Added read-only zero-copy caller-owned external Mat views to all sixteen
+  typed layouts: packed and strided 2-D/N-D, including aliased constant data.
+  Mode-in callbacks prevent normal Ada mutation; the existing temporary-view
+  no-escape rule and independent `Clone` behavior apply unchanged. No new C
+  constructors or native read-only handle type are introduced.
+
 - Added public persistence `Node_Kind` and named/indexed `Kind` for recursive
   map/sequence inspection. Persisted Mats report `Mapping_Node`.
 
