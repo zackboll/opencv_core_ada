@@ -38,6 +38,12 @@ with OpenCV.Core.Float64_Buffer_Access;
 with OpenCV.Core.Float64_Vec2;
 with OpenCV.Core.Float64_Vec2_Access;
 with OpenCV.Core.Float64_Vec2_Buffer_Access;
+with OpenCV.Core.UInt8_Vec2;
+with OpenCV.Core.UInt8_Vec2_Access;
+with OpenCV.Core.UInt8_Vec2_Buffer_Access;
+with OpenCV.Core.UInt16_Vec2;
+with OpenCV.Core.UInt16_Vec2_Access;
+with OpenCV.Core.UInt16_Vec2_Buffer_Access;
 with OpenCV.Core.Float64_Vec3;
 with OpenCV.Core.Float64_Vec3_Access;
 with OpenCV.Core.Float64_Vec3_Buffer_Access;
@@ -123,6 +129,12 @@ package body ND_Buffer_Access_Tests is
    is (OpenCV.UInt8_Value (O),
        OpenCV.UInt8_Value (O + 50),
        OpenCV.UInt8_Value (O + 150));
+
+   function U8_Vec2_At (O : Natural) return OpenCV.Core.UInt8_Vec2.Vector
+   is (OpenCV.UInt8_Value (O), OpenCV.UInt8_Value (255 - O));
+
+   function U16_Vec2_At (O : Natural) return OpenCV.Core.UInt16_Vec2.Vector
+   is (OpenCV.UInt16_Value (O), OpenCV.UInt16_Value (65535 - O));
 
    --  Every element carries a distinct signalling-NaN payload in its last
    --  component, so any conversion through Float32 would be detected.
@@ -260,6 +272,29 @@ package body ND_Buffer_Access_Tests is
         OpenCV.Core.Float64_Access.Set,
         OpenCV.Core.Float64_Buffer_Access.With_Read_Only_Buffer,
         OpenCV.Core.Float64_Buffer_Access.With_Writable_Buffer);
+
+   package U8_Vec2_Checks is new
+     ND_Buffer_Checks
+       (OpenCV.Core.UInt8_Vec2.Vector,
+        OpenCV.Core.UInt8_Vec2_Buffer_Access.Buffer_Array,
+        (OpenCV.Core.UInt8, 2),
+        "UInt8 C2",
+        U8_Vec2_At,
+        OpenCV.Core.UInt8_Vec2_Access.Get,
+        OpenCV.Core.UInt8_Vec2_Access.Set,
+        OpenCV.Core.UInt8_Vec2_Buffer_Access.With_Read_Only_Buffer,
+        OpenCV.Core.UInt8_Vec2_Buffer_Access.With_Writable_Buffer);
+   package U16_Vec2_Checks is new
+     ND_Buffer_Checks
+       (OpenCV.Core.UInt16_Vec2.Vector,
+        OpenCV.Core.UInt16_Vec2_Buffer_Access.Buffer_Array,
+        (OpenCV.Core.UInt16, 2),
+        "UInt16 C2",
+        U16_Vec2_At,
+        OpenCV.Core.UInt16_Vec2_Access.Get,
+        OpenCV.Core.UInt16_Vec2_Access.Set,
+        OpenCV.Core.UInt16_Vec2_Buffer_Access.With_Read_Only_Buffer,
+        OpenCV.Core.UInt16_Vec2_Buffer_Access.With_Writable_Buffer);
 
    package F32_Vec2_Checks is new
      ND_Buffer_Checks
@@ -461,6 +496,8 @@ package body ND_Buffer_Access_Tests is
    procedure Vec2_Volumes (Test : in out Fixture) is
       pragma Unreferenced (Test);
    begin
+      U8_Vec2_Checks.Check_Volume;
+      U16_Vec2_Checks.Check_Volume;
       F32_Vec2_Checks.Check_Volume;
       F64_Vec2_Checks.Check_Volume;
    end Vec2_Volumes;
@@ -500,6 +537,8 @@ package body ND_Buffer_Access_Tests is
       Float16_Checks.Check_Continuous_Slice;
       Float32_Checks.Check_Continuous_Slice;
       Float64_Checks.Check_Continuous_Slice;
+      U8_Vec2_Checks.Check_Continuous_Slice;
+      U16_Vec2_Checks.Check_Continuous_Slice;
       F32_Vec2_Checks.Check_Continuous_Slice;
       F64_Vec2_Checks.Check_Continuous_Slice;
       U8_Vec3_Checks.Check_Continuous_Slice;
@@ -524,6 +563,8 @@ package body ND_Buffer_Access_Tests is
       Float16_Checks.Check_Gapped_Slice;
       Float32_Checks.Check_Gapped_Slice;
       Float64_Checks.Check_Gapped_Slice;
+      U8_Vec2_Checks.Check_Gapped_Slice;
+      U16_Vec2_Checks.Check_Gapped_Slice;
       F32_Vec2_Checks.Check_Gapped_Slice;
       F64_Vec2_Checks.Check_Gapped_Slice;
       U8_Vec3_Checks.Check_Gapped_Slice;

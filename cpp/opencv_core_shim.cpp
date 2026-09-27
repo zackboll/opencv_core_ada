@@ -1002,6 +1002,20 @@ static_assert(sizeof(cv::Vec<float, 2>) == 8 &&
 static_assert(sizeof(opencv_core_float32_vec2) == 8 &&
                   sizeof(opencv_core_float64_vec2) == 16,
               "C ABI Vec2 records must contain two contiguous scalars");
+static_assert(sizeof(opencv_core_uint8_vec2) == 2 &&
+                  offsetof(opencv_core_uint8_vec2, component_0) == 0 &&
+                  offsetof(opencv_core_uint8_vec2, component_1) == 1 &&
+                  sizeof(uint8_t) == 1 && sizeof(cv::Vec<uint8_t, 2>) == 2 &&
+                  CV_ELEM_SIZE(CV_8UC2) == 2 &&
+                  alignof(cv::Vec<uint8_t, 2>) <= 1,
+              "UInt8 Vec2 layout must be two contiguous bytes");
+static_assert(sizeof(opencv_core_uint16_vec2) == 4 &&
+                  offsetof(opencv_core_uint16_vec2, component_0) == 0 &&
+                  offsetof(opencv_core_uint16_vec2, component_1) == 2 &&
+                  sizeof(uint16_t) == 2 && sizeof(cv::Vec<uint16_t, 2>) == 4 &&
+                  CV_ELEM_SIZE(CV_16UC2) == 4 &&
+                  alignof(cv::Vec<uint16_t, 2>) <= 2,
+              "UInt16 Vec2 layout must be two contiguous words");
 
 template <typename T, typename Abi>
 opencv_core_status vec2_get(const opencv_core_mat_handle *mat, int32_t row,
@@ -7625,6 +7639,8 @@ opencv_core_status opencv_core_mat_write_##name##_vec2_row(                   \
 
 OPENCV_CORE_DEFINE_VEC2(float32, float, CV_32F, "Mat depth must be Float32")
 OPENCV_CORE_DEFINE_VEC2(float64, double, CV_64F, "Mat depth must be Float64")
+OPENCV_CORE_DEFINE_VEC2(uint8, uint8_t, CV_8U, "Mat depth must be UInt8")
+OPENCV_CORE_DEFINE_VEC2(uint16, uint16_t, CV_16U, "Mat depth must be UInt16")
 #undef OPENCV_CORE_DEFINE_VEC2
 
 extern "C++" {

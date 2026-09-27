@@ -49,6 +49,14 @@ with OpenCV.Core.Float64_Vec2;
 with OpenCV.Core.Float64_Vec2_Access;
 with OpenCV.Core.Float64_Vec2_Buffer_Access;
 with OpenCV.Core.Float64_Vec2_Mat_View;
+with OpenCV.Core.UInt8_Vec2;
+with OpenCV.Core.UInt8_Vec2_Access;
+with OpenCV.Core.UInt8_Vec2_Buffer_Access;
+with OpenCV.Core.UInt8_Vec2_Mat_View;
+with OpenCV.Core.UInt16_Vec2;
+with OpenCV.Core.UInt16_Vec2_Access;
+with OpenCV.Core.UInt16_Vec2_Buffer_Access;
+with OpenCV.Core.UInt16_Vec2_Mat_View;
 with OpenCV.Core.Float64_Vec3;
 with OpenCV.Core.Float64_Vec3_Access;
 with OpenCV.Core.Float64_Vec3_Buffer_Access;
@@ -148,6 +156,12 @@ package body ND_Mat_View_Tests is
 
    function F64_Vec2_At (O : Natural) return OpenCV.Core.Float64_Vec2.Vector
    is (Float64_At (O), -Float64_At (O));
+
+   function U8_Vec2_At (O : Natural) return OpenCV.Core.UInt8_Vec2.Vector
+   is (OpenCV.UInt8_Value (O), OpenCV.UInt8_Value (255 - O));
+
+   function U16_Vec2_At (O : Natural) return OpenCV.Core.UInt16_Vec2.Vector
+   is (OpenCV.UInt16_Value (O), OpenCV.UInt16_Value (65535 - O));
 
    function U8_Vec3_At (O : Natural) return OpenCV.Core.UInt8_Vec3.Vector
    is (OpenCV.UInt8_Value (O),
@@ -305,6 +319,34 @@ package body ND_Mat_View_Tests is
         OpenCV.Core.Float64_Mat_View.With_Read_Only_Strided_Mat_View,
         OpenCV.Core.Float64_Mat_View.With_Read_Only_Strided_Mat_View,
         OpenCV.Core.Float64_Buffer_Access.With_Read_Only_Buffer);
+   package RO_U8V2 is new
+     Read_Only_Mat_View_Checks
+       (OpenCV.Core.UInt8_Vec2.Vector,
+        OpenCV.Core.UInt8_Vec2_Mat_View.Buffer_Array,
+        OpenCV.Core.UInt8_Vec2_Buffer_Access.Buffer_Array,
+        (OpenCV.Core.UInt8, 2),
+        "UInt8 C2",
+        U8_Vec2_At,
+        OpenCV.Core.UInt8_Vec2_Access.Get,
+        OpenCV.Core.UInt8_Vec2_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.UInt8_Vec2_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.UInt8_Vec2_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.UInt8_Vec2_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.UInt8_Vec2_Buffer_Access.With_Read_Only_Buffer);
+   package RO_U16V2 is new
+     Read_Only_Mat_View_Checks
+       (OpenCV.Core.UInt16_Vec2.Vector,
+        OpenCV.Core.UInt16_Vec2_Mat_View.Buffer_Array,
+        OpenCV.Core.UInt16_Vec2_Buffer_Access.Buffer_Array,
+        (OpenCV.Core.UInt16, 2),
+        "UInt16 C2",
+        U16_Vec2_At,
+        OpenCV.Core.UInt16_Vec2_Access.Get,
+        OpenCV.Core.UInt16_Vec2_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.UInt16_Vec2_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.UInt16_Vec2_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.UInt16_Vec2_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.UInt16_Vec2_Buffer_Access.With_Read_Only_Buffer);
    package RO_F32V2 is new
      Read_Only_Mat_View_Checks
        (OpenCV.Core.Float32_Vec2.Vector,
@@ -582,6 +624,34 @@ package body ND_Mat_View_Tests is
         OpenCV.Core.Float64_Buffer_Access.With_Read_Only_Buffer,
         OpenCV.Core.Float64_Buffer_Access.With_Writable_Buffer);
 
+   package U8_Vec2_Checks is new
+     ND_Mat_View_Checks
+       (OpenCV.Core.UInt8_Vec2.Vector,
+        OpenCV.Core.UInt8_Vec2_Mat_View.Buffer_Array,
+        OpenCV.Core.UInt8_Vec2_Buffer_Access.Buffer_Array,
+        (OpenCV.Core.UInt8, 2),
+        "UInt8 C2",
+        U8_Vec2_At,
+        OpenCV.Core.UInt8_Vec2_Access.Get,
+        OpenCV.Core.UInt8_Vec2_Access.Set,
+        OpenCV.Core.UInt8_Vec2_Mat_View.With_Writable_Mat_View,
+        OpenCV.Core.UInt8_Vec2_Mat_View.With_Writable_Mat_View,
+        OpenCV.Core.UInt8_Vec2_Buffer_Access.With_Read_Only_Buffer,
+        OpenCV.Core.UInt8_Vec2_Buffer_Access.With_Writable_Buffer);
+   package U16_Vec2_Checks is new
+     ND_Mat_View_Checks
+       (OpenCV.Core.UInt16_Vec2.Vector,
+        OpenCV.Core.UInt16_Vec2_Mat_View.Buffer_Array,
+        OpenCV.Core.UInt16_Vec2_Buffer_Access.Buffer_Array,
+        (OpenCV.Core.UInt16, 2),
+        "UInt16 C2",
+        U16_Vec2_At,
+        OpenCV.Core.UInt16_Vec2_Access.Get,
+        OpenCV.Core.UInt16_Vec2_Access.Set,
+        OpenCV.Core.UInt16_Vec2_Mat_View.With_Writable_Mat_View,
+        OpenCV.Core.UInt16_Vec2_Mat_View.With_Writable_Mat_View,
+        OpenCV.Core.UInt16_Vec2_Buffer_Access.With_Read_Only_Buffer,
+        OpenCV.Core.UInt16_Vec2_Buffer_Access.With_Writable_Buffer);
    package F32_Vec2_Checks is new
      ND_Mat_View_Checks
        (OpenCV.Core.Float32_Vec2.Vector,
@@ -779,6 +849,8 @@ package body ND_Mat_View_Tests is
    procedure Vector_Volumes_Alias_Caller_Storage (Test : in out Fixture) is
       pragma Unreferenced (Test);
    begin
+      U8_Vec2_Checks.Check_Volume;
+      U16_Vec2_Checks.Check_Volume;
       F32_Vec2_Checks.Check_Volume;
       F64_Vec2_Checks.Check_Volume;
       U8_Vec3_Checks.Check_Volume;
@@ -804,6 +876,8 @@ package body ND_Mat_View_Tests is
       Float16_Checks.Check_Two_Dimensional_Shape;
       Float32_Checks.Check_Two_Dimensional_Shape;
       Float64_Checks.Check_Two_Dimensional_Shape;
+      U8_Vec2_Checks.Check_Two_Dimensional_Shape;
+      U16_Vec2_Checks.Check_Two_Dimensional_Shape;
       F32_Vec2_Checks.Check_Two_Dimensional_Shape;
       F64_Vec2_Checks.Check_Two_Dimensional_Shape;
       U8_Vec3_Checks.Check_Two_Dimensional_Shape;
@@ -828,6 +902,8 @@ package body ND_Mat_View_Tests is
       Float16_Checks.Check_No_Escape_And_Clone;
       Float32_Checks.Check_No_Escape_And_Clone;
       Float64_Checks.Check_No_Escape_And_Clone;
+      U8_Vec2_Checks.Check_No_Escape_And_Clone;
+      U16_Vec2_Checks.Check_No_Escape_And_Clone;
       F32_Vec2_Checks.Check_No_Escape_And_Clone;
       F64_Vec2_Checks.Check_No_Escape_And_Clone;
       U8_Vec3_Checks.Check_No_Escape_And_Clone;
@@ -1399,6 +1475,8 @@ package body ND_Mat_View_Tests is
       RO_F16.Check_Packed;
       RO_F32.Check_Packed;
       RO_F64.Check_Packed;
+      RO_U8V2.Check_Packed;
+      RO_U16V2.Check_Packed;
       RO_F32V2.Check_Packed;
       RO_F64V2.Check_Packed;
       RO_U8V3.Check_Packed;
@@ -1423,6 +1501,8 @@ package body ND_Mat_View_Tests is
       RO_F16.Check_Strided;
       RO_F32.Check_Strided;
       RO_F64.Check_Strided;
+      RO_U8V2.Check_Strided;
+      RO_U16V2.Check_Strided;
       RO_F32V2.Check_Strided;
       RO_F64V2.Check_Strided;
       RO_U8V3.Check_Strided;
@@ -1609,7 +1689,7 @@ package body ND_Mat_View_Tests is
    begin
       Result.Add_Test
         (Caller.Create
-           ("Read-only packed 2-D/N-D constant views alias all 19 layouts",
+           ("Read-only packed 2-D/N-D constant views alias all 21 layouts",
             Read_Only_Packed_All_Layouts'Access));
       Result.Add_Test
         (Caller.Create
@@ -1625,7 +1705,7 @@ package body ND_Mat_View_Tests is
             Read_Only_Invalid_Capacity_Rejects_Before_Process'Access));
       Result.Add_Test
         (Caller.Create
-           ("Read-only gapped and packed strides cover all 19 layouts",
+           ("Read-only gapped and packed strides cover all 21 layouts",
             Read_Only_Strided_All_Layouts'Access));
       Result.Add_Test
         (Caller.Create
@@ -1645,15 +1725,15 @@ package body ND_Mat_View_Tests is
             C1_Volumes_Alias_Caller_Storage'Access));
       Result.Add_Test
         (Caller.Create
-           ("C2/C3/C4 N-D views alias caller storage for all 11 packages",
+           ("C2/C3/C4 N-D views alias caller storage for all 13 packages",
             Vector_Volumes_Alias_Caller_Storage'Access));
       Result.Add_Test
         (Caller.Create
-           ("Shape (2, 3) views match Rows/Columns views for all 19 packages",
+           ("Shape (2, 3) views match Rows/Columns views for all 21 packages",
             Two_Dimensional_Shape_Matches_Rows_Columns'Access));
       Result.Add_Test
         (Caller.Create
-           ("N-D views reject Slice/Reshape and Clone independently (x19)",
+           ("N-D views reject Slice/Reshape and Clone independently (x21)",
             Views_Reject_Shallow_Escape_And_Clone'Access));
       Result.Add_Test
         (Caller.Create

@@ -115,6 +115,16 @@ typedef struct {
     double component_1;
 } opencv_core_float64_vec2;
 
+typedef struct {
+    uint8_t component_0;
+    uint8_t component_1;
+} opencv_core_uint8_vec2;
+
+typedef struct {
+    uint16_t component_0;
+    uint16_t component_1;
+} opencv_core_uint16_vec2;
+
 /*
  * Raw IEEE-754 binary16 encodings for a three-channel CV_16F pixel.
  * Each uint16_t member is the stored 16-bit pattern, not an integer
@@ -1449,6 +1459,8 @@ opencv_core_mat_set_float64_vec3(opencv_core_mat_handle *mat,
 
 OPENCV_CORE_DECLARE_VEC2_ACCESS(float32, float)
 OPENCV_CORE_DECLARE_VEC2_ACCESS(float64, double)
+OPENCV_CORE_DECLARE_VEC2_ACCESS(uint8, uint8_t)
+OPENCV_CORE_DECLARE_VEC2_ACCESS(uint16, uint16_t)
 #undef OPENCV_CORE_DECLARE_VEC2_ACCESS
 
 /* A Vec4 is one complete C4 Mat element; row buffers contain four scalars
