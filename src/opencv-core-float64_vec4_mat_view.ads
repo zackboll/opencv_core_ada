@@ -37,4 +37,26 @@ package OpenCV.Core.Float64_Vec4_Mat_View is
       Shape   : Dimension_Array;
       Strides : Dimension_Stride_Array;
       Process : not null access procedure (Image : in out Mat));
+   --  Read-only zero-copy caller-owned views (one Data entry per vector).
+   --  Aliased constant Data is accepted; geometry/capacity are exactly those
+   --  of the corresponding writable overloads. Mode-in Image prevents normal
+   --  Ada mutation, not OS/page writes. Shallow escape is rejected; Clone
+   --  owns independent pixels and Module_Interop input is allowed.
+   procedure With_Read_Only_Mat_View
+     (Data          : aliased Buffer_Array;
+      Rows, Columns : Positive;
+      Process       : not null access procedure (Image : Mat));
+   procedure With_Read_Only_Mat_View
+     (Data    : aliased Buffer_Array;
+      Shape   : Dimension_Array;
+      Process : not null access procedure (Image : Mat));
+   procedure With_Read_Only_Strided_Mat_View
+     (Data                      : aliased Buffer_Array;
+      Rows, Columns, Row_Stride : Positive;
+      Process                   : not null access procedure (Image : Mat));
+   procedure With_Read_Only_Strided_Mat_View
+     (Data    : aliased Buffer_Array;
+      Shape   : Dimension_Array;
+      Strides : Dimension_Stride_Array;
+      Process : not null access procedure (Image : Mat));
 end OpenCV.Core.Float64_Vec4_Mat_View;

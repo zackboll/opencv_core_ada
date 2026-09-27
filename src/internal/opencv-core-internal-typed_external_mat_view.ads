@@ -52,4 +52,33 @@ package OpenCV.Core.Internal.Typed_External_Mat_View is
       Strides : Dimension_Stride_Array;
       Process : not null access procedure (Image : in out Mat));
 
+   --  Caller-owned, zero-copy views with the same geometry and capacity
+   --  rules as the writable counterparts. Aliased constant Data is accepted.
+   --  The mode-in callback cannot call normal in-place Ada Mat operations;
+   --  memory is not page-protected. Shallow escape is forbidden; Clone owns
+   --  independent pixels and Module_Interop input handles remain available.
+   procedure With_Read_Only_Mat_View
+     (Data    : aliased Buffer_Array;
+      Rows    : Positive;
+      Columns : Positive;
+      Process : not null access procedure (Image : Mat));
+
+   procedure With_Read_Only_Mat_View
+     (Data    : aliased Buffer_Array;
+      Shape   : Dimension_Array;
+      Process : not null access procedure (Image : Mat));
+
+   procedure With_Read_Only_Strided_Mat_View
+     (Data                : aliased Buffer_Array;
+      Rows                : Positive;
+      Columns             : Positive;
+      Row_Stride_Elements : Positive;
+      Process             : not null access procedure (Image : Mat));
+
+   procedure With_Read_Only_Strided_Mat_View
+     (Data    : aliased Buffer_Array;
+      Shape   : Dimension_Array;
+      Strides : Dimension_Stride_Array;
+      Process : not null access procedure (Image : Mat));
+
 end OpenCV.Core.Internal.Typed_External_Mat_View;

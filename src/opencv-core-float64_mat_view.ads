@@ -78,4 +78,25 @@ package OpenCV.Core.Float64_Mat_View is
       Strides : Dimension_Stride_Array;
       Process : not null access procedure (Image : in out Mat));
 
+   --  Read-only caller-owned zero-copy views; aliased constant Data is valid.
+   --  Geometry/capacity match the corresponding writable overloads above.
+   --  Mode-in Image forbids normal Ada mutation (not OS page protection).
+   --  Shallow escape is rejected; Clone owns pixels; module input is allowed.
+   procedure With_Read_Only_Mat_View
+     (Data          : aliased Buffer_Array;
+      Rows, Columns : Positive;
+      Process       : not null access procedure (Image : Mat));
+   procedure With_Read_Only_Mat_View
+     (Data    : aliased Buffer_Array;
+      Shape   : Dimension_Array;
+      Process : not null access procedure (Image : Mat));
+   procedure With_Read_Only_Strided_Mat_View
+     (Data                      : aliased Buffer_Array;
+      Rows, Columns, Row_Stride : Positive;
+      Process                   : not null access procedure (Image : Mat));
+   procedure With_Read_Only_Strided_Mat_View
+     (Data    : aliased Buffer_Array;
+      Shape   : Dimension_Array;
+      Strides : Dimension_Stride_Array;
+      Process : not null access procedure (Image : Mat));
 end OpenCV.Core.Float64_Mat_View;
