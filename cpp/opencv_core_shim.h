@@ -943,6 +943,37 @@ opencv_core_mat_slice_nd(const opencv_core_mat_handle *source, int32_t ndims,
                          opencv_core_mat_handle **out_mat);
 
 /*
+ * Creates a temporary dimension-dropping selected view of an OpenCV-owned
+ * N-dimensional source. ndims must equal the source dimension count. For
+ * each source dimension i:
+ *
+ *   drop_flags[i] == 0: retain [starts[i], stops[i]) as a result dimension;
+ *   drop_flags[i] == 1: select index starts[i] and drop the dimension;
+ *                        stops[i] must equal starts[i] + 1.
+ *
+ * Every interval must satisfy 0 <= start < stop <= source extent. At least
+ * one dimension must be dropped, at least two must be retained, and the final
+ * source dimension must be retained (OpenCV's final native step is always
+ * elemSize()). Retained dimensions keep source order and source byte steps;
+ * the base is data + sum(starts[i] * step[i]).
+ *
+ * The result shares source storage without copying. It is built over the
+ * source datastart with a full result_dims-entry step array and then
+ * retargeted like an OpenCV ROI: data is the selected base and
+ * datastart/dataend/datalimit are inherited from the source, with the
+ * submatrix flag set. The handle privately retains the source allocation, and
+ * borrow leases taken from it retain that allocation too. The result carries
+ * the temporary external-view restriction: shallow copies, slices, reshapes,
+ * and output resolution are rejected; clone is the escape path. Temporary
+ * external sources and sources without OpenCV reference-counted storage are
+ * rejected. *out_mat is null on every failure.
+ */
+opencv_core_status opencv_core_mat_select_nd_view(
+    const opencv_core_mat_handle *source, int32_t ndims,
+    const uint8_t *drop_flags, const int32_t *starts, const int32_t *stops,
+    opencv_core_mat_handle **out_mat);
+
+/*
  * Creates a distinct two-dimensional Mat header by invoking Mat::reshape.
  * channels must be in 1 .. OPENCV_CORE_MAX_CHANNELS. A rows value of zero
  * preserves the source row count; otherwise it is the requested positive row

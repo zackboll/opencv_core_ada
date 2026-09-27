@@ -2,6 +2,54 @@
 
 ## Unreleased
 
+- Added callback-scoped dimension-dropping N-D selected views. New public
+  `OpenCV.Core.Dimension_Selection_Kind` (`Keep_Range`, `Fix_Index`),
+  discriminated `Dimension_Selection` (`Bounds : Index_Range` for
+  `Keep_Range`, `Index : Size_Coordinate` for `Fix_Index`), and
+  `Dimension_Selection_Array` types, plus
+  `With_Selected_View (Self, Selections, Process)`. One selector is required
+  per source dimension in iteration order (lower bounds are irrelevant).
+  `Fix_Index` selects one index and drops that dimension; `Keep_Range` keeps
+  it restricted to a nonempty half-open range. The result keeps depth,
+  channels, source order of kept dimensions, and source strides, so it is
+  continuous when only leading dimensions are dropped and gapped otherwise.
+  For example, Shape `(2, 3, 2, 4)` with `(Fix 1, Keep [0, 3), Fix 1,
+  Keep [0, 4))` yields a `(3, 4)` view whose `(J, K)` is source
+  `(1, J, 1, K)`. The source must be nonempty with at least three dimensions,
+  at least one dimension must be fixed, at least two must be kept, and the
+  final source dimension must be kept, because OpenCV always uses
+  `elemSize()` as a Mat's last step and a dropped final axis cannot be
+  represented without copying. No 1-D or scalar selected Mat is produced.
+  The view shares storage (writes are visible both ways), keeps the source
+  allocation alive during the callback, and follows the temporary-view
+  no-escape rules: shallow copies, `Slice`, `Reshape`, `Row_View`, `Region`,
+  and `Module_Interop` output handles are rejected, while `Clone` and
+  `Module_Interop` input succeed. Temporary caller-buffer sources are
+  rejected. `Slice` is unchanged.
+- Added the private C ABI operation `opencv_core_mat_select_nd_view`
+  (`drop_flags`/`starts`/`stops`; a dropped axis is the singleton interval
+  `[start, start + 1)`). It rejects null pointers, temporary external sources,
+  sources without allocated reference-counted storage, invalid or mismatched
+  dimension counts, invalid drop flags, invalid intervals, zero drops, fewer
+  than two kept dimensions, and a dropped final dimension, and always clears
+  `*out_mat` on failure. Offset, nested-step, header-span, and logical-end
+  arithmetic is checked `size_t`/`uintptr_t` arithmetic. The logical span must
+  fit between the selected base and the source `datalimit`, and the reduced
+  header is built over the source `datastart` (whose `size[0] * step[0]`
+  carrier span must fit the allocation) with a full `result_dims`-entry native
+  step array (OpenCV 4.1 `setSize()` reads `_steps[dims-1]`). It is then
+  retargeted like an OpenCV ROI: `data` is the selected base,
+  `datastart`/`dataend`/`datalimit` are inherited from the source, and the
+  submatrix flag is set, so no header field claims memory past the source
+  allocation.
+- The private `opencv_core_mat_handle` now carries an optional
+  reference-counted `storage_guard`, declared before the Mat value so it
+  outlives the header. Ordinary handles leave it empty; selected views retain
+  the source allocation through it, and
+  `opencv_core_mat_acquire_borrow_lease` copies it, so nested row and buffer
+  borrows keep the allocation alive even if the selected view header is
+  rebound during the borrow. Ordinary Mat copy semantics are unchanged.
+
 - Added strided N-D caller-owned Mat views. A new public
   `OpenCV.Core.Dimension_Stride_Array` (one `Positive` stride per dimension,
   measured in complete Mat elements, never bytes) and a new

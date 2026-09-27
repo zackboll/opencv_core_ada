@@ -50,6 +50,7 @@ with Mat_Shape_Tests;
 with ND_Buffer_Access_Tests;
 with ND_Mat_View_Tests;
 with ND_Strided_Mat_View_Tests;
+with ND_Selected_View_Tests;
 
 package body Mat_Tests is
 
@@ -109,6 +110,7 @@ package body Mat_Tests is
       Result.Add_Test (ND_Buffer_Access_Tests.Suite);
       Result.Add_Test (ND_Mat_View_Tests.Suite);
       Result.Add_Test (ND_Strided_Mat_View_Tests.Suite);
+      Result.Add_Test (ND_Selected_View_Tests.Suite);
       return Result'Access;
    end Suite;
 

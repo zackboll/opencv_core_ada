@@ -18,7 +18,7 @@ translation of the C++ headers.
 >
 > **Development status:** active, pre-1.0 API.
 >
-> **Current test baseline:** 1377 AUnit tests, with Ada and C++ warnings promoted
+> **Current test baseline:** 1396 AUnit tests, with Ada and C++ warnings promoted
 > to errors. GitHub Actions exercises the full test suite against four OpenCV
 > compatibility targets, plus a native Ubuntu 24.04 ARM64 job.
 >
@@ -359,7 +359,7 @@ The test crate carries development-only dependencies such as AUnit, GNATprove,
 and GNATcov. They are intentionally not dependencies of the public library
 crate.
 
-At the time of this README update, the full suite contains **1377 AUnit tests**.
+At the time of this README update, the full suite contains **1396 AUnit tests**.
 Coverage includes ordinary behavior, invalid input, shape/depth/channel
 compatibility, empty Mats, non-contiguous Regions, shallow-versus-independent
 ownership, callback lifetimes, arbitrary Ada array lower bounds, failure
@@ -707,6 +707,62 @@ geometry as the 2-D row-strided overload. Ownership, callback lifetime, and
 the no-escape rules are identical to the packed views; `Clone` returns
 independent packed storage holding only the logical values.
 
+### Select a lower-dimensional view by fixing dimensions
+
+`With_Selected_View` fixes chosen source dimensions to one index and **drops**
+them, while the other dimensions keep ordinary half-open ranges. The result
+aliases the source; no data is copied.
+
+```ada
+with OpenCV.Core;
+with OpenCV.Core.Float32_Access;
+
+procedure Selected_Plane_Example is
+   use OpenCV.Core;
+
+   Volume : Mat :=
+     Create (Shape => (2, 3, 2, 4), Element_Type => (Float32, 1));
+
+   procedure Process (View : in out Mat) is
+   begin
+      --  View.Shape = (3, 4); View (J, K) is Volume (1, J, 1, K).
+      OpenCV.Core.Float32_Access.Set (View, (2, 3), 1.5);
+      --  Volume (1, 2, 1, 3) is now 1.5.
+   end Process;
+begin
+   With_Selected_View
+     (Volume,
+      ((Kind => Fix_Index,  Index  => 1),
+       (Kind => Keep_Range, Bounds => (Start => 0, Stop => 3)),
+       (Kind => Fix_Index,  Index  => 1),
+       (Kind => Keep_Range, Bounds => (Start => 0, Stop => 4))),
+      Process'Access);
+end Selected_Plane_Example;
+```
+
+There is one selector per source dimension, applied in iteration order; the
+array's lower bound is irrelevant. `Keep_Range` requires
+`Start < Stop <= extent`; `Fix_Index` requires `Index < extent`. The source
+must be a nonempty OpenCV-owned Mat with at least three dimensions; an
+ordinary `Slice` is a valid source. At least one dimension must be fixed and
+at least two must be kept, so no 1-D or scalar view is produced.
+
+The **final source dimension must be kept**. This is an OpenCV `Mat`
+representation rule, not an implementation shortcut: OpenCV always uses the
+element size as the step of a Mat's last dimension, so dropping the source's
+final axis would leave a last axis with a larger stride that no ordinary Mat
+header can describe without copying.
+
+Retained source strides are inherited. Dropping only leading dimensions
+yields a continuous view that whole-buffer borrowing accepts. Dropping a
+middle dimension keeps the outer stride, so the example above is
+non-continuous (rows begin eight elements apart): whole-buffer borrowing
+rejects it while 2-D row borrowing works. `View` is valid only during
+`Process`. It keeps the source allocation alive even if the source is rebound
+inside the callback, but shallow copies, `Slice`, `Reshape`, and
+`Module_Interop` output handles are rejected. `Clone` is the escape path.
+Selecting from a temporary caller-buffer view is rejected; `Clone` it first.
+
 ---
 
 ## Ownership, views, and zero-copy access
@@ -744,6 +800,11 @@ The public API includes no-copy views such as:
 
 For ordinary OpenCV-owned Mats, these headers retain the shared allocation by
 normal OpenCV reference counting.
+
+`With_Selected_View` is the callback-scoped, dimension-dropping counterpart.
+Its view keeps the source allocation alive for the callback and follows the
+temporary-view no-escape rules; `Slice` itself is unchanged and never drops
+dimensions.
 
 ### Copied row access
 
@@ -1114,6 +1175,7 @@ Creation and structure:
 - `Column_View`
 - range views
 - `Slice`
+- `With_Selected_View` (callback-scoped dimension-dropping N-D selection)
 - `Reshape`, including the existing 2-D overloads and Shape-based N-D overloads
 - `Diagonal_View`
 - `Diagonal_Matrix`
@@ -1800,10 +1862,17 @@ The current limitations are intentional and help keep the public API coherent:
    Shape-based N-D reshape are available. Callback-scoped whole-buffer
    borrowing is provided for continuous N-D Mats of every typed layout.
    Packed and strided (gapped) caller-owned external views support genuine
-   N-D shapes for every typed layout. Dimension-dropping scalar indexing and
-   a dimension-dropping view model are not yet exposed. N-D row APIs are not
-   provided because a row is a 2-D concept. OpenCV 5.0's native Mat shape
-   capacity remains 10 dimensions.
+   N-D shapes for every typed layout. Callback-scoped dimension-dropping
+   selected views (`With_Selected_View`) are available: any non-final
+   dimensions may be fixed to one index and dropped while the others keep
+   half-open ranges. The final source dimension must remain, because OpenCV
+   always uses the element size as a Mat's last step, and at least two result
+   dimensions must remain; there is no 1-D or scalar selected Mat
+   representation yet. This is not a general NumPy-style indexing model:
+   there is no step slicing, axis reordering, broadcasting, or
+   dimension-dropping shallow `Mat` returned outside a callback. N-D row APIs
+   are not provided because a row is a 2-D concept. OpenCV 5.0's native Mat
+   shape capacity remains 10 dimensions.
 
 2. **No public `SparseMat` or `UMat` abstraction.**
 

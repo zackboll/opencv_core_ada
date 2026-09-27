@@ -19,6 +19,13 @@
 #include <string>
 
 struct opencv_core_mat_handle {
+    // Optional shallow, reference-counted owner of the storage that value
+    // addresses. Ordinary handles leave it empty. A synthetic selected N-D
+    // view header is constructed over existing storage without its own
+    // UMatData, so storage_guard retains the source allocation. Declared
+    // before value so members are destroyed in reverse order: the synthetic
+    // header is released before the guard that keeps its storage alive.
+    cv::Mat storage_guard;
     cv::Mat value;
     bool temporary_external_view = false;
 
@@ -2182,6 +2189,11 @@ opencv_core_status opencv_core_mat_acquire_borrow_lease(
     try {
         std::unique_ptr<opencv_core_mat_handle> lease(
             new opencv_core_mat_handle(source->value));
+        // Lifetime safety: a selected N-D view header has no UMatData of its
+        // own; its storage is retained only by storage_guard. The lease must
+        // retain that same allocation so rebinding or finalizing the view
+        // header during a nested borrow cannot release the borrowed storage.
+        lease->storage_guard = source->storage_guard;
         lease->temporary_external_view = source->temporary_external_view;
         *out_mat = lease.release();
         return OPENCV_CORE_OK;
@@ -4707,6 +4719,296 @@ opencv_core_mat_slice_nd(const opencv_core_mat_handle *source, int32_t ndims,
 
         *out_mat = new opencv_core_mat_handle(
             cv::Mat(source->value, opencv_ranges));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status opencv_core_mat_select_nd_view(
+    const opencv_core_mat_handle *source, int32_t ndims,
+    const uint8_t *drop_flags, const int32_t *starts, const int32_t *stops,
+    opencv_core_mat_handle **out_mat) {
+    clear_error();
+
+    if (out_mat == nullptr) {
+        return invalid_argument("out_mat must not be null");
+    }
+
+    *out_mat = nullptr;
+
+    if (source == nullptr) {
+        return invalid_argument("source Mat handle must not be null");
+    }
+
+    // Lifetime safety: a temporary external-buffer source has no OpenCV
+    // reference-counted allocation for storage_guard to retain, so a
+    // selected header over it could outlive the caller-owned buffer.
+    if (reject_temporary_external_view(source) != OPENCV_CORE_OK) {
+        return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
+    }
+
+    // ABI safety: the shim reads drop_flags/starts/stops[0 .. ndims-1] and
+    // fills fixed maximum_mat_dimensions-slot scratch arrays.
+    if (ndims < 0 || ndims > maximum_mat_dimensions) {
+        return invalid_argument(
+            "selected N-D view dimension count must be in 0 .. 32");
+    }
+
+    if (drop_flags == nullptr || starts == nullptr || stops == nullptr) {
+        return invalid_argument(
+            "selected N-D view selector arrays must not be null");
+    }
+
+    try {
+        const cv::Mat &value = source->value;
+
+        // ABI safety: the shim itself reads size.p/step.p[0 .. dims-1].
+        if (value.dims < 0 || value.dims > maximum_mat_dimensions) {
+            return invalid_argument("source Mat dimension count is invalid");
+        }
+
+        // ABI safety: selectors are applied index-for-index to the native
+        // size/step tables; a mismatch reads past one or the other.
+        if (ndims != value.dims) {
+            return invalid_argument(
+                "selector count must equal source Mat dimension count");
+        }
+
+        // ABI safety: the shim performs pointer arithmetic from data and
+        // bounds checks against datastart/datalimit.
+        if (value.data == nullptr || value.datastart == nullptr ||
+            value.datalimit == nullptr) {
+            return invalid_argument(
+                "selected N-D view source must have allocated storage");
+        }
+
+        // Lifetime safety: storage_guard can retain only OpenCV
+        // reference-counted storage. Without UMatData the selected header
+        // would silently depend on an unknown external lifetime.
+        if (value.u == nullptr) {
+            return invalid_argument(
+                "selected N-D view source storage is not reference-counted");
+        }
+
+        int result_sizes[maximum_mat_dimensions];
+        size_t result_steps[maximum_mat_dimensions];
+        int result_dims = 0;
+        int dropped_dims = 0;
+        size_t offset_bytes = 0;
+
+        for (int32_t index = 0; index < ndims; ++index) {
+            const uint8_t flag = drop_flags[index];
+            if (flag != 0 && flag != 1) {
+                return invalid_argument(
+                    "selected N-D view drop flags must be 0 or 1");
+            }
+
+            const int extent = value.size.p[index];
+            // ABI safety: every interval feeds the shim's own offset, extent,
+            // and pointer arithmetic. A negative, empty, reversed, or
+            // out-of-extent interval would address storage outside the
+            // source header before OpenCV sees the result.
+            if (starts[index] < 0 || stops[index] < 0) {
+                return invalid_argument(
+                    "selected N-D view ranges must not be negative");
+            }
+            if (starts[index] >= stops[index]) {
+                return invalid_argument(
+                    "selected N-D view range start must be below its stop");
+            }
+            if (stops[index] > extent) {
+                return invalid_argument(
+                    "selected N-D view range stop is outside source bounds");
+            }
+
+            // ABI safety: a dropped axis contributes exactly one index to
+            // the shim's base offset; a wider interval would describe
+            // elements the reduced header cannot address.
+            if (flag == 1 && stops[index] - starts[index] != 1) {
+                return invalid_argument(
+                    "selected N-D view dropped dimension must select exactly"
+                    " one index");
+            }
+
+            const size_t step = value.step.p[index];
+            size_t term = 0;
+            if (!checked_size_mul(static_cast<size_t>(starts[index]), step,
+                                  &term) ||
+                !checked_size_add(offset_bytes, term, &offset_bytes)) {
+                return invalid_argument(
+                    "selected N-D view offset exceeds the native size range");
+            }
+
+            if (flag == 0) {
+                result_sizes[result_dims] =
+                    static_cast<int>(stops[index] - starts[index]);
+                result_steps[result_dims] = step;
+                ++result_dims;
+            } else {
+                ++dropped_dims;
+            }
+        }
+
+        // ABI safety: a result with fewer than two dimensions has no stable
+        // cross-version native geometry (OpenCV 4.x promotes a 1-D header to
+        // 2-D while 5.0 keeps it 1-D), and zero drops leaves the reduced
+        // table identical to the source, which this carrier construction
+        // does not need to model. Passing both checks also guarantees
+        // ndims >= 3 before drop_flags[ndims - 1] is read below.
+        if (dropped_dims < 1) {
+            return invalid_argument(
+                "selected N-D view must drop at least one dimension");
+        }
+        if (result_dims < 2) {
+            return invalid_argument(
+                "selected N-D view must retain at least two dimensions");
+        }
+
+        // ABI safety: OpenCV's final native step is always elemSize(). If
+        // the source's final axis were dropped, the new final stride would
+        // generally differ and the constructed header would silently address
+        // a different layout than the selected geometry.
+        if (drop_flags[ndims - 1] != 0) {
+            return invalid_argument(
+                "selected N-D view must retain the final source dimension");
+        }
+
+        const size_t element_size = value.elemSize();
+
+        // ABI safety: the retained final step must already be elemSize();
+        // checked rather than assumed for malformed or future headers.
+        if (element_size == 0 ||
+            result_steps[result_dims - 1] != element_size) {
+            return invalid_argument(
+                "selected N-D view final step does not equal the element"
+                " size");
+        }
+
+        // ABI safety: OpenCV does not check that steps nest. Larger gaps
+        // introduced by dropping are allowed; overlapping geometry is not.
+        for (int index = 0; index + 1 < result_dims; ++index) {
+            size_t inner_block = 0;
+            if (!checked_size_mul(
+                    result_steps[index + 1],
+                    static_cast<size_t>(result_sizes[index + 1]),
+                    &inner_block)) {
+                return invalid_argument(
+                    "selected N-D view nested step exceeds the native size"
+                    " range");
+            }
+            if (result_steps[index] < inner_block) {
+                return invalid_argument(
+                    "selected N-D view step is smaller than its nested inner"
+                    " block");
+            }
+        }
+
+        // ABI safety: OpenCV's external-data constructor forms
+        // datalimit = base + size[0] * step[0] and dataend from
+        // (size[i] - 1) * step[i]. Both spans are computed here with checked
+        // arithmetic before any pointer arithmetic occurs.
+        size_t required_header_bytes = 0;
+        if (!checked_size_mul(static_cast<size_t>(result_sizes[0]),
+                              result_steps[0], &required_header_bytes)) {
+            return invalid_argument(
+                "selected N-D view header span exceeds the native size range");
+        }
+        size_t logical_end_bytes = element_size;
+        for (int index = 0; index < result_dims; ++index) {
+            size_t term = 0;
+            if (!checked_size_mul(
+                    static_cast<size_t>(result_sizes[index] - 1),
+                    result_steps[index], &term) ||
+                !checked_size_add(logical_end_bytes, term,
+                                  &logical_end_bytes)) {
+                return invalid_argument(
+                    "selected N-D view logical extent exceeds the native size"
+                    " range");
+            }
+        }
+        if (logical_end_bytes > required_header_bytes) {
+            return invalid_argument(
+                "selected N-D view logical extent exceeds its outer step");
+        }
+
+        // ABI safety: validate the source allocation metadata the shim
+        // relies on, using integer addresses so no out-of-range pointer is
+        // ever formed.
+        const uintptr_t start_address =
+            reinterpret_cast<uintptr_t>(value.datastart);
+        const uintptr_t data_address = reinterpret_cast<uintptr_t>(value.data);
+        const uintptr_t end_address =
+            reinterpret_cast<uintptr_t>(value.dataend);
+        const uintptr_t limit_address =
+            reinterpret_cast<uintptr_t>(value.datalimit);
+        if (data_address < start_address || data_address > limit_address ||
+            end_address < start_address || end_address > limit_address) {
+            return invalid_argument(
+                "selected N-D view source allocation bounds are inconsistent");
+        }
+
+        // ABI safety: the selected logical span must lie inside the source
+        // allocation. The base is computed relative to data, which differs
+        // from datastart for an ordinary Slice or Region source.
+        if (offset_bytes > limit_address - data_address) {
+            return invalid_argument(
+                "selected N-D view base lies outside source storage");
+        }
+        const uintptr_t selected_address = data_address + offset_bytes;
+        if (logical_end_bytes > limit_address - selected_address) {
+            return invalid_argument(
+                "selected N-D view logical extent lies outside source storage");
+        }
+
+        // ABI safety: the reduced carrier header is constructed over the
+        // source datastart, not the selected base, so the constructor's own
+        // datastart + size[0] * step[0] arithmetic must stay inside the
+        // allocation. Constructing at the selected base could form a
+        // datalimit past the allocation: Shape (2, 3, 2, 4) selecting
+        // (1, :, 1, :) ends logically at the allocation end while
+        // base + size[0] * step[0] lies four elements beyond it.
+        if (required_header_bytes > limit_address - start_address) {
+            return invalid_argument(
+                "selected N-D view carrier span exceeds source storage");
+        }
+
+        // Full result_dims-entry native step array. OpenCV documents the
+        // steps argument as ndims-1 entries, but OpenCV 4.1 setSize()
+        // evaluates _steps[i] % esz1 for i == ndims-1 before substituting
+        // elemSize(), so a short array would be read one past its end on
+        // 4.1. The final entry is set to elemSize() explicitly.
+        size_t opencv_steps[maximum_mat_dimensions];
+        for (int index = 0; index < result_dims; ++index) {
+            opencv_steps[index] = result_steps[index];
+        }
+        opencv_steps[result_dims - 1] = element_size;
+
+        std::unique_ptr<opencv_core_mat_handle> handle(
+            new opencv_core_mat_handle());
+        // Retain the real source allocation before publishing a header that
+        // addresses it. Member order makes the guard outlive value.
+        handle->storage_guard = value;
+        handle->value =
+            cv::Mat(result_dims, result_sizes, value.type(),
+                    const_cast<uchar *>(value.datastart), opencv_steps);
+
+        // Retarget the carrier like an OpenCV Range/Rect ROI: data becomes
+        // the selected base and the allocation bounds are inherited from the
+        // source, so no header field claims memory past source.datalimit.
+        // The reduced size/step table built by the constructor is preserved.
+        cv::Mat &view = handle->value;
+        view.data = value.data + offset_bytes;
+        view.datastart = value.datastart;
+        view.dataend = value.dataend;
+        view.datalimit = value.datalimit;
+        view.flags |= cv::Mat::SUBMATRIX_FLAG;
+
+        // storage_guard retains the allocation, but the callback remains the
+        // lifetime boundary: shallow aliases would need guard propagation
+        // through every header-producing operation.
+        handle->temporary_external_view = true;
+        *out_mat = handle.release();
         return OPENCV_CORE_OK;
     } catch (...) {
         return translate_current_exception();

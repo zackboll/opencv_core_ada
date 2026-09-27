@@ -3896,6 +3896,119 @@ package body OpenCV.Core is
       end;
    end Slice;
 
+   procedure With_Selected_View
+     (Self       : in out Mat;
+      Selections : Dimension_Selection_Array;
+      Process    : not null access procedure (View : in out Mat))
+   is
+      Source_Dims : constant Natural := Self.Dimension_Count;
+
+      procedure Reject (Message : String) is
+      begin
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Mat selected view " & Message);
+      end Reject;
+   begin
+      if Self.Is_Empty then
+         Reject ("requires a nonempty Mat");
+      end if;
+
+      if Source_Dims < 3 then
+         Reject ("requires a Mat with at least three dimensions");
+      end if;
+
+      if Selections'Length /= Source_Dims then
+         Reject ("requires one selection for every dimension");
+      end if;
+
+      declare
+         Drop_Flags :
+           OpenCV.Internal.C_API.C_UInt8_Array (0 .. Source_Dims - 1);
+         Starts     :
+           OpenCV.Internal.C_API.C_Int32_Array (0 .. Source_Dims - 1);
+         Stops      :
+           OpenCV.Internal.C_API.C_Int32_Array (0 .. Source_Dims - 1);
+         Position   : Natural := 0;
+         Kept       : Natural := 0;
+         Dropped    : Natural := 0;
+         View       : Mat;
+         New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+           OpenCV.Internal.C_API.Null_Mat_Handle;
+         Status     : OpenCV.Internal.C_API.Status;
+      begin
+         for Selected of Selections loop
+            declare
+               Extent : constant Size_Coordinate := Self.Extent (Position + 1);
+            begin
+               case Selected.Kind is
+                  when Keep_Range =>
+                     if Selected.Bounds.Start > Selected.Bounds.Stop then
+                        Reject ("range start must not exceed its stop");
+                     end if;
+
+                     if Selected.Bounds.Start = Selected.Bounds.Stop then
+                        Reject ("ranges must be nonempty");
+                     end if;
+
+                     if Selected.Bounds.Stop > Extent then
+                        Reject ("range stop is outside source bounds");
+                     end if;
+
+                     Drop_Flags (Position) := 0;
+                     Starts (Position) :=
+                       OpenCV.Internal.C_API.C_Int32 (Selected.Bounds.Start);
+                     Stops (Position) :=
+                       OpenCV.Internal.C_API.C_Int32 (Selected.Bounds.Stop);
+                     Kept := Kept + 1;
+
+                  when Fix_Index  =>
+                     if Selected.Index >= Extent then
+                        Reject ("fixed index is outside source bounds");
+                     end if;
+
+                     --  Index < Extent <= Size_Coordinate'Last, so Index + 1
+                     --  is an exact Size_Coordinate and fits C_Int32.
+                     Drop_Flags (Position) := 1;
+                     Starts (Position) :=
+                       OpenCV.Internal.C_API.C_Int32 (Selected.Index);
+                     Stops (Position) :=
+                       OpenCV.Internal.C_API.C_Int32 (Selected.Index + 1);
+                     Dropped := Dropped + 1;
+               end case;
+            end;
+            Position := Position + 1;
+         end loop;
+
+         if Dropped = 0 then
+            Reject ("requires at least one Fix_Index dimension");
+         end if;
+
+         if Kept < 2 then
+            Reject ("requires at least two Keep_Range dimensions");
+         end if;
+
+         if Drop_Flags (Drop_Flags'Last) /= 0 then
+            Reject
+              ("must keep the final source dimension; OpenCV requires the"
+               & " last Mat step to equal the element size");
+         end if;
+
+         Status :=
+           OpenCV.Internal.C_API.Mat_Select_ND_View
+             (Source          => Self.Handle,
+              Dimension_Count => OpenCV.Internal.C_API.C_Int32 (Source_Dims),
+              Drop_Flags      => Drop_Flags (Drop_Flags'First)'Access,
+              Starts          => Starts (Starts'First)'Access,
+              Stops           => Stops (Stops'First)'Access,
+              Result          => New_Handle'Access);
+         Raise_On_Error (Status, "Mat selected view creation");
+
+         OpenCV.Internal.C_API.Mat_Destroy (View.Handle);
+         View.Handle := New_Handle;
+         Process (View);
+      end;
+   end With_Selected_View;
+
    procedure Set_Random_Seed (Seed : Interfaces.Integer_32) is
       Result : constant OpenCV.Internal.C_API.Status :=
         OpenCV.Internal.C_API.Set_RNG_Seed
