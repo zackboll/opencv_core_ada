@@ -4,6 +4,8 @@ with Ada.Strings.Unbounded;
 with AUnit.Assertions;
 with AUnit.Test_Caller;
 with Interfaces;
+with Interfaces.C;
+with System;
 with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
 with OpenCV.Core.Persistence;
@@ -18,6 +20,7 @@ package body Persistence_Tests is
    use type Interfaces.Unsigned_8;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
+   use type OpenCV.Core.Persistence.Storage_Format;
    use type OpenCV.Core.UInt8_Vec3.Vector;
    use Mat_Test_Support;
 
@@ -2108,6 +2111,350 @@ package body Persistence_Tests is
       end;
    end Navigation_Unwind_Preserves_Root;
 
+   procedure Map_Keys_In_All_Memory_Formats (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+
+      procedure Check_Keys
+        (Reader : Persistence.File_Storage; Expected : String; Count : Natural)
+      is
+         Seen : Natural := 0;
+      begin
+         AUnit.Assertions.Assert
+           (Reader.Map_Length = Count, "mapping entry count");
+         for I in 0 .. Count - 1 loop
+            if Reader.Map_Key (I) = Expected then
+               Seen := Seen + 1;
+            end if;
+         end loop;
+         AUnit.Assertions.Assert
+           (Seen = 1, "key occurs exactly once: " & Expected);
+      end Check_Keys;
+   begin
+      for Format in Persistence.Storage_Format loop
+         declare
+            Writer : Persistence.File_Storage :=
+              Persistence.Create_Memory (Format);
+         begin
+            Writer.Write ("Width", 12);
+            Writer.Write ("threshold-value", 1.5);
+            Writer.Write ("Camera_Name", "Front");
+            Writer.Write ("Matrix", Make_Float32_Matrix);
+            Writer.Begin_Map ("Nested");
+            Writer.Write ("Fx", 7);
+            Writer.Write ("Fy", 8);
+            Writer.End_Structure;
+            Writer.Begin_Sequence ("Cameras");
+            Writer.Begin_Map;
+            Writer.Write ("Name", "Front");
+            Writer.Write ("Id", 1);
+            Writer.End_Structure;
+            Writer.Begin_Map;
+            Writer.Write ("Name", "Rear");
+            Writer.Write ("Id", 2);
+            Writer.End_Structure;
+            Writer.End_Structure;
+            Writer.Begin_Map ("Empty_Map");
+            Writer.End_Structure;
+
+            declare
+               Text   : constant String := Writer.Close_And_Get_Text;
+               Reader : Persistence.File_Storage :=
+                 Persistence.Open_Memory (Text);
+               Saved  : constant String := Reader.Map_Key (0);
+               procedure Out_Of_Range is
+                  Ignored : constant String :=
+                    Reader.Map_Key (Reader.Map_Length);
+                  pragma Unreferenced (Ignored);
+               begin
+                  null;
+               end Out_Of_Range;
+               procedure Far_Out_Of_Range is
+                  Ignored : constant String := Reader.Map_Key (Natural'Last);
+                  pragma Unreferenced (Ignored);
+               begin
+                  null;
+               end Far_Out_Of_Range;
+               procedure Empty_Key is
+                  Ignored : constant String := Reader.Map_Key (0);
+                  pragma Unreferenced (Ignored);
+               begin
+                  null;
+               end Empty_Key;
+               procedure Sequence_Map_Length is
+                  Ignored : constant Natural := Reader.Map_Length;
+                  pragma Unreferenced (Ignored);
+               begin
+                  null;
+               end Sequence_Map_Length;
+            begin
+               AUnit.Assertions.Assert (Reader.Map_Length = 7, "root count");
+               for I in 0 .. Reader.Map_Length - 1 loop
+                  declare
+                     Key     : constant String := Reader.Map_Key (I);
+                     Matches : Natural := 0;
+                  begin
+                     for J in 0 .. Reader.Map_Length - 1 loop
+                        if Reader.Map_Key (J) = Key then
+                           Matches := Matches + 1;
+                        end if;
+                     end loop;
+                     AUnit.Assertions.Assert (Matches = 1, "unique root key");
+                  end;
+               end loop;
+               Check_Keys (Reader, "Width", 7);
+               Check_Keys (Reader, "threshold-value", 7);
+               Check_Keys (Reader, "Camera_Name", 7);
+               Check_Keys (Reader, "Matrix", 7);
+               Check_Keys (Reader, "Nested", 7);
+               Check_Keys (Reader, "Cameras", 7);
+               Check_Keys (Reader, "Empty_Map", 7);
+               Assert_Raises_OpenCV_Error
+                 (Out_Of_Range'Access, "out-of-range map index");
+               Assert_Raises_OpenCV_Error
+                 (Far_Out_Of_Range'Access, "distant map index");
+               AUnit.Assertions.Assert
+                 (Reader.Read_Integer ("Width") = 12, "root remains active");
+               Reader.Enter_Map ("Nested");
+               Check_Keys (Reader, "Fx", 2);
+               Check_Keys (Reader, "Fy", 2);
+               AUnit.Assertions.Assert
+                 (Reader.Read_Integer ("Fx") = 7, "nested map remains active");
+               Reader.Leave_Structure;
+               Check_Keys (Reader, "Width", 7);
+               if Format = Persistence.YAML then
+                  Reader.Enter_Map ("Empty_Map");
+                  AUnit.Assertions.Assert (Reader.Map_Length = 0, "empty map");
+                  Assert_Raises_OpenCV_Error
+                    (Empty_Key'Access, "empty map key");
+                  Reader.Leave_Structure;
+               end if;
+               Reader.Enter_Sequence ("Cameras");
+               Assert_Raises_OpenCV_Error
+                 (Sequence_Map_Length'Access, "sequence cannot be a map");
+               Assert_Raises_OpenCV_Error
+                 (Empty_Key'Access, "sequence cannot yield a map key");
+               AUnit.Assertions.Assert
+                 (Reader.Sequence_Length = 2,
+                  "sequence survives failed map calls");
+               Reader.Enter_Map (1);
+               Check_Keys (Reader, "Name", 2);
+               Check_Keys (Reader, "Id", 2);
+               AUnit.Assertions.Assert
+                 (Reader.Read_String ("Name") = "Rear",
+                  "indexed map remains active");
+               Reader.Leave_Structure;
+               AUnit.Assertions.Assert
+                 (Reader.Sequence_Length = 2, "sequence survives enumeration");
+               Reader.Leave_Structure;
+               AUnit.Assertions.Assert
+                 (Reader.Map_Key (0) = Saved, "root iteration remains stable");
+            end;
+         end;
+      end loop;
+   end Map_Keys_In_All_Memory_Formats;
+
+   procedure Raw_Map_Key_ABI (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      subtype U64 is Interfaces.Unsigned_64;
+      subtype Status is Interfaces.Integer_32;
+      use type U64;
+      use type Status;
+      use type System.Address;
+
+      function Open_Read
+        (Text : Interfaces.C.char_array; Handle : access System.Address)
+         return Status
+      with
+        Import,
+        Convention    => C,
+        External_Name => "opencv_core_file_storage_open_memory_read";
+      procedure Destroy (Handle : System.Address)
+      with
+        Import,
+        Convention    => C,
+        External_Name => "opencv_core_file_storage_destroy";
+      function Length_Of
+        (Handle : System.Address; Length : access U64) return Status
+      with
+        Import,
+        Convention    => C,
+        External_Name => "opencv_core_file_storage_map_length";
+      function Key_At
+        (Handle   : System.Address;
+         Index    : U64;
+         Buffer   : System.Address;
+         Capacity : U64;
+         Length   : access U64) return Status
+      with
+        Import,
+        Convention    => C,
+        External_Name => "opencv_core_file_storage_map_key_at";
+      function Enter_Map
+        (Handle : System.Address;
+         Name   : Interfaces.C.char_array;
+         Kind   : Interfaces.Integer_32) return Status
+      with
+        Import,
+        Convention    => C,
+        External_Name => "opencv_core_file_storage_enter_named_structure";
+      function Leave (Handle : System.Address) return Status
+      with
+        Import,
+        Convention    => C,
+        External_Name => "opencv_core_file_storage_leave_structure";
+
+      Writer : Persistence.File_Storage :=
+        Persistence.Create_Memory (Persistence.YAML);
+   begin
+      Writer.Write ("Width", 9);
+      Writer.Begin_Map ("Nested");
+      Writer.Write ("Fx", 1);
+      Writer.End_Structure;
+      Writer.Begin_Sequence ("Items");
+      Writer.Append (2);
+      Writer.End_Structure;
+      declare
+         Text   : constant String := Writer.Close_And_Get_Text;
+         Reader : constant Persistence.File_Storage :=
+           Persistence.Open_Memory (Text);
+         Handle : aliased System.Address := System.Null_Address;
+         L      : aliased U64 := 99;
+         S      : Status;
+      begin
+         S := Open_Read (Interfaces.C.To_C (Text), Handle'Access);
+         AUnit.Assertions.Assert
+           (S = 0 and then Handle /= System.Null_Address, "raw open");
+         begin
+            S := Length_Of (System.Null_Address, L'Access);
+            AUnit.Assertions.Assert
+              (S /= 0 and then L = 0, "null storage clears length");
+            S := Length_Of (Handle, null);
+            AUnit.Assertions.Assert (S /= 0, "null length rejected");
+            S := Length_Of (Handle, L'Access);
+            AUnit.Assertions.Assert
+              (S = 0 and then L = 3, "root raw map length");
+            S := Key_At (Handle, 0, System.Null_Address, 0, L'Access);
+            AUnit.Assertions.Assert
+              (S = 0 and then L = Reader.Map_Key (0)'Length, "raw key query");
+            declare
+               Buffer : Interfaces.C.char_array (1 .. Interfaces.C.size_t (L));
+               Large  :
+                 Interfaces.C.char_array (1 .. Interfaces.C.size_t (L + 3));
+               Copied : aliased U64 := 99;
+            begin
+               S := Key_At (Handle, 0, Buffer (1)'Address, L, Copied'Access);
+               AUnit.Assertions.Assert
+                 (S = 0
+                  and then Copied = L
+                  and then Interfaces.C.To_Ada (Buffer, Trim_Nul => False)
+                           = Reader.Map_Key (0),
+                  "exact raw key bytes");
+               S :=
+                 Key_At (Handle, 0, Large (1)'Address, L + 3, Copied'Access);
+               AUnit.Assertions.Assert
+                 (S = 0
+                  and then Copied = L
+                  and then Interfaces.C.To_Ada
+                             (Large (1 .. Interfaces.C.size_t (L)),
+                              Trim_Nul => False)
+                           = Reader.Map_Key (0),
+                  "oversized raw copy preserves key bytes");
+               Copied := 99;
+               S :=
+                 Key_At (Handle, 0, Buffer (1)'Address, L - 1, Copied'Access);
+               AUnit.Assertions.Assert
+                 (S /= 0 and then Copied = 0, "short buffer clears output");
+            end;
+            L := 99;
+            S := Key_At (Handle, 0, System.Null_Address, 1, L'Access);
+            AUnit.Assertions.Assert
+              (S /= 0 and then L = 0, "invalid null buffer clears output");
+            L := 99;
+            S := Key_At (Handle, 0, System.Null_Address, 0, null);
+            AUnit.Assertions.Assert (S /= 0, "null key output rejected");
+            S :=
+              Key_At
+                (System.Null_Address, 0, System.Null_Address, 0, L'Access);
+            AUnit.Assertions.Assert
+              (S /= 0 and then L = 0, "null key storage clears output");
+            L := 99;
+            S := Key_At (Handle, 3, System.Null_Address, 0, L'Access);
+            AUnit.Assertions.Assert
+              (S /= 0 and then L = 0, "out-of-range key clears output");
+            S := Enter_Map (Handle, Interfaces.C.To_C ("Nested"), 0);
+            AUnit.Assertions.Assert (S = 0, "raw nested map enter");
+            S := Length_Of (Handle, L'Access);
+            AUnit.Assertions.Assert
+              (S = 0 and then L = 1, "raw nested map length");
+            S := Key_At (Handle, 0, System.Null_Address, 0, L'Access);
+            AUnit.Assertions.Assert
+              (S = 0 and then L = 2, "raw nested key query");
+            declare
+               Buffer : Interfaces.C.char_array (1 .. 2);
+            begin
+               S := Key_At (Handle, 0, Buffer (1)'Address, 2, L'Access);
+               AUnit.Assertions.Assert
+                 (S = 0
+                  and then L = 2
+                  and then Interfaces.C.To_Ada (Buffer, Trim_Nul => False)
+                           = "Fx",
+                  "raw nested key copy");
+            end;
+            S := Leave (Handle);
+            AUnit.Assertions.Assert (S = 0, "raw nested map leave");
+            S := Enter_Map (Handle, Interfaces.C.To_C ("Items"), 1);
+            AUnit.Assertions.Assert (S = 0, "raw sequence enter");
+            L := 99;
+            S := Length_Of (Handle, L'Access);
+            AUnit.Assertions.Assert
+              (S /= 0 and then L = 0, "raw sequence length rejection");
+            L := 99;
+            S := Key_At (Handle, 0, System.Null_Address, 0, L'Access);
+            AUnit.Assertions.Assert
+              (S /= 0 and then L = 0, "raw sequence key rejection");
+         exception
+            when others =>
+               Destroy (Handle);
+               raise;
+         end;
+         Destroy (Handle);
+      end;
+   end Raw_Map_Key_ABI;
+
+   procedure Map_Enumeration_Requires_Read_Mode
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Writer : Persistence.File_Storage :=
+        Persistence.Create_Memory (Persistence.YAML);
+      procedure Check_Length is
+         N : constant Natural := Writer.Map_Length;
+         pragma Unreferenced (N);
+      begin
+         null;
+      end Check_Length;
+      procedure Check_Key is
+         Key : constant String := Writer.Map_Key (0);
+         pragma Unreferenced (Key);
+      begin
+         null;
+      end Check_Key;
+   begin
+      Assert_Raises_OpenCV_Error
+        (Check_Length'Access, "writer map length rejected");
+      Assert_Raises_OpenCV_Error (Check_Key'Access, "writer map key rejected");
+      Writer.Write ("Width", 1);
+      declare
+         Text : constant String := Writer.Close_And_Get_Text;
+         pragma Unreferenced (Text);
+      begin
+         Assert_Raises_OpenCV_Error
+           (Check_Length'Access, "closed writer map length rejected");
+         Assert_Raises_OpenCV_Error
+           (Check_Key'Access, "closed writer map key rejected");
+      end;
+   end Map_Enumeration_Requires_Read_Mode;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -2276,6 +2623,16 @@ package body Persistence_Tests is
         (Caller.Create
            ("Navigation unwind preserves root",
             Navigation_Unwind_Preserves_Root'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Map keys in YAML XML JSON memory",
+            Map_Keys_In_All_Memory_Formats'Access));
+      Result.Add_Test
+        (Caller.Create ("Raw map key ABI", Raw_Map_Key_ABI'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Map enumeration requires open reader",
+            Map_Enumeration_Requires_Read_Mode'Access));
       return Result'Access;
    end Suite;
 

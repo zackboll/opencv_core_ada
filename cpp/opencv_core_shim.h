@@ -2669,6 +2669,17 @@ opencv_core_status
 opencv_core_file_storage_sequence_length(
     const opencv_core_file_storage_handle *storage, uint64_t *out_length);
 
+/* Root (stream 0) or entered mapping; failure leaves *out_length at zero. */
+opencv_core_status opencv_core_file_storage_map_length(
+    const opencv_core_file_storage_handle *storage, uint64_t *out_length);
+
+/* Zero-based OpenCV mapping iteration order. Null buffer and zero capacity
+ * query the byte length; a non-null buffer copies exactly that many bytes,
+ * without a NUL terminator. Failure leaves *out_length at zero. */
+opencv_core_status opencv_core_file_storage_map_key_at(
+    const opencv_core_file_storage_handle *storage, uint64_t index,
+    char *buffer, uint64_t capacity, uint64_t *out_length);
+
 /*
  * Reads the indexed current-sequence element as a Mat. A missing or
  * out-of-range index is a failure. On success out_mat receives one

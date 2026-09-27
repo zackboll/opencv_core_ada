@@ -157,7 +157,7 @@ package body OpenCV.Core.Persistence is
       return Integer (Wide);
    end From_OpenCV_Int32;
 
-   function To_Ada_String_Length
+   function To_Ada_Length
      (Length : OpenCV.Internal.C_API.C_UInt64) return Natural
    is
       Highest : constant OpenCV.Internal.C_API.C_UInt64 :=
@@ -166,11 +166,11 @@ package body OpenCV.Core.Persistence is
       if Length > Highest then
          Ada.Exceptions.Raise_Exception
            (OpenCV_Error'Identity,
-            "stored File_Storage string is longer than Ada String");
+            "File_Storage length exceeds Ada Natural range");
       end if;
 
       return Natural (Length);
-   end To_Ada_String_Length;
+   end To_Ada_Length;
 
    procedure Require_Open
      (Self : File_Storage; Expected : Storage_Mode; Operation : String) is
@@ -298,7 +298,7 @@ package body OpenCV.Core.Persistence is
       Self.Opened := False;
 
       declare
-         Ada_Length : constant Natural := To_Ada_String_Length (Length);
+         Ada_Length : constant Natural := To_Ada_Length (Length);
       begin
          if Ada_Length = 0 then
             return "";
@@ -493,7 +493,7 @@ package body OpenCV.Core.Persistence is
       Raise_On_Error (Status, "File_Storage read");
 
       declare
-         Ada_Length : constant Natural := To_Ada_String_Length (Length);
+         Ada_Length : constant Natural := To_Ada_Length (Length);
       begin
          if Ada_Length = 0 then
             return "";
@@ -721,8 +721,64 @@ package body OpenCV.Core.Persistence is
         OpenCV.Internal.C_API.File_Storage_Sequence_Length
           (Self => Self.Handle, Out_Length => Length'Access);
       Raise_On_Error (Status, "File_Storage sequence length");
-      return To_Ada_String_Length (Length);
+      return To_Ada_Length (Length);
    end Sequence_Length;
+
+   function Map_Length (Self : File_Storage) return Natural is
+      Length : aliased OpenCV.Internal.C_API.C_UInt64 := 0;
+      Status : OpenCV.Internal.C_API.Status;
+   begin
+      Require_Open (Self, Read_Only, "File_Storage map length");
+      Status :=
+        OpenCV.Internal.C_API.File_Storage_Map_Length
+          (Self => Self.Handle, Out_Length => Length'Access);
+      Raise_On_Error (Status, "File_Storage map length");
+      return To_Ada_Length (Length);
+   end Map_Length;
+
+   function Map_Key (Self : File_Storage; Index : Natural) return String is
+      Length : aliased OpenCV.Internal.C_API.C_UInt64 := 0;
+      Status : OpenCV.Internal.C_API.Status;
+   begin
+      Require_Open (Self, Read_Only, "File_Storage map key");
+      Status :=
+        OpenCV.Internal.C_API.File_Storage_Map_Key_At
+          (Self       => Self.Handle,
+           Index      => OpenCV.Internal.C_API.C_UInt64 (Index),
+           Buffer     => System.Null_Address,
+           Capacity   => 0,
+           Out_Length => Length'Access);
+      Raise_On_Error (Status, "File_Storage map key");
+
+      declare
+         Ada_Length : constant Natural := To_Ada_Length (Length);
+      begin
+         if Ada_Length = 0 then
+            return "";
+         end if;
+
+         declare
+            Buffer :
+              Interfaces.C.char_array (1 .. Interfaces.C.size_t (Ada_Length));
+            Copied : aliased OpenCV.Internal.C_API.C_UInt64 := 0;
+         begin
+            Status :=
+              OpenCV.Internal.C_API.File_Storage_Map_Key_At
+                (Self       => Self.Handle,
+                 Index      => OpenCV.Internal.C_API.C_UInt64 (Index),
+                 Buffer     => Buffer (Buffer'First)'Address,
+                 Capacity   => OpenCV.Internal.C_API.C_UInt64 (Ada_Length),
+                 Out_Length => Copied'Access);
+            Raise_On_Error (Status, "File_Storage map key");
+            if Copied /= Length then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  "File_Storage map key failed: key length changed");
+            end if;
+            return Interfaces.C.To_Ada (Buffer, Trim_Nul => False);
+         end;
+      end;
+   end Map_Key;
 
    function Read_Mat (Self : File_Storage; Index : Natural) return Mat is
       Result     : Mat;
@@ -787,7 +843,7 @@ package body OpenCV.Core.Persistence is
       Raise_On_Error (Status, "File_Storage read");
 
       declare
-         Ada_Length : constant Natural := To_Ada_String_Length (Length);
+         Ada_Length : constant Natural := To_Ada_Length (Length);
       begin
          if Ada_Length = 0 then
             return "";

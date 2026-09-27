@@ -11,7 +11,7 @@ private with OpenCV.Internal.C_API;
 --  in an explicit XML, YAML, or JSON format. Open_Memory reads a
 --  previously serialized document and lets OpenCV auto-detect the
 --  format from the text. Gzip, append, explicit disk format flags,
---  comments, FLOW formatting, custom type names, map key enumeration,
+--  comments, FLOW formatting, custom type names,
 --  and a public FileNode API are not part of this slice.
 --
 --  File_Storage is limited and not copyable. Exactly one Ada object
@@ -189,6 +189,18 @@ package OpenCV.Core.Persistence is
    --  Returns FileNode::size of the current sequence. Valid only
    --  while the current read context is a sequence.
    function Sequence_Length (Self : File_Storage) return Natural;
+
+   --  Counts entries at the implicit root (stream 0) or in the entered
+   --  mapping. An empty map has length zero. Self must be open Read_Only;
+   --  a sequence context raises OpenCV_Error. Navigation is unchanged.
+   function Map_Length (Self : File_Storage) return Natural;
+
+   --  Returns the zero-based Index key in OpenCV's FileNode mapping
+   --  iteration order (not sorted). The String is independently owned.
+   --  Requires open Read_Only storage and Index < Map_Length (Self);
+   --  a sequence context or out-of-range index raises OpenCV_Error.
+   --  Navigation is unchanged.
+   function Map_Key (Self : File_Storage; Index : Natural) return String;
 
    --  Reads the named Mat. Self must be an open Read_Only storage. The
    --  result owns independent storage and does not depend on Self.
