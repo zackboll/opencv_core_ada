@@ -1,6 +1,10 @@
 # Changelog
 
 ## Unreleased
+- Added UInt16 C3 / Vec3w typed 2-D/N-D Get/Set, copied and borrowed rows,
+  continuous buffers, writable/read-only packed and strided caller-owned views,
+  and Merge/Split, Scalar, and C3-to-C3/C4 Transform interoperability.
+
 - Added UInt16 C4 / Vec4w typed 2-D/N-D Get/Set, copied and borrowed rows,
   continuous buffers, writable/read-only packed and strided caller-owned views,
   and Merge/Split, Scalar, and Transform interoperability.
