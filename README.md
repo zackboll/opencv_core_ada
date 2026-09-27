@@ -1956,7 +1956,7 @@ The current limitations are intentional and help keep the public API coherent:
 1. **The dense public `Mat` model is primarily 2-D.**  
    N-dimensional construction, UInt8/Int8/UInt16/Int16/Int32/Float16/Float32/Float64 C1
    Get/Set, Float32/Float64 C2 Vec2, UInt8/UInt16/Float16/Float32/Float64 C3 Vec3,
-   and Float32/Float64 C4 Vec4 Get/Set, `Slice` views, `Shape`, and
+   and UInt8/UInt16/Float32/Float64 C4 Vec4 Get/Set, `Slice` views, `Shape`, and
    Shape-based N-D reshape are available. Callback-scoped whole-buffer
    borrowing is provided for continuous N-D Mats of every typed layout.
    Packed and strided (gapped) caller-owned external views support genuine
