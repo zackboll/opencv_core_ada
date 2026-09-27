@@ -1524,7 +1524,7 @@ package body ND_Mat_View_Tests is
    begin
       Result.Add_Test
         (Caller.Create
-           ("Read-only packed 2-D/N-D constant views alias all 16 layouts",
+           ("Read-only packed 2-D/N-D constant views alias all 17 layouts",
             Read_Only_Packed_All_Layouts'Access));
       Result.Add_Test
         (Caller.Create
@@ -1540,7 +1540,7 @@ package body ND_Mat_View_Tests is
             Read_Only_Invalid_Capacity_Rejects_Before_Process'Access));
       Result.Add_Test
         (Caller.Create
-           ("Read-only gapped and packed strides cover all 16 layouts",
+           ("Read-only gapped and packed strides cover all 17 layouts",
             Read_Only_Strided_All_Layouts'Access));
       Result.Add_Test
         (Caller.Create
@@ -1560,15 +1560,15 @@ package body ND_Mat_View_Tests is
             C1_Volumes_Alias_Caller_Storage'Access));
       Result.Add_Test
         (Caller.Create
-           ("C2/C3/C4 N-D views alias caller storage for all 8 packages",
+           ("C2/C3/C4 N-D views alias caller storage for all 9 packages",
             Vector_Volumes_Alias_Caller_Storage'Access));
       Result.Add_Test
         (Caller.Create
-           ("Shape (2, 3) views match Rows/Columns views for all 16 packages",
+           ("Shape (2, 3) views match Rows/Columns views for all 17 packages",
             Two_Dimensional_Shape_Matches_Rows_Columns'Access));
       Result.Add_Test
         (Caller.Create
-           ("N-D views reject Slice/Reshape and Clone independently (x16)",
+           ("N-D views reject Slice/Reshape and Clone independently (x17)",
             Views_Reject_Shallow_Escape_And_Clone'Access));
       Result.Add_Test
         (Caller.Create

@@ -959,15 +959,15 @@ package body ND_Strided_Mat_View_Tests is
             C1_Gapped_Volumes_Alias_Caller_Storage'Access));
       Result.Add_Test
         (Caller.Create
-           ("C2/C3/C4 gapped strided N-D views alias caller storage (x8)",
+           ("C2/C3/C4 gapped strided N-D views alias caller storage (x9)",
             Vector_Gapped_Volumes_Alias_Caller_Storage'Access));
       Result.Add_Test
         (Caller.Create
-           ("Packed-equivalent strides are continuous and borrowable (x16)",
+           ("Packed-equivalent strides are continuous and borrowable (x17)",
             Packed_Equivalent_Strides_Are_Continuous'Access));
       Result.Add_Test
         (Caller.Create
-           ("Strides (5, 1) match the 2-D Row_Stride overload (x16)",
+           ("Strides (5, 1) match the 2-D Row_Stride overload (x17)",
             Two_Dimensional_Strides_Match_Row_Stride'Access));
       Result.Add_Test
         (Caller.Create
