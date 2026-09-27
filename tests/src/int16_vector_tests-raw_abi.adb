@@ -219,122 +219,143 @@ package body Int16_Vector_Tests.Raw_ABI is
          AUnit.Assertions.Assert
            (S = C.Error_Invalid_Argument, "C4 ND null in");
 
-         for Width in 2 .. 4 loop
-            case Width is
-               when 2 =>
-                  S := C.Mat_Get_Int16_Vec2_ND (Raw, 3, null, V2'Access);
-                  AUnit.Assertions.Assert
-                    (S = C.Error_Invalid_Argument and then V2 = (0, 0),
-                     "C2 null indices zero output");
-                  V2 := (9, 8);
-                  S :=
-                    C.Mat_Get_Int16_Vec2_ND
-                      (Raw, 2, Indices (0)'Access, V2'Access);
-                  AUnit.Assertions.Assert
-                    (S = C.Error_Invalid_Argument and then V2 = (0, 0),
-                     "C2 wrong dimension count");
-                  S := C.Mat_Set_Int16_Vec2_ND (Raw, 3, null, A2'Access);
-
-               when 3 =>
-                  S := C.Mat_Get_Int16_Vec3_ND (Raw, 3, null, V3'Access);
-                  AUnit.Assertions.Assert
-                    (S = C.Error_Invalid_Argument and then V3 = (0, 0, 0),
-                     "C3 null indices zero output");
-                  V3 := (9, 8, 7);
-                  S :=
-                    C.Mat_Get_Int16_Vec3_ND
-                      (Raw, 2, Indices (0)'Access, V3'Access);
-                  AUnit.Assertions.Assert
-                    (S = C.Error_Invalid_Argument and then V3 = (0, 0, 0),
-                     "C3 wrong dimension count");
-                  S := C.Mat_Set_Int16_Vec3_ND (Raw, 3, null, A3'Access);
-
-               when 4 =>
-                  S := C.Mat_Get_Int16_Vec4_ND (Raw, 3, null, V4'Access);
-                  AUnit.Assertions.Assert
-                    (S = C.Error_Invalid_Argument and then V4 = (0, 0, 0, 0),
-                     "C4 null indices zero output");
-                  V4 := (9, 8, 7, 6);
-                  S :=
-                    C.Mat_Get_Int16_Vec4_ND
-                      (Raw, 2, Indices (0)'Access, V4'Access);
-                  AUnit.Assertions.Assert
-                    (S = C.Error_Invalid_Argument and then V4 = (0, 0, 0, 0),
-                     "C4 wrong dimension count");
-                  S := C.Mat_Set_Int16_Vec4_ND (Raw, 3, null, A4'Access);
-
-            end case;
-            AUnit.Assertions.Assert
-              (S = C.Error_Invalid_Argument, "null ND Set indices");
-         end loop;
-         Indices (0) := -1;
-         V2 := (9, 8);
-         V3 := (9, 8, 7);
-         V4 := (9, 8, 7, 6);
-         S := C.Mat_Get_Int16_Vec2_ND (Raw, 3, Indices (0)'Access, V2'Access);
-         AUnit.Assertions.Assert
-           (S = C.Error_Invalid_Argument and then V2 = (0, 0), "C2 negative");
-         S := C.Mat_Get_Int16_Vec3_ND (Raw, 3, Indices (0)'Access, V3'Access);
-         AUnit.Assertions.Assert
-           (S = C.Error_Invalid_Argument and then V3 = (0, 0, 0),
-            "C3 negative");
-         S := C.Mat_Get_Int16_Vec4_ND (Raw, 3, Indices (0)'Access, V4'Access);
-         AUnit.Assertions.Assert
-           (S = C.Error_Invalid_Argument and then V4 = (0, 0, 0, 0),
-            "C4 negative");
-         Indices (0) := 2;
-         V2 := (9, 8);
-         V3 := (9, 8, 7);
-         V4 := (9, 8, 7, 6);
-         S := C.Mat_Get_Int16_Vec2_ND (Raw, 3, Indices (0)'Access, V2'Access);
-         AUnit.Assertions.Assert
-           (S = C.Error_Invalid_Argument and then V2 = (0, 0), "C2 extent");
-         S := C.Mat_Get_Int16_Vec3_ND (Raw, 3, Indices (0)'Access, V3'Access);
-         AUnit.Assertions.Assert
-           (S = C.Error_Invalid_Argument and then V3 = (0, 0, 0), "C3 extent");
-         S := C.Mat_Get_Int16_Vec4_ND (Raw, 3, Indices (0)'Access, V4'Access);
-         AUnit.Assertions.Assert
-           (S = C.Error_Invalid_Argument and then V4 = (0, 0, 0, 0),
-            "C4 extent");
-         Indices (0) := 0;
       end Bad_Arguments;
-      procedure Bad_2D (H : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
-         Raw : constant C.Mat_Handle := Convert (H);
+      procedure Check_Bad_Geometry (Width : Positive; ND : Boolean) is
+         Image : constant OpenCV.Core.Mat :=
+           (if ND
+            then
+              OpenCV.Core.Create
+                (Shape        => (2, 3, 4),
+                 Element_Type =>
+                   (OpenCV.Core.Int16, OpenCV.Core.Channel_Count (Width)))
+            else
+              OpenCV.Core.Create
+                (2,
+                 3,
+                 (OpenCV.Core.Int16, OpenCV.Core.Channel_Count (Width))));
+
+         procedure Inspect (H : OpenCV.Core.Module_Interop.Input_Mat_Handle) is
+            Raw : constant C.Mat_Handle := Convert (H);
+
+            procedure Reject_Get
+              (Label_Text : String;
+               Row        : C.C_Int32 := 0;
+               Col        : C.C_Int32 := 0;
+               Count      : C.C_Int32 := 3;
+               Index      : C.C_Int32 := 0;
+               Null_Index : Boolean := False) is
+            begin
+               Indices (0) := Index;
+               case Width is
+                  when 2      =>
+                     V2 := (9, 8);
+                     S :=
+                       (if ND
+                        then
+                          C.Mat_Get_Int16_Vec2_ND
+                            (Raw,
+                             Count,
+                             (if Null_Index then null else Indices (0)'Access),
+                             V2'Access)
+                        else C.Mat_Get_Int16_Vec2 (Raw, Row, Col, V2'Access));
+                     AUnit.Assertions.Assert
+                       (S = C.Error_Invalid_Argument and then V2 = (0, 0),
+                        "C2 " & Label_Text & " zeroes Get");
+
+                  when 3      =>
+                     V3 := (9, 8, 7);
+                     S :=
+                       (if ND
+                        then
+                          C.Mat_Get_Int16_Vec3_ND
+                            (Raw,
+                             Count,
+                             (if Null_Index then null else Indices (0)'Access),
+                             V3'Access)
+                        else C.Mat_Get_Int16_Vec3 (Raw, Row, Col, V3'Access));
+                     AUnit.Assertions.Assert
+                       (S = C.Error_Invalid_Argument and then V3 = (0, 0, 0),
+                        "C3 " & Label_Text & " zeroes Get");
+
+                  when 4      =>
+                     V4 := (9, 8, 7, 6);
+                     S :=
+                       (if ND
+                        then
+                          C.Mat_Get_Int16_Vec4_ND
+                            (Raw,
+                             Count,
+                             (if Null_Index then null else Indices (0)'Access),
+                             V4'Access)
+                        else C.Mat_Get_Int16_Vec4 (Raw, Row, Col, V4'Access));
+                     AUnit.Assertions.Assert
+                       (S = C.Error_Invalid_Argument
+                        and then V4 = (0, 0, 0, 0),
+                        "C4 " & Label_Text & " zeroes Get");
+
+                  when others =>
+                     null;
+               end case;
+            end Reject_Get;
+
+            procedure Reject_Set
+              (Label_Text : String;
+               Count      : C.C_Int32 := 3;
+               Index      : C.C_Int32 := 0;
+               Null_Index : Boolean := False) is
+            begin
+               Indices (0) := Index;
+               case Width is
+                  when 2      =>
+                     S :=
+                       C.Mat_Set_Int16_Vec2_ND
+                         (Raw,
+                          Count,
+                          (if Null_Index then null else Indices (0)'Access),
+                          A2'Access);
+
+                  when 3      =>
+                     S :=
+                       C.Mat_Set_Int16_Vec3_ND
+                         (Raw,
+                          Count,
+                          (if Null_Index then null else Indices (0)'Access),
+                          A3'Access);
+
+                  when 4      =>
+                     S :=
+                       C.Mat_Set_Int16_Vec4_ND
+                         (Raw,
+                          Count,
+                          (if Null_Index then null else Indices (0)'Access),
+                          A4'Access);
+
+                  when others =>
+                     null;
+               end case;
+               AUnit.Assertions.Assert
+                 (S = C.Error_Invalid_Argument,
+                  "C" & Positive'Image (Width) & " " & Label_Text & " Set");
+            end Reject_Set;
+         begin
+            if ND then
+               Reject_Get ("null indices", Null_Index => True);
+               Reject_Set ("null indices", Null_Index => True);
+               Reject_Get ("wrong dimension count", Count => 2);
+               Reject_Set ("wrong dimension count", Count => 2);
+               Reject_Get ("negative coordinate", Index => -1);
+               Reject_Set ("negative coordinate", Index => -1);
+               Reject_Get ("coordinate extent", Index => 2);
+               Reject_Set ("coordinate extent", Index => 2);
+            else
+               Reject_Get ("negative row", Row => -1);
+               Reject_Get ("column extent", Col => 3);
+               Reject_Get ("row extent", Row => 2);
+            end if;
+         end Inspect;
       begin
-         V2 := (9, 8);
-         V3 := (9, 8, 7);
-         V4 := (9, 8, 7, 6);
-         S := C.Mat_Get_Int16_Vec2 (Raw, -1, 0, V2'Access);
-         AUnit.Assertions.Assert
-           (S = C.Error_Invalid_Argument and then V2 = (0, 0),
-            "C2 negative row");
-         S := C.Mat_Get_Int16_Vec3 (Raw, -1, 0, V3'Access);
-         AUnit.Assertions.Assert
-           (S = C.Error_Invalid_Argument and then V3 = (0, 0, 0),
-            "C3 negative row");
-         S := C.Mat_Get_Int16_Vec4 (Raw, -1, 0, V4'Access);
-         AUnit.Assertions.Assert
-           (S = C.Error_Invalid_Argument and then V4 = (0, 0, 0, 0),
-            "C4 negative row");
-         V2 := (9, 8);
-         V3 := (9, 8, 7);
-         V4 := (9, 8, 7, 6);
-         S := C.Mat_Get_Int16_Vec2 (Raw, 0, 3, V2'Access);
-         AUnit.Assertions.Assert
-           (S = C.Error_Invalid_Argument and then V2 = (0, 0),
-            "C2 column extent");
-         S := C.Mat_Get_Int16_Vec3 (Raw, 0, 3, V3'Access);
-         AUnit.Assertions.Assert
-           (S = C.Error_Invalid_Argument and then V3 = (0, 0, 0),
-            "C3 column extent");
-         S := C.Mat_Get_Int16_Vec4 (Raw, 0, 3, V4'Access);
-         AUnit.Assertions.Assert
-           (S = C.Error_Invalid_Argument and then V4 = (0, 0, 0, 0),
-            "C4 column extent");
-      end Bad_2D;
-      Good_ND : constant OpenCV.Core.Mat :=
-        OpenCV.Core.Create
-          (Shape => (2, 3, 4), Element_Type => (OpenCV.Core.Int16, 2));
+         OpenCV.Core.Module_Interop.With_Input_Handle (Image, Inspect'Access);
+      end Check_Bad_Geometry;
    begin
       for Width in 2 .. 4 loop
          Check_Mat (OpenCV.Core.Int16, Width, Width, True);
@@ -348,14 +369,18 @@ package body Int16_Vector_Tests.Raw_ABI is
       Check_Mat (OpenCV.Core.UInt8, 6, 3);
       Check_Mat (OpenCV.Core.Float64, 1, 4);
       Check_Mat (OpenCV.Core.Float32, 2, 4);
-      OpenCV.Core.Module_Interop.With_Input_Handle
-        (Good_ND, Bad_Arguments'Access);
       declare
-         Image : constant OpenCV.Core.Mat :=
-           OpenCV.Core.Create (2, 3, (OpenCV.Core.Int16, 2));
+         Good_ND : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create
+             (Shape => (2, 3, 4), Element_Type => (OpenCV.Core.Int16, 2));
       begin
-         OpenCV.Core.Module_Interop.With_Input_Handle (Image, Bad_2D'Access);
+         OpenCV.Core.Module_Interop.With_Input_Handle
+           (Good_ND, Bad_Arguments'Access);
       end;
+      for Width in 2 .. 4 loop
+         Check_Bad_Geometry (Width, ND => True);
+         Check_Bad_Geometry (Width, ND => False);
+      end loop;
       V2 := (9, 8);
       V3 := (9, 8, 7);
       V4 := (9, 8, 7, 6);
