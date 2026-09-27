@@ -162,6 +162,181 @@ package OpenCV.Internal.C_API is
      Compile_Time_Error
        (UInt16_Vec3'Size /= 48, "C UInt16 Vec3 size mismatch");
 
+   type Int16_Vec2 is record
+      Component_0, Component_1 : C_Int16;
+   end record
+   with Convention => C;
+   pragma Compile_Time_Error (Int16_Vec2'Size /= 32, "C Int16 Vec2 size");
+
+   type Int16_Vec3 is record
+      Component_0, Component_1, Component_2 : C_Int16;
+   end record
+   with Convention => C;
+   pragma Compile_Time_Error (Int16_Vec3'Size /= 48, "C Int16 Vec3 size");
+
+   type Int16_Vec4 is record
+      Component_0, Component_1, Component_2, Component_3 : C_Int16;
+   end record
+   with Convention => C;
+   pragma Compile_Time_Error (Int16_Vec4'Size /= 64, "C Int16 Vec4 size");
+
+   --  Signed complete-element access; rows transfer flat C_Int16 scalars.
+   function Mat_Get_Int16_Vec2
+     (Self : Mat_Handle; Row, Column : C_Int32; Result : access Int16_Vec2)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_int16_vec2";
+   function Mat_Set_Int16_Vec2
+     (Self        : Mat_Handle;
+      Row, Column : C_Int32;
+      Value       : access constant Int16_Vec2) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_int16_vec2";
+   function Mat_Get_Int16_Vec2_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Result          : access Int16_Vec2) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_int16_vec2_nd";
+   function Mat_Set_Int16_Vec2_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Value           : access constant Int16_Vec2) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_int16_vec2_nd";
+   function Mat_Read_Int16_Vec2_Row
+     (Self          : Mat_Handle;
+      Row           : C_Int32;
+      Data          : System.Address;
+      Element_Count : C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_read_int16_vec2_row";
+   function Mat_Write_Int16_Vec2_Row
+     (Self          : Mat_Handle;
+      Row           : C_Int32;
+      Data          : System.Address;
+      Element_Count : C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_write_int16_vec2_row";
+
+   function Mat_Get_Int16_Vec3
+     (Self : Mat_Handle; Row, Column : C_Int32; Result : access Int16_Vec3)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_int16_vec3";
+   function Mat_Set_Int16_Vec3
+     (Self        : Mat_Handle;
+      Row, Column : C_Int32;
+      Value       : access constant Int16_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_int16_vec3";
+   function Mat_Get_Int16_Vec3_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Result          : access Int16_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_int16_vec3_nd";
+   function Mat_Set_Int16_Vec3_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Value           : access constant Int16_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_int16_vec3_nd";
+   function Mat_Read_Int16_Vec3_Row
+     (Self          : Mat_Handle;
+      Row           : C_Int32;
+      Data          : System.Address;
+      Element_Count : C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_read_int16_vec3_row";
+   function Mat_Write_Int16_Vec3_Row
+     (Self          : Mat_Handle;
+      Row           : C_Int32;
+      Data          : System.Address;
+      Element_Count : C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_write_int16_vec3_row";
+
+   function Mat_Get_Int16_Vec4
+     (Self : Mat_Handle; Row, Column : C_Int32; Result : access Int16_Vec4)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_int16_vec4";
+   function Mat_Set_Int16_Vec4
+     (Self        : Mat_Handle;
+      Row, Column : C_Int32;
+      Value       : access constant Int16_Vec4) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_int16_vec4";
+   function Mat_Get_Int16_Vec4_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Result          : access Int16_Vec4) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_int16_vec4_nd";
+   function Mat_Set_Int16_Vec4_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Value           : access constant Int16_Vec4) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_int16_vec4_nd";
+   function Mat_Read_Int16_Vec4_Row
+     (Self          : Mat_Handle;
+      Row           : C_Int32;
+      Data          : System.Address;
+      Element_Count : C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_read_int16_vec4_row";
+   function Mat_Write_Int16_Vec4_Row
+     (Self          : Mat_Handle;
+      Row           : C_Int32;
+      Data          : System.Address;
+      Element_Count : C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_write_int16_vec4_row";
+
    Depth_UInt8   : constant C_Int32 := 0;
    Depth_Int8    : constant C_Int32 := 1;
    Depth_UInt16  : constant C_Int32 := 2;

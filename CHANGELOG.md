@@ -1,6 +1,13 @@
 # Changelog
 
 ## Unreleased
+- Added signed Int16 C2/C3/C4 (`Vec2s`/`Vec3s`/`Vec4s`) typed 2-D/N-D
+  access, copied and leased zero-copy rows, continuous whole-buffer borrowing,
+  and writable/read-only packed and strided 2-D/N-D external views. Complete
+  Int16 C1/C2/C3/C4 typed support preserves the signed 16-bit component domain.
+  ABI layout and exact depth/channel checks reject same-byte wrong layouts;
+  shared inventory tests and Merge/Split/Scalar/Transform exercise all widths.
+
 - Added UInt8 C2 / Vec2b and UInt16 C2 / Vec2w typed 2-D/N-D Get/Set,
   copied and leased zero-copy rows and continuous buffers, writable and
   read-only packed/strided 2-D/N-D external views. One vector is one complete
