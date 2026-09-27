@@ -22,6 +22,9 @@ with OpenCV.Core.Float32_Vec3;
 with OpenCV.Core.Float32_Vec3_Access;
 with OpenCV.Core.Float32_Vec3_Buffer_Access;
 with OpenCV.Core.Float32_Vec4;
+with OpenCV.Core.UInt8_Vec4;
+with OpenCV.Core.UInt8_Vec4_Access;
+with OpenCV.Core.UInt8_Vec4_Buffer_Access;
 with OpenCV.Core.Float32_Vec4_Access;
 with OpenCV.Core.Float32_Vec4_Buffer_Access;
 with OpenCV.Core.Float64_Access;
@@ -127,6 +130,12 @@ package body ND_Buffer_Access_Tests is
 
    function F64_Vec3_At (O : Natural) return OpenCV.Core.Float64_Vec3.Vector
    is (Float64_At (O), -Float64_At (O), Float64_At (O) * 3.0);
+
+   function U8_Vec4_At (O : Natural) return OpenCV.Core.UInt8_Vec4.Vector
+   is (OpenCV.UInt8_Value (O),
+       OpenCV.UInt8_Value (O + 50),
+       OpenCV.UInt8_Value (O + 150),
+       OpenCV.UInt8_Value (255 - O));
 
    function F32_Vec4_At (O : Natural) return OpenCV.Core.Float32_Vec4.Vector
    is (Float32_At (O), 1.0, -Float32_At (O), 2.0);
@@ -307,6 +316,18 @@ package body ND_Buffer_Access_Tests is
         OpenCV.Core.Float64_Vec3_Buffer_Access.With_Read_Only_Buffer,
         OpenCV.Core.Float64_Vec3_Buffer_Access.With_Writable_Buffer);
 
+   package U8_Vec4_Checks is new
+     ND_Buffer_Checks
+       (OpenCV.Core.UInt8_Vec4.Vector,
+        OpenCV.Core.UInt8_Vec4_Buffer_Access.Buffer_Array,
+        (OpenCV.Core.UInt8, 4),
+        "UInt8 C4",
+        U8_Vec4_At,
+        OpenCV.Core.UInt8_Vec4_Access.Get,
+        OpenCV.Core.UInt8_Vec4_Access.Set,
+        OpenCV.Core.UInt8_Vec4_Buffer_Access.With_Read_Only_Buffer,
+        OpenCV.Core.UInt8_Vec4_Buffer_Access.With_Writable_Buffer);
+
    package F32_Vec4_Checks is new
      ND_Buffer_Checks
        (OpenCV.Core.Float32_Vec4.Vector,
@@ -422,6 +443,7 @@ package body ND_Buffer_Access_Tests is
         (OpenCV.Float64_Value (OpenCV.Float32_Value (Precise (0)))
          /= Precise (0),
          "The Float64 C4 fixture must not be representable in Float32");
+      U8_Vec4_Checks.Check_Volume;
       F32_Vec4_Checks.Check_Volume;
       F64_Vec4_Checks.Check_Volume;
    end Vec4_Volumes_Preserve_Float64;
@@ -443,6 +465,7 @@ package body ND_Buffer_Access_Tests is
       F16_Vec3_Checks.Check_Continuous_Slice;
       F32_Vec3_Checks.Check_Continuous_Slice;
       F64_Vec3_Checks.Check_Continuous_Slice;
+      U8_Vec4_Checks.Check_Continuous_Slice;
       F32_Vec4_Checks.Check_Continuous_Slice;
       F64_Vec4_Checks.Check_Continuous_Slice;
    end Continuous_ND_Slices_Borrow;
@@ -464,6 +487,7 @@ package body ND_Buffer_Access_Tests is
       F16_Vec3_Checks.Check_Gapped_Slice;
       F32_Vec3_Checks.Check_Gapped_Slice;
       F64_Vec3_Checks.Check_Gapped_Slice;
+      U8_Vec4_Checks.Check_Gapped_Slice;
       F32_Vec4_Checks.Check_Gapped_Slice;
       F64_Vec4_Checks.Check_Gapped_Slice;
    end Gapped_ND_Slices_Rejected;

@@ -26,6 +26,10 @@ with OpenCV.Core.Float32_Vec3_Access;
 with OpenCV.Core.Float32_Vec3_Buffer_Access;
 with OpenCV.Core.Float32_Vec3_Mat_View;
 with OpenCV.Core.Float32_Vec4;
+with OpenCV.Core.UInt8_Vec4;
+with OpenCV.Core.UInt8_Vec4_Access;
+with OpenCV.Core.UInt8_Vec4_Buffer_Access;
+with OpenCV.Core.UInt8_Vec4_Mat_View;
 with OpenCV.Core.Float32_Vec4_Access;
 with OpenCV.Core.Float32_Vec4_Buffer_Access;
 with OpenCV.Core.Float32_Vec4_Mat_View;
@@ -139,6 +143,12 @@ package body ND_Strided_Mat_View_Tests is
 
    function F64_Vec3_At (O : Natural) return OpenCV.Core.Float64_Vec3.Vector
    is (Float64_At (O), -Float64_At (O), Float64_At (O) * 3.0);
+
+   function U8_Vec4_At (O : Natural) return OpenCV.Core.UInt8_Vec4.Vector
+   is (OpenCV.UInt8_Value (O),
+       OpenCV.UInt8_Value (O + 50),
+       OpenCV.UInt8_Value (O + 150),
+       OpenCV.UInt8_Value (255 - O));
 
    function F32_Vec4_At (O : Natural) return OpenCV.Core.Float32_Vec4.Vector
    is (Float32_At (O), 1.0, -Float32_At (O), 2.0);
@@ -392,6 +402,22 @@ package body ND_Strided_Mat_View_Tests is
         OpenCV.Core.Float64_Vec3_Buffer_Access.With_Read_Only_Buffer,
         OpenCV.Core.Float64_Vec3_Buffer_Access.With_Writable_Buffer);
 
+   package U8_Vec4_Checks is new
+     ND_Strided_Mat_View_Checks
+       (OpenCV.Core.UInt8_Vec4.Vector,
+        OpenCV.Core.UInt8_Vec4_Mat_View.Buffer_Array,
+        OpenCV.Core.UInt8_Vec4_Buffer_Access.Buffer_Array,
+        (OpenCV.Core.UInt8, 4),
+        "UInt8 C4",
+        U8_Vec4_At,
+        OpenCV.Core.UInt8_Vec4_Access.Get,
+        OpenCV.Core.UInt8_Vec4_Access.Set,
+        OpenCV.Core.UInt8_Vec4_Mat_View.With_Writable_Mat_View,
+        OpenCV.Core.UInt8_Vec4_Mat_View.With_Writable_Strided_Mat_View,
+        OpenCV.Core.UInt8_Vec4_Mat_View.With_Writable_Strided_Mat_View,
+        OpenCV.Core.UInt8_Vec4_Buffer_Access.With_Read_Only_Buffer,
+        OpenCV.Core.UInt8_Vec4_Buffer_Access.With_Writable_Buffer);
+
    package F32_Vec4_Checks is new
      ND_Strided_Mat_View_Checks
        (OpenCV.Core.Float32_Vec4.Vector,
@@ -465,6 +491,7 @@ package body ND_Strided_Mat_View_Tests is
       F16_Vec3_Checks.Check_Gapped_Volume;
       F32_Vec3_Checks.Check_Gapped_Volume;
       F64_Vec3_Checks.Check_Gapped_Volume;
+      U8_Vec4_Checks.Check_Gapped_Volume;
       F32_Vec4_Checks.Check_Gapped_Volume;
       F64_Vec4_Checks.Check_Gapped_Volume;
    end Vector_Gapped_Volumes_Alias_Caller_Storage;
@@ -487,6 +514,7 @@ package body ND_Strided_Mat_View_Tests is
       F16_Vec3_Checks.Check_Packed_Equivalent;
       F32_Vec3_Checks.Check_Packed_Equivalent;
       F64_Vec3_Checks.Check_Packed_Equivalent;
+      U8_Vec4_Checks.Check_Packed_Equivalent;
       F32_Vec4_Checks.Check_Packed_Equivalent;
       F64_Vec4_Checks.Check_Packed_Equivalent;
    end Packed_Equivalent_Strides_Are_Continuous;
@@ -509,6 +537,7 @@ package body ND_Strided_Mat_View_Tests is
       F16_Vec3_Checks.Check_Two_Dimensional_Equivalence;
       F32_Vec3_Checks.Check_Two_Dimensional_Equivalence;
       F64_Vec3_Checks.Check_Two_Dimensional_Equivalence;
+      U8_Vec4_Checks.Check_Two_Dimensional_Equivalence;
       F32_Vec4_Checks.Check_Two_Dimensional_Equivalence;
       F64_Vec4_Checks.Check_Two_Dimensional_Equivalence;
    end Two_Dimensional_Strides_Match_Row_Stride;
@@ -530,6 +559,7 @@ package body ND_Strided_Mat_View_Tests is
       F16_Vec3_Checks.Check_No_Escape_And_Clone;
       F32_Vec3_Checks.Check_No_Escape_And_Clone;
       F64_Vec3_Checks.Check_No_Escape_And_Clone;
+      U8_Vec4_Checks.Check_No_Escape_And_Clone;
       F32_Vec4_Checks.Check_No_Escape_And_Clone;
       F64_Vec4_Checks.Check_No_Escape_And_Clone;
    end Views_Reject_Shallow_Escape_And_Clone;

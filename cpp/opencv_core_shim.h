@@ -72,6 +72,13 @@ typedef struct {
 } opencv_core_float64_vec3;
 
 typedef struct {
+    uint8_t component_0;
+    uint8_t component_1;
+    uint8_t component_2;
+    uint8_t component_3;
+} opencv_core_uint8_vec4;
+
+typedef struct {
     float component_0;
     float component_1;
     float component_2;
@@ -1444,6 +1451,7 @@ OPENCV_CORE_DECLARE_VEC2_ACCESS(float64, double)
         opencv_core_mat_handle *mat, int32_t row, const scalar *data,          \
         uint64_t element_count);
 
+OPENCV_CORE_DECLARE_VEC4_ACCESS(uint8, uint8_t)
 OPENCV_CORE_DECLARE_VEC4_ACCESS(float32, float)
 OPENCV_CORE_DECLARE_VEC4_ACCESS(float64, double)
 #undef OPENCV_CORE_DECLARE_VEC4_ACCESS

@@ -27,6 +27,10 @@ with OpenCV.Core.Float32_Vec3_Access;
 with OpenCV.Core.Float32_Vec3_Buffer_Access;
 with OpenCV.Core.Float32_Vec3_Mat_View;
 with OpenCV.Core.Float32_Vec4;
+with OpenCV.Core.UInt8_Vec4;
+with OpenCV.Core.UInt8_Vec4_Access;
+with OpenCV.Core.UInt8_Vec4_Buffer_Access;
+with OpenCV.Core.UInt8_Vec4_Mat_View;
 with OpenCV.Core.Float32_Vec4_Access;
 with OpenCV.Core.Float32_Vec4_Buffer_Access;
 with OpenCV.Core.Float32_Vec4_Mat_View;
@@ -154,6 +158,12 @@ package body ND_Mat_View_Tests is
 
    function F64_Vec3_At (O : Natural) return OpenCV.Core.Float64_Vec3.Vector
    is (Float64_At (O), -Float64_At (O), Float64_At (O) * 3.0);
+
+   function U8_Vec4_At (O : Natural) return OpenCV.Core.UInt8_Vec4.Vector
+   is (OpenCV.UInt8_Value (O),
+       OpenCV.UInt8_Value (O + 50),
+       OpenCV.UInt8_Value (O + 150),
+       OpenCV.UInt8_Value (255 - O));
 
    function F32_Vec4_At (O : Natural) return OpenCV.Core.Float32_Vec4.Vector
    is (Float32_At (O), 1.0, -Float32_At (O), 2.0);
@@ -360,6 +370,20 @@ package body ND_Mat_View_Tests is
         OpenCV.Core.Float64_Vec3_Mat_View.With_Read_Only_Strided_Mat_View,
         OpenCV.Core.Float64_Vec3_Mat_View.With_Read_Only_Strided_Mat_View,
         OpenCV.Core.Float64_Vec3_Buffer_Access.With_Read_Only_Buffer);
+   package RO_U8V4 is new
+     Read_Only_Mat_View_Checks
+       (OpenCV.Core.UInt8_Vec4.Vector,
+        OpenCV.Core.UInt8_Vec4_Mat_View.Buffer_Array,
+        OpenCV.Core.UInt8_Vec4_Buffer_Access.Buffer_Array,
+        (OpenCV.Core.UInt8, 4),
+        "UInt8 C4",
+        U8_Vec4_At,
+        OpenCV.Core.UInt8_Vec4_Access.Get,
+        OpenCV.Core.UInt8_Vec4_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.UInt8_Vec4_Mat_View.With_Read_Only_Mat_View,
+        OpenCV.Core.UInt8_Vec4_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.UInt8_Vec4_Mat_View.With_Read_Only_Strided_Mat_View,
+        OpenCV.Core.UInt8_Vec4_Buffer_Access.With_Read_Only_Buffer);
    package RO_F32V4 is new
      Read_Only_Mat_View_Checks
        (OpenCV.Core.Float32_Vec4.Vector,
@@ -601,6 +625,21 @@ package body ND_Mat_View_Tests is
         OpenCV.Core.Float64_Vec3_Buffer_Access.With_Read_Only_Buffer,
         OpenCV.Core.Float64_Vec3_Buffer_Access.With_Writable_Buffer);
 
+   package U8_Vec4_Checks is new
+     ND_Mat_View_Checks
+       (OpenCV.Core.UInt8_Vec4.Vector,
+        OpenCV.Core.UInt8_Vec4_Mat_View.Buffer_Array,
+        OpenCV.Core.UInt8_Vec4_Buffer_Access.Buffer_Array,
+        (OpenCV.Core.UInt8, 4),
+        "UInt8 C4",
+        U8_Vec4_At,
+        OpenCV.Core.UInt8_Vec4_Access.Get,
+        OpenCV.Core.UInt8_Vec4_Access.Set,
+        OpenCV.Core.UInt8_Vec4_Mat_View.With_Writable_Mat_View,
+        OpenCV.Core.UInt8_Vec4_Mat_View.With_Writable_Mat_View,
+        OpenCV.Core.UInt8_Vec4_Buffer_Access.With_Read_Only_Buffer,
+        OpenCV.Core.UInt8_Vec4_Buffer_Access.With_Writable_Buffer);
+
    package F32_Vec4_Checks is new
      ND_Mat_View_Checks
        (OpenCV.Core.Float32_Vec4.Vector,
@@ -671,6 +710,7 @@ package body ND_Mat_View_Tests is
       F16_Vec3_Checks.Check_Volume;
       F32_Vec3_Checks.Check_Volume;
       F64_Vec3_Checks.Check_Volume;
+      U8_Vec4_Checks.Check_Volume;
       F32_Vec4_Checks.Check_Volume;
       F64_Vec4_Checks.Check_Volume;
    end Vector_Volumes_Alias_Caller_Storage;
@@ -693,6 +733,7 @@ package body ND_Mat_View_Tests is
       F16_Vec3_Checks.Check_Two_Dimensional_Shape;
       F32_Vec3_Checks.Check_Two_Dimensional_Shape;
       F64_Vec3_Checks.Check_Two_Dimensional_Shape;
+      U8_Vec4_Checks.Check_Two_Dimensional_Shape;
       F32_Vec4_Checks.Check_Two_Dimensional_Shape;
       F64_Vec4_Checks.Check_Two_Dimensional_Shape;
    end Two_Dimensional_Shape_Matches_Rows_Columns;
@@ -714,6 +755,7 @@ package body ND_Mat_View_Tests is
       F16_Vec3_Checks.Check_No_Escape_And_Clone;
       F32_Vec3_Checks.Check_No_Escape_And_Clone;
       F64_Vec3_Checks.Check_No_Escape_And_Clone;
+      U8_Vec4_Checks.Check_No_Escape_And_Clone;
       F32_Vec4_Checks.Check_No_Escape_And_Clone;
       F64_Vec4_Checks.Check_No_Escape_And_Clone;
    end Views_Reject_Shallow_Escape_And_Clone;
@@ -1282,6 +1324,7 @@ package body ND_Mat_View_Tests is
       RO_F16V3.Check_Packed;
       RO_F32V3.Check_Packed;
       RO_F64V3.Check_Packed;
+      RO_U8V4.Check_Packed;
       RO_F32V4.Check_Packed;
       RO_F64V4.Check_Packed;
    end Read_Only_Packed_All_Layouts;
@@ -1303,6 +1346,7 @@ package body ND_Mat_View_Tests is
       RO_F16V3.Check_Strided;
       RO_F32V3.Check_Strided;
       RO_F64V3.Check_Strided;
+      RO_U8V4.Check_Strided;
       RO_F32V4.Check_Strided;
       RO_F64V4.Check_Strided;
    end Read_Only_Strided_All_Layouts;

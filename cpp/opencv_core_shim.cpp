@@ -552,6 +552,15 @@ static_assert(sizeof(float) == 4 && sizeof(cv::Vec<float, 4>) == 16 &&
 static_assert(sizeof(double) == 8 && sizeof(cv::Vec<double, 4>) == 32 &&
                   CV_ELEM_SIZE(CV_64FC4) == 32,
               "Float64 C4 must occupy 32 bytes");
+static_assert(sizeof(opencv_core_uint8_vec4) == 4 &&
+                  offsetof(opencv_core_uint8_vec4, component_0) == 0 &&
+                  offsetof(opencv_core_uint8_vec4, component_1) == 1 &&
+                  offsetof(opencv_core_uint8_vec4, component_2) == 2 &&
+                  offsetof(opencv_core_uint8_vec4, component_3) == 3,
+              "UInt8 Vec4 ABI layout mismatch");
+static_assert(sizeof(cv::Vec<uint8_t, 4>) == 4 &&
+                  alignof(cv::Vec<uint8_t, 4>) <= 1,
+              "UInt8 Vec4 native storage requires byte alignment");
 static_assert(sizeof(opencv_core_float32_vec4) == 16 &&
                   offsetof(opencv_core_float32_vec4, component_0) == 0 &&
                   offsetof(opencv_core_float32_vec4, component_1) == 4 &&
@@ -7679,6 +7688,7 @@ opencv_core_status vec4_row(const opencv_core_mat_handle *mat, int32_t row,
                         message, true);                                        \
     }
 
+OPENCV_CORE_DEFINE_VEC4(uint8, uint8_t, CV_8U, "Mat depth must be UInt8")
 OPENCV_CORE_DEFINE_VEC4(float32, float, CV_32F, "Mat depth must be Float32")
 OPENCV_CORE_DEFINE_VEC4(float64, double, CV_64F, "Mat depth must be Float64")
 #undef OPENCV_CORE_DEFINE_VEC4
