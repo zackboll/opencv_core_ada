@@ -30,6 +30,10 @@ with OpenCV.Core.UInt8_Vec4;
 with OpenCV.Core.UInt8_Vec4_Access;
 with OpenCV.Core.UInt8_Vec4_Buffer_Access;
 with OpenCV.Core.UInt8_Vec4_Mat_View;
+with OpenCV.Core.UInt16_Vec4;
+with OpenCV.Core.UInt16_Vec4_Access;
+with OpenCV.Core.UInt16_Vec4_Buffer_Access;
+with OpenCV.Core.UInt16_Vec4_Mat_View;
 with OpenCV.Core.Float32_Vec4_Access;
 with OpenCV.Core.Float32_Vec4_Buffer_Access;
 with OpenCV.Core.Float32_Vec4_Mat_View;
@@ -152,6 +156,12 @@ package body ND_Strided_Mat_View_Tests is
 
    function F32_Vec4_At (O : Natural) return OpenCV.Core.Float32_Vec4.Vector
    is (Float32_At (O), 1.0, -Float32_At (O), 2.0);
+
+   function U16_Vec4_At (O : Natural) return OpenCV.Core.UInt16_Vec4.Vector
+   is (OpenCV.UInt16_Value (O),
+       OpenCV.UInt16_Value (32768 + O),
+       OpenCV.UInt16_Value (65535 - O),
+       OpenCV.UInt16_Value (O + 1));
 
    function F64_Vec4_At (O : Natural) return OpenCV.Core.Float64_Vec4.Vector
    is (Float64_At (O),
@@ -418,6 +428,21 @@ package body ND_Strided_Mat_View_Tests is
         OpenCV.Core.UInt8_Vec4_Buffer_Access.With_Read_Only_Buffer,
         OpenCV.Core.UInt8_Vec4_Buffer_Access.With_Writable_Buffer);
 
+   package U16_Vec4_Checks is new
+     ND_Strided_Mat_View_Checks
+       (OpenCV.Core.UInt16_Vec4.Vector,
+        OpenCV.Core.UInt16_Vec4_Mat_View.Buffer_Array,
+        OpenCV.Core.UInt16_Vec4_Buffer_Access.Buffer_Array,
+        (OpenCV.Core.UInt16, 4),
+        "UInt16 C4",
+        U16_Vec4_At,
+        OpenCV.Core.UInt16_Vec4_Access.Get,
+        OpenCV.Core.UInt16_Vec4_Access.Set,
+        OpenCV.Core.UInt16_Vec4_Mat_View.With_Writable_Mat_View,
+        OpenCV.Core.UInt16_Vec4_Mat_View.With_Writable_Strided_Mat_View,
+        OpenCV.Core.UInt16_Vec4_Mat_View.With_Writable_Strided_Mat_View,
+        OpenCV.Core.UInt16_Vec4_Buffer_Access.With_Read_Only_Buffer,
+        OpenCV.Core.UInt16_Vec4_Buffer_Access.With_Writable_Buffer);
    package F32_Vec4_Checks is new
      ND_Strided_Mat_View_Checks
        (OpenCV.Core.Float32_Vec4.Vector,
@@ -492,6 +517,7 @@ package body ND_Strided_Mat_View_Tests is
       F32_Vec3_Checks.Check_Gapped_Volume;
       F64_Vec3_Checks.Check_Gapped_Volume;
       U8_Vec4_Checks.Check_Gapped_Volume;
+      U16_Vec4_Checks.Check_Gapped_Volume;
       F32_Vec4_Checks.Check_Gapped_Volume;
       F64_Vec4_Checks.Check_Gapped_Volume;
    end Vector_Gapped_Volumes_Alias_Caller_Storage;
@@ -515,6 +541,7 @@ package body ND_Strided_Mat_View_Tests is
       F32_Vec3_Checks.Check_Packed_Equivalent;
       F64_Vec3_Checks.Check_Packed_Equivalent;
       U8_Vec4_Checks.Check_Packed_Equivalent;
+      U16_Vec4_Checks.Check_Packed_Equivalent;
       F32_Vec4_Checks.Check_Packed_Equivalent;
       F64_Vec4_Checks.Check_Packed_Equivalent;
    end Packed_Equivalent_Strides_Are_Continuous;
@@ -538,6 +565,7 @@ package body ND_Strided_Mat_View_Tests is
       F32_Vec3_Checks.Check_Two_Dimensional_Equivalence;
       F64_Vec3_Checks.Check_Two_Dimensional_Equivalence;
       U8_Vec4_Checks.Check_Two_Dimensional_Equivalence;
+      U16_Vec4_Checks.Check_Two_Dimensional_Equivalence;
       F32_Vec4_Checks.Check_Two_Dimensional_Equivalence;
       F64_Vec4_Checks.Check_Two_Dimensional_Equivalence;
    end Two_Dimensional_Strides_Match_Row_Stride;
@@ -560,6 +588,7 @@ package body ND_Strided_Mat_View_Tests is
       F32_Vec3_Checks.Check_No_Escape_And_Clone;
       F64_Vec3_Checks.Check_No_Escape_And_Clone;
       U8_Vec4_Checks.Check_No_Escape_And_Clone;
+      U16_Vec4_Checks.Check_No_Escape_And_Clone;
       F32_Vec4_Checks.Check_No_Escape_And_Clone;
       F64_Vec4_Checks.Check_No_Escape_And_Clone;
    end Views_Reject_Shallow_Escape_And_Clone;
@@ -959,15 +988,15 @@ package body ND_Strided_Mat_View_Tests is
             C1_Gapped_Volumes_Alias_Caller_Storage'Access));
       Result.Add_Test
         (Caller.Create
-           ("C2/C3/C4 gapped strided N-D views alias caller storage (x9)",
+           ("C2/C3/C4 gapped strided N-D views alias caller storage (x10)",
             Vector_Gapped_Volumes_Alias_Caller_Storage'Access));
       Result.Add_Test
         (Caller.Create
-           ("Packed-equivalent strides are continuous and borrowable (x17)",
+           ("Packed-equivalent strides are continuous and borrowable (x18)",
             Packed_Equivalent_Strides_Are_Continuous'Access));
       Result.Add_Test
         (Caller.Create
-           ("Strides (5, 1) match the 2-D Row_Stride overload (x17)",
+           ("Strides (5, 1) match the 2-D Row_Stride overload (x18)",
             Two_Dimensional_Strides_Match_Row_Stride'Access));
       Result.Add_Test
         (Caller.Create

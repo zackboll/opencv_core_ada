@@ -24,15 +24,25 @@ with OpenCV.Core.UInt8_Vec4_Access;
 with OpenCV.Core.UInt8_Vec4_Row_Access;
 with OpenCV.Core.UInt8_Vec4_Buffer_Access;
 with OpenCV.Core.UInt8_Vec4_Mat_View;
+with OpenCV.Core.UInt16_Access;
+with OpenCV.Core.UInt16_Vec4;
+with OpenCV.Core.UInt16_Vec4_Access;
+with OpenCV.Core.UInt16_Vec4_Row_Access;
+with OpenCV.Core.UInt16_Vec4_Buffer_Access;
+with OpenCV.Core.UInt16_Vec4_Mat_View;
+with System;
 with Vec4_Tests.Raw_ABI;
 
 package body Vec4_Tests is
    use type OpenCV.Core.Float32_Vec4.Vector;
    use type OpenCV.Core.Float64_Vec4.Vector;
    use type OpenCV.Core.UInt8_Vec4.Vector;
+   use type OpenCV.Core.UInt16_Vec4.Vector;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
    use type OpenCV.UInt8_Value;
+   use type OpenCV.UInt16_Value;
+   use type System.Address;
    use type OpenCV.Float64_Value;
    use type OpenCV.Float32_Value;
    use Mat_Test_Support;
@@ -49,6 +59,373 @@ package body Vec4_Tests is
    Other32 : constant OpenCV.Core.Float32_Vec4.Vector := (9.0, 4.0, 3.0, 2.0);
    Value8  : constant OpenCV.Core.UInt8_Vec4.Vector := (10, 20, 30, 40);
    Other8  : constant OpenCV.Core.UInt8_Vec4.Vector := (250, 200, 150, 100);
+   Value16 : constant OpenCV.Core.UInt16_Vec4.Vector := (0, 1, 32768, 65535);
+   Other16 : constant OpenCV.Core.UInt16_Vec4.Vector :=
+     (65535, 65534, 32767, 2);
+
+   procedure UInt16_Elements (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Image   : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (2, 3, (OpenCV.Core.UInt16, 4));
+      Volume  : OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape => (2, 3, 4), Element_Type => (OpenCV.Core.UInt16, 4));
+      Shifted : constant OpenCV.Core.Index_Array (7 .. 9) := (1, 2, 3);
+      Alias   : OpenCV.Core.Mat;
+      Copy    : OpenCV.Core.Mat;
+      procedure Bad_Depth is
+         Wrong : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create (1, 1, (OpenCV.Core.Float64, 1));
+         V     : constant OpenCV.Core.UInt16_Vec4.Vector :=
+           OpenCV.Core.UInt16_Vec4_Access.Get (Wrong, 0, 0);
+         pragma Unreferenced (V);
+      begin
+         null;
+      end Bad_Depth;
+      procedure Bad_Channels is
+         Wrong : OpenCV.Core.Mat :=
+           OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt16, 3));
+      begin
+         OpenCV.Core.UInt16_Vec4_Access.Set (Wrong, 0, 0, Value16);
+      end Bad_Channels;
+      procedure Bad_Row is
+         V : constant OpenCV.Core.UInt16_Vec4.Vector :=
+           OpenCV.Core.UInt16_Vec4_Access.Get (Image, -1, 0);
+         pragma Unreferenced (V);
+      begin
+         null;
+      end Bad_Row;
+      procedure Bad_Column is
+      begin
+         OpenCV.Core.UInt16_Vec4_Access.Set (Image, 0, 3, Value16);
+      end Bad_Column;
+      procedure Bad_Count is
+      begin
+         OpenCV.Core.UInt16_Vec4_Access.Set (Volume, (1, 2), Value16);
+      end Bad_Count;
+      procedure Bad_Many is
+         V : constant OpenCV.Core.UInt16_Vec4.Vector :=
+           OpenCV.Core.UInt16_Vec4_Access.Get (Volume, (0, 0, 0, 0));
+         pragma Unreferenced (V);
+      begin
+         null;
+      end Bad_Many;
+      procedure Bad_Axis is
+         V : constant OpenCV.Core.UInt16_Vec4.Vector :=
+           OpenCV.Core.UInt16_Vec4_Access.Get (Volume, (1, 3, 0));
+         pragma Unreferenced (V);
+      begin
+         null;
+      end Bad_Axis;
+   begin
+      Image.Set_To (OpenCV.Make_Scalar (0.0, 0.0, 0.0, 0.0));
+      OpenCV.Core.UInt16_Vec4_Access.Set (Image, 1, 2, Value16);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt16_Vec4_Access.Get (Image, 1, 2) = Value16
+         and then OpenCV.Core.UInt16_Vec4_Access.Get (Image, 1, 1)
+                  = (0, 0, 0, 0),
+         "UInt16 Vec4 retains all 16 bits and isolates neighbors");
+      Alias := Image;
+      Copy := Image.Clone;
+      OpenCV.Core.UInt16_Vec4_Access.Set (Alias, 1, 2, Other16);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt16_Vec4_Access.Get (Image, 1, 2) = Other16
+         and then OpenCV.Core.UInt16_Vec4_Access.Get (Copy, 1, 2) = Value16,
+         "UInt16 alias shares storage and Clone isolates");
+      Volume.Set_To (OpenCV.Make_Scalar (0.0, 0.0, 0.0, 0.0));
+      OpenCV.Core.UInt16_Vec4_Access.Set (Volume, Shifted, Value16);
+      OpenCV.Core.UInt16_Vec4_Access.Set (Volume, (0, 1, 2), Other16);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt16_Vec4_Access.Get (Volume, (1, 2, 3)) = Value16
+         and then OpenCV.Core.UInt16_Vec4_Access.Get (Volume, (0, 1, 2))
+                  = Other16
+         and then OpenCV.Core.UInt16_Vec4_Access.Get (Volume, (1, 2, 2))
+                  = (0, 0, 0, 0),
+         "UInt16 shifted N-D indices preserve positional iteration order");
+      Assert_Raises_OpenCV_Error (Bad_Depth'Access, "UInt16 Vec4 depth");
+      Assert_Raises_OpenCV_Error (Bad_Channels'Access, "UInt16 Vec4 channels");
+      Assert_Raises_OpenCV_Error (Bad_Row'Access, "UInt16 Vec4 row");
+      Assert_Raises_OpenCV_Error (Bad_Column'Access, "UInt16 Vec4 column");
+      Assert_Raises_OpenCV_Error
+        (Bad_Count'Access, "UInt16 Vec4 missing index");
+      Assert_Raises_OpenCV_Error (Bad_Many'Access, "UInt16 Vec4 extra index");
+      Assert_Raises_OpenCV_Error (Bad_Axis'Access, "UInt16 Vec4 index bounds");
+   end UInt16_Elements;
+
+   procedure UInt16_Rows_Region_Buffer (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Image    : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (3, 4, (OpenCV.Core.UInt16, 4));
+      ROI      : OpenCV.Core.Mat := Image.Region ((1, 0, 2, 2));
+      Survivor : constant OpenCV.Core.Mat := Image;
+      Copy     : OpenCV.Core.Mat;
+      Row      : OpenCV.Core.UInt16_Vec4_Row_Access.Row_Array (11 .. 14) :=
+        (others => Value16);
+      Short    : OpenCV.Core.UInt16_Vec4_Row_Access.Row_Array (0 .. 1);
+      procedure Observe
+        (Data : aliased OpenCV.Core.UInt16_Vec4_Row_Access.Row_Array) is
+      begin
+         AUnit.Assertions.Assert
+           (Data'Length = 2 and then Data (0) = Other16,
+            "non-contiguous Region row borrows exactly its two Vec4 elements");
+      end Observe;
+      procedure Write
+        (Data : aliased in out OpenCV.Core.UInt16_Vec4_Row_Access.Row_Array) is
+      begin
+         Data (0) := Value16;
+         raise Constraint_Error;
+      end Write;
+      procedure Buffer
+        (Data : aliased OpenCV.Core.UInt16_Vec4_Buffer_Access.Buffer_Array) is
+      begin
+         AUnit.Assertions.Assert
+           (Data'Length = 12 and then Data (0) = Value16,
+            "continuous buffer counts complete C4 elements");
+      end Buffer;
+      procedure Rebind
+        (Data :
+           aliased in out OpenCV.Core.UInt16_Vec4_Buffer_Access.Buffer_Array)
+      is
+      begin
+         Image := OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt16, 4));
+         Data (0) := Other16;
+      end Rebind;
+      procedure Rebind_Row
+        (Data : aliased in out OpenCV.Core.UInt16_Vec4_Row_Access.Row_Array) is
+      begin
+         ROI := OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt16, 4));
+         Data (1) := Other16;
+      end Rebind_Row;
+      procedure Bad_Length is
+      begin
+         OpenCV.Core.UInt16_Vec4_Row_Access.Read_Row (Image, 0, Short);
+      end Bad_Length;
+      procedure Bad_Row is
+      begin
+         OpenCV.Core.UInt16_Vec4_Row_Access.Write_Row (Image, 3, Row);
+      end Bad_Row;
+      procedure Bad_Depth is
+         Wrong : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Create (1, 4, (OpenCV.Core.Float64, 1));
+      begin
+         OpenCV.Core.UInt16_Vec4_Row_Access.Read_Row (Wrong, 0, Row);
+      end Bad_Depth;
+      procedure Bad_Channels is
+         Wrong : OpenCV.Core.Mat :=
+           OpenCV.Core.Create (1, 4, (OpenCV.Core.UInt16, 3));
+      begin
+         OpenCV.Core.UInt16_Vec4_Row_Access.Write_Row (Wrong, 0, Row);
+      end Bad_Channels;
+      procedure Bad_Buffer is
+      begin
+         OpenCV.Core.UInt16_Vec4_Buffer_Access.With_Read_Only_Buffer
+           (ROI, Buffer'Access);
+      end Bad_Buffer;
+   begin
+      Image.Set_To (OpenCV.Make_Scalar (0.0, 0.0, 0.0, 0.0));
+      OpenCV.Core.UInt16_Vec4_Row_Access.Write_Row (Image, 0, Row);
+      Row := (others => Other16);
+      OpenCV.Core.UInt16_Vec4_Row_Access.Read_Row (Image, 0, Row);
+      AUnit.Assertions.Assert
+        (Row (11) = Value16 and then Row (14) = Value16,
+         "shifted copied row preserves all components");
+      OpenCV.Core.UInt16_Vec4_Access.Set (ROI, 0, 0, Other16);
+      OpenCV.Core.UInt16_Vec4_Row_Access.With_Read_Only_Row
+        (ROI, 0, Observe'Access);
+      begin
+         OpenCV.Core.UInt16_Vec4_Row_Access.With_Writable_Row
+           (ROI, 0, Write'Access);
+         AUnit.Assertions.Assert (False, "row exception must propagate");
+      exception
+         when Constraint_Error =>
+            null;
+      end;
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt16_Vec4_Access.Get (Image, 0, 1) = Value16,
+         "completed Region row write survives exception");
+      OpenCV.Core.UInt16_Vec4_Access.Set (Image, 0, 2, Value16);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt16_Vec4_Access.Get (ROI, 0, 1) = Value16,
+         "Region observes parent writes");
+      Copy := ROI.Clone;
+      Assert_Raises_OpenCV_Error (Bad_Buffer'Access, "gapped Region buffer");
+      OpenCV.Core.UInt16_Vec4_Row_Access.With_Writable_Row
+        (ROI, 0, Rebind_Row'Access);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt16_Vec4_Access.Get (Image, 0, 2) = Other16
+         and then OpenCV.Core.UInt16_Vec4_Access.Get (Copy, 0, 1) = Value16,
+         "Region row lease survives rebind; Clone is independent");
+      OpenCV.Core.UInt16_Vec4_Buffer_Access.With_Read_Only_Buffer
+        (Image, Buffer'Access);
+      OpenCV.Core.UInt16_Vec4_Buffer_Access.With_Writable_Buffer
+        (Image, Rebind'Access);
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt16_Vec4_Access.Get (Survivor, 0, 0) = Other16,
+         "buffer lease retains storage after source rebind");
+      Assert_Raises_OpenCV_Error
+        (Bad_Length'Access, "UInt16 copied row length");
+      Assert_Raises_OpenCV_Error (Bad_Row'Access, "UInt16 copied row bounds");
+      Assert_Raises_OpenCV_Error (Bad_Depth'Access, "UInt16 copied row depth");
+      Assert_Raises_OpenCV_Error
+        (Bad_Channels'Access, "UInt16 copied row channels");
+   end UInt16_Rows_Region_Buffer;
+
+   procedure UInt16_Views (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Packed        : aliased OpenCV.Core.UInt16_Vec4_Mat_View.Buffer_Array :=
+        (11 .. 16 => Value16);
+      Strided       : aliased OpenCV.Core.UInt16_Vec4_Mat_View.Buffer_Array :=
+        (0 .. 9 => Other16);
+      Constant_Data :
+        aliased constant OpenCV.Core.UInt16_Vec4_Mat_View.Buffer_Array :=
+          (11 .. 16 => Value16);
+      Copy          : OpenCV.Core.Mat;
+      procedure Packed_View (Image : in out OpenCV.Core.Mat) is
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt16_Vec4_Access.Get (Image, 0, 0) = Packed (11)
+            and then OpenCV.Core.UInt16_Vec4_Access.Get (Image, 1, 2)
+                     = Packed (16),
+            "shifted packed caller offsets map complete Vec4 elements");
+         OpenCV.Core.UInt16_Vec4_Access.Set (Image, 1, 2, Other16);
+         Packed (11) := Other16;
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt16_Vec4_Access.Get (Image, 0, 0) = Other16,
+            "caller writes become visible through typed Get");
+         Copy := Image.Clone;
+      end Packed_View;
+      procedure Strided_View (Image : in out OpenCV.Core.Mat) is
+      begin
+         AUnit.Assertions.Assert
+           (not Image.Is_Continuous
+            and then OpenCV.Core.UInt16_Vec4_Access.Get (Image, 1, 0)
+                     = Strided (5),
+            "row stride counts Vec4 elements, not component scalars");
+         OpenCV.Core.UInt16_Vec4_Access.Set (Image, 1, 2, Value16);
+      end Strided_View;
+      procedure Read_Only_View (Image : OpenCV.Core.Mat) is
+         procedure Inspect
+           (Data : aliased OpenCV.Core.UInt16_Vec4_Buffer_Access.Buffer_Array)
+         is
+         begin
+            AUnit.Assertions.Assert
+              (Data (0)'Address = Constant_Data (11)'Address,
+               "constant caller view and buffer borrow share address");
+         end Inspect;
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt16_Vec4_Access.Get (Image, 1, 2) = Value16,
+            "aliased constant caller buffer is read without copying");
+         OpenCV.Core.UInt16_Vec4_Buffer_Access.With_Read_Only_Buffer
+           (Image, Inspect'Access);
+      end Read_Only_View;
+   begin
+      OpenCV.Core.UInt16_Vec4_Mat_View.With_Writable_Mat_View
+        (Packed, 2, 3, Packed_View'Access);
+      AUnit.Assertions.Assert
+        (Packed (16) = Other16
+         and then OpenCV.Core.UInt16_Vec4_Access.Get (Copy, 1, 2) = Other16,
+         "packed view writes caller storage; Clone owns storage");
+      Packed (16) := Value16;
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt16_Vec4_Access.Get (Copy, 1, 2) = Other16,
+         "Clone unaffected by caller writes");
+      OpenCV.Core.UInt16_Vec4_Mat_View.With_Writable_Strided_Mat_View
+        (Strided, 2, 3, 5, Strided_View'Access);
+      AUnit.Assertions.Assert
+        (Strided (7) = Value16
+         and then Strided (3) = Other16
+         and then Strided (4) = Other16
+         and then Strided (8) = Other16,
+         "row padding remains untouched");
+      OpenCV.Core.UInt16_Vec4_Mat_View.With_Read_Only_Mat_View
+        (Constant_Data, 2, 3, Read_Only_View'Access);
+   end UInt16_Views;
+
+   procedure UInt16_Channels_Transform (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      One          : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt16, 1));
+      Two          : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt16, 1));
+      Three        : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt16, 1));
+      Four         : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt16, 1));
+      Scalar_Image : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt16, 4));
+      Coefficients : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (4, 4, (OpenCV.Core.Float32, 1));
+      Source       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt16, 4));
+   begin
+      OpenCV.Core.UInt16_Access.Set (One, 0, 0, 0);
+      OpenCV.Core.UInt16_Access.Set (Two, 0, 0, 1);
+      OpenCV.Core.UInt16_Access.Set (Three, 0, 0, 32768);
+      OpenCV.Core.UInt16_Access.Set (Four, 0, 0, 65535);
+      declare
+         Channels : constant OpenCV.Core.Mat_Array (7 .. 10) :=
+           (One, Two, Three, Four);
+         Merged   : OpenCV.Core.Mat := OpenCV.Core.Merge (Channels);
+      begin
+         AUnit.Assertions.Assert
+           (OpenCV.Core.UInt16_Vec4_Access.Get (Merged, 0, 0) = Value16,
+            "Merge preserves UInt16 C1 channel order");
+         OpenCV.Core.UInt16_Vec4_Access.Set (Merged, 0, 0, Other16);
+         declare
+            Parts : constant OpenCV.Core.Mat_Array := Merged.Split;
+         begin
+            for K in OpenCV.Core.UInt16_Vec4.Component_Index loop
+               AUnit.Assertions.Assert
+                 (OpenCV.Core.UInt16_Access.Get (Parts (Parts'First + K), 0, 0)
+                  = Other16 (K),
+                  "Split preserves each UInt16 channel");
+            end loop;
+         end;
+      end;
+      Scalar_Image.Set_To (OpenCV.Make_Scalar (0.0, 1.0, 32768.0, 65535.0));
+      AUnit.Assertions.Assert
+        (OpenCV.Core.UInt16_Vec4_Access.Get (Scalar_Image, 0, 0) = Value16,
+         "Scalar fills exact UInt16 C4 channels");
+      OpenCV.Core.UInt16_Vec4_Access.Set
+        (Source, 0, 0, (100, 1000, 10000, 65535));
+      Coefficients.Set_To (OpenCV.Make_Scalar (0.0));
+      for I in 0 .. 3 loop
+         OpenCV.Core.Float32_Access.Set (Coefficients, I, I, 1.0);
+      end loop;
+      declare
+         Output : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Transform (Source, Coefficients);
+      begin
+         AUnit.Assertions.Assert
+           (Output.Depth = OpenCV.Core.UInt16
+            and then Output.Channels = 4
+            and then OpenCV.Core.UInt16_Vec4_Access.Get (Output, 0, 0)
+                     = (100, 1000, 10000, 65535),
+            "UInt16 C4 identity Transform retains typed element");
+      end;
+      declare
+         Channels : constant OpenCV.Core.Mat_Array := (One, Two, Three);
+         Merged   : constant OpenCV.Core.Mat := OpenCV.Core.Merge (Channels);
+      begin
+         Coefficients.Set_To (OpenCV.Make_Scalar (0.0));
+         for I in 0 .. 2 loop
+            OpenCV.Core.Float32_Access.Set (Coefficients, I, I, 1.0);
+         end loop;
+         OpenCV.Core.Float32_Access.Set (Coefficients, 3, 3, 65535.0);
+         declare
+            Output : constant OpenCV.Core.Mat :=
+              OpenCV.Core.Transform (Merged, Coefficients);
+         begin
+            AUnit.Assertions.Assert
+              (Output.Depth = OpenCV.Core.UInt16
+               and then Output.Channels = 4
+               and then OpenCV.Core.UInt16_Vec4_Access.Get (Output, 0, 0)
+                        = Value16,
+               "Merge-built UInt16 C3 transforms to C4 with bias");
+         end;
+      end;
+   end UInt16_Channels_Transform;
 
    procedure UInt8_Elements (Test : in out Fixture) is
       pragma Unreferenced (Test);
@@ -1012,6 +1389,21 @@ package body Vec4_Tests is
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
+      Result.Add_Test
+        (Caller.Create
+           ("UInt16 Vec4 2-D N-D and ownership", UInt16_Elements'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt16 Vec4 copied and borrowed rows Region buffer",
+            UInt16_Rows_Region_Buffer'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt16 Vec4 packed strided and constant views",
+            UInt16_Views'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UInt16 Vec4 Merge Split Scalar and Transform",
+            UInt16_Channels_Transform'Access));
       Result.Add_Test
         (Caller.Create
            ("Vec4 raw ABI guards and same-width layouts",
