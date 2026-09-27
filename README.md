@@ -1742,8 +1742,9 @@ The implicit FileStorage root is a mapping. Hierarchy is navigated by the
 controlled `File_Storage` object itself; no public `FileNode` lifetime is
 exposed.
 
-For an open read-only storage, keys are returned as independent Ada strings
-in OpenCV's mapping iteration order, not sorted. An empty map has length zero;
+For an open read-only storage, keys at the root or entered mapping are returned
+as independent Ada strings in OpenCV's mapping iteration order, not sorted.
+When the current node is a mapping with no entries, `Map_Length` returns zero;
 map enumeration in a sequence context is invalid. For example:
 
 ```ada
@@ -1770,8 +1771,10 @@ string node  -> Read_String     allowed
 other node   -> Read_String     rejected
 ```
 
-Missing nodes raise `OpenCV_Error`; actual stored zero, empty string, empty Mat,
-empty map, and empty sequence remain distinguishable from absence.
+Missing nodes raise `OpenCV_Error`; stored zero, empty string, empty Mat, and
+empty sequence remain distinguishable from absence. Empty mapping preservation
+depends on OpenCV and the persistence format; when OpenCV parses a node as a
+mapping with no entries, `Map_Length` reports zero.
 
 Integer writes use OpenCV's signed 32-bit file node. The binding currently
 supports the write range:

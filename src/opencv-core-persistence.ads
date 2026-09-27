@@ -29,9 +29,10 @@ private with OpenCV.Internal.C_API;
 --  Write borrows the source value for the duration of the call and does
 --  not modify it. Read operations return independently owned Ada values
 --  that remain valid after the storage is finalized. A missing name
---  raises OpenCV_Error. Stored 0, 0.0, empty String, empty Mat, empty
---  mapping, and empty sequence values are present nodes and remain
---  distinguishable from absence.
+--  raises OpenCV_Error. Stored 0, 0.0, empty String, empty Mat, and
+--  empty sequence values remain distinguishable from absence. Empty
+--  mapping preservation depends on OpenCV and the persistence format;
+--  a node parsed as a mapping with no entries has Map_Length zero.
 --
 --  Integer persistence uses OpenCV's signed 32-bit integer file node.
 --  Write rejects an Ada Integer outside that domain with OpenCV_Error
@@ -191,8 +192,9 @@ package OpenCV.Core.Persistence is
    function Sequence_Length (Self : File_Storage) return Natural;
 
    --  Counts entries at the implicit root (stream 0) or in the entered
-   --  mapping. An empty map has length zero. Self must be open Read_Only;
-   --  a sequence context raises OpenCV_Error. Navigation is unchanged.
+   --  mapping. A current mapping with no entries has length zero. Self
+   --  must be open Read_Only; a sequence context raises OpenCV_Error.
+   --  Navigation is unchanged.
    function Map_Length (Self : File_Storage) return Natural;
 
    --  Returns the zero-based Index key in OpenCV's FileNode mapping
