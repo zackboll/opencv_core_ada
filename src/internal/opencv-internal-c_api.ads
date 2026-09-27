@@ -2298,6 +2298,13 @@ package OpenCV.Internal.C_API is
    Storage_Structure_Map      : constant C_Int32 := 0;
    Storage_Structure_Sequence : constant C_Int32 := 1;
 
+   Node_Kind_Invalid  : constant C_Int32 := C_Int32 (-1);
+   Node_Kind_Integer  : constant C_Int32 := 0;
+   Node_Kind_Real     : constant C_Int32 := 1;
+   Node_Kind_String   : constant C_Int32 := 2;
+   Node_Kind_Sequence : constant C_Int32 := 3;
+   Node_Kind_Mapping  : constant C_Int32 := 4;
+
    function File_Storage_Open
      (Filename : Interfaces.C.char_array;
       Mode     : C_Int32;
@@ -2476,6 +2483,23 @@ package OpenCV.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_core_file_storage_map_key_at";
+
+   function File_Storage_Node_Kind
+     (Self   : File_Storage_Handle;
+      Name   : Interfaces.C.char_array;
+      Result : access C_Int32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_file_storage_node_kind";
+
+   function File_Storage_Node_Kind_At
+     (Self : File_Storage_Handle; Index : C_UInt64; Result : access C_Int32)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_file_storage_node_kind_at";
 
    function File_Storage_Read_Mat_At
      (Self : File_Storage_Handle; Index : C_UInt64; Result : access Mat_Handle)

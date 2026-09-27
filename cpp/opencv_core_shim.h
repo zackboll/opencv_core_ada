@@ -2566,6 +2566,15 @@ opencv_core_file_storage_read_string(
 #define OPENCV_CORE_FILE_STORAGE_STRUCTURE_MAP ((int32_t)0)
 #define OPENCV_CORE_FILE_STORAGE_STRUCTURE_SEQUENCE ((int32_t)1)
 
+/* Binding-owned FileNode categories, independent of OpenCV's flags.
+ * On any failure with a non-null output, the output remains INVALID. */
+#define OPENCV_CORE_FILE_NODE_KIND_INVALID ((int32_t)-1)
+#define OPENCV_CORE_FILE_NODE_KIND_INTEGER ((int32_t)0)
+#define OPENCV_CORE_FILE_NODE_KIND_REAL ((int32_t)1)
+#define OPENCV_CORE_FILE_NODE_KIND_STRING ((int32_t)2)
+#define OPENCV_CORE_FILE_NODE_KIND_SEQUENCE ((int32_t)3)
+#define OPENCV_CORE_FILE_NODE_KIND_MAPPING ((int32_t)4)
+
 /*
  * Opens a memory-backed cv::FileStorage for writing and returns a newly
  * owned handle. format must be one of the
@@ -2679,6 +2688,16 @@ opencv_core_status opencv_core_file_storage_map_length(
 opencv_core_status opencv_core_file_storage_map_key_at(
     const opencv_core_file_storage_handle *storage, uint64_t index,
     char *buffer, uint64_t capacity, uint64_t *out_length);
+
+/* Observe a named root/map child or indexed sequence child without changing
+ * navigation. Missing nodes and incorrect contexts fail with INVALID output.
+ * A serialized Mat is a mapping, not a separate FileNode kind. */
+opencv_core_status opencv_core_file_storage_node_kind(
+    const opencv_core_file_storage_handle *storage, const char *name,
+    int32_t *out_kind);
+opencv_core_status opencv_core_file_storage_node_kind_at(
+    const opencv_core_file_storage_handle *storage, uint64_t index,
+    int32_t *out_kind);
 
 /*
  * Reads the indexed current-sequence element as a Mat. A missing or

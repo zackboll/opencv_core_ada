@@ -8,6 +8,7 @@ package body OpenCV.Core.Persistence is
    use type OpenCV.Internal.C_API.File_Storage_Handle;
    use type OpenCV.Internal.C_API.Status;
    use type OpenCV.Internal.C_API.C_UInt64;
+   use type OpenCV.Internal.C_API.C_Int32;
 
    function Contains_NUL (Item : String) return Boolean is
    begin
@@ -64,6 +65,28 @@ package body OpenCV.Core.Persistence is
          when XML  => OpenCV.Internal.C_API.Storage_Format_XML,
          when YAML => OpenCV.Internal.C_API.Storage_Format_YAML,
          when JSON => OpenCV.Internal.C_API.Storage_Format_JSON);
+
+   function From_C_Node_Kind
+     (Value : OpenCV.Internal.C_API.C_Int32) return Node_Kind
+   is
+      package C renames OpenCV.Internal.C_API;
+   begin
+      if Value = C.Node_Kind_Integer then
+         return Integer_Node;
+      elsif Value = C.Node_Kind_Real then
+         return Real_Node;
+      elsif Value = C.Node_Kind_String then
+         return String_Node;
+      elsif Value = C.Node_Kind_Sequence then
+         return Sequence_Node;
+      elsif Value = C.Node_Kind_Mapping then
+         return Mapping_Node;
+      else
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "File_Storage returned an unsupported node kind");
+      end if;
+   end From_C_Node_Kind;
 
    procedure Validate_Filename (Filename : String) is
    begin
@@ -779,6 +802,37 @@ package body OpenCV.Core.Persistence is
          end;
       end;
    end Map_Key;
+
+   function Kind (Self : File_Storage; Name : String) return Node_Kind is
+      Stored : aliased OpenCV.Internal.C_API.C_Int32 :=
+        OpenCV.Internal.C_API.Node_Kind_Invalid;
+      Status : OpenCV.Internal.C_API.Status;
+   begin
+      Require_Open (Self, Read_Only, "File_Storage node kind");
+      Validate_Node_Name (Name);
+      declare
+         C_Name : constant Interfaces.C.char_array := Interfaces.C.To_C (Name);
+      begin
+         Status :=
+           OpenCV.Internal.C_API.File_Storage_Node_Kind
+             (Self.Handle, C_Name, Stored'Access);
+      end;
+      Raise_On_Error (Status, "File_Storage node kind");
+      return From_C_Node_Kind (Stored);
+   end Kind;
+
+   function Kind (Self : File_Storage; Index : Natural) return Node_Kind is
+      Stored : aliased OpenCV.Internal.C_API.C_Int32 :=
+        OpenCV.Internal.C_API.Node_Kind_Invalid;
+      Status : OpenCV.Internal.C_API.Status;
+   begin
+      Require_Open (Self, Read_Only, "File_Storage node kind");
+      Status :=
+        OpenCV.Internal.C_API.File_Storage_Node_Kind_At
+          (Self.Handle, OpenCV.Internal.C_API.C_UInt64 (Index), Stored'Access);
+      Raise_On_Error (Status, "File_Storage node kind");
+      return From_C_Node_Kind (Stored);
+   end Kind;
 
    function Read_Mat (Self : File_Storage; Index : Natural) return Mat is
       Result     : Mat;

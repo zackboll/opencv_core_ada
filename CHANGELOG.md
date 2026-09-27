@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Added public persistence `Node_Kind` and named/indexed `Kind` for recursive
+  map/sequence inspection. Persisted Mats report `Mapping_Node`.
+
 - Added `OpenCV.Core.Persistence.Map_Length` and `Map_Key` for read-only
   root and entered mappings. Zero-based keys follow OpenCV iteration order;
   returned Ada strings own their bytes and enumeration preserves navigation.

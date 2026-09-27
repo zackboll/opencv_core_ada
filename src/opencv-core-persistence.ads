@@ -68,6 +68,12 @@ private with OpenCV.Internal.C_API;
 
 package OpenCV.Core.Persistence is
 
+   --  Structural OpenCV FileNode category, not a high-level object type.
+   --  A persisted Mat is a mapping (Mapping_Node); Read_Mat performs the
+   --  explicit Mat conversion. No FileNode object or iterator is exposed.
+   type Node_Kind is
+     (Integer_Node, Real_Node, String_Node, Sequence_Node, Mapping_Node);
+
    type Storage_Mode is (Read_Only, Write_Only);
 
    type Storage_Format is (XML, YAML, JSON);
@@ -203,6 +209,17 @@ package OpenCV.Core.Persistence is
    --  a sequence context or out-of-range index raises OpenCV_Error.
    --  Navigation is unchanged.
    function Map_Key (Self : File_Storage; Index : Natural) return String;
+
+   --  Observe an existing named child at the root or in an entered mapping.
+   --  Requires open Read_Only storage and a nonempty, NUL-free name.
+   --  Missing names and sequence contexts raise OpenCV_Error. Navigation
+   --  is unchanged; serialized Mats report Mapping_Node.
+   function Kind (Self : File_Storage; Name : String) return Node_Kind;
+
+   --  Observe a zero-based child of the entered sequence. Requires open
+   --  Read_Only storage; root/map contexts and out-of-range indices raise
+   --  OpenCV_Error. Navigation is unchanged.
+   function Kind (Self : File_Storage; Index : Natural) return Node_Kind;
 
    --  Reads the named Mat. Self must be an open Read_Only storage. The
    --  result owns independent storage and does not depend on Self.

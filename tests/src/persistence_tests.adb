@@ -12,6 +12,7 @@ with OpenCV.Core.Persistence;
 with OpenCV.Core.UInt8_Access;
 with OpenCV.Core.UInt8_Vec3;
 with OpenCV.Core.UInt8_Vec3_Access;
+with OpenCV.Internal.C_API;
 with Mat_Test_Support;
 
 package body Persistence_Tests is
@@ -20,7 +21,9 @@ package body Persistence_Tests is
    use type Interfaces.Unsigned_8;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
+   use type OpenCV.Core.Dimension_Array;
    use type OpenCV.Core.Persistence.Storage_Format;
+   use type OpenCV.Core.Persistence.Node_Kind;
    use type OpenCV.Core.UInt8_Vec3.Vector;
    use Mat_Test_Support;
 
@@ -2455,6 +2458,417 @@ package body Persistence_Tests is
       end;
    end Map_Enumeration_Requires_Read_Mode;
 
+   procedure Node_Kinds_In_All_Formats (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      use Persistence;
+      Image  : constant OpenCV.Core.Mat := Make_Float32_Matrix;
+      Volume : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create
+          (Shape        => (2, 3, 4),
+           Element_Type => (Depth => OpenCV.Core.Float32, Channels => 1));
+   begin
+      for Format in Storage_Format loop
+         declare
+            Writer : File_Storage := Create_Memory (Format);
+         begin
+            Writer.Write ("Integer_Value", 7);
+            Writer.Write ("Real_Value", 1.5);
+            Writer.Write ("Text_Value", "hello");
+            Writer.Write ("Matrix", Image);
+            Writer.Write ("Volume", Volume);
+            Writer.Begin_Map ("Settings");
+            Writer.Write ("Name", "Front");
+            Writer.Write ("Width", 1920);
+            Writer.Begin_Map ("Intrinsics");
+            Writer.Write ("Fx", 1200.0);
+            Writer.Write ("Fy", 1198.0);
+            Writer.End_Structure;
+            Writer.Begin_Sequence ("Distortion");
+            Writer.Append (0.1);
+            Writer.Append (-0.02);
+            Writer.End_Structure;
+            Writer.End_Structure;
+            Writer.Begin_Sequence ("Values");
+            Writer.Append (7);
+            Writer.Append (1.5);
+            Writer.Append ("hello");
+            Writer.Begin_Map;
+            Writer.Write ("Name", "Camera");
+            Writer.End_Structure;
+            Writer.Begin_Sequence;
+            Writer.Append (1);
+            Writer.Append (2);
+            Writer.End_Structure;
+            Writer.End_Structure;
+            Writer.Begin_Sequence ("Cameras");
+            Writer.Begin_Map;
+            Writer.Write ("Name", "Front");
+            Writer.Write ("Id", 1);
+            Writer.End_Structure;
+            Writer.Begin_Map;
+            Writer.Write ("Name", "Rear");
+            Writer.Write ("Id", 2);
+            Writer.End_Structure;
+            Writer.End_Structure;
+            declare
+               Text   : constant String := Writer.Close_And_Get_Text;
+               Reader : File_Storage := Open_Memory (Text);
+               Count  : constant Natural := Reader.Map_Length;
+               Seen   : Natural := 0;
+            begin
+               AUnit.Assertions.Assert (Count = 8, "mixed root count");
+               if Count > 0 then
+                  for I in 0 .. Count - 1 loop
+                     declare
+                        Key      : constant String := Reader.Map_Key (I);
+                        Expected : Node_Kind;
+                     begin
+                        if Key = "Integer_Value" then
+                           Expected := Integer_Node;
+                        elsif Key = "Real_Value" then
+                           Expected := Real_Node;
+                        elsif Key = "Text_Value" then
+                           Expected := String_Node;
+                        elsif Key = "Values" or else Key = "Cameras" then
+                           Expected := Sequence_Node;
+                        elsif Key = "Settings"
+                          or else Key = "Matrix"
+                          or else Key = "Volume"
+                        then
+                           Expected := Mapping_Node;
+                        else
+                           AUnit.Assertions.Assert
+                             (False, "unexpected root key " & Key);
+                           Expected := Integer_Node;
+                        end if;
+                        AUnit.Assertions.Assert
+                          (Reader.Kind (Key) = Expected,
+                           "root key kind " & Key);
+                        Seen := Seen + 1;
+                     end;
+                  end loop;
+               end if;
+               AUnit.Assertions.Assert
+                 (Seen = 8, "enumerated every root kind");
+               --  Mat persistence is represented as a FileNode mapping.
+               AUnit.Assertions.Assert
+                 (Reader.Kind ("Matrix") = Mapping_Node
+                  and then Reader.Kind ("Volume") = Mapping_Node,
+                  "2-D and N-D Mat structural kinds");
+               Assert_Same_Float32_Matrix
+                 (Image, Reader.Read_Mat ("Matrix"), "Mat read after kind");
+               AUnit.Assertions.Assert
+                 (Reader.Read_Mat ("Volume").Shape = Volume.Shape,
+                  "N-D Mat read after kind");
+               AUnit.Assertions.Assert
+                 (Reader.Read_Integer ("Integer_Value") = 7
+                  and then Reader.Read_Real ("Real_Value") = 1.5
+                  and then Reader.Read_String ("Text_Value") = "hello",
+                  "typed reads after root enumeration");
+               Reader.Enter_Map ("Settings");
+               AUnit.Assertions.Assert
+                 (Reader.Kind ("Name") = String_Node
+                  and then Reader.Kind ("Width") = Integer_Node
+                  and then Reader.Kind ("Intrinsics") = Mapping_Node
+                  and then Reader.Kind ("Distortion") = Sequence_Node,
+                  "nested map kinds");
+               Reader.Enter_Map ("Intrinsics");
+               AUnit.Assertions.Assert
+                 (Reader.Kind ("Fx") = Real_Node
+                  and then Reader.Kind ("Fy") = Real_Node,
+                  "nested real kinds");
+               Reader.Leave_Structure;
+               Reader.Leave_Structure;
+               Reader.Enter_Sequence ("Values");
+               AUnit.Assertions.Assert
+                 (Reader.Kind (0) = Integer_Node
+                  and then Reader.Kind (1) = Real_Node
+                  and then Reader.Kind (2) = String_Node
+                  and then Reader.Kind (3) = Mapping_Node
+                  and then Reader.Kind (4) = Sequence_Node,
+                  "heterogeneous indexed kinds");
+               Reader.Enter_Map (3);
+               AUnit.Assertions.Assert
+                 (Reader.Read_String ("Name") = "Camera",
+                  "indexed map readable");
+               Reader.Leave_Structure;
+               Reader.Enter_Sequence (4);
+               AUnit.Assertions.Assert
+                 (Reader.Read_Integer (1) = 2, "indexed sequence readable");
+               Reader.Leave_Structure;
+               Reader.Leave_Structure;
+               Reader.Enter_Sequence ("Cameras");
+               AUnit.Assertions.Assert
+                 (Reader.Kind (0) = Mapping_Node
+                  and then Reader.Kind (1) = Mapping_Node,
+                  "sequence of maps kinds");
+               Reader.Enter_Map (1);
+               AUnit.Assertions.Assert
+                 (Reader.Kind ("Name") = String_Node
+                  and then Reader.Kind ("Id") = Integer_Node
+                  and then Reader.Map_Length = 2
+                  and then Reader.Map_Key (0)'Length > 0,
+                  "map within sequence remains enumerable");
+               Reader.Leave_Structure;
+               Reader.Leave_Structure;
+               AUnit.Assertions.Assert
+                 (Reader.Kind ("Integer_Value") = Integer_Node,
+                  "root restored after nested inspection");
+            end;
+         end;
+      end loop;
+   end Node_Kinds_In_All_Formats;
+
+   procedure Node_Kind_Failures (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      Writer : Persistence.File_Storage :=
+        Persistence.Create_Memory (Persistence.YAML);
+      procedure Writer_Named is
+         K : constant Persistence.Node_Kind := Writer.Kind ("Value");
+         pragma Unreferenced (K);
+      begin
+         null;
+      end Writer_Named;
+      procedure Writer_Indexed is
+         K : constant Persistence.Node_Kind := Writer.Kind (0);
+         pragma Unreferenced (K);
+      begin
+         null;
+      end Writer_Indexed;
+   begin
+      Assert_Raises_OpenCV_Error (Writer_Named'Access, "writer named kind");
+      Assert_Raises_OpenCV_Error
+        (Writer_Indexed'Access, "writer indexed kind");
+      Writer.Write ("Value", 1);
+      Writer.Begin_Map ("Map");
+      Writer.Write ("Child", 2);
+      Writer.End_Structure;
+      Writer.Begin_Sequence ("Seq");
+      Writer.Append (3);
+      Writer.End_Structure;
+      declare
+         Text   : constant String := Writer.Close_And_Get_Text;
+         Reader : Persistence.File_Storage := Persistence.Open_Memory (Text);
+         procedure Missing is
+            K : constant Persistence.Node_Kind := Reader.Kind ("Missing");
+            pragma Unreferenced (K);
+         begin
+            null;
+         end Missing;
+         procedure Named_In_Sequence is
+            K : constant Persistence.Node_Kind := Reader.Kind ("Value");
+            pragma Unreferenced (K);
+         begin
+            null;
+         end Named_In_Sequence;
+         procedure Indexed_At_Root is
+            K : constant Persistence.Node_Kind := Reader.Kind (0);
+            pragma Unreferenced (K);
+         begin
+            null;
+         end Indexed_At_Root;
+         procedure Indexed_At_End is
+            K : constant Persistence.Node_Kind :=
+              Reader.Kind (Reader.Sequence_Length);
+            pragma Unreferenced (K);
+         begin
+            null;
+         end Indexed_At_End;
+         procedure Empty_Name is
+            K : constant Persistence.Node_Kind := Reader.Kind ("");
+            pragma Unreferenced (K);
+         begin
+            null;
+         end Empty_Name;
+         procedure NUL_Name is
+            K : constant Persistence.Node_Kind :=
+              Reader.Kind ("Value" & Character'Val (0) & "X");
+            pragma Unreferenced (K);
+         begin
+            null;
+         end NUL_Name;
+      begin
+         Assert_Raises_OpenCV_Error (Writer_Named'Access, "closed named kind");
+         Assert_Raises_OpenCV_Error
+           (Writer_Indexed'Access, "closed indexed kind");
+         Assert_Raises_OpenCV_Error (Missing'Access, "missing root kind");
+         Assert_Raises_OpenCV_Error (Empty_Name'Access, "empty kind name");
+         Assert_Raises_OpenCV_Error (NUL_Name'Access, "NUL kind name");
+         Assert_Raises_OpenCV_Error
+           (Indexed_At_Root'Access, "indexed root kind");
+         AUnit.Assertions.Assert
+           (Reader.Kind ("Value") = Persistence.Integer_Node,
+            "root preserved on failure");
+         Reader.Enter_Map ("Map");
+         Assert_Raises_OpenCV_Error (Missing'Access, "missing mapped kind");
+         Assert_Raises_OpenCV_Error
+           (Indexed_At_Root'Access, "indexed map kind");
+         AUnit.Assertions.Assert
+           (Reader.Kind ("Child") = Persistence.Integer_Node
+            and then Reader.Read_Integer ("Child") = 2,
+            "map preserved on failure");
+         Reader.Leave_Structure;
+         Reader.Enter_Sequence ("Seq");
+         Assert_Raises_OpenCV_Error
+           (Named_In_Sequence'Access, "named kind in sequence");
+         Assert_Raises_OpenCV_Error (Indexed_At_End'Access, "kind at length");
+         AUnit.Assertions.Assert
+           (Reader.Sequence_Length = 1
+            and then Reader.Kind (0) = Persistence.Integer_Node
+            and then Reader.Read_Integer (0) = 3,
+            "sequence preserved on failure");
+      end;
+   end Node_Kind_Failures;
+
+   procedure Raw_Node_Kind_ABI (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      package C renames OpenCV.Internal.C_API;
+      use type C.Status;
+      use type C.C_Int32;
+      use type C.File_Storage_Handle;
+      Handle : aliased C.File_Storage_Handle := C.Null_File_Storage_Handle;
+      Output : aliased C.C_Int32 := 99;
+      Status : C.Status;
+      Writer : Persistence.File_Storage :=
+        Persistence.Create_Memory (Persistence.YAML);
+      procedure Reject_Named
+        (Self : C.File_Storage_Handle; Name : String; Message : String) is
+      begin
+         Output := 99;
+         Status :=
+           C.File_Storage_Node_Kind
+             (Self, Interfaces.C.To_C (Name), Output'Access);
+         AUnit.Assertions.Assert
+           (Status /= C.Success and then Output = C.Node_Kind_Invalid,
+            Message);
+      end Reject_Named;
+      procedure Reject_Indexed
+        (Self : C.File_Storage_Handle; Index : C.C_UInt64; Message : String) is
+      begin
+         Output := 99;
+         Status := C.File_Storage_Node_Kind_At (Self, Index, Output'Access);
+         AUnit.Assertions.Assert
+           (Status /= C.Success and then Output = C.Node_Kind_Invalid,
+            Message);
+      end Reject_Indexed;
+      procedure Expect_Named (Name : String; Expected : C.C_Int32) is
+      begin
+         Output := 99;
+         Status :=
+           C.File_Storage_Node_Kind
+             (Handle, Interfaces.C.To_C (Name), Output'Access);
+         AUnit.Assertions.Assert
+           (Status = C.Success and then Output = Expected, "raw " & Name);
+      end Expect_Named;
+      procedure Expect_Indexed (Index : Natural; Expected : C.C_Int32) is
+      begin
+         Output := 99;
+         Status :=
+           C.File_Storage_Node_Kind_At
+             (Handle, C.C_UInt64 (Index), Output'Access);
+         AUnit.Assertions.Assert
+           (Status = C.Success and then Output = Expected,
+            "raw indexed" & Index'Image);
+      end Expect_Indexed;
+   begin
+      Writer.Write ("Int", 7);
+      Writer.Write ("Real", 1.5);
+      Writer.Write ("Text", "hello");
+      Writer.Write ("Mat", Make_Float32_Matrix);
+      Writer.Begin_Map ("Map");
+      Writer.Write ("Child", 1);
+      Writer.End_Structure;
+      Writer.Begin_Sequence ("Seq");
+      Writer.Append (7);
+      Writer.Append (1.5);
+      Writer.Append ("hello");
+      Writer.Begin_Map;
+      Writer.Write ("Child", 1);
+      Writer.End_Structure;
+      Writer.Begin_Sequence;
+      Writer.Append (1);
+      Writer.End_Structure;
+      Writer.End_Structure;
+      declare
+         Text : constant String := Writer.Close_And_Get_Text;
+      begin
+         Status :=
+           C.File_Storage_Open_Memory_Read
+             (Interfaces.C.To_C (Text), Handle'Access);
+         AUnit.Assertions.Assert
+           (Status = C.Success and then Handle /= C.Null_File_Storage_Handle,
+            "raw kind open");
+         begin
+            Reject_Named (C.Null_File_Storage_Handle, "Int", "null storage");
+            Output := 99;
+            Status :=
+              C.File_Storage_Node_Kind
+                (Handle, Interfaces.C.To_C ("Int"), null);
+            AUnit.Assertions.Assert (Status /= C.Success, "null named output");
+            --  The thin import uses char_array; raw null name is tested by
+            --  the direct C-compatible pointer signature below.
+            declare
+               function Kind_With_Pointer
+                 (Self   : C.File_Storage_Handle;
+                  Name   : System.Address;
+                  Result : access C.C_Int32) return C.Status
+               with
+                 Import,
+                 Convention    => C,
+                 External_Name => "opencv_core_file_storage_node_kind";
+            begin
+               Output := 99;
+               Status :=
+                 Kind_With_Pointer
+                   (Handle, System.Null_Address, Output'Access);
+               AUnit.Assertions.Assert
+                 (Status /= C.Success and then Output = C.Node_Kind_Invalid,
+                  "null name invalid output");
+            end;
+            Reject_Named (Handle, "Missing", "missing named node");
+            Reject_Indexed
+              (C.Null_File_Storage_Handle, 0, "null indexed storage");
+            Status := C.File_Storage_Node_Kind_At (Handle, 0, null);
+            AUnit.Assertions.Assert
+              (Status /= C.Success, "null indexed output");
+            Reject_Indexed (Handle, 0, "root indexed context");
+            Expect_Named ("Int", C.Node_Kind_Integer);
+            Expect_Named ("Real", C.Node_Kind_Real);
+            Expect_Named ("Text", C.Node_Kind_String);
+            Expect_Named ("Seq", C.Node_Kind_Sequence);
+            Expect_Named ("Map", C.Node_Kind_Mapping);
+            Expect_Named ("Mat", C.Node_Kind_Mapping);
+            Status :=
+              C.File_Storage_Enter_Named_Structure
+                (Handle, Interfaces.C.To_C ("Map"), C.Storage_Structure_Map);
+            AUnit.Assertions.Assert (Status = C.Success, "raw map enter");
+            Reject_Indexed (Handle, 0, "map indexed context");
+            Expect_Named ("Child", C.Node_Kind_Integer);
+            Status := C.File_Storage_Leave_Structure (Handle);
+            AUnit.Assertions.Assert (Status = C.Success, "raw map leave");
+            Status :=
+              C.File_Storage_Enter_Named_Structure
+                (Handle,
+                 Interfaces.C.To_C ("Seq"),
+                 C.Storage_Structure_Sequence);
+            AUnit.Assertions.Assert (Status = C.Success, "raw sequence enter");
+            Reject_Named (Handle, "Int", "sequence named context");
+            Reject_Indexed (Handle, 5, "index at length");
+            Reject_Indexed (Handle, C.C_UInt64'Last, "large index");
+            Expect_Indexed (0, C.Node_Kind_Integer);
+            Expect_Indexed (1, C.Node_Kind_Real);
+            Expect_Indexed (2, C.Node_Kind_String);
+            Expect_Indexed (3, C.Node_Kind_Mapping);
+            Expect_Indexed (4, C.Node_Kind_Sequence);
+         exception
+            when others =>
+               C.File_Storage_Destroy (Handle);
+               raise;
+         end;
+         C.File_Storage_Destroy (Handle);
+      end;
+   end Raw_Node_Kind_ABI;
+
    package Caller is new AUnit.Test_Caller (Mat_Test_Fixture);
 
    Result : aliased AUnit.Test_Suites.Test_Suite;
@@ -2633,6 +3047,13 @@ package body Persistence_Tests is
         (Caller.Create
            ("Map enumeration requires open reader",
             Map_Enumeration_Requires_Read_Mode'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Node kinds in YAML XML JSON", Node_Kinds_In_All_Formats'Access));
+      Result.Add_Test
+        (Caller.Create ("Node kind failures", Node_Kind_Failures'Access));
+      Result.Add_Test
+        (Caller.Create ("Raw node kind ABI", Raw_Node_Kind_ABI'Access));
       return Result'Access;
    end Suite;
 

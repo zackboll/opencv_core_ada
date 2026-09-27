@@ -18,7 +18,7 @@ translation of the C++ headers.
 >
 > **Development status:** active, pre-1.0 API.
 >
-> **Current test baseline:** 1399 AUnit tests, with Ada and C++ warnings promoted
+> **Current test baseline:** 1402 AUnit tests, with Ada and C++ warnings promoted
 > to errors. GitHub Actions exercises the full test suite against four OpenCV
 > compatibility targets, plus a native Ubuntu 24.04 ARM64 job.
 >
@@ -359,7 +359,7 @@ The test crate carries development-only dependencies such as AUnit, GNATprove,
 and GNATcov. They are intentionally not dependencies of the public library
 crate.
 
-At the time of this README update, the full suite contains **1399 AUnit tests**.
+At the time of this README update, the full suite contains **1402 AUnit tests**.
 Coverage includes ordinary behavior, invalid input, shape/depth/channel
 compatibility, empty Mats, non-contiguous Regions, shallow-versus-independent
 ownership, callback lifetimes, arbitrary Ada array lower bounds, failure
@@ -1705,6 +1705,7 @@ Reading:
 - `Leave_Structure`
 - `Sequence_Length`
 - `Map_Length` and zero-based `Map_Key` (root or entered map)
+- named/indexed `Kind` for structural node categories
 - named/indexed `Read_Mat`
 - named/indexed `Read_Integer`
 - named/indexed `Read_Real`
@@ -1754,6 +1755,35 @@ if Count > 0 then
       Put_Line (Reader.Map_Key (I));
    end loop;
 end if;
+```
+
+`Node_Kind` describes the **OpenCV FileNode structure**, not the type of an
+arbitrary serialized OpenCV object. A persisted 2-D or N-D `Mat` is a mapping
+(`opencv-matrix` or `opencv-nd-matrix`), so `Kind ("Matrix")` returns
+`Mapping_Node`, not a separate Mat kind. Use `Read_Mat` when Mat conversion is
+intended. Named `Kind` works at the root or in an entered map; indexed `Kind`
+works in an entered sequence. Both leave navigation unchanged. For example:
+
+```ada
+declare
+   Count : constant Natural := Reader.Map_Length;
+begin
+   if Count > 0 then
+      for I in 0 .. Count - 1 loop
+         declare
+            Key : constant String := Reader.Map_Key (I);
+         begin
+            case Reader.Kind (Key) is
+               when P.Integer_Node  => Put_Line (Key & ": integer");
+               when P.Real_Node     => Put_Line (Key & ": real");
+               when P.String_Node   => Put_Line (Key & ": string");
+               when P.Sequence_Node => Put_Line (Key & ": sequence");
+               when P.Mapping_Node  => Put_Line (Key & ": mapping");
+            end case;
+         end;
+      end loop;
+   end if;
+end;
 ```
 
 ### Type policy and edge conditions
@@ -1970,7 +2000,7 @@ The current limitations are intentional and help keep the public API coherent:
     Wrapped modes use strong Ada types or deliberately narrower operations.
 
 12. **Persistence hides `FileNode`.**  
-    Nested maps and sequences are supported, but public FileNode iterators,
+    Nested maps and sequences are supported, but public FileNode objects or iterators,
     file append mode, Base64, comments, gzip controls, FLOW
     formatting, and raw persistence APIs are not part of the current slice.
 
