@@ -1,0 +1,50 @@
+with OpenCV.Core.Float16_Vec4;
+
+package OpenCV.Core.Float16_Vec4_Mat_View is
+   type Buffer_Array is array (Natural range <>) of Float16_Vec4.Vector;
+   --  Callback-scoped CV_16FC4 Mat headers over caller-owned Data. One Data
+   --  entry is one complete 8-byte C4 element; each component is the exact
+   --  stored IEEE-754 binary16 encoding (nothing is converted). Packed views
+   --  require Data'Length = Rows * Columns or product (Shape). Strides count
+   --  complete Float16_Vec4 elements, not scalar Float16 channels or bytes;
+   --  the final N-D stride is 1 and padding is never touched. No data is
+   --  copied and the caller retains ownership. The Mat is valid only during
+   --  Process: shallow copies, Region, Slice and Reshape are rejected; Clone
+   --  is the independent escape path. Components 0 .. 3 are OpenCV channels
+   --  0 .. 3; no semantic channel meaning is assigned.
+   procedure With_Writable_Mat_View
+     (Data          : aliased in out Buffer_Array;
+      Rows, Columns : Positive;
+      Process       : not null access procedure (Image : in out Mat));
+   procedure With_Writable_Mat_View
+     (Data    : aliased in out Buffer_Array;
+      Shape   : Dimension_Array;
+      Process : not null access procedure (Image : in out Mat));
+   procedure With_Writable_Strided_Mat_View
+     (Data                      : aliased in out Buffer_Array;
+      Rows, Columns, Row_Stride : Positive;
+      Process                   :
+        not null access procedure (Image : in out Mat));
+   procedure With_Writable_Strided_Mat_View
+     (Data    : aliased in out Buffer_Array;
+      Shape   : Dimension_Array;
+      Strides : Dimension_Stride_Array;
+      Process : not null access procedure (Image : in out Mat));
+   procedure With_Read_Only_Mat_View
+     (Data          : aliased Buffer_Array;
+      Rows, Columns : Positive;
+      Process       : not null access procedure (Image : Mat));
+   procedure With_Read_Only_Mat_View
+     (Data    : aliased Buffer_Array;
+      Shape   : Dimension_Array;
+      Process : not null access procedure (Image : Mat));
+   procedure With_Read_Only_Strided_Mat_View
+     (Data                      : aliased Buffer_Array;
+      Rows, Columns, Row_Stride : Positive;
+      Process                   : not null access procedure (Image : Mat));
+   procedure With_Read_Only_Strided_Mat_View
+     (Data    : aliased Buffer_Array;
+      Shape   : Dimension_Array;
+      Strides : Dimension_Stride_Array;
+      Process : not null access procedure (Image : Mat));
+end OpenCV.Core.Float16_Vec4_Mat_View;

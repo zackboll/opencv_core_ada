@@ -1,6 +1,24 @@
 # Changelog
 
 ## Unreleased
+- Completed Float16 C2/C4 typed and zero-copy coverage with
+  `Float16_Vec2`/`Float16_Vec4` and matching `_Access`, `_Row_Access`,
+  `_Buffer_Access`, and `_Mat_View` packages: exact-bit 2-D/N-D Get/Set,
+  copied and leased zero-copy rows, continuous whole-buffer borrowing, and
+  writable/read-only packed and strided 2-D/N-D caller-owned views. Float16
+  now has complete C1/C2/C3/C4 coverage. Components are exact IEEE-754
+  binary16 encodings (signed zeros, subnormals, infinities, signaling and
+  quiet NaN payloads survive unchanged). The new raw-bit C ABI records
+  (`opencv_core_float16_vec2`/`_vec4`, `uint16_t` components) are copied
+  with exact 4/8-byte `memcpy` over untyped Mat storage; no OpenCV half C++
+  type or half-vector alias is used (none exists in OpenCV 4.1/4.10/5.0
+  `matx.hpp`). The Float16 C3 row safety helper was narrowly generalized for
+  C2/C3/C4 with unchanged C3 behavior. Exhaustive tests carry all 65,536
+  encodings through every component offset; same-byte wrong-layout and
+  exactly typed raw geometry tests, shared N-D inventories, and Merge/Split,
+  Convert_To, Set_To, and existing-arithmetic interoperability cover both
+  widths. Float16 Transform remains unsupported.
+
 - Added signed Int32 C2/C3/C4 (`Vec2i`/`Vec3i`/`Vec4i`) typed 2-D/N-D
   access, copied and leased zero-copy rows, continuous whole-buffer borrowing,
   and writable/read-only packed and strided 2-D/N-D external views. Together

@@ -171,6 +171,28 @@ typedef struct {
     uint16_t component_1;
     uint16_t component_2;
 } opencv_core_float16_vec3;
+
+/*
+ * Raw IEEE-754 binary16 encodings for a two-channel CV_16F element
+ * (4 bytes). Each uint16_t member is the stored 16-bit pattern, not an
+ * integer channel value and not a numeric conversion result.
+ */
+typedef struct {
+    uint16_t component_0;
+    uint16_t component_1;
+} opencv_core_float16_vec2;
+
+/*
+ * Raw IEEE-754 binary16 encodings for a four-channel CV_16F element
+ * (8 bytes). Each uint16_t member is the stored 16-bit pattern, not an
+ * integer channel value and not a numeric conversion result.
+ */
+typedef struct {
+    uint16_t component_0;
+    uint16_t component_1;
+    uint16_t component_2;
+    uint16_t component_3;
+} opencv_core_float16_vec4;
 /*
  * Stable depth identifiers for the C ABI. These are translated explicitly to
  * OpenCV depth constants by the shim and are not OpenCV's encoded Mat types.
@@ -1728,6 +1750,74 @@ opencv_core_mat_read_float16_vec3_row(const opencv_core_mat_handle *mat,
 
 opencv_core_status
 opencv_core_mat_write_float16_vec3_row(opencv_core_mat_handle *mat,
+                                       int32_t row, const uint16_t *data,
+                                       uint64_t element_count);
+
+/*
+ * Exact-bit access to two- and four-channel CV_16F elements. One record is
+ * one complete Mat element; every uint16_t is the stored IEEE-754 binary16
+ * encoding. The implementation copies exactly 4 (C2) or 8 (C4) bytes of
+ * native Mat storage and never names or dereferences a C++ half type, so
+ * signed zeros, subnormals, infinities and NaN payloads (including
+ * signaling NaNs) are preserved. Depth and channel count must match
+ * exactly; an equal element byte size is never accepted as a substitute.
+ * A failed Get zeroes the complete output record.
+ *
+ * The N-D forms take ndims zero-based indices in iteration order; indices
+ * must be non-null when ndims is positive.
+ *
+ * The row forms copy one complete row of a two-dimensional Mat.
+ * element_count counts complete vectors and must equal mat columns. data
+ * is a flat uint16_t buffer holding 2 (C2) or 4 (C4) encodings per column,
+ * channel 0 first.
+ */
+opencv_core_status
+opencv_core_mat_get_float16_vec2(const opencv_core_mat_handle *mat,
+                                 int32_t row, int32_t column,
+                                 opencv_core_float16_vec2 *out_value);
+opencv_core_status
+opencv_core_mat_set_float16_vec2(opencv_core_mat_handle *mat, int32_t row,
+                                 int32_t column,
+                                 const opencv_core_float16_vec2 *value);
+opencv_core_status
+opencv_core_mat_get_float16_vec2_nd(const opencv_core_mat_handle *mat,
+                                    int32_t ndims, const int32_t *indices,
+                                    opencv_core_float16_vec2 *out_value);
+opencv_core_status
+opencv_core_mat_set_float16_vec2_nd(opencv_core_mat_handle *mat,
+                                    int32_t ndims, const int32_t *indices,
+                                    const opencv_core_float16_vec2 *value);
+opencv_core_status
+opencv_core_mat_read_float16_vec2_row(const opencv_core_mat_handle *mat,
+                                      int32_t row, uint16_t *data,
+                                      uint64_t element_count);
+opencv_core_status
+opencv_core_mat_write_float16_vec2_row(opencv_core_mat_handle *mat,
+                                       int32_t row, const uint16_t *data,
+                                       uint64_t element_count);
+
+opencv_core_status
+opencv_core_mat_get_float16_vec4(const opencv_core_mat_handle *mat,
+                                 int32_t row, int32_t column,
+                                 opencv_core_float16_vec4 *out_value);
+opencv_core_status
+opencv_core_mat_set_float16_vec4(opencv_core_mat_handle *mat, int32_t row,
+                                 int32_t column,
+                                 const opencv_core_float16_vec4 *value);
+opencv_core_status
+opencv_core_mat_get_float16_vec4_nd(const opencv_core_mat_handle *mat,
+                                    int32_t ndims, const int32_t *indices,
+                                    opencv_core_float16_vec4 *out_value);
+opencv_core_status
+opencv_core_mat_set_float16_vec4_nd(opencv_core_mat_handle *mat,
+                                    int32_t ndims, const int32_t *indices,
+                                    const opencv_core_float16_vec4 *value);
+opencv_core_status
+opencv_core_mat_read_float16_vec4_row(const opencv_core_mat_handle *mat,
+                                      int32_t row, uint16_t *data,
+                                      uint64_t element_count);
+opencv_core_status
+opencv_core_mat_write_float16_vec4_row(opencv_core_mat_handle *mat,
                                        int32_t row, const uint16_t *data,
                                        uint64_t element_count);
 
