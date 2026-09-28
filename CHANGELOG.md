@@ -1,6 +1,17 @@
 # Changelog
 
 ## Unreleased
+- Added signed Int32 C2/C3/C4 (`Vec2i`/`Vec3i`/`Vec4i`) typed 2-D/N-D
+  access, copied and leased zero-copy rows, continuous whole-buffer borrowing,
+  and writable/read-only packed and strided 2-D/N-D external views. Together
+  with C1 these preserve the full signed 32-bit domain. The C ABI uses
+  fixed-width `int32_t` while native OpenCV vectors use `int`; compile-time
+  size/range/layout assertions and explicit component conversions keep these
+  representations separate. Vec2/Vec4 row helpers now distinguish ABI from
+  native scalars, preserving the existing families. Same-byte wrong-layout
+  and correctly typed raw geometry tests, shared N-D inventories, and
+  Merge/Split/Scalar/Transform integration cover all three new widths.
+
 - Added signed Int16 C2/C3/C4 (`Vec2s`/`Vec3s`/`Vec4s`) typed 2-D/N-D
   access, copied and leased zero-copy rows, continuous whole-buffer borrowing,
   and writable/read-only packed and strided 2-D/N-D external views. Complete
