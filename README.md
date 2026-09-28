@@ -849,7 +849,7 @@ dimensions.
 ### Copied row access
 
 The UInt8, Int8, UInt16, Int16, Int32, Float16, Float32, and Float64 C1 row
-packages and all nineteen Vec2/Vec3/Vec4 row packages provide `Read_Row` /
+packages and all twenty-one Vec2/Vec3/Vec4 row packages provide `Read_Row` /
 `Write_Row` APIs. Caller arrays may use
 arbitrary lower bounds; values map in iteration order to matrix columns.
 
