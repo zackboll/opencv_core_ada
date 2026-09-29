@@ -1,4 +1,6 @@
+with OpenCV.Core.Float16_Vec2;
 with OpenCV.Core.Float16_Vec3;
+with OpenCV.Core.Float16_Vec4;
 with OpenCV.Core.Float32_Vec3;
 with OpenCV.Core.Float64_Vec3;
 with OpenCV.Core.Float32_Vec4;
@@ -405,6 +407,34 @@ package OpenCV.Core.Internal.Typed_Access is
      (Image : Mat; Row : Integer; Data : out Float16_Row_Buffer);
 
    procedure Write_Float16_Vec3_Row
+     (Image : in out Mat; Row : Integer; Data : Float16_Row_Buffer);
+
+   --  Float16 C2/C4: every component crosses the ABI as its exact stored
+   --  binary16 encoding (Float16_Bits / Float16_From_Bits only).
+   function Get_Float16_Vec2
+     (Image : Mat; Row, Column : Integer) return Float16_Vec2.Vector;
+   procedure Set_Float16_Vec2
+     (Image : in out Mat; Row, Column : Integer; Value : Float16_Vec2.Vector);
+   function Get_Float16_Vec2
+     (Image : Mat; Indices : Index_Array) return Float16_Vec2.Vector;
+   procedure Set_Float16_Vec2
+     (Image : in out Mat; Indices : Index_Array; Value : Float16_Vec2.Vector);
+   procedure Read_Float16_Vec2_Row
+     (Image : Mat; Row : Integer; Data : out Float16_Row_Buffer);
+   procedure Write_Float16_Vec2_Row
+     (Image : in out Mat; Row : Integer; Data : Float16_Row_Buffer);
+
+   function Get_Float16_Vec4
+     (Image : Mat; Row, Column : Integer) return Float16_Vec4.Vector;
+   procedure Set_Float16_Vec4
+     (Image : in out Mat; Row, Column : Integer; Value : Float16_Vec4.Vector);
+   function Get_Float16_Vec4
+     (Image : Mat; Indices : Index_Array) return Float16_Vec4.Vector;
+   procedure Set_Float16_Vec4
+     (Image : in out Mat; Indices : Index_Array; Value : Float16_Vec4.Vector);
+   procedure Read_Float16_Vec4_Row
+     (Image : Mat; Row : Integer; Data : out Float16_Row_Buffer);
+   procedure Write_Float16_Vec4_Row
      (Image : in out Mat; Row : Integer; Data : Float16_Row_Buffer);
 
    function Get_UInt8_Vec3

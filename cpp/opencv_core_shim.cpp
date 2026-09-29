@@ -885,10 +885,16 @@ prepare_vector_row(const opencv_core_mat_handle *mat, int32_t row,
     return OPENCV_CORE_OK;
 }
 
+// Shared exact-storage row boundary for multi-channel CV_16F vectors
+// (C2 = 4, C3 = 6, C4 = 8 bytes per element). expected_channels is one of
+// 2, 3 or 4; expected_element_size is always 2 * expected_channels.
 opencv_core_status
-prepare_float16_vec3_row(const opencv_core_mat_handle *mat, int32_t row,
-                         uint64_t element_count, const uint8_t *&row_data,
-                         std::size_t &byte_count) {
+prepare_float16_vector_row(const opencv_core_mat_handle *mat, int32_t row,
+                           uint64_t element_count, int expected_channels,
+                           std::size_t expected_element_size,
+                           const char *channel_message,
+                           const char *element_size_message,
+                           const uint8_t *&row_data, std::size_t &byte_count) {
     row_data = nullptr;
     byte_count = 0;
 
@@ -900,10 +906,10 @@ prepare_float16_vec3_row(const opencv_core_mat_handle *mat, int32_t row,
         return invalid_argument("row must not be negative");
     }
 
-    // ABI safety: the shim copies element_count * 6 bytes from a formed
-    // row pointer. A non-2-D Mat, a smaller stored element, a missing
-    // data pointer, or an out-of-range row would make that copy
-    // out-of-bounds.
+    // ABI safety: the shim copies element_count * expected_element_size
+    // bytes from a formed row pointer. A non-2-D Mat, a different channel
+    // layout, a smaller stored element, a missing data pointer, or an
+    // out-of-range row would make that copy out-of-bounds.
     if (mat->value.dims != 2) {
         return invalid_argument("Mat must be two-dimensional");
     }
@@ -912,8 +918,8 @@ prepare_float16_vec3_row(const opencv_core_mat_handle *mat, int32_t row,
         return invalid_argument("Mat depth must be Float16");
     }
 
-    if (mat->value.channels() != 3) {
-        return invalid_argument("Mat must have exactly three channels");
+    if (mat->value.channels() != expected_channels) {
+        return invalid_argument(channel_message);
     }
 
     if (row >= mat->value.rows) {
@@ -924,19 +930,20 @@ prepare_float16_vec3_row(const opencv_core_mat_handle *mat, int32_t row,
         return invalid_argument("element_count must equal Mat columns");
     }
 
-    // ABI safety: copying six bytes per column from a smaller stored
-    // element would read or write past the logical row.
-    if (mat->value.elemSize1() != 2 || mat->value.elemSize() != 6) {
-        return invalid_argument(
-            "Mat element size does not match a Float16 Vec3 pixel");
+    // ABI safety: copying expected_element_size bytes per column from a
+    // smaller stored element would read or write past the logical row.
+    if (mat->value.elemSize1() != 2 ||
+        mat->value.elemSize() != expected_element_size) {
+        return invalid_argument(element_size_message);
     }
 
     if (element_count >
-        static_cast<uint64_t>(std::numeric_limits<std::size_t>::max() / 6)) {
+        static_cast<uint64_t>(std::numeric_limits<std::size_t>::max() /
+                              expected_element_size)) {
         return invalid_argument("row byte count exceeds the native size range");
     }
 
-    byte_count = static_cast<std::size_t>(element_count) * 6;
+    byte_count = static_cast<std::size_t>(element_count) * expected_element_size;
 
     if (byte_count != 0 && mat->value.data == nullptr) {
         return invalid_argument("Mat has no row storage");
@@ -946,6 +953,18 @@ prepare_float16_vec3_row(const opencv_core_mat_handle *mat, int32_t row,
     // bits without aliasing a C++ half type as uint16_t.
     row_data = mat->value.ptr(static_cast<int>(row));
     return OPENCV_CORE_OK;
+}
+
+// Float16 C3 row boundary; diagnostics are unchanged from the original
+// dedicated C3 helper.
+opencv_core_status
+prepare_float16_vec3_row(const opencv_core_mat_handle *mat, int32_t row,
+                         uint64_t element_count, const uint8_t *&row_data,
+                         std::size_t &byte_count) {
+    return prepare_float16_vector_row(
+        mat, row, element_count, 3, 6, "Mat must have exactly three channels",
+        "Mat element size does not match a Float16 Vec3 pixel", row_data,
+        byte_count);
 }
 
 // ABI safety: Mat::at<T> relies on CV_DbgAssert for type/dimension/
@@ -1072,6 +1091,269 @@ opencv_core_status prepare_nd_vector_at(const cv::Mat &mat, int32_t ndims,
     }
 
     return OPENCV_CORE_OK;
+}
+
+// Channel count and exact element byte size for the Float16 C2/C4 raw-bit
+// records. Component storage order is channel index order. No C++ half type
+// (cv::hfloat / cv::float16_t / cv::Vec<half, N>) is named: the layout is
+// the stable CV_16F Mat storage representation.
+template <typename Abi> struct float16_vector_layout;
+
+template <> struct float16_vector_layout<opencv_core_float16_vec2> {
+    static constexpr int channels = 2;
+    static constexpr std::size_t element_size = 4;
+};
+
+template <> struct float16_vector_layout<opencv_core_float16_vec4> {
+    static constexpr int channels = 4;
+    static constexpr std::size_t element_size = 8;
+};
+
+static_assert(sizeof(uint16_t) == 2 && CV_ELEM_SIZE1(CV_16F) == 2,
+              "one binary16 channel must be exactly 2 bytes");
+static_assert(sizeof(opencv_core_float16_vec2) == 4 &&
+                  offsetof(opencv_core_float16_vec2, component_0) == 0 &&
+                  offsetof(opencv_core_float16_vec2, component_1) == 2 &&
+                  alignof(opencv_core_float16_vec2) <= 2 &&
+                  CV_ELEM_SIZE(CV_16FC2) == 4,
+              "Float16 Vec2 ABI must be two packed binary16 encodings "
+              "matching one 4-byte CV_16FC2 element");
+static_assert(CV_ELEM_SIZE(CV_16FC3) == 6,
+              "CV_16FC3 must be one 6-byte element");
+static_assert(sizeof(opencv_core_float16_vec4) == 8 &&
+                  offsetof(opencv_core_float16_vec4, component_0) == 0 &&
+                  offsetof(opencv_core_float16_vec4, component_1) == 2 &&
+                  offsetof(opencv_core_float16_vec4, component_2) == 4 &&
+                  offsetof(opencv_core_float16_vec4, component_3) == 6 &&
+                  alignof(opencv_core_float16_vec4) <= 2 &&
+                  CV_ELEM_SIZE(CV_16FC4) == 8,
+              "Float16 Vec4 ABI must be four packed binary16 encodings "
+              "matching one 8-byte CV_16FC4 element");
+
+const char *float16_vector_channel_message(int channels) noexcept {
+    return channels == 2 ? "Mat must have exactly two channels"
+                         : "Mat must have exactly four channels";
+}
+
+const char *float16_vector_size_message(int channels) noexcept {
+    return channels == 2
+               ? "Mat element size does not match a Float16 Vec2 element"
+               : "Mat element size does not match a Float16 Vec4 element";
+}
+
+// The record is a packed sequence of uint16_t encodings (asserted above),
+// so one memcpy of element_size bytes moves every component in channel
+// order without constructing or converting through a C++ half object.
+template <typename Abi>
+void copy_float16_element_out(const unsigned char *pixel, Abi &out) noexcept {
+    std::memcpy(static_cast<void *>(&out), pixel,
+                float16_vector_layout<Abi>::element_size);
+}
+
+template <typename Abi>
+void copy_float16_element_in(unsigned char *pixel, const Abi &value) noexcept {
+    std::memcpy(pixel, static_cast<const void *>(&value),
+                float16_vector_layout<Abi>::element_size);
+}
+
+// ABI safety: the shim forms Mat::ptr(row) + column * elemSize() itself and
+// copies exactly element_size bytes. Depth, exact channel count, 2-D shape,
+// bounds and the full element size must all match or the copy could leave
+// the stored element; an equal byte size alone is not sufficient identity.
+template <typename Abi>
+opencv_core_status float16_vector_pixel(const cv::Mat &mat, int32_t row,
+                                        int32_t column,
+                                        const unsigned char *&pixel) {
+    using layout = float16_vector_layout<Abi>;
+    pixel = nullptr;
+    const opencv_core_status status = validate_typed_at(
+        mat, row, column, CV_16F, layout::channels, "Mat depth must be Float16",
+        float16_vector_channel_message(layout::channels));
+    if (status != OPENCV_CORE_OK) {
+        return status;
+    }
+
+    if (mat.elemSize1() != 2 || mat.elemSize() != layout::element_size) {
+        return invalid_argument(
+            float16_vector_size_message(layout::channels));
+    }
+
+    pixel = mat.ptr(static_cast<int>(row)) +
+            static_cast<std::size_t>(column) * mat.elemSize();
+    return OPENCV_CORE_OK;
+}
+
+// ABI safety: Mat::ptr(const int*) performs unchecked N-D address
+// arithmetic; the shim then copies exactly element_size bytes.
+template <typename Abi>
+opencv_core_status float16_vector_pixel_nd(const cv::Mat &mat, int32_t ndims,
+                                           const int32_t *indices,
+                                           const unsigned char *&pixel) {
+    using layout = float16_vector_layout<Abi>;
+    pixel = nullptr;
+    int opencv_indices[maximum_mat_dimensions];
+    const opencv_core_status status = prepare_nd_vector_at(
+        mat, ndims, indices, opencv_indices, CV_16F, layout::channels,
+        layout::element_size, "Mat depth must be Float16",
+        float16_vector_channel_message(layout::channels));
+    if (status != OPENCV_CORE_OK) {
+        return status;
+    }
+
+    if (mat.elemSize1() != 2) {
+        return invalid_argument(
+            float16_vector_size_message(layout::channels));
+    }
+
+    pixel = mat.ptr(opencv_indices);
+    return OPENCV_CORE_OK;
+}
+
+// Get zeroes the complete output record before any validation that can
+// fail. Set writes only after every check has passed.
+template <typename Abi>
+opencv_core_status float16_vector_get(const opencv_core_mat_handle *mat,
+                                      int32_t row, int32_t column, Abi *out) {
+    clear_error();
+    if (out == nullptr) {
+        return invalid_argument("out_value must not be null");
+    }
+    *out = Abi{};
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+    try {
+        const unsigned char *pixel = nullptr;
+        const opencv_core_status status =
+            float16_vector_pixel<Abi>(mat->value, row, column, pixel);
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+        copy_float16_element_out(pixel, *out);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+template <typename Abi>
+opencv_core_status float16_vector_set(opencv_core_mat_handle *mat, int32_t row,
+                                      int32_t column, const Abi *value) {
+    clear_error();
+    if (value == nullptr) {
+        return invalid_argument("value must not be null");
+    }
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+    try {
+        const unsigned char *pixel = nullptr;
+        const opencv_core_status status =
+            float16_vector_pixel<Abi>(mat->value, row, column, pixel);
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+        // The addressed bytes are the non-const Mat's own storage.
+        copy_float16_element_in(const_cast<unsigned char *>(pixel), *value);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+template <typename Abi>
+opencv_core_status float16_vector_get_nd(const opencv_core_mat_handle *mat,
+                                         int32_t ndims, const int32_t *indices,
+                                         Abi *out) {
+    clear_error();
+    if (out == nullptr) {
+        return invalid_argument("out_value must not be null");
+    }
+    *out = Abi{};
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+    try {
+        const unsigned char *pixel = nullptr;
+        const opencv_core_status status =
+            float16_vector_pixel_nd<Abi>(mat->value, ndims, indices, pixel);
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+        copy_float16_element_out(pixel, *out);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+template <typename Abi>
+opencv_core_status float16_vector_set_nd(opencv_core_mat_handle *mat,
+                                         int32_t ndims, const int32_t *indices,
+                                         const Abi *value) {
+    clear_error();
+    if (value == nullptr) {
+        return invalid_argument("value must not be null");
+    }
+    if (mat == nullptr) {
+        return invalid_argument("Mat handle must not be null");
+    }
+    try {
+        const unsigned char *pixel = nullptr;
+        const opencv_core_status status =
+            float16_vector_pixel_nd<Abi>(mat->value, ndims, indices, pixel);
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+        // The addressed bytes are the non-const Mat's own storage.
+        copy_float16_element_in(const_cast<unsigned char *>(pixel), *value);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+// Copies one complete Float16 C2/C4 row in one bulk memcpy. When write is
+// false, row bytes go to out_data; when true, in_data bytes go to the row.
+template <typename Abi>
+opencv_core_status float16_vector_copy_row(const opencv_core_mat_handle *mat,
+                                           int32_t row, bool write,
+                                           uint16_t *out_data,
+                                           const uint16_t *in_data,
+                                           uint64_t element_count) {
+    clear_error();
+    const void *const data =
+        write ? static_cast<const void *>(in_data)
+              : static_cast<const void *>(out_data);
+    if (data == nullptr && element_count != 0) {
+        return invalid_argument(
+            "data must not be null when element_count is nonzero");
+    }
+    try {
+        using layout = float16_vector_layout<Abi>;
+        const uint8_t *row_data = nullptr;
+        std::size_t byte_count = 0;
+        const opencv_core_status status = prepare_float16_vector_row(
+            mat, row, element_count, layout::channels, layout::element_size,
+            float16_vector_channel_message(layout::channels),
+            float16_vector_size_message(layout::channels), row_data,
+            byte_count);
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+        if (byte_count != 0) {
+            if (write) {
+                // The row belongs to the caller's non-const Mat handle.
+                std::memcpy(const_cast<uint8_t *>(row_data), in_data,
+                            byte_count);
+            } else {
+                std::memcpy(out_data, row_data, byte_count);
+            }
+        }
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
 }
 
 static_assert(sizeof(cv::Vec<float, 2>) == 8 &&
@@ -7727,6 +8009,94 @@ opencv_core_mat_write_float16_vec3_row(opencv_core_mat_handle *mat,
     } catch (...) {
         return translate_current_exception();
     }
+}
+
+opencv_core_status
+opencv_core_mat_get_float16_vec2(const opencv_core_mat_handle *mat,
+                                 int32_t row, int32_t column,
+                                 opencv_core_float16_vec2 *out_value) {
+    return float16_vector_get(mat, row, column, out_value);
+}
+
+opencv_core_status
+opencv_core_mat_set_float16_vec2(opencv_core_mat_handle *mat, int32_t row,
+                                 int32_t column,
+                                 const opencv_core_float16_vec2 *value) {
+    return float16_vector_set(mat, row, column, value);
+}
+
+opencv_core_status
+opencv_core_mat_get_float16_vec2_nd(const opencv_core_mat_handle *mat,
+                                    int32_t ndims, const int32_t *indices,
+                                    opencv_core_float16_vec2 *out_value) {
+    return float16_vector_get_nd(mat, ndims, indices, out_value);
+}
+
+opencv_core_status
+opencv_core_mat_set_float16_vec2_nd(opencv_core_mat_handle *mat,
+                                    int32_t ndims, const int32_t *indices,
+                                    const opencv_core_float16_vec2 *value) {
+    return float16_vector_set_nd(mat, ndims, indices, value);
+}
+
+opencv_core_status
+opencv_core_mat_read_float16_vec2_row(const opencv_core_mat_handle *mat,
+                                      int32_t row, uint16_t *data,
+                                      uint64_t element_count) {
+    return float16_vector_copy_row<opencv_core_float16_vec2>(
+        mat, row, false, data, nullptr, element_count);
+}
+
+opencv_core_status
+opencv_core_mat_write_float16_vec2_row(opencv_core_mat_handle *mat,
+                                       int32_t row, const uint16_t *data,
+                                       uint64_t element_count) {
+    return float16_vector_copy_row<opencv_core_float16_vec2>(
+        mat, row, true, nullptr, data, element_count);
+}
+
+opencv_core_status
+opencv_core_mat_get_float16_vec4(const opencv_core_mat_handle *mat,
+                                 int32_t row, int32_t column,
+                                 opencv_core_float16_vec4 *out_value) {
+    return float16_vector_get(mat, row, column, out_value);
+}
+
+opencv_core_status
+opencv_core_mat_set_float16_vec4(opencv_core_mat_handle *mat, int32_t row,
+                                 int32_t column,
+                                 const opencv_core_float16_vec4 *value) {
+    return float16_vector_set(mat, row, column, value);
+}
+
+opencv_core_status
+opencv_core_mat_get_float16_vec4_nd(const opencv_core_mat_handle *mat,
+                                    int32_t ndims, const int32_t *indices,
+                                    opencv_core_float16_vec4 *out_value) {
+    return float16_vector_get_nd(mat, ndims, indices, out_value);
+}
+
+opencv_core_status
+opencv_core_mat_set_float16_vec4_nd(opencv_core_mat_handle *mat,
+                                    int32_t ndims, const int32_t *indices,
+                                    const opencv_core_float16_vec4 *value) {
+    return float16_vector_set_nd(mat, ndims, indices, value);
+}
+
+opencv_core_status
+opencv_core_mat_read_float16_vec4_row(const opencv_core_mat_handle *mat,
+                                      int32_t row, uint16_t *data,
+                                      uint64_t element_count) {
+    return float16_vector_copy_row<opencv_core_float16_vec4>(
+        mat, row, false, data, nullptr, element_count);
+}
+
+opencv_core_status
+opencv_core_mat_write_float16_vec4_row(opencv_core_mat_handle *mat,
+                                       int32_t row, const uint16_t *data,
+                                       uint64_t element_count) {
+    return float16_vector_copy_row<opencv_core_float16_vec4>(
+        mat, row, true, nullptr, data, element_count);
 }
 
 opencv_core_status

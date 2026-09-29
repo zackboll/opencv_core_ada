@@ -152,6 +152,127 @@ package OpenCV.Internal.C_API is
    end record
    with Convention => C;
 
+   --  Raw binary16 encodings for one complete CV_16FC2 / CV_16FC4 element.
+   --  Each component is the stored IEEE-754 binary16 bit pattern, not an
+   --  integer-valued channel and not a numeric conversion result.
+   type Float16_Vec2 is record
+      Component_0, Component_1 : C_UInt16;
+   end record
+   with Convention => C;
+   pragma Compile_Time_Error (Float16_Vec2'Size /= 32, "C Float16 Vec2 size");
+
+   type Float16_Vec4 is record
+      Component_0, Component_1, Component_2, Component_3 : C_UInt16;
+   end record
+   with Convention => C;
+   pragma Compile_Time_Error (Float16_Vec4'Size /= 64, "C Float16 Vec4 size");
+
+   function Mat_Get_Float16_Vec2
+     (Self : Mat_Handle; Row, Column : C_Int32; Result : access Float16_Vec2)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_float16_vec2";
+   function Mat_Set_Float16_Vec2
+     (Self        : Mat_Handle;
+      Row, Column : C_Int32;
+      Value       : access constant Float16_Vec2) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_float16_vec2";
+   function Mat_Get_Float16_Vec2_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Result          : access Float16_Vec2) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_float16_vec2_nd";
+   function Mat_Set_Float16_Vec2_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Value           : access constant Float16_Vec2) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_float16_vec2_nd";
+   --  Data carries two uint16_t binary16 encodings per element.
+   function Mat_Read_Float16_Vec2_Row
+     (Self          : Mat_Handle;
+      Row           : C_Int32;
+      Data          : System.Address;
+      Element_Count : C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_read_float16_vec2_row";
+   function Mat_Write_Float16_Vec2_Row
+     (Self          : Mat_Handle;
+      Row           : C_Int32;
+      Data          : System.Address;
+      Element_Count : C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_write_float16_vec2_row";
+
+   function Mat_Get_Float16_Vec4
+     (Self : Mat_Handle; Row, Column : C_Int32; Result : access Float16_Vec4)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_float16_vec4";
+   function Mat_Set_Float16_Vec4
+     (Self        : Mat_Handle;
+      Row, Column : C_Int32;
+      Value       : access constant Float16_Vec4) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_float16_vec4";
+   function Mat_Get_Float16_Vec4_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Result          : access Float16_Vec4) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_float16_vec4_nd";
+   function Mat_Set_Float16_Vec4_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Value           : access constant Float16_Vec4) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_float16_vec4_nd";
+   --  Data carries four uint16_t binary16 encodings per element.
+   function Mat_Read_Float16_Vec4_Row
+     (Self          : Mat_Handle;
+      Row           : C_Int32;
+      Data          : System.Address;
+      Element_Count : C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_read_float16_vec4_row";
+   function Mat_Write_Float16_Vec4_Row
+     (Self          : Mat_Handle;
+      Row           : C_Int32;
+      Data          : System.Address;
+      Element_Count : C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_write_float16_vec4_row";
+
    type UInt16_Vec3 is record
       Component_0 : C_UInt16;
       Component_1 : C_UInt16;
