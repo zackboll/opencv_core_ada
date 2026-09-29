@@ -3591,6 +3591,390 @@ package body OpenCV.Core.Internal.Typed_Access is
       Raise_On_Error (S, "Int32 Vec4 row write");
    end Write_Int32_Vec4_Row;
 
+   --  Signed Int8 C2/C3/C4. Int8_Value and C_Int8 are both Integer_8, so
+   --  each component conversion is an explicit, lossless value conversion
+   --  over the identical -128 .. 127 domain.
+
+   function To_C (Value : Int8_Value) return OpenCV.Internal.C_API.C_Int8
+   is (OpenCV.Internal.C_API.C_Int8 (Value));
+
+   function From_C (Value : OpenCV.Internal.C_API.C_Int8) return Int8_Value
+   is (Int8_Value (Value));
+
+   function Get_Int8_Vec2
+     (Image : Mat; Row, Column : Integer) return Int8_Vec2.Vector
+   is
+      V : aliased OpenCV.Internal.C_API.Int8_Vec2 := (others => 0);
+      S : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Get_Int8_Vec2
+          (Image.Handle,
+           OpenCV.Internal.C_API.C_Int32 (Row),
+           OpenCV.Internal.C_API.C_Int32 (Column),
+           V'Access);
+   begin
+      Raise_On_Error (S, "Int8 Vec2 read");
+      return (From_C (V.Component_0), From_C (V.Component_1));
+   end Get_Int8_Vec2;
+
+   procedure Set_Int8_Vec2
+     (Image : in out Mat; Row, Column : Integer; Value : Int8_Vec2.Vector)
+   is
+      V : aliased constant OpenCV.Internal.C_API.Int8_Vec2 :=
+        (To_C (Value (0)), To_C (Value (1)));
+      S : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Set_Int8_Vec2
+          (Image.Handle,
+           OpenCV.Internal.C_API.C_Int32 (Row),
+           OpenCV.Internal.C_API.C_Int32 (Column),
+           V'Access);
+   begin
+      Raise_On_Error (S, "Int8 Vec2 write");
+   end Set_Int8_Vec2;
+
+   function Get_Int8_Vec2
+     (Image : Mat; Indices : Index_Array) return Int8_Vec2.Vector
+   is
+      V : aliased OpenCV.Internal.C_API.Int8_Vec2 := (others => 0);
+      S : OpenCV.Internal.C_API.Status;
+   begin
+      if Indices'Length = 0 then
+         S :=
+           OpenCV.Internal.C_API.Mat_Get_Int8_Vec2_ND
+             (Image.Handle, 0, null, V'Access);
+      else
+         declare
+            C_Indices :
+              OpenCV.Internal.C_API.C_Int32_Array (0 .. Indices'Length - 1);
+         begin
+            Fill_C_Indices (Indices, C_Indices);
+            S :=
+              OpenCV.Internal.C_API.Mat_Get_Int8_Vec2_ND
+                (Image.Handle,
+                 OpenCV.Internal.C_API.C_Int32 (Indices'Length),
+                 C_Indices (C_Indices'First)'Access,
+                 V'Access);
+         end;
+      end if;
+      Raise_On_Error (S, "Int8 Vec2 N-D read");
+      return (From_C (V.Component_0), From_C (V.Component_1));
+   end Get_Int8_Vec2;
+
+   procedure Set_Int8_Vec2
+     (Image : in out Mat; Indices : Index_Array; Value : Int8_Vec2.Vector)
+   is
+      V : aliased constant OpenCV.Internal.C_API.Int8_Vec2 :=
+        (To_C (Value (0)), To_C (Value (1)));
+      S : OpenCV.Internal.C_API.Status;
+   begin
+      if Indices'Length = 0 then
+         S :=
+           OpenCV.Internal.C_API.Mat_Set_Int8_Vec2_ND
+             (Image.Handle, 0, null, V'Access);
+      else
+         declare
+            C_Indices :
+              OpenCV.Internal.C_API.C_Int32_Array (0 .. Indices'Length - 1);
+         begin
+            Fill_C_Indices (Indices, C_Indices);
+            S :=
+              OpenCV.Internal.C_API.Mat_Set_Int8_Vec2_ND
+                (Image.Handle,
+                 OpenCV.Internal.C_API.C_Int32 (Indices'Length),
+                 C_Indices (C_Indices'First)'Access,
+                 V'Access);
+         end;
+      end if;
+      Raise_On_Error (S, "Int8 Vec2 N-D write");
+   end Set_Int8_Vec2;
+
+   function Get_Int8_Vec3
+     (Image : Mat; Row, Column : Integer) return Int8_Vec3.Vector
+   is
+      V : aliased OpenCV.Internal.C_API.Int8_Vec3 := (others => 0);
+      S : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Get_Int8_Vec3
+          (Image.Handle,
+           OpenCV.Internal.C_API.C_Int32 (Row),
+           OpenCV.Internal.C_API.C_Int32 (Column),
+           V'Access);
+   begin
+      Raise_On_Error (S, "Int8 Vec3 read");
+      return
+        (From_C (V.Component_0),
+         From_C (V.Component_1),
+         From_C (V.Component_2));
+   end Get_Int8_Vec3;
+
+   procedure Set_Int8_Vec3
+     (Image : in out Mat; Row, Column : Integer; Value : Int8_Vec3.Vector)
+   is
+      V : aliased constant OpenCV.Internal.C_API.Int8_Vec3 :=
+        (To_C (Value (0)), To_C (Value (1)), To_C (Value (2)));
+      S : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Set_Int8_Vec3
+          (Image.Handle,
+           OpenCV.Internal.C_API.C_Int32 (Row),
+           OpenCV.Internal.C_API.C_Int32 (Column),
+           V'Access);
+   begin
+      Raise_On_Error (S, "Int8 Vec3 write");
+   end Set_Int8_Vec3;
+
+   function Get_Int8_Vec3
+     (Image : Mat; Indices : Index_Array) return Int8_Vec3.Vector
+   is
+      V : aliased OpenCV.Internal.C_API.Int8_Vec3 := (others => 0);
+      S : OpenCV.Internal.C_API.Status;
+   begin
+      if Indices'Length = 0 then
+         S :=
+           OpenCV.Internal.C_API.Mat_Get_Int8_Vec3_ND
+             (Image.Handle, 0, null, V'Access);
+      else
+         declare
+            C_Indices :
+              OpenCV.Internal.C_API.C_Int32_Array (0 .. Indices'Length - 1);
+         begin
+            Fill_C_Indices (Indices, C_Indices);
+            S :=
+              OpenCV.Internal.C_API.Mat_Get_Int8_Vec3_ND
+                (Image.Handle,
+                 OpenCV.Internal.C_API.C_Int32 (Indices'Length),
+                 C_Indices (C_Indices'First)'Access,
+                 V'Access);
+         end;
+      end if;
+      Raise_On_Error (S, "Int8 Vec3 N-D read");
+      return
+        (From_C (V.Component_0),
+         From_C (V.Component_1),
+         From_C (V.Component_2));
+   end Get_Int8_Vec3;
+
+   procedure Set_Int8_Vec3
+     (Image : in out Mat; Indices : Index_Array; Value : Int8_Vec3.Vector)
+   is
+      V : aliased constant OpenCV.Internal.C_API.Int8_Vec3 :=
+        (To_C (Value (0)), To_C (Value (1)), To_C (Value (2)));
+      S : OpenCV.Internal.C_API.Status;
+   begin
+      if Indices'Length = 0 then
+         S :=
+           OpenCV.Internal.C_API.Mat_Set_Int8_Vec3_ND
+             (Image.Handle, 0, null, V'Access);
+      else
+         declare
+            C_Indices :
+              OpenCV.Internal.C_API.C_Int32_Array (0 .. Indices'Length - 1);
+         begin
+            Fill_C_Indices (Indices, C_Indices);
+            S :=
+              OpenCV.Internal.C_API.Mat_Set_Int8_Vec3_ND
+                (Image.Handle,
+                 OpenCV.Internal.C_API.C_Int32 (Indices'Length),
+                 C_Indices (C_Indices'First)'Access,
+                 V'Access);
+         end;
+      end if;
+      Raise_On_Error (S, "Int8 Vec3 N-D write");
+   end Set_Int8_Vec3;
+
+   function Get_Int8_Vec4
+     (Image : Mat; Row, Column : Integer) return Int8_Vec4.Vector
+   is
+      V : aliased OpenCV.Internal.C_API.Int8_Vec4 := (others => 0);
+      S : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Get_Int8_Vec4
+          (Image.Handle,
+           OpenCV.Internal.C_API.C_Int32 (Row),
+           OpenCV.Internal.C_API.C_Int32 (Column),
+           V'Access);
+   begin
+      Raise_On_Error (S, "Int8 Vec4 read");
+      return
+        (From_C (V.Component_0),
+         From_C (V.Component_1),
+         From_C (V.Component_2),
+         From_C (V.Component_3));
+   end Get_Int8_Vec4;
+
+   procedure Set_Int8_Vec4
+     (Image : in out Mat; Row, Column : Integer; Value : Int8_Vec4.Vector)
+   is
+      V : aliased constant OpenCV.Internal.C_API.Int8_Vec4 :=
+        (To_C (Value (0)),
+         To_C (Value (1)),
+         To_C (Value (2)),
+         To_C (Value (3)));
+      S : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Set_Int8_Vec4
+          (Image.Handle,
+           OpenCV.Internal.C_API.C_Int32 (Row),
+           OpenCV.Internal.C_API.C_Int32 (Column),
+           V'Access);
+   begin
+      Raise_On_Error (S, "Int8 Vec4 write");
+   end Set_Int8_Vec4;
+
+   function Get_Int8_Vec4
+     (Image : Mat; Indices : Index_Array) return Int8_Vec4.Vector
+   is
+      V : aliased OpenCV.Internal.C_API.Int8_Vec4 := (others => 0);
+      S : OpenCV.Internal.C_API.Status;
+   begin
+      if Indices'Length = 0 then
+         S :=
+           OpenCV.Internal.C_API.Mat_Get_Int8_Vec4_ND
+             (Image.Handle, 0, null, V'Access);
+      else
+         declare
+            C_Indices :
+              OpenCV.Internal.C_API.C_Int32_Array (0 .. Indices'Length - 1);
+         begin
+            Fill_C_Indices (Indices, C_Indices);
+            S :=
+              OpenCV.Internal.C_API.Mat_Get_Int8_Vec4_ND
+                (Image.Handle,
+                 OpenCV.Internal.C_API.C_Int32 (Indices'Length),
+                 C_Indices (C_Indices'First)'Access,
+                 V'Access);
+         end;
+      end if;
+      Raise_On_Error (S, "Int8 Vec4 N-D read");
+      return
+        (From_C (V.Component_0),
+         From_C (V.Component_1),
+         From_C (V.Component_2),
+         From_C (V.Component_3));
+   end Get_Int8_Vec4;
+
+   procedure Set_Int8_Vec4
+     (Image : in out Mat; Indices : Index_Array; Value : Int8_Vec4.Vector)
+   is
+      V : aliased constant OpenCV.Internal.C_API.Int8_Vec4 :=
+        (To_C (Value (0)),
+         To_C (Value (1)),
+         To_C (Value (2)),
+         To_C (Value (3)));
+      S : OpenCV.Internal.C_API.Status;
+   begin
+      if Indices'Length = 0 then
+         S :=
+           OpenCV.Internal.C_API.Mat_Set_Int8_Vec4_ND
+             (Image.Handle, 0, null, V'Access);
+      else
+         declare
+            C_Indices :
+              OpenCV.Internal.C_API.C_Int32_Array (0 .. Indices'Length - 1);
+         begin
+            Fill_C_Indices (Indices, C_Indices);
+            S :=
+              OpenCV.Internal.C_API.Mat_Set_Int8_Vec4_ND
+                (Image.Handle,
+                 OpenCV.Internal.C_API.C_Int32 (Indices'Length),
+                 C_Indices (C_Indices'First)'Access,
+                 V'Access);
+         end;
+      end if;
+      Raise_On_Error (S, "Int8 Vec4 N-D write");
+   end Set_Int8_Vec4;
+
+   procedure Read_Int8_Vec2_Row
+     (Image : Mat; Row : Integer; Data : out Int8_Row_Buffer)
+   is
+      pragma
+        Warnings
+          (GNAT,
+           Off,
+           Data,
+           Reason => "Imported C row read writes through Data's address");
+      S : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Read_Int8_Vec2_Row
+          (Image.Handle,
+           OpenCV.Internal.C_API.C_Int32 (Row),
+           Address_Of (Data),
+           OpenCV.Internal.C_API.C_UInt64 (Data'Length / 2));
+   begin
+      Raise_On_Error (S, "Int8 Vec2 row read");
+   end Read_Int8_Vec2_Row;
+
+   procedure Write_Int8_Vec2_Row
+     (Image : in out Mat; Row : Integer; Data : Int8_Row_Buffer)
+   is
+      S : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Write_Int8_Vec2_Row
+          (Image.Handle,
+           OpenCV.Internal.C_API.C_Int32 (Row),
+           Address_Of (Data),
+           OpenCV.Internal.C_API.C_UInt64 (Data'Length / 2));
+   begin
+      Raise_On_Error (S, "Int8 Vec2 row write");
+   end Write_Int8_Vec2_Row;
+
+   procedure Read_Int8_Vec3_Row
+     (Image : Mat; Row : Integer; Data : out Int8_Row_Buffer)
+   is
+      pragma
+        Warnings
+          (GNAT,
+           Off,
+           Data,
+           Reason => "Imported C row read writes through Data's address");
+      S : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Read_Int8_Vec3_Row
+          (Image.Handle,
+           OpenCV.Internal.C_API.C_Int32 (Row),
+           Address_Of (Data),
+           OpenCV.Internal.C_API.C_UInt64 (Data'Length / 3));
+   begin
+      Raise_On_Error (S, "Int8 Vec3 row read");
+   end Read_Int8_Vec3_Row;
+
+   procedure Write_Int8_Vec3_Row
+     (Image : in out Mat; Row : Integer; Data : Int8_Row_Buffer)
+   is
+      S : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Write_Int8_Vec3_Row
+          (Image.Handle,
+           OpenCV.Internal.C_API.C_Int32 (Row),
+           Address_Of (Data),
+           OpenCV.Internal.C_API.C_UInt64 (Data'Length / 3));
+   begin
+      Raise_On_Error (S, "Int8 Vec3 row write");
+   end Write_Int8_Vec3_Row;
+
+   procedure Read_Int8_Vec4_Row
+     (Image : Mat; Row : Integer; Data : out Int8_Row_Buffer)
+   is
+      pragma
+        Warnings
+          (GNAT,
+           Off,
+           Data,
+           Reason => "Imported C row read writes through Data's address");
+      S : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Read_Int8_Vec4_Row
+          (Image.Handle,
+           OpenCV.Internal.C_API.C_Int32 (Row),
+           Address_Of (Data),
+           OpenCV.Internal.C_API.C_UInt64 (Data'Length / 4));
+   begin
+      Raise_On_Error (S, "Int8 Vec4 row read");
+   end Read_Int8_Vec4_Row;
+
+   procedure Write_Int8_Vec4_Row
+     (Image : in out Mat; Row : Integer; Data : Int8_Row_Buffer)
+   is
+      S : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.Mat_Write_Int8_Vec4_Row
+          (Image.Handle,
+           OpenCV.Internal.C_API.C_Int32 (Row),
+           Address_Of (Data),
+           OpenCV.Internal.C_API.C_UInt64 (Data'Length / 4));
+   begin
+      Raise_On_Error (S, "Int8 Vec4 row write");
+   end Write_Int8_Vec4_Row;
+
    --  Float16 C2/C4. Components are converted only with Float16_Bits /
    --  Float16_From_Bits, never numerically, so every binary16 encoding
    --  (signed zeros, subnormals, infinities, NaN payloads) is preserved.

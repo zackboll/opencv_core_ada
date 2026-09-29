@@ -47,6 +47,7 @@ with Vec3_ND_Access_Tests;
 with UInt16_Vec3_Tests;
 with Int16_Vector_Tests;
 with Int32_Vector_Tests;
+with Int8_Vector_Tests;
 with Unsigned_Vec2_Tests;
 with Vec2_Access_Tests;
 with Float64_Vec3_Tests;
@@ -112,6 +113,7 @@ package body Mat_Tests is
       Result.Add_Test (UInt16_Vec3_Tests.Suite);
       Result.Add_Test (Int16_Vector_Tests.Suite);
       Result.Add_Test (Int32_Vector_Tests.Suite);
+      Result.Add_Test (Int8_Vector_Tests.Suite);
       Result.Add_Test (Unsigned_Vec2_Tests.Suite);
       Result.Add_Test (Vec2_Access_Tests.Suite);
       Result.Add_Test (Float64_Vec3_Tests.Suite);

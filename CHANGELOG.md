@@ -1,6 +1,30 @@
 # Changelog
 
 ## Unreleased
+- Completed signed Int8 C2/C3/C4 typed and zero-copy coverage with
+  `Int8_Vec2`/`Int8_Vec3`/`Int8_Vec4` and matching `_Access`, `_Row_Access`,
+  `_Buffer_Access`, and `_Mat_View` packages: 2-D/N-D Get/Set, copied and
+  leased zero-copy rows, continuous whole-buffer borrowing, and
+  writable/read-only packed and strided 2-D/N-D caller-owned views. Int8 now
+  has complete C1/C2/C3/C4 coverage, so every supported depth (UInt8, Int8,
+  UInt16, Int16, Int32, Float16, Float32, Float64) is complete for C1–C4
+  (32 typed layouts, 24 vector layouts); C5+ remains out of scope. Storage is
+  OpenCV `CV_8SC2/C3/C4` with native scalar `schar` (`signed char` in
+  4.1/4.10, `int8_t` in 5.0) held as `cv::Vec<schar, N>`; OpenCV defines no
+  named signed-8 vector alias and the unsigned `Vec2b`/`Vec3b`/`Vec4b` are not
+  used. The new C ABI records (`opencv_core_int8_vec2`/`_vec3`/`_vec4`) and
+  row buffers use fixed-width `int8_t`; compile-time assertions prove that
+  `schar` and `int8_t` share exactly the signed `-128 .. 127` one-byte domain
+  and that record/native/`CV_ELEM_SIZE` layouts are 2/3/4 bytes with
+  alignment 1, and every component is converted explicitly. Vec2/Vec4 reuse
+  the existing native/ABI-separated row helpers; Vec3 follows the dedicated
+  Vec3 family. Exhaustive tests carry all 256 signed values through every
+  component offset over typed, copied-row, whole-buffer, external-view and
+  OpenCV Split/Convert_To paths; same-byte wrong-layout and exactly typed raw
+  geometry tests, shared N-D inventories, and Merge/Split, Set_To, Transform
+  (identity and C2 -> C3) and existing `Add` interoperability cover all three
+  widths. No arithmetic production code changed.
+
 - Completed Float16 C2/C4 typed and zero-copy coverage with
   `Float16_Vec2`/`Float16_Vec4` and matching `_Access`, `_Row_Access`,
   `_Buffer_Access`, and `_Mat_View` packages: exact-bit 2-D/N-D Get/Set,
