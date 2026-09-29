@@ -26,6 +26,9 @@ package body Sparse_Tests is
    use type C.Status;
    use type C.Mat_Handle;
    use type C.Sparse_Mat_Handle;
+   use type C.Sparse_Iterator_Handle;
+   use type C.C_Int32_Array;
+   use type OpenCV.Core.Index_Array;
    use type C.C_UInt8;
    use type C.C_UInt16;
    use type OpenCV.Core.Mat_Size;
@@ -561,9 +564,467 @@ package body Sparse_Tests is
       C.Sparse_Destroy (C.Null_Sparse_Mat_Handle);
    end Raw_Handles_And_Unallocated;
 
+   procedure Stored_Entries (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Empty : constant S.Sparse_Mat :=
+        S.Create ((3, 4), (OpenCV.Core.UInt8, 1));
+      Image : S.Sparse_Mat := S.Create ((3, 4), (OpenCV.Core.UInt8, 1));
+      Alias : S.Sparse_Mat;
+      Seen  : array (1 .. 3) of Boolean := (others => False);
+      Count : Natural := 0;
+      procedure Visit
+        (Indices : OpenCV.Core.Index_Array; Value : OpenCV.UInt8_Value)
+      is
+         Slot : Positive;
+      begin
+         Assert (Indices'First = 1 and then Indices'Last = 2, "2D bounds");
+         if Indices = (2, 3) and then Value = 14 then
+            Slot := 1;
+         elsif Indices = (0, 1) and then Value = 0 then
+            Slot := 2;
+         elsif Indices = (1, 2) and then Value = 29 then
+            Slot := 3;
+         else
+            Assert (False, "unexpected stored entry");
+            return;
+         end if;
+         Assert (not Seen (Slot), "duplicate stored entry");
+         Seen (Slot) := True;
+         Count := Count + 1;
+      end Visit;
+   begin
+      U8.For_Each_Stored (Empty, Visit'Access);
+      Assert (Count = 0, "allocated empty traversal");
+      U8.Set (Image, (2, 3), 14);
+      U8.Set (Image, (0, 1), 0);
+      U8.Set (Image, (1, 2), 29);
+      Alias := Image;
+      Assert
+        (Image.Contains ((0, 1)) and then not Image.Contains ((0, 0)),
+         "explicit zero node and missing node");
+      U8.For_Each_Stored (Alias, Visit'Access);
+      Assert
+        (Count = Natural (Image.Stored_Element_Count)
+         and then (for all Found of Seen => Found),
+         "all shallow-shared nodes");
+   end Stored_Entries;
+
+   procedure Stored_Depths (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Shape : constant OpenCV.Core.Dimension_Array := (1 => 2, 2 => 2);
+      Count : Natural := 0;
+      procedure Check_U8 (I : OpenCV.Core.Index_Array; V : OpenCV.UInt8_Value)
+      is
+      begin
+         Assert (I = (1, 0) and then V = 255, "uint8 iteration");
+         Count := Count + 1;
+      end Check_U8;
+      procedure Check_I8 (I : OpenCV.Core.Index_Array; V : OpenCV.Int8_Value)
+      is
+      begin
+         Assert (I = (1, 0) and then V = -128, "int8 iteration");
+         Count := Count + 1;
+      end Check_I8;
+      procedure Check_U16
+        (I : OpenCV.Core.Index_Array; V : OpenCV.UInt16_Value) is
+      begin
+         Assert (I = (1, 0) and then V = 65535, "uint16 iteration");
+         Count := Count + 1;
+      end Check_U16;
+      procedure Check_I16 (I : OpenCV.Core.Index_Array; V : OpenCV.Int16_Value)
+      is
+      begin
+         Assert (I = (1, 0) and then V = -32768, "int16 iteration");
+         Count := Count + 1;
+      end Check_I16;
+      procedure Check_I32 (I : OpenCV.Core.Index_Array; V : OpenCV.Int32_Value)
+      is
+      begin
+         Assert (I = (1, 0) and then V = -2_147_483_648, "int32 iteration");
+         Count := Count + 1;
+      end Check_I32;
+      procedure Check_F32
+        (I : OpenCV.Core.Index_Array; V : OpenCV.Float32_Value) is
+      begin
+         Assert (I = (1, 0) and then V = -3.25, "float32 iteration");
+         Count := Count + 1;
+      end Check_F32;
+      procedure Check_F64
+        (I : OpenCV.Core.Index_Array; V : OpenCV.Float64_Value) is
+      begin
+         Assert (I = (1, 0) and then V = 1.25E100, "float64 iteration");
+         Count := Count + 1;
+      end Check_F64;
+   begin
+      declare
+         M : S.Sparse_Mat := S.Create (Shape, (OpenCV.Core.UInt8, 1));
+      begin
+         U8.Set (M, (1, 0), 255);
+         U8.For_Each_Stored (M, Check_U8'Access);
+      end;
+      declare
+         M : S.Sparse_Mat := S.Create (Shape, (OpenCV.Core.Int8, 1));
+      begin
+         S.Int8_Access.Set (M, (1, 0), -128);
+         S.Int8_Access.For_Each_Stored (M, Check_I8'Access);
+      end;
+      declare
+         M : S.Sparse_Mat := S.Create (Shape, (OpenCV.Core.UInt16, 1));
+      begin
+         S.UInt16_Access.Set (M, (1, 0), 65535);
+         S.UInt16_Access.For_Each_Stored (M, Check_U16'Access);
+      end;
+      declare
+         M : S.Sparse_Mat := S.Create (Shape, (OpenCV.Core.Int16, 1));
+      begin
+         S.Int16_Access.Set (M, (1, 0), -32768);
+         S.Int16_Access.For_Each_Stored (M, Check_I16'Access);
+      end;
+      declare
+         M : S.Sparse_Mat := S.Create (Shape, (OpenCV.Core.Int32, 1));
+      begin
+         S.Int32_Access.Set (M, (1, 0), -2_147_483_648);
+         S.Int32_Access.For_Each_Stored (M, Check_I32'Access);
+      end;
+      declare
+         M : S.Sparse_Mat := S.Create (Shape, (OpenCV.Core.Float32, 1));
+      begin
+         S.Float32_Access.Set (M, (1, 0), -3.25);
+         S.Float32_Access.For_Each_Stored (M, Check_F32'Access);
+      end;
+      declare
+         M : S.Sparse_Mat := S.Create (Shape, (OpenCV.Core.Float64, 1));
+      begin
+         S.Float64_Access.Set (M, (1, 0), 1.25E100);
+         S.Float64_Access.For_Each_Stored (M, Check_F64'Access);
+      end;
+      Assert (Count = 7, "one callback for each non-half depth");
+   end Stored_Depths;
+
+   procedure Stored_Half_And_ND (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Bits  :
+        constant array (Natural range 0 .. 4) of Interfaces.Unsigned_16 :=
+          (16#0000#, 16#8000#, 16#0001#, 16#7C00#, 16#7E05#);
+      Image : S.Sparse_Mat :=
+        S.Create ((2, 2, 2, 2, 5), (OpenCV.Core.Float16, 1));
+      Seen  : array (Bits'Range) of Boolean := (others => False);
+      Count : Natural := 0;
+      procedure Visit
+        (I : OpenCV.Core.Index_Array; V : OpenCV.Core.Float16_Value) is
+      begin
+         Assert (I'First = 1 and then I'Last = 5, "5D bounds");
+         Assert (I (1 .. 4) = (0, 1, 0, 1), "5D coordinates");
+         Assert (I (5) <= 4, "5D last index");
+         Assert (not Seen (Natural (I (5))), "duplicate half");
+         Seen (Natural (I (5))) := True;
+         Assert
+           (OpenCV.Core.Float16_Bits (V) = Bits (Natural (I (5))),
+            "exact half encoding");
+         Count := Count + 1;
+      end Visit;
+   begin
+      for N in Bits'Range loop
+         S.Float16_Access.Set
+           (Image,
+            (0, 1, 0, 1, OpenCV.Size_Coordinate (N)),
+            OpenCV.Core.Float16_From_Bits (Bits (N)));
+      end loop;
+      S.Float16_Access.For_Each_Stored (Image, Visit'Access);
+      Assert
+        (Count = 5 and then (for all B of Seen => B), "five exact halves");
+   end Stored_Half_And_ND;
+
+   procedure Stored_Max_Dimensions (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Extents     : constant OpenCV.Core.Dimension_Array (1 .. 32) :=
+        (others => 2);
+      Image       : S.Sparse_Mat := S.Create (Extents, (OpenCV.Core.UInt8, 1));
+      Coordinates : OpenCV.Core.Index_Array (1 .. 32) := (others => 0);
+      Seen        : Natural := 0;
+      procedure Visit (I : OpenCV.Core.Index_Array; V : OpenCV.UInt8_Value) is
+      begin
+         Assert
+           (I'First = 1
+            and then I'Last = 32
+            and then I = Coordinates
+            and then V = 71,
+            "32D stored node");
+         Seen := Seen + 1;
+      end Visit;
+   begin
+      Coordinates (32) := 1;
+      U8.Set (Image, Coordinates, 71);
+      U8.For_Each_Stored (Image, Visit'Access);
+      Assert (Seen = 1, "32D visit count");
+   end Stored_Max_Dimensions;
+
+   procedure Stored_Errors (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Empty           : S.Sparse_Mat;
+      Wrong           : constant S.Sparse_Mat :=
+        S.Create ((2, 2), (OpenCV.Core.Int16, 1));
+      Multi           : constant S.Sparse_Mat :=
+        S.Create ((2, 2), (OpenCV.Core.UInt8, 2));
+      Image           : S.Sparse_Mat :=
+        S.Create ((2, 2), (OpenCV.Core.UInt8, 1));
+      Count           : Natural := 0;
+      Callback_Failed : exception;
+      procedure Visit (I : OpenCV.Core.Index_Array; V : OpenCV.UInt8_Value) is
+         pragma Unreferenced (I, V);
+      begin
+         Count := Count + 1;
+      end Visit;
+      procedure Explode (I : OpenCV.Core.Index_Array; V : OpenCV.UInt8_Value)
+      is
+         pragma Unreferenced (I, V);
+      begin
+         Count := Count + 1;
+         raise Callback_Failed;
+      end Explode;
+   begin
+      begin
+         U8.For_Each_Stored (Empty, Visit'Access);
+         Assert (False, "unallocated accepted");
+      exception
+         when OpenCV.OpenCV_Error =>
+            null;
+      end;
+      begin
+         U8.For_Each_Stored (Wrong, Visit'Access);
+         Assert (False, "wrong depth accepted");
+      exception
+         when OpenCV.OpenCV_Error =>
+            null;
+      end;
+      begin
+         U8.For_Each_Stored (Multi, Visit'Access);
+         Assert (False, "C2 accepted");
+      exception
+         when OpenCV.OpenCV_Error =>
+            null;
+      end;
+      Assert (Count = 0, "rejected callbacks never run");
+      U8.Set (Image, (0, 0), 1);
+      U8.Set (Image, (1, 1), 2);
+      begin
+         U8.For_Each_Stored (Image, Explode'Access);
+         Assert (False, "callback did not raise");
+      exception
+         when Callback_Failed =>
+            null;
+      end;
+      Assert
+        (Count = 1 and then Image.Stored_Element_Count = 2,
+         "callback exception stops traversal");
+      Count := 0;
+      U8.For_Each_Stored (Image, Visit'Access);
+      Assert
+        (Count = 2 and then U8.Get (Image, (1, 1)) = 2,
+         "source usable after callback exception");
+   end Stored_Errors;
+
+   procedure Raw_Stored_Iterator (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Source, Wrong, Multi : aliased C.Sparse_Mat_Handle :=
+        C.Null_Sparse_Mat_Handle;
+      Half                 : aliased C.Sparse_Mat_Handle :=
+        C.Null_Sparse_Mat_Handle;
+      It                   : aliased C.Sparse_Iterator_Handle :=
+        C.Null_Sparse_Iterator_Handle;
+      Sizes                : aliased C.C_Int32_Array := (0 => 2, 1 => 2);
+      Node_Index           : aliased C.C_Int32_Array := (0 => 1, 1 => 0);
+      Indices              : aliased C.C_Int32_Array (0 .. 2) :=
+        (others => -1);
+      Value                : aliased C.C_UInt8 := 99;
+      Found                : aliased C.C_UInt8 := 99;
+   begin
+      Assert
+        (C.Sparse_Iterator_Create (C.Null_Sparse_Mat_Handle, It'Access)
+         = C.Error_Invalid_Argument
+         and then It = C.Null_Sparse_Iterator_Handle,
+         "failed create clears handle");
+      Assert
+        (C.Sparse_Iterator_Create (C.Null_Sparse_Mat_Handle, null)
+         = C.Error_Invalid_Argument,
+         "null create output");
+      Assert
+        (C.Sparse_Create_ND (2, Sizes (0)'Access, 0, 1, Source'Access)
+         = C.Success,
+         "raw iterator source");
+      Assert
+        (C.Sparse_Create_ND (2, Sizes (0)'Access, 1, 1, Wrong'Access)
+         = C.Success,
+         "raw wrong depth");
+      Assert
+        (C.Sparse_Create_ND (2, Sizes (0)'Access, 0, 2, Multi'Access)
+         = C.Success,
+         "raw C2");
+      Assert
+        (C.Sparse_Create_ND (2, Sizes (0)'Access, 7, 1, Half'Access)
+         = C.Success,
+         "raw Float16 layout");
+      Assert
+        (C.Sparse_Set_UInt8 (Source, 2, Node_Index (0)'Access, 37) = C.Success,
+         "raw stored node");
+      Assert
+        (C.Sparse_Iterator_Create (Source, It'Access) = C.Success,
+         "create raw iterator");
+      C.Sparse_Destroy (Source);
+      Source := C.Null_Sparse_Mat_Handle;
+      Assert
+        (C.Sparse_Iterator_Next_UInt8
+           (C.Null_Sparse_Iterator_Handle,
+            2,
+            Indices (0)'Access,
+            Value'Access,
+            Found'Access)
+         = C.Error_Invalid_Argument
+         and then Value = 0
+         and then Found = 0,
+         "null iterator clears outputs");
+      Value := 99;
+      Found := 99;
+      Assert
+        (C.Sparse_Iterator_Next_UInt8 (It, 2, null, Value'Access, Found'Access)
+         = C.Error_Invalid_Argument
+         and then Value = 0
+         and then Found = 0,
+         "null indices");
+      Found := 99;
+      Assert
+        (C.Sparse_Iterator_Next_UInt8
+           (It, 2, Indices (0)'Access, null, Found'Access)
+         = C.Error_Invalid_Argument
+         and then Found = 0,
+         "null scalar");
+      Value := 99;
+      Assert
+        (C.Sparse_Iterator_Next_UInt8
+           (It, 2, Indices (0)'Access, Value'Access, null)
+         = C.Error_Invalid_Argument
+         and then Value = 0,
+         "null found");
+      Value := 99;
+      Found := 99;
+      Assert
+        (C.Sparse_Iterator_Next_UInt8
+           (It, 3, Indices (0)'Access, Value'Access, Found'Access)
+         = C.Error_Invalid_Argument
+         and then Value = 0
+         and then Found = 0,
+         "wrong dimension without index write");
+      Assert (Indices (0 .. 1) = (-1, -1), "failure leaves indices intact");
+      declare
+         Signed_Value : aliased C.C_Int8 := 99;
+         Wide_Value   : aliased C.C_UInt16 := 99;
+      begin
+         Assert
+           (C.Sparse_Iterator_Next_Int8
+              (It, 2, Indices (0)'Access, Signed_Value'Access, Found'Access)
+            = C.Error_Invalid_Argument
+            and then Signed_Value = 0
+            and then Found = 0,
+            "same-size wrong depth");
+         Assert
+           (C.Sparse_Iterator_Next_UInt16
+              (It, 2, Indices (0)'Access, Wide_Value'Access, Found'Access)
+            = C.Error_Invalid_Argument
+            and then Wide_Value = 0
+            and then Found = 0,
+            "wrong scalar size");
+      end;
+      Assert
+        (C.Sparse_Iterator_Next_UInt8
+           (It, 2, Indices (0)'Access, Value'Access, Found'Access)
+         = C.Success
+         and then Found = 1
+         and then Value = 37
+         and then Indices (0 .. 1) = (1, 0),
+         "rejected calls do not advance");
+      Value := 99;
+      Found := 99;
+      Assert
+        (C.Sparse_Iterator_Next_UInt8
+           (It, 2, Indices (0)'Access, Value'Access, Found'Access)
+         = C.Success
+         and then Found = 0
+         and then Value = 0,
+         "end does not advance and clears scalar");
+      Assert
+        (C.Sparse_Iterator_Next_UInt8
+           (It, 2, Indices (0)'Access, Value'Access, Found'Access)
+         = C.Success
+         and then Found = 0,
+         "repeated end remains at end");
+      C.Sparse_Iterator_Destroy (It);
+      It := C.Null_Sparse_Iterator_Handle;
+      Assert
+        (C.Sparse_Iterator_Create (Wrong, It'Access) = C.Success,
+         "wrong depth iterator creation");
+      Assert
+        (C.Sparse_Iterator_Next_UInt8
+           (It, 2, Indices (0)'Access, Value'Access, Found'Access)
+         = C.Error_Invalid_Argument
+         and then Value = 0
+         and then Found = 0,
+         "raw wrong depth");
+      C.Sparse_Iterator_Destroy (It);
+      It := C.Null_Sparse_Iterator_Handle;
+      Assert
+        (C.Sparse_Iterator_Create (Multi, It'Access) = C.Success,
+         "C2 iterator creation");
+      Assert
+        (C.Sparse_Iterator_Next_UInt8
+           (It, 2, Indices (0)'Access, Value'Access, Found'Access)
+         = C.Error_Invalid_Argument,
+         "C2 raw layout");
+      C.Sparse_Iterator_Destroy (It);
+      It := C.Null_Sparse_Iterator_Handle;
+      Assert
+        (C.Sparse_Iterator_Create (Half, It'Access) = C.Success,
+         "Float16 iterator creation");
+      declare
+         Bits : aliased C.C_UInt16 := 99;
+      begin
+         Assert
+           (C.Sparse_Iterator_Next_UInt16
+              (It, 2, Indices (0)'Access, Bits'Access, Found'Access)
+            = C.Error_Invalid_Argument
+            and then Bits = 0
+            and then Found = 0,
+            "same-size Float16 versus UInt16");
+      end;
+      C.Sparse_Iterator_Destroy (It);
+      C.Sparse_Iterator_Destroy (C.Null_Sparse_Iterator_Handle);
+      C.Sparse_Destroy (Source);
+      C.Sparse_Destroy (Wrong);
+      C.Sparse_Destroy (Multi);
+      C.Sparse_Destroy (Half);
+   end Raw_Stored_Iterator;
+
    Result : aliased AUnit.Test_Suites.Test_Suite;
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
+      Result.Add_Test
+        (Caller.Create
+           ("Sparse stored entries and aliases", Stored_Entries'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sparse all stored scalar depths", Stored_Depths'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sparse stored 5D exact half bits", Stored_Half_And_ND'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sparse stored 32D boundary", Stored_Max_Dimensions'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sparse stored validation and callback cleanup",
+            Stored_Errors'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sparse raw iterator safety", Raw_Stored_Iterator'Access));
       Result.Add_Test
         (Caller.Create
            ("Sparse default, metadata, zero node", Metadata_And_Zero'Access));

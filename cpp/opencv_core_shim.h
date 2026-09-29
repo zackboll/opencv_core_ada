@@ -24,6 +24,26 @@ typedef int32_t opencv_core_status;
 
 typedef struct opencv_core_mat_handle opencv_core_mat_handle;
 typedef struct opencv_core_sparse_mat_handle opencv_core_sparse_mat_handle;
+typedef struct opencv_core_sparse_const_iterator_handle opencv_core_sparse_const_iterator_handle;
+/* The iterator retains a shallow owner header. Destroy after traversal; do not
+   structurally mutate the source or its shallow aliases while it is active. */
+opencv_core_status opencv_core_sparse_const_iterator_create(
+    const opencv_core_sparse_mat_handle *source,
+    opencv_core_sparse_const_iterator_handle **out);
+void opencv_core_sparse_const_iterator_destroy(opencv_core_sparse_const_iterator_handle *self);
+#define OPENCV_CORE_SPARSE_ITERATOR_NEXT(name, scalar) \
+opencv_core_status opencv_core_sparse_const_iterator_next_##name( \
+    opencv_core_sparse_const_iterator_handle *iterator, int32_t dims, \
+    int32_t *indices, scalar *value, uint8_t *has_value);
+OPENCV_CORE_SPARSE_ITERATOR_NEXT(uint8, uint8_t)
+OPENCV_CORE_SPARSE_ITERATOR_NEXT(int8, int8_t)
+OPENCV_CORE_SPARSE_ITERATOR_NEXT(uint16, uint16_t)
+OPENCV_CORE_SPARSE_ITERATOR_NEXT(int16, int16_t)
+OPENCV_CORE_SPARSE_ITERATOR_NEXT(int32, int32_t)
+OPENCV_CORE_SPARSE_ITERATOR_NEXT(float16, uint16_t)
+OPENCV_CORE_SPARSE_ITERATOR_NEXT(float32, float)
+OPENCV_CORE_SPARSE_ITERATOR_NEXT(float64, double)
+#undef OPENCV_CORE_SPARSE_ITERATOR_NEXT
 opencv_core_status opencv_core_sparse_create(opencv_core_sparse_mat_handle **out);
 opencv_core_status opencv_core_sparse_create_nd(int32_t dims, const int32_t *sizes,
     int32_t depth, int32_t channels, opencv_core_sparse_mat_handle **out);

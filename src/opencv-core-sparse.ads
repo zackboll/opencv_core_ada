@@ -37,6 +37,7 @@ private
    procedure Check_Indices (Self : Sparse_Mat; Indices : Index_Array);
    procedure Check_Layout
      (Self : Sparse_Mat; Indices : Index_Array; Expected : Depth_Type);
+   procedure Check_Layout (Self : Sparse_Mat; Expected : Depth_Type);
    function C_Indices
      (Indices : Index_Array) return OpenCV.Internal.C_API.C_Int32_Array;
    procedure Check (Status : OpenCV.Internal.C_API.Status; Operation : String);

@@ -44,6 +44,14 @@ struct opencv_core_sparse_mat_handle {
         : value(source) {}
 };
 
+struct opencv_core_sparse_const_iterator_handle {
+    cv::SparseMat owner;
+    cv::SparseMatConstIterator current;
+    cv::SparseMatConstIterator finish;
+    explicit opencv_core_sparse_const_iterator_handle(const cv::SparseMat &source)
+        : owner(source), current(owner.begin()), finish(owner.end()) {}
+};
+
 enum class opencv_core_file_storage_structure_kind { map, sequence };
 
 struct opencv_core_file_storage_handle {
@@ -1995,6 +2003,78 @@ void reduce_arg_extremum_fallback(const cv::Mat &source, cv::Mat &result,
 } // namespace
 
 extern "C" {
+
+opencv_core_status opencv_core_sparse_const_iterator_create(
+    const opencv_core_sparse_mat_handle *source,
+    opencv_core_sparse_const_iterator_handle **out) {
+    clear_error();
+    if (!out) return invalid_argument("null sparse iterator output");
+    *out = nullptr;
+    if (!source || !source->value.hdr) return invalid_argument("unallocated sparse source");
+    try {
+        *out = new opencv_core_sparse_const_iterator_handle(source->value);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+void opencv_core_sparse_const_iterator_destroy(opencv_core_sparse_const_iterator_handle *self) {
+    delete self;
+}
+
+} // extern "C": template implementation requires C++ linkage
+namespace {
+template<typename T> opencv_core_status sparse_iterator_next(
+    opencv_core_sparse_const_iterator_handle *it, int32_t dims,
+    int32_t *indices, T *value, uint8_t *has_value, int32_t depth) {
+    clear_error();
+    if (value) std::memset(value, 0, sizeof(T));
+    if (has_value) *has_value = 0;
+    if (!it || !indices || !value || !has_value)
+        return invalid_argument("null sparse iterator argument");
+    const cv::SparseMat &owner = it->owner;
+    // ABI safety: idx has MAX_DIM slots; mismatched dimensions can overread
+    // the node or overwrite a caller buffer sized for a different shape.
+    if (!owner.hdr || dims < 1 || dims > static_cast<int32_t>(cv::SparseMat::MAX_DIM) ||
+        dims != owner.dims()) return invalid_argument("invalid sparse iterator dimensions");
+    // ABI safety: scalar byte copying on a different layout can read past
+    // the node value or interpret bytes from another channel/depth.
+    if (owner.depth() != depth || owner.channels() != 1 || owner.elemSize() != sizeof(T))
+        return invalid_argument("incorrect sparse iterator scalar layout");
+    try {
+        if (it->current == it->finish) return OPENCV_CORE_OK;
+        const cv::SparseMat::Node *node = it->current.node();
+        if (!node) return invalid_argument("invalid sparse iterator node");
+        // SparseMat::Node::idx is native int[]; supported platforms require
+        // 32-bit int for the fixed-width C ABI index representation.
+        static_assert(sizeof(int) == sizeof(int32_t), "sparse index ABI width");
+        int32_t copied_indices[cv::SparseMat::MAX_DIM];
+        T copied_value;
+        std::memcpy(copied_indices, node->idx, static_cast<std::size_t>(dims) * sizeof(int32_t));
+        std::memcpy(&copied_value, it->current.ptr, sizeof(T));
+        ++it->current;
+        std::memcpy(indices, copied_indices, static_cast<std::size_t>(dims) * sizeof(int32_t));
+        std::memcpy(value, &copied_value, sizeof(T));
+        *has_value = 1;
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+} // namespace
+extern "C" {
+#define SPARSE_ITERATOR_NEXT(name, scalar, depth) \
+opencv_core_status opencv_core_sparse_const_iterator_next_##name( \
+    opencv_core_sparse_const_iterator_handle *it, int32_t dims, \
+    int32_t *indices, scalar *value, uint8_t *has_value) { \
+    return sparse_iterator_next(it, dims, indices, value, has_value, depth); \
+}
+SPARSE_ITERATOR_NEXT(uint8, uint8_t, CV_8U)
+SPARSE_ITERATOR_NEXT(int8, int8_t, CV_8S)
+SPARSE_ITERATOR_NEXT(uint16, uint16_t, CV_16U)
+SPARSE_ITERATOR_NEXT(int16, int16_t, CV_16S)
+SPARSE_ITERATOR_NEXT(int32, int32_t, CV_32S)
+SPARSE_ITERATOR_NEXT(float16, uint16_t, CV_16F)
+SPARSE_ITERATOR_NEXT(float32, float, CV_32F)
+SPARSE_ITERATOR_NEXT(float64, double, CV_64F)
+#undef SPARSE_ITERATOR_NEXT
 
 opencv_core_status opencv_core_sparse_create(opencv_core_sparse_mat_handle **out) {
     clear_error();
