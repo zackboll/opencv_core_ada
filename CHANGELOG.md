@@ -1,6 +1,14 @@
 # Changelog
 
 ## Unreleased
+- Added controlled `OpenCV.Core.Sparse.Sparse_Mat` with shallow assignment,
+  deep Clone, 2..32-D construction, metadata, node presence/erase/clear,
+  independent dense conversions (including Regions and multi-channel data),
+  and eight exact-layout C1 typed access children. Float16 preserves raw
+  binary16 bits. Stored count measures nodes, including explicitly stored
+  zeros; dense construction omits only all-zero-byte complete elements.
+  Raw C ABI validates every coordinate before native sparse access and guards
+  OpenCV 5's smaller dense Mat capacity on sparse-to-dense conversion.
 - Completed signed Int8 C2/C3/C4 typed and zero-copy coverage with
   `Int8_Vec2`/`Int8_Vec3`/`Int8_Vec4` and matching `_Access`, `_Row_Access`,
   `_Buffer_Access`, and `_Mat_View` packages: 2-D/N-D Get/Set, copied and

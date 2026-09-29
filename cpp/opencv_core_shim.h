@@ -23,6 +23,43 @@ typedef int32_t opencv_core_status;
 #define OPENCV_CORE_LP_NUMERICAL_LOSS ((int32_t)4)
 
 typedef struct opencv_core_mat_handle opencv_core_mat_handle;
+typedef struct opencv_core_sparse_mat_handle opencv_core_sparse_mat_handle;
+opencv_core_status opencv_core_sparse_create(opencv_core_sparse_mat_handle **out);
+opencv_core_status opencv_core_sparse_create_nd(int32_t dims, const int32_t *sizes,
+    int32_t depth, int32_t channels, opencv_core_sparse_mat_handle **out);
+opencv_core_status opencv_core_sparse_from_dense(const opencv_core_mat_handle *source,
+    opencv_core_sparse_mat_handle **out);
+opencv_core_status opencv_core_sparse_to_dense(const opencv_core_sparse_mat_handle *source,
+    opencv_core_mat_handle **out);
+opencv_core_status opencv_core_sparse_copy(const opencv_core_sparse_mat_handle *source,
+    opencv_core_sparse_mat_handle **out);
+opencv_core_status opencv_core_sparse_clone(const opencv_core_sparse_mat_handle *source,
+    opencv_core_sparse_mat_handle **out);
+void opencv_core_sparse_destroy(opencv_core_sparse_mat_handle *self);
+opencv_core_status opencv_core_sparse_clear(opencv_core_sparse_mat_handle *self);
+opencv_core_status opencv_core_sparse_metadata(const opencv_core_sparse_mat_handle *self,
+    int32_t *dims, int32_t *depth, int32_t *channels, uint64_t *element_bytes,
+    uint64_t *channel_bytes, uint64_t *nodes);
+opencv_core_status opencv_core_sparse_extent(const opencv_core_sparse_mat_handle *self,
+    int32_t axis, int32_t *extent);
+opencv_core_status opencv_core_sparse_contains(const opencv_core_sparse_mat_handle *self,
+    int32_t dims, const int32_t *indices, uint8_t *found);
+opencv_core_status opencv_core_sparse_erase(opencv_core_sparse_mat_handle *self,
+    int32_t dims, const int32_t *indices);
+#define OPENCV_CORE_SPARSE_ACCESS(name, scalar) \
+opencv_core_status opencv_core_sparse_get_##name(const opencv_core_sparse_mat_handle *self, \
+    int32_t dims, const int32_t *indices, scalar *value); \
+opencv_core_status opencv_core_sparse_set_##name(opencv_core_sparse_mat_handle *self, \
+    int32_t dims, const int32_t *indices, scalar value)
+OPENCV_CORE_SPARSE_ACCESS(uint8, uint8_t);
+OPENCV_CORE_SPARSE_ACCESS(int8, int8_t);
+OPENCV_CORE_SPARSE_ACCESS(uint16, uint16_t);
+OPENCV_CORE_SPARSE_ACCESS(int16, int16_t);
+OPENCV_CORE_SPARSE_ACCESS(int32, int32_t);
+OPENCV_CORE_SPARSE_ACCESS(float16, uint16_t);
+OPENCV_CORE_SPARSE_ACCESS(float32, float);
+OPENCV_CORE_SPARSE_ACCESS(float64, double);
+#undef OPENCV_CORE_SPARSE_ACCESS
 typedef struct opencv_core_file_storage_handle
     opencv_core_file_storage_handle;
 
