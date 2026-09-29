@@ -51,6 +51,7 @@ Several related names appear in the repository:
 - [Quick start](#quick-start)
 - [Shared value types](#shared-value-types)
 - [Ownership, views, and zero-copy access](#ownership-views-and-zero-copy-access)
+- [Sparse matrices](#sparse-matrices)
 - [Typed access matrix](#typed-access-matrix)
 - [Public API overview](#public-api-overview)
 - [Linear algebra and decomposition](#linear-algebra-and-decomposition)
@@ -992,6 +993,39 @@ logical `Columns` elements, never padding. Whole-buffer borrowing rejects a
 non-contiguous multirow strided view before invoking its callback.
 
 ---
+
+## Sparse matrices
+
+`OpenCV.Core.Sparse.Sparse_Mat` is a controlled, pointer-free wrapper around
+`cv::SparseMat`. A default instance is unallocated (dimension count and stored
+node count zero, null `Shape`). `Clear` is a no-op on it; operations needing a
+shape or type raise `OpenCV_Error`. `Create` takes 2..32 strictly positive
+extents (any Ada array lower bound); `Clear` removes nodes but retains shape
+and type. Ordinary assignment makes a separate native header sharing the
+reference-counted node storage; `Clone` makes independent node storage.
+
+`Contains` checks node existence and `Erase` removes a node. The
+`Stored_Element_Count` is OpenCV's `nzcount()`: the number of stored hash-table
+nodes, **not** the count of mathematically nonzero values. Setting a zero with
+any typed `Set` creates a node; `Contains` then returns True and the count
+increases. Missing typed `Get` returns zero. All access uses full N-D index
+arrays and validates each extent. Direct typed node access currently supports
+C1 only, through `Sparse.UInt8_Access`, `Int8_Access`, `UInt16_Access`,
+`Int16_Access`, `Int32_Access`, `Float16_Access`, `Float32_Access`, and
+`Float64_Access`. Float16 uses exact `Float16_Bits`/`Float16_From_Bits` raw
+encodings, including signed zero and NaN payload bits.
+
+`From_Dense` copies complete elements of an owned nonempty dense Mat,
+including non-contiguous Regions and multi-channel Mats; it does not share
+dense pixels. Native construction omits elements only when **every byte of the
+entire element is zero**. In particular, negative IEEE zero may be stored,
+NaNs are stored, and any nonzero byte in a C3 element stores the whole C3
+element. `To_Dense` independently copies stored nodes and fills missing
+positions with zero, preserving shape, depth, and channels. Sparse matrices
+support 32 dimensions, but on OpenCV 5 `To_Dense` rejects more than the linked
+native dense Mat capacity (`MatShape::MAX_DIMS`, 10 in supported 5.0); on
+OpenCV 4.x the dense capacity remains 32. No public node pointers or
+iterators are exposed.
 
 ## Typed access matrix
 
@@ -2086,7 +2120,10 @@ The current limitations are intentional and help keep the public API coherent:
    are not provided because a row is a 2-D concept. OpenCV 5.0's native Mat
    shape capacity remains 10 dimensions.
 
-2. **No public `SparseMat` or `UMat` abstraction.**
+2. **SparseMat is a baseline, not a complete native wrapper; UMat is unavailable.**
+   Sparse iteration, direct multi-channel typed node access, numeric conversion,
+   and sparse arithmetic remain future work. Native 1-D SparseMat is deliberately
+   not exposed because the dense interoperability model begins at 2-D.
 
 3. **Typed direct/zero-copy access covers C1/C2/C3/C4 only.**
    Every supported depth — UInt8, Int8, UInt16, Int16, Int32, Float16,

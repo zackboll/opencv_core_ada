@@ -15,6 +15,10 @@ package OpenCV.Internal.C_API is
    type Mat_Handle is new System.Address;
    Null_Mat_Handle : constant Mat_Handle := Mat_Handle (System.Null_Address);
 
+   type Sparse_Mat_Handle is new System.Address;
+   Null_Sparse_Mat_Handle : constant Sparse_Mat_Handle :=
+     Sparse_Mat_Handle (System.Null_Address);
+
    type File_Storage_Handle is new System.Address;
    Null_File_Storage_Handle : constant File_Storage_Handle :=
      File_Storage_Handle (System.Null_Address);
@@ -36,6 +40,215 @@ package OpenCV.Internal.C_API is
 
    type C_Int32_Array is array (Natural range <>) of aliased C_Int32
    with Convention => C;
+
+   subtype Sparse_C_UInt64 is Interfaces.Unsigned_64;
+
+   function Sparse_Create (Result : access Sparse_Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_sparse_create";
+   function Sparse_Create_ND
+     (Dims            : C_Int32;
+      Sizes           : access C_Int32;
+      Depth, Channels : C_Int32;
+      Result          : access Sparse_Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_create_nd";
+   function Sparse_From_Dense
+     (Source : Mat_Handle; Result : access Sparse_Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_from_dense";
+   function Sparse_To_Dense
+     (Source : Sparse_Mat_Handle; Result : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_to_dense";
+   function Sparse_Copy
+     (Source : Sparse_Mat_Handle; Result : access Sparse_Mat_Handle)
+      return Status
+   with Import, Convention => C, External_Name => "opencv_core_sparse_copy";
+   function Sparse_Clone
+     (Source : Sparse_Mat_Handle; Result : access Sparse_Mat_Handle)
+      return Status
+   with Import, Convention => C, External_Name => "opencv_core_sparse_clone";
+   procedure Sparse_Destroy (Self : Sparse_Mat_Handle)
+   with Import, Convention => C, External_Name => "opencv_core_sparse_destroy";
+   function Sparse_Clear (Self : Sparse_Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_sparse_clear";
+   function Sparse_Metadata
+     (Self                                : Sparse_Mat_Handle;
+      Dims, Depth, Channels               : access C_Int32;
+      Element_Bytes, Channel_Bytes, Nodes : access Sparse_C_UInt64)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_metadata";
+   function Sparse_Extent
+     (Self : Sparse_Mat_Handle; Axis : C_Int32; Value : access C_Int32)
+      return Status
+   with Import, Convention => C, External_Name => "opencv_core_sparse_extent";
+   function Sparse_Contains
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Found   : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_contains";
+   function Sparse_Erase
+     (Self : Sparse_Mat_Handle; Dims : C_Int32; Indices : access C_Int32)
+      return Status
+   with Import, Convention => C, External_Name => "opencv_core_sparse_erase";
+
+   function Sparse_Get_UInt8
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_get_uint8";
+   function Sparse_Set_UInt8
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_set_uint8";
+   function Sparse_Get_Int8
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access C_Int8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_get_int8";
+   function Sparse_Set_Int8
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : C_Int8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_set_int8";
+   function Sparse_Get_UInt16
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access C_UInt16) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_get_uint16";
+   function Sparse_Set_UInt16
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : C_UInt16) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_set_uint16";
+   function Sparse_Get_Int16
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access C_Int16) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_get_int16";
+   function Sparse_Set_Int16
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : C_Int16) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_set_int16";
+   function Sparse_Get_Int32
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access C_Int32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_get_int32";
+   function Sparse_Set_Int32
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : C_Int32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_set_int32";
+   function Sparse_Get_Float16
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access C_UInt16) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_get_float16";
+   function Sparse_Set_Float16
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : C_UInt16) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_set_float16";
+   function Sparse_Get_Float32
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access C_Float32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_get_float32";
+   function Sparse_Set_Float32
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : C_Float32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_set_float32";
+   function Sparse_Get_Float64
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access C_Float64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_get_float64";
+   function Sparse_Set_Float64
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : C_Float64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_set_float64";
 
    type C_UInt8_Array is array (Natural range <>) of aliased C_UInt8
    with Convention => C;

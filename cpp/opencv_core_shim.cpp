@@ -37,6 +37,13 @@ struct opencv_core_mat_handle {
         : value(source) {}
 };
 
+struct opencv_core_sparse_mat_handle {
+    cv::SparseMat value;
+    opencv_core_sparse_mat_handle() = default;
+    explicit opencv_core_sparse_mat_handle(const cv::SparseMat &source)
+        : value(source) {}
+};
+
 enum class opencv_core_file_storage_structure_kind { map, sequence };
 
 struct opencv_core_file_storage_handle {
@@ -1988,6 +1995,221 @@ void reduce_arg_extremum_fallback(const cv::Mat &source, cv::Mat &result,
 } // namespace
 
 extern "C" {
+
+opencv_core_status opencv_core_sparse_create(opencv_core_sparse_mat_handle **out) {
+    clear_error();
+    if (!out) return invalid_argument("null sparse output");
+    *out = nullptr;
+    try { *out = new opencv_core_sparse_mat_handle(); return OPENCV_CORE_OK; }
+    catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_sparse_create_nd(int32_t dims, const int32_t *sizes,
+    int32_t depth, int32_t channels, opencv_core_sparse_mat_handle **out) {
+    clear_error();
+    if (!out) return invalid_argument("null sparse output");
+    *out = nullptr;
+    // ABI safety: native SparseMat uses fixed 32-slot shape storage and reads dims extents.
+    if (dims < 0 || dims > static_cast<int32_t>(cv::SparseMat::MAX_DIM) || !sizes)
+        return invalid_argument("invalid sparse shape or channel encoding");
+    // ABI safety: CV_MAKETYPE packs channels-1 in a bounded bit field;
+    // out-of-range counts wrap or truncate before OpenCV receives the type.
+    if (channels < 1 || channels > OPENCV_CORE_MAX_CHANNELS)
+        return invalid_argument("invalid sparse channel encoding");
+    int native_depth = 0;
+    if (!to_opencv_depth(depth, native_depth)) return invalid_argument("invalid depth");
+    try {
+        cv::SparseMat mat(dims, sizes, CV_MAKETYPE(native_depth, channels));
+        *out = new opencv_core_sparse_mat_handle(mat);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_sparse_from_dense(const opencv_core_mat_handle *source,
+    opencv_core_sparse_mat_handle **out) {
+    clear_error();
+    if (!out) return invalid_argument("null sparse output");
+    *out = nullptr;
+    if (!source) return invalid_argument("null dense source");
+    try {
+        *out = new opencv_core_sparse_mat_handle(cv::SparseMat(source->value));
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_sparse_to_dense(const opencv_core_sparse_mat_handle *source,
+    opencv_core_mat_handle **out) {
+    clear_error();
+    if (!out) return invalid_argument("null dense output");
+    *out = nullptr;
+    if (!source || !source->value.hdr) return invalid_argument("unallocated sparse source");
+    // ABI safety: OpenCV 5 MatShape has fewer slots than SparseMat's 32;
+    // copyTo(Mat) would construct a dense header beyond MatShape capacity.
+    if (source->value.dims() > native_maximum_mat_dimensions)
+        return invalid_argument("sparse dimensions exceed native dense capacity");
+    try {
+        cv::Mat dense;
+        source->value.copyTo(dense);
+        *out = new opencv_core_mat_handle(dense);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_sparse_copy(const opencv_core_sparse_mat_handle *source,
+    opencv_core_sparse_mat_handle **out) {
+    clear_error();
+    if (!out) return invalid_argument("null sparse output");
+    *out = nullptr;
+    if (!source) return invalid_argument("null sparse source");
+    try { *out = new opencv_core_sparse_mat_handle(source->value); return OPENCV_CORE_OK; }
+    catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_sparse_clone(const opencv_core_sparse_mat_handle *source,
+    opencv_core_sparse_mat_handle **out) {
+    clear_error();
+    if (!out) return invalid_argument("null sparse output");
+    *out = nullptr;
+    if (!source) return invalid_argument("null sparse source");
+    try { *out = new opencv_core_sparse_mat_handle(source->value.clone()); return OPENCV_CORE_OK; }
+    catch (...) { return translate_current_exception(); }
+}
+
+void opencv_core_sparse_destroy(opencv_core_sparse_mat_handle *self) {
+    try { delete self; } catch (...) { /* no exception crosses the C ABI */ }
+}
+
+opencv_core_status opencv_core_sparse_clear(opencv_core_sparse_mat_handle *self) {
+    clear_error();
+    if (!self) return invalid_argument("null sparse handle");
+    try { self->value.clear(); return OPENCV_CORE_OK; }
+    catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_sparse_metadata(const opencv_core_sparse_mat_handle *self,
+    int32_t *dims, int32_t *depth, int32_t *channels, uint64_t *element_bytes,
+    uint64_t *channel_bytes, uint64_t *nodes) {
+    clear_error();
+    if (dims) *dims = 0;
+    if (depth) *depth = 0;
+    if (channels) *channels = 0;
+    if (element_bytes) *element_bytes = 0;
+    if (channel_bytes) *channel_bytes = 0;
+    if (nodes) *nodes = 0;
+    if (!self || !dims || !depth || !channels || !element_bytes || !channel_bytes || !nodes)
+        return invalid_argument("null sparse metadata argument");
+    try {
+        if (self->value.hdr) {
+            const auto &s = self->value;
+            if (s.nzcount() > UINT64_MAX || s.elemSize() > UINT64_MAX || s.elemSize1() > UINT64_MAX)
+                return invalid_argument("sparse size exceeds ABI width");
+            *dims = s.dims(); *depth = s.depth(); *channels = s.channels();
+            *element_bytes = static_cast<uint64_t>(s.elemSize());
+            *channel_bytes = static_cast<uint64_t>(s.elemSize1());
+            *nodes = static_cast<uint64_t>(s.nzcount());
+        }
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_sparse_extent(const opencv_core_sparse_mat_handle *self,
+    int32_t axis, int32_t *extent) {
+    clear_error();
+    if (extent) *extent = 0;
+    if (!self || !extent || !self->value.hdr || axis < 0 || axis >= self->value.dims())
+        return invalid_argument("invalid sparse extent argument");
+    try { *extent = self->value.size(axis); return OPENCV_CORE_OK; }
+    catch (...) { return translate_current_exception(); }
+}
+
+} // extern "C": C++ templates must have C++ linkage
+namespace {
+opencv_core_status sparse_indices(const opencv_core_sparse_mat_handle *self,
+    int32_t dims, const int32_t *indices) {
+    if (!self || !self->value.hdr || !indices || dims != self->value.dims())
+        return invalid_argument("invalid sparse indices or unallocated handle");
+    // ABI safety: native generic ptr/erase do not bounds-check coordinates;
+    // an invalid stored index later addresses outside copyTo(Mat) dense storage.
+    for (int32_t i = 0; i < dims; ++i)
+        if (indices[i] < 0 || indices[i] >= self->value.size(i))
+            return invalid_argument("sparse index outside extent");
+    return OPENCV_CORE_OK;
+}
+
+template<typename T> opencv_core_status sparse_get(const opencv_core_sparse_mat_handle *self,
+    int32_t dims, const int32_t *indices, T *out, int32_t depth) {
+    clear_error();
+    if (out) std::memset(out, 0, sizeof(T));
+    if (!out) return invalid_argument("null sparse scalar output");
+    if (sparse_indices(self, dims, indices) != OPENCV_CORE_OK)
+        return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
+    // ABI safety: memcpy of a scalar over a different layout would read
+    // incorrect bytes or overwrite adjacent channels/node storage.
+    if (self->value.depth() != depth || self->value.channels() != 1 ||
+        self->value.elemSize() != sizeof(T))
+        return invalid_argument("incorrect sparse scalar layout");
+    try {
+        const uchar *stored = self->value.find<uchar>(indices);
+        if (stored) std::memcpy(out, stored, sizeof(T));
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+template<typename T> opencv_core_status sparse_set(opencv_core_sparse_mat_handle *self,
+    int32_t dims, const int32_t *indices, T value, int32_t depth) {
+    clear_error();
+    if (sparse_indices(self, dims, indices) != OPENCV_CORE_OK)
+        return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
+    // ABI safety: memcpy of a scalar over a different layout would read
+    // incorrect bytes or overwrite adjacent channels/node storage.
+    if (self->value.depth() != depth || self->value.channels() != 1 ||
+        self->value.elemSize() != sizeof(T))
+        return invalid_argument("incorrect sparse scalar layout");
+    try {
+        uchar *stored = self->value.ptr(indices, true);
+        std::memcpy(stored, &value, sizeof(T));
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+}
+
+extern "C" {
+
+opencv_core_status opencv_core_sparse_contains(const opencv_core_sparse_mat_handle *self,
+    int32_t dims, const int32_t *indices, uint8_t *found) {
+    clear_error();
+    if (found) *found = 0;
+    if (!found) return invalid_argument("null contains output");
+    if (sparse_indices(self, dims, indices) != OPENCV_CORE_OK)
+        return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
+    try { *found = self->value.find<uchar>(indices) != nullptr ? 1 : 0;
+        return OPENCV_CORE_OK; }
+    catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_sparse_erase(opencv_core_sparse_mat_handle *self,
+    int32_t dims, const int32_t *indices) {
+    clear_error();
+    if (sparse_indices(self, dims, indices) != OPENCV_CORE_OK)
+        return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
+    try { self->value.erase(indices); return OPENCV_CORE_OK; }
+    catch (...) { return translate_current_exception(); }
+}
+
+#define SPARSE_ACCESS(name, scalar, depth) \
+opencv_core_status opencv_core_sparse_get_##name(const opencv_core_sparse_mat_handle *s, \
+    int32_t n, const int32_t *idx, scalar *v) { return sparse_get(s,n,idx,v,depth); } \
+opencv_core_status opencv_core_sparse_set_##name(opencv_core_sparse_mat_handle *s, \
+    int32_t n, const int32_t *idx, scalar v) { return sparse_set(s,n,idx,v,depth); }
+SPARSE_ACCESS(uint8, uint8_t, CV_8U)
+SPARSE_ACCESS(int8, int8_t, CV_8S)
+SPARSE_ACCESS(uint16, uint16_t, CV_16U)
+SPARSE_ACCESS(int16, int16_t, CV_16S)
+SPARSE_ACCESS(int32, int32_t, CV_32S)
+SPARSE_ACCESS(float16, uint16_t, CV_16F)
+SPARSE_ACCESS(float32, float, CV_32F)
+SPARSE_ACCESS(float64, double, CV_64F)
+#undef SPARSE_ACCESS
 
 const char *opencv_core_last_error_message(void) {
     return last_error_message;
