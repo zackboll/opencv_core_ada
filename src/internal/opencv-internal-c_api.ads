@@ -473,6 +473,182 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_write_int32_vec4_row";
 
+   --  Signed 8-bit complete CV_8SC2/C3/C4 elements. Components are C int8_t
+   --  (OpenCV's native scalar is schar; the shim converts explicitly).
+   --  Rows transfer flat C_Int8 scalars in channel order.
+   pragma Compile_Time_Error (C_Int8'Size /= 8, "C Int8 scalar size");
+   type Int8_Vec2 is record
+      Component_0, Component_1 : C_Int8;
+   end record
+   with Convention => C;
+   pragma Compile_Time_Error (Int8_Vec2'Size /= 16, "C Int8 Vec2 size");
+   type Int8_Vec3 is record
+      Component_0, Component_1, Component_2 : C_Int8;
+   end record
+   with Convention => C;
+   pragma Compile_Time_Error (Int8_Vec3'Size /= 24, "C Int8 Vec3 size");
+   type Int8_Vec4 is record
+      Component_0, Component_1, Component_2, Component_3 : C_Int8;
+   end record
+   with Convention => C;
+   pragma Compile_Time_Error (Int8_Vec4'Size /= 32, "C Int8 Vec4 size");
+
+   function Mat_Get_Int8_Vec2
+     (Self : Mat_Handle; Row, Column : C_Int32; Result : access Int8_Vec2)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_int8_vec2";
+   function Mat_Set_Int8_Vec2
+     (Self        : Mat_Handle;
+      Row, Column : C_Int32;
+      Value       : access constant Int8_Vec2) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_int8_vec2";
+   function Mat_Get_Int8_Vec2_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Result          : access Int8_Vec2) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_int8_vec2_nd";
+   function Mat_Set_Int8_Vec2_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Value           : access constant Int8_Vec2) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_int8_vec2_nd";
+   function Mat_Read_Int8_Vec2_Row
+     (Self          : Mat_Handle;
+      Row           : C_Int32;
+      Data          : System.Address;
+      Element_Count : C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_read_int8_vec2_row";
+   function Mat_Write_Int8_Vec2_Row
+     (Self          : Mat_Handle;
+      Row           : C_Int32;
+      Data          : System.Address;
+      Element_Count : C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_write_int8_vec2_row";
+
+   function Mat_Get_Int8_Vec3
+     (Self : Mat_Handle; Row, Column : C_Int32; Result : access Int8_Vec3)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_int8_vec3";
+   function Mat_Set_Int8_Vec3
+     (Self        : Mat_Handle;
+      Row, Column : C_Int32;
+      Value       : access constant Int8_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_int8_vec3";
+   function Mat_Get_Int8_Vec3_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Result          : access Int8_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_int8_vec3_nd";
+   function Mat_Set_Int8_Vec3_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Value           : access constant Int8_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_int8_vec3_nd";
+   function Mat_Read_Int8_Vec3_Row
+     (Self          : Mat_Handle;
+      Row           : C_Int32;
+      Data          : System.Address;
+      Element_Count : C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_read_int8_vec3_row";
+   function Mat_Write_Int8_Vec3_Row
+     (Self          : Mat_Handle;
+      Row           : C_Int32;
+      Data          : System.Address;
+      Element_Count : C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_write_int8_vec3_row";
+
+   function Mat_Get_Int8_Vec4
+     (Self : Mat_Handle; Row, Column : C_Int32; Result : access Int8_Vec4)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_int8_vec4";
+   function Mat_Set_Int8_Vec4
+     (Self        : Mat_Handle;
+      Row, Column : C_Int32;
+      Value       : access constant Int8_Vec4) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_int8_vec4";
+   function Mat_Get_Int8_Vec4_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Result          : access Int8_Vec4) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_get_int8_vec4_nd";
+   function Mat_Set_Int8_Vec4_ND
+     (Self            : Mat_Handle;
+      Dimension_Count : C_Int32;
+      Indices         : access C_Int32;
+      Value           : access constant Int8_Vec4) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_set_int8_vec4_nd";
+   function Mat_Read_Int8_Vec4_Row
+     (Self          : Mat_Handle;
+      Row           : C_Int32;
+      Data          : System.Address;
+      Element_Count : C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_read_int8_vec4_row";
+   function Mat_Write_Int8_Vec4_Row
+     (Self          : Mat_Handle;
+      Row           : C_Int32;
+      Data          : System.Address;
+      Element_Count : C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_write_int8_vec4_row";
+
    --  Signed complete-element access; rows transfer flat C_Int16 scalars.
    function Mat_Get_Int16_Vec2
      (Self : Mat_Handle; Row, Column : C_Int32; Result : access Int16_Vec2)

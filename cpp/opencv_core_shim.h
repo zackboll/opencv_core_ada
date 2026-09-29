@@ -162,6 +162,31 @@ typedef struct {
 } opencv_core_int32_vec2;
 
 /*
+ * Signed 8-bit complete CV_8SC2 / CV_8SC3 / CV_8SC4 elements. Components are
+ * fixed-width int8_t values in OpenCV channel order. OpenCV stores these
+ * channels as its native schar; the shim converts each component explicitly
+ * and never aliases int8_t storage as cv::Vec<schar, N>. OpenCV defines no
+ * named signed-8 Vec alias (Vec2b/Vec3b/Vec4b are unsigned uchar vectors).
+ */
+typedef struct {
+    int8_t component_0;
+    int8_t component_1;
+} opencv_core_int8_vec2;
+
+typedef struct {
+    int8_t component_0;
+    int8_t component_1;
+    int8_t component_2;
+} opencv_core_int8_vec3;
+
+typedef struct {
+    int8_t component_0;
+    int8_t component_1;
+    int8_t component_2;
+    int8_t component_3;
+} opencv_core_int8_vec4;
+
+/*
  * Raw IEEE-754 binary16 encodings for a three-channel CV_16F pixel.
  * Each uint16_t member is the stored 16-bit pattern, not an integer
  * channel value and not a numeric conversion through float.
@@ -1535,6 +1560,7 @@ OPENCV_CORE_DECLARE_VEC2_ACCESS(uint8, uint8_t)
 OPENCV_CORE_DECLARE_VEC2_ACCESS(uint16, uint16_t)
 OPENCV_CORE_DECLARE_VEC2_ACCESS(int16, int16_t)
 OPENCV_CORE_DECLARE_VEC2_ACCESS(int32, int32_t)
+OPENCV_CORE_DECLARE_VEC2_ACCESS(int8, int8_t)
 #undef OPENCV_CORE_DECLARE_VEC2_ACCESS
 
 /* A Vec4 is one complete C4 Mat element; row buffers contain four scalars
@@ -1565,7 +1591,38 @@ OPENCV_CORE_DECLARE_VEC4_ACCESS(int16, int16_t)
 OPENCV_CORE_DECLARE_VEC4_ACCESS(int32, int32_t)
 OPENCV_CORE_DECLARE_VEC4_ACCESS(float32, float)
 OPENCV_CORE_DECLARE_VEC4_ACCESS(float64, double)
+OPENCV_CORE_DECLARE_VEC4_ACCESS(int8, int8_t)
 #undef OPENCV_CORE_DECLARE_VEC4_ACCESS
+
+/*
+ * Signed 8-bit CV_8SC3 complete-element access. Get zeroes the complete
+ * output record before any failure after output-pointer validation. Row
+ * buffers are flat int8_t scalars ordered column0.component0,
+ * column0.component1, column0.component2, column1.component0, ...;
+ * element_count counts complete Vec3 elements and must equal mat columns.
+ */
+opencv_core_status
+opencv_core_mat_get_int8_vec3(const opencv_core_mat_handle *mat, int32_t row,
+                              int32_t column, opencv_core_int8_vec3 *out_value);
+opencv_core_status
+opencv_core_mat_set_int8_vec3(opencv_core_mat_handle *mat, int32_t row,
+                              int32_t column, const opencv_core_int8_vec3 *value);
+opencv_core_status
+opencv_core_mat_get_int8_vec3_nd(const opencv_core_mat_handle *mat,
+                                 int32_t ndims, const int32_t *indices,
+                                 opencv_core_int8_vec3 *out_value);
+opencv_core_status
+opencv_core_mat_set_int8_vec3_nd(opencv_core_mat_handle *mat, int32_t ndims,
+                                 const int32_t *indices,
+                                 const opencv_core_int8_vec3 *value);
+opencv_core_status
+opencv_core_mat_read_int8_vec3_row(const opencv_core_mat_handle *mat,
+                                   int32_t row, int8_t *data,
+                                   uint64_t element_count);
+opencv_core_status
+opencv_core_mat_write_int8_vec3_row(opencv_core_mat_handle *mat, int32_t row,
+                                    const int8_t *data,
+                                    uint64_t element_count);
 
 opencv_core_status
 opencv_core_mat_set_float32_vec3(opencv_core_mat_handle *mat,

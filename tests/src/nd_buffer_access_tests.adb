@@ -68,6 +68,15 @@ with OpenCV.Core.Int32_Vec3_Buffer_Access;
 with OpenCV.Core.Int32_Vec4;
 with OpenCV.Core.Int32_Vec4_Access;
 with OpenCV.Core.Int32_Vec4_Buffer_Access;
+with OpenCV.Core.Int8_Vec2;
+with OpenCV.Core.Int8_Vec2_Access;
+with OpenCV.Core.Int8_Vec2_Buffer_Access;
+with OpenCV.Core.Int8_Vec3;
+with OpenCV.Core.Int8_Vec3_Access;
+with OpenCV.Core.Int8_Vec3_Buffer_Access;
+with OpenCV.Core.Int8_Vec4;
+with OpenCV.Core.Int8_Vec4_Access;
+with OpenCV.Core.Int8_Vec4_Buffer_Access;
 with OpenCV.Core.Float64_Vec3;
 with OpenCV.Core.Float64_Vec3_Access;
 with OpenCV.Core.Float64_Vec3_Buffer_Access;
@@ -185,6 +194,18 @@ package body ND_Buffer_Access_Tests is
        -1 - OpenCV.Int32_Value (O),
        OpenCV.Int32_Value'Last - OpenCV.Int32_Value (O),
        OpenCV.Int32_Value (O));
+
+   --  Signed Int8 vectors: S8 (0) = -128 and S8 (255) = 127, so offset 0
+   --  carries both extrema plus -1/0, and every component is distinct per
+   --  element for all offsets the shared checks use.
+   function S8 (V : Integer) return OpenCV.Int8_Value
+   is (OpenCV.Int8_Value (V mod 256 - 128));
+   function S8_Vec2_At (O : Natural) return OpenCV.Core.Int8_Vec2.Vector
+   is (S8 (O), S8 (255 - O));
+   function S8_Vec3_At (O : Natural) return OpenCV.Core.Int8_Vec3.Vector
+   is (S8 (O), S8 (127 - O), S8 (255 - O));
+   function S8_Vec4_At (O : Natural) return OpenCV.Core.Int8_Vec4.Vector
+   is (S8 (O), S8 (127 - O), S8 (128 + O), S8 (255 - O));
 
    --  Every element carries a distinct signalling-NaN payload in its last
    --  component, so any conversion through Float32 would be detected.
@@ -473,6 +494,40 @@ package body ND_Buffer_Access_Tests is
         OpenCV.Core.Int32_Vec4_Buffer_Access.With_Read_Only_Buffer,
         OpenCV.Core.Int32_Vec4_Buffer_Access.With_Writable_Buffer);
 
+   package S8_Vec2_Checks is new
+     ND_Buffer_Checks
+       (OpenCV.Core.Int8_Vec2.Vector,
+        OpenCV.Core.Int8_Vec2_Buffer_Access.Buffer_Array,
+        (OpenCV.Core.Int8, 2),
+        "Int8 C2",
+        S8_Vec2_At,
+        OpenCV.Core.Int8_Vec2_Access.Get,
+        OpenCV.Core.Int8_Vec2_Access.Set,
+        OpenCV.Core.Int8_Vec2_Buffer_Access.With_Read_Only_Buffer,
+        OpenCV.Core.Int8_Vec2_Buffer_Access.With_Writable_Buffer);
+   package S8_Vec3_Checks is new
+     ND_Buffer_Checks
+       (OpenCV.Core.Int8_Vec3.Vector,
+        OpenCV.Core.Int8_Vec3_Buffer_Access.Buffer_Array,
+        (OpenCV.Core.Int8, 3),
+        "Int8 C3",
+        S8_Vec3_At,
+        OpenCV.Core.Int8_Vec3_Access.Get,
+        OpenCV.Core.Int8_Vec3_Access.Set,
+        OpenCV.Core.Int8_Vec3_Buffer_Access.With_Read_Only_Buffer,
+        OpenCV.Core.Int8_Vec3_Buffer_Access.With_Writable_Buffer);
+   package S8_Vec4_Checks is new
+     ND_Buffer_Checks
+       (OpenCV.Core.Int8_Vec4.Vector,
+        OpenCV.Core.Int8_Vec4_Buffer_Access.Buffer_Array,
+        (OpenCV.Core.Int8, 4),
+        "Int8 C4",
+        S8_Vec4_At,
+        OpenCV.Core.Int8_Vec4_Access.Get,
+        OpenCV.Core.Int8_Vec4_Access.Set,
+        OpenCV.Core.Int8_Vec4_Buffer_Access.With_Read_Only_Buffer,
+        OpenCV.Core.Int8_Vec4_Buffer_Access.With_Writable_Buffer);
+
    package F16_Vec3_Checks is new
      ND_Buffer_Checks
        (OpenCV.Core.Float16_Vec3.Vector,
@@ -652,6 +707,7 @@ package body ND_Buffer_Access_Tests is
       U16_Vec2_Checks.Check_Volume;
       S16_Vec2_Checks.Check_Volume;
       S32_Vec2_Checks.Check_Volume;
+      S8_Vec2_Checks.Check_Volume;
       F16_Vec2_Checks.Check_Volume;
       F32_Vec2_Checks.Check_Volume;
       F64_Vec2_Checks.Check_Volume;
@@ -665,6 +721,7 @@ package body ND_Buffer_Access_Tests is
       U16_Vec3_Checks.Check_Volume;
       S16_Vec3_Checks.Check_Volume;
       S32_Vec3_Checks.Check_Volume;
+      S8_Vec3_Checks.Check_Volume;
       F32_Vec3_Checks.Check_Volume;
       F64_Vec3_Checks.Check_Volume;
    end Vec3_Volumes;
@@ -681,6 +738,7 @@ package body ND_Buffer_Access_Tests is
       U16_Vec4_Checks.Check_Volume;
       S16_Vec4_Checks.Check_Volume;
       S32_Vec4_Checks.Check_Volume;
+      S8_Vec4_Checks.Check_Volume;
       F16_Vec4_Checks.Check_Volume;
       F32_Vec4_Checks.Check_Volume;
       F64_Vec4_Checks.Check_Volume;
@@ -701,6 +759,7 @@ package body ND_Buffer_Access_Tests is
       U16_Vec2_Checks.Check_Continuous_Slice;
       S16_Vec2_Checks.Check_Continuous_Slice;
       S32_Vec2_Checks.Check_Continuous_Slice;
+      S8_Vec2_Checks.Check_Continuous_Slice;
       F16_Vec2_Checks.Check_Continuous_Slice;
       F32_Vec2_Checks.Check_Continuous_Slice;
       F64_Vec2_Checks.Check_Continuous_Slice;
@@ -709,12 +768,14 @@ package body ND_Buffer_Access_Tests is
       U16_Vec3_Checks.Check_Continuous_Slice;
       S16_Vec3_Checks.Check_Continuous_Slice;
       S32_Vec3_Checks.Check_Continuous_Slice;
+      S8_Vec3_Checks.Check_Continuous_Slice;
       F32_Vec3_Checks.Check_Continuous_Slice;
       F64_Vec3_Checks.Check_Continuous_Slice;
       U8_Vec4_Checks.Check_Continuous_Slice;
       U16_Vec4_Checks.Check_Continuous_Slice;
       S16_Vec4_Checks.Check_Continuous_Slice;
       S32_Vec4_Checks.Check_Continuous_Slice;
+      S8_Vec4_Checks.Check_Continuous_Slice;
       F16_Vec4_Checks.Check_Continuous_Slice;
       F32_Vec4_Checks.Check_Continuous_Slice;
       F64_Vec4_Checks.Check_Continuous_Slice;
@@ -735,6 +796,7 @@ package body ND_Buffer_Access_Tests is
       U16_Vec2_Checks.Check_Gapped_Slice;
       S16_Vec2_Checks.Check_Gapped_Slice;
       S32_Vec2_Checks.Check_Gapped_Slice;
+      S8_Vec2_Checks.Check_Gapped_Slice;
       F16_Vec2_Checks.Check_Gapped_Slice;
       F32_Vec2_Checks.Check_Gapped_Slice;
       F64_Vec2_Checks.Check_Gapped_Slice;
@@ -743,12 +805,14 @@ package body ND_Buffer_Access_Tests is
       U16_Vec3_Checks.Check_Gapped_Slice;
       S16_Vec3_Checks.Check_Gapped_Slice;
       S32_Vec3_Checks.Check_Gapped_Slice;
+      S8_Vec3_Checks.Check_Gapped_Slice;
       F32_Vec3_Checks.Check_Gapped_Slice;
       F64_Vec3_Checks.Check_Gapped_Slice;
       U8_Vec4_Checks.Check_Gapped_Slice;
       U16_Vec4_Checks.Check_Gapped_Slice;
       S16_Vec4_Checks.Check_Gapped_Slice;
       S32_Vec4_Checks.Check_Gapped_Slice;
+      S8_Vec4_Checks.Check_Gapped_Slice;
       F16_Vec4_Checks.Check_Gapped_Slice;
       F32_Vec4_Checks.Check_Gapped_Slice;
       F64_Vec4_Checks.Check_Gapped_Slice;
