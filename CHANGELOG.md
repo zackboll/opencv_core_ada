@@ -1,6 +1,13 @@
 # Changelog
 
 ## Unreleased
+- Added callback-scoped read-only `For_Each_Stored` in all eight Sparse C1
+  typed access packages. An opaque native const iterator owns a shallow
+  SparseMat header; Ada finalization destroys it on normal, empty, failure,
+  and callback-exception paths. Copies N-D indices and scalar bytes (including
+  exact Float16 payload bits) without exposing native nodes. Native hash
+  traversal order is unspecified; structural mutation through aliases during
+  iteration is prohibited. Added focused public and raw ABI tests.
 - Added controlled `OpenCV.Core.Sparse.Sparse_Mat` with shallow assignment,
   deep Clone, 2..32-D construction, metadata, node presence/erase/clear,
   independent dense conversions (including Regions and multi-channel data),

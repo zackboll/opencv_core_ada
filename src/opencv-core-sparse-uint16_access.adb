@@ -1,4 +1,5 @@
 with OpenCV.Core.Sparse.Typed_Impl;
+with OpenCV.Core.Sparse.Typed_Iteration_Impl;
 with OpenCV.Internal.C_API;
 
 package body OpenCV.Core.Sparse.UInt16_Access is
@@ -20,4 +21,17 @@ package body OpenCV.Core.Sparse.UInt16_Access is
    procedure Set
      (Image : in out Sparse_Mat; Indices : Index_Array; Value : UInt16_Value)
    renames Impl.Set;
+   package Iteration is new
+     Typed_Iteration_Impl
+       (UInt16_Value,
+        OpenCV.Internal.C_API.C_UInt16,
+        UInt16,
+        From_ABI,
+        OpenCV.Internal.C_API.Sparse_Iterator_Next_UInt16);
+   procedure For_Each_Stored
+     (Image   : Sparse_Mat;
+      Process :
+        not null access procedure
+          (Indices : Index_Array; Value : UInt16_Value))
+   renames Iteration.For_Each_Stored;
 end OpenCV.Core.Sparse.UInt16_Access;

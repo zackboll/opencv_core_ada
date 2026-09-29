@@ -16,8 +16,11 @@ package OpenCV.Internal.C_API is
    Null_Mat_Handle : constant Mat_Handle := Mat_Handle (System.Null_Address);
 
    type Sparse_Mat_Handle is new System.Address;
-   Null_Sparse_Mat_Handle : constant Sparse_Mat_Handle :=
+   Null_Sparse_Mat_Handle      : constant Sparse_Mat_Handle :=
      Sparse_Mat_Handle (System.Null_Address);
+   type Sparse_Iterator_Handle is new System.Address;
+   Null_Sparse_Iterator_Handle : constant Sparse_Iterator_Handle :=
+     Sparse_Iterator_Handle (System.Null_Address);
 
    type File_Storage_Handle is new System.Address;
    Null_File_Storage_Handle : constant File_Storage_Handle :=
@@ -42,6 +45,99 @@ package OpenCV.Internal.C_API is
    with Convention => C;
 
    subtype Sparse_C_UInt64 is Interfaces.Unsigned_64;
+
+   function Sparse_Iterator_Create
+     (Source : Sparse_Mat_Handle; Result : access Sparse_Iterator_Handle)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_const_iterator_create";
+   procedure Sparse_Iterator_Destroy (Self : Sparse_Iterator_Handle)
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_const_iterator_destroy";
+   function Sparse_Iterator_Next_UInt8
+     (Self    : Sparse_Iterator_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access C_UInt8;
+      Found   : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_const_iterator_next_uint8";
+   function Sparse_Iterator_Next_Int8
+     (Self    : Sparse_Iterator_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access C_Int8;
+      Found   : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_const_iterator_next_int8";
+   function Sparse_Iterator_Next_UInt16
+     (Self    : Sparse_Iterator_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access C_UInt16;
+      Found   : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_const_iterator_next_uint16";
+   function Sparse_Iterator_Next_Int16
+     (Self    : Sparse_Iterator_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access C_Int16;
+      Found   : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_const_iterator_next_int16";
+   function Sparse_Iterator_Next_Int32
+     (Self    : Sparse_Iterator_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access C_Int32;
+      Found   : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_const_iterator_next_int32";
+   function Sparse_Iterator_Next_Float16
+     (Self    : Sparse_Iterator_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access C_UInt16;
+      Found   : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_const_iterator_next_float16";
+   function Sparse_Iterator_Next_Float32
+     (Self    : Sparse_Iterator_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access C_Float32;
+      Found   : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_const_iterator_next_float32";
+   function Sparse_Iterator_Next_Float64
+     (Self    : Sparse_Iterator_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access C_Float64;
+      Found   : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_const_iterator_next_float64";
 
    function Sparse_Create (Result : access Sparse_Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_sparse_create";

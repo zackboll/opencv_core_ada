@@ -1015,6 +1015,29 @@ C1 only, through `Sparse.UInt8_Access`, `Int8_Access`, `UInt16_Access`,
 `Float64_Access`. Float16 uses exact `Float16_Bits`/`Float16_From_Bits` raw
 encodings, including signed zero and NaN payload bits.
 
+Each of these eight C1 access packages also provides callback-scoped,
+read-only `For_Each_Stored`:
+
+```ada
+OpenCV.Core.Sparse.UInt8_Access.For_Each_Stored (Image, Visit'Access);
+--  Visit (Indices : Index_Array; Value : UInt8_Value)
+```
+
+It calls `Visit` once per **stored hash node**, including explicitly stored
+numeric zero; missing positions (whose `Get` would return zero) are not
+visited. An allocated sparse matrix with no nodes calls it zero times;
+unallocated or non-C1/wrong-depth matrices raise `OpenCV_Error` before the
+callback. Each copied index vector has Ada bounds `1 .. Dimension_Count`,
+with zero-based coordinate values. Values are copied, not borrowed; Float16
+preserves exact binary16 encodings, including signed zero and NaN payloads.
+Native hash-table traversal determines the **unspecified order**: never rely
+on callback order. No native iterator, node, or pointer escapes the callback.
+Do not structurally mutate the source or any shallow alias (for example with
+`Set`, `Erase`, or `Clear`) while traversal is active: such changes can
+invalidate native traversal. Iterator ownership preserves storage lifetime,
+but provides no thread synchronization. Callback exceptions propagate
+unchanged after iterator cleanup.
+
 `From_Dense` copies complete elements of an owned nonempty dense Mat,
 including non-contiguous Regions and multi-channel Mats; it does not share
 dense pixels. Native construction omits elements only when **every byte of the
@@ -2121,8 +2144,9 @@ The current limitations are intentional and help keep the public API coherent:
    shape capacity remains 10 dimensions.
 
 2. **SparseMat is a baseline, not a complete native wrapper; UMat is unavailable.**
-   Sparse iteration, direct multi-channel typed node access, numeric conversion,
-   and sparse arithmetic remain future work. Native 1-D SparseMat is deliberately
+   Read-only stored-node traversal covers C1 only; direct C2/C3/C4 typed
+   node access/traversal, numeric conversion, and sparse arithmetic remain
+   future work. Native 1-D SparseMat is deliberately
    not exposed because the dense interoperability model begins at 2-D.
 
 3. **Typed direct/zero-copy access covers C1/C2/C3/C4 only.**

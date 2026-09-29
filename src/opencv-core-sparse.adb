@@ -263,6 +263,12 @@ package body OpenCV.Core.Sparse is
      (Self : Sparse_Mat; Indices : Index_Array; Expected : Depth_Type) is
    begin
       Check_Indices (Self, Indices);
+      Check_Layout (Self, Expected);
+   end Check_Layout;
+
+   procedure Check_Layout (Self : Sparse_Mat; Expected : Depth_Type) is
+   begin
+      Require_Allocated (Self);
       if Self.Depth /= Expected or else Self.Channels /= 1 then
          raise OpenCV_Error with "sparse C1 depth mismatch";
       end if;
