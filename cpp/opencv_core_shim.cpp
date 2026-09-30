@@ -2270,6 +2270,54 @@ opencv_core_status opencv_core_sparse_convert_to_dense(
     } catch (...) { return translate_current_exception(); }
 }
 
+opencv_core_status opencv_core_sparse_norm(
+    const opencv_core_sparse_mat_handle *source, int32_t norm_kind,
+    double *result) {
+    clear_error();
+    if (result == nullptr) {
+        return invalid_argument("norm output pointer must not be null");
+    }
+    *result = 0.0;
+    if (source == nullptr || source->value.hdr == nullptr) {
+        return invalid_argument("unallocated sparse source");
+    }
+    int opencv_norm = 0;
+    if (!to_opencv_norm(norm_kind, opencv_norm)) {
+        return invalid_argument("norm kind is not supported");
+    }
+    try {
+        *result = cv::norm(source->value, opencv_norm);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status opencv_core_sparse_normalize(
+    const opencv_core_sparse_mat_handle *source, double target_norm,
+    int32_t norm_kind, opencv_core_sparse_mat_handle **out) {
+    clear_error();
+    if (out == nullptr) {
+        return invalid_argument("null sparse output");
+    }
+    *out = nullptr;
+    if (source == nullptr || source->value.hdr == nullptr) {
+        return invalid_argument("unallocated sparse source");
+    }
+    int opencv_norm = 0;
+    if (!to_opencv_norm(norm_kind, opencv_norm)) {
+        return invalid_argument("norm kind is not supported");
+    }
+    try {
+        cv::SparseMat normalized;
+        cv::normalize(source->value, normalized, target_norm, opencv_norm);
+        *out = new opencv_core_sparse_mat_handle(normalized);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
 opencv_core_status opencv_core_sparse_copy(const opencv_core_sparse_mat_handle *source,
     opencv_core_sparse_mat_handle **out) {
     clear_error();

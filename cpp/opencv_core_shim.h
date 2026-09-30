@@ -65,6 +65,18 @@ opencv_core_status opencv_core_sparse_convert_to_sparse(
 opencv_core_status opencv_core_sparse_convert_to_dense(
     const opencv_core_sparse_mat_handle *source, int32_t output_depth,
     double scale, double offset, opencv_core_mat_handle **out);
+/* Stored-node L1, L2, or infinity norm. norm_kind is an OPENCV_CORE_NORM_*
+   identifier. Only stored nodes participate. */
+opencv_core_status opencv_core_sparse_norm(
+    const opencv_core_sparse_mat_handle *source, int32_t norm_kind,
+    double *result);
+/* Norm-based SparseMat::normalize into an independently owned SparseMat.
+   target_norm may be negative; OpenCV scales by target_norm / norm when the
+   source norm exceeds DBL_EPSILON, otherwise by 0. norm_kind is an
+   OPENCV_CORE_NORM_* identifier. NORM_MINMAX is not a sparse operation. */
+opencv_core_status opencv_core_sparse_normalize(
+    const opencv_core_sparse_mat_handle *source, double target_norm,
+    int32_t norm_kind, opencv_core_sparse_mat_handle **out);
 opencv_core_status opencv_core_sparse_copy(const opencv_core_sparse_mat_handle *source,
     opencv_core_sparse_mat_handle **out);
 opencv_core_status opencv_core_sparse_clone(const opencv_core_sparse_mat_handle *source,

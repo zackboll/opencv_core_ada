@@ -60,6 +60,7 @@ with ND_Selected_View_Tests;
 with Sparse_Tests;
 with Sparse_Vector_Tests;
 with Sparse_Numeric_Tests;
+with Sparse_Norm_Tests;
 
 package body Mat_Tests is
 
@@ -129,6 +130,7 @@ package body Mat_Tests is
       Result.Add_Test (Sparse_Tests.Suite);
       Result.Add_Test (Sparse_Vector_Tests.Suite);
       Result.Add_Test (Sparse_Numeric_Tests.Suite);
+      Result.Add_Test (Sparse_Norm_Tests.Suite);
       return Result'Access;
    end Suite;
 

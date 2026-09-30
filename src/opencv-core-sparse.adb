@@ -181,6 +181,59 @@ package body OpenCV.Core.Sparse is
       return Result;
    end To_Dense;
 
+   --  OpenCV 4.1.0, 4.10.0, and 5.0.0 sparse cv::norm accept only the exact
+   --  native types CV_32F and CV_64F, which are single-channel. Every other
+   --  depth, and every multi-channel layout, is rejected here rather than
+   --  reusing numeric-conversion policy.
+   procedure Check_Norm_Layout (Self : Sparse_Mat) is
+   begin
+      Require_Allocated (Self);
+      if Self.Channels /= 1
+        or else (Self.Depth /= Float32 and then Self.Depth /= Float64)
+      then
+         raise OpenCV_Error
+           with "Sparse norm requires Float32 or Float64 with one channel";
+      end if;
+   end Check_Norm_Layout;
+
+   function To_C_Norm_Kind (Value : Norm_Kind) return C.C_Int32
+   is (case Value is
+         when L1       => C.Norm_L1,
+         when L2       => C.Norm_L2,
+         when Infinity => C.Norm_Inf);
+
+   function Norm (Self : Sparse_Mat; Kind : Norm_Kind := L2) return Long_Float
+   is
+      C_Result : aliased C.C_Float64 := 0.0;
+   begin
+      Check_Norm_Layout (Self);
+      Check
+        (C.Sparse_Norm (Self.Handle, To_C_Norm_Kind (Kind), C_Result'Access),
+         "sparse norm");
+      return Long_Float (C_Result);
+   end Norm;
+
+   function Normalize
+     (Self        : Sparse_Mat;
+      Target_Norm : Long_Float := 1.0;
+      Kind        : Norm_Kind := L2) return Sparse_Mat
+   is
+      Result     : Sparse_Mat;
+      New_Handle : aliased C.Sparse_Mat_Handle := C.Null_Sparse_Mat_Handle;
+   begin
+      Check_Norm_Layout (Self);
+      Check
+        (C.Sparse_Normalize
+           (Self.Handle,
+            C.C_Float64 (Target_Norm),
+            To_C_Norm_Kind (Kind),
+            New_Handle'Access),
+         "sparse normalization");
+      C.Sparse_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Normalize;
+
    function Clone (Self : Sparse_Mat) return Sparse_Mat is
       Result     : Sparse_Mat;
       New_Handle : aliased C.Sparse_Mat_Handle := C.Null_Sparse_Mat_Handle;

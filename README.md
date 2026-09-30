@@ -1090,6 +1090,31 @@ invent a Float32 fallback. `Convert_To` and numeric `To_Dense` raise
 `To_Dense` are unchanged. The other seven depths convert in every
 source/destination direction, using OpenCV saturation.
 
+`Norm` and `Normalize` use the existing `Norm_Kind` (`L1`, `L2`, `Infinity`)
+and require an allocated Float32 or Float64 matrix with exactly one channel.
+Integer depths, Float16, and every multi-channel layout are rejected before
+the ABI call. `Min_Max` normalization is deliberately unavailable: shifting
+the implicit sparse zero would materialize nodes and change sparse semantics.
+
+```ada
+Magnitude := Values.Norm (OpenCV.Core.L2);
+Unit      := Values.Normalize (Target_Norm => 1.0, Kind => OpenCV.Core.L2);
+```
+
+Both operations consider stored nodes only. A missing coordinate contributes
+zero and is not created. An explicitly stored zero contributes zero to the
+norm and remains a stored node. `Norm` does not modify the matrix and returns
+`0.0` when an allocated matrix has no stored nodes. `L1` is the sum of
+absolute stored values, `L2` is the square root of the sum of their squares,
+and `Infinity` is the maximum absolute stored value.
+
+`Normalize` returns an independent matrix with the same shape, depth, channel
+count, and stored-node coordinates. OpenCV scales every stored value by
+`Target_Norm / Norm` when that norm exceeds `DBL_EPSILON`. Otherwise the scale
+is `0.0`: stored values become zero, stored nodes remain stored, and an empty
+allocated matrix stays empty. A negative `Target_Norm` is supported and
+reverses the sign of every stored value. The source is unchanged. Because no
+dense `Mat` is constructed, both 5-D and 32-D sparse matrices are accepted.
 
 ## Typed access matrix
 
@@ -2192,9 +2217,12 @@ The current limitations are intentional and help keep the public API coherent:
    `Convert_To` and numeric `To_Dense` cover stored-node scaling and
    sparse-to-dense scale/offset conversion for every depth except Float16,
    which OpenCV 4.1 through 5.0 does not implement in the sparse conversion
-   tables. Broader sparse arithmetic, C5+ typed layouts, and native 1-D
-   SparseMat are not wrapped. UMat is unavailable. Native 1-D SparseMat is
-   deliberately omitted because the dense interoperability model begins at 2-D.
+   tables. `Norm` and `Normalize` are restricted to Float32 and Float64 with
+   exactly one channel; only stored nodes participate, and `Min_Max`
+   normalization is unavailable. Broader sparse arithmetic, C5+ typed layouts,
+   and native 1-D SparseMat are not wrapped. UMat is unavailable. Native 1-D
+   SparseMat is deliberately omitted because the dense interoperability model
+   begins at 2-D.
 
 3. **Typed direct/zero-copy access covers C1/C2/C3/C4 only.**
    Every supported depth — UInt8, Int8, UInt16, Int16, Int32, Float16,

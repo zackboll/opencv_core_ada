@@ -1,6 +1,16 @@
 # Changelog
 
 ## Unreleased
+- Added SparseMat `Norm` and `Normalize` for allocated Float32 and Float64
+  matrices with exactly one channel. Both reuse `Norm_Kind` (`L1`, `L2`,
+  `Infinity`) and operate on stored nodes only; missing coordinates contribute
+  zero. `Normalize` preserves shape, depth, channels, and stored-node
+  coordinates, including explicit zeros, and follows native
+  `scale = Target_Norm / Norm` when the norm exceeds `DBL_EPSILON`, otherwise
+  scale `0.0`. A negative target is supported and reverses stored signs.
+  `Min_Max` normalization is not exposed. Integer, Float16, multi-channel, and
+  unallocated layouts are rejected in Ada before the ABI call. 5-D and 32-D
+  matrices are accepted because no dense Mat is constructed.
 - Added SparseMat numeric conversion: `Sparse.Convert_To` (sparse to sparse,
   stored nodes only, `source * Scale`, no offset) and numeric
   `Sparse.To_Dense` (`source * Scale + Offset` at stored components; missing
