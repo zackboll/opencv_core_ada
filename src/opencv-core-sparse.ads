@@ -8,6 +8,32 @@ package OpenCV.Core.Sparse is
      (Shape : Dimension_Array; Element_Type : Mat_Type) return Sparse_Mat;
    function From_Dense (Source : Mat) return Sparse_Mat;
    function To_Dense (Self : Sparse_Mat) return Mat;
+   --  Native SparseMat::convertTo into an independent Sparse_Mat. Shape and
+   --  channel count are preserved. Only stored nodes are converted, including
+   --  an explicitly stored zero; missing coordinates stay missing. Each stored
+   --  component becomes saturate_cast (source * Scale) at Depth. There is no
+   --  offset. Scale 1.0 uses OpenCV's unscaled conversion. Float16 is not a
+   --  supported source or destination: OpenCV 4.1 through 5.0 leave both
+   --  directions null in the sparse conversion tables, and this binding does
+   --  not substitute a Float32 fallback. Float16 Get/Set bit preservation is
+   --  unchanged.
+   function Convert_To
+     (Self : Sparse_Mat; Depth : Depth_Type; Scale : Long_Float := 1.0)
+      return Sparse_Mat;
+   --  Native SparseMat::convertTo into an independent dense Mat. Shape and
+   --  channel count are preserved. A stored component becomes
+   --  saturate_cast (source * Scale + Offset). A missing element is
+   --  initialized with OpenCV Scalar (Offset): channel 0 receives Offset and
+   --  every later channel receives 0, because Scalar supplies one value and
+   --  three zeros. Float16 source and destination depths are rejected for the
+   --  same OpenCV 4.1-5.0 table gap as Convert_To. On OpenCV 5, dimension
+   --  counts above the native dense Mat capacity are rejected before
+   --  conversion.
+   function To_Dense
+     (Self   : Sparse_Mat;
+      Depth  : Depth_Type;
+      Scale  : Long_Float := 1.0;
+      Offset : Long_Float := 0.0) return Mat;
    function Clone (Self : Sparse_Mat) return Sparse_Mat;
    procedure Clear (Self : in out Sparse_Mat);
    function Is_Allocated (Self : Sparse_Mat) return Boolean;

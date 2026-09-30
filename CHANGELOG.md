@@ -1,6 +1,18 @@
 # Changelog
 
 ## Unreleased
+- Added SparseMat numeric conversion: `Sparse.Convert_To` (sparse to sparse,
+  stored nodes only, `source * Scale`, no offset) and numeric
+  `Sparse.To_Dense` (`source * Scale + Offset` at stored components; missing
+  elements use OpenCV `Scalar(Offset)`, so only channel 0 receives the
+  offset). Both bind native `SparseMat::convertTo`, preserve
+  shape and channels, and return independent storage. Explicit stored zeros
+  remain nodes, including when scale maps a value to zero. Float16 is rejected
+  in Ada because OpenCV 4.1.0, 4.10.0, and 5.0.0 leave every CV_16F sparse
+  conversion-table entry null; exact-bit Float16 Get/Set and plain `To_Dense`
+  are unchanged. The OpenCV 5 dense-dimension capacity guard also applies to
+  numeric sparse-to-dense conversion. Sparse-to-sparse conversion still
+  accepts 32 dimensions.
 - Added SparseMat C2/C3/C4 typed node access for all eight depths (24 layouts):
   N-D `Get`/`Set` and read-only `For_Each_Stored`. One vector is one complete
   stored element; explicit zeros remain nodes, missing reads return zero, and

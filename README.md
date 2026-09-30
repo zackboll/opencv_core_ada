@@ -1054,6 +1054,43 @@ native dense Mat capacity (`MatShape::MAX_DIMS`, 10 in supported 5.0); on
 OpenCV 4.x the dense capacity remains 32. No public node pointers or
 iterators are exposed.
 
+`Convert_To` is native `SparseMat::convertTo` into an independent sparse
+matrix. Shape and channel count stay the same; only the depth changes. OpenCV
+walks stored nodes, so a missing coordinate stays missing and an explicitly
+stored zero stays a stored node. Each component becomes
+`saturate_cast (source * Scale)`. There is no offset. A scale that maps a
+stored value to zero still leaves that node stored. `Scale => 1.0` uses
+OpenCV's unscaled conversion.
+
+```ada
+Scaled := Source.Convert_To (OpenCV.Core.Float32, Scale => 2.0);
+```
+
+The numeric `To_Dense` overload is the native sparse-to-dense conversion, not
+plain `To_Dense` followed by dense `Convert_To`:
+
+```ada
+Dense :=
+  Source.To_Dense (OpenCV.Core.Float32, Scale => 2.0, Offset => 5.0);
+```
+
+A stored component becomes `saturate_cast (source * Scale + Offset)`. A
+missing element is initialized with OpenCV `Scalar(Offset)`: channel 0
+receives `Offset` and channels 1..3 receive 0, because `cv::Scalar` has one
+value and three zeros. Both results own independent storage and leave the
+source unchanged. The same OpenCV 5 dense-dimension capacity rule as plain
+`To_Dense` applies; sparse-to-sparse conversion still accepts the full 32
+dimensions.
+
+Float16 is not a supported numeric source or destination. OpenCV 4.1.0,
+4.10.0, and 5.0.0 leave every `CV_16F` entry null in the sparse
+`getConvertElem` / `getConvertScaleElem` tables, and this binding does not
+invent a Float32 fallback. `Convert_To` and numeric `To_Dense` raise
+`OpenCV_Error` before the ABI call. Exact-bit Float16 `Get`/`Set` and plain
+`To_Dense` are unchanged. The other seven depths convert in every
+source/destination direction, using OpenCV saturation.
+
+
 ## Typed access matrix
 
 Direct typed access covers thirty-two layouts: every supported depth in
@@ -2151,10 +2188,13 @@ The current limitations are intentional and help keep the public API coherent:
    Direct typed node access and read-only stored-node traversal cover all eight
    depths in C1/C2/C3/C4 (32 layouts). One vector is one complete element.
    Explicit all-zero vectors remain stored nodes; missing reads return zero and
-   do not create a node. Float16 components keep exact binary16 bits. C5+ typed
-   sparse layouts, numeric SparseMat conversion, and sparse arithmetic/scaling
-   are not yet wrapped. Native 1-D SparseMat is deliberately
-   not exposed because the dense interoperability model begins at 2-D.
+   do not create a node. Float16 components keep exact binary16 bits.
+   `Convert_To` and numeric `To_Dense` cover stored-node scaling and
+   sparse-to-dense scale/offset conversion for every depth except Float16,
+   which OpenCV 4.1 through 5.0 does not implement in the sparse conversion
+   tables. Broader sparse arithmetic, C5+ typed layouts, and native 1-D
+   SparseMat are not wrapped. UMat is unavailable. Native 1-D SparseMat is
+   deliberately omitted because the dense interoperability model begins at 2-D.
 
 3. **Typed direct/zero-copy access covers C1/C2/C3/C4 only.**
    Every supported depth — UInt8, Int8, UInt16, Int16, Int32, Float16,
