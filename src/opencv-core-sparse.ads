@@ -35,9 +35,17 @@ private
    procedure Finalize (Self : in out Sparse_Mat);
 
    procedure Check_Indices (Self : Sparse_Mat; Indices : Index_Array);
+   --  Require an allocated matrix whose runtime depth and channel count
+   --  both match the typed access package exactly.
    procedure Check_Layout
-     (Self : Sparse_Mat; Indices : Index_Array; Expected : Depth_Type);
-   procedure Check_Layout (Self : Sparse_Mat; Expected : Depth_Type);
+     (Self              : Sparse_Mat;
+      Indices           : Index_Array;
+      Expected          : Depth_Type;
+      Expected_Channels : Channel_Count := 1);
+   procedure Check_Layout
+     (Self              : Sparse_Mat;
+      Expected          : Depth_Type;
+      Expected_Channels : Channel_Count := 1);
    function C_Indices
      (Indices : Index_Array) return OpenCV.Internal.C_API.C_Int32_Array;
    procedure Check (Status : OpenCV.Internal.C_API.Status; Operation : String);

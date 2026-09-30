@@ -276,6 +276,37 @@ typedef struct {
     uint16_t component_3;
 } opencv_core_float16_vec4;
 /*
+ * SparseMat C2/C3/C4 element access. Each record is exactly one complete
+ * CV_<depth>C<N> element in channel order; Float16 components are raw
+ * binary16 encodings. Get never creates a node and returns an all-zero record
+ * for a missing node; Set creates the node if absent. Depth, channel count and
+ * element size must match the SparseMat exactly.
+ */
+#define OPENCV_CORE_SPARSE_VECTOR_ACCESS(name, width) \
+opencv_core_status opencv_core_sparse_get_##name##_vec##width( \
+    const opencv_core_sparse_mat_handle *self, int32_t dims, \
+    const int32_t *indices, opencv_core_##name##_vec##width *value); \
+opencv_core_status opencv_core_sparse_set_##name##_vec##width( \
+    opencv_core_sparse_mat_handle *self, int32_t dims, \
+    const int32_t *indices, const opencv_core_##name##_vec##width *value); \
+opencv_core_status opencv_core_sparse_const_iterator_next_##name##_vec##width( \
+    opencv_core_sparse_const_iterator_handle *iterator, int32_t dims, \
+    int32_t *indices, opencv_core_##name##_vec##width *value, uint8_t *has_value);
+#define OPENCV_CORE_SPARSE_VECTOR_ACCESS_ALL(name) \
+OPENCV_CORE_SPARSE_VECTOR_ACCESS(name, 2) \
+OPENCV_CORE_SPARSE_VECTOR_ACCESS(name, 3) \
+OPENCV_CORE_SPARSE_VECTOR_ACCESS(name, 4)
+OPENCV_CORE_SPARSE_VECTOR_ACCESS_ALL(uint8)
+OPENCV_CORE_SPARSE_VECTOR_ACCESS_ALL(int8)
+OPENCV_CORE_SPARSE_VECTOR_ACCESS_ALL(uint16)
+OPENCV_CORE_SPARSE_VECTOR_ACCESS_ALL(int16)
+OPENCV_CORE_SPARSE_VECTOR_ACCESS_ALL(int32)
+OPENCV_CORE_SPARSE_VECTOR_ACCESS_ALL(float16)
+OPENCV_CORE_SPARSE_VECTOR_ACCESS_ALL(float32)
+OPENCV_CORE_SPARSE_VECTOR_ACCESS_ALL(float64)
+#undef OPENCV_CORE_SPARSE_VECTOR_ACCESS_ALL
+#undef OPENCV_CORE_SPARSE_VECTOR_ACCESS
+/*
  * Stable depth identifiers for the C ABI. These are translated explicitly to
  * OpenCV depth constants by the shim and are not OpenCV's encoded Mat types.
  */

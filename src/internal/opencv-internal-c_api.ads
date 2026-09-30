@@ -3790,4 +3790,697 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_file_storage_read_string_at";
 
+   --  SparseMat complete-element C2/C3/C4 access. These reuse the dense
+   --  vector ABI records; the shim checks exact native depth, channel count
+   --  and element size before copying one complete node value. Get and
+   --  iterator Next zero the record before any failure.
+
+   --  UInt8 (CV_8UC2/C3/C4)
+   function Sparse_Get_UInt8_Vec2
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access UInt8_Vec2) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_get_uint8_vec2";
+   function Sparse_Set_UInt8_Vec2
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access constant UInt8_Vec2) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_set_uint8_vec2";
+   function Sparse_Iterator_Next_UInt8_Vec2
+     (Self    : Sparse_Iterator_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access UInt8_Vec2;
+      Found   : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_const_iterator_next_uint8_vec2";
+   function Sparse_Get_UInt8_Vec3
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access UInt8_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_get_uint8_vec3";
+   function Sparse_Set_UInt8_Vec3
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access constant UInt8_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_set_uint8_vec3";
+   function Sparse_Iterator_Next_UInt8_Vec3
+     (Self    : Sparse_Iterator_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access UInt8_Vec3;
+      Found   : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_const_iterator_next_uint8_vec3";
+   function Sparse_Get_UInt8_Vec4
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access UInt8_Vec4) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_get_uint8_vec4";
+   function Sparse_Set_UInt8_Vec4
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access constant UInt8_Vec4) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_set_uint8_vec4";
+   function Sparse_Iterator_Next_UInt8_Vec4
+     (Self    : Sparse_Iterator_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access UInt8_Vec4;
+      Found   : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_const_iterator_next_uint8_vec4";
+
+   --  Int8 (CV_8SC2/C3/C4)
+   function Sparse_Get_Int8_Vec2
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Int8_Vec2) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_get_int8_vec2";
+   function Sparse_Set_Int8_Vec2
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access constant Int8_Vec2) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_set_int8_vec2";
+   function Sparse_Iterator_Next_Int8_Vec2
+     (Self    : Sparse_Iterator_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Int8_Vec2;
+      Found   : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_const_iterator_next_int8_vec2";
+   function Sparse_Get_Int8_Vec3
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Int8_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_get_int8_vec3";
+   function Sparse_Set_Int8_Vec3
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access constant Int8_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_set_int8_vec3";
+   function Sparse_Iterator_Next_Int8_Vec3
+     (Self    : Sparse_Iterator_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Int8_Vec3;
+      Found   : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_const_iterator_next_int8_vec3";
+   function Sparse_Get_Int8_Vec4
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Int8_Vec4) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_get_int8_vec4";
+   function Sparse_Set_Int8_Vec4
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access constant Int8_Vec4) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_set_int8_vec4";
+   function Sparse_Iterator_Next_Int8_Vec4
+     (Self    : Sparse_Iterator_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Int8_Vec4;
+      Found   : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_const_iterator_next_int8_vec4";
+
+   --  UInt16 (CV_16UC2/C3/C4)
+   function Sparse_Get_UInt16_Vec2
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access UInt16_Vec2) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_get_uint16_vec2";
+   function Sparse_Set_UInt16_Vec2
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access constant UInt16_Vec2) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_set_uint16_vec2";
+   function Sparse_Iterator_Next_UInt16_Vec2
+     (Self    : Sparse_Iterator_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access UInt16_Vec2;
+      Found   : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_const_iterator_next_uint16_vec2";
+   function Sparse_Get_UInt16_Vec3
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access UInt16_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_get_uint16_vec3";
+   function Sparse_Set_UInt16_Vec3
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access constant UInt16_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_set_uint16_vec3";
+   function Sparse_Iterator_Next_UInt16_Vec3
+     (Self    : Sparse_Iterator_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access UInt16_Vec3;
+      Found   : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_const_iterator_next_uint16_vec3";
+   function Sparse_Get_UInt16_Vec4
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access UInt16_Vec4) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_get_uint16_vec4";
+   function Sparse_Set_UInt16_Vec4
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access constant UInt16_Vec4) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_set_uint16_vec4";
+   function Sparse_Iterator_Next_UInt16_Vec4
+     (Self    : Sparse_Iterator_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access UInt16_Vec4;
+      Found   : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_const_iterator_next_uint16_vec4";
+
+   --  Int16 (CV_16SC2/C3/C4)
+   function Sparse_Get_Int16_Vec2
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Int16_Vec2) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_get_int16_vec2";
+   function Sparse_Set_Int16_Vec2
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access constant Int16_Vec2) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_set_int16_vec2";
+   function Sparse_Iterator_Next_Int16_Vec2
+     (Self    : Sparse_Iterator_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Int16_Vec2;
+      Found   : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_const_iterator_next_int16_vec2";
+   function Sparse_Get_Int16_Vec3
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Int16_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_get_int16_vec3";
+   function Sparse_Set_Int16_Vec3
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access constant Int16_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_set_int16_vec3";
+   function Sparse_Iterator_Next_Int16_Vec3
+     (Self    : Sparse_Iterator_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Int16_Vec3;
+      Found   : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_const_iterator_next_int16_vec3";
+   function Sparse_Get_Int16_Vec4
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Int16_Vec4) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_get_int16_vec4";
+   function Sparse_Set_Int16_Vec4
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access constant Int16_Vec4) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_set_int16_vec4";
+   function Sparse_Iterator_Next_Int16_Vec4
+     (Self    : Sparse_Iterator_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Int16_Vec4;
+      Found   : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_const_iterator_next_int16_vec4";
+
+   --  Int32 (CV_32SC2/C3/C4)
+   function Sparse_Get_Int32_Vec2
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Int32_Vec2) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_get_int32_vec2";
+   function Sparse_Set_Int32_Vec2
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access constant Int32_Vec2) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_set_int32_vec2";
+   function Sparse_Iterator_Next_Int32_Vec2
+     (Self    : Sparse_Iterator_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Int32_Vec2;
+      Found   : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_const_iterator_next_int32_vec2";
+   function Sparse_Get_Int32_Vec3
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Int32_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_get_int32_vec3";
+   function Sparse_Set_Int32_Vec3
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access constant Int32_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_set_int32_vec3";
+   function Sparse_Iterator_Next_Int32_Vec3
+     (Self    : Sparse_Iterator_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Int32_Vec3;
+      Found   : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_const_iterator_next_int32_vec3";
+   function Sparse_Get_Int32_Vec4
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Int32_Vec4) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_get_int32_vec4";
+   function Sparse_Set_Int32_Vec4
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access constant Int32_Vec4) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_set_int32_vec4";
+   function Sparse_Iterator_Next_Int32_Vec4
+     (Self    : Sparse_Iterator_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Int32_Vec4;
+      Found   : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_const_iterator_next_int32_vec4";
+
+   --  Float16 (CV_16FC2/C3/C4): components are raw binary16 encodings.
+   function Sparse_Get_Float16_Vec2
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Float16_Vec2) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_get_float16_vec2";
+   function Sparse_Set_Float16_Vec2
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access constant Float16_Vec2) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_set_float16_vec2";
+   function Sparse_Iterator_Next_Float16_Vec2
+     (Self    : Sparse_Iterator_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Float16_Vec2;
+      Found   : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_const_iterator_next_float16_vec2";
+   function Sparse_Get_Float16_Vec3
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Float16_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_get_float16_vec3";
+   function Sparse_Set_Float16_Vec3
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access constant Float16_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_set_float16_vec3";
+   function Sparse_Iterator_Next_Float16_Vec3
+     (Self    : Sparse_Iterator_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Float16_Vec3;
+      Found   : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_const_iterator_next_float16_vec3";
+   function Sparse_Get_Float16_Vec4
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Float16_Vec4) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_get_float16_vec4";
+   function Sparse_Set_Float16_Vec4
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access constant Float16_Vec4) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_set_float16_vec4";
+   function Sparse_Iterator_Next_Float16_Vec4
+     (Self    : Sparse_Iterator_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Float16_Vec4;
+      Found   : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_const_iterator_next_float16_vec4";
+
+   --  Float32 (CV_32FC2/C3/C4)
+   function Sparse_Get_Float32_Vec2
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Float32_Vec2) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_get_float32_vec2";
+   function Sparse_Set_Float32_Vec2
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access constant Float32_Vec2) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_set_float32_vec2";
+   function Sparse_Iterator_Next_Float32_Vec2
+     (Self    : Sparse_Iterator_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Float32_Vec2;
+      Found   : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_const_iterator_next_float32_vec2";
+   function Sparse_Get_Float32_Vec3
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Float32_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_get_float32_vec3";
+   function Sparse_Set_Float32_Vec3
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access constant Float32_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_set_float32_vec3";
+   function Sparse_Iterator_Next_Float32_Vec3
+     (Self    : Sparse_Iterator_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Float32_Vec3;
+      Found   : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_const_iterator_next_float32_vec3";
+   function Sparse_Get_Float32_Vec4
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Float32_Vec4) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_get_float32_vec4";
+   function Sparse_Set_Float32_Vec4
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access constant Float32_Vec4) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_set_float32_vec4";
+   function Sparse_Iterator_Next_Float32_Vec4
+     (Self    : Sparse_Iterator_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Float32_Vec4;
+      Found   : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_const_iterator_next_float32_vec4";
+
+   --  Float64 (CV_64FC2/C3/C4)
+   function Sparse_Get_Float64_Vec2
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Float64_Vec2) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_get_float64_vec2";
+   function Sparse_Set_Float64_Vec2
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access constant Float64_Vec2) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_set_float64_vec2";
+   function Sparse_Iterator_Next_Float64_Vec2
+     (Self    : Sparse_Iterator_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Float64_Vec2;
+      Found   : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_const_iterator_next_float64_vec2";
+   function Sparse_Get_Float64_Vec3
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Float64_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_get_float64_vec3";
+   function Sparse_Set_Float64_Vec3
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access constant Float64_Vec3) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_set_float64_vec3";
+   function Sparse_Iterator_Next_Float64_Vec3
+     (Self    : Sparse_Iterator_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Float64_Vec3;
+      Found   : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_const_iterator_next_float64_vec3";
+   function Sparse_Get_Float64_Vec4
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Float64_Vec4) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_get_float64_vec4";
+   function Sparse_Set_Float64_Vec4
+     (Self    : Sparse_Mat_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access constant Float64_Vec4) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_set_float64_vec4";
+   function Sparse_Iterator_Next_Float64_Vec4
+     (Self    : Sparse_Iterator_Handle;
+      Dims    : C_Int32;
+      Indices : access C_Int32;
+      Value   : access Float64_Vec4;
+      Found   : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_const_iterator_next_float64_vec4";
+
 end OpenCV.Internal.C_API;

@@ -1,6 +1,14 @@
 # Changelog
 
 ## Unreleased
+- Added SparseMat C2/C3/C4 typed node access for all eight depths (24 layouts):
+  N-D `Get`/`Set` and read-only `For_Each_Stored`. One vector is one complete
+  stored element; explicit zeros remain nodes, missing reads return zero, and
+  traversal order is unspecified. Float16 components keep exact binary16 bits.
+  The C ABI reuses the dense vector records and checks depth, channel count,
+  and complete element size before copying. Iterator indices are converted from
+  native `int` to `int32_t` per coordinate. Added focused public and raw ABI
+  tests, including same-byte-width layout rejection.
 - Added callback-scoped read-only `For_Each_Stored` in all eight Sparse C1
   typed access packages. An opaque native const iterator owns a shallow
   SparseMat header; Ada finalization destroys it on normal, empty, failure,

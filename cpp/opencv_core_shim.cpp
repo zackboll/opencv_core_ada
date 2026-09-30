@@ -2023,9 +2023,66 @@ void opencv_core_sparse_const_iterator_destroy(opencv_core_sparse_const_iterator
 
 } // extern "C": template implementation requires C++ linkage
 namespace {
+// Sparse vector access copies one complete node element as raw bytes into or
+// out of an opencv_core_*_vecN record. That is sound only when the record is
+// exactly one CV_<depth>C<N> element: N contiguous channel components in
+// channel order, each CV_ELEM_SIZE1 bytes wide, with no padding.
+#define SPARSE_VECTOR_LAYOUT_2(name, depth) \
+static_assert(sizeof(opencv_core_##name##_vec2) == \
+                  static_cast<std::size_t>(CV_ELEM_SIZE(CV_MAKETYPE(depth, 2))) && \
+              sizeof(opencv_core_##name##_vec2::component_0) == \
+                  static_cast<std::size_t>(CV_ELEM_SIZE1(depth)) && \
+              offsetof(opencv_core_##name##_vec2, component_0) == 0 && \
+              offsetof(opencv_core_##name##_vec2, component_1) == \
+                  sizeof(opencv_core_##name##_vec2::component_0), \
+              "sparse " #name " Vec2 must be one packed native element");
+#define SPARSE_VECTOR_LAYOUT_3(name, depth) \
+static_assert(sizeof(opencv_core_##name##_vec3) == \
+                  static_cast<std::size_t>(CV_ELEM_SIZE(CV_MAKETYPE(depth, 3))) && \
+              sizeof(opencv_core_##name##_vec3::component_0) == \
+                  static_cast<std::size_t>(CV_ELEM_SIZE1(depth)) && \
+              offsetof(opencv_core_##name##_vec3, component_0) == 0 && \
+              offsetof(opencv_core_##name##_vec3, component_1) == \
+                  sizeof(opencv_core_##name##_vec3::component_0) && \
+              offsetof(opencv_core_##name##_vec3, component_2) == \
+                  2 * sizeof(opencv_core_##name##_vec3::component_0), \
+              "sparse " #name " Vec3 must be one packed native element");
+#define SPARSE_VECTOR_LAYOUT_4(name, depth) \
+static_assert(sizeof(opencv_core_##name##_vec4) == \
+                  static_cast<std::size_t>(CV_ELEM_SIZE(CV_MAKETYPE(depth, 4))) && \
+              sizeof(opencv_core_##name##_vec4::component_0) == \
+                  static_cast<std::size_t>(CV_ELEM_SIZE1(depth)) && \
+              offsetof(opencv_core_##name##_vec4, component_0) == 0 && \
+              offsetof(opencv_core_##name##_vec4, component_1) == \
+                  sizeof(opencv_core_##name##_vec4::component_0) && \
+              offsetof(opencv_core_##name##_vec4, component_2) == \
+                  2 * sizeof(opencv_core_##name##_vec4::component_0) && \
+              offsetof(opencv_core_##name##_vec4, component_3) == \
+                  3 * sizeof(opencv_core_##name##_vec4::component_0), \
+              "sparse " #name " Vec4 must be one packed native element");
+#define SPARSE_VECTOR_LAYOUT(name, depth) \
+SPARSE_VECTOR_LAYOUT_2(name, depth) \
+SPARSE_VECTOR_LAYOUT_3(name, depth) \
+SPARSE_VECTOR_LAYOUT_4(name, depth)
+SPARSE_VECTOR_LAYOUT(uint8, CV_8U)
+SPARSE_VECTOR_LAYOUT(int8, CV_8S)
+SPARSE_VECTOR_LAYOUT(uint16, CV_16U)
+SPARSE_VECTOR_LAYOUT(int16, CV_16S)
+SPARSE_VECTOR_LAYOUT(int32, CV_32S)
+SPARSE_VECTOR_LAYOUT(float16, CV_16F)
+SPARSE_VECTOR_LAYOUT(float32, CV_32F)
+SPARSE_VECTOR_LAYOUT(float64, CV_64F)
+#undef SPARSE_VECTOR_LAYOUT
+#undef SPARSE_VECTOR_LAYOUT_4
+#undef SPARSE_VECTOR_LAYOUT_3
+#undef SPARSE_VECTOR_LAYOUT_2
+
+// T is either a C1 scalar or one of the complete opencv_core_*_vecN records.
+// Callers pass the exact native channel count that T represents.
 template<typename T> opencv_core_status sparse_iterator_next(
     opencv_core_sparse_const_iterator_handle *it, int32_t dims,
-    int32_t *indices, T *value, uint8_t *has_value, int32_t depth) {
+    int32_t *indices, T *value, uint8_t *has_value, int32_t depth,
+    int32_t channels) {
     clear_error();
     if (value) std::memset(value, 0, sizeof(T));
     if (has_value) *has_value = 0;
@@ -2036,20 +2093,34 @@ template<typename T> opencv_core_status sparse_iterator_next(
     // the node or overwrite a caller buffer sized for a different shape.
     if (!owner.hdr || dims < 1 || dims > static_cast<int32_t>(cv::SparseMat::MAX_DIM) ||
         dims != owner.dims()) return invalid_argument("invalid sparse iterator dimensions");
-    // ABI safety: scalar byte copying on a different layout can read past
-    // the node value or interpret bytes from another channel/depth.
-    if (owner.depth() != depth || owner.channels() != 1 || owner.elemSize() != sizeof(T))
-        return invalid_argument("incorrect sparse iterator scalar layout");
+    // ABI safety: copying a complete T from a node of another depth, channel
+    // count or element size reads past the node value or reinterprets the
+    // bytes of a different layout; raw callers bypass Ada layout validation.
+    if (owner.depth() != depth || owner.channels() != channels ||
+        owner.elemSize() != sizeof(T))
+        return invalid_argument("incorrect sparse iterator element layout");
     try {
         if (it->current == it->finish) return OPENCV_CORE_OK;
         const cv::SparseMat::Node *node = it->current.node();
         if (!node) return invalid_argument("invalid sparse iterator node");
-        // SparseMat::Node::idx is native int[]; supported platforms require
-        // 32-bit int for the fixed-width C ABI index representation.
-        static_assert(sizeof(int) == sizeof(int32_t), "sparse index ABI width");
+        // OpenCV stores Node::idx as native int, bounded by the int32_t sparse
+        // ABI (extents and coordinates are rejected outside int32_t before a
+        // node exists). Convert each coordinate explicitly; do not memcpy the
+        // native int representation, which is not the ABI width on every
+        // platform.
+        static_assert(sizeof(int) >= sizeof(int32_t),
+                      "native sparse indices must cover the int32_t ABI");
         int32_t copied_indices[cv::SparseMat::MAX_DIM];
         T copied_value;
-        std::memcpy(copied_indices, node->idx, static_cast<std::size_t>(dims) * sizeof(int32_t));
+        for (int32_t i = 0; i < dims; ++i) {
+            const int native_index = node->idx[i];
+            // ABI safety: a native int wider than the int32_t index buffer
+            // cannot be published without truncation. Reject before advancing.
+            if (native_index < std::numeric_limits<int32_t>::min() ||
+                native_index > std::numeric_limits<int32_t>::max())
+                return invalid_argument("sparse index exceeds ABI width");
+            copied_indices[i] = static_cast<int32_t>(native_index);
+        }
         std::memcpy(&copied_value, it->current.ptr, sizeof(T));
         ++it->current;
         std::memcpy(indices, copied_indices, static_cast<std::size_t>(dims) * sizeof(int32_t));
@@ -2064,7 +2135,7 @@ extern "C" {
 opencv_core_status opencv_core_sparse_const_iterator_next_##name( \
     opencv_core_sparse_const_iterator_handle *it, int32_t dims, \
     int32_t *indices, scalar *value, uint8_t *has_value) { \
-    return sparse_iterator_next(it, dims, indices, value, has_value, depth); \
+    return sparse_iterator_next(it, dims, indices, value, has_value, depth, 1); \
 }
 SPARSE_ITERATOR_NEXT(uint8, uint8_t, CV_8U)
 SPARSE_ITERATOR_NEXT(int8, int8_t, CV_8S)
@@ -2075,6 +2146,27 @@ SPARSE_ITERATOR_NEXT(float16, uint16_t, CV_16F)
 SPARSE_ITERATOR_NEXT(float32, float, CV_32F)
 SPARSE_ITERATOR_NEXT(float64, double, CV_64F)
 #undef SPARSE_ITERATOR_NEXT
+
+#define SPARSE_VECTOR_ITERATOR_NEXT(name, width, depth) \
+opencv_core_status opencv_core_sparse_const_iterator_next_##name##_vec##width( \
+    opencv_core_sparse_const_iterator_handle *it, int32_t dims, \
+    int32_t *indices, opencv_core_##name##_vec##width *value, uint8_t *has_value) { \
+    return sparse_iterator_next(it, dims, indices, value, has_value, depth, width); \
+}
+#define SPARSE_VECTOR_ITERATOR_NEXT_ALL(name, depth) \
+SPARSE_VECTOR_ITERATOR_NEXT(name, 2, depth) \
+SPARSE_VECTOR_ITERATOR_NEXT(name, 3, depth) \
+SPARSE_VECTOR_ITERATOR_NEXT(name, 4, depth)
+SPARSE_VECTOR_ITERATOR_NEXT_ALL(uint8, CV_8U)
+SPARSE_VECTOR_ITERATOR_NEXT_ALL(int8, CV_8S)
+SPARSE_VECTOR_ITERATOR_NEXT_ALL(uint16, CV_16U)
+SPARSE_VECTOR_ITERATOR_NEXT_ALL(int16, CV_16S)
+SPARSE_VECTOR_ITERATOR_NEXT_ALL(int32, CV_32S)
+SPARSE_VECTOR_ITERATOR_NEXT_ALL(float16, CV_16F)
+SPARSE_VECTOR_ITERATOR_NEXT_ALL(float32, CV_32F)
+SPARSE_VECTOR_ITERATOR_NEXT_ALL(float64, CV_64F)
+#undef SPARSE_VECTOR_ITERATOR_NEXT_ALL
+#undef SPARSE_VECTOR_ITERATOR_NEXT
 
 opencv_core_status opencv_core_sparse_create(opencv_core_sparse_mat_handle **out) {
     clear_error();
@@ -2216,18 +2308,22 @@ opencv_core_status sparse_indices(const opencv_core_sparse_mat_handle *self,
     return OPENCV_CORE_OK;
 }
 
+// T is either a C1 scalar or one of the complete opencv_core_*_vecN records
+// whose size and contiguous component offsets are asserted above for the
+// sparse vector layouts. Callers pass the channel count that T represents.
 template<typename T> opencv_core_status sparse_get(const opencv_core_sparse_mat_handle *self,
-    int32_t dims, const int32_t *indices, T *out, int32_t depth) {
+    int32_t dims, const int32_t *indices, T *out, int32_t depth, int32_t channels) {
     clear_error();
     if (out) std::memset(out, 0, sizeof(T));
-    if (!out) return invalid_argument("null sparse scalar output");
+    if (!out) return invalid_argument("null sparse element output");
     if (sparse_indices(self, dims, indices) != OPENCV_CORE_OK)
         return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
-    // ABI safety: memcpy of a scalar over a different layout would read
-    // incorrect bytes or overwrite adjacent channels/node storage.
-    if (self->value.depth() != depth || self->value.channels() != 1 ||
+    // ABI safety: memcpy of a complete T over a different depth, channel
+    // count or element size would read past the node value or reinterpret
+    // bytes of another layout; raw callers bypass Ada layout validation.
+    if (self->value.depth() != depth || self->value.channels() != channels ||
         self->value.elemSize() != sizeof(T))
-        return invalid_argument("incorrect sparse scalar layout");
+        return invalid_argument("incorrect sparse element layout");
     try {
         const uchar *stored = self->value.find<uchar>(indices);
         if (stored) std::memcpy(out, stored, sizeof(T));
@@ -2236,18 +2332,23 @@ template<typename T> opencv_core_status sparse_get(const opencv_core_sparse_mat_
 }
 
 template<typename T> opencv_core_status sparse_set(opencv_core_sparse_mat_handle *self,
-    int32_t dims, const int32_t *indices, T value, int32_t depth) {
+    int32_t dims, const int32_t *indices, const T *value, int32_t depth,
+    int32_t channels) {
     clear_error();
+    if (!value) return invalid_argument("null sparse element value");
     if (sparse_indices(self, dims, indices) != OPENCV_CORE_OK)
         return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
-    // ABI safety: memcpy of a scalar over a different layout would read
-    // incorrect bytes or overwrite adjacent channels/node storage.
-    if (self->value.depth() != depth || self->value.channels() != 1 ||
+    // ABI safety: memcpy of a complete T over a different depth, channel
+    // count or element size would overwrite past the node value or store
+    // bytes of another layout; raw callers bypass Ada layout validation.
+    if (self->value.depth() != depth || self->value.channels() != channels ||
         self->value.elemSize() != sizeof(T))
-        return invalid_argument("incorrect sparse scalar layout");
+        return invalid_argument("incorrect sparse element layout");
     try {
+        T copied_value;
+        std::memcpy(&copied_value, value, sizeof(T));
         uchar *stored = self->value.ptr(indices, true);
-        std::memcpy(stored, &value, sizeof(T));
+        std::memcpy(stored, &copied_value, sizeof(T));
         return OPENCV_CORE_OK;
     } catch (...) { return translate_current_exception(); }
 }
@@ -2278,9 +2379,9 @@ opencv_core_status opencv_core_sparse_erase(opencv_core_sparse_mat_handle *self,
 
 #define SPARSE_ACCESS(name, scalar, depth) \
 opencv_core_status opencv_core_sparse_get_##name(const opencv_core_sparse_mat_handle *s, \
-    int32_t n, const int32_t *idx, scalar *v) { return sparse_get(s,n,idx,v,depth); } \
+    int32_t n, const int32_t *idx, scalar *v) { return sparse_get(s,n,idx,v,depth,1); } \
 opencv_core_status opencv_core_sparse_set_##name(opencv_core_sparse_mat_handle *s, \
-    int32_t n, const int32_t *idx, scalar v) { return sparse_set(s,n,idx,v,depth); }
+    int32_t n, const int32_t *idx, scalar v) { return sparse_set(s,n,idx,&v,depth,1); }
 SPARSE_ACCESS(uint8, uint8_t, CV_8U)
 SPARSE_ACCESS(int8, int8_t, CV_8S)
 SPARSE_ACCESS(uint16, uint16_t, CV_16U)
@@ -2290,6 +2391,30 @@ SPARSE_ACCESS(float16, uint16_t, CV_16F)
 SPARSE_ACCESS(float32, float, CV_32F)
 SPARSE_ACCESS(float64, double, CV_64F)
 #undef SPARSE_ACCESS
+
+#define SPARSE_VECTOR_ACCESS(name, width, depth) \
+opencv_core_status opencv_core_sparse_get_##name##_vec##width( \
+    const opencv_core_sparse_mat_handle *s, int32_t n, const int32_t *idx, \
+    opencv_core_##name##_vec##width *v) { \
+    return sparse_get(s, n, idx, v, depth, width); } \
+opencv_core_status opencv_core_sparse_set_##name##_vec##width( \
+    opencv_core_sparse_mat_handle *s, int32_t n, const int32_t *idx, \
+    const opencv_core_##name##_vec##width *v) { \
+    return sparse_set(s, n, idx, v, depth, width); }
+#define SPARSE_VECTOR_ACCESS_ALL(name, depth) \
+SPARSE_VECTOR_ACCESS(name, 2, depth) \
+SPARSE_VECTOR_ACCESS(name, 3, depth) \
+SPARSE_VECTOR_ACCESS(name, 4, depth)
+SPARSE_VECTOR_ACCESS_ALL(uint8, CV_8U)
+SPARSE_VECTOR_ACCESS_ALL(int8, CV_8S)
+SPARSE_VECTOR_ACCESS_ALL(uint16, CV_16U)
+SPARSE_VECTOR_ACCESS_ALL(int16, CV_16S)
+SPARSE_VECTOR_ACCESS_ALL(int32, CV_32S)
+SPARSE_VECTOR_ACCESS_ALL(float16, CV_16F)
+SPARSE_VECTOR_ACCESS_ALL(float32, CV_32F)
+SPARSE_VECTOR_ACCESS_ALL(float64, CV_64F)
+#undef SPARSE_VECTOR_ACCESS_ALL
+#undef SPARSE_VECTOR_ACCESS
 
 const char *opencv_core_last_error_message(void) {
     return last_error_message;
