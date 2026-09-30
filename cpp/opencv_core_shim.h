@@ -51,6 +51,20 @@ opencv_core_status opencv_core_sparse_from_dense(const opencv_core_mat_handle *s
     opencv_core_sparse_mat_handle **out);
 opencv_core_status opencv_core_sparse_to_dense(const opencv_core_sparse_mat_handle *source,
     opencv_core_mat_handle **out);
+/* Numeric SparseMat::convertTo into an independently owned SparseMat.
+   output_depth is an OPENCV_CORE_DEPTH_* identifier, not a packed type.
+   scale is applied to every stored node; there is no offset. */
+opencv_core_status opencv_core_sparse_convert_to_sparse(
+    const opencv_core_sparse_mat_handle *source, int32_t output_depth,
+    double scale, opencv_core_sparse_mat_handle **out);
+/* Numeric SparseMat::convertTo into an independently owned dense Mat.
+   Missing positions become offset; stored positions become
+   source * scale + offset, then native saturate conversion.
+   On OpenCV 5, dimension counts above MatShape::MAX_DIMS are rejected
+   before native construction. */
+opencv_core_status opencv_core_sparse_convert_to_dense(
+    const opencv_core_sparse_mat_handle *source, int32_t output_depth,
+    double scale, double offset, opencv_core_mat_handle **out);
 opencv_core_status opencv_core_sparse_copy(const opencv_core_sparse_mat_handle *source,
     opencv_core_sparse_mat_handle **out);
 opencv_core_status opencv_core_sparse_clone(const opencv_core_sparse_mat_handle *source,

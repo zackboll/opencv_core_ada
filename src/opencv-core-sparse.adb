@@ -124,6 +124,63 @@ package body OpenCV.Core.Sparse is
       return Result;
    end To_Dense;
 
+   --  OpenCV 4.1.0, 4.10.0, and 5.0.0 SparseMat getConvertElem /
+   --  getConvertScaleElem tables leave every CV_16F row and column null.
+   --  CV_Assert then fails. Reject that intersection here; do not invent a
+   --  Float32 substitute.
+   procedure Check_Numeric_Depth (Source, Destination : Depth_Type) is
+   begin
+      if Source = Float16 or else Destination = Float16 then
+         raise OpenCV_Error
+           with "Sparse numeric conversion does not support Float16";
+      end if;
+   end Check_Numeric_Depth;
+
+   function Convert_To
+     (Self : Sparse_Mat; Depth : Depth_Type; Scale : Long_Float := 1.0)
+      return Sparse_Mat
+   is
+      Result     : Sparse_Mat;
+      New_Handle : aliased C.Sparse_Mat_Handle := C.Null_Sparse_Mat_Handle;
+   begin
+      Require_Allocated (Self);
+      Check_Numeric_Depth (Self.Depth, Depth);
+      Check
+        (C.Sparse_Convert_To_Sparse
+           (Self.Handle,
+            C.C_Int32 (Depth_Type'Pos (Depth)),
+            C.C_Float64 (Scale),
+            New_Handle'Access),
+         "sparse numeric conversion");
+      C.Sparse_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Convert_To;
+
+   function To_Dense
+     (Self   : Sparse_Mat;
+      Depth  : Depth_Type;
+      Scale  : Long_Float := 1.0;
+      Offset : Long_Float := 0.0) return Mat
+   is
+      Result     : Mat;
+      New_Handle : aliased C.Mat_Handle := C.Null_Mat_Handle;
+   begin
+      Require_Allocated (Self);
+      Check_Numeric_Depth (Self.Depth, Depth);
+      Check
+        (C.Sparse_Convert_To_Dense
+           (Self.Handle,
+            C.C_Int32 (Depth_Type'Pos (Depth)),
+            C.C_Float64 (Scale),
+            C.C_Float64 (Offset),
+            New_Handle'Access),
+         "sparse numeric dense conversion");
+      C.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end To_Dense;
+
    function Clone (Self : Sparse_Mat) return Sparse_Mat is
       Result     : Sparse_Mat;
       New_Handle : aliased C.Sparse_Mat_Handle := C.Null_Sparse_Mat_Handle;
@@ -275,8 +332,7 @@ package body OpenCV.Core.Sparse is
       Expected_Channels : Channel_Count := 1) is
    begin
       Require_Allocated (Self);
-      if Self.Depth /= Expected or else Self.Channels /= Expected_Channels
-      then
+      if Self.Depth /= Expected or else Self.Channels /= Expected_Channels then
          raise OpenCV_Error with "sparse element layout mismatch";
       end if;
    end Check_Layout;

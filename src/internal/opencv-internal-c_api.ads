@@ -162,6 +162,25 @@ package OpenCV.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_core_sparse_to_dense";
+   function Sparse_Convert_To_Sparse
+     (Source       : Sparse_Mat_Handle;
+      Output_Depth : C_Int32;
+      Scale        : C_Float64;
+      Result       : access Sparse_Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_convert_to_sparse";
+   function Sparse_Convert_To_Dense
+     (Source       : Sparse_Mat_Handle;
+      Output_Depth : C_Int32;
+      Scale        : C_Float64;
+      Offset       : C_Float64;
+      Result       : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_convert_to_dense";
    function Sparse_Copy
      (Source : Sparse_Mat_Handle; Result : access Sparse_Mat_Handle)
       return Status

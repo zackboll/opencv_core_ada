@@ -2227,6 +2227,49 @@ opencv_core_status opencv_core_sparse_to_dense(const opencv_core_sparse_mat_hand
     } catch (...) { return translate_current_exception(); }
 }
 
+opencv_core_status opencv_core_sparse_convert_to_sparse(
+    const opencv_core_sparse_mat_handle *source, int32_t output_depth,
+    double scale, opencv_core_sparse_mat_handle **out) {
+    clear_error();
+    if (!out) return invalid_argument("null sparse output");
+    *out = nullptr;
+    if (!source || !source->value.hdr)
+        return invalid_argument("unallocated sparse source");
+    int native_depth = 0;
+    if (!to_opencv_depth(output_depth, native_depth))
+        return invalid_argument("invalid depth");
+    try {
+        cv::SparseMat converted;
+        source->value.convertTo(converted, native_depth, scale);
+        *out = new opencv_core_sparse_mat_handle(converted);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_sparse_convert_to_dense(
+    const opencv_core_sparse_mat_handle *source, int32_t output_depth,
+    double scale, double offset, opencv_core_mat_handle **out) {
+    clear_error();
+    if (!out) return invalid_argument("null dense output");
+    *out = nullptr;
+    if (!source || !source->value.hdr)
+        return invalid_argument("unallocated sparse source");
+    int native_depth = 0;
+    if (!to_opencv_depth(output_depth, native_depth))
+        return invalid_argument("invalid depth");
+    // ABI safety: OpenCV 5 MatShape has fewer slots than SparseMat's 32;
+    // convertTo(Mat) calls Mat::create, which writes size/step past that
+    // capacity before its CV_MAX_DIM assertion can reject the shape.
+    if (source->value.dims() > native_maximum_mat_dimensions)
+        return invalid_argument("sparse dimensions exceed native dense capacity");
+    try {
+        cv::Mat dense;
+        source->value.convertTo(dense, native_depth, scale, offset);
+        *out = new opencv_core_mat_handle(dense);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
 opencv_core_status opencv_core_sparse_copy(const opencv_core_sparse_mat_handle *source,
     opencv_core_sparse_mat_handle **out) {
     clear_error();
