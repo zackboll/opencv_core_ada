@@ -34,6 +34,31 @@ package OpenCV.Core.Sparse is
       Depth  : Depth_Type;
       Scale  : Long_Float := 1.0;
       Offset : Long_Float := 0.0) return Mat;
+   --  Native sparse cv::norm over stored nodes only. Missing coordinates
+   --  contribute zero and are not created. An explicitly stored zero
+   --  contributes zero and remains a node. The matrix is not modified.
+   --  Requires an allocated Float32 or Float64 matrix with exactly one
+   --  channel. An allocated matrix with no stored nodes returns 0.0.
+   --  L1 is the sum of absolute stored values, L2 is the square root of the
+   --  sum of their squares, and Infinity is the maximum absolute stored
+   --  value. Multi-channel, integer, and Float16 layouts are rejected
+   --  before the ABI call. Min_Max is not a sparse norm.
+   function Norm (Self : Sparse_Mat; Kind : Norm_Kind := L2) return Long_Float;
+   --  Native sparse cv::normalize into an independent Sparse_Mat. Shape,
+   --  depth, channel count, and stored-node coordinates are preserved,
+   --  including explicitly stored zeros. Values are scaled by
+   --  Target_Norm / Norm when that norm exceeds OpenCV's DBL_EPSILON;
+   --  otherwise the scale is 0.0 and every stored value becomes zero while
+   --  its node remains stored. An allocated matrix with no nodes stays
+   --  empty. A negative Target_Norm is native and deterministic: it reverses
+   --  the sign of every stored value. The source is unchanged. The same
+   --  Float32/Float64 single-channel restriction as Norm applies. Min_Max
+   --  normalization is unavailable because shifting implicit zeros would
+   --  change sparse semantics.
+   function Normalize
+     (Self        : Sparse_Mat;
+      Target_Norm : Long_Float := 1.0;
+      Kind        : Norm_Kind := L2) return Sparse_Mat;
    function Clone (Self : Sparse_Mat) return Sparse_Mat;
    procedure Clear (Self : in out Sparse_Mat);
    function Is_Allocated (Self : Sparse_Mat) return Boolean;
