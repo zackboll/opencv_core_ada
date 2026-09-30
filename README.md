@@ -1009,13 +1009,16 @@ reference-counted node storage; `Clone` makes independent node storage.
 nodes, **not** the count of mathematically nonzero values. Setting a zero with
 any typed `Set` creates a node; `Contains` then returns True and the count
 increases. Missing typed `Get` returns zero. All access uses full N-D index
-arrays and validates each extent. Direct typed node access currently supports
-C1 only, through `Sparse.UInt8_Access`, `Int8_Access`, `UInt16_Access`,
-`Int16_Access`, `Int32_Access`, `Float16_Access`, `Float32_Access`, and
-`Float64_Access`. Float16 uses exact `Float16_Bits`/`Float16_From_Bits` raw
+arrays and validates each extent. Direct typed node access covers all eight
+depths in C1, C2, C3, and C4 (32 layouts) through `Sparse.UInt8_Access` /
+`UInt8_Vec2_Access` / `UInt8_Vec3_Access` / `UInt8_Vec4_Access` and the matching
+`Int8`, `UInt16`, `Int16`, `Int32`, `Float16`, `Float32`, and `Float64`
+packages. One `Vec2`, `Vec3`, or `Vec4` is one complete SparseMat element;
+components are channels `0 .. N-1` with no RGB, XY, or complex meaning.
+Float16 components use exact `Float16_Bits`/`Float16_From_Bits` binary16
 encodings, including signed zero and NaN payload bits.
 
-Each of these eight C1 access packages also provides callback-scoped,
+Each of these 32 typed access packages also provides callback-scoped,
 read-only `For_Each_Stored`:
 
 ```ada
@@ -1026,7 +1029,8 @@ OpenCV.Core.Sparse.UInt8_Access.For_Each_Stored (Image, Visit'Access);
 It calls `Visit` once per **stored hash node**, including explicitly stored
 numeric zero; missing positions (whose `Get` would return zero) are not
 visited. An allocated sparse matrix with no nodes calls it zero times;
-unallocated or non-C1/wrong-depth matrices raise `OpenCV_Error` before the
+unallocated or wrong-depth/wrong-channel matrices raise `OpenCV_Error`
+before the
 callback. Each copied index vector has Ada bounds `1 .. Dimension_Count`,
 with zero-based coordinate values. Values are copied, not borrowed; Float16
 preserves exact binary16 encodings, including signed zero and NaN payloads.
@@ -2144,9 +2148,12 @@ The current limitations are intentional and help keep the public API coherent:
    shape capacity remains 10 dimensions.
 
 2. **SparseMat is a baseline, not a complete native wrapper; UMat is unavailable.**
-   Read-only stored-node traversal covers C1 only; direct C2/C3/C4 typed
-   node access/traversal, numeric conversion, and sparse arithmetic remain
-   future work. Native 1-D SparseMat is deliberately
+   Direct typed node access and read-only stored-node traversal cover all eight
+   depths in C1/C2/C3/C4 (32 layouts). One vector is one complete element.
+   Explicit all-zero vectors remain stored nodes; missing reads return zero and
+   do not create a node. Float16 components keep exact binary16 bits. C5+ typed
+   sparse layouts, numeric SparseMat conversion, and sparse arithmetic/scaling
+   are not yet wrapped. Native 1-D SparseMat is deliberately
    not exposed because the dense interoperability model begins at 2-D.
 
 3. **Typed direct/zero-copy access covers C1/C2/C3/C4 only.**
