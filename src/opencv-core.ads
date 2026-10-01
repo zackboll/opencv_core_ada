@@ -1157,6 +1157,15 @@ package OpenCV.Core is
    function Abs_Diff (Left, Right : Mat) return Mat;
    function Minimum (Left, Right : Mat) return Mat;
    function Maximum (Left, Right : Mat) return Mat;
+   --  Native UMat arithmetic retains UMat storage and independent results.
+   --  Operands must have identical 2-D shape, depth, and channels.
+   function Add (Left, Right : UMat) return UMat;
+   function Subtract (Left, Right : UMat) return UMat;
+   function Multiply (Left, Right : UMat) return UMat;
+   function Divide (Left, Right : UMat) return UMat;
+   function Abs_Diff (Left, Right : UMat) return UMat;
+   function Minimum (Left, Right : UMat) return UMat;
+   function Maximum (Left, Right : UMat) return UMat;
    --  Returns an independent Mat with the compatible operands' shape and
    --  element type. Float16 Add_Weighted uses native CV_16F cv::addWeighted
    --  on OpenCV 5.0. On supported OpenCV 4.x releases, operands are widened

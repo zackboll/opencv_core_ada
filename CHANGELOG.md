@@ -2,13 +2,17 @@
 
 ## Unreleased
 
+- Add native UMat `Add`, `Subtract`, `Multiply`, `Divide`, `Abs_Diff`,
+  `Minimum`, and `Maximum` with shared Mat/UMat C++ execution helpers,
+  UMat-native Float16 compatibility on OpenCV 4.x, OpenCL-optional CPU
+  execution, and independent results. Weighted and scale-add arithmetic,
+  mixed operands, and mapped UMat access remain deferred.
 - Add controlled Core UMat baseline with shallow assignment, deep Clone,
   2-D/N-D creation and metadata, shallow Region and Slice views, native UMat
   copy/conversion/Set_To, and explicit independent Mat/UMat transfers in
   `OpenCV.Core.Transfers`. Allocation uses USAGE_DEFAULT; OpenCL is optional
   and CPU fallback is covered by a test-only OpenCL-disabled probe. Reshape,
-  mapped typed access, general arithmetic dispatch, and module bridging are
-  deferred.
+  mapped typed access, weighted arithmetic, and module bridging are deferred.
 
 ## 0.3.0
 
