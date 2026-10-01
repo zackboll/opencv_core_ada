@@ -1813,6 +1813,25 @@ package OpenCV.Internal.C_API is
       Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_scale_add";
 
+   function UMat_Add_Weighted
+     (Left   : UMat_Handle;
+      Alpha  : C_Double;
+      Right  : UMat_Handle;
+      Beta   : C_Double;
+      Gamma  : C_Double;
+      Result : access UMat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_add_weighted";
+
+   function UMat_Scale_Add
+     (Left   : UMat_Handle;
+      Scale  : C_Double;
+      Right  : UMat_Handle;
+      Result : access UMat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_scale_add";
+
    function Mat_Bitwise_And
      (Left, Right : Mat_Handle; Result : access Mat_Handle) return Status
    with

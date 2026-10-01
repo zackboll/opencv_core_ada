@@ -1197,6 +1197,19 @@ package OpenCV.Core is
    --  Both operands must have identical 2D shape and element type.
    function Scale_Add (Self : Mat; Scale : Long_Float; Right : Mat) return Mat;
 
+   --  UMat results remain UMat-native. Add_Weighted accepts matching N-D
+   --  shape, depth, and channels; Scale_Add retains the 2-D Mat policy.
+   --  Float16 uses the same version-dependent widening and coefficient
+   --  rounding contracts as the corresponding Mat overloads above.
+   function Add_Weighted
+     (Left  : UMat;
+      Alpha : Long_Float;
+      Right : UMat;
+      Beta  : Long_Float;
+      Gamma : Long_Float := 0.0) return UMat;
+   function Scale_Add
+     (Self : UMat; Scale : Long_Float; Right : UMat) return UMat;
+
    function Bitwise_And (Left, Right : Mat) return Mat;
    function Bitwise_And (Left, Right, Mask : Mat) return Mat;
    function Bitwise_Or (Left, Right : Mat) return Mat;

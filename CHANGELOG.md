@@ -2,11 +2,15 @@
 
 ## Unreleased
 
+- Add UMat `Add_Weighted` and `Scale_Add` with shared Mat/UMat native
+  helpers, UMat-only Float16 compatibility temporaries, and OpenCL-optional
+  execution. Weighted addition accepts matching N-D UMat operands; scale-add
+  retains its 2-D policy and established Float32 coefficient narrowing.
 - Add native UMat `Add`, `Subtract`, `Multiply`, `Divide`, `Abs_Diff`,
   `Minimum`, and `Maximum` with shared Mat/UMat C++ execution helpers,
   UMat-native Float16 compatibility on OpenCV 4.x, OpenCL-optional CPU
-  execution, and independent results. Weighted and scale-add arithmetic,
-  mixed operands, and mapped UMat access remain deferred.
+  execution, and independent results. Mixed operands and mapped UMat access
+  remain deferred.
 - Add controlled Core UMat baseline with shallow assignment, deep Clone,
   2-D/N-D creation and metadata, shallow Region and Slice views, native UMat
   copy/conversion/Set_To, and explicit independent Mat/UMat transfers in
