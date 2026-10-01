@@ -17,6 +17,7 @@ package body Module_Interop_Tests is
    use type Interfaces.Unsigned_8;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Depth_Type;
+   use type OpenCV.Core.Dimension_Array;
    use type OpenCV.Core.Mat_Size;
    use type OpenCV.Size_Coordinate;
    use Mat_Test_Support;
@@ -183,27 +184,89 @@ package body Module_Interop_Tests is
 
    procedure Sparse_Input_Observes_Stored_Node (Test : in out Fixture) is
       pragma Unreferenced (Test);
-      Image : OpenCV.Core.Sparse.Sparse_Mat :=
-        OpenCV.Core.Sparse.Create ((4, 5), (OpenCV.Core.Float32, 1));
-      Seen  : Module_Bridge_Probe.Sparse_Input_Observation;
+      Shape    : constant OpenCV.Core.Dimension_Array := (2, 3, 2, 4, 2);
+      Location : constant OpenCV.Core.Index_Array := (1, 2, 0, 3, 1);
+      Image    : OpenCV.Core.Sparse.Sparse_Mat :=
+        OpenCV.Core.Sparse.Create (Shape, (OpenCV.Core.Float32, 1));
+      Seen     : Module_Bridge_Probe.Sparse_Input_Observation;
 
       procedure Inspect
         (Handle : OpenCV.Core.Sparse.Module_Interop.Input_Sparse_Mat_Handle) is
       begin
-         Module_Bridge_Probe.Inspect_Sparse (Handle, Seen);
+         Module_Bridge_Probe.Inspect_Sparse (Handle, Location, Seen);
       end Inspect;
    begin
-      OpenCV.Core.Sparse.Float32_Access.Set (Image, (0, 1), 41.0);
+      OpenCV.Core.Sparse.Float32_Access.Set (Image, Location, 41.0);
       OpenCV.Core.Sparse.Module_Interop.With_Input_Handle
         (Image, Inspect'Access);
       AUnit.Assertions.Assert
-        (Seen.Dimensions = 2
-         and then Seen.Extent_0 = 4
-         and then Seen.Extent_1 = 5
+        (Seen.Dimensions = 5
+         and then Seen.Extents (1 .. 5) = Shape
+         and then Seen.Depth = 5
+         and then Seen.Channels = 1
          and then Seen.Nodes = 1
          and then Seen.Value = 41,
-         "sparse module input probe must observe the original header");
+         "sparse module input probe must observe the original 5-D header");
    end Sparse_Input_Observes_Stored_Node;
+
+   procedure Sparse_Inputs_Can_Be_Borrowed_Together (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Shape          : constant OpenCV.Core.Dimension_Array := (2, 3, 2, 4, 2);
+      Left_Location  : constant OpenCV.Core.Index_Array := (1, 2, 0, 3, 1);
+      Right_Location : constant OpenCV.Core.Index_Array := (0, 1, 1, 2, 0);
+      Left           : OpenCV.Core.Sparse.Sparse_Mat :=
+        OpenCV.Core.Sparse.Create (Shape, (OpenCV.Core.Float32, 1));
+      Right          : OpenCV.Core.Sparse.Sparse_Mat :=
+        OpenCV.Core.Sparse.Create (Shape, (OpenCV.Core.Float32, 1));
+      Seen_Left      : Module_Bridge_Probe.Sparse_Input_Observation;
+      Seen_Right     : Module_Bridge_Probe.Sparse_Input_Observation;
+
+      procedure Inspect_Left
+        (Left_Handle :
+           OpenCV.Core.Sparse.Module_Interop.Input_Sparse_Mat_Handle)
+      is
+         procedure Nested
+           (Right_Handle :
+              OpenCV.Core.Sparse.Module_Interop.Input_Sparse_Mat_Handle) is
+         begin
+            Module_Bridge_Probe.Inspect_Sparse_Pair
+              (Left_Handle,
+               Right_Handle,
+               Left_Location,
+               Right_Location,
+               Seen_Left,
+               Seen_Right);
+         end Nested;
+      begin
+         OpenCV.Core.Sparse.Module_Interop.With_Input_Handle
+           (Right, Nested'Access);
+      end Inspect_Left;
+   begin
+      OpenCV.Core.Sparse.Float32_Access.Set (Left, Left_Location, 41.0);
+      OpenCV.Core.Sparse.Float32_Access.Set (Right, Right_Location, 17.0);
+      OpenCV.Core.Sparse.Module_Interop.With_Input_Handle
+        (Left, Inspect_Left'Access);
+      AUnit.Assertions.Assert
+        (Seen_Left.Dimensions = 5
+         and then Seen_Left.Extents (1 .. 5) = Shape
+         and then Seen_Left.Depth = 5
+         and then Seen_Left.Channels = 1
+         and then Seen_Left.Nodes = 1
+         and then Seen_Left.Value = 41
+         and then Seen_Right.Dimensions = 5
+         and then Seen_Right.Extents (1 .. 5) = Shape
+         and then Seen_Right.Depth = 5
+         and then Seen_Right.Channels = 1
+         and then Seen_Right.Nodes = 1
+         and then Seen_Right.Value = 17
+         and then OpenCV.Core.Sparse.Float32_Access.Get (Left, Left_Location)
+                  = 41.0
+         and then OpenCV.Core.Sparse.Float32_Access.Get (Right, Right_Location)
+                  = 17.0
+         and then Left.Stored_Element_Count = 1
+         and then Right.Stored_Element_Count = 1,
+         "two borrowed sparse headers must remain distinct and unchanged");
+   end Sparse_Inputs_Can_Be_Borrowed_Together;
 
    procedure Sparse_Input_Callback_Exception_Propagates (Test : in out Fixture)
    is
@@ -338,8 +401,12 @@ package body Module_Interop_Tests is
             Invalid_Resolver_Inputs_Are_Rejected'Access));
       Result.Add_Test
         (Caller.Create
-           ("Sparse module input bridge observes original header",
+           ("Sparse module input bridge observes original 5-D header",
             Sparse_Input_Observes_Stored_Node'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Sparse module input bridge borrows two headers together",
+            Sparse_Inputs_Can_Be_Borrowed_Together'Access));
       Result.Add_Test
         (Caller.Create
            ("Sparse module input callback exceptions propagate",

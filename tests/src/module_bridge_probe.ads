@@ -1,4 +1,5 @@
 with Interfaces;
+with OpenCV.Core;
 with OpenCV.Core.Module_Interop;
 with OpenCV.Core.Sparse.Module_Interop;
 
@@ -31,15 +32,27 @@ package Module_Bridge_Probe is
 
    type Sparse_Input_Observation is record
       Dimensions : Integer;
-      Extent_0   : Integer;
-      Extent_1   : Integer;
+      Extents    : OpenCV.Core.Dimension_Array (1 .. 32);
+      Depth      : Integer;
+      Channels   : Integer;
       Nodes      : Integer;
       Value      : Integer;
    end record;
 
    procedure Inspect_Sparse
      (Handle      : OpenCV.Core.Sparse.Module_Interop.Input_Sparse_Mat_Handle;
+      Indices     : OpenCV.Core.Index_Array;
       Observation : out Sparse_Input_Observation);
+
+   procedure Inspect_Sparse_Pair
+     (Left              :
+        OpenCV.Core.Sparse.Module_Interop.Input_Sparse_Mat_Handle;
+      Right             :
+        OpenCV.Core.Sparse.Module_Interop.Input_Sparse_Mat_Handle;
+      Left_Indices      : OpenCV.Core.Index_Array;
+      Right_Indices     : OpenCV.Core.Index_Array;
+      Left_Observation  : out Sparse_Input_Observation;
+      Right_Observation : out Sparse_Input_Observation);
 
    procedure Mutate_Sparse
      (Handle : OpenCV.Core.Sparse.Module_Interop.Output_Sparse_Mat_Handle;
