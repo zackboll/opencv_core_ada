@@ -114,4 +114,107 @@ opencv_core_module_probe_invalid_inputs(void) {
     return OPENCV_CORE_OK;
 }
 
+OPENCV_CORE_MODULE_PROBE_EXPORT opencv_core_status
+opencv_core_module_probe_sparse_input(
+    const opencv_core_sparse_mat_handle *handle, int32_t *out_dims,
+    int32_t *out_extent_0, int32_t *out_extent_1, int32_t *out_nodes,
+    int32_t *out_value) {
+    if (out_dims == nullptr || out_extent_0 == nullptr ||
+        out_extent_1 == nullptr || out_nodes == nullptr ||
+        out_value == nullptr) {
+        return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
+    }
+    *out_dims = 0;
+    *out_extent_0 = 0;
+    *out_extent_1 = 0;
+    *out_nodes = 0;
+    *out_value = 0;
+
+    try {
+        const cv::SparseMat *mat = nullptr;
+        const opencv_core_status status =
+            opencv_core_module_input_sparse_mat(handle, &mat);
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+        if (mat == nullptr || mat->dims() != 2 || mat->depth() != CV_32F ||
+            mat->channels() != 1) {
+            return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
+        }
+        const int indices[2] = {0, 1};
+        const float *stored = mat->find<float>(indices);
+        *out_dims = mat->dims();
+        *out_extent_0 = mat->size(0);
+        *out_extent_1 = mat->size(1);
+        *out_nodes = static_cast<int32_t>(mat->nzcount());
+        *out_value = stored == nullptr ? 0 : static_cast<int32_t>(*stored);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_exception();
+    }
+}
+
+OPENCV_CORE_MODULE_PROBE_EXPORT opencv_core_status
+opencv_core_module_probe_sparse_mutate(opencv_core_sparse_mat_handle *handle,
+                                        float value) {
+    try {
+        cv::SparseMat *mat = nullptr;
+        const opencv_core_status status =
+            opencv_core_module_output_sparse_mat(handle, &mat);
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+        if (mat == nullptr || mat->dims() != 2 || mat->depth() != CV_32F ||
+            mat->channels() != 1) {
+            return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
+        }
+        const int indices[2] = {0, 1};
+        mat->ref<float>(indices) = value;
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_exception();
+    }
+}
+
+OPENCV_CORE_MODULE_PROBE_EXPORT opencv_core_status
+opencv_core_module_probe_sparse_create(opencv_core_sparse_mat_handle *handle,
+                                        int32_t extent_0, int32_t extent_1,
+                                        float value) {
+    try {
+        cv::SparseMat *mat = nullptr;
+        const opencv_core_status status =
+            opencv_core_module_output_sparse_mat(handle, &mat);
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+        if (mat == nullptr || extent_0 < 1 || extent_1 < 1) {
+            return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
+        }
+        const int sizes[2] = {extent_0, extent_1};
+        mat->create(2, sizes, CV_32FC1);
+        const int indices[2] = {0, 1};
+        mat->ref<float>(indices) = value;
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_exception();
+    }
+}
+
+OPENCV_CORE_MODULE_PROBE_EXPORT opencv_core_status
+opencv_core_module_probe_sparse_invalid_inputs(void) {
+    const cv::SparseMat *input = nullptr;
+    cv::SparseMat *output = nullptr;
+    if (opencv_core_module_input_sparse_mat(nullptr, &input) ==
+            OPENCV_CORE_OK ||
+        opencv_core_module_output_sparse_mat(nullptr, &output) ==
+            OPENCV_CORE_OK ||
+        opencv_core_module_input_sparse_mat(nullptr, nullptr) ==
+            OPENCV_CORE_OK ||
+        opencv_core_module_output_sparse_mat(nullptr, nullptr) ==
+            OPENCV_CORE_OK) {
+        return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
+    }
+    return OPENCV_CORE_OK;
+}
+
 } // extern "C"

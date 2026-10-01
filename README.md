@@ -18,7 +18,7 @@ translation of the C++ headers.
 >
 > **Development status:** active, pre-1.0 API.
 >
-> **Current test baseline:** 1461 AUnit tests, with Ada and C++ warnings promoted
+> **Current test baseline:** 1514 AUnit tests, with Ada and C++ warnings promoted
 > to errors. GitHub Actions exercises the full test suite against four OpenCV
 > compatibility targets, plus a native Ubuntu 24.04 ARM64 job.
 >
@@ -135,6 +135,19 @@ external-buffer views. Output handles expose the actual Core header so an
 OutputArray operation can allocate or rebind it; temporary external-buffer
 views are rejected for output because rebinding would violate their no-escape
 ownership contract.
+
+`OpenCV.Core.Sparse.Module_Interop` is the same kind of implementation
+interface for `Sparse_Mat`. OpenCV 4.1.0, 4.10.0, and 5.0.0 Imgproc all
+declare `calcHist` with a mutable `SparseMat&` output and `calcBackProject`
+and `compareHist` with `const SparseMat&` inputs. The installed bridge
+therefore exposes callback-scoped input and output resolvers. Core remains
+the sole owner of the opaque wrapper and the native `cv::SparseMat` header.
+A module shim borrows that header only during the callback, must neither
+delete nor retain it, and does not copy node storage. Output resolution
+returns the actual Core header so `SparseMat::create` can replace its shape
+in place. SparseMat has no temporary external-buffer view, so output
+resolution does not apply the Mat external-view rejection. Imgproc histogram
+operations themselves are not part of this Core crate.
 
 ---
 

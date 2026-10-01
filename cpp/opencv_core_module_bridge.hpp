@@ -10,6 +10,14 @@
  * returned cv::Mat pointer beyond the corresponding Ada callback/call scope.
  * All cooperating module shims must use the same compatible OpenCV ABI and
  * installation as the Core shim.
+ *
+ * SparseMat follows the same ownership model. Core owns both
+ * opencv_core_sparse_mat_handle and its cv::SparseMat header. Resolver
+ * results are borrowed for the Ada callback/call scope only. A module shim
+ * must neither delete nor retain the returned cv::SparseMat pointer, and
+ * must not copy node storage through this bridge. There is no temporary
+ * external-buffer SparseMat view, so output resolution does not have the
+ * Mat external-view rejection.
  */
 #include <stdint.h>
 
@@ -31,6 +39,16 @@ opencv_core_mat_resolve_input(const opencv_core_mat_handle *source,
 opencv_core_status
 opencv_core_mat_resolve_output(opencv_core_mat_handle *destination,
                                void **out_native_mat);
+
+typedef struct opencv_core_sparse_mat_handle opencv_core_sparse_mat_handle;
+
+opencv_core_status
+opencv_core_sparse_resolve_input(const opencv_core_sparse_mat_handle *source,
+                                  void **out_native_sparse_mat);
+
+opencv_core_status
+opencv_core_sparse_resolve_output(opencv_core_sparse_mat_handle *destination,
+                                   void **out_native_sparse_mat);
 
 #ifdef __cplusplus
 }
@@ -65,6 +83,36 @@ inline opencv_core_status opencv_core_module_output_mat(
         opencv_core_mat_resolve_output(handle, &native_mat);
     if (status == OPENCV_CORE_OK) {
         *out_mat = static_cast<cv::Mat *>(native_mat);
+    }
+    return status;
+}
+
+inline opencv_core_status opencv_core_module_input_sparse_mat(
+    const opencv_core_sparse_mat_handle *handle, const cv::SparseMat **out_mat) {
+    void *native_mat = nullptr;
+    if (out_mat == nullptr) {
+        return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
+    }
+    *out_mat = nullptr;
+    const opencv_core_status status =
+        opencv_core_sparse_resolve_input(handle, &native_mat);
+    if (status == OPENCV_CORE_OK) {
+        *out_mat = static_cast<const cv::SparseMat *>(native_mat);
+    }
+    return status;
+}
+
+inline opencv_core_status opencv_core_module_output_sparse_mat(
+    opencv_core_sparse_mat_handle *handle, cv::SparseMat **out_mat) {
+    void *native_mat = nullptr;
+    if (out_mat == nullptr) {
+        return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
+    }
+    *out_mat = nullptr;
+    const opencv_core_status status =
+        opencv_core_sparse_resolve_output(handle, &native_mat);
+    if (status == OPENCV_CORE_OK) {
+        *out_mat = static_cast<cv::SparseMat *>(native_mat);
     }
     return status;
 }
