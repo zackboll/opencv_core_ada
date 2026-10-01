@@ -690,6 +690,36 @@ package body OpenCV.Core is
       end if;
    end Validate_Mask;
 
+   procedure Validate_Mask (Source, Mask : UMat) is
+   begin
+      if Mask.Depth /= UInt8 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "UMat mask must have UInt8 depth");
+      end if;
+      if Mask.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "UMat mask must have one channel");
+      end if;
+      if Mask.Rows /= Source.Rows or else Mask.Columns /= Source.Columns then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "UMat mask must match source size");
+      end if;
+   end Validate_Mask;
+
+   procedure Validate_Compare_Compatibility (Left, Right : UMat) is
+   begin
+      if Left.Channels /= 1
+        or else Right.Channels /= 1
+        or else Left.Rows /= Right.Rows
+        or else Left.Columns /= Right.Columns
+        or else Left.Depth /= Right.Depth
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "UMat compare requires compatible C1 operands");
+      end if;
+   end Validate_Compare_Compatibility;
+
    procedure Validate_Compare_Compatibility (Left, Right : Mat) is
    begin
       if Left.Channels /= 1 or else Right.Channels /= 1 then
@@ -1013,6 +1043,166 @@ package body OpenCV.Core is
       Result.Handle := New_Handle;
       return Result;
    end Scale_Add;
+
+   type UMat_Unary_Operation is
+     access function
+       (Self   : OpenCV.Internal.C_API.UMat_Handle;
+        Result : access OpenCV.Internal.C_API.UMat_Handle)
+        return OpenCV.Internal.C_API.Status;
+   pragma Convention (C, UMat_Unary_Operation);
+
+   type UMat_Masked_Operation is
+     access function
+       (Left, Right, Mask : OpenCV.Internal.C_API.UMat_Handle;
+        Result            : access OpenCV.Internal.C_API.UMat_Handle)
+        return OpenCV.Internal.C_API.Status;
+   pragma Convention (C, UMat_Masked_Operation);
+
+   type UMat_Masked_Unary_Operation is
+     access function
+       (Self, Mask : OpenCV.Internal.C_API.UMat_Handle;
+        Result     : access OpenCV.Internal.C_API.UMat_Handle)
+        return OpenCV.Internal.C_API.Status;
+   pragma Convention (C, UMat_Masked_Unary_Operation);
+
+   function Apply_UMat_Bitwise
+     (Left, Right, Mask : UMat;
+      Operation         : UMat_Masked_Operation;
+      Name              : String) return UMat
+   is
+      Result : UMat;
+      Handle : aliased OpenCV.Internal.C_API.UMat_Handle :=
+        OpenCV.Internal.C_API.Null_UMat_Handle;
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      Validate_Mask (Left, Mask);
+      Raise_On_Error
+        (Operation (Left.Handle, Right.Handle, Mask.Handle, Handle'Access),
+         Name);
+      OpenCV.Internal.C_API.UMat_Destroy (Result.Handle);
+      Result.Handle := Handle;
+      return Result;
+   end Apply_UMat_Bitwise;
+
+   function Apply_UMat_Bitwise_Not
+     (Self : UMat; Operation : UMat_Unary_Operation; Name : String) return UMat
+   is
+      Result : UMat;
+      Handle : aliased OpenCV.Internal.C_API.UMat_Handle :=
+        OpenCV.Internal.C_API.Null_UMat_Handle;
+   begin
+      Raise_On_Error (Operation (Self.Handle, Handle'Access), Name);
+      OpenCV.Internal.C_API.UMat_Destroy (Result.Handle);
+      Result.Handle := Handle;
+      return Result;
+   end Apply_UMat_Bitwise_Not;
+
+   function Apply_UMat_Bitwise_Not_Masked
+     (Self, Mask : UMat;
+      Operation  : UMat_Masked_Unary_Operation;
+      Name       : String) return UMat
+   is
+      Result : UMat;
+      Handle : aliased OpenCV.Internal.C_API.UMat_Handle :=
+        OpenCV.Internal.C_API.Null_UMat_Handle;
+   begin
+      Validate_Mask (Self, Mask);
+      Raise_On_Error
+        (Operation (Self.Handle, Mask.Handle, Handle'Access), Name);
+      OpenCV.Internal.C_API.UMat_Destroy (Result.Handle);
+      Result.Handle := Handle;
+      return Result;
+   end Apply_UMat_Bitwise_Not_Masked;
+
+   function Bitwise_And (Left, Right : UMat) return UMat
+   is (Apply_UMat_Arithmetic
+         (Left,
+          Right,
+          OpenCV.Internal.C_API.UMat_Bitwise_And'Access,
+          "UMat bitwise and"));
+   function Bitwise_Or (Left, Right : UMat) return UMat
+   is (Apply_UMat_Arithmetic
+         (Left,
+          Right,
+          OpenCV.Internal.C_API.UMat_Bitwise_Or'Access,
+          "UMat bitwise or"));
+   function Bitwise_Xor (Left, Right : UMat) return UMat
+   is (Apply_UMat_Arithmetic
+         (Left,
+          Right,
+          OpenCV.Internal.C_API.UMat_Bitwise_Xor'Access,
+          "UMat bitwise xor"));
+   function Bitwise_And (Left, Right, Mask : UMat) return UMat
+   is (Apply_UMat_Bitwise
+         (Left,
+          Right,
+          Mask,
+          OpenCV.Internal.C_API.UMat_Bitwise_And_Masked'Access,
+          "masked UMat bitwise and"));
+   function Bitwise_Or (Left, Right, Mask : UMat) return UMat
+   is (Apply_UMat_Bitwise
+         (Left,
+          Right,
+          Mask,
+          OpenCV.Internal.C_API.UMat_Bitwise_Or_Masked'Access,
+          "masked UMat bitwise or"));
+   function Bitwise_Xor (Left, Right, Mask : UMat) return UMat
+   is (Apply_UMat_Bitwise
+         (Left,
+          Right,
+          Mask,
+          OpenCV.Internal.C_API.UMat_Bitwise_Xor_Masked'Access,
+          "masked UMat bitwise xor"));
+   function Bitwise_Not (Self : UMat) return UMat
+   is (Apply_UMat_Bitwise_Not
+         (Self,
+          OpenCV.Internal.C_API.UMat_Bitwise_Not'Access,
+          "UMat bitwise not"));
+   function Bitwise_Not (Self, Mask : UMat) return UMat
+   is (Apply_UMat_Bitwise_Not_Masked
+         (Self,
+          Mask,
+          OpenCV.Internal.C_API.UMat_Bitwise_Not_Masked'Access,
+          "masked UMat bitwise not"));
+
+   function In_Range (Self : UMat; Lower, Upper : Scalar) return UMat is
+      Result  : UMat;
+      Handle  : aliased OpenCV.Internal.C_API.UMat_Handle :=
+        OpenCV.Internal.C_API.Null_UMat_Handle;
+      C_Lower : aliased OpenCV.Internal.C_API.Scalar := To_C_Scalar (Lower);
+      C_Upper : aliased OpenCV.Internal.C_API.Scalar := To_C_Scalar (Upper);
+   begin
+      if Self.Channels > 4 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "UMat Scalar range supports at most four channels");
+      end if;
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_In_Range_Scalar
+           (Self.Handle, C_Lower'Access, C_Upper'Access, Handle'Access),
+         "UMat in-range");
+      OpenCV.Internal.C_API.UMat_Destroy (Result.Handle);
+      Result.Handle := Handle;
+      return Result;
+   end In_Range;
+
+   function Compare (Left, Right : UMat; Kind : Comparison_Kind) return UMat is
+      Result : UMat;
+      Handle : aliased OpenCV.Internal.C_API.UMat_Handle :=
+        OpenCV.Internal.C_API.Null_UMat_Handle;
+   begin
+      Validate_Compare_Compatibility (Left, Right);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Compare
+           (Left.Handle,
+            Right.Handle,
+            To_C_Comparison_Kind (Kind),
+            Handle'Access),
+         "UMat compare");
+      OpenCV.Internal.C_API.UMat_Destroy (Result.Handle);
+      Result.Handle := Handle;
+      return Result;
+   end Compare;
 
    function Bitwise_And (Left, Right : Mat) return Mat is
       Result     : Mat;

@@ -50,6 +50,381 @@ package body UMat_Tests is
       return OpenCV.Core.UInt8_Access.Get (Host, Row, Column);
    end Pixel;
 
+   procedure Bitwise_Mask_Dispatch (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      use OpenCV.Core;
+      A : UMat := Create_UMat (2, 2, (UInt8, 1));
+      B : UMat := Create_UMat (2, 2, (UInt8, 1));
+   begin
+      A.Set_To (OpenCV.Make_Scalar (204.0));
+      B.Set_To (OpenCV.Make_Scalar (170.0));
+      AUnit.Assertions.Assert (Pixel (Bitwise_And (A, B)) = 16#88#, "and");
+      AUnit.Assertions.Assert (Pixel (Bitwise_Or (A, B)) = 16#EE#, "or");
+      AUnit.Assertions.Assert (Pixel (Bitwise_Xor (A, B)) = 16#66#, "xor");
+      AUnit.Assertions.Assert (Pixel (Bitwise_Not (A)) = 16#33#, "not");
+      declare
+         Mask   : constant UMat :=
+           In_Range
+             (A, OpenCV.Make_Scalar (200.0), OpenCV.Make_Scalar (210.0));
+         Result : constant UMat := Bitwise_Xor (A, B, Mask);
+      begin
+         AUnit.Assertions.Assert
+           (Mask.Depth = UInt8
+            and then Mask.Channels = 1
+            and then Pixel (Mask) = 255
+            and then Pixel (Result) = 16#66#,
+            "UMat in-range mask feeds native XOR");
+      end;
+      declare
+         Mask   : constant UMat := Compare (A, B, Greater_Than);
+         Result : constant UMat := Bitwise_Not (A, Mask);
+      begin
+         AUnit.Assertions.Assert
+           (Pixel (Mask) = 255 and then Pixel (Result) = 16#33#,
+            "UMat comparison mask feeds native NOT");
+      end;
+      AUnit.Assertions.Assert
+        (Pixel (Bitwise_And (A, B, Compare (A, B, Greater_Than))) = 16#88#,
+         "masked and");
+      AUnit.Assertions.Assert
+        (Pixel (Bitwise_Or (A, B, Compare (A, B, Greater_Than))) = 16#EE#,
+         "masked or");
+   end Bitwise_Mask_Dispatch;
+
+   procedure Assert_Empty_Metadata
+     (Image : OpenCV.Core.UMat; Source : OpenCV.Core.UMat; Label : String);
+
+   procedure Bitwise_Half_And_Empty (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      use OpenCV.Core;
+      Left_Host  : Mat := Create (1, 1, (Float16, 1));
+      Right_Host : Mat := Create (1, 1, (Float16, 1));
+      Default    : UMat;
+      Typed      : constant UMat := Create_UMat (0, 0, (UInt8, 1));
+      Half_Empty : constant UMat := Create_UMat (0, 0, (Float16, 1));
+      Mask_Empty : constant UMat := Create_UMat (0, 0, (UInt8, 1));
+      procedure Empty_Range is
+         X : constant UMat :=
+           In_Range
+             (Typed, OpenCV.Make_Scalar (0.0), OpenCV.Make_Scalar (1.0));
+      begin
+         AUnit.Assertions.Assert (not X.Is_Empty, "unreachable range");
+      end Empty_Range;
+   begin
+      Float16_Access.Set (Left_Host, 0, 0, Float16_From_Bits (16#A55A#));
+      Float16_Access.Set (Right_Host, 0, 0, Float16_From_Bits (16#3CC3#));
+      declare
+         A        : constant UMat := T.To_UMat (Left_Host);
+         B        : constant UMat := T.To_UMat (Right_Host);
+         And_Bits : constant Interfaces.Unsigned_16 :=
+           Float16_Bits
+             (Float16_Access.Get (T.To_Mat (Bitwise_And (A, B)), 0, 0));
+         Or_Bits  : constant Interfaces.Unsigned_16 :=
+           Float16_Bits
+             (Float16_Access.Get (T.To_Mat (Bitwise_Or (A, B)), 0, 0));
+         Xor_Bits : constant Interfaces.Unsigned_16 :=
+           Float16_Bits
+             (Float16_Access.Get (T.To_Mat (Bitwise_Xor (A, B)), 0, 0));
+         Not_Bits : constant Interfaces.Unsigned_16 :=
+           Float16_Bits
+             (Float16_Access.Get (T.To_Mat (Bitwise_Not (A)), 0, 0));
+      begin
+         AUnit.Assertions.Assert
+           (And_Bits = 16#2442#
+            and then Or_Bits = 16#BDDB#
+            and then Xor_Bits = 16#9999#
+            and then Not_Bits = 16#5AA5#,
+            "Float16 exact stored bitwise bits");
+      end;
+      Assert_Empty_Metadata
+        (Bitwise_And (Half_Empty, Half_Empty),
+         Half_Empty,
+         "typed empty binary");
+      Assert_Empty_Metadata
+        (Bitwise_Not (Half_Empty), Half_Empty, "typed empty unary");
+      Assert_Empty_Metadata
+        (Bitwise_And (Half_Empty, Half_Empty, Mask_Empty),
+         Half_Empty,
+         "typed empty masked source type");
+      Assert_Empty_Metadata
+        (Bitwise_And (Default, Typed), Typed, "mixed binary typed operand");
+      Assert_Empty_Metadata
+        (Bitwise_And (Typed, Default), Typed, "mixed binary reversed");
+      Assert_Empty_Metadata
+        (Bitwise_Not (Default), Default, "default empty not");
+      Assert_Empty_Metadata
+        (Bitwise_And (Typed, Typed, Default),
+         Typed,
+         "typed source default mask retains type");
+      Assert_Empty_Metadata
+        (Bitwise_Not (Typed, Default),
+         Typed,
+         "typed not default mask retains type");
+      Assert_Empty_Metadata
+        (Bitwise_And (Default, Default, Mask_Empty),
+         Default,
+         "default sources typed mask retain default type");
+      Assert_Empty_Metadata
+        (Bitwise_Not (Default, Mask_Empty),
+         Default,
+         "default not typed mask retains default type");
+      Mat_Test_Support.Assert_Raises_OpenCV_Error
+        (Empty_Range'Access, "empty range follows Mat failure");
+      AUnit.Assertions.Assert
+        (Compare (Typed, Typed, Equal).Dimension_Count = 0,
+         "empty comparison follows Mat released result");
+      AUnit.Assertions.Assert
+        (Compare (Default, Typed, Equal).Dimension_Count = 0
+         and then Compare (Typed, Default, Equal).Dimension_Count = 0,
+         "mixed empty comparisons release mask like Mat");
+      declare
+         ND       : constant UMat := Create_UMat ((2, 2, 2), (UInt8, 1));
+         Inverted : constant UMat := Bitwise_Not (ND);
+      begin
+         AUnit.Assertions.Assert
+           (Inverted.Shape = ND.Shape, "unmasked N-D bitwise not");
+      end;
+   end Bitwise_Half_And_Empty;
+
+   procedure Bitwise_Regions_And_Modes (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      use OpenCV.Core;
+      Parent : UMat := Create_UMat (3, 4, (UInt8, 3));
+      Other  : UMat := Create_UMat (3, 4, (UInt8, 3));
+      Area   : constant OpenCV.Rect := (1, 1, 2, 1);
+   begin
+      Parent.Set_To (OpenCV.Make_Scalar (204.0, 15.0, 170.0));
+      Other.Set_To (OpenCV.Make_Scalar (170.0, 240.0, 204.0));
+      declare
+         A             : constant UMat := Region (Parent, Area);
+         B             : constant UMat := Region (Other, Area);
+         Mask          : constant UMat :=
+           In_Range
+             (A,
+              OpenCV.Make_Scalar (200.0, 10.0, 160.0),
+              OpenCV.Make_Scalar (210.0, 20.0, 180.0));
+         Plain         : constant UMat := Bitwise_And (A, B);
+         Selected      : constant UMat := Bitwise_Or (A, B, Mask);
+         Host_Plain    : constant Mat := T.To_Mat (Plain);
+         Host_Selected : constant Mat := T.To_Mat (Selected);
+         Expected_And  : constant UInt8_Vec3.Vector := (16#88#, 0, 16#88#);
+         Expected_Or   : constant UInt8_Vec3.Vector :=
+           (16#EE#, 16#FF#, 16#EE#);
+      begin
+         AUnit.Assertions.Assert
+           (Plain.Rows = 1
+            and then Plain.Columns = 2
+            and then Plain.Channels = 3
+            and then UInt8_Vec3_Access.Get (Host_Plain, 0, 0) = Expected_And
+            and then UInt8_Vec3_Access.Get (Host_Selected, 0, 1) = Expected_Or,
+            "C3 noncontiguous region bitwise and resident range mask");
+         Parent.Set_To (OpenCV.Make_Scalar (0.0));
+         AUnit.Assertions.Assert
+           (UInt8_Vec3_Access.Get (T.To_Mat (Selected), 0, 0) = Expected_Or,
+            "result independent of region parent");
+      end;
+   end Bitwise_Regions_And_Modes;
+
+   procedure Range_ND_And_Masked_Pixels (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      use OpenCV.Core;
+      Parent    : UMat := Create_UMat ((2, 2, 2), (UInt8, 1));
+      A         : UMat := Create_UMat (1, 2, (UInt8, 1));
+      B         : UMat := Create_UMat (1, 2, (UInt8, 1));
+      Host_Mask : Mat := Create (1, 2, (UInt8, 1));
+   begin
+      Parent.Set_To (OpenCV.Make_Scalar (5.0));
+      declare
+         Mask : constant UMat :=
+           In_Range
+             (Parent, OpenCV.Make_Scalar (5.0), OpenCV.Make_Scalar (5.0));
+         Host : constant Mat := T.To_Mat (Mask);
+      begin
+         AUnit.Assertions.Assert
+           (Mask.Dimension_Count = 3
+            and then Mask.Shape = Parent.Shape
+            and then Mask.Depth = UInt8
+            and then Mask.Channels = 1
+            and then UInt8_Access.Get (Host, (0, 1, 1)) = 255,
+            "N-D UMat scalar range retains shape as C1 mask");
+      end;
+      A.Set_To (OpenCV.Make_Scalar (204.0));
+      B.Set_To (OpenCV.Make_Scalar (170.0));
+      UInt8_Access.Set (Host_Mask, 0, 0, 255);
+      UInt8_Access.Set (Host_Mask, 0, 1, 0);
+      declare
+         Mask       : constant UMat := T.To_UMat (Host_Mask);
+         And_Result : constant UMat := Bitwise_And (A, B, Mask);
+         Or_Result  : constant UMat := Bitwise_Or (A, B, Mask);
+         Xor_Result : constant UMat := Bitwise_Xor (A, B, Mask);
+         Not_Result : constant UMat := Bitwise_Not (A, Mask);
+      begin
+         AUnit.Assertions.Assert
+           (Pixel (And_Result, 0, 0) = 16#88#
+            and then Pixel (Or_Result, 0, 0) = 16#EE#
+            and then Pixel (Xor_Result, 0, 0) = 16#66#
+            and then Pixel (Not_Result, 0, 0) = 16#33#
+            and then Pixel (And_Result, 0, 1) = 0
+            and then Pixel (Or_Result, 0, 1) = 0
+            and then Pixel (Xor_Result, 0, 1) = 0
+            and then Pixel (Not_Result, 0, 1) = 0
+            and then Pixel (A, 0, 0) = 204
+            and then Pixel (Mask, 0, 0) = 255,
+            "masked operations zero newly allocated unselected pixels");
+      end;
+   end Range_ND_And_Masked_Pixels;
+
+   procedure Compare_Modes_And_Validation (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      use OpenCV.Core;
+      A            : UMat := Create_UMat (1, 1, (UInt8, 1));
+      B            : UMat := Create_UMat (1, 1, (UInt8, 1));
+      Multi        : constant UMat := Create_UMat (1, 1, (UInt8, 3));
+      Wrong        : constant UMat := Create_UMat (1, 2, (UInt8, 1));
+      Float_Source : constant UMat := Create_UMat (1, 1, (Float32, 1));
+      Bad_Mask     : constant UMat := Create_UMat (1, 1, (Int8, 1));
+      procedure Bad_Compare is
+         X : constant UMat := Compare (A, Multi, Equal);
+      begin
+         AUnit.Assertions.Assert (X.Is_Empty, "unreachable");
+      end Bad_Compare;
+      procedure Bad_Shape is
+         X : constant UMat := Compare (A, Wrong, Equal);
+      begin
+         AUnit.Assertions.Assert (X.Is_Empty, "unreachable");
+      end Bad_Shape;
+      procedure Bad_Depth is
+         X : constant UMat := Compare (A, Float_Source, Equal);
+      begin
+         AUnit.Assertions.Assert (X.Is_Empty, "unreachable");
+      end Bad_Depth;
+      procedure Bad_Mask_Depth is
+         X : constant UMat := Bitwise_And (A, B, Bad_Mask);
+      begin
+         AUnit.Assertions.Assert (X.Is_Empty, "unreachable");
+      end Bad_Mask_Depth;
+   begin
+      A.Set_To (OpenCV.Make_Scalar (3.0));
+      B.Set_To (OpenCV.Make_Scalar (5.0));
+      for Kind in Comparison_Kind loop
+         declare
+            Result   : constant UMat := Compare (A, B, Kind);
+            Expected : constant Interfaces.Unsigned_8 :=
+              (if Kind = Less_Than
+                 or else Kind = Less_Or_Equal
+                 or else Kind = Not_Equal
+               then 255
+               else 0);
+         begin
+            AUnit.Assertions.Assert
+              (Result.Depth = UInt8
+               and then Result.Channels = 1
+               and then Pixel (Result) = Expected,
+               "comparison mode");
+         end;
+      end loop;
+      Mat_Test_Support.Assert_Raises_OpenCV_Error
+        (Bad_Compare'Access, "multi-channel compare");
+      Mat_Test_Support.Assert_Raises_OpenCV_Error
+        (Bad_Shape'Access, "compare shape");
+      Mat_Test_Support.Assert_Raises_OpenCV_Error
+        (Bad_Depth'Access, "compare depth");
+      Mat_Test_Support.Assert_Raises_OpenCV_Error
+        (Bad_Mask_Depth'Access, "mask depth");
+   end Compare_Modes_And_Validation;
+
+   procedure Bitwise_OpenCL_Disabled (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      use OpenCV.Core;
+      Previous : constant Interfaces.Unsigned_8 := Use_OpenCL;
+      A        : UMat := Create_UMat (1, 1, (UInt8, 1));
+      B        : UMat := Create_UMat (1, 1, (UInt8, 1));
+   begin
+      A.Set_To (OpenCV.Make_Scalar (204.0));
+      B.Set_To (OpenCV.Make_Scalar (170.0));
+      AUnit.Assertions.Assert (Set_OpenCL (0) = 1, "disable OpenCL");
+      begin
+         declare
+            Mask     : constant UMat :=
+              In_Range
+                (A, OpenCV.Make_Scalar (200.0), OpenCV.Make_Scalar (210.0));
+            Compared : constant UMat := Compare (A, B, Greater_Than);
+         begin
+            AUnit.Assertions.Assert
+              (Pixel (Bitwise_And (A, B)) = 16#88#
+               and then Pixel (Bitwise_Or (A, B)) = 16#EE#
+               and then Pixel (Bitwise_Xor (A, B)) = 16#66#
+               and then Pixel (Bitwise_Not (A)) = 16#33#
+               and then Pixel (Bitwise_And (A, B, Mask)) = 16#88#
+               and then Pixel (Bitwise_Not (A, Compared)) = 16#33#
+               and then Pixel (Mask) = 255
+               and then Pixel (Compared) = 255,
+               "all UMat mask dispatch with OpenCL disabled");
+         end;
+      exception
+         when others =>
+            AUnit.Assertions.Assert
+              (Set_OpenCL (Previous) = 1, "restore OpenCL on failure");
+            raise;
+      end;
+      AUnit.Assertions.Assert (Set_OpenCL (Previous) = 1, "restore OpenCL");
+   end Bitwise_OpenCL_Disabled;
+
+   procedure Bitwise_Raw_ABI (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      L          : aliased C.UMat_Handle := C.Null_UMat_Handle;
+      R          : aliased C.UMat_Handle := C.Null_UMat_Handle;
+      Mask       : aliased C.UMat_Handle := C.Null_UMat_Handle;
+      Out_Handle : aliased C.UMat_Handle := C.Null_UMat_Handle;
+   begin
+      AUnit.Assertions.Assert
+        (C.UMat_Bitwise_And (L, R, null) = C.Error_Invalid_Argument,
+         "raw bitwise null output");
+      AUnit.Assertions.Assert
+        (C.UMat_Create_2D (1, 1, 0, 1, L'Access) = C.Success
+         and then C.UMat_Create_2D (1, 1, 0, 1, R'Access) = C.Success
+         and then C.UMat_Create_2D (1, 1, 0, 1, Mask'Access) = C.Success,
+         "raw UMat operands and mask");
+      AUnit.Assertions.Assert
+        (C.UMat_Bitwise_And (C.Null_UMat_Handle, R, Out_Handle'Access)
+         = C.Error_Invalid_Argument
+         and then Out_Handle = C.Null_UMat_Handle
+         and then C.UMat_Bitwise_And_Masked
+                    (L, R, C.Null_UMat_Handle, Out_Handle'Access)
+                  = C.Error_Invalid_Argument
+         and then Out_Handle = C.Null_UMat_Handle
+         and then C.UMat_Compare (L, R, 999, Out_Handle'Access)
+                  = C.Error_Invalid_Argument
+         and then Out_Handle = C.Null_UMat_Handle,
+         "raw invalid inputs and comparison enum clear result");
+      AUnit.Assertions.Assert
+        (C.UMat_Bitwise_And (L, R, Out_Handle'Access) = C.Success
+         and then Out_Handle /= C.Null_UMat_Handle,
+         "raw unmasked publication");
+      C.UMat_Destroy (Out_Handle);
+      AUnit.Assertions.Assert
+        (C.UMat_Bitwise_Or_Masked (L, R, Mask, Out_Handle'Access) = C.Success
+         and then Out_Handle /= C.Null_UMat_Handle,
+         "raw masked publication");
+      C.UMat_Destroy (Out_Handle);
+      AUnit.Assertions.Assert
+        (C.UMat_Compare (L, R, 0, Out_Handle'Access) = C.Success
+         and then Out_Handle /= C.Null_UMat_Handle,
+         "raw comparison publication");
+      C.UMat_Destroy (L);
+      C.UMat_Destroy (R);
+      C.UMat_Destroy (Mask);
+      declare
+         Rows : aliased C.C_Int32 := -1;
+      begin
+         AUnit.Assertions.Assert
+           (C.UMat_Rows (Out_Handle, Rows'Access) = C.Success
+            and then Rows = 1,
+            "raw result survives source destruction");
+      end;
+      C.UMat_Destroy (Out_Handle);
+   end Bitwise_Raw_ABI;
+
    procedure Assert_Empty_Metadata
      (Image : OpenCV.Core.UMat; Source : OpenCV.Core.UMat; Label : String) is
    begin
@@ -1175,6 +1550,32 @@ package body UMat_Tests is
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
+      Result.Add_Test
+        (Caller.Create
+           ("UMat bitwise and resident mask composition",
+            Bitwise_Mask_Dispatch'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UMat bitwise Float16 bits and empty metadata",
+            Bitwise_Half_And_Empty'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UMat bitwise C3 Region and mask independence",
+            Bitwise_Regions_And_Modes'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UMat N-D range and masked pixel selection",
+            Range_ND_And_Masked_Pixels'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UMat comparison modes and validation",
+            Compare_Modes_And_Validation'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UMat bitwise mask dispatch without OpenCL",
+            Bitwise_OpenCL_Disabled'Access));
+      Result.Add_Test
+        (Caller.Create ("UMat bitwise raw ABI", Bitwise_Raw_ABI'Access));
       Result.Add_Test
         (Caller.Create
            ("UMat weighted numeric and Regions", Weighted_Numeric'Access));

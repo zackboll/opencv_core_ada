@@ -1210,6 +1210,21 @@ package OpenCV.Core is
    function Scale_Add
      (Self : UMat; Scale : Long_Float; Right : UMat) return UMat;
 
+   --  All UMat operands and masks stay UMat-native. Bitwise operations use
+   --  stored bits, including exact Float16 bits. Binary operands have matching
+   --  2-D shape and element type; masks are UInt8 C1 of matching 2-D size.
+   function Bitwise_And (Left, Right : UMat) return UMat;
+   function Bitwise_And (Left, Right, Mask : UMat) return UMat;
+   function Bitwise_Or (Left, Right : UMat) return UMat;
+   function Bitwise_Or (Left, Right, Mask : UMat) return UMat;
+   function Bitwise_Xor (Left, Right : UMat) return UMat;
+   function Bitwise_Xor (Left, Right, Mask : UMat) return UMat;
+   function Bitwise_Not (Self : UMat) return UMat;
+   function Bitwise_Not (Self, Mask : UMat) return UMat;
+   --  Range and comparison results are UInt8 C1 UMat masks.
+   function In_Range (Self : UMat; Lower, Upper : Scalar) return UMat;
+   function Compare (Left, Right : UMat; Kind : Comparison_Kind) return UMat;
+
    function Bitwise_And (Left, Right : Mat) return Mat;
    function Bitwise_And (Left, Right, Mask : Mat) return Mat;
    function Bitwise_Or (Left, Right : Mat) return Mat;

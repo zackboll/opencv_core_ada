@@ -5659,6 +5659,119 @@ opencv_core_status opencv_core_umat_scale_add(
         });
 }
 
+extern "C++" {
+enum class bitwise_operation { bit_and, bit_or, bit_xor };
+
+static void make_empty_dense_like(const cv::Mat &source, cv::Mat &dst) {
+    if (source.dims == 0) dst.release();
+    else dst = cv::Mat(0, 0, source.type());
+}
+
+static bool bitwise_empty_bypass(const cv::Mat &, const cv::Mat &,
+                                  const cv::Mat *) { return false; }
+static bool bitwise_empty_bypass(const cv::UMat &a, const cv::UMat &b,
+                                  const cv::UMat *mask) {
+    // ABI safety: OpenCV 4.10's ocl_binary_op calls
+    // checkOptimalVectorWidth on null typed-0x0 UMat storage before its CPU
+    // fallback, dereferencing an invalid buffer even without a usable GPU.
+    return a.empty() && b.empty() && (mask == nullptr || mask->empty());
+}
+
+template <typename Dense>
+static void dense_bitwise_binary(const Dense &a, const Dense &b, Dense &dst,
+                                 bitwise_operation operation,
+                                 const Dense *mask = nullptr) {
+    // ABI safety: OpenCV 5 creates a 0-D scalar destination for a
+    // default-empty input and then accesses mismatched source/destination
+    // totals in getContinuousSize2D.
+    if ((a.empty() && b.empty() && (a.dims == 0 || b.dims == 0) &&
+         (mask == nullptr || mask->empty())) ||
+        bitwise_empty_bypass(a, b, mask)) {
+        if (mask) {
+            make_empty_dense_like(a, dst);
+        } else {
+            make_empty_arithmetic_result(a, b, dst);
+        }
+        return;
+    }
+    switch (operation) {
+    case bitwise_operation::bit_and:
+        if (mask) cv::bitwise_and(a, b, dst, *mask);
+        else cv::bitwise_and(a, b, dst);
+        break;
+    case bitwise_operation::bit_or:
+        if (mask) cv::bitwise_or(a, b, dst, *mask);
+        else cv::bitwise_or(a, b, dst);
+        break;
+    case bitwise_operation::bit_xor:
+        if (mask) cv::bitwise_xor(a, b, dst, *mask);
+        else cv::bitwise_xor(a, b, dst);
+        break;
+    }
+}
+
+template <typename Dense>
+static void dense_bitwise_not(const Dense &source, Dense &dst,
+                              const Dense *mask = nullptr) {
+    // ABI safety: OpenCV 5's default-empty destination becomes a 0-D
+    // scalar with a mismatched total in getContinuousSize2D.
+    if ((source.empty() && bitwise_empty_bypass(source, source, mask)) ||
+        (source.empty() && (source.dims == 0 ||
+        (mask && mask->empty() && mask->dims == 0)))) {
+        make_empty_dense_like(source, dst);
+        return;
+    }
+    if (mask) cv::bitwise_not(source, dst, *mask);
+    else cv::bitwise_not(source, dst);
+}
+
+template <typename Dense>
+static void dense_in_range_scalar(const Dense &source, const cv::Scalar &lower,
+                                  const cv::Scalar &upper, Dense &dst) {
+    cv::inRange(source, lower, upper, dst);
+}
+
+template <typename Dense>
+static void dense_compare(const Dense &a, const Dense &b, int kind, Dense &dst) {
+    cv::compare(a, b, dst, kind);
+}
+
+template <typename Handle, typename Operation>
+static opencv_core_status publish_dense_unary(const Handle *source,
+                                               Handle **out, Operation operation) {
+    clear_error();
+    if (!out) return invalid_argument("out must not be null");
+    *out = nullptr;
+    if (!source) return invalid_argument("source handle must not be null");
+    try {
+        using Dense = decltype(source->value);
+        Dense result;
+        operation(source->value, result);
+        std::unique_ptr<Handle> owned(new Handle(result));
+        *out = owned.release();
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+template <typename Handle, typename Operation>
+static opencv_core_status publish_dense_masked(const Handle *left,
+    const Handle *right, const Handle *mask, Handle **out, Operation operation) {
+    clear_error();
+    if (!out) return invalid_argument("out must not be null");
+    *out = nullptr;
+    if (!left || !right || !mask)
+        return invalid_argument("operand or mask handle must not be null");
+    try {
+        using Dense = decltype(left->value);
+        Dense result;
+        operation(left->value, right->value, mask->value, result);
+        std::unique_ptr<Handle> owned(new Handle(result));
+        *out = owned.release();
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+}
+
 opencv_core_status
 opencv_core_mat_bitwise_and(const opencv_core_mat_handle *left,
                             const opencv_core_mat_handle *right,
@@ -5687,7 +5800,8 @@ opencv_core_mat_bitwise_and(const opencv_core_mat_handle *left,
         }
 
         cv::Mat result;
-        cv::bitwise_and(left->value, right->value, result);
+        dense_bitwise_binary(left->value, right->value, result,
+                             bitwise_operation::bit_and);
         *out_mat = new opencv_core_mat_handle(result);
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -5723,7 +5837,8 @@ opencv_core_mat_bitwise_or(const opencv_core_mat_handle *left,
         }
 
         cv::Mat result;
-        cv::bitwise_or(left->value, right->value, result);
+        dense_bitwise_binary(left->value, right->value, result,
+                             bitwise_operation::bit_or);
         *out_mat = new opencv_core_mat_handle(result);
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -5759,7 +5874,8 @@ opencv_core_mat_bitwise_xor(const opencv_core_mat_handle *left,
         }
 
         cv::Mat result;
-        cv::bitwise_xor(left->value, right->value, result);
+        dense_bitwise_binary(left->value, right->value, result,
+                             bitwise_operation::bit_xor);
         *out_mat = new opencv_core_mat_handle(result);
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -5793,7 +5909,7 @@ opencv_core_mat_bitwise_not(const opencv_core_mat_handle *source,
         }
 
         cv::Mat result;
-        cv::bitwise_not(source->value, result);
+        dense_bitwise_not(source->value, result);
         *out_mat = new opencv_core_mat_handle(result);
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -5831,7 +5947,8 @@ opencv_core_mat_bitwise_and_masked(const opencv_core_mat_handle *left,
         }
 
         cv::Mat result;
-        cv::bitwise_and(left->value, right->value, result, mask->value);
+        dense_bitwise_binary(left->value, right->value, result,
+                             bitwise_operation::bit_and, &mask->value);
         *out_mat = new opencv_core_mat_handle(result);
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -5869,7 +5986,8 @@ opencv_core_mat_bitwise_or_masked(const opencv_core_mat_handle *left,
         }
 
         cv::Mat result;
-        cv::bitwise_or(left->value, right->value, result, mask->value);
+        dense_bitwise_binary(left->value, right->value, result,
+                             bitwise_operation::bit_or, &mask->value);
         *out_mat = new opencv_core_mat_handle(result);
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -5907,7 +6025,8 @@ opencv_core_mat_bitwise_xor_masked(const opencv_core_mat_handle *left,
         }
 
         cv::Mat result;
-        cv::bitwise_xor(left->value, right->value, result, mask->value);
+        dense_bitwise_binary(left->value, right->value, result,
+                             bitwise_operation::bit_xor, &mask->value);
         *out_mat = new opencv_core_mat_handle(result);
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -5943,7 +6062,7 @@ opencv_core_mat_bitwise_not_masked(const opencv_core_mat_handle *source,
         }
 
         cv::Mat result;
-        cv::bitwise_not(source->value, result, mask->value);
+        dense_bitwise_not(source->value, result, &mask->value);
         *out_mat = new opencv_core_mat_handle(result);
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -5970,8 +6089,8 @@ opencv_core_mat_in_range_scalar(const opencv_core_mat_handle *source,
 
     try {
         cv::Mat result;
-        cv::inRange(source->value, to_opencv_scalar(*lower),
-                    to_opencv_scalar(*upper), result);
+        dense_in_range_scalar(source->value, to_opencv_scalar(*lower),
+                              to_opencv_scalar(*upper), result);
         *out_mat = new opencv_core_mat_handle(result);
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -6003,12 +6122,86 @@ opencv_core_mat_compare(const opencv_core_mat_handle *left,
 
     try {
         cv::Mat result;
-        cv::compare(left->value, right->value, result, opencv_compare_kind);
+        dense_compare(left->value, right->value, opencv_compare_kind, result);
         *out_mat = new opencv_core_mat_handle(result);
         return OPENCV_CORE_OK;
     } catch (...) {
         return translate_current_exception();
     }
+}
+
+#define UMAT_BITWISE_BINARY(NAME, OP)                                     \
+opencv_core_status opencv_core_umat_bitwise_##NAME(                        \
+    const opencv_core_umat_handle *left, const opencv_core_umat_handle *right, \
+    opencv_core_umat_handle **out) {                                       \
+    return publish_dense_arithmetic(left, right, out,                     \
+        [](const cv::UMat &a, const cv::UMat &b, cv::UMat &dst) {           \
+            dense_bitwise_binary(a, b, dst, bitwise_operation::OP);       \
+        });                                                               \
+}                                                                         \
+opencv_core_status opencv_core_umat_bitwise_##NAME##_masked(               \
+    const opencv_core_umat_handle *left, const opencv_core_umat_handle *right, \
+    const opencv_core_umat_handle *mask, opencv_core_umat_handle **out) {  \
+    return publish_dense_masked(left, right, mask, out,                   \
+        [](const cv::UMat &a, const cv::UMat &b, const cv::UMat &m,         \
+           cv::UMat &dst) {                                                \
+            dense_bitwise_binary(a, b, dst, bitwise_operation::OP, &m);   \
+        });                                                               \
+}
+UMAT_BITWISE_BINARY(and, bit_and)
+UMAT_BITWISE_BINARY(or, bit_or)
+UMAT_BITWISE_BINARY(xor, bit_xor)
+#undef UMAT_BITWISE_BINARY
+
+opencv_core_status opencv_core_umat_bitwise_not(
+    const opencv_core_umat_handle *source, opencv_core_umat_handle **out) {
+    return publish_dense_unary(source, out,
+        [](const cv::UMat &a, cv::UMat &dst) { dense_bitwise_not(a, dst); });
+}
+opencv_core_status opencv_core_umat_bitwise_not_masked(
+    const opencv_core_umat_handle *source, const opencv_core_umat_handle *mask,
+    opencv_core_umat_handle **out) {
+    return publish_dense_masked(source, source, mask, out,
+        [](const cv::UMat &a, const cv::UMat &, const cv::UMat &m,
+           cv::UMat &dst) { dense_bitwise_not(a, dst, &m); });
+}
+opencv_core_status opencv_core_umat_in_range_scalar(
+    const opencv_core_umat_handle *source, const opencv_core_scalar *lower,
+    const opencv_core_scalar *upper, opencv_core_umat_handle **out) {
+    clear_error();
+    if (!out) return invalid_argument("out must not be null");
+    *out = nullptr;
+    if (!source || !lower || !upper)
+        return invalid_argument("source and bounds must not be null");
+    try {
+        cv::UMat result;
+        dense_in_range_scalar(source->value, to_opencv_scalar(*lower),
+                              to_opencv_scalar(*upper), result);
+        std::unique_ptr<opencv_core_umat_handle> owned(
+            new opencv_core_umat_handle(result));
+        *out = owned.release();
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+opencv_core_status opencv_core_umat_compare(
+    const opencv_core_umat_handle *left, const opencv_core_umat_handle *right,
+    int32_t kind, opencv_core_umat_handle **out) {
+    clear_error();
+    if (!out) return invalid_argument("out must not be null");
+    *out = nullptr;
+    if (!left || !right)
+        return invalid_argument("operand handles must not be null");
+    int native_kind = 0;
+    if (!to_opencv_compare_kind(kind, native_kind))
+        return invalid_argument("comparison kind is not supported");
+    try {
+        cv::UMat result;
+        dense_compare(left->value, right->value, native_kind, result);
+        std::unique_ptr<opencv_core_umat_handle> owned(
+            new opencv_core_umat_handle(result));
+        *out = owned.release();
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
 }
 
 opencv_core_status
