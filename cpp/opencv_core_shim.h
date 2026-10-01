@@ -74,6 +74,9 @@ opencv_core_status opencv_core_sparse_norm(
    target_norm may be negative; OpenCV scales by target_norm / norm when the
    source norm exceeds DBL_EPSILON, otherwise by 0. norm_kind is an
    OPENCV_CORE_NORM_* identifier. NORM_MINMAX is not a sparse operation. */
+opencv_core_status opencv_core_sparse_normalize(
+    const opencv_core_sparse_mat_handle *source, double target_norm,
+    int32_t norm_kind, opencv_core_sparse_mat_handle **out);
 /* Stored-node extrema. minimum, maximum, has_minimum, and has_maximum are
    required. minimum_indices and maximum_indices each receive one zero-based
    coordinate per dimension when that extremum was established; index_count
