@@ -2150,6 +2150,54 @@ input because those paths cross NUL-terminated native interfaces.
 
 ---
 
+## UMat and the Transparent API baseline
+
+`OpenCV.Core.UMat` is a controlled, Core-owned `cv::UMat` header behind an
+opaque C handle. Default construction yields an empty native UMat. Use
+`Create_UMat (Rows, Columns, Element_Type)` or
+`Create_UMat (Shape, Element_Type)` for 2-D or N-D storage. Shape arrays are
+read in Ada iteration order; UMat uses the existing `Mat_Type`, `Depth_Type`,
+`Channel_Count`, `Dimension_Array`, and `Mat_Size`. On OpenCV 4.1 through 4.10,
+shapes may contain 2 through 32 dimensions; OpenCV 5.0's native MatShape
+capacity limits both Mat and UMat to 10. UMat provides `Is_Empty`,
+`Dimension_Count`, `Extent`, `Shape`, `Rows`, `Columns`, `Depth`, `Channels`,
+`Element_Type`, `Total`, `Element_Size`, `Channel_Size`, `Is_Continuous`, and
+`Is_Submatrix`. As for Mat, Rows and Columns reject genuine N-D arrays.
+
+Ada assignment creates a distinct native UMat header sharing underlying
+storage; finalizing either header leaves the other usable. `Clone` is an
+explicit independent deep copy. `Region` and half-open N-D `Slice` are shallow
+views that retain the allocation; `Copy_To` returns an independent UMat via
+native UMat copy, not a Mat round-trip. `Set_To` fills complete C1 through C4
+elements using `OpenCV.Scalar`. `Convert_To` returns a native UMat conversion
+with the requested depth, scale, and offset, retaining shape and channels.
+
+Because Ada forbids one dispatching operation on *two* unrelated tagged
+types, independent host transfers live in `OpenCV.Core.Transfers`:
+
+```ada
+with OpenCV.Core.Transfers;
+Device : OpenCV.Core.UMat := OpenCV.Core.Transfers.To_UMat (Host);
+Copy   : OpenCV.Core.Mat  := OpenCV.Core.Transfers.To_Mat (Device);
+```
+
+Both transfers copy logical contents independently of source lifetime, even
+for a non-contiguous Mat Region. They do not expose a mapped Mat view.
+For typed inspection of UMat contents, transfer to an independent Mat and use
+the existing Mat typed access packages. There is no direct mapped typed UMat
+access or public OpenCL context/device/queue/raw pointer API in this release.
+
+All public allocations use `USAGE_DEFAULT`; host/device/shared allocation
+preferences are intentionally deferred. OpenCL need not be compiled in,
+available, enabled, or backed by a device: CPU fallback is required behavior,
+and the test suite explicitly disables OpenCL while exercising the public
+operations. **UMat enables OpenCV's Transparent API dispatch where native
+operations support it. It is not a guarantee that an operation executes on a
+GPU.** The opaque native Mat and UMat values will allow future shim-local
+`InputArray`/`OutputArray` dispatch without exposing C++ proxy objects or
+changing the ownership model. General Mat arithmetic migration, module UMat
+bridging, UMat reshape, and callback-scoped CPU mapping are separate work.
+
 ## Safety and validation boundary
 
 The project separates **public semantic validation** from **raw ABI safety**.
@@ -2251,7 +2299,9 @@ The current limitations are intentional and help keep the public API coherent:
    are not provided because a row is a 2-D concept. OpenCV 5.0's native Mat
    shape capacity remains 10 dimensions.
 
-2. **SparseMat is a baseline, not a complete native wrapper; UMat is unavailable.**
+2. **SparseMat and UMat are baseline wrappers, not complete native APIs.**
+   UMat has no direct mapped typed access, public OpenCL controls, masked
+   Set_To, or shared Mat/UMat arithmetic dispatch yet. Reshape is deferred.
    Direct typed node access and read-only stored-node traversal cover all eight
    depths in C1/C2/C3/C4 (32 layouts). One vector is one complete element.
    Explicit all-zero vectors remain stored nodes; missing reads return zero and
@@ -2262,7 +2312,7 @@ The current limitations are intentional and help keep the public API coherent:
    tables. `Norm` and `Normalize` are restricted to Float32 and Float64 with
    exactly one channel; only stored nodes participate, and `Min_Max`
    normalization is unavailable. Broader sparse arithmetic, C5+ typed layouts,
-   and native 1-D SparseMat are not wrapped. UMat is unavailable. Native 1-D
+   and native 1-D SparseMat are not wrapped. Native 1-D
    SparseMat is deliberately omitted because the dense interoperability model
    begins at 2-D.
 

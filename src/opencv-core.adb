@@ -10,6 +10,7 @@ package body OpenCV.Core is
    use type OpenCV.Internal.C_API.C_Boolean;
    use type OpenCV.Internal.C_API.C_Double;
    use type OpenCV.Internal.C_API.Mat_Handle;
+   use type OpenCV.Internal.C_API.UMat_Handle;
    use type OpenCV.Internal.C_API.C_UInt64;
    use type OpenCV.Internal.C_API.C_Int32;
    use type OpenCV.Internal.C_API.Status;
@@ -1097,6 +1098,396 @@ package body OpenCV.Core is
       Self.Handle := OpenCV.Internal.C_API.Null_Mat_Handle;
       OpenCV.Internal.C_API.Mat_Destroy (Old_Handle);
    end Finalize;
+
+   overriding
+   procedure Initialize (Self : in out UMat) is
+      Handle : aliased OpenCV.Internal.C_API.UMat_Handle :=
+        OpenCV.Internal.C_API.Null_UMat_Handle;
+   begin
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Create (Handle'Access), "UMat creation");
+      Self.Handle := Handle;
+   end Initialize;
+
+   overriding
+   procedure Adjust (Self : in out UMat) is
+      Source : constant OpenCV.Internal.C_API.UMat_Handle := Self.Handle;
+      Handle : aliased OpenCV.Internal.C_API.UMat_Handle :=
+        OpenCV.Internal.C_API.Null_UMat_Handle;
+   begin
+      Self.Handle := OpenCV.Internal.C_API.Null_UMat_Handle;
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Copy (Source, Handle'Access),
+         "UMat shallow copy");
+      Self.Handle := Handle;
+   end Adjust;
+
+   overriding
+   procedure Finalize (Self : in out UMat) is
+      Old : constant OpenCV.Internal.C_API.UMat_Handle := Self.Handle;
+   begin
+      Self.Handle := OpenCV.Internal.C_API.Null_UMat_Handle;
+      OpenCV.Internal.C_API.UMat_Destroy (Old);
+   end Finalize;
+
+   function Create_UMat
+     (Rows, Columns : Natural; Element_Type : Mat_Type) return UMat
+   is
+      Result : UMat;
+      Handle : aliased OpenCV.Internal.C_API.UMat_Handle :=
+        OpenCV.Internal.C_API.Null_UMat_Handle;
+   begin
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Create_2D
+           (OpenCV.Internal.C_API.C_Int32 (Rows),
+            OpenCV.Internal.C_API.C_Int32 (Columns),
+            To_C_Depth (Element_Type.Depth),
+            OpenCV.Internal.C_API.C_Int32 (Element_Type.Channels),
+            Handle'Access),
+         "2-D UMat creation");
+      OpenCV.Internal.C_API.UMat_Destroy (Result.Handle);
+      Result.Handle := Handle;
+      return Result;
+   end Create_UMat;
+
+   function Create_UMat
+     (Shape : Dimension_Array; Element_Type : Mat_Type) return UMat is
+   begin
+      if Shape'Length < 2 or else Shape'Length > 32 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "UMat dimension count must be 2 .. 32");
+      end if;
+      declare
+         Sizes  : OpenCV.Internal.C_API.C_Int32_Array (0 .. Shape'Length - 1);
+         Index  : Natural := 0;
+         Result : UMat;
+         Handle : aliased OpenCV.Internal.C_API.UMat_Handle :=
+           OpenCV.Internal.C_API.Null_UMat_Handle;
+      begin
+         for Value of Shape loop
+            if Value = 0 then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity, "UMat extents must be nonzero");
+            end if;
+            Sizes (Index) := OpenCV.Internal.C_API.C_Int32 (Value);
+            Index := Index + 1;
+         end loop;
+         Raise_On_Error
+           (OpenCV.Internal.C_API.UMat_Create_ND
+              (OpenCV.Internal.C_API.C_Int32 (Shape'Length),
+               Sizes (0)'Access,
+               To_C_Depth (Element_Type.Depth),
+               OpenCV.Internal.C_API.C_Int32 (Element_Type.Channels),
+               Handle'Access),
+            "N-D UMat creation");
+         OpenCV.Internal.C_API.UMat_Destroy (Result.Handle);
+         Result.Handle := Handle;
+         return Result;
+      end;
+   end Create_UMat;
+
+   function Clone (Self : UMat) return UMat is
+      Result : UMat;
+      Handle : aliased OpenCV.Internal.C_API.UMat_Handle :=
+        OpenCV.Internal.C_API.Null_UMat_Handle;
+   begin
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Clone (Self.Handle, Handle'Access),
+         "UMat clone");
+      OpenCV.Internal.C_API.UMat_Destroy (Result.Handle);
+      Result.Handle := Handle;
+      return Result;
+   end Clone;
+
+   function Copy_To (Self : UMat) return UMat is
+      Result : UMat;
+      Handle : aliased OpenCV.Internal.C_API.UMat_Handle :=
+        OpenCV.Internal.C_API.Null_UMat_Handle;
+   begin
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Copy_To (Self.Handle, Handle'Access),
+         "UMat independent copy");
+      OpenCV.Internal.C_API.UMat_Destroy (Result.Handle);
+      Result.Handle := Handle;
+      return Result;
+   end Copy_To;
+
+   function Convert_To
+     (Self   : UMat;
+      Depth  : Depth_Type;
+      Scale  : Long_Float := 1.0;
+      Offset : Long_Float := 0.0) return UMat
+   is
+      Result : UMat;
+      Handle : aliased OpenCV.Internal.C_API.UMat_Handle :=
+        OpenCV.Internal.C_API.Null_UMat_Handle;
+   begin
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Convert_To
+           (Self.Handle,
+            To_C_Depth (Depth),
+            Interfaces.C.double (Scale),
+            Interfaces.C.double (Offset),
+            Handle'Access),
+         "UMat numeric conversion");
+      OpenCV.Internal.C_API.UMat_Destroy (Result.Handle);
+      Result.Handle := Handle;
+      return Result;
+   end Convert_To;
+
+   procedure Set_To (Self : in out UMat; Value : Scalar) is
+      Native : aliased OpenCV.Internal.C_API.Scalar := To_C_Scalar (Value);
+   begin
+      if Self.Channels > 4 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "UMat Scalar supports at most four channels");
+      end if;
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Set_To (Self.Handle, Native'Access),
+         "UMat set-to");
+   end Set_To;
+
+   function Region (Self : UMat; Area : Rect) return UMat is
+      Source_Rows        : constant Size_Coordinate :=
+        Size_Coordinate (Self.Rows);
+      Source_Columns     : constant Size_Coordinate :=
+        Size_Coordinate (Self.Columns);
+      Origin_X, Origin_Y : Size_Coordinate;
+      Result             : UMat;
+      Handle             : aliased OpenCV.Internal.C_API.UMat_Handle :=
+        OpenCV.Internal.C_API.Null_UMat_Handle;
+   begin
+      if Area.Width = 0
+        or else Area.Height = 0
+        or else Area.X < 0
+        or else Area.Y < 0
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "UMat region requires positive bounds");
+      end if;
+      Origin_X := Size_Coordinate (Area.X);
+      Origin_Y := Size_Coordinate (Area.Y);
+      if Origin_X >= Source_Columns
+        or else Origin_Y >= Source_Rows
+        or else Area.Width > Source_Columns - Origin_X
+        or else Area.Height > Source_Rows - Origin_Y
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "UMat region exceeds source bounds");
+      end if;
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Region
+           (Self.Handle,
+            OpenCV.Internal.C_API.C_Int32 (Origin_X),
+            OpenCV.Internal.C_API.C_Int32 (Origin_Y),
+            OpenCV.Internal.C_API.C_Int32 (Area.Width),
+            OpenCV.Internal.C_API.C_Int32 (Area.Height),
+            Handle'Access),
+         "UMat region");
+      OpenCV.Internal.C_API.UMat_Destroy (Result.Handle);
+      Result.Handle := Handle;
+      return Result;
+   end Region;
+
+   function Slice (Self : UMat; Ranges : Index_Range_Array) return UMat is
+      Dims : constant Natural := Self.Dimension_Count;
+   begin
+      if Dims = 0 or else Ranges'Length /= Dims then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "UMat slice requires one range per axis");
+      end if;
+      declare
+         Starts, Stops : OpenCV.Internal.C_API.C_Int32_Array (0 .. Dims - 1);
+         Index         : Natural := 0;
+         Result        : UMat;
+         Handle        : aliased OpenCV.Internal.C_API.UMat_Handle :=
+           OpenCV.Internal.C_API.Null_UMat_Handle;
+      begin
+         for Selected of Ranges loop
+            if Selected.Start >= Selected.Stop
+              or else Selected.Stop > Self.Extent (Index + 1)
+            then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity, "UMat slice range exceeds source");
+            end if;
+            Starts (Index) := OpenCV.Internal.C_API.C_Int32 (Selected.Start);
+            Stops (Index) := OpenCV.Internal.C_API.C_Int32 (Selected.Stop);
+            Index := Index + 1;
+         end loop;
+         Raise_On_Error
+           (OpenCV.Internal.C_API.UMat_Slice_ND
+              (Self.Handle,
+               OpenCV.Internal.C_API.C_Int32 (Dims),
+               Starts (0)'Access,
+               Stops (0)'Access,
+               Handle'Access),
+            "UMat slice");
+         OpenCV.Internal.C_API.UMat_Destroy (Result.Handle);
+         Result.Handle := Handle;
+         return Result;
+      end;
+   end Slice;
+
+   type UMat_Flag_Query is
+     access function
+       (Handle : OpenCV.Internal.C_API.UMat_Handle;
+        Value  : access OpenCV.Internal.C_API.C_UInt8)
+        return OpenCV.Internal.C_API.Status
+   with Convention => C;
+   function UMat_Flag
+     (Self : UMat; Query : UMat_Flag_Query; Name : String) return Boolean
+   is
+      Value : aliased OpenCV.Internal.C_API.C_UInt8 := 0;
+   begin
+      Raise_On_Error (Query (Self.Handle, Value'Access), Name);
+      return From_C_Boolean (Value, Name);
+   end UMat_Flag;
+
+   function Is_Empty (Self : UMat) return Boolean
+   is (UMat_Flag
+         (Self,
+          OpenCV.Internal.C_API.UMat_Is_Empty'Access,
+          "UMat empty query"));
+   function Is_Continuous (Self : UMat) return Boolean
+   is (UMat_Flag
+         (Self,
+          OpenCV.Internal.C_API.UMat_Is_Continuous'Access,
+          "UMat continuity query"));
+   function Is_Submatrix (Self : UMat) return Boolean
+   is (UMat_Flag
+         (Self,
+          OpenCV.Internal.C_API.UMat_Is_Submatrix'Access,
+          "UMat submatrix query"));
+
+   type UMat_Integer_Query is
+     access function
+       (Handle : OpenCV.Internal.C_API.UMat_Handle;
+        Value  : access OpenCV.Internal.C_API.C_Int32)
+        return OpenCV.Internal.C_API.Status
+   with Convention => C;
+   function UMat_Integer
+     (Self : UMat; Query : UMat_Integer_Query; Name : String)
+      return OpenCV.Internal.C_API.C_Int32
+   is
+      Value : aliased OpenCV.Internal.C_API.C_Int32 := 0;
+   begin
+      Raise_On_Error (Query (Self.Handle, Value'Access), Name);
+      return Value;
+   end UMat_Integer;
+
+   function Dimension_Count (Self : UMat) return Natural is
+      Value : constant OpenCV.Internal.C_API.C_Int32 :=
+        UMat_Integer
+          (Self,
+           OpenCV.Internal.C_API.UMat_Dimension_Count'Access,
+           "UMat dimension count");
+   begin
+      if Value < 0 then
+         raise OpenCV_Error with "negative UMat dimension count";
+      end if;
+      return Natural (Value);
+   end Dimension_Count;
+
+   function Rows (Self : UMat) return Natural is
+      Value : constant OpenCV.Internal.C_API.C_Int32 :=
+        UMat_Integer
+          (Self, OpenCV.Internal.C_API.UMat_Rows'Access, "UMat rows");
+   begin
+      if Value < 0 then
+         raise OpenCV_Error with "UMat rows require two dimensions";
+      end if;
+      return Natural (Value);
+   end Rows;
+
+   function Columns (Self : UMat) return Natural is
+      Value : constant OpenCV.Internal.C_API.C_Int32 :=
+        UMat_Integer
+          (Self, OpenCV.Internal.C_API.UMat_Columns'Access, "UMat columns");
+   begin
+      if Value < 0 then
+         raise OpenCV_Error with "UMat columns require two dimensions";
+      end if;
+      return Natural (Value);
+   end Columns;
+
+   function Extent (Self : UMat; Axis : Positive) return Size_Coordinate is
+      Value : aliased OpenCV.Internal.C_API.C_Int32 := 0;
+   begin
+      if Axis > Self.Dimension_Count then
+         raise OpenCV_Error with "UMat extent axis outside dimension range";
+      end if;
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Extent
+           (Self.Handle,
+            OpenCV.Internal.C_API.C_Int32 (Axis - 1),
+            Value'Access),
+         "UMat extent");
+      if Value < 0 then
+         raise OpenCV_Error with "negative UMat extent";
+      end if;
+      return Size_Coordinate (Value);
+   end Extent;
+
+   function Shape (Self : UMat) return Dimension_Array is
+      Count : constant Natural := Self.Dimension_Count;
+   begin
+      if Count = 0 then
+         return (1 .. 0 => 0);
+      end if;
+      declare
+         Result : Dimension_Array (1 .. Count);
+      begin
+         for Axis in Result'Range loop
+            Result (Axis) := Self.Extent (Axis);
+         end loop;
+         return Result;
+      end;
+   end Shape;
+
+   function Depth (Self : UMat) return Depth_Type
+   is (From_C_Depth
+         (UMat_Integer
+            (Self, OpenCV.Internal.C_API.UMat_Depth'Access, "UMat depth")));
+
+   function Channels (Self : UMat) return Channel_Count
+   is (Channel_Count
+         (UMat_Integer
+            (Self,
+             OpenCV.Internal.C_API.UMat_Channels'Access,
+             "UMat channels")));
+
+   function Element_Type (Self : UMat) return Mat_Type
+   is ((Depth => Self.Depth, Channels => Self.Channels));
+
+   type UMat_Size_Query is
+     access function
+       (Handle : OpenCV.Internal.C_API.UMat_Handle;
+        Value  : access OpenCV.Internal.C_API.C_UInt64)
+        return OpenCV.Internal.C_API.Status
+   with Convention => C;
+   function UMat_Bytes
+     (Self : UMat; Query : UMat_Size_Query; Name : String) return Mat_Size
+   is
+      Value : aliased OpenCV.Internal.C_API.C_UInt64 := 0;
+   begin
+      Raise_On_Error (Query (Self.Handle, Value'Access), Name);
+      return To_Mat_Size (Value);
+   end UMat_Bytes;
+
+   function Total (Self : UMat) return Mat_Size
+   is (UMat_Bytes
+         (Self, OpenCV.Internal.C_API.UMat_Total'Access, "UMat total"));
+   function Element_Size (Self : UMat) return Mat_Size
+   is (UMat_Bytes
+         (Self,
+          OpenCV.Internal.C_API.UMat_Element_Size'Access,
+          "UMat element size"));
+   function Channel_Size (Self : UMat) return Mat_Size
+   is (UMat_Bytes
+         (Self,
+          OpenCV.Internal.C_API.UMat_Channel_Size'Access,
+          "UMat channel size"));
 
    function Greatest_Common_Divisor (Left, Right : Mat_Size) return Mat_Size is
       A : Mat_Size := Left;
