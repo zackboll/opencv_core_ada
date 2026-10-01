@@ -234,6 +234,52 @@ package body OpenCV.Core.Sparse is
       return Result;
    end Normalize;
 
+   function Min_Max_Loc (Self : Sparse_Mat) return Sparse_Extrema is
+      Count       : constant Natural := Self.Dimension_Count;
+      Minimum     : aliased C.C_Float64 := 0.0;
+      Maximum     : aliased C.C_Float64 := 0.0;
+      Has_Minimum : aliased C.C_UInt8 := 0;
+      Has_Maximum : aliased C.C_UInt8 := 0;
+      Min_Idx     : aliased C.C_Int32_Array (0 .. 31) := (others => 0);
+      Max_Idx     : aliased C.C_Int32_Array (0 .. 31) := (others => 0);
+   begin
+      Check_Norm_Layout (Self);
+      if Count not in 2 .. 32 then
+         raise OpenCV_Error with "Sparse extrema require 2 .. 32 dimensions";
+      end if;
+      Check
+        (C.Sparse_Min_Max_Loc
+           (Self.Handle,
+            Minimum'Access,
+            Maximum'Access,
+            Min_Idx (0)'Access,
+            Max_Idx (0)'Access,
+            C.C_Int32 (Count),
+            Has_Minimum'Access,
+            Has_Maximum'Access),
+         "sparse extrema");
+
+      return Result : Sparse_Extrema do
+         Result.Dimensions := Count;
+         Result.Has_Minimum := Has_Minimum /= 0;
+         Result.Has_Maximum := Has_Maximum /= 0;
+         if Result.Has_Minimum then
+            Result.Minimum := Long_Float (Minimum);
+            for Axis in 1 .. Count loop
+               Result.Minimum_Location (Axis) :=
+                 Size_Coordinate (Min_Idx (Axis - 1));
+            end loop;
+         end if;
+         if Result.Has_Maximum then
+            Result.Maximum := Long_Float (Maximum);
+            for Axis in 1 .. Count loop
+               Result.Maximum_Location (Axis) :=
+                 Size_Coordinate (Max_Idx (Axis - 1));
+            end loop;
+         end if;
+      end return;
+   end Min_Max_Loc;
+
    function Clone (Self : Sparse_Mat) return Sparse_Mat is
       Result     : Sparse_Mat;
       New_Handle : aliased C.Sparse_Mat_Handle := C.Null_Sparse_Mat_Handle;

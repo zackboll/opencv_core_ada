@@ -1,6 +1,20 @@
 # Changelog
 
 ## Unreleased
+- Added SparseMat `Min_Max_Loc` for allocated Float32 and Float64 matrices
+  with exactly one channel. The operation reports native stored-node extrema
+  and their full N-D coordinates. `Has_Minimum` and `Has_Maximum` are
+  independent and are true only when OpenCV wrote that location. Missing
+  coordinates do not participate. Explicit zeros, including signed zero, are
+  candidates. Equal extrema keep the earliest node in OpenCV's unspecified
+  hash traversal, not insertion order. NaN never replaces a finite value.
+  Empty and NaN-only matrices establish neither side. Positive infinity and a
+  stored `FLT_MAX` or `DBL_MAX` establish only the maximum; negative infinity
+  and a stored `-FLT_MAX` or `-DBL_MAX` establish only the minimum. A side
+  that was not established returns `0.0` and a zero location rather than
+  OpenCV's initialization sentinel. Integer, Float16, multi-channel, and
+  unallocated layouts are rejected in Ada before the ABI call. 5-D and 32-D
+  matrices are accepted.
 - Added SparseMat `Norm` and `Normalize` for allocated Float32 and Float64
   matrices with exactly one channel. Both reuse `Norm_Kind` (`L1`, `L2`,
   `Infinity`) and operate on stored nodes only; missing coordinates contribute

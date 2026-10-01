@@ -59,6 +59,37 @@ package OpenCV.Core.Sparse is
      (Self        : Sparse_Mat;
       Target_Norm : Long_Float := 1.0;
       Kind        : Norm_Kind := L2) return Sparse_Mat;
+   --  Native sparse cv::minMaxLoc over stored nodes only. Requires an
+   --  allocated Float32 or Float64 matrix with exactly one channel. Missing
+   --  coordinates do not participate and are not created. An explicitly
+   --  stored zero is a candidate. Comparisons use strict < and >, so the
+   --  earliest node in OpenCV's hash traversal that holds an equal extremum
+   --  is reported. That order is unspecified and is not insertion order.
+   --  Negative zero compares equal to positive zero. NaN never replaces a
+   --  finite extremum. Has_Minimum and Has_Maximum are independent: each is
+   --  True only when native OpenCV wrote that location. Empty storage and a
+   --  NaN-only matrix establish neither. Positive infinity and a stored
+   --  Float32 FLT_MAX or Float64 DBL_MAX establish only the maximum, because
+   --  neither is strictly less than OpenCV's initial minimum. Negative
+   --  infinity and a stored -FLT_MAX or -DBL_MAX establish only the minimum.
+   --  A side that was not established returns 0.0 and an all-zero location;
+   --  the native initialization sentinels are not public extrema. Each
+   --  location is a fixed 32-coordinate array; only elements 1 .. Dimensions
+   --  are meaningful, and those values are the zero-based OpenCV coordinates.
+   --  The matrix is not modified. Integer, Float16, multi-channel, and
+   --  unallocated layouts are rejected before the ABI call. Min_Max
+   --  normalization remains unavailable.
+   type Sparse_Extrema is record
+      Has_Minimum      : Boolean := False;
+      Has_Maximum      : Boolean := False;
+      Minimum          : Long_Float := 0.0;
+      Maximum          : Long_Float := 0.0;
+      Minimum_Location : Index_Array (1 .. 32) := (others => 0);
+      Maximum_Location : Index_Array (1 .. 32) := (others => 0);
+      Dimensions       : Natural := 0;
+   end record;
+
+   function Min_Max_Loc (Self : Sparse_Mat) return Sparse_Extrema;
    function Clone (Self : Sparse_Mat) return Sparse_Mat;
    procedure Clear (Self : in out Sparse_Mat);
    function Is_Allocated (Self : Sparse_Mat) return Boolean;

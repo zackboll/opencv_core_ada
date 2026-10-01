@@ -194,6 +194,19 @@ package OpenCV.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_core_sparse_normalize";
+   function Sparse_Min_Max_Loc
+     (Source          : Sparse_Mat_Handle;
+      Minimum         : access C_Float64;
+      Maximum         : access C_Float64;
+      Minimum_Indices : access C_Int32;
+      Maximum_Indices : access C_Int32;
+      Index_Count     : C_Int32;
+      Has_Minimum     : access C_UInt8;
+      Has_Maximum     : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_min_max_loc";
    function Sparse_Copy
      (Source : Sparse_Mat_Handle; Result : access Sparse_Mat_Handle)
       return Status

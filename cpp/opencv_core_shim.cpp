@@ -2318,6 +2318,110 @@ opencv_core_status opencv_core_sparse_normalize(
     }
 }
 
+opencv_core_status opencv_core_sparse_min_max_loc(
+    const opencv_core_sparse_mat_handle *source, double *minimum,
+    double *maximum, int32_t *minimum_indices, int32_t *maximum_indices,
+    int32_t index_count, uint8_t *has_minimum, uint8_t *has_maximum) {
+    clear_error();
+    if (minimum != nullptr) {
+        *minimum = 0.0;
+    }
+    if (maximum != nullptr) {
+        *maximum = 0.0;
+    }
+    if (has_minimum != nullptr) {
+        *has_minimum = 0;
+    }
+    if (has_maximum != nullptr) {
+        *has_maximum = 0;
+    }
+    if (minimum == nullptr || maximum == nullptr || has_minimum == nullptr ||
+        has_maximum == nullptr) {
+        return invalid_argument("null sparse extrema output");
+    }
+    if (source == nullptr || source->value.hdr == nullptr) {
+        return invalid_argument("unallocated sparse source");
+    }
+    const int dims = source->value.dims();
+    // ABI safety: OpenCV writes one native int per dimension and does not
+    // check the caller buffer length. A mismatched count would write outside
+    // the Ada index arrays.
+    if (index_count != static_cast<int32_t>(dims) || dims <= 0 ||
+        static_cast<int32_t>(dims) > static_cast<int32_t>(cv::SparseMat::MAX_DIM) ||
+        minimum_indices == nullptr || maximum_indices == nullptr) {
+        return invalid_argument("sparse extrema index buffer mismatch");
+    }
+    std::memset(minimum_indices, 0, static_cast<std::size_t>(dims) * sizeof(int32_t));
+    std::memset(maximum_indices, 0, static_cast<std::size_t>(dims) * sizeof(int32_t));
+    try {
+        // OpenCV 4.1.0, 4.10.0, and 5.0.0 initialize both trackers to the
+        // depth's extreme magnitude and update a location only on a strict
+        // comparison. Seed private native index arrays with -1, which cannot
+        // be a stored coordinate, and publish a side only when that seed was
+        // replaced. Node count cannot distinguish a missing side: +Inf, -Inf,
+        // FLT_MAX, and -FLT_MAX can establish only one comparison.
+        int native_min[cv::SparseMat::MAX_DIM];
+        int native_max[cv::SparseMat::MAX_DIM];
+        std::fill_n(native_min, dims, -1);
+        std::fill_n(native_max, dims, -1);
+        double native_minimum = 0.0;
+        double native_maximum = 0.0;
+        cv::minMaxLoc(source->value, &native_minimum, &native_maximum,
+                      native_min, native_max);
+        const bool minimum_established = native_min[0] >= 0;
+        const bool maximum_established = native_max[0] >= 0;
+        int32_t published_min[cv::SparseMat::MAX_DIM] = {};
+        int32_t published_max[cv::SparseMat::MAX_DIM] = {};
+        if (minimum_established) {
+            for (int axis = 0; axis < dims; ++axis) {
+                const int coordinate = native_min[axis];
+                // ABI safety: a native int wider than the int32_t index buffer
+                // cannot be published without truncation.
+                if (coordinate < std::numeric_limits<int32_t>::min() ||
+                    coordinate > std::numeric_limits<int32_t>::max()) {
+                    return invalid_argument("sparse index exceeds ABI width");
+                }
+                published_min[axis] = static_cast<int32_t>(coordinate);
+            }
+        }
+        if (maximum_established) {
+            for (int axis = 0; axis < dims; ++axis) {
+                const int coordinate = native_max[axis];
+                // ABI safety: a native int wider than the int32_t index buffer
+                // cannot be published without truncation.
+                if (coordinate < std::numeric_limits<int32_t>::min() ||
+                    coordinate > std::numeric_limits<int32_t>::max()) {
+                    return invalid_argument("sparse index exceeds ABI width");
+                }
+                published_max[axis] = static_cast<int32_t>(coordinate);
+            }
+        }
+        if (minimum_established) {
+            *minimum = native_minimum;
+            std::memcpy(minimum_indices, published_min,
+                        static_cast<std::size_t>(dims) * sizeof(int32_t));
+            *has_minimum = 1;
+        }
+        if (maximum_established) {
+            *maximum = native_maximum;
+            std::memcpy(maximum_indices, published_max,
+                        static_cast<std::size_t>(dims) * sizeof(int32_t));
+            *has_maximum = 1;
+        }
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        *minimum = 0.0;
+        *maximum = 0.0;
+        *has_minimum = 0;
+        *has_maximum = 0;
+        std::memset(minimum_indices, 0,
+                    static_cast<std::size_t>(dims) * sizeof(int32_t));
+        std::memset(maximum_indices, 0,
+                    static_cast<std::size_t>(dims) * sizeof(int32_t));
+        return translate_current_exception();
+    }
+}
+
 opencv_core_status opencv_core_sparse_copy(const opencv_core_sparse_mat_handle *source,
     opencv_core_sparse_mat_handle **out) {
     clear_error();
