@@ -1356,6 +1356,21 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_resolve_output";
 
+   function Sparse_Resolve_Input
+     (Source : Sparse_Mat_Handle; Result : access System.Address) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_resolve_input";
+
+   function Sparse_Resolve_Output
+     (Destination : Sparse_Mat_Handle; Result : access System.Address)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_sparse_resolve_output";
+
    function Mat_Clone
      (Source : Mat_Handle; Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_clone";

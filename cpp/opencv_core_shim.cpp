@@ -3383,6 +3383,46 @@ opencv_core_status opencv_core_mat_resolve_output(
     }
 }
 
+opencv_core_status opencv_core_sparse_resolve_input(
+    const opencv_core_sparse_mat_handle *source, void **out_native_sparse_mat) {
+    clear_error();
+
+    if (out_native_sparse_mat == nullptr) {
+        return invalid_argument("out_native_sparse_mat must not be null");
+    }
+    *out_native_sparse_mat = nullptr;
+    if (source == nullptr) {
+        return invalid_argument("source SparseMat handle must not be null");
+    }
+
+    try {
+        *out_native_sparse_mat = const_cast<cv::SparseMat *>(&source->value);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status opencv_core_sparse_resolve_output(
+    opencv_core_sparse_mat_handle *destination, void **out_native_sparse_mat) {
+    clear_error();
+
+    if (out_native_sparse_mat == nullptr) {
+        return invalid_argument("out_native_sparse_mat must not be null");
+    }
+    *out_native_sparse_mat = nullptr;
+    if (destination == nullptr) {
+        return invalid_argument("destination SparseMat handle must not be null");
+    }
+
+    try {
+        *out_native_sparse_mat = &destination->value;
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
 opencv_core_status
 opencv_core_mat_clone(const opencv_core_mat_handle *source,
                       opencv_core_mat_handle **out_mat) {

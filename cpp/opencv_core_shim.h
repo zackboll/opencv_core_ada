@@ -607,6 +607,25 @@ opencv_core_status
 opencv_core_mat_resolve_output(opencv_core_mat_handle *destination,
                                void **out_native_mat);
 
+/*
+ * Implementation ABI for cooperating OpenCV Ada module shims. The successful
+ * result is a borrowed native cv::SparseMat pointer represented as void *.
+ * Core retains ownership of both the opaque handle and the cv::SparseMat
+ * header. It must not be deleted or retained after the corresponding Ada
+ * callback/call scope. There is no temporary external-buffer SparseMat view.
+ */
+opencv_core_status
+opencv_core_sparse_resolve_input(const opencv_core_sparse_mat_handle *source,
+                                  void **out_native_sparse_mat);
+
+/*
+ * As above, but returns a structurally mutable header. calcHist and other
+ * SparseMat& outputs may call SparseMat::create on this header in place.
+ */
+opencv_core_status
+opencv_core_sparse_resolve_output(opencv_core_sparse_mat_handle *destination,
+                                   void **out_native_sparse_mat);
+
 opencv_core_status
 opencv_core_mat_clone(const opencv_core_mat_handle *source,
                       opencv_core_mat_handle **out_mat);

@@ -1,6 +1,16 @@
 # Changelog
 
 ## Unreleased
+- Added callback-scoped SparseMat module interoperability in
+  `OpenCV.Core.Sparse.Module_Interop`, parallel to the Mat bridge. Core owns
+  the opaque wrapper and native `cv::SparseMat` header. Cooperating module
+  shims borrow that header only during the Ada callback through the installed
+  `opencv_core_module_bridge.hpp` helpers and must neither delete, retain, nor
+  copy it. Input resolution serves `const SparseMat&` operations such as
+  `calcBackProject` and `compareHist`. Output resolution returns the actual
+  Core header so `calcHist` can call `SparseMat::create` in place. There is no
+  temporary external-buffer SparseMat view. The C++ resolvers reject only null
+  handles and null output pointers. Imgproc histogram bindings are not included.
 - Added SparseMat `Min_Max_Loc` for allocated Float32 and Float64 matrices
   with exactly one channel. The operation reports native stored-node extrema
   and their full N-D coordinates. `Has_Minimum` and `Has_Maximum` are
@@ -410,7 +420,7 @@ Later Core work included:
   views
 - native-first Float16 `Add`, `Subtract`, `Multiply`, `Divide`,
   `Abs_Diff`, `Minimum`, `Maximum`, `Add_Weighted`, and `Scale_Add`
-- cross-module Mat interop bridge and installed
+- cross-module Mat and SparseMat interop bridge and installed
   `opencv_core_module_bridge.hpp`
 - signed `Rect` origins, with `Mat.Region` still rejecting negative ROI
   origins
