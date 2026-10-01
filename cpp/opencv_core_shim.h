@@ -1161,6 +1161,16 @@ opencv_core_mat_scale_add(const opencv_core_mat_handle *left, double scale,
                           const opencv_core_mat_handle *right,
                           opencv_core_mat_handle **out_mat);
 
+/* Owned UMat results. Float16 compatibility uses UMat temporaries only;
+ * addWeighted retains double coefficients, scaleAdd narrows scale to float. */
+opencv_core_status opencv_core_umat_add_weighted(
+    const opencv_core_umat_handle *left, double alpha,
+    const opencv_core_umat_handle *right, double beta, double gamma,
+    opencv_core_umat_handle **out);
+opencv_core_status opencv_core_umat_scale_add(
+    const opencv_core_umat_handle *left, double scale,
+    const opencv_core_umat_handle *right, opencv_core_umat_handle **out);
+
 /* Unmasked bitwise operations preserve the complete stored bit pattern. */
 opencv_core_status
 opencv_core_mat_bitwise_and(const opencv_core_mat_handle *left,

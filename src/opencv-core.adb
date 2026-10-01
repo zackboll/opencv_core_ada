@@ -643,6 +643,28 @@ package body OpenCV.Core is
       end if;
    end Validate_Add_Weighted_Compatibility;
 
+   procedure Validate_Add_Weighted_Compatibility (Left, Right : UMat) is
+      Left_Dimensions : constant Natural := Left.Dimension_Count;
+   begin
+      if Left_Dimensions /= Right.Dimension_Count then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "UMat weighted addition requires identical dimension counts");
+      end if;
+      for Axis in 1 .. Left_Dimensions loop
+         if Left.Extent (Axis) /= Right.Extent (Axis) then
+            Ada.Exceptions.Raise_Exception
+              (OpenCV_Error'Identity,
+               "UMat weighted addition requires identical extents");
+         end if;
+      end loop;
+      if Left.Depth /= Right.Depth or else Left.Channels /= Right.Channels then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "UMat weighted addition requires identical element types");
+      end if;
+   end Validate_Add_Weighted_Compatibility;
+
    procedure Validate_Mask (Source, Mask : Mat) is
    begin
       if Mask.Depth /= UInt8 then
@@ -940,6 +962,54 @@ package body OpenCV.Core is
       Raise_On_Error (Status, "Mat scale-add operation");
 
       OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Scale_Add;
+
+   function Add_Weighted
+     (Left  : UMat;
+      Alpha : Long_Float;
+      Right : UMat;
+      Beta  : Long_Float;
+      Gamma : Long_Float := 0.0) return UMat
+   is
+      Result     : UMat;
+      New_Handle : aliased OpenCV.Internal.C_API.UMat_Handle :=
+        OpenCV.Internal.C_API.Null_UMat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Add_Weighted_Compatibility (Left, Right);
+      Status :=
+        OpenCV.Internal.C_API.UMat_Add_Weighted
+          (Left   => Left.Handle,
+           Alpha  => OpenCV.Internal.C_API.C_Double (Alpha),
+           Right  => Right.Handle,
+           Beta   => OpenCV.Internal.C_API.C_Double (Beta),
+           Gamma  => OpenCV.Internal.C_API.C_Double (Gamma),
+           Result => New_Handle'Access);
+      Raise_On_Error (Status, "UMat weighted addition operation");
+      OpenCV.Internal.C_API.UMat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Add_Weighted;
+
+   function Scale_Add
+     (Self : UMat; Scale : Long_Float; Right : UMat) return UMat
+   is
+      Result     : UMat;
+      New_Handle : aliased OpenCV.Internal.C_API.UMat_Handle :=
+        OpenCV.Internal.C_API.Null_UMat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Arithmetic_Compatibility (Self, Right);
+      Status :=
+        OpenCV.Internal.C_API.UMat_Scale_Add
+          (Left   => Self.Handle,
+           Scale  => OpenCV.Internal.C_API.C_Double (Scale),
+           Right  => Right.Handle,
+           Result => New_Handle'Access);
+      Raise_On_Error (Status, "UMat scale-add operation");
+      OpenCV.Internal.C_API.UMat_Destroy (Result.Handle);
       Result.Handle := New_Handle;
       return Result;
    end Scale_Add;

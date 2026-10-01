@@ -5294,16 +5294,18 @@ static void dense_abs_diff(const Dense &left, const Dense &right,
 // Exact Float16 result bits are therefore not promised to be invariant
 // across SIMD width, FMA capability, or scalar-tail placement; this is
 // normal optimized floating-point behavior.
-static void scale_add_float16(const cv::Mat &left, double scale,
-                              const cv::Mat &right, cv::Mat &result) {
-    cv::Mat left32;
-    cv::Mat right32;
-    cv::Mat result32;
+extern "C++" {
+template <typename Dense>
+static void scale_add_float16(const Dense &left, double scale,
+                              const Dense &right, Dense &result) {
+    Dense left32;
+    Dense right32;
+    Dense result32;
     left.convertTo(left32, CV_32F);
     right.convertTo(right32, CV_32F);
 
     // ABI safety: default-empty and typed 0x0 CV_16F sources convert to empty
-    // CV_32F Mats. OpenCV 5 scaleAdd output creation can then build a 0-D
+    // CV_32F storage. OpenCV 5 scaleAdd output creation can build a 0-D
     // scalar destination and throw in getContinuousSize2D.
     if (left32.empty()) {
         result.release();
@@ -5325,20 +5327,21 @@ static void scale_add_float16(const cv::Mat &left, double scale,
 // to be invariant across OpenCV version, SIMD width, FMA capability, or
 // scalar-tail placement. This is OpenCV operation support, not CPU FP16
 // feature detection.
-static void add_weighted_float16(const cv::Mat &left, double alpha,
-                                 const cv::Mat &right, double beta,
-                                 double gamma, cv::Mat &result) {
+template <typename Dense>
+static void add_weighted_float16(const Dense &left, double alpha,
+                                 const Dense &right, double beta,
+                                 double gamma, Dense &result) {
 #if CV_VERSION_MAJOR >= 5
     cv::addWeighted(left, alpha, right, beta, gamma, result, -1);
 #else
-    cv::Mat left32;
-    cv::Mat right32;
-    cv::Mat result32;
+    Dense left32;
+    Dense right32;
+    Dense result32;
     left.convertTo(left32, CV_32F);
     right.convertTo(right32, CV_32F);
 
     // ABI safety: default-empty and typed 0x0 CV_16F sources convert to empty
-    // CV_32F Mats. Passing those empty headers into addWeighted can construct
+    // CV_32F storage. Passing those empty headers into addWeighted can construct
     // a 0-D scalar destination and then throw in getContinuousSize2D.
     if (left32.empty()) {
         result.release();
@@ -5348,6 +5351,34 @@ static void add_weighted_float16(const cv::Mat &left, double alpha,
     cv::addWeighted(left32, alpha, right32, beta, gamma, result32, -1);
     result32.convertTo(result, CV_16F);
 #endif
+}
+
+template <typename Dense>
+static void dense_add_weighted(const Dense &left, double alpha,
+                               const Dense &right, double beta, double gamma,
+                               Dense &result) {
+    // ABI safety: OpenCV 4.10 UMat addWeighted OpenCL vector-width prediction
+    // dereferences empty storage, even without an OpenCL device.
+    if (std::is_same<Dense, cv::UMat>::value && left.empty() && right.empty())
+        result.release();
+    else if (left.depth() == CV_16F)
+        add_weighted_float16(left, alpha, right, beta, gamma, result);
+    else
+        cv::addWeighted(left, alpha, right, beta, gamma, result, -1);
+}
+
+template <typename Dense>
+static void dense_scale_add(const Dense &left, double scale,
+                            const Dense &right, Dense &result) {
+    // ABI safety: OpenCV 4.10 UMat scaleAdd routes empty storage through
+    // addWeighted, whose OpenCL vector-width prediction dereferences it.
+    if (std::is_same<Dense, cv::UMat>::value && left.empty() && right.empty())
+        result.release();
+    else if (left.depth() == CV_16F)
+        scale_add_float16(left, scale, right, result);
+    else
+        cv::scaleAdd(left, scale, right, result);
+}
 }
 
 opencv_core_status
@@ -5394,13 +5425,8 @@ opencv_core_mat_add_weighted(const opencv_core_mat_handle *left, double alpha,
 
     try {
         cv::Mat weighted_sum;
-        if (left->value.depth() == CV_16F) {
-            add_weighted_float16(left->value, alpha, right->value, beta,
-                                 gamma, weighted_sum);
-        } else {
-            cv::addWeighted(left->value, alpha, right->value, beta, gamma,
-                            weighted_sum, -1);
-        }
+        dense_add_weighted(left->value, alpha, right->value, beta, gamma,
+                           weighted_sum);
         *out_mat = new opencv_core_mat_handle(weighted_sum);
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -5426,11 +5452,7 @@ opencv_core_mat_scale_add(const opencv_core_mat_handle *left, double scale,
 
     try {
         cv::Mat scaled_sum;
-        if (left->value.depth() == CV_16F) {
-            scale_add_float16(left->value, scale, right->value, scaled_sum);
-        } else {
-            cv::scaleAdd(left->value, scale, right->value, scaled_sum);
-        }
+        dense_scale_add(left->value, scale, right->value, scaled_sum);
         *out_mat = new opencv_core_mat_handle(scaled_sum);
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -5586,6 +5608,25 @@ OPENCV_CORE_UMAT_BINARY(maximum,
                         dense_min_max(a, b, dst, min_max_operation::maximum))
 
 #undef OPENCV_CORE_UMAT_BINARY
+
+opencv_core_status opencv_core_umat_add_weighted(
+    const opencv_core_umat_handle *left, double alpha,
+    const opencv_core_umat_handle *right, double beta, double gamma,
+    opencv_core_umat_handle **out) {
+    return publish_dense_arithmetic(left, right, out,
+        [=](const cv::UMat &a, const cv::UMat &b, cv::UMat &dst) {
+            dense_add_weighted(a, alpha, b, beta, gamma, dst);
+        });
+}
+
+opencv_core_status opencv_core_umat_scale_add(
+    const opencv_core_umat_handle *left, double scale,
+    const opencv_core_umat_handle *right, opencv_core_umat_handle **out) {
+    return publish_dense_arithmetic(left, right, out,
+        [=](const cv::UMat &a, const cv::UMat &b, cv::UMat &dst) {
+            dense_scale_add(a, scale, b, dst);
+        });
+}
 
 opencv_core_status
 opencv_core_mat_bitwise_and(const opencv_core_mat_handle *left,

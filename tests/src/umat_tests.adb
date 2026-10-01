@@ -671,6 +671,296 @@ package body UMat_Tests is
       C.UMat_Destroy (Out_Handle);
    end Arithmetic_Raw_ABI;
 
+   procedure Weighted_Numeric (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      L : OpenCV.Core.UMat :=
+        OpenCV.Core.Create_UMat (2, 3, (OpenCV.Core.Float32, 1));
+      R : OpenCV.Core.UMat :=
+        OpenCV.Core.Create_UMat (2, 3, (OpenCV.Core.Float32, 1));
+      A : OpenCV.Core.UMat;
+      B : OpenCV.Core.UMat;
+      W : OpenCV.Core.UMat;
+      S : OpenCV.Core.UMat;
+      D : OpenCV.Core.UMat :=
+        OpenCV.Core.Create_UMat (1, 1, (OpenCV.Core.Float64, 1));
+      I : OpenCV.Core.UMat :=
+        OpenCV.Core.Create_UMat (1, 1, (OpenCV.Core.UInt8, 1));
+      function Value (U : OpenCV.Core.UMat) return OpenCV.Float32_Value
+      is (OpenCV.Core.Float32_Access.Get (T.To_Mat (U), 0, 0));
+   begin
+      L.Set_To (OpenCV.Make_Scalar (10.0));
+      R.Set_To (OpenCV.Make_Scalar (4.0));
+      A := L.Region ((X => 1, Y => 0, Width => 2, Height => 2));
+      B := R.Region ((X => 1, Y => 0, Width => 2, Height => 2));
+      W := OpenCV.Core.Add_Weighted (A, 2.0, B, 3.0, 5.0);
+      S := OpenCV.Core.Scale_Add (A, 2.5, B);
+      AUnit.Assertions.Assert
+        (W.Rows = 2
+         and then W.Columns = 2
+         and then S.Rows = 2
+         and then S.Columns = 2
+         and then Value (W) = 37.0
+         and then Value (S) = 29.0,
+         "Float32 noncontiguous Region weighted results");
+      L.Set_To (OpenCV.Make_Scalar (1.0));
+      R.Set_To (OpenCV.Make_Scalar (2.0));
+      AUnit.Assertions.Assert
+        (Value (W) = 37.0
+         and then Value (S) = 29.0
+         and then Value (A) = 1.0
+         and then Value (B) = 2.0,
+         "results independent of UMat parents and Regions");
+      D.Set_To (OpenCV.Make_Scalar (1.25));
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Add_Weighted (D, 2.0, D, 3.0).Depth = OpenCV.Core.Float64
+         and then OpenCV.Core.Float64_Access.Get
+                    (T.To_Mat (OpenCV.Core.Add_Weighted (D, 2.0, D, 3.0)),
+                     0,
+                     0)
+                  = 6.25
+         and then OpenCV.Core.Float64_Access.Get
+                    (T.To_Mat (OpenCV.Core.Scale_Add (D, 2.0, D)), 0, 0)
+                  = 3.75,
+         "Float64 weighted native path");
+      I.Set_To (OpenCV.Make_Scalar (250.0));
+      AUnit.Assertions.Assert
+        (Pixel (OpenCV.Core.Add_Weighted (I, 2.0, I, 1.0)) = 255
+         and then Pixel (OpenCV.Core.Scale_Add (I, 2.0, I)) = 255,
+         "UInt8 weighted saturation");
+   end Weighted_Numeric;
+
+   procedure Weighted_ND_And_Channels (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      L   : OpenCV.Core.UMat :=
+        OpenCV.Core.Create_UMat ((2, 3, 2, 4, 2), (OpenCV.Core.Float32, 1));
+      R   : OpenCV.Core.UMat :=
+        OpenCV.Core.Create_UMat ((2, 3, 2, 4, 2), (OpenCV.Core.Float32, 1));
+      Bad : constant OpenCV.Core.UMat :=
+        OpenCV.Core.Create_UMat ((2, 3, 2, 4, 3), (OpenCV.Core.Float32, 1));
+      C1  : OpenCV.Core.UMat :=
+        OpenCV.Core.Create_UMat (1, 1, (OpenCV.Core.UInt8, 3));
+      C2  : OpenCV.Core.UMat :=
+        OpenCV.Core.Create_UMat (1, 1, (OpenCV.Core.UInt8, 3));
+      procedure Wrong_Extent is
+         X : constant OpenCV.Core.UMat :=
+           OpenCV.Core.Add_Weighted (L, 1.0, Bad, 1.0);
+      begin
+         AUnit.Assertions.Assert (X.Is_Empty, "unreachable");
+      end Wrong_Extent;
+      procedure Wrong_Dimension is
+         X : constant OpenCV.Core.UMat := OpenCV.Core.Scale_Add (L, 1.0, R);
+      begin
+         AUnit.Assertions.Assert (X.Is_Empty, "unreachable");
+      end Wrong_Dimension;
+   begin
+      L.Set_To (OpenCV.Make_Scalar (10.0));
+      R.Set_To (OpenCV.Make_Scalar (4.0));
+      declare
+         W : constant OpenCV.Core.UMat :=
+           OpenCV.Core.Add_Weighted (L, 2.0, R, 3.0, 5.0);
+      begin
+         AUnit.Assertions.Assert
+           (W.Shape = (2, 3, 2, 4, 2)
+            and then W.Depth = OpenCV.Core.Float32
+            and then W.Channels = 1
+            and then OpenCV.Core.Float32_Access.Get
+                       (T.To_Mat (W), (1, 2, 1, 3, 1))
+                     = 37.0,
+            "genuine 5-D UMat weighted addition");
+      end;
+      Mat_Test_Support.Assert_Raises_OpenCV_Error
+        (Wrong_Extent'Access, "weighted N-D mismatched extent");
+      Mat_Test_Support.Assert_Raises_OpenCV_Error
+        (Wrong_Dimension'Access, "scale-add remains 2-D");
+      C1.Set_To (OpenCV.Make_Scalar (2.0, 5.0, 9.0));
+      C2.Set_To (OpenCV.Make_Scalar (3.0, 4.0, 1.0));
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Add_Weighted (C1, 2.0, C2, 1.0).Channels = 3
+         and then OpenCV.Core.UInt8_Vec3_Access.Get
+                    (T.To_Mat (OpenCV.Core.Add_Weighted (C1, 2.0, C2, 1.0)),
+                     0,
+                     0)
+                  = (7, 14, 19)
+         and then OpenCV.Core.UInt8_Vec3_Access.Get
+                    (T.To_Mat (OpenCV.Core.Scale_Add (C1, 2.0, C2)), 0, 0)
+                  = (7, 14, 19),
+         "C3 weighted channels");
+   end Weighted_ND_And_Channels;
+
+   procedure Weighted_Half_And_Empty (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      L     : OpenCV.Core.UMat :=
+        OpenCV.Core.Create_UMat (1, 1, (OpenCV.Core.Float16, 1));
+      R     : OpenCV.Core.UMat :=
+        OpenCV.Core.Create_UMat (1, 1, (OpenCV.Core.Float16, 1));
+      E     : OpenCV.Core.UMat;
+      Z     : constant OpenCV.Core.UMat :=
+        OpenCV.Core.Create_UMat (0, 0, (OpenCV.Core.Float16, 1));
+      Alpha : constant Long_Float := 1.0 + 2.0**(-25);
+      Scale : constant Long_Float := 1.0 + 2.0**(-25);
+      function Half (U : OpenCV.Core.UMat) return OpenCV.Float32_Value
+      is (OpenCV.Core.To_Float32
+            (OpenCV.Core.Float16_Access.Get (T.To_Mat (U), 0, 0)));
+   begin
+      L.Set_To (OpenCV.Make_Scalar (2.0));
+      R.Set_To (OpenCV.Make_Scalar (3.0));
+      AUnit.Assertions.Assert
+        (Half (OpenCV.Core.Add_Weighted (L, 2.0, R, 3.0, 5.0)) = 18.0
+         and then Half (OpenCV.Core.Scale_Add (L, 2.5, R)) = 8.0,
+         "Float16 weighted and scale-add native compatibility");
+      --  Compare the same coefficient policy against the established Mat
+      --  path; optimized OpenCV kernels may round intermediate products.
+      L.Set_To (OpenCV.Make_Scalar (16_384.0));
+      R.Set_To (OpenCV.Make_Scalar (-16_384.0));
+      declare
+         Host_L   : constant OpenCV.Core.Mat := T.To_Mat (L);
+         Host_R   : constant OpenCV.Core.Mat := T.To_Mat (R);
+         Expected : constant OpenCV.Float32_Value :=
+           OpenCV.Core.To_Float32
+             (OpenCV.Core.Float16_Access.Get
+                (OpenCV.Core.Add_Weighted (Host_L, Alpha, Host_R, 1.0), 0, 0));
+      begin
+         AUnit.Assertions.Assert
+           (abs (Half (OpenCV.Core.Add_Weighted (L, Alpha, R, 1.0)) - Expected)
+            < 0.002,
+            "Add_Weighted matches Mat double coefficient policy");
+      end;
+      --  Float32(Scale) rounds 1 + 2**(-25) to 1; with these operands
+      --  a full-double multiply would instead leave 2**(-11).
+      L.Set_To (OpenCV.Make_Scalar (16_384.0));
+      R.Set_To (OpenCV.Make_Scalar (-16_384.0));
+      declare
+         Host_L : constant OpenCV.Core.Mat := T.To_Mat (L);
+         Host_R : constant OpenCV.Core.Mat := T.To_Mat (R);
+         Model  : constant OpenCV.Core.Mat :=
+           OpenCV.Core.Scale_Add
+             (Host_L.Convert_To (OpenCV.Core.Float32),
+              Long_Float (OpenCV.Float32_Value (Scale)),
+              Host_R.Convert_To (OpenCV.Core.Float32));
+      begin
+         AUnit.Assertions.Assert
+           (Half (OpenCV.Core.Scale_Add (L, Scale, R)) = 0.0
+            and then OpenCV.Core.Float32_Access.Get (Model, 0, 0) = 0.0,
+            "Float16 Scale_Add narrows coefficient before Float32 kernel");
+      end;
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Add_Weighted (E, 1.0, E, 1.0).Is_Empty
+         and then OpenCV.Core.Scale_Add (E, 1.0, E).Is_Empty
+         and then OpenCV.Core.Add_Weighted (Z, 1.0, Z, 1.0).Is_Empty
+         and then OpenCV.Core.Scale_Add (Z, 1.0, Z).Is_Empty,
+         "Float16 default and typed empty weighted operations");
+   end Weighted_Half_And_Empty;
+
+   procedure Weighted_Without_OpenCL (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Previous : constant Interfaces.Unsigned_8 := Use_OpenCL;
+   begin
+      AUnit.Assertions.Assert (Set_OpenCL (0) = 1, "disable OpenCL");
+      begin
+         declare
+            L : OpenCV.Core.UMat :=
+              OpenCV.Core.Create_UMat (1, 1, (OpenCV.Core.Float32, 1));
+            R : OpenCV.Core.UMat :=
+              OpenCV.Core.Create_UMat (1, 1, (OpenCV.Core.Float32, 1));
+            H : OpenCV.Core.UMat :=
+              OpenCV.Core.Create_UMat (1, 1, (OpenCV.Core.Float16, 1));
+         begin
+            L.Set_To (OpenCV.Make_Scalar (10.0));
+            R.Set_To (OpenCV.Make_Scalar (4.0));
+            H.Set_To (OpenCV.Make_Scalar (2.0));
+            AUnit.Assertions.Assert
+              (Use_OpenCL = 0
+               and then OpenCV.Core.Float32_Access.Get
+                          (T.To_Mat
+                             (OpenCV.Core.Add_Weighted (L, 2.0, R, 3.0, 5.0)),
+                           0,
+                           0)
+                        = 37.0
+               and then OpenCV.Core.Float32_Access.Get
+                          (T.To_Mat (OpenCV.Core.Scale_Add (L, 2.5, R)), 0, 0)
+                        = 29.0
+               and then OpenCV.Core.To_Float32
+                          (OpenCV.Core.Float16_Access.Get
+                             (T.To_Mat (OpenCV.Core.Scale_Add (H, 2.5, H)),
+                              0,
+                              0))
+                        = 7.0,
+               "weighted CPU fallback including Float16");
+         end;
+      exception
+         when others =>
+            AUnit.Assertions.Assert
+              (Set_OpenCL (Previous) = 1, "restore OpenCL on failure");
+            raise;
+      end;
+      AUnit.Assertions.Assert (Set_OpenCL (Previous) = 1, "restore OpenCL");
+   end Weighted_Without_OpenCL;
+
+   procedure Weighted_Raw_ABI (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      L      : aliased C.UMat_Handle := C.Null_UMat_Handle;
+      R      : aliased C.UMat_Handle := C.Null_UMat_Handle;
+      H      : aliased C.UMat_Handle := C.Null_UMat_Handle;
+      Output : aliased C.UMat_Handle := C.Null_UMat_Handle;
+   begin
+      AUnit.Assertions.Assert
+        (C.UMat_Add_Weighted
+           (C.Null_UMat_Handle, 1.0, C.Null_UMat_Handle, 1.0, 0.0, null)
+         = C.Error_Invalid_Argument
+         and then C.UMat_Scale_Add
+                    (C.Null_UMat_Handle, 1.0, C.Null_UMat_Handle, null)
+                  = C.Error_Invalid_Argument,
+         "weighted raw null output pointers");
+      AUnit.Assertions.Assert
+        (C.UMat_Create_2D (1, 1, 5, 1, L'Access) = C.Success
+         and then C.UMat_Create_2D (1, 1, 5, 1, R'Access) = C.Success
+         and then C.UMat_Create_2D (1, 1, 7, 1, H'Access) = C.Success,
+         "weighted raw operands");
+      begin
+         AUnit.Assertions.Assert
+           (C.UMat_Add_Weighted
+              (C.Null_UMat_Handle, 1.0, R, 1.0, 0.0, Output'Access)
+            = C.Error_Invalid_Argument
+            and then Output = C.Null_UMat_Handle
+            and then C.UMat_Scale_Add
+                       (L, 1.0, C.Null_UMat_Handle, Output'Access)
+                     = C.Error_Invalid_Argument
+            and then Output = C.Null_UMat_Handle,
+            "weighted raw null operands clear output");
+         AUnit.Assertions.Assert
+           (C.UMat_Add_Weighted (L, 2.0, R, 3.0, 5.0, Output'Access)
+            = C.Success
+            and then Output /= C.Null_UMat_Handle,
+            "raw weighted result published");
+         C.UMat_Destroy (L);
+         L := C.Null_UMat_Handle;
+         C.UMat_Destroy (R);
+         R := C.Null_UMat_Handle;
+         declare
+            Rows : aliased C.C_Int32 := 0;
+         begin
+            AUnit.Assertions.Assert
+              (C.UMat_Rows (Output, Rows'Access) = C.Success and then Rows = 1,
+               "weighted result survives operands");
+         end;
+         C.UMat_Destroy (Output);
+         Output := C.Null_UMat_Handle;
+         AUnit.Assertions.Assert
+           (C.UMat_Scale_Add (H, 2.0, H, Output'Access) = C.Success
+            and then Output /= C.Null_UMat_Handle,
+            "raw Float16 scale-add compatibility");
+      exception
+         when others =>
+            C.UMat_Destroy (L);
+            C.UMat_Destroy (R);
+            C.UMat_Destroy (H);
+            C.UMat_Destroy (Output);
+            raise;
+      end;
+      C.UMat_Destroy (H);
+      C.UMat_Destroy (Output);
+   end Weighted_Raw_ABI;
+
    procedure Raw_ABI_Safety (Test : in out Mat_Test_Support.Mat_Test_Fixture)
    is
       pragma Unreferenced (Test);
@@ -780,6 +1070,20 @@ package body UMat_Tests is
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
+      Result.Add_Test
+        (Caller.Create
+           ("UMat weighted numeric and Regions", Weighted_Numeric'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UMat weighted N-D and C3", Weighted_ND_And_Channels'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UMat weighted Float16", Weighted_Half_And_Empty'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UMat weighted without OpenCL", Weighted_Without_OpenCL'Access));
+      Result.Add_Test
+        (Caller.Create ("UMat weighted raw ABI", Weighted_Raw_ABI'Access));
       Result.Add_Test
         (Caller.Create ("UMat Float32 arithmetic", Arithmetic_Float32'Access));
       Result.Add_Test

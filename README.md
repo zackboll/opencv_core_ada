@@ -2193,13 +2193,19 @@ available, enabled, or backed by a device: CPU fallback is required behavior,
 and the test suite explicitly disables OpenCL while exercising the public
 operations. **UMat enables OpenCV's Transparent API dispatch where native
 operations support it. It is not a guarantee that an operation executes on a
-GPU.** `Add`, `Subtract`, `Multiply`, `Divide`, `Abs_Diff`, `Minimum`, and
-`Maximum` now accept two UMat operands and return an independent UMat. These
-2-D operations use native shim-local InputArray/OutputArray dispatch without
-Mat download/re-upload; OpenCL is optional and CPU fallback is tested. Mixed
-Mat/UMat arithmetic is not exposed. `Add_Weighted` and `Scale_Add`, other
+GPU.** `Add`, `Subtract`, `Multiply`, `Divide`, `Abs_Diff`, `Minimum`,
+`Maximum`, `Add_Weighted`, and `Scale_Add` accept two UMat operands and return
+independent UMat results. No Mat transfer or mapping is used in these paths.
+The first seven operations and `Scale_Add` require matching 2-D shape, depth,
+and channels. `Add_Weighted` accepts matching N-D shape, depth, and channels,
+just like its Mat overload. On OpenCV 4.x Float16 `Add_Weighted` widens UMat
+operands to Float32 UMat, computes using double Alpha/Beta/Gamma, then narrows
+once; OpenCV 5 uses native Float16. Float16 `Scale_Add` widens UMat operands on
+all supported versions, narrows Scale to Float32 before the native Float32
+kernel, then narrows the result once. SIMD/FMA rounding may vary by platform.
+OpenCL is optional; CPU fallback is tested. Mixed Mat/UMat operands, other
 operation families, module UMat bridging, UMat reshape, and callback-scoped
-CPU mapping remain future work.
+CPU mapping remain unsupported.
 
 ## Safety and validation boundary
 
