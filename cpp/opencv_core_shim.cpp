@@ -1887,6 +1887,29 @@ bool dense_compatible_empty_mix(const Dense &left, const Dense &right) noexcept 
     return left.empty() && right.empty() &&
            (left.dims == 0 || right.dims == 0);
 }
+
+// Preserve Mat's established empty behavior; UMat requires a fresh typed
+// header because release() on a default result cannot recover the source type.
+static void make_empty_arithmetic_result(const cv::Mat &, const cv::Mat &,
+                                         cv::Mat &result) {
+    result.release();
+}
+
+static void make_empty_dense_like(const cv::UMat &source, cv::UMat &result) {
+    if (source.dims == 0) {
+        result.release();
+    } else {
+        result.create(0, 0, source.type(), cv::USAGE_DEFAULT);
+    }
+}
+
+static void make_empty_arithmetic_result(const cv::UMat &left,
+                                         const cv::UMat &right,
+                                         cv::UMat &result) {
+    // An accepted default/typed mix takes its representation from the typed
+    // operand, regardless of operand order.
+    make_empty_dense_like(left.dims == 0 ? right : left, result);
+}
 }
 
 bool is_compatible_empty_mix(const cv::Mat &left, const cv::Mat &right,
@@ -5054,7 +5077,7 @@ static void dense_add_or_subtract(const Dense &left, const Dense &right,
     // ABI safety: OpenCV 4.10 UMat OpenCL vector-width prediction dereferences
     // empty UMat storage for add/subtract, even with OpenCL unavailable.
     if (std::is_same<Dense, cv::UMat>::value && left.empty() && right.empty()) {
-        result.release();
+        make_empty_arithmetic_result(left, right, result);
     } else if (left.depth() == CV_16F) {
         add_or_subtract_float16(left, right, result, subtract);
     } else if (subtract) {
@@ -5095,8 +5118,12 @@ static void dense_multiply(const Dense &left, const Dense &right,
                            Dense &result) {
     // ABI safety: OpenCV 5 creates a 0-D output for default-empty operands
     // and then fails in getContinuousSize2D due to mismatched totals.
-    if (dense_compatible_empty_mix(left, right)) {
-        result.release();
+    // ABI safety: OpenCV 4.10 UMat multiply dereferences typed empty storage
+    // during OpenCL vector-width prediction, even without an OpenCL device.
+    if (dense_compatible_empty_mix(left, right) ||
+        (std::is_same<Dense, cv::UMat>::value && left.empty() &&
+         right.empty())) {
+        make_empty_arithmetic_result(left, right, result);
     } else if (left.depth() == CV_16F) {
         multiply_float16(left, right, result);
     } else {
@@ -5212,8 +5239,12 @@ static void dense_divide(const Dense &left, const Dense &right,
                          Dense &result) {
     // ABI safety: OpenCV 5 can create a 0-D output for default-empty
     // operands and fail in getContinuousSize2D.
-    if (dense_compatible_empty_mix(left, right)) {
-        result.release();
+    // ABI safety: UMat divide's OpenCV 4.10 OpenCL width prediction can
+    // dereference typed empty storage before falling back to the CPU.
+    if (dense_compatible_empty_mix(left, right) ||
+        (std::is_same<Dense, cv::UMat>::value && left.empty() &&
+         right.empty())) {
+        make_empty_arithmetic_result(left, right, result);
     } else if (left.depth() == CV_16F) {
         divide_float16(left, right, result);
     } else {
@@ -5276,7 +5307,7 @@ static void dense_abs_diff(const Dense &left, const Dense &right,
     // ABI safety: OpenCV 4.10 UMat absdiff OpenCL vector-width prediction
     // dereferences empty storage even when no OpenCL device is available.
     if (std::is_same<Dense, cv::UMat>::value && left.empty() && right.empty()) {
-        result.release();
+        make_empty_arithmetic_result(left, right, result);
     } else if (left.depth() == CV_16F) {
         abs_diff_float16(left, right, result);
     } else {
@@ -5360,7 +5391,7 @@ static void dense_add_weighted(const Dense &left, double alpha,
     // ABI safety: OpenCV 4.10 UMat addWeighted OpenCL vector-width prediction
     // dereferences empty storage, even without an OpenCL device.
     if (std::is_same<Dense, cv::UMat>::value && left.empty() && right.empty())
-        result.release();
+        make_empty_arithmetic_result(left, right, result);
     else if (left.depth() == CV_16F)
         add_weighted_float16(left, alpha, right, beta, gamma, result);
     else
@@ -5373,7 +5404,7 @@ static void dense_scale_add(const Dense &left, double scale,
     // ABI safety: OpenCV 4.10 UMat scaleAdd routes empty storage through
     // addWeighted, whose OpenCL vector-width prediction dereferences it.
     if (std::is_same<Dense, cv::UMat>::value && left.empty() && right.empty())
-        result.release();
+        make_empty_arithmetic_result(left, right, result);
     else if (left.depth() == CV_16F)
         scale_add_float16(left, scale, right, result);
     else
@@ -5499,7 +5530,7 @@ static void dense_min_max(const Dense &left, const Dense &right,
     if (dense_compatible_empty_mix(left, right) ||
         (std::is_same<Dense, cv::UMat>::value && left.empty() &&
          right.empty())) {
-        result.release();
+        make_empty_arithmetic_result(left, right, result);
     } else if (left.depth() == CV_16F) {
         min_max_float16(left, right, result, operation);
     } else if (operation == min_max_operation::minimum) {

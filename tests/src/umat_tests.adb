@@ -50,6 +50,111 @@ package body UMat_Tests is
       return OpenCV.Core.UInt8_Access.Get (Host, Row, Column);
    end Pixel;
 
+   procedure Assert_Empty_Metadata
+     (Image : OpenCV.Core.UMat; Source : OpenCV.Core.UMat; Label : String) is
+   begin
+      AUnit.Assertions.Assert
+        (Image.Is_Empty
+         and then Image.Dimension_Count = Source.Dimension_Count
+         and then Image.Shape = Source.Shape
+         and then Image.Depth = Source.Depth
+         and then Image.Channels = Source.Channels,
+         Label);
+   end Assert_Empty_Metadata;
+
+   procedure Arithmetic_Empty_Metadata (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Default : OpenCV.Core.UMat;
+      Half    : constant OpenCV.Core.UMat :=
+        OpenCV.Core.Create_UMat (0, 0, (OpenCV.Core.Float16, 1));
+      C3      : constant OpenCV.Core.UMat :=
+        OpenCV.Core.Create_UMat (0, 0, (OpenCV.Core.Float32, 3));
+      Byte    : constant OpenCV.Core.UMat :=
+        OpenCV.Core.Create_UMat (0, 0, (OpenCV.Core.UInt8, 1));
+   begin
+      for Kind in 1 .. 2 loop
+         declare
+            Source : constant OpenCV.Core.UMat :=
+              (if Kind = 1 then Half else C3);
+         begin
+            Assert_Empty_Metadata
+              (OpenCV.Core.Add (Source, Source), Source, "Add typed empty");
+            Assert_Empty_Metadata
+              (OpenCV.Core.Subtract (Source, Source),
+               Source,
+               "Subtract typed empty");
+            Assert_Empty_Metadata
+              (OpenCV.Core.Multiply (Source, Source),
+               Source,
+               "Multiply typed empty");
+            Assert_Empty_Metadata
+              (OpenCV.Core.Divide (Source, Source),
+               Source,
+               "Divide typed empty");
+            Assert_Empty_Metadata
+              (OpenCV.Core.Abs_Diff (Source, Source),
+               Source,
+               "Abs_Diff typed empty");
+            Assert_Empty_Metadata
+              (OpenCV.Core.Minimum (Source, Source),
+               Source,
+               "Minimum typed empty");
+            Assert_Empty_Metadata
+              (OpenCV.Core.Maximum (Source, Source),
+               Source,
+               "Maximum typed empty");
+            Assert_Empty_Metadata
+              (OpenCV.Core.Add_Weighted (Source, 2.0, Source, 3.0),
+               Source,
+               "Add_Weighted typed empty");
+            Assert_Empty_Metadata
+              (OpenCV.Core.Scale_Add (Source, 2.0, Source),
+               Source,
+               "Scale_Add typed empty");
+         end;
+      end loop;
+      Assert_Empty_Metadata
+        (OpenCV.Core.Add (Default, Default), Default, "Add default empty");
+      Assert_Empty_Metadata
+        (OpenCV.Core.Multiply (Default, Default),
+         Default,
+         "Multiply default empty");
+      Assert_Empty_Metadata
+        (OpenCV.Core.Minimum (Default, Default),
+         Default,
+         "Minimum default empty");
+      Assert_Empty_Metadata
+        (OpenCV.Core.Add_Weighted (Default, 1.0, Default, 1.0),
+         Default,
+         "Add_Weighted default empty");
+      Assert_Empty_Metadata
+        (OpenCV.Core.Scale_Add (Default, 1.0, Default),
+         Default,
+         "Scale_Add default empty");
+      --  Ordinary arithmetic accepts the default UInt8 C1 / typed UInt8 C1
+      --  mix; the typed operand supplies the result representation.
+      Assert_Empty_Metadata
+        (OpenCV.Core.Add (Default, Byte), Byte, "mixed Add");
+      Assert_Empty_Metadata
+        (OpenCV.Core.Multiply (Byte, Default), Byte, "mixed Multiply");
+      Assert_Empty_Metadata
+        (OpenCV.Core.Minimum (Default, Byte), Byte, "mixed Minimum");
+      Assert_Empty_Metadata
+        (OpenCV.Core.Scale_Add (Default, 1.0, Byte), Byte, "mixed Scale_Add");
+      declare
+         procedure Mixed_Weighted is
+            Ignored : constant OpenCV.Core.UMat :=
+              OpenCV.Core.Add_Weighted (Default, 1.0, Byte, 1.0);
+         begin
+            AUnit.Assertions.Assert
+              (Ignored.Is_Empty, "unreachable mixed weighted");
+         end Mixed_Weighted;
+      begin
+         Mat_Test_Support.Assert_Raises_OpenCV_Error
+           (Mixed_Weighted'Access, "weighted mixed dimension counts");
+      end;
+   end Arithmetic_Empty_Metadata;
+
    procedure Default_And_Create
      (Test : in out Mat_Test_Support.Mat_Test_Fixture)
    is
@@ -1096,6 +1201,10 @@ package body UMat_Tests is
         (Caller.Create
            ("UMat Float16 and empty arithmetic",
             Arithmetic_Half_And_Empty'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UMat arithmetic empty metadata",
+            Arithmetic_Empty_Metadata'Access));
       Result.Add_Test
         (Caller.Create
            ("UMat Float16 min max special values",
