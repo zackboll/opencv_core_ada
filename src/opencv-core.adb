@@ -585,6 +585,30 @@ package body OpenCV.Core is
       end if;
    end Validate_Arithmetic_Compatibility;
 
+   procedure Validate_Arithmetic_Compatibility (Left, Right : UMat) is
+   begin
+      if Left.Rows /= Right.Rows then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "UMat arithmetic requires operands with identical row counts");
+      end if;
+      if Left.Columns /= Right.Columns then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "UMat arithmetic requires operands with identical column counts");
+      end if;
+      if Left.Depth /= Right.Depth then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "UMat arithmetic requires operands with identical depths");
+      end if;
+      if Left.Channels /= Right.Channels then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "UMat arithmetic requires operands with identical channel counts");
+      end if;
+   end Validate_Arithmetic_Compatibility;
+
    procedure Validate_Add_Weighted_Compatibility (Left, Right : Mat) is
       Left_Dimensions  : constant Natural := Left.Dimension_Count;
       Right_Dimensions : constant Natural := Right.Dimension_Count;
@@ -803,6 +827,73 @@ package body OpenCV.Core is
       Result.Handle := New_Handle;
       return Result;
    end Maximum;
+
+   type UMat_Binary_Operation is
+     access function
+       (Left, Right : OpenCV.Internal.C_API.UMat_Handle;
+        Result      : access OpenCV.Internal.C_API.UMat_Handle)
+        return OpenCV.Internal.C_API.Status;
+   pragma Convention (C, UMat_Binary_Operation);
+
+   function Apply_UMat_Arithmetic
+     (Left, Right : UMat; Operation : UMat_Binary_Operation; Name : String)
+      return UMat
+   is
+      Result     : UMat;
+      New_Handle : aliased OpenCV.Internal.C_API.UMat_Handle :=
+        OpenCV.Internal.C_API.Null_UMat_Handle;
+      Status     : OpenCV.Internal.C_API.Status;
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      Status := Operation (Left.Handle, Right.Handle, New_Handle'Access);
+      Raise_On_Error (Status, Name);
+      OpenCV.Internal.C_API.UMat_Destroy (Result.Handle);
+      Result.Handle := New_Handle;
+      return Result;
+   end Apply_UMat_Arithmetic;
+
+   function Add (Left, Right : UMat) return UMat
+   is (Apply_UMat_Arithmetic
+         (Left,
+          Right,
+          OpenCV.Internal.C_API.UMat_Add'Access,
+          "UMat addition operation"));
+   function Subtract (Left, Right : UMat) return UMat
+   is (Apply_UMat_Arithmetic
+         (Left,
+          Right,
+          OpenCV.Internal.C_API.UMat_Subtract'Access,
+          "UMat subtraction operation"));
+   function Multiply (Left, Right : UMat) return UMat
+   is (Apply_UMat_Arithmetic
+         (Left,
+          Right,
+          OpenCV.Internal.C_API.UMat_Multiply'Access,
+          "UMat multiplication operation"));
+   function Divide (Left, Right : UMat) return UMat
+   is (Apply_UMat_Arithmetic
+         (Left,
+          Right,
+          OpenCV.Internal.C_API.UMat_Divide'Access,
+          "UMat division operation"));
+   function Abs_Diff (Left, Right : UMat) return UMat
+   is (Apply_UMat_Arithmetic
+         (Left,
+          Right,
+          OpenCV.Internal.C_API.UMat_Abs_Diff'Access,
+          "UMat absolute difference operation"));
+   function Minimum (Left, Right : UMat) return UMat
+   is (Apply_UMat_Arithmetic
+         (Left,
+          Right,
+          OpenCV.Internal.C_API.UMat_Minimum'Access,
+          "UMat minimum operation"));
+   function Maximum (Left, Right : UMat) return UMat
+   is (Apply_UMat_Arithmetic
+         (Left,
+          Right,
+          OpenCV.Internal.C_API.UMat_Maximum'Access,
+          "UMat maximum operation"));
 
    function Add_Weighted
      (Left  : Mat;

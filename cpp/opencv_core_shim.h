@@ -1119,6 +1119,21 @@ opencv_core_mat_maximum(const opencv_core_mat_handle *left,
                         const opencv_core_mat_handle *right,
                         opencv_core_mat_handle **out_mat);
 
+/* Owned, independently computed UMat results; operands remain UMat-native. */
+#define OPENCV_CORE_DECLARE_UMAT_ARITHMETIC(NAME)                         \
+opencv_core_status opencv_core_umat_##NAME(                                \
+    const opencv_core_umat_handle *left,                                    \
+    const opencv_core_umat_handle *right,                                   \
+    opencv_core_umat_handle **out);
+OPENCV_CORE_DECLARE_UMAT_ARITHMETIC(add)
+OPENCV_CORE_DECLARE_UMAT_ARITHMETIC(subtract)
+OPENCV_CORE_DECLARE_UMAT_ARITHMETIC(multiply)
+OPENCV_CORE_DECLARE_UMAT_ARITHMETIC(divide)
+OPENCV_CORE_DECLARE_UMAT_ARITHMETIC(abs_diff)
+OPENCV_CORE_DECLARE_UMAT_ARITHMETIC(minimum)
+OPENCV_CORE_DECLARE_UMAT_ARITHMETIC(maximum)
+#undef OPENCV_CORE_DECLARE_UMAT_ARITHMETIC
+
 /*
  * Returns alpha * left + beta * right + gamma for two Mats with identical
  * dimensions and type, using the same output type and independent storage.

@@ -10,14 +10,18 @@ with OpenCV.Core.UInt8_Access;
 with OpenCV.Core.UInt8_Vec3;
 with OpenCV.Core.UInt8_Vec3_Access;
 with OpenCV.Core.Float32_Access;
+with OpenCV.Core.Float64_Access;
+with OpenCV.Core.Float16_Access;
 with OpenCV.Internal.C_API;
 
 package body UMat_Tests is
    package C renames OpenCV.Internal.C_API;
    package T renames OpenCV.Core.Transfers;
    use type Interfaces.Unsigned_8;
+   use type Interfaces.Unsigned_16;
    use type Interfaces.Integer_32;
    use type Interfaces.IEEE_Float_32;
+   use type Interfaces.IEEE_Float_64;
    use type OpenCV.Core.Depth_Type;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Mat_Size;
@@ -340,6 +344,333 @@ package body UMat_Tests is
         (Set_OpenCL (Previous) = 1, "restore OpenCL after test");
    end Convert_Region_And_Fallback;
 
+   procedure Arithmetic_Float32 (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Left  : OpenCV.Core.UMat :=
+        OpenCV.Core.Create_UMat (1, 1, (OpenCV.Core.Float32, 1));
+      Right : OpenCV.Core.UMat :=
+        OpenCV.Core.Create_UMat (1, 1, (OpenCV.Core.Float32, 1));
+      function Value (Image : OpenCV.Core.UMat) return OpenCV.Float32_Value
+      is (OpenCV.Core.Float32_Access.Get (T.To_Mat (Image), 0, 0));
+   begin
+      Left.Set_To (OpenCV.Make_Scalar (12.0));
+      Right.Set_To (OpenCV.Make_Scalar (3.0));
+      AUnit.Assertions.Assert
+        (Value (OpenCV.Core.Add (Left, Right)) = 15.0, "UMat add");
+      AUnit.Assertions.Assert
+        (Value (OpenCV.Core.Subtract (Left, Right)) = 9.0, "UMat subtract");
+      AUnit.Assertions.Assert
+        (Value (OpenCV.Core.Multiply (Left, Right)) = 36.0, "UMat multiply");
+      AUnit.Assertions.Assert
+        (abs (Value (OpenCV.Core.Divide (Left, Right)) - 4.0) < 0.000_01,
+         "UMat divide");
+      AUnit.Assertions.Assert
+        (Value (OpenCV.Core.Abs_Diff (Left, Right)) = 9.0, "UMat absdiff");
+      AUnit.Assertions.Assert
+        (Value (OpenCV.Core.Minimum (Left, Right)) = 3.0, "UMat minimum");
+      AUnit.Assertions.Assert
+        (Value (OpenCV.Core.Maximum (Left, Right)) = 12.0, "UMat maximum");
+   end Arithmetic_Float32;
+
+   procedure Arithmetic_Numeric_And_Regions (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      L   : OpenCV.Core.UMat :=
+        OpenCV.Core.Create_UMat (2, 4, (OpenCV.Core.UInt8, 1));
+      R   : OpenCV.Core.UMat :=
+        OpenCV.Core.Create_UMat (2, 4, (OpenCV.Core.UInt8, 1));
+      A   : OpenCV.Core.UMat;
+      B   : OpenCV.Core.UMat;
+      Sum : OpenCV.Core.UMat;
+      D   : OpenCV.Core.UMat :=
+        OpenCV.Core.Create_UMat (1, 1, (OpenCV.Core.Float64, 1));
+   begin
+      L.Set_To (OpenCV.Make_Scalar (250.0));
+      R.Set_To (OpenCV.Make_Scalar (10.0));
+      A := L.Region ((X => 1, Y => 0, Width => 2, Height => 2));
+      B := R.Region ((X => 1, Y => 0, Width => 2, Height => 2));
+      Sum := OpenCV.Core.Add (A, B);
+      AUnit.Assertions.Assert
+        (Sum.Rows = 2
+         and then Sum.Columns = 2
+         and then Pixel (Sum, 1, 1) = 255,
+         "noncontiguous add saturates");
+      AUnit.Assertions.Assert
+        (Pixel (OpenCV.Core.Subtract (B, A)) = 0
+         and then Pixel (OpenCV.Core.Multiply (A, B)) = 255
+         and then Pixel (OpenCV.Core.Divide (A, B)) = 25
+         and then Pixel (OpenCV.Core.Abs_Diff (A, B)) = 240
+         and then Pixel (OpenCV.Core.Minimum (A, B)) = 10
+         and then Pixel (OpenCV.Core.Maximum (A, B)) = 250,
+         "UInt8 native arithmetic and noncontiguous regions");
+      L.Set_To (OpenCV.Make_Scalar (1.0));
+      AUnit.Assertions.Assert
+        (Pixel (Sum) = 255 and then Pixel (OpenCV.Core.Abs_Diff (A, B)) = 9,
+         "result independent of parent mutation");
+      D.Set_To (OpenCV.Make_Scalar (2.5));
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Float64_Access.Get
+           (T.To_Mat (OpenCV.Core.Add (D, D)), 0, 0)
+         = 5.0,
+         "Float64 UMat arithmetic");
+   end Arithmetic_Numeric_And_Regions;
+
+   procedure Arithmetic_Channels (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      L : OpenCV.Core.UMat :=
+        OpenCV.Core.Create_UMat (1, 1, (OpenCV.Core.UInt8, 3));
+      R : OpenCV.Core.UMat :=
+        OpenCV.Core.Create_UMat (1, 1, (OpenCV.Core.UInt8, 3));
+      H : OpenCV.Core.Mat := OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 3));
+      K : OpenCV.Core.Mat := OpenCV.Core.Create (1, 1, (OpenCV.Core.UInt8, 3));
+      use OpenCV.Core.UInt8_Vec3;
+      function Vector
+        (U : OpenCV.Core.UMat) return OpenCV.Core.UInt8_Vec3.Vector
+      is (OpenCV.Core.UInt8_Vec3_Access.Get (T.To_Mat (U), 0, 0));
+   begin
+      OpenCV.Core.UInt8_Vec3_Access.Set (H, 0, 0, (2, 5, 9));
+      OpenCV.Core.UInt8_Vec3_Access.Set (K, 0, 0, (3, 4, 1));
+      L := T.To_UMat (H);
+      R := T.To_UMat (K);
+      AUnit.Assertions.Assert
+        (Vector (OpenCV.Core.Add (L, R)) = (5, 9, 10)
+         and then Vector (OpenCV.Core.Minimum (L, R)) = (2, 4, 1)
+         and then Vector (OpenCV.Core.Maximum (L, R)) = (3, 5, 9)
+         and then Vector (OpenCV.Core.Multiply (L, R)) = (6, 20, 9)
+         and then OpenCV.Core.Add (L, R).Channels = 3,
+         "all C3 channels retained");
+   end Arithmetic_Channels;
+
+   procedure Arithmetic_Half_And_Empty (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      H : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float16, 1));
+      K : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 1, (OpenCV.Core.Float16, 1));
+      L : OpenCV.Core.UMat;
+      R : OpenCV.Core.UMat;
+      E : OpenCV.Core.UMat;
+      Z : constant OpenCV.Core.UMat :=
+        OpenCV.Core.Create_UMat (0, 0, (OpenCV.Core.UInt8, 1));
+      function Half (U : OpenCV.Core.UMat) return OpenCV.Float32_Value
+      is (OpenCV.Core.To_Float32
+            (OpenCV.Core.Float16_Access.Get (T.To_Mat (U), 0, 0)));
+   begin
+      OpenCV.Core.Float16_Access.Set (H, 0, 0, OpenCV.Core.To_Float16 (12.0));
+      OpenCV.Core.Float16_Access.Set (K, 0, 0, OpenCV.Core.To_Float16 (3.0));
+      L := T.To_UMat (H);
+      R := T.To_UMat (K);
+      AUnit.Assertions.Assert
+        (Half (OpenCV.Core.Add (L, R)) = 15.0
+         and then Half (OpenCV.Core.Subtract (L, R)) = 9.0
+         and then Half (OpenCV.Core.Multiply (L, R)) = 36.0
+         and then Half (OpenCV.Core.Divide (L, R)) = 4.0
+         and then Half (OpenCV.Core.Abs_Diff (L, R)) = 9.0
+         and then Half (OpenCV.Core.Minimum (L, R)) = 3.0
+         and then Half (OpenCV.Core.Maximum (L, R)) = 12.0,
+         "seven Float16 UMat results");
+      AUnit.Assertions.Assert
+        (OpenCV.Core.Add (E, E).Is_Empty
+         and then OpenCV.Core.Subtract (Z, Z).Is_Empty
+         and then OpenCV.Core.Abs_Diff (E, Z).Is_Empty
+         and then OpenCV.Core.Multiply (E, E).Is_Empty
+         and then OpenCV.Core.Divide (E, Z).Is_Empty
+         and then OpenCV.Core.Minimum (Z, E).Is_Empty
+         and then OpenCV.Core.Maximum (Z, Z).Is_Empty,
+         "default and typed empty UMat results");
+   end Arithmetic_Half_And_Empty;
+
+   procedure Arithmetic_Half_Special (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      pragma Suppress (Validity_Check);
+      H                      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 4, (OpenCV.Core.Float16, 1));
+      K                      : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 4, (OpenCV.Core.Float16, 1));
+      F32_L, F32_R           : OpenCV.Core.UMat;
+      Min_H, Max_H           : OpenCV.Core.Mat;
+      Min_Oracle, Max_Oracle : OpenCV.Core.Mat;
+      L_Bits                 :
+        constant array (0 .. 3) of Interfaces.Unsigned_16 :=
+          (16#0000#, 16#8000#, 16#7C00#, 16#7E00#);
+      R_Bits                 :
+        constant array (0 .. 3) of Interfaces.Unsigned_16 :=
+          (16#8000#, 16#0000#, 16#3C00#, 16#3C00#);
+   begin
+      for Column in 0 .. 3 loop
+         OpenCV.Core.Float16_Access.Set
+           (H, 0, Column, OpenCV.Core.Float16_From_Bits (L_Bits (Column)));
+         OpenCV.Core.Float16_Access.Set
+           (K, 0, Column, OpenCV.Core.Float16_From_Bits (R_Bits (Column)));
+      end loop;
+      F32_L := T.To_UMat (H).Convert_To (OpenCV.Core.Float32);
+      F32_R := T.To_UMat (K).Convert_To (OpenCV.Core.Float32);
+      Min_H := T.To_Mat (OpenCV.Core.Minimum (T.To_UMat (H), T.To_UMat (K)));
+      Max_H := T.To_Mat (OpenCV.Core.Maximum (T.To_UMat (H), T.To_UMat (K)));
+      Min_Oracle := T.To_Mat (OpenCV.Core.Minimum (F32_L, F32_R));
+      Max_Oracle := T.To_Mat (OpenCV.Core.Maximum (F32_L, F32_R));
+      for Column in 0 .. 3 loop
+         AUnit.Assertions.Assert
+           (OpenCV.Core.Float16_Bits
+              (OpenCV.Core.Float16_Access.Get (Min_H, 0, Column))
+            = OpenCV.Core.Float16_Bits
+                (OpenCV.Core.To_Float16
+                   (OpenCV.Core.Float32_Access.Get (Min_Oracle, 0, Column)))
+            and then OpenCV.Core.Float16_Bits
+                       (OpenCV.Core.Float16_Access.Get (Max_H, 0, Column))
+                     = OpenCV.Core.Float16_Bits
+                         (OpenCV.Core.To_Float16
+                            (OpenCV.Core.Float32_Access.Get
+                               (Max_Oracle, 0, Column))),
+            "Float16 UMat special min/max Float32 model");
+      end loop;
+   end Arithmetic_Half_Special;
+
+   procedure Arithmetic_Invalid (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Base     : constant OpenCV.Core.UMat :=
+        OpenCV.Core.Create_UMat (2, 3, (OpenCV.Core.UInt8, 1));
+      Rows     : constant OpenCV.Core.UMat :=
+        OpenCV.Core.Create_UMat (3, 3, (OpenCV.Core.UInt8, 1));
+      Cols     : constant OpenCV.Core.UMat :=
+        OpenCV.Core.Create_UMat (2, 4, (OpenCV.Core.UInt8, 1));
+      Depth    : constant OpenCV.Core.UMat :=
+        OpenCV.Core.Create_UMat (2, 3, (OpenCV.Core.Float32, 1));
+      Channels : constant OpenCV.Core.UMat :=
+        OpenCV.Core.Create_UMat (2, 3, (OpenCV.Core.UInt8, 3));
+      ND       : constant OpenCV.Core.UMat :=
+        OpenCV.Core.Create_UMat ((2, 3, 2), (OpenCV.Core.UInt8, 1));
+      procedure Bad_Rows is
+         X : constant OpenCV.Core.UMat := OpenCV.Core.Add (Base, Rows);
+      begin
+         AUnit.Assertions.Assert (X.Is_Empty, "unreachable");
+      end Bad_Rows;
+      procedure Bad_Cols is
+         X : constant OpenCV.Core.UMat := OpenCV.Core.Minimum (Base, Cols);
+      begin
+         AUnit.Assertions.Assert (X.Is_Empty, "unreachable");
+      end Bad_Cols;
+      procedure Bad_Depth is
+         X : constant OpenCV.Core.UMat := OpenCV.Core.Subtract (Base, Depth);
+      begin
+         AUnit.Assertions.Assert (X.Is_Empty, "unreachable");
+      end Bad_Depth;
+      procedure Bad_Channels is
+         X : constant OpenCV.Core.UMat := OpenCV.Core.Maximum (Base, Channels);
+      begin
+         AUnit.Assertions.Assert (X.Is_Empty, "unreachable");
+      end Bad_Channels;
+      procedure Bad_ND is
+         X : constant OpenCV.Core.UMat := OpenCV.Core.Add (ND, ND);
+      begin
+         AUnit.Assertions.Assert (X.Is_Empty, "unreachable");
+      end Bad_ND;
+   begin
+      Mat_Test_Support.Assert_Raises_OpenCV_Error (Bad_Rows'Access, "rows");
+      Mat_Test_Support.Assert_Raises_OpenCV_Error (Bad_Cols'Access, "columns");
+      Mat_Test_Support.Assert_Raises_OpenCV_Error (Bad_Depth'Access, "depth");
+      Mat_Test_Support.Assert_Raises_OpenCV_Error
+        (Bad_Channels'Access, "channels");
+      Mat_Test_Support.Assert_Raises_OpenCV_Error
+        (Bad_ND'Access, "2-D policy");
+   end Arithmetic_Invalid;
+
+   procedure Arithmetic_OpenCL_Disabled (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Previous : constant Interfaces.Unsigned_8 := Use_OpenCL;
+   begin
+      AUnit.Assertions.Assert (Set_OpenCL (0) = 1, "disable OpenCL");
+      begin
+         declare
+            L : OpenCV.Core.UMat :=
+              OpenCV.Core.Create_UMat (1, 1, (OpenCV.Core.Float32, 1));
+            R : OpenCV.Core.UMat :=
+              OpenCV.Core.Create_UMat (1, 1, (OpenCV.Core.Float32, 1));
+            function V (U : OpenCV.Core.UMat) return OpenCV.Float32_Value
+            is (OpenCV.Core.Float32_Access.Get (T.To_Mat (U), 0, 0));
+         begin
+            L.Set_To (OpenCV.Make_Scalar (12.0));
+            R.Set_To (OpenCV.Make_Scalar (3.0));
+            AUnit.Assertions.Assert
+              (Use_OpenCL = 0
+               and then V (OpenCV.Core.Add (L, R)) = 15.0
+               and then V (OpenCV.Core.Subtract (L, R)) = 9.0
+               and then V (OpenCV.Core.Multiply (L, R)) = 36.0
+               and then abs (V (OpenCV.Core.Divide (L, R)) - 4.0) < 0.000_01
+               and then V (OpenCV.Core.Abs_Diff (L, R)) = 9.0
+               and then V (OpenCV.Core.Minimum (L, R)) = 3.0
+               and then V (OpenCV.Core.Maximum (L, R)) = 12.0,
+               "seven numerical results without OpenCL");
+         end;
+      exception
+         when others =>
+            AUnit.Assertions.Assert
+              (Set_OpenCL (Previous) = 1, "restore OpenCL after failure");
+            raise;
+      end;
+      AUnit.Assertions.Assert (Set_OpenCL (Previous) = 1, "restore OpenCL");
+   end Arithmetic_OpenCL_Disabled;
+
+   procedure Arithmetic_Raw_ABI (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      L          : aliased C.UMat_Handle := C.Null_UMat_Handle;
+      R          : aliased C.UMat_Handle := C.Null_UMat_Handle;
+      Out_Handle : aliased C.UMat_Handle := C.Null_UMat_Handle;
+      F          : aliased C.UMat_Handle := C.Null_UMat_Handle;
+   begin
+      AUnit.Assertions.Assert
+        (C.UMat_Add (C.Null_UMat_Handle, C.Null_UMat_Handle, null)
+         = C.Error_Invalid_Argument,
+         "raw null output");
+      AUnit.Assertions.Assert
+        (C.UMat_Create_2D (1, 1, 0, 1, L'Access) = C.Success
+         and then C.UMat_Create_2D (1, 1, 0, 1, R'Access) = C.Success,
+         "raw operands");
+      begin
+         AUnit.Assertions.Assert
+           (C.UMat_Add (C.Null_UMat_Handle, R, Out_Handle'Access)
+            = C.Error_Invalid_Argument
+            and then Out_Handle = C.Null_UMat_Handle
+            and then C.UMat_Add (L, C.Null_UMat_Handle, Out_Handle'Access)
+                     = C.Error_Invalid_Argument
+            and then Out_Handle = C.Null_UMat_Handle,
+            "raw null inputs clear result");
+         AUnit.Assertions.Assert
+           (C.UMat_Add (L, R, Out_Handle'Access) = C.Success
+            and then Out_Handle /= C.Null_UMat_Handle,
+            "raw result publication");
+         C.UMat_Destroy (L);
+         L := C.Null_UMat_Handle;
+         C.UMat_Destroy (R);
+         R := C.Null_UMat_Handle;
+         declare
+            Count : aliased C.C_Int32 := 0;
+         begin
+            AUnit.Assertions.Assert
+              (C.UMat_Rows (Out_Handle, Count'Access) = C.Success
+               and then Count = 1,
+               "raw result survives source destruction");
+         end;
+         AUnit.Assertions.Assert
+           (C.UMat_Create_2D (1, 1, 7, 1, F'Access) = C.Success,
+            "raw Float16 operands");
+         C.UMat_Destroy (Out_Handle);
+         Out_Handle := C.Null_UMat_Handle;
+         AUnit.Assertions.Assert
+           (C.UMat_Add (F, F, Out_Handle'Access) = C.Success
+            and then Out_Handle /= C.Null_UMat_Handle,
+            "raw Float16 compatibility");
+      exception
+         when others =>
+            C.UMat_Destroy (L);
+            C.UMat_Destroy (R);
+            C.UMat_Destroy (F);
+            C.UMat_Destroy (Out_Handle);
+            raise;
+      end;
+      C.UMat_Destroy (F);
+      C.UMat_Destroy (Out_Handle);
+   end Arithmetic_Raw_ABI;
+
    procedure Raw_ABI_Safety (Test : in out Mat_Test_Support.Mat_Test_Fixture)
    is
       pragma Unreferenced (Test);
@@ -449,6 +780,31 @@ package body UMat_Tests is
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
+      Result.Add_Test
+        (Caller.Create ("UMat Float32 arithmetic", Arithmetic_Float32'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UMat numeric and Region arithmetic",
+            Arithmetic_Numeric_And_Regions'Access));
+      Result.Add_Test
+        (Caller.Create ("UMat C3 arithmetic", Arithmetic_Channels'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UMat Float16 and empty arithmetic",
+            Arithmetic_Half_And_Empty'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UMat Float16 min max special values",
+            Arithmetic_Half_Special'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UMat arithmetic validation", Arithmetic_Invalid'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UMat arithmetic without OpenCL",
+            Arithmetic_OpenCL_Disabled'Access));
+      Result.Add_Test
+        (Caller.Create ("UMat arithmetic raw ABI", Arithmetic_Raw_ABI'Access));
       Result.Add_Test
         (Caller.Create
            ("UMat default and 2-D create", Default_And_Create'Access));

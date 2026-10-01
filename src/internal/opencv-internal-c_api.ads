@@ -1772,6 +1772,28 @@ package OpenCV.Internal.C_API is
      (Left, Right : Mat_Handle; Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_maximum";
 
+   function UMat_Add
+     (Left, Right : UMat_Handle; Result : access UMat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_add";
+   function UMat_Subtract
+     (Left, Right : UMat_Handle; Result : access UMat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_subtract";
+   function UMat_Multiply
+     (Left, Right : UMat_Handle; Result : access UMat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_multiply";
+   function UMat_Divide
+     (Left, Right : UMat_Handle; Result : access UMat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_divide";
+   function UMat_Abs_Diff
+     (Left, Right : UMat_Handle; Result : access UMat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_abs_diff";
+   function UMat_Minimum
+     (Left, Right : UMat_Handle; Result : access UMat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_minimum";
+   function UMat_Maximum
+     (Left, Right : UMat_Handle; Result : access UMat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_maximum";
+
    function Mat_Add_Weighted
      (Left   : Mat_Handle;
       Alpha  : C_Double;

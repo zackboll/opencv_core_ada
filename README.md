@@ -2193,10 +2193,13 @@ available, enabled, or backed by a device: CPU fallback is required behavior,
 and the test suite explicitly disables OpenCL while exercising the public
 operations. **UMat enables OpenCV's Transparent API dispatch where native
 operations support it. It is not a guarantee that an operation executes on a
-GPU.** The opaque native Mat and UMat values will allow future shim-local
-`InputArray`/`OutputArray` dispatch without exposing C++ proxy objects or
-changing the ownership model. General Mat arithmetic migration, module UMat
-bridging, UMat reshape, and callback-scoped CPU mapping are separate work.
+GPU.** `Add`, `Subtract`, `Multiply`, `Divide`, `Abs_Diff`, `Minimum`, and
+`Maximum` now accept two UMat operands and return an independent UMat. These
+2-D operations use native shim-local InputArray/OutputArray dispatch without
+Mat download/re-upload; OpenCL is optional and CPU fallback is tested. Mixed
+Mat/UMat arithmetic is not exposed. `Add_Weighted` and `Scale_Add`, other
+operation families, module UMat bridging, UMat reshape, and callback-scoped
+CPU mapping remain future work.
 
 ## Safety and validation boundary
 
@@ -2299,9 +2302,10 @@ The current limitations are intentional and help keep the public API coherent:
    are not provided because a row is a 2-D concept. OpenCV 5.0's native Mat
    shape capacity remains 10 dimensions.
 
-2. **SparseMat and UMat are baseline wrappers, not complete native APIs.**
+2. **SparseMat and UMat are not complete native APIs.**
    UMat has no direct mapped typed access, public OpenCL controls, masked
-   Set_To, or shared Mat/UMat arithmetic dispatch yet. Reshape is deferred.
+   Set_To, or weighted arithmetic yet. The seven binary arithmetic operations
+   have shared Mat/UMat native dispatch; reshape is deferred.
    Direct typed node access and read-only stored-node traversal cover all eight
    depths in C1/C2/C3/C4 (32 layouts). One vector is one complete element.
    Explicit all-zero vectors remain stored nodes; missing reads return zero and

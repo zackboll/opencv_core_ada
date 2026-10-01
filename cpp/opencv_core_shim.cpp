@@ -19,6 +19,7 @@
 #include <stdexcept>
 #include <vector>
 #include <string>
+#include <type_traits>
 
 struct opencv_core_mat_handle {
     // Optional shallow, reference-counted owner of the storage that value
@@ -1878,6 +1879,14 @@ bool is_compatible_empty_mix(const cv::Mat &left,
                              const cv::Mat &right) noexcept {
     return left.empty() && right.empty() &&
            (is_default_empty_mat(left) || is_default_empty_mat(right));
+}
+
+extern "C++" {
+template <typename Dense>
+bool dense_compatible_empty_mix(const Dense &left, const Dense &right) noexcept {
+    return left.empty() && right.empty() &&
+           (left.dims == 0 || right.dims == 0);
+}
 }
 
 bool is_compatible_empty_mix(const cv::Mat &left, const cv::Mat &right,
@@ -5006,14 +5015,16 @@ opencv_core_mat_normalize(const opencv_core_mat_handle *source,
     }
 }
 
-// OpenCV 4.x exposes CV_16F Mat storage/conversion but the supported
+// OpenCV 4.x exposes CV_16F Mat/UMat storage/conversion but the supported
 // 4.x Add/Subtract dispatch tables do not implement CV_16F arithmetic
 // (HAL add/sub kernels stop at 8u/8s/16u/16s/32s/32f/64f). OpenCV 5.x
 // provides native add16f/sub16f, so use native half arithmetic there
 // and widen only on older supported versions. This is OpenCV operation
 // support, not CPU FP16 feature detection.
-static void add_or_subtract_float16(const cv::Mat &left, const cv::Mat &right,
-                                    cv::Mat &result, bool subtract) {
+extern "C++" {
+template <typename Dense>
+static void add_or_subtract_float16(const Dense &left, const Dense &right,
+                                    Dense &result, bool subtract) {
 #if CV_VERSION_MAJOR >= 5
     if (subtract) {
         cv::subtract(left, right, result, cv::noArray(), -1);
@@ -5021,9 +5032,9 @@ static void add_or_subtract_float16(const cv::Mat &left, const cv::Mat &right,
         cv::add(left, right, result, cv::noArray(), -1);
     }
 #else
-    cv::Mat left32;
-    cv::Mat right32;
-    cv::Mat result32;
+    Dense left32;
+    Dense right32;
+    Dense result32;
     left.convertTo(left32, CV_32F);
     right.convertTo(right32, CV_32F);
     if (subtract) {
@@ -5034,6 +5045,25 @@ static void add_or_subtract_float16(const cv::Mat &left, const cv::Mat &right,
     result32.convertTo(result, CV_16F);
 #endif
 }
+}
+
+extern "C++" {
+template <typename Dense>
+static void dense_add_or_subtract(const Dense &left, const Dense &right,
+                                  Dense &result, bool subtract) {
+    // ABI safety: OpenCV 4.10 UMat OpenCL vector-width prediction dereferences
+    // empty UMat storage for add/subtract, even with OpenCL unavailable.
+    if (std::is_same<Dense, cv::UMat>::value && left.empty() && right.empty()) {
+        result.release();
+    } else if (left.depth() == CV_16F) {
+        add_or_subtract_float16(left, right, result, subtract);
+    } else if (subtract) {
+        cv::subtract(left, right, result, cv::noArray(), -1);
+    } else {
+        cv::add(left, right, result, cv::noArray(), -1);
+    }
+}
+}
 
 // OpenCV 4.x exposes CV_16F Mat storage/conversion but the supported
 // 4.x Multiply dispatch tables do not implement CV_16F arithmetic
@@ -5041,19 +5071,38 @@ static void add_or_subtract_float16(const cv::Mat &left, const cv::Mat &right,
 // provides native mul16f, so use native half arithmetic there and
 // widen only on older supported versions. This is OpenCV operation
 // support, not CPU FP16 feature detection.
-static void multiply_float16(const cv::Mat &left, const cv::Mat &right,
-                             cv::Mat &result) {
+extern "C++" {
+template <typename Dense>
+static void multiply_float16(const Dense &left, const Dense &right,
+                             Dense &result) {
 #if CV_VERSION_MAJOR >= 5
     cv::multiply(left, right, result, 1.0, -1);
 #else
-    cv::Mat left32;
-    cv::Mat right32;
-    cv::Mat result32;
+    Dense left32;
+    Dense right32;
+    Dense result32;
     left.convertTo(left32, CV_32F);
     right.convertTo(right32, CV_32F);
     cv::multiply(left32, right32, result32, 1.0, -1);
     result32.convertTo(result, CV_16F);
 #endif
+}
+}
+
+extern "C++" {
+template <typename Dense>
+static void dense_multiply(const Dense &left, const Dense &right,
+                           Dense &result) {
+    // ABI safety: OpenCV 5 creates a 0-D output for default-empty operands
+    // and then fails in getContinuousSize2D due to mismatched totals.
+    if (dense_compatible_empty_mix(left, right)) {
+        result.release();
+    } else if (left.depth() == CV_16F) {
+        multiply_float16(left, right, result);
+    } else {
+        cv::multiply(left, right, result, 1.0, -1);
+    }
+}
 }
 
 opencv_core_status
@@ -5074,11 +5123,7 @@ opencv_core_mat_add(const opencv_core_mat_handle *left,
 
     try {
         cv::Mat sum;
-        if (left->value.depth() == CV_16F) {
-            add_or_subtract_float16(left->value, right->value, sum, false);
-        } else {
-            cv::add(left->value, right->value, sum, cv::noArray(), -1);
-        }
+        dense_add_or_subtract(left->value, right->value, sum, false);
         *out_mat = new opencv_core_mat_handle(sum);
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -5104,13 +5149,7 @@ opencv_core_mat_subtract(const opencv_core_mat_handle *left,
 
     try {
         cv::Mat difference;
-        if (left->value.depth() == CV_16F) {
-            add_or_subtract_float16(left->value, right->value, difference,
-                                    true);
-        } else {
-            cv::subtract(left->value, right->value, difference, cv::noArray(),
-                         -1);
-        }
+        dense_add_or_subtract(left->value, right->value, difference, true);
         *out_mat = new opencv_core_mat_handle(difference);
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -5135,22 +5174,8 @@ opencv_core_mat_multiply(const opencv_core_mat_handle *left,
     }
 
     try {
-        // ABI safety: OpenCV 5 cv::multiply creates a 0-D scalar destination
-        // for default-constructed operands (dims == 0). getContinuousSize2D
-        // then throws because source total() == 0 while destination total()
-        // == 1. After Ada compatibility checks, publicly compatible empty
-        // operands, including a default-empty / typed 0x0 mix, produce an
-        // independently owned empty result.
-        if (is_compatible_empty_mix(left->value, right->value)) {
-            return make_default_empty_mat(out_mat);
-        }
-
         cv::Mat product;
-        if (left->value.depth() == CV_16F) {
-            multiply_float16(left->value, right->value, product);
-        } else {
-            cv::multiply(left->value, right->value, product, 1.0, -1);
-        }
+        dense_multiply(left->value, right->value, product);
         *out_mat = new opencv_core_mat_handle(product);
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -5166,19 +5191,35 @@ opencv_core_mat_multiply(const opencv_core_mat_handle *left,
 // only while it satisfies the binding's Float32-to-Float16 result
 // model. This is OpenCV operation support, not CPU FP16 feature
 // detection.
-static void divide_float16(const cv::Mat &left, const cv::Mat &right,
-                           cv::Mat &result) {
+extern "C++" {
+template <typename Dense>
+static void divide_float16(const Dense &left, const Dense &right,
+                           Dense &result) {
 #if CV_VERSION_MAJOR >= 5
     cv::divide(left, right, result, 1.0, -1);
 #else
-    cv::Mat left32;
-    cv::Mat right32;
-    cv::Mat result32;
+    Dense left32;
+    Dense right32;
+    Dense result32;
     left.convertTo(left32, CV_32F);
     right.convertTo(right32, CV_32F);
     cv::divide(left32, right32, result32, 1.0, -1);
     result32.convertTo(result, CV_16F);
 #endif
+}
+template <typename Dense>
+static void dense_divide(const Dense &left, const Dense &right,
+                         Dense &result) {
+    // ABI safety: OpenCV 5 can create a 0-D output for default-empty
+    // operands and fail in getContinuousSize2D.
+    if (dense_compatible_empty_mix(left, right)) {
+        result.release();
+    } else if (left.depth() == CV_16F) {
+        divide_float16(left, right, result);
+    } else {
+        cv::divide(left, right, result, 1.0, -1);
+    }
+}
 }
 
 opencv_core_status
@@ -5198,22 +5239,8 @@ opencv_core_mat_divide(const opencv_core_mat_handle *left,
     }
 
     try {
-        // ABI safety: OpenCV 5 cv::divide still reaches getContinuousSize2D
-        // for some empty-header combinations after output creation turns a
-        // default-constructed operand (dims == 0) into a 0-D scalar
-        // destination. After Ada compatibility checks, publicly compatible
-        // empty operands, including a default-empty / typed 0x0 mix, produce
-        // an independently owned empty result.
-        if (is_compatible_empty_mix(left->value, right->value)) {
-            return make_default_empty_mat(out_mat);
-        }
-
         cv::Mat quotient;
-        if (left->value.depth() == CV_16F) {
-            divide_float16(left->value, right->value, quotient);
-        } else {
-            cv::divide(left->value, right->value, quotient, 1.0, -1);
-        }
+        dense_divide(left->value, right->value, quotient);
         *out_mat = new opencv_core_mat_handle(quotient);
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -5227,19 +5254,35 @@ opencv_core_mat_divide(const opencv_core_mat_handle *left,
 // Native execution is used only while it satisfies the binding's
 // Float32-to-Float16 result model. This is OpenCV operation support, not CPU
 // FP16 feature detection.
-static void abs_diff_float16(const cv::Mat &left, const cv::Mat &right,
-                             cv::Mat &result) {
+extern "C++" {
+template <typename Dense>
+static void abs_diff_float16(const Dense &left, const Dense &right,
+                             Dense &result) {
 #if CV_VERSION_MAJOR >= 5
     cv::absdiff(left, right, result);
 #else
-    cv::Mat left32;
-    cv::Mat right32;
-    cv::Mat result32;
+    Dense left32;
+    Dense right32;
+    Dense result32;
     left.convertTo(left32, CV_32F);
     right.convertTo(right32, CV_32F);
     cv::absdiff(left32, right32, result32);
     result32.convertTo(result, CV_16F);
 #endif
+}
+template <typename Dense>
+static void dense_abs_diff(const Dense &left, const Dense &right,
+                           Dense &result) {
+    // ABI safety: OpenCV 4.10 UMat absdiff OpenCL vector-width prediction
+    // dereferences empty storage even when no OpenCL device is available.
+    if (std::is_same<Dense, cv::UMat>::value && left.empty() && right.empty()) {
+        result.release();
+    } else if (left.depth() == CV_16F) {
+        abs_diff_float16(left, right, result);
+    } else {
+        cv::absdiff(left, right, result);
+    }
+}
 }
 
 // OpenCV 4.1 through 5.0 expose CPU scaleAdd kernels only for CV_32F and
@@ -5325,11 +5368,7 @@ opencv_core_mat_abs_diff(const opencv_core_mat_handle *left,
 
     try {
         cv::Mat difference;
-        if (left->value.depth() == CV_16F) {
-            abs_diff_float16(left->value, right->value, difference);
-        } else {
-            cv::absdiff(left->value, right->value, difference);
-        }
+        dense_abs_diff(left->value, right->value, difference);
         *out_mat = new opencv_core_mat_handle(difference);
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -5404,8 +5443,10 @@ opencv_core_mat_scale_add(const opencv_core_mat_handle *left, double scale,
 // Float32-model conformance tests run on both paths, including special values.
 enum class min_max_operation { minimum, maximum };
 
-static void min_max_float16(const cv::Mat &left, const cv::Mat &right,
-                            cv::Mat &result, min_max_operation operation) {
+extern "C++" {
+template <typename Dense>
+static void min_max_float16(const Dense &left, const Dense &right,
+                            Dense &result, min_max_operation operation) {
 #if CV_VERSION_MAJOR >= 5
     if (operation == min_max_operation::minimum) {
         cv::min(left, right, result);
@@ -5413,9 +5454,9 @@ static void min_max_float16(const cv::Mat &left, const cv::Mat &right,
         cv::max(left, right, result);
     }
 #else
-    cv::Mat left32;
-    cv::Mat right32;
-    cv::Mat result32;
+    Dense left32;
+    Dense right32;
+    Dense result32;
     left.convertTo(left32, CV_32F);
     right.convertTo(right32, CV_32F);
     if (operation == min_max_operation::minimum) {
@@ -5425,6 +5466,26 @@ static void min_max_float16(const cv::Mat &left, const cv::Mat &right,
     }
     result32.convertTo(result, CV_16F);
 #endif
+}
+template <typename Dense>
+static void dense_min_max(const Dense &left, const Dense &right,
+                          Dense &result, min_max_operation operation) {
+    // ABI safety: OpenCV 5 creates a 0-D output for default-empty operands
+    // and fails in getContinuousSize2D due to mismatched totals.
+    // ABI safety: cv::min/max UMat OpenCL width prediction dereferences
+    // empty typed UMat storage even for a typed 0x0 pair on OpenCV 4.10.
+    if (dense_compatible_empty_mix(left, right) ||
+        (std::is_same<Dense, cv::UMat>::value && left.empty() &&
+         right.empty())) {
+        result.release();
+    } else if (left.depth() == CV_16F) {
+        min_max_float16(left, right, result, operation);
+    } else if (operation == min_max_operation::minimum) {
+        cv::min(left, right, result);
+    } else {
+        cv::max(left, right, result);
+    }
+}
 }
 
 opencv_core_status
@@ -5444,23 +5505,9 @@ opencv_core_mat_minimum(const opencv_core_mat_handle *left,
     }
 
     try {
-        // ABI safety: OpenCV 5 cv::min creates a 0-D scalar destination for
-        // default-constructed operands (dims == 0). getContinuousSize2D then
-        // throws because source and destination totals do not match. After
-        // Ada compatibility checks, publicly compatible empty operands,
-        // including a default-empty / typed 0x0 mix, produce an independently
-        // owned empty result.
-        if (is_compatible_empty_mix(left->value, right->value)) {
-            return make_default_empty_mat(out_mat);
-        }
-
         cv::Mat result;
-        if (left->value.depth() == CV_16F) {
-            min_max_float16(left->value, right->value, result,
-                            min_max_operation::minimum);
-        } else {
-            cv::min(left->value, right->value, result);
-        }
+        dense_min_max(left->value, right->value, result,
+                      min_max_operation::minimum);
         *out_mat = new opencv_core_mat_handle(result);
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -5485,29 +5532,60 @@ opencv_core_mat_maximum(const opencv_core_mat_handle *left,
     }
 
     try {
-        // ABI safety: OpenCV 5 cv::max creates a 0-D scalar destination for
-        // default-constructed operands (dims == 0). getContinuousSize2D then
-        // throws because source and destination totals do not match. After
-        // Ada compatibility checks, publicly compatible empty operands,
-        // including a default-empty / typed 0x0 mix, produce an independently
-        // owned empty result.
-        if (is_compatible_empty_mix(left->value, right->value)) {
-            return make_default_empty_mat(out_mat);
-        }
-
         cv::Mat result;
-        if (left->value.depth() == CV_16F) {
-            min_max_float16(left->value, right->value, result,
-                            min_max_operation::maximum);
-        } else {
-            cv::max(left->value, right->value, result);
-        }
+        dense_min_max(left->value, right->value, result,
+                      min_max_operation::maximum);
         *out_mat = new opencv_core_mat_handle(result);
         return OPENCV_CORE_OK;
     } catch (...) {
         return translate_current_exception();
     }
 }
+
+// Typed C entry points share native execution while preserving distinct
+// opaque handle ownership. No InputArray proxy survives a native call.
+extern "C++" {
+template <typename Handle, typename Operation>
+static opencv_core_status publish_dense_arithmetic(
+    const Handle *left, const Handle *right, Handle **out,
+    Operation operation) {
+    clear_error();
+    if (out == nullptr) return invalid_argument("out must not be null");
+    *out = nullptr;
+    if (left == nullptr || right == nullptr)
+        return invalid_argument("UMat operand handles must not be null");
+    try {
+        cv::UMat result;
+        operation(left->value, right->value, result);
+        std::unique_ptr<Handle> owned(new Handle(result));
+        *out = owned.release();
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+}
+
+#define OPENCV_CORE_UMAT_BINARY(NAME, EXPR)                                 \
+opencv_core_status opencv_core_umat_##NAME(                                  \
+    const opencv_core_umat_handle *left,                                     \
+    const opencv_core_umat_handle *right,                                    \
+    opencv_core_umat_handle **out) {                                         \
+    return publish_dense_arithmetic(left, right, out,                       \
+        [](const cv::UMat &a, const cv::UMat &b, cv::UMat &dst) { EXPR; });   \
+}
+
+OPENCV_CORE_UMAT_BINARY(add, dense_add_or_subtract(a, b, dst, false))
+OPENCV_CORE_UMAT_BINARY(subtract, dense_add_or_subtract(a, b, dst, true))
+OPENCV_CORE_UMAT_BINARY(multiply, dense_multiply(a, b, dst))
+OPENCV_CORE_UMAT_BINARY(divide, dense_divide(a, b, dst))
+OPENCV_CORE_UMAT_BINARY(abs_diff, dense_abs_diff(a, b, dst))
+OPENCV_CORE_UMAT_BINARY(minimum,
+                        dense_min_max(a, b, dst, min_max_operation::minimum))
+OPENCV_CORE_UMAT_BINARY(maximum,
+                        dense_min_max(a, b, dst, min_max_operation::maximum))
+
+#undef OPENCV_CORE_UMAT_BINARY
 
 opencv_core_status
 opencv_core_mat_bitwise_and(const opencv_core_mat_handle *left,
