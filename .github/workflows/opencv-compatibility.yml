@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - release/opencv_core-0.2.0
+      - release/**
       - feature/**
       - corrective/**
   pull_request:

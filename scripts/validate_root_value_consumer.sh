@@ -33,8 +33,8 @@ if [ ! -f "$core_source/alire.toml" ]; then
     exit 1
 fi
 
-if ! grep -q 'version = "0.2.0"' "$core_source/alire.toml"; then
-    echo "error: expected opencv_core 0.2.0 in $core_source/alire.toml" >&2
+if ! grep -q 'version = "0.3.0"' "$core_source/alire.toml"; then
+    echo "error: expected opencv_core 0.3.0 in $core_source/alire.toml" >&2
     exit 1
 fi
 

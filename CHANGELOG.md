@@ -1,6 +1,13 @@
 # Changelog
 
 ## Unreleased
+
+## 0.3.0
+
+This release materially expands typed Mat coverage and introduces the
+controlled SparseMat API, including typed access, numeric operations, and
+cross-module SparseMat interoperability through the installed bridge.
+
 - Added callback-scoped SparseMat module interoperability in
   `OpenCV.Core.Sparse.Module_Interop`, parallel to the Mat bridge. Core owns
   the opaque wrapper and native `cv::SparseMat` header. Cooperating module
@@ -420,7 +427,7 @@ Later Core work included:
   views
 - native-first Float16 `Add`, `Subtract`, `Multiply`, `Divide`,
   `Abs_Diff`, `Minimum`, `Maximum`, `Add_Weighted`, and `Scale_Add`
-- cross-module Mat and SparseMat interop bridge and installed
+- cross-module Mat interop bridge and installed
   `opencv_core_module_bridge.hpp`
 - signed `Rect` origins, with `Mat.Region` still rejecting negative ROI
   origins

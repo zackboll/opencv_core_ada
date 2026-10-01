@@ -3,7 +3,7 @@ with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.UInt8_Access;
 
---  Pinned-source consumer fixture for opencv_core 0.2.0.
+--  Pinned-source consumer fixture for opencv_core 0.3.0.
 --  This is not an index-resolution test.
 
 procedure Root_Value_Consumer is
