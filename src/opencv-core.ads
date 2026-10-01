@@ -210,6 +210,41 @@ package OpenCV.Core is
    end record;
 
    type Mat is tagged private;
+   type UMat is tagged private;
+
+   --  UMat allocation uses USAGE_DEFAULT; OpenCL is optional. Assignment
+   --  retains shared storage via distinct native headers; Clone copies data.
+   function Create_UMat
+     (Rows, Columns : Natural; Element_Type : Mat_Type) return UMat
+   with Pre => Rows <= 2_147_483_647 and then Columns <= 2_147_483_647;
+   --  Two to 32 nonzero extents; OpenCV 5 accepts at most 10 dimensions.
+   function Create_UMat
+     (Shape : Dimension_Array; Element_Type : Mat_Type) return UMat;
+   function Clone (Self : UMat) return UMat;
+   function Copy_To (Self : UMat) return UMat;
+   function Convert_To
+     (Self   : UMat;
+      Depth  : Depth_Type;
+      Scale  : Long_Float := 1.0;
+      Offset : Long_Float := 0.0) return UMat;
+   procedure Set_To (Self : in out UMat; Value : Scalar);
+   function Region (Self : UMat; Area : Rect) return UMat;
+   function Slice (Self : UMat; Ranges : Index_Range_Array) return UMat;
+
+   function Is_Empty (Self : UMat) return Boolean;
+   function Is_Continuous (Self : UMat) return Boolean;
+   function Is_Submatrix (Self : UMat) return Boolean;
+   function Dimension_Count (Self : UMat) return Natural;
+   function Extent (Self : UMat; Axis : Positive) return Size_Coordinate;
+   function Shape (Self : UMat) return Dimension_Array;
+   function Rows (Self : UMat) return Natural;
+   function Columns (Self : UMat) return Natural;
+   function Depth (Self : UMat) return Depth_Type;
+   function Channels (Self : UMat) return Channel_Count;
+   function Element_Type (Self : UMat) return Mat_Type;
+   function Total (Self : UMat) return Mat_Size;
+   function Element_Size (Self : UMat) return Mat_Size;
+   function Channel_Size (Self : UMat) return Mat_Size;
 
    --  OpenCV 4.10 cv::RNG Multiply-With-Carry state. This deterministic
    --  pseudorandom generator is caller-owned rather than thread-local. Its
@@ -2196,6 +2231,18 @@ private
       Handle : OpenCV.Internal.C_API.Mat_Handle :=
         OpenCV.Internal.C_API.Null_Mat_Handle;
    end record;
+
+   type UMat is new Ada.Finalization.Controlled with record
+      Handle : OpenCV.Internal.C_API.UMat_Handle :=
+        OpenCV.Internal.C_API.Null_UMat_Handle;
+   end record;
+
+   overriding
+   procedure Initialize (Self : in out UMat);
+   overriding
+   procedure Adjust (Self : in out UMat);
+   overriding
+   procedure Finalize (Self : in out UMat);
 
    overriding
    procedure Initialize (Self : in out Mat);

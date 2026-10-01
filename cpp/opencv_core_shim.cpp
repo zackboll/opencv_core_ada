@@ -37,6 +37,12 @@ struct opencv_core_mat_handle {
         : value(source) {}
 };
 
+struct opencv_core_umat_handle {
+    cv::UMat value;
+    opencv_core_umat_handle() = default;
+    explicit opencv_core_umat_handle(const cv::UMat &source) : value(source) {}
+};
+
 struct opencv_core_sparse_mat_handle {
     cv::SparseMat value;
     opencv_core_sparse_mat_handle() = default;
@@ -2613,6 +2619,227 @@ SPARSE_VECTOR_ACCESS_ALL(float64, CV_64F)
 
 const char *opencv_core_last_error_message(void) {
     return last_error_message;
+}
+
+opencv_core_status opencv_core_umat_create(opencv_core_umat_handle **out) {
+    clear_error();
+    if (!out) return invalid_argument("null output UMat pointer");
+    *out = nullptr;
+    try {
+        auto result = std::make_unique<opencv_core_umat_handle>();
+        *out = result.release();
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_umat_create_2d(int32_t rows, int32_t columns,
+    int32_t depth, int32_t channels, opencv_core_umat_handle **out) {
+    clear_error();
+    if (!out) return invalid_argument("null output UMat pointer");
+    *out = nullptr;
+    // ABI safety: CV_MAKETYPE truncates invalid channel counts before OpenCV validates them.
+    if (channels < 1 || channels > OPENCV_CORE_MAX_CHANNELS)
+        return invalid_argument("invalid channel count");
+    int native_depth = 0;
+    if (!to_opencv_depth(depth, native_depth)) return invalid_argument("invalid depth");
+    try {
+        auto result = std::make_unique<opencv_core_umat_handle>();
+        result->value.create(rows, columns, CV_MAKETYPE(native_depth, channels),
+                             cv::USAGE_DEFAULT);
+        *out = result.release();
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_umat_create_nd(int32_t dims, const int32_t *sizes,
+    int32_t depth, int32_t channels, opencv_core_umat_handle **out) {
+    clear_error();
+    if (!out) return invalid_argument("null output UMat pointer");
+    *out = nullptr;
+    // ABI safety: OpenCV uses fixed 32-slot scratch arrays and, on 5.x,
+    // MatShape::MAX_DIMS slots; exceeding capacity can write past either array.
+    if (dims < 0 || dims > native_maximum_mat_dimensions)
+        return invalid_argument("invalid native dimension count");
+    if (!sizes) return invalid_argument("null UMat shape pointer");
+    // ABI safety: CV_MAKETYPE truncates invalid channel counts before OpenCV validates them.
+    if (channels < 1 || channels > OPENCV_CORE_MAX_CHANNELS)
+        return invalid_argument("invalid channel count");
+    int native_depth = 0;
+    if (!to_opencv_depth(depth, native_depth)) return invalid_argument("invalid depth");
+    int extents[maximum_mat_dimensions];
+    for (int32_t i = 0; i < dims; ++i) {
+        // ABI safety: negative extents can overflow allocator size arithmetic.
+        if (sizes[i] < 0) return invalid_argument("negative extent");
+        extents[i] = sizes[i];
+    }
+    try {
+        auto result = std::make_unique<opencv_core_umat_handle>();
+        result->value.create(dims, extents, CV_MAKETYPE(native_depth, channels),
+                             cv::USAGE_DEFAULT);
+        *out = result.release();
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+#define UMAT_RESULT(name, input_type, expression) \
+opencv_core_status name(const input_type *source, opencv_core_umat_handle **out) { \
+    clear_error(); \
+    if (!out) return invalid_argument("null output UMat pointer"); \
+    *out = nullptr; \
+    if (!source) return invalid_argument("null source handle"); \
+    try { \
+        auto result = std::make_unique<opencv_core_umat_handle>(expression); \
+        *out = result.release(); \
+        return OPENCV_CORE_OK; \
+    } catch (...) { return translate_current_exception(); } \
+}
+UMAT_RESULT(opencv_core_umat_copy, opencv_core_umat_handle, source->value)
+UMAT_RESULT(opencv_core_umat_clone, opencv_core_umat_handle, source->value.clone())
+#undef UMAT_RESULT
+
+void opencv_core_umat_destroy(opencv_core_umat_handle *self) {
+    try { delete self; } catch (...) { /* No exception crosses the C ABI. */ }
+}
+
+opencv_core_status opencv_core_mat_to_umat(const opencv_core_mat_handle *source,
+    opencv_core_umat_handle **out) {
+    clear_error();
+    if (!out) return invalid_argument("null output UMat pointer");
+    *out = nullptr;
+    if (!source) return invalid_argument("null Mat handle");
+    try {
+        auto result = std::make_unique<opencv_core_umat_handle>();
+        source->value.copyTo(result->value);
+        *out = result.release();
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_umat_to_mat(const opencv_core_umat_handle *source,
+    opencv_core_mat_handle **out) {
+    clear_error();
+    if (!out) return invalid_argument("null output Mat pointer");
+    *out = nullptr;
+    if (!source) return invalid_argument("null UMat handle");
+    try {
+        auto result = std::make_unique<opencv_core_mat_handle>();
+        source->value.copyTo(result->value);
+        *out = result.release();
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_umat_copy_to(const opencv_core_umat_handle *source,
+    opencv_core_umat_handle **out) {
+    clear_error();
+    if (!out) return invalid_argument("null output UMat pointer");
+    *out = nullptr;
+    if (!source) return invalid_argument("null UMat handle");
+    try {
+        auto result = std::make_unique<opencv_core_umat_handle>();
+        source->value.copyTo(result->value);
+        *out = result.release();
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_umat_convert_to(const opencv_core_umat_handle *source,
+    int32_t depth, double scale, double offset, opencv_core_umat_handle **out) {
+    clear_error();
+    if (!out) return invalid_argument("null output UMat pointer");
+    *out = nullptr;
+    if (!source) return invalid_argument("null UMat handle");
+    int native_depth = 0;
+    if (!to_opencv_depth(depth, native_depth)) return invalid_argument("invalid depth");
+    try {
+        auto result = std::make_unique<opencv_core_umat_handle>();
+        source->value.convertTo(result->value, native_depth, scale, offset);
+        *out = result.release();
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_umat_set_to(opencv_core_umat_handle *self,
+    const opencv_core_scalar *value) {
+    clear_error();
+    if (!self || !value) return invalid_argument("null UMat or scalar pointer");
+    try {
+        self->value.setTo(to_opencv_scalar(*value));
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_umat_region(const opencv_core_umat_handle *source,
+    int32_t x, int32_t y, int32_t width, int32_t height,
+    opencv_core_umat_handle **out) {
+    clear_error();
+    if (!out) return invalid_argument("null output UMat pointer");
+    *out = nullptr;
+    if (!source) return invalid_argument("null UMat handle");
+    try {
+        auto result = std::make_unique<opencv_core_umat_handle>(
+            cv::UMat(source->value, cv::Rect(x, y, width, height)));
+        *out = result.release();
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_umat_slice_nd(const opencv_core_umat_handle *source,
+    int32_t dims, const int32_t *starts, const int32_t *stops,
+    opencv_core_umat_handle **out) {
+    clear_error();
+    if (!out) return invalid_argument("null output UMat pointer");
+    *out = nullptr;
+    if (!source || !starts || !stops) return invalid_argument("null slice input");
+    // ABI safety: ranges are indexed by the native source dimension count.
+    if (dims != source->value.dims || dims < 1 || dims > native_maximum_mat_dimensions)
+        return invalid_argument("invalid slice range count");
+    try {
+        cv::Range ranges[maximum_mat_dimensions];
+        for (int32_t i = 0; i < dims; ++i)
+            ranges[i] = cv::Range(starts[i], stops[i]);
+        auto result = std::make_unique<opencv_core_umat_handle>(
+            cv::UMat(source->value, ranges));
+        *out = result.release();
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+#define UMAT_QUERY(name, type, expression) \
+opencv_core_status name(const opencv_core_umat_handle *self, type *out) { \
+    clear_error(); \
+    if (!out) return invalid_argument("null metadata output"); \
+    *out = 0; \
+    if (!self) return invalid_argument("null UMat handle"); \
+    try { *out = static_cast<type>(expression); return OPENCV_CORE_OK; } \
+    catch (...) { return translate_current_exception(); } \
+}
+UMAT_QUERY(opencv_core_umat_is_empty, uint8_t, self->value.empty())
+UMAT_QUERY(opencv_core_umat_is_continuous, uint8_t, self->value.isContinuous())
+UMAT_QUERY(opencv_core_umat_is_submatrix, uint8_t, self->value.isSubmatrix())
+UMAT_QUERY(opencv_core_umat_dimension_count, int32_t, self->value.dims)
+UMAT_QUERY(opencv_core_umat_rows, int32_t, self->value.rows)
+UMAT_QUERY(opencv_core_umat_columns, int32_t, self->value.cols)
+UMAT_QUERY(opencv_core_umat_depth, int32_t, self->value.depth())
+UMAT_QUERY(opencv_core_umat_channels, int32_t, self->value.channels())
+UMAT_QUERY(opencv_core_umat_total, uint64_t, self->value.total())
+UMAT_QUERY(opencv_core_umat_element_size, uint64_t, self->value.elemSize())
+UMAT_QUERY(opencv_core_umat_channel_size, uint64_t, self->value.elemSize1())
+#undef UMAT_QUERY
+
+opencv_core_status opencv_core_umat_extent(const opencv_core_umat_handle *self,
+    int32_t axis, int32_t *out) {
+    clear_error();
+    if (!out) return invalid_argument("null extent output");
+    *out = 0;
+    if (!self) return invalid_argument("null UMat handle");
+    // ABI safety: UMat::size indexes its dimension array without checking axis.
+    if (axis < 0 || axis >= self->value.dims)
+        return invalid_argument("extent axis out of bounds");
+    try {
+        *out = self->value.size[axis];
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
 }
 
 opencv_core_status

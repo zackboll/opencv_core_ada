@@ -23,6 +23,62 @@ typedef int32_t opencv_core_status;
 #define OPENCV_CORE_LP_NUMERICAL_LOSS ((int32_t)4)
 
 typedef struct opencv_core_mat_handle opencv_core_mat_handle;
+typedef struct opencv_core_umat_handle opencv_core_umat_handle;
+
+/* Owned UMat wrappers; copies and views own distinct, shallow native headers.
+ * All handle results are null on failure. Allocations use USAGE_DEFAULT.
+ * Native Mat/UMat values remain available inside the shim for future
+ * InputArray/OutputArray dispatch without changing this opaque C ABI. */
+opencv_core_status opencv_core_umat_create(opencv_core_umat_handle **out);
+opencv_core_status opencv_core_umat_create_2d(int32_t rows, int32_t columns,
+    int32_t depth, int32_t channels, opencv_core_umat_handle **out);
+opencv_core_status opencv_core_umat_create_nd(int32_t dims, const int32_t *sizes,
+    int32_t depth, int32_t channels, opencv_core_umat_handle **out);
+opencv_core_status opencv_core_umat_copy(const opencv_core_umat_handle *source,
+    opencv_core_umat_handle **out);
+opencv_core_status opencv_core_umat_clone(const opencv_core_umat_handle *source,
+    opencv_core_umat_handle **out);
+void opencv_core_umat_destroy(opencv_core_umat_handle *self);
+opencv_core_status opencv_core_mat_to_umat(const opencv_core_mat_handle *source,
+    opencv_core_umat_handle **out);
+opencv_core_status opencv_core_umat_to_mat(const opencv_core_umat_handle *source,
+    opencv_core_mat_handle **out);
+opencv_core_status opencv_core_umat_copy_to(const opencv_core_umat_handle *source,
+    opencv_core_umat_handle **out);
+opencv_core_status opencv_core_umat_convert_to(const opencv_core_umat_handle *source,
+    int32_t depth, double scale, double offset, opencv_core_umat_handle **out);
+opencv_core_status opencv_core_umat_set_to(opencv_core_umat_handle *self,
+    const struct opencv_core_scalar *value);
+opencv_core_status opencv_core_umat_region(const opencv_core_umat_handle *source,
+    int32_t x, int32_t y, int32_t width, int32_t height,
+    opencv_core_umat_handle **out);
+opencv_core_status opencv_core_umat_slice_nd(const opencv_core_umat_handle *source,
+    int32_t dims, const int32_t *starts, const int32_t *stops,
+    opencv_core_umat_handle **out);
+opencv_core_status opencv_core_umat_is_empty(const opencv_core_umat_handle *self,
+    uint8_t *out);
+opencv_core_status opencv_core_umat_is_continuous(const opencv_core_umat_handle *self,
+    uint8_t *out);
+opencv_core_status opencv_core_umat_is_submatrix(const opencv_core_umat_handle *self,
+    uint8_t *out);
+opencv_core_status opencv_core_umat_dimension_count(const opencv_core_umat_handle *self,
+    int32_t *out);
+opencv_core_status opencv_core_umat_extent(const opencv_core_umat_handle *self,
+    int32_t axis, int32_t *out);
+opencv_core_status opencv_core_umat_rows(const opencv_core_umat_handle *self,
+    int32_t *out);
+opencv_core_status opencv_core_umat_columns(const opencv_core_umat_handle *self,
+    int32_t *out);
+opencv_core_status opencv_core_umat_depth(const opencv_core_umat_handle *self,
+    int32_t *out);
+opencv_core_status opencv_core_umat_channels(const opencv_core_umat_handle *self,
+    int32_t *out);
+opencv_core_status opencv_core_umat_total(const opencv_core_umat_handle *self,
+    uint64_t *out);
+opencv_core_status opencv_core_umat_element_size(const opencv_core_umat_handle *self,
+    uint64_t *out);
+opencv_core_status opencv_core_umat_channel_size(const opencv_core_umat_handle *self,
+    uint64_t *out);
 typedef struct opencv_core_sparse_mat_handle opencv_core_sparse_mat_handle;
 typedef struct opencv_core_sparse_const_iterator_handle opencv_core_sparse_const_iterator_handle;
 /* The iterator retains a shallow owner header. Destroy after traversal; do not
@@ -124,7 +180,7 @@ typedef struct opencv_core_point {
     int32_t y;
 } opencv_core_point;
 
-typedef struct {
+typedef struct opencv_core_scalar {
     double component_0;
     double component_1;
     double component_2;

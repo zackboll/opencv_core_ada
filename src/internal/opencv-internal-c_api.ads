@@ -15,6 +15,123 @@ package OpenCV.Internal.C_API is
    type Mat_Handle is new System.Address;
    Null_Mat_Handle : constant Mat_Handle := Mat_Handle (System.Null_Address);
 
+   subtype C_Int32 is Interfaces.Integer_32;
+   subtype C_UInt8 is Interfaces.Unsigned_8;
+   subtype C_Int8 is Interfaces.Integer_8;
+   subtype C_UInt16 is Interfaces.Unsigned_16;
+   subtype C_Int16 is Interfaces.Integer_16;
+   subtype C_UInt32 is Interfaces.Unsigned_32;
+   subtype C_UInt64 is Interfaces.Unsigned_64;
+   subtype C_Float32 is Interfaces.C.C_float;
+   subtype C_Float64 is Interfaces.IEEE_Float_64;
+   subtype C_Double is Interfaces.C.double;
+
+   type UMat_Handle is new System.Address;
+   Null_UMat_Handle : constant UMat_Handle :=
+     UMat_Handle (System.Null_Address);
+
+   function UMat_Create (Result : access UMat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_create";
+   function UMat_Create_2D
+     (Rows, Columns, Depth, Channels : C_Int32; Result : access UMat_Handle)
+      return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_create_2d";
+   function UMat_Create_ND
+     (Dims            : C_Int32;
+      Sizes           : access constant C_Int32;
+      Depth, Channels : C_Int32;
+      Result          : access UMat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_create_nd";
+   function UMat_Copy
+     (Source : UMat_Handle; Result : access UMat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_copy";
+   function UMat_Clone
+     (Source : UMat_Handle; Result : access UMat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_clone";
+   procedure UMat_Destroy (Self : UMat_Handle)
+   with Import, Convention => C, External_Name => "opencv_core_umat_destroy";
+   function Mat_To_UMat
+     (Source : Mat_Handle; Result : access UMat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_to_umat";
+   function UMat_To_Mat
+     (Source : UMat_Handle; Result : access Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_to_mat";
+   function UMat_Copy_To
+     (Source : UMat_Handle; Result : access UMat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_copy_to";
+   function UMat_Convert_To
+     (Source        : UMat_Handle;
+      Depth         : C_Int32;
+      Scale, Offset : C_Double;
+      Result        : access UMat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_convert_to";
+   function UMat_Region
+     (Source              : UMat_Handle;
+      X, Y, Width, Height : C_Int32;
+      Result              : access UMat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_region";
+   function UMat_Slice_ND
+     (Source        : UMat_Handle;
+      Dims          : C_Int32;
+      Starts, Stops : access constant C_Int32;
+      Result        : access UMat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_slice_nd";
+   function UMat_Is_Empty
+     (Self : UMat_Handle; Result : access C_UInt8) return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_is_empty";
+   function UMat_Is_Continuous
+     (Self : UMat_Handle; Result : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_is_continuous";
+   function UMat_Is_Submatrix
+     (Self : UMat_Handle; Result : access C_UInt8) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_is_submatrix";
+   function UMat_Dimension_Count
+     (Self : UMat_Handle; Result : access C_Int32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_dimension_count";
+   function UMat_Extent
+     (Self : UMat_Handle; Axis : C_Int32; Result : access C_Int32)
+      return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_extent";
+   function UMat_Rows
+     (Self : UMat_Handle; Result : access C_Int32) return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_rows";
+   function UMat_Columns
+     (Self : UMat_Handle; Result : access C_Int32) return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_columns";
+   function UMat_Depth
+     (Self : UMat_Handle; Result : access C_Int32) return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_depth";
+   function UMat_Channels
+     (Self : UMat_Handle; Result : access C_Int32) return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_channels";
+   function UMat_Total
+     (Self : UMat_Handle; Result : access C_UInt64) return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_total";
+   function UMat_Element_Size
+     (Self : UMat_Handle; Result : access C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_element_size";
+   function UMat_Channel_Size
+     (Self : UMat_Handle; Result : access C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_channel_size";
+
    type Sparse_Mat_Handle is new System.Address;
    Null_Sparse_Mat_Handle      : constant Sparse_Mat_Handle :=
      Sparse_Mat_Handle (System.Null_Address);
@@ -25,18 +142,6 @@ package OpenCV.Internal.C_API is
    type File_Storage_Handle is new System.Address;
    Null_File_Storage_Handle : constant File_Storage_Handle :=
      File_Storage_Handle (System.Null_Address);
-
-   subtype C_Int32 is Interfaces.Integer_32;
-   subtype C_UInt8 is Interfaces.Unsigned_8;
-   subtype C_Int8 is Interfaces.Integer_8;
-   subtype C_UInt16 is Interfaces.Unsigned_16;
-   subtype C_Int16 is Interfaces.Integer_16;
-   subtype C_UInt32 is Interfaces.Unsigned_32;
-   subtype C_UInt64 is Interfaces.Unsigned_64;
-   subtype C_Float32 is Interfaces.C.C_float;
-   subtype C_Float64 is Interfaces.IEEE_Float_64;
-
-   subtype C_Double is Interfaces.C.double;
 
    type Mat_Handle_Array is array (Natural range <>) of aliased Mat_Handle
    with Convention => C;
@@ -3083,6 +3188,10 @@ package OpenCV.Internal.C_API is
 
    function Mat_Set_To (Self : Mat_Handle; Value : access Scalar) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_set_to";
+
+   function UMat_Set_To
+     (Self : UMat_Handle; Value : access Scalar) return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_set_to";
 
    function RNG_Next
      (RNG_State : access C_UInt64; Value : access C_UInt32) return Status

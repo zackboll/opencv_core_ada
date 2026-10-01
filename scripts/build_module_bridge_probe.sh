@@ -37,6 +37,8 @@ cxx_runtime_switch=$(config_value Cxx_Runtime_Switch)
 cxx_sysroot=$(config_value Cxx_Sysroot)
 source="$crate_root/tests/cpp/opencv_core_module_bridge_probe.cpp"
 lifetime_source="$crate_root/tests/cpp/integer_borrow_lifetime_probe_shim.cpp"
+umat_source="$crate_root/tests/cpp/umat_opencl_probe.cpp"
+umat_object="$crate_root/tests/obj/module_bridge_probe/umat_opencl_probe.o"
 bridge_include="$crate_root/cpp"
 
 case "$shim_build:$cxx_toolchain:$(uname -s)" in
@@ -97,7 +99,7 @@ if [ "$probe_kind" != static ]; then
         fi
     done
 
-    mkdir -p "$(dirname "$object")" "$crate_root/lib"
+    mkdir -p "$(dirname "$object")" "$(dirname "$umat_object")" "$crate_root/lib"
     rm -f "$object" "$probe_library"
 
     compile_source=$source
@@ -114,7 +116,7 @@ else
             exit 1
         fi
     done
-    mkdir -p "$(dirname "$lifetime_object")" "$crate_root/lib"
+    mkdir -p "$(dirname "$lifetime_object")" "$(dirname "$umat_object")" "$crate_root/lib"
 fi
 
 case "$probe_kind" in
@@ -138,6 +140,7 @@ case "$probe_kind" in
             compile_bridge_include=$(cygpath -m "$bridge_include")
             link_object=$compile_object
             link_lifetime_object=$lifetime_object
+            umat_object=$(cygpath -m "$umat_object")
             link_library=$(cygpath -m "$probe_library")
             link_import_library=$(cygpath -m "$probe_import_library")
             link_core_shim=$(cygpath -m "$core_shim_library")
@@ -151,6 +154,21 @@ case "$probe_kind" in
         fi
         ;;
 esac
+
+if [ "$probe_kind" != static ]; then
+    if [ "$probe_kind" = darwin ]; then
+        env -u CPATH -u C_INCLUDE_PATH -u CPLUS_INCLUDE_PATH \
+            -u LIBRARY_PATH -u GCC_EXEC_PREFIX -u COMPILER_PATH \
+            "$cxx_driver" -c -std=c++17 -Wall -Wextra -Wpedantic -Werror \
+            -Wno-error=c11-extensions "$include_switch" \
+            -isysroot "$cxx_sysroot" -o "$umat_object" "$umat_source"
+    else
+        env -u CPATH -u C_INCLUDE_PATH -u CPLUS_INCLUDE_PATH \
+            -u LIBRARY_PATH -u GCC_EXEC_PREFIX -u COMPILER_PATH \
+            "$cxx_driver" -c -std=c++17 -Wall -Wextra -Wpedantic -Werror \
+            "$include_switch" -o "$umat_object" "$umat_source"
+    fi
+fi
 
 echo "Building ${shim_build} OpenCV Core module bridge probe (${probe_kind})"
 echo "C++ driver: $cxx_driver"
@@ -180,7 +198,7 @@ case "$probe_kind" in
             -u LIBRARY_PATH -u GCC_EXEC_PREFIX -u COMPILER_PATH \
             "$cxx_driver" -shared -o "$link_library" \
             "-Wl,--out-implib,$link_import_library" \
-            "$link_object" "$link_lifetime_object" \
+            "$link_object" "$link_lifetime_object" "$umat_object" \
             "$link_core_shim" "$link_opencv_core"
         ;;
     darwin)
@@ -203,7 +221,7 @@ case "$probe_kind" in
             "$cxx_driver" -dynamiclib -isysroot "$cxx_sysroot" \
             -Wl,-install_name,@rpath/libopencv_core_module_bridge_probe.dylib \
             -Wl,-rpath,@loader_path -o "$link_library" \
-            "$link_object" "$lifetime_object" \
+            "$link_object" "$lifetime_object" "$umat_object" \
             "$link_core_shim" "$library_search_switch" \
             "$opencv_core_link_option" "$cxx_runtime_switch"
         ;;
@@ -211,9 +229,13 @@ case "$probe_kind" in
         env -u CPATH -u C_INCLUDE_PATH -u CPLUS_INCLUDE_PATH \
             -u LIBRARY_PATH -u GCC_EXEC_PREFIX -u COMPILER_PATH \
             "$cxx_driver" -c -std=c++17 -Wall -Wextra -Wpedantic -Werror \
+            -fPIC "$include_switch" -o "$umat_object" "$umat_source"
+        env -u CPATH -u C_INCLUDE_PATH -u CPLUS_INCLUDE_PATH \
+            -u LIBRARY_PATH -u GCC_EXEC_PREFIX -u COMPILER_PATH \
+            "$cxx_driver" -c -std=c++17 -Wall -Wextra -Wpedantic -Werror \
             -fPIC "-I$bridge_include" "$include_switch" \
             -o "$lifetime_object" "$lifetime_source"
         rm -f "$lifetime_library"
-        ar rcs "$lifetime_library" "$lifetime_object"
+        ar rcs "$lifetime_library" "$lifetime_object" "$umat_object"
         ;;
 esac
