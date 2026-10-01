@@ -10,7 +10,6 @@ package body OpenCV.Core is
    use type OpenCV.Internal.C_API.C_Boolean;
    use type OpenCV.Internal.C_API.C_Double;
    use type OpenCV.Internal.C_API.Mat_Handle;
-   use type OpenCV.Internal.C_API.UMat_Handle;
    use type OpenCV.Internal.C_API.C_UInt64;
    use type OpenCV.Internal.C_API.C_Int32;
    use type OpenCV.Internal.C_API.Status;
