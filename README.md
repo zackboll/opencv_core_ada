@@ -1116,6 +1116,35 @@ allocated matrix stays empty. A negative `Target_Norm` is supported and
 reverses the sign of every stored value. The source is unchanged. Because no
 dense `Mat` is constructed, both 5-D and 32-D sparse matrices are accepted.
 
+`Min_Max_Loc` uses the same allocated Float32 or Float64 single-channel
+restriction. It returns a `Sparse_Extrema` value whose `Has_Minimum` and
+`Has_Maximum` flags are independent:
+
+```ada
+Extrema := Values.Min_Max_Loc;
+--  Extrema.Has_Minimum, Has_Maximum, Minimum, Maximum
+--  Minimum_Location (1 .. Extrema.Dimensions)
+--  Maximum_Location (1 .. Extrema.Dimensions)
+```
+
+Only stored nodes participate. A missing coordinate is not a candidate and is
+not created. An explicitly stored zero is a candidate, and negative zero
+compares equal to positive zero. Comparisons are strict, so equal extrema keep
+the earliest node in OpenCV's hash traversal. That traversal order is
+unspecified and is not insertion order. NaN never replaces a finite extremum.
+
+Each flag is True only when native OpenCV wrote that location. Empty storage
+and a NaN-only matrix establish neither side. Positive infinity, and a stored
+Float32 `FLT_MAX` or Float64 `DBL_MAX`, establish only the maximum. Negative
+infinity, and a stored `-FLT_MAX` or `-DBL_MAX`, establish only the minimum.
+A side that was not established returns `0.0` and an all-zero location. The
+native initialization sentinels are not exposed as public extrema.
+
+On an established side, each location is a fixed 32-coordinate array; only
+`1 .. Dimensions` is meaningful, and those coordinates are zero-based. The
+source is not modified. Because no dense `Mat` is constructed, both 5-D and
+32-D sparse matrices are accepted.
+
 ## Typed access matrix
 
 Direct typed access covers thirty-two layouts: every supported depth in

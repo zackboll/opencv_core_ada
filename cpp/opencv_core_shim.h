@@ -77,6 +77,16 @@ opencv_core_status opencv_core_sparse_norm(
 opencv_core_status opencv_core_sparse_normalize(
     const opencv_core_sparse_mat_handle *source, double target_norm,
     int32_t norm_kind, opencv_core_sparse_mat_handle **out);
+/* Stored-node extrema. minimum, maximum, has_minimum, and has_maximum are
+   required. minimum_indices and maximum_indices each receive one zero-based
+   coordinate per dimension when that extremum was established; index_count
+   must equal the matrix dimension count. Each has_* flag is 1 only when
+   native OpenCV wrote that location. The flags are independent. Only the
+   exact native types CV_32FC1 and CV_64FC1 are accepted. */
+opencv_core_status opencv_core_sparse_min_max_loc(
+    const opencv_core_sparse_mat_handle *source, double *minimum,
+    double *maximum, int32_t *minimum_indices, int32_t *maximum_indices,
+    int32_t index_count, uint8_t *has_minimum, uint8_t *has_maximum);
 opencv_core_status opencv_core_sparse_copy(const opencv_core_sparse_mat_handle *source,
     opencv_core_sparse_mat_handle **out);
 opencv_core_status opencv_core_sparse_clone(const opencv_core_sparse_mat_handle *source,
