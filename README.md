@@ -10,7 +10,7 @@ access, and Ada exceptions while keeping the C++ ABI behind a small stable C
 interface. It is intentionally an Ada API over OpenCV rather than a mechanical
 translation of the C++ headers.
 
-> **Version:** `0.2.0`
+> **Version:** `0.3.0`
 >
 > **OpenCV compatibility:** **4.1 through 5.0**, inclusive. The public Ada API
 > is intended to remain the same across this range. Not every intermediate
@@ -18,7 +18,7 @@ translation of the C++ headers.
 >
 > **Development status:** active, pre-1.0 API.
 >
-> **Current test baseline:** 1514 AUnit tests, with Ada and C++ warnings promoted
+> **Current test baseline:** 1515 AUnit tests, with Ada and C++ warnings promoted
 > to errors. GitHub Actions exercises the full test suite against four OpenCV
 > compatibility targets, plus a native Ubuntu 24.04 ARM64 job.
 >
@@ -2521,11 +2521,11 @@ partially integrated batches.
 The Alire crate version is currently:
 
 ```text
-0.2.0
+0.3.0
 ```
 
-See `CHANGELOG.md` for the source-breaking shared-value relocation and
-the other material work since indexed `0.1.0`.
+See `CHANGELOG.md` for the 0.3.0 typed Mat and SparseMat additions and
+the historical 0.2.0 shared-value relocation.
 
 The API should still be considered experimental until 1.0. Public names and
 some overloads may evolve as broader typed access, N-dimensional matrices,
