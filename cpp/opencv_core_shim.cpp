@@ -4740,6 +4740,135 @@ opencv_core_mat_apply_lut(const opencv_core_mat_handle *source,
     }
 }
 
+extern "C++" {
+template <typename Dense>
+static void dense_normalize(const Dense &source, Dense &dst, int kind,
+                            double alpha, double beta) {
+    cv::normalize(source, dst, alpha, beta, kind, -1);
+}
+
+static void dense_normalize(const cv::UMat &source, cv::UMat &dst, int kind,
+                            double alpha, double beta) {
+    // ABI safety: OpenCL norm/minMax vector-width selection dereferences
+    // min_element on an empty vector when all inputs have no storage.
+    // MinMax on Float16 remains native/version-specific.
+    if (source.empty() && source.depth() != CV_16F) {
+        dst.release(); // Normalize(Mat) releases typed-empty output too.
+        return;
+    }
+    if (source.empty() && kind != cv::NORM_MINMAX) {
+        dst.release();
+        return;
+    }
+    cv::normalize(source, dst, alpha, beta, kind, -1);
+}
+
+template <typename Dense>
+static void dense_sqrt(const Dense &source, Dense &dst) {
+    cv::sqrt(source, dst);
+}
+template <typename Dense>
+static void dense_exp(const Dense &source, Dense &dst) {
+    cv::exp(source, dst);
+}
+template <typename Dense>
+static void dense_log(const Dense &source, Dense &dst) {
+    cv::log(source, dst);
+}
+static bool empty_float_math(const cv::UMat &source, cv::UMat &dst) {
+    // ABI safety: OpenCL math vector-width selection dereferences min_element
+    // on an empty vector when all inputs have no storage. The depth condition
+    // limits the bypass to valid native float dispatch; other types still fail.
+    if (source.empty() &&
+        (source.depth() == CV_32F || source.depth() == CV_64F)) {
+        make_empty_dense_like(source, dst);
+        return true;
+    }
+    return false;
+}
+static void dense_sqrt(const cv::UMat &source, cv::UMat &dst) {
+    if (!empty_float_math(source, dst)) cv::sqrt(source, dst);
+}
+static void dense_exp(const cv::UMat &source, cv::UMat &dst) {
+    if (!empty_float_math(source, dst)) cv::exp(source, dst);
+}
+static void dense_log(const cv::UMat &source, cv::UMat &dst) {
+    if (!empty_float_math(source, dst)) cv::log(source, dst);
+}
+template <typename Dense>
+static void dense_pow(const Dense &source, double power, Dense &dst) {
+    cv::pow(source, power, dst);
+}
+static void dense_pow(const cv::UMat &source, double power, cv::UMat &dst) {
+    // ABI safety: empty power=2 reaches OpenCL arithmetic vector selection
+    // which dereferences min_element on an empty vector; OpenCV 5 ARM64 HAL
+    // also fails on empty Pow storage.
+    if (source.empty()) {
+        make_empty_dense_like(source, dst);
+        return;
+    }
+    cv::pow(source, power, dst);
+}
+template <typename Dense>
+static void dense_magnitude(const Dense &x, const Dense &y, Dense &dst) {
+    cv::magnitude(x, y, dst);
+}
+template <typename Dense>
+static void dense_phase(const Dense &x, const Dense &y, Dense &dst, bool degrees) {
+    cv::phase(x, y, dst, degrees);
+}
+static bool empty_float_pair(const cv::UMat &x, const cv::UMat &y,
+                             cv::UMat &dst) {
+    // ABI safety: Magnitude's OpenCL vector-width selection dereferences
+    // min_element on an empty vector. Limit the bypass to matching float
+    // empties so invalid raw operands do not become successful results.
+    if (x.empty() && y.empty() && x.dims == y.dims && x.type() == y.type() &&
+        (x.depth() == CV_32F || x.depth() == CV_64F)) {
+        make_empty_dense_like(x, dst);
+        return true;
+    }
+    return false;
+}
+static void dense_magnitude(const cv::UMat &x, const cv::UMat &y, cv::UMat &dst) {
+    if (!empty_float_pair(x, y, dst)) cv::magnitude(x, y, dst);
+}
+static void dense_phase(const cv::UMat &x, const cv::UMat &y, cv::UMat &dst,
+                        bool degrees) {
+    if (!empty_float_pair(x, y, dst)) cv::phase(x, y, dst, degrees);
+}
+template <typename Dense>
+static void dense_cart_to_polar(const Dense &x, const Dense &y, Dense &m,
+                                Dense &a, bool degrees) {
+    cv::cartToPolar(x, y, m, a, degrees);
+}
+static void dense_cart_to_polar(const cv::UMat &x, const cv::UMat &y,
+                                cv::UMat &m, cv::UMat &a, bool degrees) {
+    if (empty_float_pair(x, y, m)) {
+        make_empty_dense_like(x, a);
+        return;
+    }
+    cv::cartToPolar(x, y, m, a, degrees);
+}
+template <typename Dense>
+static void dense_polar_to_cart(const Dense &m, const Dense &a, Dense &x,
+                                Dense &y, bool degrees) {
+    cv::polarToCart(m, a, x, y, degrees);
+}
+static void dense_polar_to_cart(const cv::UMat &m, const cv::UMat &a,
+                                cv::UMat &x, cv::UMat &y, bool degrees) {
+    // Storage-free UMat CPU fallback loses typed-empty metadata. Reconstruct
+    // both output headers without mapping; this is result construction, not
+    // a public semantic rejection. Non-empty inputs remain native dispatch.
+    if (a.empty() && m.empty() &&
+        (a.depth() == CV_32F || a.depth() == CV_64F)) {
+        make_empty_dense_like(a, x);
+        make_empty_dense_like(a, y);
+        return;
+    }
+    cv::polarToCart(m, a, x, y, degrees);
+}
+}
+
 opencv_core_status
 opencv_core_mat_sqrt(const opencv_core_mat_handle *source,
                      opencv_core_mat_handle **out_mat) {
@@ -4757,7 +4886,7 @@ opencv_core_mat_sqrt(const opencv_core_mat_handle *source,
 
     try {
         cv::Mat transformed;
-        cv::sqrt(source->value, transformed);
+        dense_sqrt(source->value, transformed);
         *out_mat = new opencv_core_mat_handle(transformed);
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -4782,7 +4911,7 @@ opencv_core_mat_exp(const opencv_core_mat_handle *source,
 
     try {
         cv::Mat transformed;
-        cv::exp(source->value, transformed);
+        dense_exp(source->value, transformed);
         *out_mat = new opencv_core_mat_handle(transformed);
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -4807,7 +4936,7 @@ opencv_core_mat_log(const opencv_core_mat_handle *source,
 
     try {
         cv::Mat transformed;
-        cv::log(source->value, transformed);
+        dense_log(source->value, transformed);
         *out_mat = new opencv_core_mat_handle(transformed);
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -4841,7 +4970,7 @@ opencv_core_mat_pow(const opencv_core_mat_handle *source, double power,
         }
 
         cv::Mat transformed;
-        cv::pow(source->value, power, transformed);
+        dense_pow(source->value, power, transformed);
         *out_mat = new opencv_core_mat_handle(transformed);
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -4867,7 +4996,7 @@ opencv_core_mat_magnitude(const opencv_core_mat_handle *x,
 
     try {
         cv::Mat magnitude;
-        cv::magnitude(x->value, y->value, magnitude);
+        dense_magnitude(x->value, y->value, magnitude);
         *out_mat = new opencv_core_mat_handle(magnitude);
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -4898,7 +5027,7 @@ opencv_core_mat_phase(const opencv_core_mat_handle *x,
 
     try {
         cv::Mat angle;
-        cv::phase(x->value, y->value, angle, angle_in_degrees != 0);
+        dense_phase(x->value, y->value, angle, angle_in_degrees != 0);
         *out_mat = new opencv_core_mat_handle(angle);
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -4940,8 +5069,8 @@ opencv_core_mat_cart_to_polar(const opencv_core_mat_handle *x,
     try {
         cv::Mat magnitude;
         cv::Mat angle;
-        cv::cartToPolar(x->value, y->value, magnitude, angle,
-                        angle_in_degrees != 0);
+        dense_cart_to_polar(x->value, y->value, magnitude, angle,
+                            angle_in_degrees != 0);
 
         std::unique_ptr<opencv_core_mat_handle> magnitude_handle(
             new opencv_core_mat_handle(magnitude));
@@ -4990,8 +5119,8 @@ opencv_core_mat_polar_to_cart(const opencv_core_mat_handle *magnitude,
     try {
         cv::Mat x;
         cv::Mat y;
-        cv::polarToCart(magnitude->value, angle->value, x, y,
-                        angle_in_degrees != 0);
+        dense_polar_to_cart(magnitude->value, angle->value, x, y,
+                            angle_in_degrees != 0);
 
         std::unique_ptr<opencv_core_mat_handle> x_handle(
             new opencv_core_mat_handle(x));
@@ -5029,8 +5158,8 @@ opencv_core_mat_normalize(const opencv_core_mat_handle *source,
 
     try {
         cv::Mat normalized;
-        cv::normalize(source->value, normalized, alpha, beta,
-                      opencv_normalize_kind, -1);
+        dense_normalize(source->value, normalized, opencv_normalize_kind,
+                        alpha, beta);
         *out_mat = new opencv_core_mat_handle(normalized);
         return OPENCV_CORE_OK;
     } catch (...) {
@@ -5754,6 +5883,29 @@ static opencv_core_status publish_dense_unary(const Handle *source,
 }
 
 template <typename Handle, typename Operation>
+static opencv_core_status publish_dense_math_pair(const Handle *left,
+    const Handle *right, uint8_t degrees, Handle **first, Handle **second,
+    Operation operation) {
+    clear_error();
+    if (first) *first = nullptr;
+    if (second) *second = nullptr;
+    if (!first || !second) return invalid_argument("outputs must not be null");
+    if (first == second) return invalid_argument("outputs must be distinct");
+    if (!left || !right) return invalid_argument("inputs must not be null");
+    if (degrees > 1) return invalid_argument("angle flag must be 0 or 1");
+    try {
+        using Dense = decltype(left->value);
+        Dense a, b;
+        operation(left->value, right->value, a, b, degrees != 0);
+        std::unique_ptr<Handle> owned_a(new Handle(a));
+        std::unique_ptr<Handle> owned_b(new Handle(b));
+        *first = owned_a.release();
+        *second = owned_b.release();
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+template <typename Handle, typename Operation>
 static opencv_core_status publish_dense_masked(const Handle *left,
     const Handle *right, const Handle *mask, Handle **out, Operation operation) {
     clear_error();
@@ -6152,6 +6304,81 @@ UMAT_BITWISE_BINARY(and, bit_and)
 UMAT_BITWISE_BINARY(or, bit_or)
 UMAT_BITWISE_BINARY(xor, bit_xor)
 #undef UMAT_BITWISE_BINARY
+
+opencv_core_status opencv_core_umat_normalize(
+    const opencv_core_umat_handle *source, int32_t kind, double alpha,
+    double beta, opencv_core_umat_handle **out) {
+    clear_error();
+    if (!out) return invalid_argument("out must not be null");
+    *out = nullptr;
+    if (!source) return invalid_argument("source must not be null");
+    int native_kind = 0;
+    if (!to_opencv_normalize_kind(kind, native_kind))
+        return invalid_argument("normalization kind is not supported");
+    return publish_dense_unary(source, out,
+        [=](const cv::UMat &a, cv::UMat &dst) {
+            dense_normalize(a, dst, native_kind, alpha, beta);
+        });
+}
+
+opencv_core_status opencv_core_umat_sqrt(const opencv_core_umat_handle *source,
+                                       opencv_core_umat_handle **out) {
+    return publish_dense_unary(source, out,
+        [](const cv::UMat &a, cv::UMat &dst) { dense_sqrt(a, dst); });
+}
+opencv_core_status opencv_core_umat_exp(const opencv_core_umat_handle *source,
+                                      opencv_core_umat_handle **out) {
+    return publish_dense_unary(source, out,
+        [](const cv::UMat &a, cv::UMat &dst) { dense_exp(a, dst); });
+}
+opencv_core_status opencv_core_umat_log(const opencv_core_umat_handle *source,
+                                      opencv_core_umat_handle **out) {
+    return publish_dense_unary(source, out,
+        [](const cv::UMat &a, cv::UMat &dst) { dense_log(a, dst); });
+}
+opencv_core_status opencv_core_umat_pow(const opencv_core_umat_handle *source,
+    double power, opencv_core_umat_handle **out) {
+    return publish_dense_unary(source, out,
+        [=](const cv::UMat &a, cv::UMat &dst) { dense_pow(a, power, dst); });
+}
+opencv_core_status opencv_core_umat_magnitude(const opencv_core_umat_handle *x,
+    const opencv_core_umat_handle *y, opencv_core_umat_handle **out) {
+    return publish_dense_arithmetic(x, y, out,
+        [](const cv::UMat &a, const cv::UMat &b, cv::UMat &dst) {
+            dense_magnitude(a, b, dst);
+        });
+}
+opencv_core_status opencv_core_umat_phase(const opencv_core_umat_handle *x,
+    const opencv_core_umat_handle *y, uint8_t degrees,
+    opencv_core_umat_handle **out) {
+    clear_error();
+    if (!out) return invalid_argument("out must not be null");
+    *out = nullptr;
+    if (!x || !y) return invalid_argument("inputs must not be null");
+    if (degrees > 1) return invalid_argument("angle flag must be 0 or 1");
+    return publish_dense_arithmetic(x, y, out,
+        [=](const cv::UMat &a, const cv::UMat &b, cv::UMat &dst) {
+            dense_phase(a, b, dst, degrees != 0);
+        });
+}
+opencv_core_status opencv_core_umat_cart_to_polar(
+    const opencv_core_umat_handle *x, const opencv_core_umat_handle *y,
+    uint8_t degrees, opencv_core_umat_handle **m, opencv_core_umat_handle **a) {
+    return publish_dense_math_pair(x, y, degrees, m, a,
+        [](const cv::UMat &left, const cv::UMat &right, cv::UMat &first,
+           cv::UMat &second, bool flag) {
+            dense_cart_to_polar(left, right, first, second, flag);
+        });
+}
+opencv_core_status opencv_core_umat_polar_to_cart(
+    const opencv_core_umat_handle *m, const opencv_core_umat_handle *a,
+    uint8_t degrees, opencv_core_umat_handle **x, opencv_core_umat_handle **y) {
+    return publish_dense_math_pair(m, a, degrees, x, y,
+        [](const cv::UMat &left, const cv::UMat &right, cv::UMat &first,
+           cv::UMat &second, bool flag) {
+            dense_polar_to_cart(left, right, first, second, flag);
+        });
+}
 
 opencv_core_status opencv_core_umat_bitwise_not(
     const opencv_core_umat_handle *source, opencv_core_umat_handle **out) {

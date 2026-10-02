@@ -1891,6 +1891,50 @@ package OpenCV.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_core_umat_in_range_scalar";
+   function UMat_Normalize
+     (Source      : UMat_Handle;
+      Kind        : C_Int32;
+      Alpha, Beta : C_Double;
+      Result      : access UMat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_normalize";
+   function UMat_Sqrt
+     (Source : UMat_Handle; Result : access UMat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_sqrt";
+   function UMat_Exp
+     (Source : UMat_Handle; Result : access UMat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_exp";
+   function UMat_Log
+     (Source : UMat_Handle; Result : access UMat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_log";
+   function UMat_Pow
+     (Source : UMat_Handle; Power : C_Double; Result : access UMat_Handle)
+      return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_pow";
+   function UMat_Magnitude
+     (X, Y : UMat_Handle; Result : access UMat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_magnitude";
+   function UMat_Phase
+     (X, Y             : UMat_Handle;
+      Angle_In_Degrees : C_Boolean;
+      Result           : access UMat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_phase";
+   function UMat_Cart_To_Polar
+     (X, Y             : UMat_Handle;
+      Angle_In_Degrees : C_Boolean;
+      Magnitude, Angle : access UMat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_cart_to_polar";
+   function UMat_Polar_To_Cart
+     (Magnitude, Angle : UMat_Handle;
+      Angle_In_Degrees : C_Boolean;
+      X, Y             : access UMat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_polar_to_cart";
+
    function UMat_Compare
      (Left, Right : UMat_Handle; Kind : C_Int32; Result : access UMat_Handle)
       return Status

@@ -1196,6 +1196,33 @@ opencv_core_status opencv_core_umat_bitwise_not_masked(
 opencv_core_status opencv_core_umat_in_range_scalar(
     const opencv_core_umat_handle *source, const opencv_core_scalar *lower,
     const opencv_core_scalar *upper, opencv_core_umat_handle **out);
+opencv_core_status opencv_core_umat_normalize(
+    const opencv_core_umat_handle *source, int32_t kind, double alpha,
+    double beta, opencv_core_umat_handle **out);
+opencv_core_status opencv_core_umat_sqrt(
+    const opencv_core_umat_handle *source, opencv_core_umat_handle **out);
+opencv_core_status opencv_core_umat_exp(
+    const opencv_core_umat_handle *source, opencv_core_umat_handle **out);
+opencv_core_status opencv_core_umat_log(
+    const opencv_core_umat_handle *source, opencv_core_umat_handle **out);
+opencv_core_status opencv_core_umat_pow(
+    const opencv_core_umat_handle *source, double power,
+    opencv_core_umat_handle **out);
+opencv_core_status opencv_core_umat_magnitude(
+    const opencv_core_umat_handle *x, const opencv_core_umat_handle *y,
+    opencv_core_umat_handle **out);
+opencv_core_status opencv_core_umat_phase(
+    const opencv_core_umat_handle *x, const opencv_core_umat_handle *y,
+    uint8_t degrees, opencv_core_umat_handle **out);
+/* Both output locations must be distinct. Failure clears both outputs;
+ * success transfers two independently owned UMat headers to the caller. */
+opencv_core_status opencv_core_umat_cart_to_polar(
+    const opencv_core_umat_handle *x, const opencv_core_umat_handle *y,
+    uint8_t degrees, opencv_core_umat_handle **m, opencv_core_umat_handle **a);
+opencv_core_status opencv_core_umat_polar_to_cart(
+    const opencv_core_umat_handle *m, const opencv_core_umat_handle *a,
+    uint8_t degrees, opencv_core_umat_handle **x, opencv_core_umat_handle **y);
+
 opencv_core_status opencv_core_umat_compare(
     const opencv_core_umat_handle *left, const opencv_core_umat_handle *right,
     int32_t comparison_kind, opencv_core_umat_handle **out);

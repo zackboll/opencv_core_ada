@@ -2218,6 +2218,31 @@ operands to Float32 UMat, computes using double Alpha/Beta/Gamma, then narrows
 once; OpenCV 5 uses native Float16. Float16 `Scale_Add` widens UMat operands on
 all supported versions, narrows Scale to Float32 before the native Float32
 kernel, then narrows the result once. SIMD/FMA rounding may vary by platform.
+`Normalize`, `Sqrt`, `Exp`, `Log`, `Pow`, `Magnitude`, `Phase`,
+`Cart_To_Polar`, and `Polar_To_Cart` also execute UMat-native, through shared
+typed Mat/UMat helpers with no binding-side Mat temporaries or transfers.
+Normalize keeps the source depth, accepts N-D, and offers L1, L2, Infinity,
+and Min_Max without masks. Float16 norm normalization uses native support;
+Float16 Min_Max is unsupported in OpenCV 4.x and supported in OpenCV 5.
+No Float16 widening fallback is introduced. Sqrt/Exp/Log require Float32 or
+Float64, process channels independently, and accept N-D. Their approximation
+and special-value contracts match the Mat operations. Pow rejects Float16;
+floating depths accept integer and non-integer powers, while integer depths
+accept only nonnegative integer powers. UInt8/Int8/UInt16/Int16 saturate;
+Int32 overflow remains native and non-saturating.
+
+Magnitude, Phase, and Cart_To_Polar require matching 2-D Float32/Float64
+operands, including channels. Angles use radians by default or `Degrees`.
+`UMat_Polar_Coordinates` owns Magnitude/Angle UMat results, and
+`UMat_Cartesian_Coordinates` owns X/Y UMat results; both fields are produced
+failure-atomically by one native call and have independent storage. Empty
+Magnitude (default or typed), or angle-only Polar_To_Cart, means unit magnitude.
+Non-empty Magnitude must match Angle's 2-D layout. Typed-empty unary/vector
+results retain type and shape; Normalize follows Mat's empty output release.
+Empty-storage safety bypasses avoid native OpenCL vector-width crashes.
+OpenCL is optional and the public math family is tested with it disabled;
+there is no GPU-execution guarantee.
+
 OpenCL is optional; CPU fallback is tested. Mixed Mat/UMat operands, other
 operation families beyond those listed above, module UMat bridging, UMat
 reshape, and callback-scoped CPU mapping remain unsupported.

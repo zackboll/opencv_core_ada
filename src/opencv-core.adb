@@ -3247,14 +3247,15 @@ package body OpenCV.Core is
       return Result;
    end Apply_LUT;
 
-   procedure Validate_Sqrt (Source : Mat) is
+   procedure Validate_Float_Math
+     (Source_Depth : Depth_Type; Operation : String) is
    begin
-      if Source.Depth /= Float32 and then Source.Depth /= Float64 then
+      if Source_Depth /= Float32 and then Source_Depth /= Float64 then
          Ada.Exceptions.Raise_Exception
            (OpenCV_Error'Identity,
-            "Sqrt requires a Float32 or Float64 source");
+            Operation & " requires a Float32 or Float64 source");
       end if;
-   end Validate_Sqrt;
+   end Validate_Float_Math;
 
    function Sqrt (Self : Mat) return Mat is
       Result     : Mat;
@@ -3262,7 +3263,7 @@ package body OpenCV.Core is
         OpenCV.Internal.C_API.Null_Mat_Handle;
       Status     : OpenCV.Internal.C_API.Status;
    begin
-      Validate_Sqrt (Self);
+      Validate_Float_Math (Self.Depth, "Sqrt");
       Status :=
         OpenCV.Internal.C_API.Mat_Sqrt
           (Source => Self.Handle, Result => New_Handle'Access);
@@ -3273,21 +3274,13 @@ package body OpenCV.Core is
       return Result;
    end Sqrt;
 
-   procedure Validate_Exp (Source : Mat) is
-   begin
-      if Source.Depth /= Float32 and then Source.Depth /= Float64 then
-         Ada.Exceptions.Raise_Exception
-           (OpenCV_Error'Identity, "Exp requires a Float32 or Float64 source");
-      end if;
-   end Validate_Exp;
-
    function Exp (Self : Mat) return Mat is
       Result     : Mat;
       New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
         OpenCV.Internal.C_API.Null_Mat_Handle;
       Status     : OpenCV.Internal.C_API.Status;
    begin
-      Validate_Exp (Self);
+      Validate_Float_Math (Self.Depth, "Exp");
       Status :=
         OpenCV.Internal.C_API.Mat_Exp
           (Source => Self.Handle, Result => New_Handle'Access);
@@ -3298,21 +3291,13 @@ package body OpenCV.Core is
       return Result;
    end Exp;
 
-   procedure Validate_Log (Source : Mat) is
-   begin
-      if Source.Depth /= Float32 and then Source.Depth /= Float64 then
-         Ada.Exceptions.Raise_Exception
-           (OpenCV_Error'Identity, "Log requires a Float32 or Float64 source");
-      end if;
-   end Validate_Log;
-
    function Log (Self : Mat) return Mat is
       Result     : Mat;
       New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
         OpenCV.Internal.C_API.Null_Mat_Handle;
       Status     : OpenCV.Internal.C_API.Status;
    begin
-      Validate_Log (Self);
+      Validate_Float_Math (Self.Depth, "Log");
       Status :=
         OpenCV.Internal.C_API.Mat_Log
           (Source => Self.Handle, Result => New_Handle'Access);
@@ -3337,14 +3322,14 @@ package body OpenCV.Core is
       return abs (Rounded - Power) < Long_Float'Model_Epsilon;
    end Is_Integer_Power;
 
-   procedure Validate_Pow (Source : Mat; Power : Long_Float) is
+   procedure Validate_Pow (Source_Depth : Depth_Type; Power : Long_Float) is
    begin
-      if Source.Depth = Float16 then
+      if Source_Depth = Float16 then
          Ada.Exceptions.Raise_Exception
            (OpenCV_Error'Identity, "Pow does not support a Float16 source");
       end if;
 
-      if Source.Depth = Float32 or else Source.Depth = Float64 then
+      if Source_Depth = Float32 or else Source_Depth = Float64 then
          return;
       end if;
 
@@ -3363,13 +3348,209 @@ package body OpenCV.Core is
       end if;
    end Validate_Pow;
 
+   procedure Validate_UMat_Float (Source : UMat; Operation : String) is
+   begin
+      Validate_Float_Math (Source.Depth, Operation);
+   end Validate_UMat_Float;
+
+   type UMat_Math_Unary_Operation is
+     access function
+       (Source : OpenCV.Internal.C_API.UMat_Handle;
+        Result : access OpenCV.Internal.C_API.UMat_Handle)
+        return OpenCV.Internal.C_API.Status;
+   pragma Convention (C, UMat_Math_Unary_Operation);
+
+   function Apply_UMat_Math
+     (Self : UMat; Operation : UMat_Math_Unary_Operation; Name : String)
+      return UMat
+   is
+      Result : UMat;
+      Handle : aliased OpenCV.Internal.C_API.UMat_Handle :=
+        OpenCV.Internal.C_API.Null_UMat_Handle;
+   begin
+      Validate_UMat_Float (Self, Name);
+      Raise_On_Error (Operation (Self.Handle, Handle'Access), Name);
+      OpenCV.Internal.C_API.UMat_Destroy (Result.Handle);
+      Result.Handle := Handle;
+      return Result;
+   end Apply_UMat_Math;
+
+   function Sqrt (Self : UMat) return UMat
+   is (Apply_UMat_Math (Self, OpenCV.Internal.C_API.UMat_Sqrt'Access, "Sqrt"));
+   function Exp (Self : UMat) return UMat
+   is (Apply_UMat_Math (Self, OpenCV.Internal.C_API.UMat_Exp'Access, "Exp"));
+   function Log (Self : UMat) return UMat
+   is (Apply_UMat_Math (Self, OpenCV.Internal.C_API.UMat_Log'Access, "Log"));
+
+   function Normalize
+     (Self  : UMat;
+      Kind  : Normalize_Kind := L2;
+      Alpha : Long_Float := 1.0;
+      Beta  : Long_Float := 0.0) return UMat
+   is
+      Result : UMat;
+      Handle : aliased OpenCV.Internal.C_API.UMat_Handle :=
+        OpenCV.Internal.C_API.Null_UMat_Handle;
+   begin
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Normalize
+           (Self.Handle,
+            To_C_Normalize_Kind (Kind),
+            OpenCV.Internal.C_API.C_Double (Alpha),
+            OpenCV.Internal.C_API.C_Double (Beta),
+            Handle'Access),
+         "UMat normalization operation");
+      OpenCV.Internal.C_API.UMat_Destroy (Result.Handle);
+      Result.Handle := Handle;
+      return Result;
+   end Normalize;
+
+   function Pow (Self : UMat; Power : Long_Float) return UMat is
+      Result : UMat;
+      Handle : aliased OpenCV.Internal.C_API.UMat_Handle :=
+        OpenCV.Internal.C_API.Null_UMat_Handle;
+   begin
+      Validate_Pow (Self.Depth, Power);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Pow
+           (Self.Handle,
+            OpenCV.Internal.C_API.C_Double (Power),
+            Handle'Access),
+         "UMat power operation");
+      OpenCV.Internal.C_API.UMat_Destroy (Result.Handle);
+      Result.Handle := Handle;
+      return Result;
+   end Pow;
+
+   procedure Validate_Matching_Float_Operands (X, Y : UMat; Operation : String)
+   is
+   begin
+      Validate_UMat_Float (X, Operation);
+      Validate_UMat_Float (Y, Operation);
+      if X.Rows /= Y.Rows then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            Operation & " requires operands with identical row counts");
+      elsif X.Columns /= Y.Columns then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            Operation & " requires operands with identical column counts");
+      elsif X.Depth /= Y.Depth then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            Operation & " requires operands with identical depths");
+      elsif X.Channels /= Y.Channels then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            Operation & " requires operands with identical channel counts");
+      end if;
+   end Validate_Matching_Float_Operands;
+
+   function Magnitude (X, Y : UMat) return UMat is
+      Result : UMat;
+      Handle : aliased OpenCV.Internal.C_API.UMat_Handle :=
+        OpenCV.Internal.C_API.Null_UMat_Handle;
+   begin
+      Validate_Matching_Float_Operands (X, Y, "Magnitude");
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Magnitude
+           (X.Handle, Y.Handle, Handle'Access),
+         "UMat magnitude operation");
+      OpenCV.Internal.C_API.UMat_Destroy (Result.Handle);
+      Result.Handle := Handle;
+      return Result;
+   end Magnitude;
+
+   function Phase (X, Y : UMat; Units : Angle_Unit := Radians) return UMat is
+      Result : UMat;
+      Handle : aliased OpenCV.Internal.C_API.UMat_Handle :=
+        OpenCV.Internal.C_API.Null_UMat_Handle;
+   begin
+      Validate_Matching_Float_Operands (X, Y, "Phase");
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Phase
+           (X.Handle,
+            Y.Handle,
+            (if Units = Degrees
+             then OpenCV.Internal.C_API.C_True
+             else OpenCV.Internal.C_API.C_False),
+            Handle'Access),
+         "UMat phase operation");
+      OpenCV.Internal.C_API.UMat_Destroy (Result.Handle);
+      Result.Handle := Handle;
+      return Result;
+   end Phase;
+
+   function Cart_To_Polar
+     (X, Y : UMat; Units : Angle_Unit := Radians) return UMat_Polar_Coordinates
+   is
+      Result : UMat_Polar_Coordinates;
+      M, A   : aliased OpenCV.Internal.C_API.UMat_Handle :=
+        OpenCV.Internal.C_API.Null_UMat_Handle;
+   begin
+      Validate_Matching_Float_Operands (X, Y, "Cart_To_Polar");
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Cart_To_Polar
+           (X.Handle,
+            Y.Handle,
+            (if Units = Degrees
+             then OpenCV.Internal.C_API.C_True
+             else OpenCV.Internal.C_API.C_False),
+            M'Access,
+            A'Access),
+         "UMat cart-to-polar operation");
+      OpenCV.Internal.C_API.UMat_Destroy (Result.Magnitude.Handle);
+      OpenCV.Internal.C_API.UMat_Destroy (Result.Angle.Handle);
+      Result.Magnitude.Handle := M;
+      Result.Angle.Handle := A;
+      return Result;
+   end Cart_To_Polar;
+
+   function Polar_To_Cart
+     (Magnitude, Angle : UMat; Units : Angle_Unit := Radians)
+      return UMat_Cartesian_Coordinates
+   is
+      Result : UMat_Cartesian_Coordinates;
+      X, Y   : aliased OpenCV.Internal.C_API.UMat_Handle :=
+        OpenCV.Internal.C_API.Null_UMat_Handle;
+   begin
+      Validate_UMat_Float (Angle, "Polar_To_Cart");
+      if not Magnitude.Is_Empty then
+         Validate_Matching_Float_Operands (Magnitude, Angle, "Polar_To_Cart");
+      end if;
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Polar_To_Cart
+           (Magnitude.Handle,
+            Angle.Handle,
+            (if Units = Degrees
+             then OpenCV.Internal.C_API.C_True
+             else OpenCV.Internal.C_API.C_False),
+            X'Access,
+            Y'Access),
+         "UMat polar-to-cart operation");
+      OpenCV.Internal.C_API.UMat_Destroy (Result.X.Handle);
+      OpenCV.Internal.C_API.UMat_Destroy (Result.Y.Handle);
+      Result.X.Handle := X;
+      Result.Y.Handle := Y;
+      return Result;
+   end Polar_To_Cart;
+
+   function Polar_To_Cart
+     (Angle : UMat; Units : Angle_Unit := Radians)
+      return UMat_Cartesian_Coordinates
+   is
+      Empty_Magnitude : UMat;
+   begin
+      return Polar_To_Cart (Empty_Magnitude, Angle, Units);
+   end Polar_To_Cart;
+
    function Pow (Self : Mat; Power : Long_Float) return Mat is
       Result     : Mat;
       New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
         OpenCV.Internal.C_API.Null_Mat_Handle;
       Status     : OpenCV.Internal.C_API.Status;
    begin
-      Validate_Pow (Self, Power);
+      Validate_Pow (Self.Depth, Power);
       Status :=
         OpenCV.Internal.C_API.Mat_Pow
           (Source => Self.Handle,

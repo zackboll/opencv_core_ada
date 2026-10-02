@@ -63,6 +63,7 @@ with Sparse_Numeric_Tests;
 with Sparse_Norm_Tests;
 with Sparse_Extrema_Tests;
 with UMat_Tests;
+with UMat_Math_Tests;
 
 package body Mat_Tests is
 
@@ -135,6 +136,7 @@ package body Mat_Tests is
       Result.Add_Test (Sparse_Norm_Tests.Suite);
       Result.Add_Test (Sparse_Extrema_Tests.Suite);
       Result.Add_Test (UMat_Tests.Suite);
+      Result.Add_Test (UMat_Math_Tests.Suite);
       return Result'Access;
    end Suite;
 
