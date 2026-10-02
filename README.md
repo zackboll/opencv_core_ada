@@ -2152,6 +2152,21 @@ input because those paths cross NUL-terminated native interfaces.
 
 ## UMat and the Transparent API baseline
 
+UMat-native `Bitwise_And`, `Bitwise_Or`, `Bitwise_Xor`, `Bitwise_Not`
+and their masked overloads operate on stored bits (including exact Float16
+bits). `Compare` and scalar-bounded `In_Range` return UInt8 C1 UMat masks;
+these masks feed masked UMat operations directly, without a Mat round-trip.
+Masked UMat operations require UMat masks; Mat operations still require Mat
+inputs and masks. Mixed Mat/UMat operands or masks are not supported. OpenCL
+is optional, and UMat does not guarantee GPU execution.
+Binary bitwise operands require matching 2-D rows, columns, depth and channels;
+unmasked `Bitwise_Not` also accepts N-D. Masks require matching rows and
+columns, UInt8 depth and one channel. `Compare` requires compatible 2-D C1
+operands; scalar `In_Range` accepts N-D with at most four channels and returns
+one mask value per element. Empty `In_Range` raises `OpenCV_Error`. A typed
+empty bitwise result retains its source type and 2-D shape; empty `Compare`
+releases its result, as with the established Mat overload.
+
 `OpenCV.Core.UMat` is a controlled, Core-owned `cv::UMat` header behind an
 opaque C handle. Default construction yields an empty native UMat. Use
 `Create_UMat (Rows, Columns, Element_Type)` or
@@ -2204,8 +2219,8 @@ once; OpenCV 5 uses native Float16. Float16 `Scale_Add` widens UMat operands on
 all supported versions, narrows Scale to Float32 before the native Float32
 kernel, then narrows the result once. SIMD/FMA rounding may vary by platform.
 OpenCL is optional; CPU fallback is tested. Mixed Mat/UMat operands, other
-operation families, module UMat bridging, UMat reshape, and callback-scoped
-CPU mapping remain unsupported.
+operation families beyond those listed above, module UMat bridging, UMat
+reshape, and callback-scoped CPU mapping remain unsupported.
 
 ## Safety and validation boundary
 

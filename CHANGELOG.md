@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add UMat-native bitwise operations and masked variants, `In_Range` and
+  `Compare`. UInt8 C1 UMat masks compose with masked UMat operations without
+  host transfers; Float16 bitwise operations preserve exact stored bits.
+
 - Add UMat `Add_Weighted` and `Scale_Add` with shared Mat/UMat native
   helpers, UMat-only Float16 compatibility temporaries, and OpenCL-optional
   execution. Weighted addition accepts matching N-D UMat operands; scale-add

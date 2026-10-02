@@ -1832,6 +1832,70 @@ package OpenCV.Internal.C_API is
       Result : access UMat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_umat_scale_add";
 
+   function UMat_Bitwise_And
+     (Left, Right : UMat_Handle; Result : access UMat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_bitwise_and";
+   function UMat_Bitwise_Or
+     (Left, Right : UMat_Handle; Result : access UMat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_bitwise_or";
+   function UMat_Bitwise_Xor
+     (Left, Right : UMat_Handle; Result : access UMat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_bitwise_xor";
+   function UMat_Bitwise_Not
+     (Self : UMat_Handle; Result : access UMat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_bitwise_not";
+   function UMat_Bitwise_And_Masked
+     (Left, Right, Mask : UMat_Handle; Result : access UMat_Handle)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_bitwise_and_masked";
+   function UMat_Bitwise_Or_Masked
+     (Left, Right, Mask : UMat_Handle; Result : access UMat_Handle)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_bitwise_or_masked";
+   function UMat_Bitwise_Xor_Masked
+     (Left, Right, Mask : UMat_Handle; Result : access UMat_Handle)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_bitwise_xor_masked";
+   function UMat_Bitwise_Not_Masked
+     (Self, Mask : UMat_Handle; Result : access UMat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_bitwise_not_masked";
+   function UMat_In_Range_Scalar
+     (Self         : UMat_Handle;
+      Lower, Upper : access constant Scalar;
+      Result       : access UMat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_in_range_scalar";
+   function UMat_Compare
+     (Left, Right : UMat_Handle; Kind : C_Int32; Result : access UMat_Handle)
+      return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_compare";
+
    function Mat_Bitwise_And
      (Left, Right : Mat_Handle; Result : access Mat_Handle) return Status
    with

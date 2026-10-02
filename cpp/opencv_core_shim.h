@@ -1172,6 +1172,34 @@ opencv_core_status opencv_core_umat_scale_add(
     const opencv_core_umat_handle *right, opencv_core_umat_handle **out);
 
 /* Unmasked bitwise operations preserve the complete stored bit pattern. */
+/* UMat-only bitwise operations: sources, masks and results remain UMat. */
+opencv_core_status opencv_core_umat_bitwise_and(const opencv_core_umat_handle *left,
+    const opencv_core_umat_handle *right, opencv_core_umat_handle **out);
+opencv_core_status opencv_core_umat_bitwise_or(const opencv_core_umat_handle *left,
+    const opencv_core_umat_handle *right, opencv_core_umat_handle **out);
+opencv_core_status opencv_core_umat_bitwise_xor(const opencv_core_umat_handle *left,
+    const opencv_core_umat_handle *right, opencv_core_umat_handle **out);
+opencv_core_status opencv_core_umat_bitwise_not(const opencv_core_umat_handle *source,
+    opencv_core_umat_handle **out);
+opencv_core_status opencv_core_umat_bitwise_and_masked(
+    const opencv_core_umat_handle *left, const opencv_core_umat_handle *right,
+    const opencv_core_umat_handle *mask, opencv_core_umat_handle **out);
+opencv_core_status opencv_core_umat_bitwise_or_masked(
+    const opencv_core_umat_handle *left, const opencv_core_umat_handle *right,
+    const opencv_core_umat_handle *mask, opencv_core_umat_handle **out);
+opencv_core_status opencv_core_umat_bitwise_xor_masked(
+    const opencv_core_umat_handle *left, const opencv_core_umat_handle *right,
+    const opencv_core_umat_handle *mask, opencv_core_umat_handle **out);
+opencv_core_status opencv_core_umat_bitwise_not_masked(
+    const opencv_core_umat_handle *source, const opencv_core_umat_handle *mask,
+    opencv_core_umat_handle **out);
+opencv_core_status opencv_core_umat_in_range_scalar(
+    const opencv_core_umat_handle *source, const opencv_core_scalar *lower,
+    const opencv_core_scalar *upper, opencv_core_umat_handle **out);
+opencv_core_status opencv_core_umat_compare(
+    const opencv_core_umat_handle *left, const opencv_core_umat_handle *right,
+    int32_t comparison_kind, opencv_core_umat_handle **out);
+
 opencv_core_status
 opencv_core_mat_bitwise_and(const opencv_core_mat_handle *left,
                             const opencv_core_mat_handle *right,
