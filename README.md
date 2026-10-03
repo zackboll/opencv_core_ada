@@ -113,10 +113,11 @@ Core functionality with a coherent Ada design.
 
 ## Cross-module interoperability
 
-Future module crates such as `opencv_imgproc`, `opencv_imgcodecs`,
+Module crates such as `opencv_imgproc`, `opencv_imgcodecs`,
 `opencv_highgui`, `opencv_videoio`, `opencv_features2d`, and
 `opencv_calib3d` depend on `opencv_core`. Application code continues to use
-`OpenCV.Core.Mat`; no public raw-pointer API is introduced.
+the public Core types such as `OpenCV.Core.Mat`, `OpenCV.Core.UMat`, and
+`OpenCV.Core.Sparse.Sparse_Mat`; no public raw-pointer API is introduced.
 
 `OpenCV.Core.Module_Interop` is a deliberately low-level binding
 implementation interface for those crates. Its callback-scoped input and
