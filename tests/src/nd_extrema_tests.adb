@@ -67,12 +67,19 @@ package body ND_Extrema_Tests is
       Source.Set_To (Make_Scalar (7.0));
       Int32_Access.Set (Source, Low_5, -30);
       Int32_Access.Set (Source, High_5, 90);
+      Assert
+        (Source.Dimension_Count = 5 and then Source.Is_Continuous,
+         "continuous 5-D source exercises the 4.10 HAL compatibility bypass");
       Check (Source.Min_Max_Indices, -30.0, 90.0, Low_5, High_5);
       Check (Alias.Min_Max_Indices, -30.0, 90.0, Low_5, High_5);
       Assert
-        (Int32_Access.Get (Source, Low_5) = -30
+        (Source.Is_Continuous
+         and then Alias.Is_Continuous
+         and then Source.Shape = Shape_5
+         and then Alias.Shape = Shape_5
+         and then Int32_Access.Get (Source, Low_5) = -30
          and then Int32_Access.Get (Alias, High_5) = 90,
-         "source and shallow alias unchanged and usable");
+         "source and shallow alias metadata/storage unchanged and usable");
    end Five_Dimensions;
 
    procedure Masked_Five_Dimensions (Test : in out Fixture) is
@@ -90,6 +97,9 @@ package body ND_Extrema_Tests is
       Float64_Access.Set (Source, High_5, 9.25);
       UInt8_Access.Set (Mask, Low_5, 1);
       UInt8_Access.Set (Mask, High_5, 255);
+      Assert
+        (Source.Is_Continuous and then Mask.Is_Continuous,
+         "continuous 5-D source and mask exercise the 4.10 bypass");
       Check (Source.Min_Max_Indices (Mask), -3.5, 9.25, Low_5, High_5);
       Check
         (Source.Min_Max_Indices,
@@ -138,6 +148,9 @@ package body ND_Extrema_Tests is
       Packed.Set_To (Make_Scalar (4.0));
       Float32_Access.Set (Packed, (1, 2, 0), -8.0);
       Float32_Access.Set (Packed, (0, 1, 2), 12.0);
+      Assert
+        (Packed.Is_Continuous and then not Mask.Is_Continuous,
+         "continuous N-D source with genuinely strided mask");
       Check (Packed.Min_Max_Indices (Mask), -8.0, 12.0, (1, 2, 0), (0, 1, 2));
       Assert
         (Float32_Access.Get (Parent, (2, 3, 1)) = -8.0

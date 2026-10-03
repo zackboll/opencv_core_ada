@@ -13643,6 +13643,18 @@ opencv_core_status dense_min_max_indices(
             return invalid_argument("dense extrema coordinate capacity too small");
         }
 
+#if CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR == 10
+        // ABI compatibility: 4.10 minmax.cpp:1527,1529 remaps zero-based
+        // flattened HAL indices through one-based ofs2idx without +1,
+        // shifting coordinates and making flattened index zero undefined.
+        // That path also ignores mask strides. Force the correct iterator/IPP
+        // fallback using only this local header; caller metadata and shared
+        // storage remain unchanged, with no clone or post-hoc index correction.
+        if (dims > 2 && src.isContinuous()) {
+            src.flags &= ~cv::Mat::CONTINUOUS_FLAG;
+        }
+#endif
+
         bool flattened_hal = false;
 #if CV_VERSION_MAJOR > 4 || (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 10)
         flattened_hal = dims > 2 && src.isContinuous();
@@ -13651,28 +13663,20 @@ opencv_core_status dense_min_max_indices(
                         (native_mask.empty() || native_mask.isContinuous());
 #endif
 #endif
-        // ABI safety: 4.10 minmax.cpp:1520 and 5.0 minmax.dispatch.cpp:327
-        // narrow total() to int before the continuous N-D HAL call. Negative
+        // ABI safety: reachable flattened HAL paths (5.0 dispatch.cpp:327)
+        // narrow total() to int; the 4.10 path has been bypassed above. Negative
         // or truncated widths can reach backend pointer arithmetic unchecked.
         if (flattened_hal && src.total() > static_cast<size_t>(INT_MAX)) {
             return invalid_argument("dense extrema HAL length exceeds native int");
         }
         // ABI safety: HAL is called before NAryMatIterator's shape assertion;
         // it receives only source dimensions and a raw mask pointer. A smaller
-        // mask would be read out of bounds (4.1/4.10 minmax.cpp; 5.0 dispatch).
+        // mask would be read out of bounds in 2-D or an eligible flattened N-D
+        // path (5.0 dispatch); 4.10 N-D now relies on the iterator assertion.
         if (!native_mask.empty() &&
             (dims <= 2 || flattened_hal) && src.size != native_mask.size) {
             return invalid_argument("unsafe dense extrema HAL mask size");
         }
-#if CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR == 10
-        // ABI safety: 4.10's flattened HAL ignores mask strides and reads
-        // padding as elements. Select the native strided iterator with a local
-        // header only; do not clone data or reject a valid public mask.
-        if (dims > 2 && src.isContinuous() && !native_mask.empty() &&
-            !native_mask.isContinuous()) {
-            src.flags &= ~cv::Mat::CONTINUOUS_FLAG;
-        }
-#endif
 
         // Inspect exactly the native iterator layout, not a speculative total
         // limit: planes are already bounded to INT_MAX by iterator::init.

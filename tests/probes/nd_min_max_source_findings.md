@@ -57,9 +57,42 @@ CPU scalar comparisons use strict < and >; vector reductions choose the smallest
 index for equal updated extrema. Finite ties in the three native probes and the
 seven-depth AUnit tests select the earliest logical coordinate. The public API
 does not promise an ordering stronger than the linked OpenCV/backend supplies.
-In particular, the optional 4.10 flattened HAL remapping has an upstream
-off-by-one (`ofs2idx(src, minIdx[1], ...)`, versus `+1` in 5.0); the configured
-4.10 image has no custom HAL. No silent tie/index correction is implemented.
+
+### OpenCV 4.10 flattened-HAL compatibility correction
+
+OpenCV 4.10 `minmax.cpp:1518-1530` flattens continuous N-D input for HAL.
+On success it executes `ofs2idx(src, minIdx[1], minIdx)` and
+`ofs2idx(src, maxIdx[1], maxIdx)`. HAL locations are zero-based, while
+`ofs2idx` at lines 849-867 treats zero as undefined and subtracts one from a
+positive offset. Thus flattened index zero becomes an undefined location,
+and each positive index is shifted to the preceding logical element.
+OpenCV 5.0 `minmax.dispatch.cpp:334,336` corrects both calls with
+`ofs2idx(src, minIdx[1]+1, minIdx)` and
+`ofs2idx(src, maxIdx[1]+1, maxIdx)`; its flattened path also requires a
+continuous or empty mask. The configured 4.10 image has no custom HAL, so
+ordinary hosted success alone cannot establish behavior on HAL success.
+
+For exactly OpenCV major 4 / minor 10, the binding clears CONTINUOUS_FLAG
+on its local shallow `cv::Mat src = source->value` header for **every**
+continuous source with dims>2, before computing flattened-HAL eligibility.
+Native minMaxIdx therefore uses its correct iterator/IPP fallback for
+unmasked input, continuous masks, and strided masks alike. This one bypass
+also avoids 4.10's flattened path ignoring mask strides. No storage clone
+occurs, and neither the caller's Mat header/metadata nor shared storage is
+mutated. Returned coordinates are not corrected after the fact: native
+remapping has already lost the distinction between undefined and flattened
+index zero, and the shim cannot safely infer which native backend produced
+the coordinates. Preventing entry into the defective path avoids that
+ambiguity and preserves correct native fallback behavior.
+
+5.0 retains native flattened-HAL execution and its corrected +1 remapping.
+4.1/4.6 have no such N-D HAL branch and receive no compatibility adjustment.
+The existing unique-extrema 5-D test explicitly asserts dimensionality and
+continuity before reduction, then confirms caller/alias continuity, shape,
+and values afterward. Continuous-mask and strided-mask fixtures also assert
+their layouts. These exercise the binding's 4.10 bypass even when the stock
+HAL would have declined; the custom-HAL correctness rationale is the exact
+source difference, not a fake HAL added to the repository.
 
 ## Float32 and Float64 special values
 
@@ -111,17 +144,22 @@ limit is imposed. Existing Core limits still apply: portable 32 slots, native
    initialized -1, then explicitly copied to int32_t without casts of pointers.
 2. 4.10 `minmax.cpp:1520` / 5.0 `minmax.dispatch.cpp:327` use
    `(int)src.total()*cn` before continuous N-D HAL dispatch. For C1, reject
-   total>INT_MAX on that path before unsafe backend width narrowing. The guard
-   follows the actual linked-version HAL eligibility (including 5.0 mask
-   continuity); 4.1's N-D CPU-only path does not acquire this limit.
+   total>INT_MAX only on a still-reachable flattened-HAL path before unsafe
+   backend width narrowing. Eligibility is computed after compatibility
+   adjustment: false for every 4.10 N-D call, so no artificial flattened-HAL
+   size limit applies there. 5.0 retains the guard when source and optional
+   mask continuity permit HAL. 4.1/4.6 N-D CPU paths acquire no such limit.
 3. All three pass raw mask pointers to HAL before the iterator's equal-shape
    assertion. For HAL-eligible inputs reject mismatched nonempty mask shapes:
    otherwise a smaller buffer may be read out of bounds. This is the one
-   duplicated public condition, retained for this concrete memory hazard.
-4. 4.10's continuous N-D HAL ignores mask strides. A valid strided mask selects
-   native iterator execution by clearing CONTINUOUS_FLAG on a *local borrowed
-   source header*. Inputs/storage are unchanged; no clone or data conversion.
-   5.0 already gates flattened HAL on mask continuity.
+   duplicated public condition, retained for this concrete memory hazard:
+   2-D HAL on all supported versions, and eligible flattened N-D HAL on 5.0.
+   All 4.10 N-D calls bypass flattened HAL; those and other non-HAL N-D paths
+   rely on the native iterator's full-shape assertion instead.
+4. The local-header 4.10 N-D compatibility bypass described above prevents
+   incorrect coordinate remapping and ignored mask strides before native
+   execution. It is linked-version compatibility, not public semantic
+   validation. 5.0 keeps its corrected native path; inputs remain unchanged.
 5. NAryMatIterator::init caps plane size at INT_MAX using int64 arithmetic.
    With C1, `(int)it.size*cn` is safe. But operator++:160 casts size_t plane
    idx to int for iterdepth>1 before pointer arithmetic. Reject only layouts
