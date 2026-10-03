@@ -47,6 +47,14 @@ opencv_core_status opencv_core_umat_copy_to(const opencv_core_umat_handle *sourc
     opencv_core_umat_handle **out);
 opencv_core_status opencv_core_umat_convert_to(const opencv_core_umat_handle *source,
     int32_t depth, double scale, double offset, opencv_core_umat_handle **out);
+/* Uses the actual destination header; matching storage (including Regions)
+ * is reused, mismatched storage may be reallocated. Exact self is supported,
+ * arbitrary partial overlap is not. Empty metadata is version-dependent.
+ * Pre-native validation failures leave destination unchanged; exceptions
+ * after conversion begins do not carry a failure-atomicity guarantee. */
+opencv_core_status opencv_core_umat_convert_to_into(
+    const opencv_core_umat_handle *source, opencv_core_umat_handle *destination,
+    int32_t depth, double scale, double offset);
 opencv_core_status opencv_core_umat_set_to(opencv_core_umat_handle *self,
     const struct opencv_core_scalar *value);
 opencv_core_status opencv_core_umat_region(const opencv_core_umat_handle *source,
@@ -958,6 +966,13 @@ opencv_core_status
 opencv_core_mat_convert_to(const opencv_core_mat_handle *source,
                            int32_t depth, double scale, double offset,
                            opencv_core_mat_handle **out_mat);
+
+/* Destination reuse/reallocation, overlap, empty and failure conventions are
+ * as for umat_convert_to_into above. Temporary external/selected destinations
+ * are rejected before native mutation; temporary sources are allowed. */
+opencv_core_status opencv_core_mat_convert_to_into(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    int32_t depth, double scale, double offset);
 
 /*
  * Returns a newly allocated UInt8 Mat with source's shape and channel count.

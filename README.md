@@ -18,7 +18,7 @@ translation of the C++ headers.
 >
 > **Development status:** active, pre-1.0 API.
 >
-> **Current test baseline:** 1566 AUnit tests, with Ada and C++ warnings promoted
+> **Current test baseline:** 1632 AUnit tests, with Ada and C++ warnings promoted
 > to errors. GitHub Actions exercises the full test suite against four OpenCV
 > compatibility targets, plus a native Ubuntu 24.04 ARM64 job.
 >
@@ -1613,6 +1613,47 @@ result shares storage; `Clone` creates independent storage. The existing
 
 ### Conversion and element-wise mathematics
 
+Mat and UMat provide both return-value and destination-taking conversions:
+
+```ada
+Result := Source.Convert_To
+  (Depth => OpenCV.Core.UInt8, Scale => 2.0, Offset => 3.0);
+Source.Convert_To
+  (Destination => Existing, Depth => OpenCV.Core.UInt8,
+   Scale => 2.0, Offset => 3.0);
+```
+
+The function returns independent storage. The procedure converts directly into
+`Existing`'s native header: compatible shape/type permits allocation reuse;
+incompatible shape/type triggers native reallocation. Nonempty results keep the
+source shape and channel count, selecting only the destination depth, and use
+OpenCV's `saturate_cast<Depth>(Source * Scale + Offset)` semantics. Genuine N-D
+arrays are supported, and Float16 follows the existing native conversion policy.
+
+A compatible destination `Region` remains attached to its original parent:
+conversion modifies only the selected pixels, visible through the parent and
+other shallow aliases, leaving surrounding guard pixels untouched. This is
+verified by parent/alias pixel tests, not inferred from `Is_Submatrix`. If native
+reallocation is required, an incompatible Region can detach; its old parent and
+other headers keep their original allocation and pixels. Exact self-conversion,
+including a depth change, is supported. Same-layout shallow aliases follow
+native sharing; arbitrary partially overlapping views are not supported.
+
+Temporary callback-scoped external/selected Mat views are permitted as sources,
+but rejected as destinations with `OpenCV_Error`, independently enforced by the
+raw ABI. Null handles, invalid raw depth identifiers, and temporary destinations
+are rejected before native mutation and leave existing destination data/header
+unchanged. No failure-atomicity guarantee is made for exceptions after native
+conversion begins. UMat conversion uses native UMat destinations without any
+binding-side host mapping or staging; OpenCV may itself choose CPU fallback.
+
+Empty sources produce empty destinations, but metadata deliberately follows
+the installed OpenCV: 4.1/4.6/4.10 release storage while retaining destination
+type metadata; 5.0 recreates empty metadata. In 5.0 Mat retains source channels,
+whereas the native empty UMat depth-only path creates one channel. See
+[`tests/probes/convert_destination_source_findings.md`](tests/probes/convert_destination_source_findings.md)
+for exact-tag source references and the isolated probe results.
+
 Conversion/mapping:
 
 - `Convert_To`
@@ -2253,8 +2294,11 @@ storage; finalizing either header leaves the other usable. `Clone` is an
 explicit independent deep copy. `Region` and half-open N-D `Slice` are shallow
 views that retain the allocation; `Copy_To` returns an independent UMat via
 native UMat copy, not a Mat round-trip. `Set_To` fills complete C1 through C4
-elements using `OpenCV.Scalar`. `Convert_To` returns a native UMat conversion
-with the requested depth, scale, and offset, retaining shape and channels.
+elements using `OpenCV.Scalar`. The `Convert_To` function returns an independent
+native UMat conversion; its destination-taking procedure permits native storage
+reuse/reallocation. Nonempty conversion retains shape and channels; see
+[conversion semantics](#conversion-and-element-wise-mathematics) for Regions,
+self-conversion, and version-dependent empty metadata.
 
 Because Ada forbids one dispatching operation on *two* unrelated tagged
 types, independent host transfers live in `OpenCV.Core.Transfers`:

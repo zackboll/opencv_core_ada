@@ -68,6 +68,14 @@ package OpenCV.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_core_umat_convert_to";
+   function UMat_Convert_To_Into
+     (Source, Destination : UMat_Handle;
+      Depth               : C_Int32;
+      Scale, Offset       : C_Double) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_convert_to_into";
    function UMat_Region
      (Source              : UMat_Handle;
       X, Y, Width, Height : C_Int32;
@@ -1703,6 +1711,15 @@ package OpenCV.Internal.C_API is
       Offset : C_Double;
       Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_convert_to";
+
+   function Mat_Convert_To_Into
+     (Source, Destination : Mat_Handle;
+      Depth               : C_Int32;
+      Scale, Offset       : C_Double) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_convert_to_into";
 
    function Mat_Convert_Scale_Abs
      (Source : Mat_Handle;

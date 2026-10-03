@@ -247,6 +247,17 @@ package OpenCV.Core is
       Depth  : Depth_Type;
       Scale  : Long_Float := 1.0;
       Offset : Long_Float := 0.0) return UMat;
+   --  Converts into the actual native destination, reusing matching storage
+   --  or reallocating mismatched storage. Compatible Regions retain parent
+   --  sharing; incompatible Regions may detach. Exact self is supported,
+   --  but arbitrary partially overlapping views are not supported.
+   --  Empty-source metadata follows the installed OpenCV version.
+   procedure Convert_To
+     (Self        : UMat;
+      Destination : in out UMat;
+      Depth       : Depth_Type;
+      Scale       : Long_Float := 1.0;
+      Offset      : Long_Float := 0.0);
    procedure Set_To (Self : in out UMat; Value : Scalar);
    function Region (Self : UMat; Area : Rect) return UMat;
    --  Nonempty, exactly 2-D; native UMat headers only, without host mapping.
@@ -811,6 +822,20 @@ package OpenCV.Core is
       Depth  : Depth_Type;
       Scale  : Long_Float := 1.0;
       Offset : Long_Float := 0.0) return Mat;
+   --  Reuses a compatible destination's storage, including parent sharing
+   --  through a Region; native reallocation may detach incompatible Regions.
+   --  Nonempty results preserve source shape/channels and use the native
+   --  saturating Scale * Self + Offset conversion. Exact self is supported;
+   --  arbitrary partial overlap is not. Temporary external/selected views
+   --  are allowed as sources, but rejected as destinations. Empty metadata
+   --  follows OpenCV. Exceptions after native conversion starts need not
+   --  leave Destination unchanged.
+   procedure Convert_To
+     (Self        : Mat;
+      Destination : in out Mat;
+      Depth       : Depth_Type;
+      Scale       : Long_Float := 1.0;
+      Offset      : Long_Float := 0.0);
    --  Returns an independent UInt8 Mat with Self's shape and channel count.
    --  Each channel is converted as saturate_cast<UInt8>
    --  (abs (Self * Scale + Offset)).

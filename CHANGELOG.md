@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Add destination-taking `Convert_To` procedures for Mat and UMat while retaining
+  the independent return-value API and existing ABI. Compatible whole/Region
+  storage is reused; incompatible destinations are natively reallocated and
+  Regions may detach. Cover scale/offset/saturation, channels, Float16, N-D,
+  exact self and shallow aliases, lifetime, temporary destination rejection,
+  and raw pre-native failure preservation. UMat remains native without
+  binding-side host mapping. Preserve and document exact-version empty metadata
+  differences; no arbitrary partial-overlap or post-native failure-atomicity
+  guarantee is introduced.
+
 - Add Mat/UMat `Locate_Region` retained 2-D parent geometry and failure-atomic,
   header-only `Adjust_Region`, preserving native clipping/crossed boundaries,
   independent shallow-header geometry and shared storage while rejecting

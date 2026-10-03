@@ -2944,6 +2944,23 @@ opencv_core_status opencv_core_umat_convert_to(const opencv_core_umat_handle *so
     } catch (...) { return translate_current_exception(); }
 }
 
+opencv_core_status opencv_core_umat_convert_to_into(
+    const opencv_core_umat_handle *source, opencv_core_umat_handle *destination,
+    int32_t depth, double scale, double offset) {
+    clear_error();
+    if (!source || !destination)
+        return invalid_argument("null conversion source or destination UMat");
+    int native_depth = 0;
+    // ABI safety: only recognized depth identifiers may select native
+    // conversion dispatch/type encodings; arbitrary integers are not depths.
+    if (!to_opencv_depth(depth, native_depth))
+        return invalid_argument("invalid depth identifier");
+    try {
+        source->value.convertTo(destination->value, native_depth, scale, offset);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
 opencv_core_status opencv_core_umat_set_to(opencv_core_umat_handle *self,
     const opencv_core_scalar *value) {
     clear_error();
@@ -4912,6 +4929,27 @@ opencv_core_mat_convert_to(const opencv_core_mat_handle *source, int32_t depth,
     } catch (...) {
         return translate_current_exception();
     }
+}
+
+opencv_core_status opencv_core_mat_convert_to_into(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    int32_t depth, double scale, double offset) {
+    clear_error();
+    if (!source || !destination)
+        return invalid_argument("null conversion source or destination Mat");
+    int native_depth = 0;
+    // ABI safety: reject unrecognized identifiers before native type/dispatch
+    // selection; raw integers are not the public Ada depth enumeration.
+    if (!to_opencv_depth(depth, native_depth))
+        return invalid_argument("invalid depth identifier");
+    // ABI safety: convertTo can release/rebind this header, severing the
+    // callback-scoped logical capability over caller/selected storage.
+    if (destination->temporary_external_view)
+        return invalid_argument("temporary Mat cannot be a conversion destination");
+    try {
+        source->value.convertTo(destination->value, native_depth, scale, offset);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
 }
 
 opencv_core_status
