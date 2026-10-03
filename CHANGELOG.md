@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add callback-scoped UMat module interoperability beside Mat in
+  `OpenCV.Core.Module_Interop`, with installed native bridge support for
+  borrowing the actual Core-owned UMat header without Mat transfer or mapping.
+  Mutable output borrows support header rebinding and ordinary UMat Regions.
+
 - Add UMat-native Normalize, Sqrt, Exp, Log, Pow, Magnitude, Phase,
   Cart_To_Polar, and Polar_To_Cart (including angle-only unit magnitude),
   shared typed Mat/UMat dispatch, independent dual-output UMat records,

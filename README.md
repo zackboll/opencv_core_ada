@@ -2202,6 +2202,23 @@ For typed inspection of UMat contents, transfer to an independent Mat and use
 the existing Mat typed access packages. There is no direct mapped typed UMat
 access or public OpenCL context/device/queue/raw pointer API in this release.
 
+Cooperating OpenCV Ada module crates can borrow callback-scoped
+`Input_UMat_Handle` and `Output_UMat_Handle` capabilities through
+`OpenCV.Core.Module_Interop`. This is module implementation infrastructure,
+not the normal application API: applications should use `OpenCV.Core.UMat`.
+The installed `opencv_core_module_bridge.hpp` lets private module shims
+resolve these capabilities to the actual borrowed `const cv::UMat *` or
+`cv::UMat *` header. No Mat transfer, host representation, or `getMat()` mapping
+occurs in the bridge. Modules can pass these headers directly to OpenCV
+InputArray/OutputArray operations; output operations may rebind the actual
+Core UMat header, and Core observes that rebinding after the callback.
+Core retains ownership of the opaque wrapper and native header. Neither the
+handle nor the native pointer may be saved for later use; the pointer must
+not be retained or deleted after the callback/call scope. No ownership
+transfer occurs. All cooperating shims must use a compatible OpenCV ABI and
+installation with Core. OpenCL remains optional, and GPU execution is not
+guaranteed.
+
 All public allocations use `USAGE_DEFAULT`; host/device/shared allocation
 preferences are intentionally deferred. OpenCL need not be compiled in,
 available, enabled, or backed by a device: CPU fallback is required behavior,

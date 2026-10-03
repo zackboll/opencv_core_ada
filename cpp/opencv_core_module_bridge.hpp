@@ -3,13 +3,23 @@
 
 /*
  * Private implementation bridge for cooperating OpenCV Ada module shims.
- * Application code must use OpenCV.Core.Mat, not this header.
+ * Application code must use OpenCV.Core.Mat / UMat / Sparse, not this header.
  *
  * Core owns both opencv_core_mat_handle and its cv::Mat header. The resolver
  * results are borrowed: a module shim must neither delete nor retain the
  * returned cv::Mat pointer beyond the corresponding Ada callback/call scope.
  * All cooperating module shims must use the same compatible OpenCV ABI and
  * installation as the Core shim.
+ *
+ * UMat follows the same ownership model: Core owns the opaque wrapper and
+ * original cv::UMat header. Borrowed pointers must not be retained or deleted.
+ * No host cv::Mat representation is created and no UMat::getMat() mapping is
+ * performed. Modules may pass the UMat directly to InputArray / OutputArray
+ * operations. A mutable output header may be rebound by OpenCV; Core sees
+ * that rebinding after the callback because the actual wrapper header was
+ * borrowed. Regions are ordinary reference-counted headers, not external
+ * buffer views. UMat offers the Transparent API opportunity, not guaranteed
+ * GPU execution; OpenCL remains optional. No ownership transfer occurs.
  *
  * SparseMat follows the same ownership model. Core owns both
  * opencv_core_sparse_mat_handle and its cv::SparseMat header. Resolver
@@ -39,6 +49,16 @@ opencv_core_mat_resolve_input(const opencv_core_mat_handle *source,
 opencv_core_status
 opencv_core_mat_resolve_output(opencv_core_mat_handle *destination,
                                void **out_native_mat);
+
+typedef struct opencv_core_umat_handle opencv_core_umat_handle;
+
+opencv_core_status
+opencv_core_umat_resolve_input(const opencv_core_umat_handle *source,
+                              void **out_native_umat);
+
+opencv_core_status
+opencv_core_umat_resolve_output(opencv_core_umat_handle *destination,
+                               void **out_native_umat);
 
 typedef struct opencv_core_sparse_mat_handle opencv_core_sparse_mat_handle;
 
@@ -83,6 +103,36 @@ inline opencv_core_status opencv_core_module_output_mat(
         opencv_core_mat_resolve_output(handle, &native_mat);
     if (status == OPENCV_CORE_OK) {
         *out_mat = static_cast<cv::Mat *>(native_mat);
+    }
+    return status;
+}
+
+inline opencv_core_status opencv_core_module_input_umat(
+    const opencv_core_umat_handle *handle, const cv::UMat **out_umat) {
+    void *native_umat = nullptr;
+    if (out_umat == nullptr) {
+        return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
+    }
+    *out_umat = nullptr;
+    const opencv_core_status status =
+        opencv_core_umat_resolve_input(handle, &native_umat);
+    if (status == OPENCV_CORE_OK) {
+        *out_umat = static_cast<const cv::UMat *>(native_umat);
+    }
+    return status;
+}
+
+inline opencv_core_status opencv_core_module_output_umat(
+    opencv_core_umat_handle *handle, cv::UMat **out_umat) {
+    void *native_umat = nullptr;
+    if (out_umat == nullptr) {
+        return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
+    }
+    *out_umat = nullptr;
+    const opencv_core_status status =
+        opencv_core_umat_resolve_output(handle, &native_umat);
+    if (status == OPENCV_CORE_OK) {
+        *out_umat = static_cast<cv::UMat *>(native_umat);
     }
     return status;
 }
