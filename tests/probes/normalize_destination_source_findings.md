@@ -111,7 +111,10 @@ For binding-created default/typed 0x0 sources and a preallocated destination:
 | UMat empty half / Min_Max, CPU | OpenCV_Error before conversion (input half dispatch) | succeeds; mapping loses empty type, conversion recreates half C1 |
 
 Geometry details remain native (release metadata differs, including native
-dimension counts). The probe also uses typed 0x3: 5.0 Mat retains 0x3, while
+dimension counts). In 5.0, UMat helper release sets dims=0, giving a null public
+Shape, unlike the 4.x retained two zero extents. Empty half Min_Max CPU conversion
+recreates two zero extents even on 5.0. The probe also uses typed 0x3: 5.0 Mat
+retains 0x3, while
 4.x release gives 0x0. AUnit pins binding-created 0x0 metadata, type, channels,
 and survival of the old destination alias. Return-value functions start with
 fresh destinations, so released metadata need not equal preallocated metadata.

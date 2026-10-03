@@ -2385,7 +2385,8 @@ rounding/saturation and floating approximation remain unchanged.
 Empty sources release destination pixels. OpenCV 4.x Mat release retains the
 old destination type; OpenCV 5.0 Mat recreates the empty source type. The existing
 UMat empty-storage safety helper releases ordinary empty outputs, retaining old
-type metadata even on 5.0. Empty Float16 Min_Max remains native/version-sensitive
+type metadata even on 5.0 (where release resets dimension count to zero, giving
+a null `Shape`). Empty Float16 Min_Max remains native/version-sensitive
 (4.x rejects; 5.0 CPU succeeds); no new empty OpenCL guarantee is introduced.
 Temporary external/selected Mat views may be sources but are never mutable
 normalization destinations, even when currently compatible. Pre-native null,

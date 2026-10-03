@@ -467,7 +467,15 @@ package body Normalize_Destination_Tests is
                                  = (if Typed then 3 else 1),
                         "5.0 Mat recreates source empty type");
                   end if;
-                  Assert (Shape (Destination) = (0, 0), "empty geometry");
+                  if Is_UMat
+                    and then Module_Bridge_Probe.OpenCV_Major_Version >= 5
+                  then
+                     Assert
+                       (Shape (Destination)'Length = 0,
+                        "5.0 UMat release resets dimension count");
+                  else
+                     Assert (Shape (Destination) = (0, 0), "empty geometry");
+                  end if;
                   Assert
                     (Int16_Access.Get (Observe (Alias), 1, 2) = 91,
                      "old alias pixels survive release");
@@ -525,9 +533,21 @@ package body Normalize_Destination_Tests is
                                         < 5
                               then Int16
                               else Float16)
-                           and then Channels (Destination) = 1
-                           and then Shape (Destination) = (0, 0),
+                           and then Channels (Destination) = 1,
                            "half empty metadata from native/helper release");
+                        if Is_UMat
+                          and then Kind /= Min_Max
+                          and then Module_Bridge_Probe.OpenCV_Major_Version
+                                   >= 5
+                        then
+                           Assert
+                             (Shape (Destination)'Length = 0,
+                              "5.0 half UMat helper release geometry");
+                        else
+                           Assert
+                             (Shape (Destination) = (0, 0),
+                              "native half empty conversion geometry");
+                        end if;
                         Assert
                           (Int16_Access.Get (Observe (Alias), 0, 1) = 91,
                            "half empty old allocation survives");
