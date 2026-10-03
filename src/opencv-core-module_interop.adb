@@ -46,4 +46,24 @@ package body OpenCV.Core.Module_Interop is
       Process (Output_Mat_Handle (Image.Handle));
    end With_Output_Handle;
 
+   procedure With_Input_Handle
+     (Image   : UMat;
+      Process : not null access procedure (Handle : Input_UMat_Handle)) is
+   begin
+      Process (Input_UMat_Handle (Image.Handle));
+   end With_Input_Handle;
+
+   procedure With_Output_Handle
+     (Image   : in out UMat;
+      Process : not null access procedure (Handle : Output_UMat_Handle))
+   is
+      Borrowed_Native_UMat : aliased System.Address := System.Null_Address;
+      Status               : constant OpenCV.Internal.C_API.Status :=
+        OpenCV.Internal.C_API.UMat_Resolve_Output
+          (Image.Handle, Borrowed_Native_UMat'Access);
+   begin
+      Raise_On_Error (Status, "module output UMat access");
+      Process (Output_UMat_Handle (Image.Handle));
+   end With_Output_Handle;
+
 end OpenCV.Core.Module_Interop;

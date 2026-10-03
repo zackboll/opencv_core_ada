@@ -5,6 +5,70 @@ with OpenCV.Core.Sparse.Module_Interop;
 
 package Module_Bridge_Probe is
 
+   type UMat_Extents is array (1 .. 32) of Interfaces.Integer_32
+   with Convention => C;
+
+   type UMat_Observation is record
+      Dims, Rows, Columns, Depth, Channels, Continuous, Submatrix :
+        Interfaces.Integer_32;
+      Extents                                                     :
+        UMat_Extents;
+      Sum                                                         :
+        Interfaces.IEEE_Float_64;
+   end record
+   with Convention => C;
+
+   function Inspect_UMat
+     (Handle      : OpenCV.Core.Module_Interop.Input_UMat_Handle;
+      Observation : access UMat_Observation) return Interfaces.Integer_32
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_module_probe_umat_input";
+
+   function Inspect_UMat_Pair
+     (Left, Right                         :
+        OpenCV.Core.Module_Interop.Input_UMat_Handle;
+      Left_Observation, Right_Observation : access UMat_Observation)
+      return Interfaces.Integer_32
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_module_probe_umat_pair";
+
+   function Mutate_UMat
+     (Handle : OpenCV.Core.Module_Interop.Output_UMat_Handle;
+      Value  : Interfaces.IEEE_Float_64) return Interfaces.Integer_32
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_module_probe_umat_mutate";
+
+   function Create_UMat
+     (Handle : OpenCV.Core.Module_Interop.Output_UMat_Handle)
+      return Interfaces.Integer_32
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_module_probe_umat_create";
+
+   function Add_UMat
+     (Input  : OpenCV.Core.Module_Interop.Input_UMat_Handle;
+      Output : OpenCV.Core.Module_Interop.Output_UMat_Handle)
+      return Interfaces.Integer_32
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_module_probe_umat_add";
+
+   function Invalid_UMat
+     (Handle : OpenCV.Core.Module_Interop.Output_UMat_Handle)
+      return Interfaces.Integer_32
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_module_probe_umat_invalid";
+
    function OpenCV_Major_Version return Natural;
 
    type Input_Observation is record

@@ -663,6 +663,18 @@ opencv_core_status
 opencv_core_mat_resolve_output(opencv_core_mat_handle *destination,
                                void **out_native_mat);
 
+/* Borrowed original cv::UMat headers, valid only during the Ada callback/call.
+ * Core retains wrapper/header ownership; never delete or retain these pointers.
+ * Output resolution permits rebinding the actual header, including Regions.
+ * No host Mat conversion or mapping is performed. */
+opencv_core_status
+opencv_core_umat_resolve_input(const opencv_core_umat_handle *source,
+                              void **out_native_umat);
+
+opencv_core_status
+opencv_core_umat_resolve_output(opencv_core_umat_handle *destination,
+                               void **out_native_umat);
+
 /*
  * Implementation ABI for cooperating OpenCV Ada module shims. The successful
  * result is a borrowed native cv::SparseMat pointer represented as void *.

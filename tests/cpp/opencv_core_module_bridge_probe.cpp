@@ -345,4 +345,145 @@ opencv_core_module_probe_sparse_invalid_inputs(void) {
     return OPENCV_CORE_OK;
 }
 
+struct umat_observation {
+    int32_t dims, rows, cols, depth, channels, continuous, submatrix;
+    int32_t extents[32];
+    double sum;
+};
+
+OPENCV_CORE_MODULE_PROBE_EXPORT opencv_core_status
+opencv_core_module_probe_umat_input(const opencv_core_umat_handle *handle,
+                                    umat_observation *observation) {
+    if (observation == nullptr) {
+        return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
+    }
+    *observation = {};
+    try {
+        const cv::UMat *umat = nullptr;
+        const auto status = opencv_core_module_input_umat(handle, &umat);
+        if (status != OPENCV_CORE_OK) {
+            return status;
+        }
+        if (umat->dims > maximum_probe_dimensions) {
+            return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
+        }
+        observation->dims = umat->dims;
+        observation->rows = umat->rows;
+        observation->cols = umat->cols;
+        observation->depth = umat->depth();
+        observation->channels = umat->channels();
+        observation->continuous = umat->isContinuous();
+        observation->submatrix = umat->isSubmatrix();
+        for (int axis = 0; axis < umat->dims; ++axis) {
+            observation->extents[axis] = umat->size[axis];
+        }
+        observation->sum = umat->empty() ? 0.0 : cv::sum(*umat)[0];
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_exception();
+    }
+}
+
+OPENCV_CORE_MODULE_PROBE_EXPORT opencv_core_status
+opencv_core_module_probe_umat_pair(const opencv_core_umat_handle *left,
+                                   const opencv_core_umat_handle *right,
+                                   umat_observation *left_observation,
+                                   umat_observation *right_observation) {
+    try {
+        const cv::UMat *a = nullptr;
+        const cv::UMat *b = nullptr;
+        auto status = opencv_core_module_input_umat(left, &a);
+        if (status != OPENCV_CORE_OK) return status;
+        status = opencv_core_module_input_umat(right, &b);
+        if (status != OPENCV_CORE_OK) return status;
+        if (a == nullptr || b == nullptr || a == b) {
+            return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
+        }
+        status = opencv_core_module_probe_umat_input(left, left_observation);
+        if (status != OPENCV_CORE_OK) return status;
+        return opencv_core_module_probe_umat_input(right, right_observation);
+    } catch (...) {
+        return translate_exception();
+    }
+}
+
+OPENCV_CORE_MODULE_PROBE_EXPORT opencv_core_status
+opencv_core_module_probe_umat_mutate(opencv_core_umat_handle *handle,
+                                     double value) {
+    try {
+        cv::UMat *umat = nullptr;
+        const auto status = opencv_core_module_output_umat(handle, &umat);
+        if (status != OPENCV_CORE_OK) return status;
+        umat->setTo(cv::Scalar::all(value));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_exception();
+    }
+}
+
+OPENCV_CORE_MODULE_PROBE_EXPORT opencv_core_status
+opencv_core_module_probe_umat_create(opencv_core_umat_handle *handle) {
+    try {
+        cv::UMat *umat = nullptr;
+        const auto status = opencv_core_module_output_umat(handle, &umat);
+        if (status != OPENCV_CORE_OK) return status;
+        umat->create(3, 4, CV_32FC3, cv::USAGE_DEFAULT);
+        umat->setTo(cv::Scalar::all(7.0));
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_exception();
+    }
+}
+
+OPENCV_CORE_MODULE_PROBE_EXPORT opencv_core_status
+opencv_core_module_probe_umat_add(const opencv_core_umat_handle *input,
+                                  opencv_core_umat_handle *output) {
+    try {
+        const cv::UMat *a = nullptr;
+        cv::UMat *b = nullptr;
+        auto status = opencv_core_module_input_umat(input, &a);
+        if (status != OPENCV_CORE_OK) return status;
+        status = opencv_core_module_output_umat(output, &b);
+        if (status != OPENCV_CORE_OK) return status;
+        cv::add(*a, *a, *b);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_exception();
+    }
+}
+
+OPENCV_CORE_MODULE_PROBE_EXPORT opencv_core_status
+opencv_core_module_probe_umat_invalid(opencv_core_umat_handle *valid) {
+    const cv::UMat sentinel;
+    const cv::UMat *input = &sentinel;
+    cv::UMat *output = const_cast<cv::UMat *>(&sentinel);
+    void *native = const_cast<cv::UMat *>(&sentinel);
+    if (opencv_core_module_input_umat(nullptr, &input) !=
+            OPENCV_CORE_ERROR_INVALID_ARGUMENT || input != nullptr ||
+        opencv_core_module_output_umat(nullptr, &output) !=
+            OPENCV_CORE_ERROR_INVALID_ARGUMENT || output != nullptr ||
+        opencv_core_module_input_umat(valid, nullptr) !=
+            OPENCV_CORE_ERROR_INVALID_ARGUMENT ||
+        opencv_core_module_output_umat(valid, nullptr) !=
+            OPENCV_CORE_ERROR_INVALID_ARGUMENT ||
+        opencv_core_umat_resolve_input(nullptr, &native) !=
+            OPENCV_CORE_ERROR_INVALID_ARGUMENT || native != nullptr) {
+        return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
+    }
+    native = const_cast<cv::UMat *>(&sentinel);
+    if (opencv_core_umat_resolve_output(nullptr, &native) !=
+            OPENCV_CORE_ERROR_INVALID_ARGUMENT || native != nullptr ||
+        opencv_core_umat_resolve_input(valid, nullptr) !=
+            OPENCV_CORE_ERROR_INVALID_ARGUMENT ||
+        opencv_core_umat_resolve_output(valid, nullptr) !=
+            OPENCV_CORE_ERROR_INVALID_ARGUMENT ||
+        opencv_core_umat_resolve_input(nullptr, nullptr) !=
+            OPENCV_CORE_ERROR_INVALID_ARGUMENT ||
+        opencv_core_umat_resolve_output(nullptr, nullptr) !=
+            OPENCV_CORE_ERROR_INVALID_ARGUMENT) {
+        return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
+    }
+    return OPENCV_CORE_OK;
+}
+
 } // extern "C"

@@ -1461,6 +1461,20 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_resolve_output";
 
+   function UMat_Resolve_Input
+     (Source : UMat_Handle; Result : access System.Address) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_resolve_input";
+
+   function UMat_Resolve_Output
+     (Destination : UMat_Handle; Result : access System.Address) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_resolve_output";
+
    function Sparse_Resolve_Input
      (Source : Sparse_Mat_Handle; Result : access System.Address) return Status
    with

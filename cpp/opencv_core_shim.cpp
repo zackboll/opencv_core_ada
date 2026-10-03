@@ -3642,6 +3642,42 @@ opencv_core_status opencv_core_mat_resolve_output(
     }
 }
 
+opencv_core_status opencv_core_umat_resolve_input(
+    const opencv_core_umat_handle *source, void **out_native_umat) {
+    clear_error();
+    if (out_native_umat == nullptr) {
+        return invalid_argument("out_native_umat must not be null");
+    }
+    *out_native_umat = nullptr;
+    if (source == nullptr) {
+        return invalid_argument("source UMat handle must not be null");
+    }
+    try {
+        *out_native_umat = const_cast<cv::UMat *>(&source->value);
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+opencv_core_status opencv_core_umat_resolve_output(
+    opencv_core_umat_handle *destination, void **out_native_umat) {
+    clear_error();
+    if (out_native_umat == nullptr) {
+        return invalid_argument("out_native_umat must not be null");
+    }
+    *out_native_umat = nullptr;
+    if (destination == nullptr) {
+        return invalid_argument("destination UMat handle must not be null");
+    }
+    try {
+        *out_native_umat = &destination->value;
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
 opencv_core_status opencv_core_sparse_resolve_input(
     const opencv_core_sparse_mat_handle *source, void **out_native_sparse_mat) {
     clear_error();
