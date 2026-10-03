@@ -869,6 +869,47 @@ Its view keeps the source allocation alive for the callback and follows the
 temporary-view no-escape rules; `Slice` itself is unchanged and never drops
 dimensions.
 
+### Retained ROI geometry and header adjustment
+
+Both `Mat` and `UMat` provide `Locate_Region` and `Adjust_Region` for nonempty,
+**exactly 2-D** headers, at any supported depth/channel count. `Slice` remains
+the N-D view abstraction. `Region_Location` contains `Whole_Size : OpenCV.Size`
+and `Offset : OpenCV.Point`: X is a zero-based column, Y a zero-based row.
+Nested Regions locate against the original retained allocation, not merely
+their immediate parent view. Whole_Size describes OpenCV's retained storage
+geometry; it is not a parent Ada Mat, an ownership handle, or evidence that
+the original parent variable is still alive. Reference-counted Region storage
+remains usable after that variable finalizes.
+
+```ada
+Location : constant Region_Location := ROI.Locate_Region;
+--  Move each boundary outward by one, clipping to the retained parent.
+ROI.Adjust_Region (Top => 1, Bottom => 1, Left => 1, Right => 1);
+```
+
+Each argument has the strong signed type `Region_Adjustment` (32 bits).
+Positive top/left moves upward/leftward, positive bottom/right downward/rightward;
+negative adjustments contract inward. Native clipping permits over-large
+expansion requests. After clipping, OpenCV **swaps crossed opposing boundaries**,
+so extreme contraction can have a non-intuitive nonempty result. Equal endpoints
+can produce an empty header, which these operations subsequently reject.
+Requests whose native signed intermediates would overflow raise `OpenCV_Error`
+without changing the header.
+Unsafe native parent-span arithmetic or empty-result Mat pointers are likewise
+rejected rather than invoking undefined native behavior.
+
+Adjustment changes only that header, never clones or allocates pixel storage.
+Shallow aliases and the parent keep independent geometry while overlapping
+pixels remain shared; Clone remains independent. Ordinary whole headers can
+also shrink. Continuity is recomputed, but native `Is_Submatrix` is **not**:
+it can remain true after full expansion or false after whole-header shrink.
+Use `Locate_Region` and `Rows`/`Columns` as authoritative geometry.
+
+Callback-scoped caller-buffer and synthetic selected Mat views reject both
+parent-geometry operations, protecting their logical storage/lifetime contract
+(including row padding). UMat operates directly on its native header and
+requires **no host mapping or transfer**.
+
 ### Copied row access
 
 The UInt8, Int8, UInt16, Int16, Int32, Float16, Float32, and Float64 C1 row

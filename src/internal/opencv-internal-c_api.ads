@@ -73,6 +73,20 @@ package OpenCV.Internal.C_API is
       X, Y, Width, Height : C_Int32;
       Result              : access UMat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_umat_region";
+   function UMat_Locate_ROI
+     (Source                                        : UMat_Handle;
+      Whole_Width, Whole_Height, Offset_X, Offset_Y : access C_Int32)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_locate_roi";
+   function UMat_Adjust_ROI
+     (Self : UMat_Handle; Top, Bottom, Left, Right : C_Int32) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_adjust_roi";
    function UMat_Slice_ND
      (Source        : UMat_Handle;
       Dims          : C_Int32;
@@ -2030,6 +2044,15 @@ package OpenCV.Internal.C_API is
       Height : C_Int32;
       Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_region";
+
+   function Mat_Locate_ROI
+     (Source                                        : Mat_Handle;
+      Whole_Width, Whole_Height, Offset_X, Offset_Y : access C_Int32)
+      return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_locate_roi";
+   function Mat_Adjust_ROI
+     (Self : Mat_Handle; Top, Bottom, Left, Right : C_Int32) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_adjust_roi";
 
    function Mat_Row_View
      (Source : Mat_Handle; Row : C_Int32; Result : access Mat_Handle)

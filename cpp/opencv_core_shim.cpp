@@ -20,6 +20,7 @@
 #include <vector>
 #include <string>
 #include <type_traits>
+#include <utility>
 
 struct opencv_core_mat_handle {
     // Optional shallow, reference-counted owner of the storage that value
@@ -344,6 +345,158 @@ opencv_core_status invalid_argument(const char *message) noexcept {
     set_error(message);
     return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
 }
+
+std::pair<size_t, size_t> roi_byte_spans(const cv::Mat &value) {
+    return {static_cast<size_t>(value.data - value.datastart),
+            static_cast<size_t>(value.dataend - value.datastart)};
+}
+
+std::pair<size_t, size_t> roi_byte_spans(const cv::UMat &value) {
+    return {value.offset, value.u->size};
+}
+
+template <typename Matrix>
+opencv_core_status roi_geometry_preflight(const Matrix &value) {
+    // ABI safety: Mat::locateROI subtracts data/datastart/dataend pointers;
+    // UMat::locateROI dereferences u->size. Empty headers have no such storage.
+    if (value.empty()) {
+        return invalid_argument("region geometry requires native storage");
+    }
+    // ABI safety: the overflow preflight and native adjustment use 2-D
+    // rows/cols/step fields, not N-D extents (rows/cols can be -1 for N-D).
+    if (value.dims != 2) {
+        return invalid_argument("region geometry requires a 2-D native header");
+    }
+    // ABI safety: locateROI converts allocation byte spans to ptrdiff_t;
+    // a larger span cannot be represented by its pointer/offset arithmetic.
+    if (value.u != nullptr && value.u->size >
+        static_cast<size_t>(std::numeric_limits<ptrdiff_t>::max())) {
+        return invalid_argument("region allocation exceeds ptrdiff_t range");
+    }
+    // ABI safety: upstream narrows offset/step, remainder/elemSize and parent
+    // extents to int, then adds ofs.x + cols and ofs.y + rows as signed int.
+    // Reshaped Core-owned headers can retain a span whose inferred parent
+    // axis exceeds int even though the current axes fit. Check precisely
+    // those intermediates before native locateROI, without imposing a cap on
+    // valid dimensions or using these calculations as the returned geometry.
+    const size_t step = value.step[0], element = value.elemSize();
+    if (step == 0 || element == 0)
+        return invalid_argument("region geometry has no native byte stride");
+    const auto spans = roi_byte_spans(value);
+    const size_t start = spans.first, span = spans.second;
+    const size_t int_max = static_cast<size_t>(std::numeric_limits<int>::max());
+    if (start > span || span >
+        static_cast<size_t>(std::numeric_limits<ptrdiff_t>::max()))
+        return invalid_argument("region byte span exceeds native pointer range");
+    const size_t y = start / step, x = (start % step) / element;
+    if (y > int_max || x > int_max ||
+        static_cast<size_t>(value.rows) > int_max - y ||
+        static_cast<size_t>(value.cols) > int_max - x)
+        return invalid_argument("region offset plus extent exceeds native int");
+    const size_t end_x = x + static_cast<size_t>(value.cols);
+    if (end_x > span / element)
+        return invalid_argument("region row extent exceeds retained byte span");
+    const size_t height_minus_one = (span - end_x * element) / step;
+    if (height_minus_one >= int_max)
+        return invalid_argument("region whole height exceeds native int");
+    const size_t height = std::max(height_minus_one + 1,
+                                  y + static_cast<size_t>(value.rows));
+    if (height - 1 > span / step ||
+        (span - (height - 1) * step) / element > int_max)
+        return invalid_argument("region whole width exceeds native int");
+    return OPENCV_CORE_OK;
+}
+
+bool fits_native_int(int64_t value) noexcept {
+    return value >= std::numeric_limits<int>::min() &&
+           value <= std::numeric_limits<int>::max();
+}
+
+template <typename Matrix>
+opencv_core_status roi_adjustment_preflight(const Matrix &value,
+    int32_t top, int32_t bottom, int32_t left, int32_t right) {
+    cv::Size whole;
+    cv::Point offset;
+    value.locateROI(whole, offset);
+    const int64_t row_end = int64_t(offset.y) + value.rows;
+    const int64_t col_end = int64_t(offset.x) + value.cols;
+    // ABI safety: upstream evaluates ofs.y - dtop, ofs.y + rows + dbottom,
+    // ofs.x - dleft, and ofs.x + cols + dright as signed int BEFORE clipping.
+    // Check both additions in the left-associative end expressions as well.
+    if (!fits_native_int(top) || !fits_native_int(bottom) ||
+        !fits_native_int(left) || !fits_native_int(right) ||
+        !fits_native_int(row_end) || !fits_native_int(col_end) ||
+        !fits_native_int(int64_t(offset.y) - top) ||
+        !fits_native_int(row_end + bottom) ||
+        !fits_native_int(int64_t(offset.x) - left) ||
+        !fits_native_int(col_end + right)) {
+        return invalid_argument("region adjustment would overflow native int");
+    }
+    return OPENCV_CORE_OK;
+}
+
+opencv_core_status roi_temporary_preflight(const opencv_core_mat_handle *self) {
+    // ABI safety: external/synthetic headers are temporary logical
+    // capabilities. Parent inference or growth could expose row padding or
+    // storage outside their callback-scoped logical view (including guards).
+    if (self->temporary_external_view) {
+        return invalid_argument(
+            "Mat parent geometry is unavailable for temporary views");
+    }
+    return OPENCV_CORE_OK;
+}
+
+opencv_core_status roi_mat_pointer_preflight(const cv::Mat &value,
+    int32_t top, int32_t bottom, int32_t left, int32_t right) {
+    cv::Size whole;
+    cv::Point offset;
+    value.locateROI(whole, offset);
+    const auto clamp = [](int64_t boundary, int extent) {
+        return static_cast<size_t>(std::max(int64_t(0),
+            std::min(boundary, int64_t(extent))));
+    };
+    const size_t row = std::min(clamp(int64_t(offset.y) - top, whole.height),
+        clamp(int64_t(offset.y) + value.rows + bottom, whole.height));
+    const size_t col = std::min(clamp(int64_t(offset.x) - left, whole.width),
+        clamp(int64_t(offset.x) + value.cols + right, whole.width));
+    // ABI safety: both endpoints can clip to the bottom edge with a nonzero
+    // column. Even an empty result makes Mat::adjustROI form a data pointer;
+    // row*step + col*elemSize must not go beyond the allocation's one-past end.
+    const size_t limit = static_cast<size_t>(value.datalimit - value.datastart);
+    if (row > limit / value.step[0] ||
+        col > (limit - row * value.step[0]) / value.elemSize())
+        return invalid_argument("region adjustment would form a pointer past allocation");
+    return OPENCV_CORE_OK;
+}
+
+#if CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR < 9
+void adjust_mat_roi_legacy_safe(cv::Mat &candidate,
+    int top, int bottom, int left, int right) {
+    // ABI safety: pre-4.9 Mat::adjustROI converts negative row/column deltas
+    // to size_t before pointer addition. Preserve its native endpoint/header
+    // algorithm, but use the signed displacement introduced in OpenCV 4.9.
+    // The caller has already checked storage, 2-D geometry, native int
+    // expressions, representable allocation spans and the final data pointer.
+    cv::Size whole;
+    cv::Point ofs;
+    candidate.locateROI(whole, ofs);
+    int row1 = std::min(std::max(ofs.y - top, 0), whole.height);
+    int row2 = std::max(0, std::min(ofs.y + candidate.rows + bottom, whole.height));
+    int col1 = std::min(std::max(ofs.x - left, 0), whole.width);
+    int col2 = std::max(0, std::min(ofs.x + candidate.cols + right, whole.width));
+    if (row1 > row2) std::swap(row1, row2);
+    if (col1 > col2) std::swap(col1, col2);
+
+    candidate.data +=
+        (row1 - ofs.y) * static_cast<std::ptrdiff_t>(candidate.step[0])
+        + (col1 - ofs.x) * static_cast<std::ptrdiff_t>(candidate.elemSize());
+    candidate.rows = row2 - row1;
+    candidate.cols = col2 - col1;
+    candidate.size.p[0] = candidate.rows;
+    candidate.size.p[1] = candidate.cols;
+    candidate.updateContinuityFlag();
+}
+#endif
 
 opencv_core_status reject_temporary_external_view(
     const opencv_core_mat_handle *source) noexcept {
@@ -2812,6 +2965,47 @@ opencv_core_status opencv_core_umat_region(const opencv_core_umat_handle *source
         auto result = std::make_unique<opencv_core_umat_handle>(
             cv::UMat(source->value, cv::Rect(x, y, width, height)));
         *out = result.release();
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_umat_locate_roi(
+    const opencv_core_umat_handle *source, int32_t *whole_width,
+    int32_t *whole_height, int32_t *offset_x, int32_t *offset_y) {
+    clear_error();
+    if (whole_width) *whole_width = 0;
+    if (whole_height) *whole_height = 0;
+    if (offset_x) *offset_x = 0;
+    if (offset_y) *offset_y = 0;
+    if (!source || !whole_width || !whole_height || !offset_x || !offset_y)
+        return invalid_argument("null UMat locate region input/output");
+    try {
+        const auto status = roi_geometry_preflight(source->value);
+        if (status != OPENCV_CORE_OK) return status;
+        cv::Size whole;
+        cv::Point offset;
+        source->value.locateROI(whole, offset);
+        *whole_width = static_cast<int32_t>(whole.width);
+        *whole_height = static_cast<int32_t>(whole.height);
+        *offset_x = static_cast<int32_t>(offset.x);
+        *offset_y = static_cast<int32_t>(offset.y);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_umat_adjust_roi(opencv_core_umat_handle *self,
+    int32_t top, int32_t bottom, int32_t left, int32_t right) {
+    clear_error();
+    if (!self) return invalid_argument("null UMat adjust region handle");
+    try {
+        auto status = roi_geometry_preflight(self->value);
+        if (status != OPENCV_CORE_OK) return status;
+        status = roi_adjustment_preflight(self->value, top, bottom, left, right);
+        if (status != OPENCV_CORE_OK) return status;
+        cv::UMat candidate = self->value;
+        candidate.adjustROI(static_cast<int>(top), static_cast<int>(bottom),
+                            static_cast<int>(left), static_cast<int>(right));
+        self->value = std::move(candidate);
         return OPENCV_CORE_OK;
     } catch (...) { return translate_current_exception(); }
 }
@@ -6531,6 +6725,59 @@ opencv_core_mat_region(const opencv_core_mat_handle *source, int32_t x,
     } catch (...) {
         return translate_current_exception();
     }
+}
+
+opencv_core_status opencv_core_mat_locate_roi(
+    const opencv_core_mat_handle *source, int32_t *whole_width,
+    int32_t *whole_height, int32_t *offset_x, int32_t *offset_y) {
+    clear_error();
+    if (whole_width) *whole_width = 0;
+    if (whole_height) *whole_height = 0;
+    if (offset_x) *offset_x = 0;
+    if (offset_y) *offset_y = 0;
+    if (!source || !whole_width || !whole_height || !offset_x || !offset_y)
+        return invalid_argument("null Mat locate region input/output");
+    if (roi_temporary_preflight(source) != OPENCV_CORE_OK)
+        return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
+    try {
+        const auto status = roi_geometry_preflight(source->value);
+        if (status != OPENCV_CORE_OK) return status;
+        cv::Size whole;
+        cv::Point offset;
+        source->value.locateROI(whole, offset);
+        *whole_width = static_cast<int32_t>(whole.width);
+        *whole_height = static_cast<int32_t>(whole.height);
+        *offset_x = static_cast<int32_t>(offset.x);
+        *offset_y = static_cast<int32_t>(offset.y);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_mat_adjust_roi(opencv_core_mat_handle *self,
+    int32_t top, int32_t bottom, int32_t left, int32_t right) {
+    clear_error();
+    if (!self) return invalid_argument("null Mat adjust region handle");
+    if (roi_temporary_preflight(self) != OPENCV_CORE_OK)
+        return OPENCV_CORE_ERROR_INVALID_ARGUMENT;
+    try {
+        auto status = roi_geometry_preflight(self->value);
+        if (status != OPENCV_CORE_OK) return status;
+        status = roi_adjustment_preflight(self->value, top, bottom, left, right);
+        if (status != OPENCV_CORE_OK) return status;
+        status = roi_mat_pointer_preflight(self->value, top, bottom, left, right);
+        if (status != OPENCV_CORE_OK) return status;
+        cv::Mat candidate = self->value;
+#if CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR < 9
+        adjust_mat_roi_legacy_safe(candidate,
+            static_cast<int>(top), static_cast<int>(bottom),
+            static_cast<int>(left), static_cast<int>(right));
+#else
+        candidate.adjustROI(static_cast<int>(top), static_cast<int>(bottom),
+                            static_cast<int>(left), static_cast<int>(right));
+#endif
+        self->value = std::move(candidate);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
 }
 
 opencv_core_status
