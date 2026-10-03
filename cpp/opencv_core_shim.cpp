@@ -469,6 +469,35 @@ opencv_core_status roi_mat_pointer_preflight(const cv::Mat &value,
     return OPENCV_CORE_OK;
 }
 
+#if CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR < 9
+void adjust_mat_roi_legacy_safe(cv::Mat &candidate,
+    int top, int bottom, int left, int right) {
+    // ABI safety: pre-4.9 Mat::adjustROI converts negative row/column deltas
+    // to size_t before pointer addition. Preserve its native endpoint/header
+    // algorithm, but use the signed displacement introduced in OpenCV 4.9.
+    // The caller has already checked storage, 2-D geometry, native int
+    // expressions, representable allocation spans and the final data pointer.
+    cv::Size whole;
+    cv::Point ofs;
+    candidate.locateROI(whole, ofs);
+    int row1 = std::min(std::max(ofs.y - top, 0), whole.height);
+    int row2 = std::max(0, std::min(ofs.y + candidate.rows + bottom, whole.height));
+    int col1 = std::min(std::max(ofs.x - left, 0), whole.width);
+    int col2 = std::max(0, std::min(ofs.x + candidate.cols + right, whole.width));
+    if (row1 > row2) std::swap(row1, row2);
+    if (col1 > col2) std::swap(col1, col2);
+
+    candidate.data +=
+        (row1 - ofs.y) * static_cast<std::ptrdiff_t>(candidate.step[0])
+        + (col1 - ofs.x) * static_cast<std::ptrdiff_t>(candidate.elemSize());
+    candidate.rows = row2 - row1;
+    candidate.cols = col2 - col1;
+    candidate.size.p[0] = candidate.rows;
+    candidate.size.p[1] = candidate.cols;
+    candidate.updateContinuityFlag();
+}
+#endif
+
 opencv_core_status reject_temporary_external_view(
     const opencv_core_mat_handle *source) noexcept {
     if (source != nullptr && source->temporary_external_view) {
@@ -6738,8 +6767,14 @@ opencv_core_status opencv_core_mat_adjust_roi(opencv_core_mat_handle *self,
         status = roi_mat_pointer_preflight(self->value, top, bottom, left, right);
         if (status != OPENCV_CORE_OK) return status;
         cv::Mat candidate = self->value;
+#if CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR < 9
+        adjust_mat_roi_legacy_safe(candidate,
+            static_cast<int>(top), static_cast<int>(bottom),
+            static_cast<int>(left), static_cast<int>(right));
+#else
         candidate.adjustROI(static_cast<int>(top), static_cast<int>(bottom),
                             static_cast<int>(left), static_cast<int>(right));
+#endif
         self->value = std::move(candidate);
         return OPENCV_CORE_OK;
     } catch (...) { return translate_current_exception(); }

@@ -16,6 +16,20 @@ Authoritative files: [4.1](https://github.com/opencv/opencv/tree/4.1.0/modules/c
 [4.10](https://github.com/opencv/opencv/tree/4.10.0/modules/core),
 [5.0](https://github.com/opencv/opencv/tree/5.0.0/modules/core).
 
+The corrective additionally inspected the complete `Mat::adjustROI` bodies and
+`MatStep` declarations at these exact tags. The displacement lines below are
+in `modules/core/src/matrix.cpp`:
+
+| Tag / peeled commit | adjustROI body | Displacement line |
+|---|---|---|
+| 4.1.0 / `371bba8f54560b374fbcd47e7e02f015ac4969ad` | 776-794 | 789 |
+| 4.6.0 / `b0dc474160e389b9c9045da5db49d03ae17c6a6b` | 1118-1136 | 1131 |
+| 4.7.0 / `725e440d278aca07d35a5e8963ef990572b07316` | 1118-1136 | 1131 |
+| 4.8.0 / `f9a59f2592993d3dcc080e495f4f5e02dd8ec7ef` | 1118-1136 | 1131 |
+| 4.9.0 / `dad8af6b17f8e60d7b95a1203a1b4d22f56574cf` | 1118-1136 | 1131 |
+| 4.10.0 / `71d3237a093b60a27601c20e9ee6c3e52154e8b1` | 1118-1136 | 1131 |
+| 5.0.0 / `40738fb16ceddb5fb3fea747585f7ce6abb0605b` | 1652-1676 | 1670 (2-D) |
+
 ## Per-version findings
 
 **4.1 Mat:** both operations assert `dims <= 2 && step[0] > 0`.
@@ -28,7 +42,8 @@ The retained `datastart`/`dataend` survive ordinary shallow copying, so nested
 Regions refer to the original allocation, not their immediate parent header.
 Adjust clamps four boundary expressions, swaps crossed endpoints, modifies
 `data`, rows/cols/size, and calls `updateContinuityFlag`. Its pointer displacement
-uses unsigned size arithmetic in 4.1 (including modular negative movement).
+uses unsafe unsigned size arithmetic for negative movement before 4.9; see the
+compatibility correction below.
 
 **4.10 Mat:** the same location formulas, assertions, clipping, swapping, and
 flags apply. Pointer displacement explicitly casts row step and element size
@@ -52,6 +67,74 @@ the unsigned offset displacement remains, unlike Mat's ptrdiff_t change.
 The 2-D formulas, unsigned offset update, clipping, swapping, and continuity
 are unchanged. This confirms that 5.0 must not be inferred from 4.x.
 
+## Pre-4.9 Mat pointer compatibility correction
+
+Exact source in **4.1.0, 4.6.0, 4.7.0, and 4.8.0**, respectively at
+[789](https://github.com/opencv/opencv/blob/4.1.0/modules/core/src/matrix.cpp#L789),
+[1131](https://github.com/opencv/opencv/blob/4.6.0/modules/core/src/matrix.cpp#L1131),
+[1131](https://github.com/opencv/opencv/blob/4.7.0/modules/core/src/matrix.cpp#L1131),
+and [1131](https://github.com/opencv/opencv/blob/4.8.0/modules/core/src/matrix.cpp#L1131):
+
+```cpp
+data += (row1 - ofs.y)*step + (col1 - ofs.x)*esz;
+```
+
+`esz` is declared `size_t esz = elemSize();`; `step` is `MatStep`, whose
+conversion operator returns `size_t` and whose indexed entries are `size_t`.
+A valid top/left expansion makes one or both signed deltas negative. The usual
+arithmetic conversions turn them into unsigned values before multiplication.
+Unsigned multiplication/addition wrap modulo the unsigned range, but adding the
+resulting huge unsigned displacement to a native pointer is not portable, safe
+C++ pointer arithmetic, even when the intended earlier address is in bounds.
+Current compilers/platforms commonly wrap address calculations to that intended
+address, so existing tests can pass despite this latent source defect. No
+upstream crash was observed or is claimed: this is a
+**portability/native-pointer-safety correction**.
+
+**4.9.0 is the compatibility boundary.** Its
+[line 1131](https://github.com/opencv/opencv/blob/4.9.0/modules/core/src/matrix.cpp#L1131)
+introduces the signed casts:
+
+```cpp
+data += (row1 - ofs.y)*(std::ptrdiff_t)step + (col1 - ofs.x)*(std::ptrdiff_t)esz;
+```
+
+4.10.0 retains this exact line; 5.0.0 retains it in the 2-D branch. Therefore only
+`CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR < 9` bypasses native Mat adjustment.
+All other supported versions still call `candidate.adjustROI(...)` unchanged.
+Neither Mat nor UMat location is replaced.
+
+The private `adjust_mat_roi_legacy_safe` helper calls `candidate.locateROI` and
+preserves the native 4.x algorithm exactly apart from signed displacement:
+
+```cpp
+row1 = min(max(ofs.y - top, 0), whole.height);
+row2 = max(0, min(ofs.y + rows + bottom, whole.height));
+col1 = min(max(ofs.x - left, 0), whole.width);
+col2 = max(0, min(ofs.x + cols + right, whole.width));
+if (row1 > row2) swap(row1, row2);
+if (col1 > col2) swap(col1, col2);
+candidate.data +=
+    (row1 - ofs.y) * static_cast<std::ptrdiff_t>(candidate.step[0])
+    + (col1 - ofs.x) * static_cast<std::ptrdiff_t>(candidate.elemSize());
+```
+
+It updates rows, cols, size.p[0], size.p[1], then calls
+`candidate.updateContinuityFlag()`. It does not modify SUBMATRIX_FLAG, datastart,
+dataend, datalimit, or u, and does not clone pixel storage. Existing native-storage,
+exact-2-D, parent-span, signed-expression, and final-pointer preflights remain
+unchanged; the helper assumes they succeeded and adds no validation or limits.
+For these retained allocations, row step and element size fit the allocation;
+the already bounded allocation span makes their ptrdiff_t conversions and the
+signed displacement representable. No speculative conversion restriction is
+needed. `cv::Mat candidate = self->value` retains shared storage, and only a
+successful adjustment publishes `self->value = std::move(candidate)`.
+
+**UMat does not use this helper.** Its `offset += ...` updates an unsigned integer
+byte offset, not a native pointer. That modular integer representation is distinct
+from the old Mat pointer defect. The production UMat candidate/native adjustROI
+path remains unchanged, with no getMat, To_Mat, To_UMat, or host mapping.
+
 ## Shared behavior and native arithmetic
 
 Default empties are not safe inputs: Mat pointer subtraction on null storage
@@ -66,7 +149,7 @@ the portable test samples therefore stop at 128 without restricting ROI policy.
 Positive top/left subtract from the starting offset (outward); positive
 bottom/right add to the ending offset. Negative values contract. Each endpoint
 is clamped independently to [0, whole extent], then reversed endpoints are
-**swapped**, in all six inspected implementations. This can enlarge an ROI
+**swapped**, in every inspected implementation. This can enlarge an ROI
 after an extreme contraction; it is not silently normalized to empty.
 Equal endpoints can produce an empty header. No allocation, pixel access,
 copy, clone, synchronization, or mapping occurs in these native operations.
@@ -128,6 +211,16 @@ channel checks. All supplied locate outputs clear before any fallible work;
 required null outputs/handles fail safely. Candidate adjustment publishes only
 on success. Exceptions are contained with the existing four-status model.
 
+Corrective boundary audit: the legacy helper's endpoint clamps and crossed-
+endpoint swaps reproduce OpenCV's native operation; they are not a second public
+clipping policy or validation guards. Public adjustment semantics still come
+from OpenCV. Only old Mat pointer-displacement mechanics are replaced, with an
+`ABI safety:` comment identifying the unsafe unsigned pointer addition. No new
+public semantic restriction or duplicated semantic validation is added. Existing
+retained duplicate guards remain justified above: native-storage access, 2-D
+field access, temporary capability escape, signed/narrowing arithmetic, and the
+prospective Mat pointer exceeding the allocation's one-past end.
+
 The new production UMat path uses its actual cv::UMat header's locateROI and
 adjustROI only. There is no getMat, ACCESS_READ/WRITE, To_Mat/To_UMat, or raw
 transfer call. Transfers in ROI tests are observation-only, never production.
@@ -147,3 +240,13 @@ each missing output, cleared outputs, empty/N-D/temporary headers, valid whole
 and Region headers, all four overflowing boundary expressions, and unchanged
 geometry after failure. The same suite is run on the four compatibility images;
 an additional research executable is unnecessary for these settled semantics.
+
+All 28 ROI tests are retained without adding cases. In particular, `ROI Mat
+aliases` starts with an interior Region at (2,2), applies positive Top=1 and
+Left=1, and asserts the new offset (1,1) and extents (5,4). It writes through both
+the original shared pixel and the newly exposed top/left margin, checking parent
+pixels (2,2) and (1,1), unchanged alias geometry/pixels, and independent explicit
+Clone storage. This is true backward pointer movement on both axes on 4.1/4.6.
+`ROI Mat nested`, clipped expansion to (0,0), and retained-parent lifetime cases
+also move backward. Ordinary/crossed contraction, empty-result safety, alias
+geometry independence, and external/synthetic temporary rejection remain covered.
