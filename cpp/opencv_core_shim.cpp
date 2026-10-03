@@ -13606,6 +13606,170 @@ opencv_core_mat_min_max_loc_masked(
     }
 }
 
+namespace {
+
+opencv_core_status dense_min_max_indices(
+    const opencv_core_mat_handle *source, const opencv_core_mat_handle *mask,
+    bool masked, double *minimum, double *maximum, int32_t *minimum_indices,
+    int32_t *maximum_indices, int32_t capacity, int32_t *dimensions,
+    uint8_t *has_minimum, uint8_t *has_maximum) {
+    clear_error();
+    if (minimum != nullptr) *minimum = 0.0;
+    if (maximum != nullptr) *maximum = 0.0;
+    if (dimensions != nullptr) *dimensions = 0;
+    if (has_minimum != nullptr) *has_minimum = 0;
+    if (has_maximum != nullptr) *has_maximum = 0;
+    const bool safe_capacity = capacity > 0 && capacity <= maximum_mat_dimensions;
+    if (safe_capacity) {
+        if (minimum_indices != nullptr)
+            std::fill_n(minimum_indices, capacity, int32_t{0});
+        if (maximum_indices != nullptr)
+            std::fill_n(maximum_indices, capacity, int32_t{0});
+    }
+    if (!safe_capacity || minimum == nullptr || maximum == nullptr ||
+        minimum_indices == nullptr || maximum_indices == nullptr ||
+        dimensions == nullptr || has_minimum == nullptr || has_maximum == nullptr) {
+        return invalid_argument("invalid dense extrema outputs or capacity");
+    }
+    if (source == nullptr || (masked && mask == nullptr)) {
+        return invalid_argument("null dense extrema input handle");
+    }
+    try {
+        cv::Mat src = source->value;
+        const cv::Mat native_mask = masked ? mask->value : cv::Mat();
+        const int dims = src.dims;
+        // ABI safety: ofs2idx writes dims native ints into our scratch arrays.
+        if (dims < 0 || dims > maximum_mat_dimensions || dims > capacity) {
+            return invalid_argument("dense extrema coordinate capacity too small");
+        }
+
+        bool flattened_hal = false;
+#if CV_VERSION_MAJOR > 4 || (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 10)
+        flattened_hal = dims > 2 && src.isContinuous();
+#if CV_VERSION_MAJOR >= 5
+        flattened_hal = flattened_hal &&
+                        (native_mask.empty() || native_mask.isContinuous());
+#endif
+#endif
+        // ABI safety: 4.10 minmax.cpp:1520 and 5.0 minmax.dispatch.cpp:327
+        // narrow total() to int before the continuous N-D HAL call. Negative
+        // or truncated widths can reach backend pointer arithmetic unchecked.
+        if (flattened_hal && src.total() > static_cast<size_t>(INT_MAX)) {
+            return invalid_argument("dense extrema HAL length exceeds native int");
+        }
+        // ABI safety: HAL is called before NAryMatIterator's shape assertion;
+        // it receives only source dimensions and a raw mask pointer. A smaller
+        // mask would be read out of bounds (4.1/4.10 minmax.cpp; 5.0 dispatch).
+        if (!native_mask.empty() &&
+            (dims <= 2 || flattened_hal) && src.size != native_mask.size) {
+            return invalid_argument("unsafe dense extrema HAL mask size");
+        }
+#if CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR == 10
+        // ABI safety: 4.10's flattened HAL ignores mask strides and reads
+        // padding as elements. Select the native strided iterator with a local
+        // header only; do not clone data or reject a valid public mask.
+        if (dims > 2 && src.isContinuous() && !native_mask.empty() &&
+            !native_mask.isContinuous()) {
+            src.flags &= ~cv::Mat::CONTINUOUS_FLAG;
+        }
+#endif
+
+        // Inspect exactly the native iterator layout, not a speculative total
+        // limit: planes are already bounded to INT_MAX by iterator::init.
+        struct Iterator : cv::NAryMatIterator {
+            Iterator(const cv::Mat **arrays, uchar **ptrs)
+                : cv::NAryMatIterator(arrays, ptrs) {}
+            int index_depth() const { return iterdepth; }
+        };
+        const cv::Mat *arrays[] = {&src, &native_mask, nullptr};
+        uchar *ptrs[2] = {};
+        Iterator it(arrays, ptrs);
+        // ABI safety: matrix_iterator.cpp:160 on 4.1/4.10/5.0 uses
+        // int _idx = (int)idx when iterdepth != 1. Truncation changes the
+        // subsequent raw data pointer, potentially outside the logical view.
+        if (it.index_depth() > 1 && it.nplanes > 0 &&
+            it.nplanes - 1 > static_cast<size_t>(INT_MAX)) {
+            return invalid_argument("dense extrema plane index exceeds native int");
+        }
+        // ABI safety: native minMaxIdx uses size_t startidx = 1 followed by
+        // startidx += planeSize. Reserve its one-based sentinel offset.
+        if (src.total() == std::numeric_limits<size_t>::max()) {
+            return invalid_argument("dense extrema one-based offset overflow");
+        }
+        // ABI safety: 4.x ipp_minMaxIdx narrows row steps and N-D plane byte
+        // lengths to int; 5.0 hal/ipp/src/minmax_ipp.cpp:210 narrows steps.
+        // These checks apply only to depths the IPP location selector accepts.
+        if (cv::ipp::useIPP() &&
+            (src.depth() == CV_8U || src.depth() == CV_16U || src.depth() == CV_32F)) {
+            if (dims <= 2 &&
+                (src.step[0] > static_cast<size_t>(INT_MAX) ||
+                 (!native_mask.empty() &&
+                  native_mask.step[0] > static_cast<size_t>(INT_MAX)))) {
+                return invalid_argument("dense extrema IPP step exceeds native int");
+            }
+#if CV_VERSION_MAJOR < 5
+            if (dims > 2 && it.size > static_cast<size_t>(INT_MAX) / src.elemSize1()) {
+                return invalid_argument("dense extrema IPP plane exceeds native int");
+            }
+#endif
+        }
+
+        int native_min[maximum_mat_dimensions], native_max[maximum_mat_dimensions];
+        std::fill_n(native_min, maximum_mat_dimensions, -1);
+        std::fill_n(native_max, maximum_mat_dimensions, -1);
+        double native_minimum = 0.0, native_maximum = 0.0;
+        cv::minMaxIdx(src, &native_minimum, &native_maximum, native_min,
+                      native_max, native_mask);
+        const bool found_min = dims > 0 && native_min[0] >= 0;
+        const bool found_max = dims > 0 && native_max[0] >= 0;
+        int32_t published_min[maximum_mat_dimensions] = {};
+        int32_t published_max[maximum_mat_dimensions] = {};
+        for (int axis = 0; axis < dims; ++axis) {
+            // ABI safety: explicit native-int to fixed-width marshalling must
+            // not truncate, including on platforms with wider native int.
+            if ((found_min && (native_min[axis] < 0 ||
+                               native_min[axis] > INT32_MAX)) ||
+                (found_max && (native_max[axis] < 0 ||
+                               native_max[axis] > INT32_MAX))) {
+                return invalid_argument("dense extrema coordinate exceeds ABI width");
+            }
+            if (found_min) published_min[axis] = static_cast<int32_t>(native_min[axis]);
+            if (found_max) published_max[axis] = static_cast<int32_t>(native_max[axis]);
+        }
+        std::copy_n(published_min, capacity, minimum_indices);
+        std::copy_n(published_max, capacity, maximum_indices);
+        *minimum = native_minimum;
+        *maximum = native_maximum;
+        *dimensions = static_cast<int32_t>(dims);
+        *has_minimum = found_min ? 1 : 0;
+        *has_maximum = found_max ? 1 : 0;
+        return OPENCV_CORE_OK;
+    } catch (...) {
+        return translate_current_exception();
+    }
+}
+
+} // namespace
+
+opencv_core_status opencv_core_mat_min_max_indices(
+    const opencv_core_mat_handle *source, double *minimum, double *maximum,
+    int32_t *minimum_indices, int32_t *maximum_indices, int32_t capacity,
+    int32_t *dimensions, uint8_t *has_minimum, uint8_t *has_maximum) {
+    return dense_min_max_indices(source, nullptr, false, minimum, maximum,
+                                 minimum_indices, maximum_indices, capacity,
+                                 dimensions, has_minimum, has_maximum);
+}
+
+opencv_core_status opencv_core_mat_min_max_indices_masked(
+    const opencv_core_mat_handle *source, const opencv_core_mat_handle *mask,
+    double *minimum, double *maximum, int32_t *minimum_indices,
+    int32_t *maximum_indices, int32_t capacity, int32_t *dimensions,
+    uint8_t *has_minimum, uint8_t *has_maximum) {
+    return dense_min_max_indices(source, mask, true, minimum, maximum,
+                                 minimum_indices, maximum_indices, capacity,
+                                 dimensions, has_minimum, has_maximum);
+}
+
 opencv_core_status
 opencv_core_mat_count_non_zero(const opencv_core_mat_handle *mat,
                                int64_t *out_count) {

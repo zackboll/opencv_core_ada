@@ -2938,6 +2938,27 @@ opencv_core_mat_min_max_loc_masked(
     double *out_minimum, double *out_maximum, int32_t *out_minimum_x,
     int32_t *out_minimum_y, int32_t *out_maximum_x, int32_t *out_maximum_y);
 
+/* Dense minMaxIdx, borrowed inputs, no mutation/ownership transfer.
+ * All outputs are required. Coordinate buffers each contain capacity int32_t
+ * entries, where 1 <= capacity <= 32 and capacity >= source.dims. Coordinates
+ * are zero-based in native dimension order (row, column for 2-D). Unused or
+ * undefined coordinates are zero; each uint8_t Has flag is independently 0/1.
+ * Scalars and all entries within an accepted capacity are cleared before
+ * validation; failure never publishes partial results. An invalid capacity
+ * clears scalars but does not access coordinate buffers.
+ * Raw source/mask semantics follow native OpenCV, including version-dependent
+ * Float16 support. Public Ada depth/mask policy is deliberately not imposed.
+ */
+opencv_core_status opencv_core_mat_min_max_indices(
+    const opencv_core_mat_handle *source, double *minimum, double *maximum,
+    int32_t *minimum_indices, int32_t *maximum_indices, int32_t capacity,
+    int32_t *dimensions, uint8_t *has_minimum, uint8_t *has_maximum);
+opencv_core_status opencv_core_mat_min_max_indices_masked(
+    const opencv_core_mat_handle *source, const opencv_core_mat_handle *mask,
+    double *minimum, double *maximum, int32_t *minimum_indices,
+    int32_t *maximum_indices, int32_t capacity, int32_t *dimensions,
+    uint8_t *has_minimum, uint8_t *has_maximum);
+
 /*
  * Counts the number of nonzero scalar elements in a single-channel Mat.
  * Supports non-contiguous views. The result is returned as int64_t.

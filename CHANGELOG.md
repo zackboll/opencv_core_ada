@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Added dense N-D `Min_Max_Indices`, with native-order zero-based coordinates,
+  independent location-validity flags, and full-shape UInt8 C1 masks.
+
 ## 0.4.0
 
 This release completes the initial controlled UMat / Transparent API surface,
