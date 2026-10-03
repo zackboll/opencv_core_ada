@@ -52,6 +52,13 @@ opencv_core_status opencv_core_umat_set_to(opencv_core_umat_handle *self,
 opencv_core_status opencv_core_umat_region(const opencv_core_umat_handle *source,
     int32_t x, int32_t y, int32_t width, int32_t height,
     opencv_core_umat_handle **out);
+/* Required outputs are cleared on failure. Nonempty 2-D native headers only. */
+opencv_core_status opencv_core_umat_locate_roi(
+    const opencv_core_umat_handle *source, int32_t *whole_width,
+    int32_t *whole_height, int32_t *offset_x, int32_t *offset_y);
+/* Failure-atomic shallow header adjustment; no mapping or pixel copy. */
+opencv_core_status opencv_core_umat_adjust_roi(opencv_core_umat_handle *self,
+    int32_t top, int32_t bottom, int32_t left, int32_t right);
 opencv_core_status opencv_core_umat_slice_nd(const opencv_core_umat_handle *source,
     int32_t dims, const int32_t *starts, const int32_t *stops,
     opencv_core_umat_handle **out);
@@ -1308,6 +1315,14 @@ opencv_core_status
 opencv_core_mat_region(const opencv_core_mat_handle *source, int32_t x,
                        int32_t y, int32_t width, int32_t height,
                        opencv_core_mat_handle **out_mat);
+
+/* Required outputs are cleared on failure. Temporary Mat views are rejected. */
+opencv_core_status opencv_core_mat_locate_roi(
+    const opencv_core_mat_handle *source, int32_t *whole_width,
+    int32_t *whole_height, int32_t *offset_x, int32_t *offset_y);
+/* Failure-atomic shallow header adjustment, not a clone or allocation. */
+opencv_core_status opencv_core_mat_adjust_roi(opencv_core_mat_handle *self,
+    int32_t top, int32_t bottom, int32_t left, int32_t right);
 
 /*
  * Create distinct Mat headers for a single row, single column, or half-open

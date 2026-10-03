@@ -1598,6 +1598,96 @@ package body OpenCV.Core is
          "UMat set-to");
    end Set_To;
 
+   procedure Validate_Region_Geometry (Self : Mat) is
+   begin
+      if Self.Temporary_View then
+         raise OpenCV_Error
+           with "Mat parent geometry is unavailable for temporary views";
+      end if;
+      if Self.Is_Empty or else Self.Dimension_Count /= 2 then
+         raise OpenCV_Error with "Mat region geometry requires nonempty 2-D";
+      end if;
+   end Validate_Region_Geometry;
+
+   procedure Validate_Region_Geometry (Self : UMat) is
+   begin
+      if Self.Is_Empty or else Self.Dimension_Count /= 2 then
+         raise OpenCV_Error with "UMat region geometry requires nonempty 2-D";
+      end if;
+   end Validate_Region_Geometry;
+
+   function Checked_Region_Location
+     (Width, Height, X, Y : OpenCV.Internal.C_API.C_Int32;
+      Rows, Columns       : Natural) return Region_Location is
+   begin
+      if Width < 0
+        or else Height < 0
+        or else X < 0
+        or else Y < 0
+        or else Interfaces.Integer_64 (X) + Interfaces.Integer_64 (Columns)
+                > Interfaces.Integer_64 (Width)
+        or else Interfaces.Integer_64 (Y) + Interfaces.Integer_64 (Rows)
+                > Interfaces.Integer_64 (Height)
+      then
+         raise OpenCV_Error with "native region geometry is outside parent";
+      end if;
+      return
+        (Whole_Size => (Size_Coordinate (Width), Size_Coordinate (Height)),
+         Offset     => (Point_Coordinate (X), Point_Coordinate (Y)));
+   end Checked_Region_Location;
+
+   function Locate_Region (Self : Mat) return Region_Location is
+      Width, Height, X, Y : aliased OpenCV.Internal.C_API.C_Int32 := 0;
+   begin
+      Validate_Region_Geometry (Self);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Locate_ROI
+           (Self.Handle, Width'Access, Height'Access, X'Access, Y'Access),
+         "Mat locate region");
+      return
+        Checked_Region_Location (Width, Height, X, Y, Self.Rows, Self.Columns);
+   end Locate_Region;
+
+   function Locate_Region (Self : UMat) return Region_Location is
+      Width, Height, X, Y : aliased OpenCV.Internal.C_API.C_Int32 := 0;
+   begin
+      Validate_Region_Geometry (Self);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Locate_ROI
+           (Self.Handle, Width'Access, Height'Access, X'Access, Y'Access),
+         "UMat locate region");
+      return
+        Checked_Region_Location (Width, Height, X, Y, Self.Rows, Self.Columns);
+   end Locate_Region;
+
+   procedure Adjust_Region
+     (Self : in out Mat; Top, Bottom, Left, Right : Region_Adjustment) is
+   begin
+      Validate_Region_Geometry (Self);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Adjust_ROI
+           (Self.Handle,
+            OpenCV.Internal.C_API.C_Int32 (Top),
+            OpenCV.Internal.C_API.C_Int32 (Bottom),
+            OpenCV.Internal.C_API.C_Int32 (Left),
+            OpenCV.Internal.C_API.C_Int32 (Right)),
+         "Mat adjust region");
+   end Adjust_Region;
+
+   procedure Adjust_Region
+     (Self : in out UMat; Top, Bottom, Left, Right : Region_Adjustment) is
+   begin
+      Validate_Region_Geometry (Self);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Adjust_ROI
+           (Self.Handle,
+            OpenCV.Internal.C_API.C_Int32 (Top),
+            OpenCV.Internal.C_API.C_Int32 (Bottom),
+            OpenCV.Internal.C_API.C_Int32 (Left),
+            OpenCV.Internal.C_API.C_Int32 (Right)),
+         "UMat adjust region");
+   end Adjust_Region;
+
    function Region (Self : UMat; Area : Rect) return UMat is
       Source_Rows        : constant Size_Coordinate :=
         Size_Coordinate (Self.Rows);
@@ -4927,6 +5017,7 @@ package body OpenCV.Core is
 
          OpenCV.Internal.C_API.Mat_Destroy (View.Handle);
          View.Handle := New_Handle;
+         View.Temporary_View := True;
          Process (View);
       end;
    end With_Selected_View;

@@ -149,6 +149,7 @@ package body OpenCV.Core.Internal.Typed_External_Mat_View is
 
       OpenCV.Internal.C_API.Mat_Destroy (Image.Handle);
       Image.Handle := New_Handle;
+      Image.Temporary_View := True;
    end Create_Packed_2D;
 
    --  The writable callback, not this forwarding wrapper, may modify Data.
@@ -261,6 +262,7 @@ package body OpenCV.Core.Internal.Typed_External_Mat_View is
 
       OpenCV.Internal.C_API.Mat_Destroy (Image.Handle);
       Image.Handle := New_Handle;
+      Image.Temporary_View := True;
    end Create_Packed_ND;
 
    pragma Warnings (Off, "formal parameter \""Data\"" is not modified");
@@ -354,6 +356,7 @@ package body OpenCV.Core.Internal.Typed_External_Mat_View is
 
       OpenCV.Internal.C_API.Mat_Destroy (Image.Handle);
       Image.Handle := New_Handle;
+      Image.Temporary_View := True;
    end Create_Strided_2D;
 
    pragma Warnings (Off, "formal parameter \""Data\"" is not modified");
@@ -541,6 +544,7 @@ package body OpenCV.Core.Internal.Typed_External_Mat_View is
 
       OpenCV.Internal.C_API.Mat_Destroy (Image.Handle);
       Image.Handle := New_Handle;
+      Image.Temporary_View := True;
    end Create_Strided_ND;
 
    pragma Warnings (Off, "formal parameter \""Data\"" is not modified");

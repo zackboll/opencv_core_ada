@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add Mat/UMat `Locate_Region` retained 2-D parent geometry and failure-atomic,
+  header-only `Adjust_Region`, preserving native clipping/crossed boundaries,
+  independent shallow-header geometry and shared storage while rejecting
+  temporary external/synthetic Mat capabilities and signed-overflow requests.
+
 - Added dense N-D `Min_Max_Indices`, with native-order zero-based coordinates,
   independent location-validity flags, and full-shape UInt8 C1 masks.
 

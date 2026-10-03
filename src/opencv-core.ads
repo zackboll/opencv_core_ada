@@ -76,6 +76,16 @@ package OpenCV.Core is
    type Mat_Size is
      new Interfaces.Integer_64 range 0 .. Interfaces.Integer_64'Last;
 
+   --  Positive moves a boundary outward; negative moves it inward.
+   type Region_Adjustment is new Interfaces.Integer_32;
+
+   --  Retained allocation geometry, not an owning parent object. Offset is
+   --  zero-based (X = column, Y = row), including for nested Regions.
+   type Region_Location is record
+      Whole_Size : Size;
+      Offset     : Point;
+   end record;
+
    --  A border interpolation either selects a zero-based source coordinate or
    --  indicates that an out-of-range Constant_Border coordinate has no donor.
    type Border_Interpolation_Result (Uses_Constant : Boolean := False) is
@@ -239,6 +249,12 @@ package OpenCV.Core is
       Offset : Long_Float := 0.0) return UMat;
    procedure Set_To (Self : in out UMat; Value : Scalar);
    function Region (Self : UMat; Area : Rect) return UMat;
+   --  Nonempty, exactly 2-D; native UMat headers only, without host mapping.
+   function Locate_Region (Self : UMat) return Region_Location;
+   --  Header-only adjustment with the same clipping/crossing semantics as
+   --  Mat below. Other shallow headers keep their independent geometry.
+   procedure Adjust_Region
+     (Self : in out UMat; Top, Bottom, Left, Right : Region_Adjustment);
    function Slice (Self : UMat; Ranges : Index_Range_Array) return UMat;
 
    function Is_Empty (Self : UMat) return Boolean;
@@ -1347,6 +1363,24 @@ package OpenCV.Core is
    --  must be positive.
    function Region (Self : Mat; Area : Rect) return Mat;
 
+   --  Requires a nonempty, exactly 2-D, non-temporary Mat. Describes the
+   --  retained original allocation even after the parent variable finalizes.
+   function Locate_Region (Self : Mat) return Region_Location;
+
+   --  Changes only Self's header, never copies pixels. Positive adjustments
+   --  expand and negative adjustments contract; boundaries clip to the parent.
+   --  Crossed boundaries are swapped after clipping, as in native OpenCV,
+   --  rather than necessarily producing an empty region. Equal boundaries
+   --  can produce an empty header, which cannot subsequently be located or
+   --  adjusted. Native signed-int overflow raises OpenCV_Error without change.
+   --  Unsafe native parent arithmetic or empty-result pointers are likewise
+   --  rejected without change.
+   --  Whole headers are supported. Continuity is updated; Is_Submatrix is
+   --  NOT recomputed and is not authoritative current geometry.
+   --  Requires a nonempty, exactly 2-D, non-temporary Mat.
+   procedure Adjust_Region
+     (Self : in out Mat; Top, Bottom, Left, Right : Region_Adjustment);
+
    --  These operations create distinct Mat headers sharing Self's storage.
    --  Index_Range uses its direct half-open [Start, Stop) representation.
    function Row_View (Self : Mat; Row : Size_Coordinate) return Mat;
@@ -2337,8 +2371,9 @@ private
    end record;
 
    type Mat is new Ada.Finalization.Controlled with record
-      Handle : OpenCV.Internal.C_API.Mat_Handle :=
+      Handle         : OpenCV.Internal.C_API.Mat_Handle :=
         OpenCV.Internal.C_API.Null_Mat_Handle;
+      Temporary_View : Boolean := False;
    end record;
 
    type UMat is new Ada.Finalization.Controlled with record
