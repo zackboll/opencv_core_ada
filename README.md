@@ -10,7 +10,7 @@ access, and Ada exceptions while keeping the C++ ABI behind a small stable C
 interface. It is intentionally an Ada API over OpenCV rather than a mechanical
 translation of the C++ headers.
 
-> **Version:** `0.3.0`
+> **Version:** `0.4.0`
 >
 > **OpenCV compatibility:** **4.1 through 5.0**, inclusive. The public Ada API
 > is intended to remain the same across this range. Not every intermediate
@@ -18,7 +18,7 @@ translation of the C++ headers.
 >
 > **Development status:** active, pre-1.0 API.
 >
-> **Current test baseline:** 1515 AUnit tests, with Ada and C++ warnings promoted
+> **Current test baseline:** 1566 AUnit tests, with Ada and C++ warnings promoted
 > to errors. GitHub Actions exercises the full test suite against four OpenCV
 > compatibility targets, plus a native Ubuntu 24.04 ARM64 job.
 >
@@ -44,7 +44,7 @@ Several related names appear in the repository:
 - [Goals and scope](#goals-and-scope)
 - [OpenCV compatibility](#opencv-compatibility)
 - [Architecture](#architecture)
-- [Cross-module Mat interoperability](#cross-module-mat-interoperability)
+- [Cross-module interoperability](#cross-module-interoperability)
 - [Requirements](#requirements)
 - [Building](#building)
 - [Running the tests](#running-the-tests)
@@ -111,7 +111,7 @@ Core functionality with a coherent Ada design.
 
 ---
 
-## Cross-module Mat interoperability
+## Cross-module interoperability
 
 Future module crates such as `opencv_imgproc`, `opencv_imgcodecs`,
 `opencv_highgui`, `opencv_videoio`, `opencv_features2d`, and
@@ -135,6 +135,14 @@ external-buffer views. Output handles expose the actual Core header so an
 OutputArray operation can allocate or rebind it; temporary external-buffer
 views are rejected for output because rebinding would violate their no-escape
 ownership contract.
+
+UMat capabilities in `OpenCV.Core.Module_Interop` likewise borrow the actual
+Core-owned header through callback-scoped `Input_UMat_Handle` and
+`Output_UMat_Handle`. The installed typed C++ bridge performs no Mat transfer
+or mapping. Output operations may rebind that header, including ordinary UMat
+Regions. Core retains ownership; modules must neither retain nor delete the
+borrowed header and must use the same compatible OpenCV ABI and installation.
+This is module implementation infrastructure, not an application raw-handle API.
 
 `OpenCV.Core.Sparse.Module_Interop` is the same kind of implementation
 interface for `Sparse_Mat`. OpenCV 4.1.0, 4.10.0, and 5.0.0 Imgproc all
@@ -2260,9 +2268,11 @@ Empty-storage safety bypasses avoid native OpenCL vector-width crashes.
 OpenCL is optional and the public math family is tested with it disabled;
 there is no GPU-execution guarantee.
 
-OpenCL is optional; CPU fallback is tested. Mixed Mat/UMat operands, other
-operation families beyond those listed above, module UMat bridging, UMat
-reshape, and callback-scoped CPU mapping remain unsupported.
+Compatibility handling includes OpenCV 4.10 UMat empty-storage safety and
+legacy pre-4.10 Float64 empty-magnitude `polarToCart` behavior. OpenCL is
+optional; CPU fallback is tested. Mixed Mat/UMat operands, UMat reshape,
+DFT/DCT UMat overloads, callback-scoped CPU mapping, and downstream Imgproc
+UMat overloads remain unsupported.
 
 ## Safety and validation boundary
 
@@ -2366,9 +2376,10 @@ The current limitations are intentional and help keep the public API coherent:
    shape capacity remains 10 dimensions.
 
 2. **SparseMat and UMat are not complete native APIs.**
-   UMat has no direct mapped typed access, public OpenCL controls, masked
-   Set_To, or weighted arithmetic yet. The seven binary arithmetic operations
-   have shared Mat/UMat native dispatch; reshape is deferred.
+   UMat has no direct mapped typed access, public OpenCL controls or raw OpenCL
+   handles, masked Set_To, mixed Mat/UMat operands, reshape, DFT/DCT overloads,
+   or downstream Imgproc UMat overloads. Its arithmetic, bitwise/mask, and math
+   subset and callback-scoped module bridge are available as described above.
    Direct typed node access and read-only stored-node traversal cover all eight
    depths in C1/C2/C3/C4 (32 layouts). One vector is one complete element.
    Explicit all-zero vectors remain stored nodes; missing reads return zero and
@@ -2638,11 +2649,11 @@ partially integrated batches.
 The Alire crate version is currently:
 
 ```text
-0.3.0
+0.4.0
 ```
 
-See `CHANGELOG.md` for the 0.3.0 typed Mat and SparseMat additions and
-the historical 0.2.0 shared-value relocation.
+See `CHANGELOG.md` for the 0.4.0 UMat additions, the historical 0.3.0 typed
+Mat and SparseMat additions, and the 0.2.0 shared-value relocation.
 
 The API should still be considered experimental until 1.0. Public names and
 some overloads may evolve as broader typed access, N-dimensional matrices,
@@ -2668,6 +2679,11 @@ Ada API across the supported 4.1-5.0 compatibility range:
 
 - controlled `Mat` ownership, shallow aliases, Regions, ranges, reshape, and
   explicit deep cloning;
+- controlled `UMat`, explicit independent Mat/UMat transfers, and a UMat-native
+  arithmetic, mask/bitwise, normalization, and unary/vector math subset with
+  OpenCL-optional CPU fallback;
+- callback-scoped Mat/UMat/SparseMat module interoperability through the
+  installed native bridge, without transferring ownership;
 - typed C1 element access and C2/C3/C4 Vec2/Vec3/Vec4 access for every
   supported depth: UInt8, Int8, UInt16, Int16, Int32, Float16, Float32 and
   Float64;

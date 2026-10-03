@@ -2,37 +2,54 @@
 
 ## Unreleased
 
-- Add callback-scoped UMat module interoperability beside Mat in
-  `OpenCV.Core.Module_Interop`, with installed native bridge support for
-  borrowing the actual Core-owned UMat header without Mat transfer or mapping.
-  Mutable output borrows support header rebinding and ordinary UMat Regions.
+## 0.4.0
 
-- Add UMat-native Normalize, Sqrt, Exp, Log, Pow, Magnitude, Phase,
-  Cart_To_Polar, and Polar_To_Cart (including angle-only unit magnitude),
-  shared typed Mat/UMat dispatch, independent dual-output UMat records,
-  empty-storage safety handling, and OpenCL-disabled public tests. Unary
-  math/normalization accepts N-D; matching Cartesian vector operands retain
-  the 2-D policy. Existing Mat public and C ABI signatures are unchanged.
+This release completes the initial controlled UMat / Transparent API surface,
+with UMat-native operations and module interoperability across OpenCV 4.1
+through 5.0. UMat correctness does not depend on usable OpenCL, and UMat does
+not guarantee GPU execution.
 
-- Add UMat-native bitwise operations and masked variants, `In_Range` and
-  `Compare`. UInt8 C1 UMat masks compose with masked UMat operations without
-  host transfers; Float16 bitwise operations preserve exact stored bits.
+- Added controlled `UMat` ownership with reference-counted shallow assignment,
+  explicit deep `Clone`, 2-D and supported N-D creation, metadata queries,
+  shallow `Region` and `Slice` views, and native `Copy_To`, `Convert_To`, and
+  `Set_To`. `OpenCV.Core.Transfers` provides explicit, independent Mat-to-UMat
+  and UMat-to-Mat copies rather than mapped views. Allocations use
+  `USAGE_DEFAULT`.
+- Added UMat `Add`, `Subtract`, `Multiply`, `Divide`, `Abs_Diff`, `Minimum`,
+  `Maximum`, `Add_Weighted`, and `Scale_Add`, returning independent results
+  without binding-side Mat transfers. Binary arithmetic and scale-add retain
+  their matching 2-D policy; weighted addition also accepts matching N-D
+  operands. OpenCV 4.x Float16 arithmetic widens to Float32 UMat where required
+  and narrows once. Float16 scale-add uses this widening on all supported
+  versions and preserves the established Float32 coefficient narrowing.
+- Added UMat `Bitwise_And`, `Bitwise_Or`, `Bitwise_Xor`, `Bitwise_Not`, masked
+  forms, `In_Range`, and `Compare`. Produced UInt8 C1 UMat masks feed masked
+  UMat operations directly without a Mat round-trip. Float16 bitwise operations
+  preserve exact stored bits.
+- Added UMat `Normalize`, `Sqrt`, `Exp`, `Log`, `Pow`, `Magnitude`, `Phase`,
+  `Cart_To_Polar`, and `Polar_To_Cart`, including angle-only unit magnitude.
+  Unary math and normalization accept N-D; Cartesian vector operands retain
+  their matching 2-D policy. Dual-result UMat records own independent outputs
+  produced failure-atomically. Established depth restrictions remain, including
+  no Float16 Pow and no OpenCV 4.x Float16 Min_Max normalization fallback.
+- Added callback-scoped `Input_UMat_Handle` and `Output_UMat_Handle` in
+  `OpenCV.Core.Module_Interop`, raw Core resolver ABI, and installed typed C++
+  bridge helpers alongside the Mat and SparseMat bridges. Cooperating module
+  shims borrow the actual Core-owned UMat header without Mat conversion or
+  mapping; outputs support header rebinding and ordinary UMat Regions. Core
+  retains ownership, and modules must use the same compatible OpenCV ABI.
+- Retained OpenCL-optional CPU fallback with explicit OpenCL-disabled tests.
+  Compatibility handling includes OpenCV 4.10 UMat empty-storage safety and
+  legacy pre-4.10 Float64 empty-magnitude `polarToCart` behavior. The full suite
+  exercises representative OpenCV 4.1, 4.10, and 5.0 installations; not every
+  intermediate release is individually tested. Existing Mat public and C ABI
+  signatures remain unchanged.
 
-- Add UMat `Add_Weighted` and `Scale_Add` with shared Mat/UMat native
-  helpers, UMat-only Float16 compatibility temporaries, and OpenCL-optional
-  execution. Weighted addition accepts matching N-D UMat operands; scale-add
-  retains its 2-D policy and established Float32 coefficient narrowing.
-- Add native UMat `Add`, `Subtract`, `Multiply`, `Divide`, `Abs_Diff`,
-  `Minimum`, and `Maximum` with shared Mat/UMat C++ execution helpers,
-  UMat-native Float16 compatibility on OpenCV 4.x, OpenCL-optional CPU
-  execution, and independent results. Mixed operands and mapped UMat access
-  remain deferred.
-- Add controlled Core UMat baseline with shallow assignment, deep Clone,
-  2-D/N-D creation and metadata, shallow Region and Slice views, native UMat
-  copy/conversion/Set_To, and explicit independent Mat/UMat transfers in
-  `OpenCV.Core.Transfers`. Allocation uses USAGE_DEFAULT; OpenCL is optional
-  and CPU fallback is covered by a test-only OpenCL-disabled probe. Reshape,
-  mapped typed access, weighted arithmetic, and module bridging are deferred.
+The initial UMat surface does not include direct mapped typed access, public
+OpenCL context/device/queue APIs or raw OpenCL handles, mixed Mat/UMat algorithm
+operands, UMat reshape, DFT/DCT UMat overloads, or downstream Imgproc UMat
+overloads. Module borrowing is implementation infrastructure, not an application
+raw-handle API.
 
 ## 0.3.0
 
