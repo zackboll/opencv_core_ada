@@ -93,6 +93,61 @@ because the installed compiler's OpenCL PCH references a missing header.
 Transparent API CPU fallback nevertheless passed numerical tests. This is not
 evidence of successful GPU kernel execution.
 
+## Legacy Float64 unit-magnitude corrective (PR #36)
+
+The reviewed head `8b3bb3385ed49b9bbcf58feb93a7df396e617415` failed hosted run
+37072922847: OpenCV 4.1/4.6, Fedora, Ubuntu ARM64, and release entry point.
+The direct 4.1 log reports `FAIL UMat vectors and polar` and
+`FAIL UMat math OpenCL disabled`, both `angle only X` at line 42:
+1553/1555 passed. Float32 succeeds; legacy Float64 empty-Magnitude CPU output
+does not numerically represent unit magnitude.
+
+Exact tags 4.1.0, 4.6.0, and 4.9.0 `modules/core/src/mathfuncs.cpp`, function
+`polarToCart`, convert double Angle into float buffers and run `SinCos_32f`.
+With nonempty Magnitude, they assign `x[k] = buf[0][k]*m` (and Y), correctly
+converting numerically. With empty Magnitude, however, they execute:
+
+```cpp
+std::memcpy(x, buf[0], sizeof(float) * len);
+std::memcpy(y, buf[1], sizeof(float) * len);
+```
+
+Here X/Y are `double *`: float representations are copied directly, and only
+half the destination bytes are initialized. OpenCV 4.10.0 replaces that double
+branch with element-wise `x[k] = buf[0][k]; y[k] = buf[1][k];`. Its remaining
+memcpy belongs to the separate Float32 in-place branch and is not defective.
+OpenCV 5.0 uses corrected polarToCart32f/64f HAL behavior.
+
+The shared Dense helper now uses a compile-time gate
+`CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR < 10` and selects compatibility only
+for empty Magnitude, nonempty Angle, and CV_64F Angle. It converts Angle to a
+Float32 Dense temporary, calls native unit-magnitude polarToCart with noArray,
+and numerically converts the two Float32 Dense outputs to Float64. This keeps
+the old Float32 SinCos precision while eliminating invalid byte copies.
+Mat and UMat both use the same template. The UMat overload's typed-empty Angle
+branch remains separate and unchanged. Versions 4.10/5 stay native.
+
+All three temporaries are declared `Dense`, so the UMat instantiation has
+only cv::UMat temporaries. No getMat, Mat temporary, transfer function, or
+Transfers package was introduced. The retained empty/depth guard is an
+upstream compatibility selector, with an ABI-safety comment identifying
+partially uninitialized double outputs; it is not duplicated public rejection.
+
+Existing UMat Vector_And_Polar assertions remain unchanged. New regressions
+exercise Float64 Mat and UMat angle-only, default-empty, and typed-empty forms,
+zero radians and nonzero radians/degrees with native approximation tolerance.
+The OpenCL-disabled public test also runs the focused UMat regression.
+
+Local corrective validation: full suites in isolated existing Podman images
+against OpenCV 4.1.0 and 4.6.0 each passed 1557/1557, including both previously
+failing UMat tests and the new Float64 Mat regression. Local 4.10.0 also passed
+1557/1557; an isolated OpenCV 5.0.0 full suite also passed 1557/1557.
+GNATformat checks cover the new Mat regression range and the modified UMat
+test file; pre-existing Mat formatting outside that range is preserved.
+Production C++ and Ada builds retain warnings-as-errors. The local
+Alire pkg_config deployment attempted sudo and failed; validation used direct
+GPR with the configured toolchain, without sudo or Alire configuration changes.
+
 ## Residency and validation-boundary review
 
 Production UMat math dispatch uses cv::UMat inputs/results directly. No
@@ -105,4 +160,5 @@ conditions select valid empty-result construction without entering undefined
 OpenCL vector-width behavior; their concrete safety reasons are documented
 beside the code. They are not a second general semantic validator. Polar empty
 construction restores metadata lost by native mapping, not an added semantic
-rejection. Nonempty inputs go directly to OpenCV.
+rejection. Nonempty inputs go directly to OpenCV, except the narrowly gated
+legacy Float64 unit-magnitude compatibility described above.

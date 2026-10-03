@@ -5,6 +5,7 @@ with Interfaces;
 with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.Float32_Access;
+with OpenCV.Core.Float64_Access;
 with OpenCV.Core.Float32_Matx3x3;
 with OpenCV.Core.Float32_Matx3x3_Conversions;
 with OpenCV.Core.Float32_Vec3;
@@ -19,6 +20,7 @@ package body Mat_Conversion_Tests is
    use type Interfaces.IEEE_Float_32;
    use type Interfaces.Unsigned_8;
    use type OpenCV.Core.Depth_Type;
+   use type OpenCV.Angle_Unit;
    use type OpenCV.Core.Channel_Count;
    use type OpenCV.Core.Mat_Size;
    use type OpenCV.Core.Float32_Access.Float32_Classification;
@@ -3628,6 +3630,57 @@ package body Mat_Conversion_Tests is
          & " magnitude");
    end Polar_To_Cart_Unit_Magnitude_Overload;
 
+   procedure Polar_To_Cart_Float64_Unit_Magnitude
+     (Test : in out Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      Angle       : OpenCV.Core.Mat :=
+        OpenCV.Core.Create (1, 2, (OpenCV.Core.Float64, 1));
+      Empty       : OpenCV.Core.Mat;
+      Typed_Empty : constant OpenCV.Core.Mat :=
+        OpenCV.Core.Create (0, 0, (OpenCV.Core.UInt8, 3));
+      Coordinates : OpenCV.Core.Cartesian_Coordinates;
+      procedure Assert_Unit_Result is
+      begin
+         AUnit.Assertions.Assert
+           (Coordinates.X.Depth = OpenCV.Core.Float64
+            and then Coordinates.Y.Depth = OpenCV.Core.Float64,
+            "Float64 unit polar output depth");
+         for Column in 0 .. 1 loop
+            AUnit.Assertions.Assert
+              (Approximately_Equal
+                 (Long_Float
+                    (OpenCV.Core.Float64_Access.Get
+                       (Coordinates.X, 0, Column)),
+                  (if Column = 0 then 1.0 else 0.0),
+                  Polar_To_Cart_Tolerance)
+               and then Approximately_Equal
+                          (Long_Float
+                             (OpenCV.Core.Float64_Access.Get
+                                (Coordinates.Y, 0, Column)),
+                           (if Column = 0 then 0.0 else 1.0),
+                           Polar_To_Cart_Tolerance),
+               "Float64 empty magnitude must produce unit coordinates");
+         end loop;
+      end Assert_Unit_Result;
+   begin
+      for Units in OpenCV.Angle_Unit loop
+         OpenCV.Core.Float64_Access.Set (Angle, 0, 0, 0.0);
+         OpenCV.Core.Float64_Access.Set
+           (Angle,
+            0,
+            1,
+            OpenCV.Float64_Value
+              (if Units = OpenCV.Degrees then 90.0 else Half_Pi));
+         Coordinates := OpenCV.Core.Polar_To_Cart (Angle, Units);
+         Assert_Unit_Result;
+         Coordinates := OpenCV.Core.Polar_To_Cart (Empty, Angle, Units);
+         Assert_Unit_Result;
+         Coordinates := OpenCV.Core.Polar_To_Cart (Typed_Empty, Angle, Units);
+         Assert_Unit_Result;
+      end loop;
+   end Polar_To_Cart_Float64_Unit_Magnitude;
+
    procedure Polar_To_Cart_Explicit_Empty_Magnitude
      (Test : in out Mat_Test_Fixture)
    is
@@ -4699,6 +4752,10 @@ package body Mat_Conversion_Tests is
         (Caller.Create
            ("Polar_To_Cart explicit empty Magnitude",
             Polar_To_Cart_Explicit_Empty_Magnitude'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Polar_To_Cart Float64 unit magnitude radians and degrees",
+            Polar_To_Cart_Float64_Unit_Magnitude'Access));
       Result.Add_Test
         (Caller.Create
            ("Polar_To_Cart zero magnitude",

@@ -4852,6 +4852,19 @@ static void dense_cart_to_polar(const cv::UMat &x, const cv::UMat &y,
 template <typename Dense>
 static void dense_polar_to_cart(const Dense &m, const Dense &a, Dense &x,
                                 Dense &y, bool degrees) {
+#if CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR < 10
+    // ABI safety: legacy Float64 unit-magnitude polarToCart memcpy copies
+    // sizeof(float)*len bytes into double outputs, leaving part uninitialized
+    // instead of numerically converting SinCos_32f's results (fixed in 4.10).
+    if (m.empty() && !a.empty() && a.depth() == CV_64F) {
+        Dense angle32, x32, y32;
+        a.convertTo(angle32, CV_32F);
+        cv::polarToCart(cv::noArray(), angle32, x32, y32, degrees);
+        x32.convertTo(x, CV_64F);
+        y32.convertTo(y, CV_64F);
+        return;
+    }
+#endif
     cv::polarToCart(m, a, x, y, degrees);
 }
 static void dense_polar_to_cart(const cv::UMat &m, const cv::UMat &a,
@@ -4865,7 +4878,7 @@ static void dense_polar_to_cart(const cv::UMat &m, const cv::UMat &a,
         make_empty_dense_like(a, y);
         return;
     }
-    cv::polarToCart(m, a, x, y, degrees);
+    dense_polar_to_cart<cv::UMat>(m, a, x, y, degrees);
 }
 }
 

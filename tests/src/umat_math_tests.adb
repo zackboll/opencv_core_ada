@@ -307,6 +307,37 @@ package body UMat_Math_Tests is
       end loop;
    end Vector_And_Polar;
 
+   procedure Float64_Unit_Polar (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Angle       : UMat := Create_UMat (1, 1, (Float64, 1));
+      Empty       : UMat;
+      Typed_Empty : constant UMat := Create_UMat (0, 0, (UInt8, 3));
+      Coordinates : UMat_Cartesian_Coordinates;
+      procedure Assert_Unit (Expected_X, Expected_Y : Long_Float) is
+      begin
+         AUnit.Assertions.Assert
+           (Coordinates.X.Depth = Float64
+            and then Coordinates.Y.Depth = Float64,
+            "Float64 UMat unit output depth");
+         Check (Value (Coordinates.X), Expected_X, "Float64 unit X");
+         Check (Value (Coordinates.Y), Expected_Y, "Float64 unit Y");
+      end Assert_Unit;
+   begin
+      for Units in Angle_Unit loop
+         Angle.Set_To (Make_Scalar (0.0));
+         Coordinates := Polar_To_Cart (Angle, Units);
+         Assert_Unit (1.0, 0.0);
+         Angle.Set_To
+           (Make_Scalar (if Units = Degrees then 90.0 else 1.570_796_327));
+         Coordinates := Polar_To_Cart (Angle, Units);
+         Assert_Unit (0.0, 1.0);
+         Coordinates := Polar_To_Cart (Empty, Angle, Units);
+         Assert_Unit (0.0, 1.0);
+         Coordinates := Polar_To_Cart (Typed_Empty, Angle, Units);
+         Assert_Unit (0.0, 1.0);
+      end loop;
+   end Float64_Unit_Polar;
+
    procedure ND_Unary (Test : in out Fixture) is
       pragma Unreferenced (Test);
       A : UMat := Create_UMat ((2, 2, 2), (Float32, 1));
@@ -621,6 +652,7 @@ package body UMat_Math_Tests is
       Unary_Values (Test);
       Integer_Pow (Test);
       Vector_And_Polar (Test);
+      Float64_Unit_Polar (Test);
       Success := Set_OpenCL (Previous);
       AUnit.Assertions.Assert (Success = 1, "restore OpenCL");
    exception
@@ -652,6 +684,8 @@ package body UMat_Math_Tests is
       Result.Add_Test
         (Caller.Create ("UMat math OpenCL disabled", OpenCL_Disabled'Access));
       Result.Add_Test (Caller.Create ("UMat math raw ABI", Raw_ABI'Access));
+      Result.Add_Test
+        (Caller.Create ("UMat Float64 unit polar", Float64_Unit_Polar'Access));
       return Result'Access;
    end Suite;
 end UMat_Math_Tests;
