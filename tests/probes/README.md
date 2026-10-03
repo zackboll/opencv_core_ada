@@ -1,4 +1,13 @@
-# Native empty UMat probe
+# Native source and behavior probes
+
+Task 041's `convert_destination_source_findings.md` records exact 4.1.0, 4.6.0,
+4.10.0, and 5.0.0 conversion/create/OutputArray findings. The isolated
+`convert_destination_probe.cpp` pins the differing default/typed empty Mat and
+UMat metadata (compile like the examples below, linking OpenCV Core). Reuse,
+Region guards, self/alias conversion, and raw failure behavior are verified by
+the registered `Convert_Destination_Tests` AUnit suite.
+
+## Native empty UMat probe
 
 `umat_math_empty_probe.cpp` likewise stays outside the AUnit executable. It
 accepts `mat|umat operation layout packed_type power opencl`, where operations

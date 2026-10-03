@@ -1585,6 +1585,23 @@ package body OpenCV.Core is
       return Result;
    end Convert_To;
 
+   procedure Convert_To
+     (Self        : UMat;
+      Destination : in out UMat;
+      Depth       : Depth_Type;
+      Scale       : Long_Float := 1.0;
+      Offset      : Long_Float := 0.0) is
+   begin
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Convert_To_Into
+           (Self.Handle,
+            Destination.Handle,
+            To_C_Depth (Depth),
+            Interfaces.C.double (Scale),
+            Interfaces.C.double (Offset)),
+         "UMat destination conversion");
+   end Convert_To;
+
    procedure Set_To (Self : in out UMat; Value : Scalar) is
       Native : aliased OpenCV.Internal.C_API.Scalar := To_C_Scalar (Value);
    begin
@@ -3260,6 +3277,27 @@ package body OpenCV.Core is
       OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
       Result.Handle := New_Handle;
       return Result;
+   end Convert_To;
+
+   procedure Convert_To
+     (Self        : Mat;
+      Destination : in out Mat;
+      Depth       : Depth_Type;
+      Scale       : Long_Float := 1.0;
+      Offset      : Long_Float := 0.0) is
+   begin
+      if Destination.Temporary_View then
+         raise OpenCV_Error
+           with "temporary Mat views cannot be conversion destinations";
+      end if;
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Convert_To_Into
+           (Self.Handle,
+            Destination.Handle,
+            To_C_Depth (Depth),
+            Interfaces.C.double (Scale),
+            Interfaces.C.double (Offset)),
+         "Mat destination conversion");
    end Convert_To;
 
    function Convert_Scale_Abs
