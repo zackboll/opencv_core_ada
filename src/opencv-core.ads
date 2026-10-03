@@ -1199,6 +1199,20 @@ package OpenCV.Core is
       Kind  : Normalize_Kind := L2;
       Alpha : Long_Float := 1.0;
       Beta  : Long_Float := 0.0) return Mat;
+   --  Same normalization semantics, using Destination's actual native header.
+   --  Compatible whole/Region storage is reused; incompatible storage may be
+   --  reallocated (a Region then detaches). Supports N-D, exact self, and
+   --  distinct same-layout shallow aliases, not arbitrary partial overlap.
+   --  Temporary Mat views cannot be destinations, even when compatible.
+   --  Empty metadata and Float16 results retain native/version-specific
+   --  behavior. Native failures need not preserve Destination.
+   procedure Normalize
+     (Self        : Mat;
+      Destination : in out Mat;
+      Kind        : Normalize_Kind := L2;
+      Alpha       : Long_Float := 1.0;
+      Beta        : Long_Float := 0.0);
+
    --  Both operands must have identical 2D shape and element type.  Each
    --  result owns independent storage and preserves that element type.
    function Add (Left, Right : Mat) return Mat;
@@ -1283,6 +1297,15 @@ package OpenCV.Core is
       Kind  : Normalize_Kind := L2;
       Alpha : Long_Float := 1.0;
       Beta  : Long_Float := 0.0) return UMat;
+   --  UMat-native destination reuse, with the Mat procedure's alias/reallocate
+   --  contract and the existing UMat empty-storage compatibility handling.
+   procedure Normalize
+     (Self        : UMat;
+      Destination : in out UMat;
+      Kind        : Normalize_Kind := L2;
+      Alpha       : Long_Float := 1.0;
+      Beta        : Long_Float := 0.0);
+
    --  Independent results, with the same numerical contracts as Mat.
    --  Sqrt/Exp/Log require Float32 or Float64; all four support N-D and
    --  process channels independently. Pow also accepts integer storage for

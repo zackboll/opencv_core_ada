@@ -1102,6 +1102,15 @@ opencv_core_mat_normalize(const opencv_core_mat_handle *source,
                           int32_t normalize_kind, double alpha, double beta,
                           opencv_core_mat_handle **out_mat);
 
+/* Uses the actual mutable destination header and dense_normalize compatibility.
+ * Matching storage (including Regions) is reused; mismatches may reallocate.
+ * Null handles, invalid kinds, and temporary Mat destinations reject before
+ * mutation. Native failures do not guarantee destination preservation. Exact
+ * self/same-layout aliases are supported, not arbitrary partial overlap. */
+opencv_core_status opencv_core_mat_normalize_into(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    int32_t kind, double alpha, double beta);
+
 /*
  * Adds or subtracts two Mats with identical dimensions and type. Each returns
  * a newly allocated, independent result with the same type as its operands.
@@ -1233,6 +1242,10 @@ opencv_core_status opencv_core_umat_in_range_scalar(
 opencv_core_status opencv_core_umat_normalize(
     const opencv_core_umat_handle *source, int32_t kind, double alpha,
     double beta, opencv_core_umat_handle **out);
+/* Same destination/alias/failure contract as mat_normalize_into; UMat-native. */
+opencv_core_status opencv_core_umat_normalize_into(
+    const opencv_core_umat_handle *source, opencv_core_umat_handle *destination,
+    int32_t kind, double alpha, double beta);
 opencv_core_status opencv_core_umat_sqrt(
     const opencv_core_umat_handle *source, opencv_core_umat_handle **out);
 opencv_core_status opencv_core_umat_exp(

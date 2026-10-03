@@ -1423,6 +1423,27 @@ package body OpenCV.Core is
       return Result;
    end Normalize;
 
+   procedure Normalize
+     (Self        : Mat;
+      Destination : in out Mat;
+      Kind        : Normalize_Kind := L2;
+      Alpha       : Long_Float := 1.0;
+      Beta        : Long_Float := 0.0) is
+   begin
+      if Destination.Temporary_View then
+         raise OpenCV_Error
+           with "temporary Mat views cannot be normalization destinations";
+      end if;
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Normalize_Into
+           (Self.Handle,
+            Destination.Handle,
+            To_C_Normalize_Kind (Kind),
+            OpenCV.Internal.C_API.C_Double (Alpha),
+            OpenCV.Internal.C_API.C_Double (Beta)),
+         "Mat destination normalization");
+   end Normalize;
+
    overriding
    procedure Adjust (Self : in out Mat) is
       Source_Handle : constant OpenCV.Internal.C_API.Mat_Handle := Self.Handle;
@@ -3531,6 +3552,23 @@ package body OpenCV.Core is
       OpenCV.Internal.C_API.UMat_Destroy (Result.Handle);
       Result.Handle := Handle;
       return Result;
+   end Normalize;
+
+   procedure Normalize
+     (Self        : UMat;
+      Destination : in out UMat;
+      Kind        : Normalize_Kind := L2;
+      Alpha       : Long_Float := 1.0;
+      Beta        : Long_Float := 0.0) is
+   begin
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Normalize_Into
+           (Self.Handle,
+            Destination.Handle,
+            To_C_Normalize_Kind (Kind),
+            OpenCV.Internal.C_API.C_Double (Alpha),
+            OpenCV.Internal.C_API.C_Double (Beta)),
+         "UMat destination normalization");
    end Normalize;
 
    function Pow (Self : UMat; Power : Long_Float) return UMat is

@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Add destination-taking `Normalize` procedures for Mat and UMat, using the
+  actual native destination through the unchanged `dense_normalize` helper.
+  Preserve source depth, all four kinds, N-D/multichannel behavior, empty UMat
+  safety and native Float16/version differences. Compatible whole/Region storage
+  stays shared with aliases/parents; mismatches may reallocate/detach. Support
+  exact self and same-layout shallow aliases without arbitrary overlap or
+  post-native failure-atomicity promises. Independently reject temporary Mat
+  destinations in Ada and raw ABI while permitting temporary sources. Include
+  focused reuse, numerical, compatibility, and pre-native failure tests and
+  exact 4.1/4.6/4.10/5.0 source/probe findings; no binding-side UMat staging.
+
 - Add destination-taking `Convert_To` procedures for Mat and UMat while retaining
   the independent return-value API and existing ABI. Compatible whole/Region
   storage is reused; incompatible destinations are natively reallocated and
