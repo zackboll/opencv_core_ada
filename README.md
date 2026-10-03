@@ -1752,6 +1752,25 @@ Scalar/statistical operations include:
 - `Covariance`
 - `Peak_Signal_To_Noise_Ratio`
 
+`Min_Max_Loc` remains the 2-D Point-based API (`X = column`, `Y = row`).
+`Min_Max_Indices` adds dense N-D extrema for non-empty C1 Mats of depth UInt8,
+Int8, UInt16, Int16, Int32, Float32, or Float64; Float16 is unsupported in the
+portable Ada API. Its `ND_Min_Max_Result` holds independent `Has_Minimum` and
+`Has_Maximum` flags and 32-entry locations. Coordinates are zero-based in
+`Shape` / `Extent` / `Index_Array` / `Slice` dimension order: for 2-D, entry 1
+is row and entry 2 is column. `Dimensions = Self.Dimension_Count`; only
+`1 .. Dimensions` location entries are meaningful, and unused entries are zero.
+Non-contiguous N-D Slices are supported with coordinates relative to the Slice.
+
+The masked overload requires UInt8 C1 and equality of the **entire N-D shape**;
+any nonzero mask element selects its corresponding dense element. An all-zero
+mask returns zero values/locations with both flags false. Unlike sparse extrema,
+all logical dense elements selected by the mask participate. Inputs and shallow
+aliases remain unchanged. Ordinary finite extrema are the portable guarantee;
+NaN/Infinity values and index validity follow native version/backend behavior,
+not mathematical normalization. See the
+[exact-version research note](tests/probes/nd_min_max_source_findings.md).
+
 Axis reduction:
 
 - `Reduce` with Sum, Average, Maximum, Minimum, and Sum of Squares

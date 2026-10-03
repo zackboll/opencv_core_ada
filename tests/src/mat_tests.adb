@@ -11,6 +11,7 @@ with Mat_Least_Squares_Tests;
 with Linear_Program_Tests;
 with Mat_Arg_Reduction_Tests;
 with Mat_Range_Tests;
+with ND_Extrema_Tests;
 with Mat_Transform_Tests;
 with Persistence_Tests;
 with Cubic_Tests;
@@ -84,6 +85,7 @@ package body Mat_Tests is
       Result.Add_Test (Linear_Program_Tests.Suite);
       Result.Add_Test (Mat_Arg_Reduction_Tests.Suite);
       Result.Add_Test (Mat_Range_Tests.Suite);
+      Result.Add_Test (ND_Extrema_Tests.Suite);
       Result.Add_Test (Mat_Transform_Tests.Suite);
       Result.Add_Test (Persistence_Tests.Suite);
       Result.Add_Test (Cubic_Tests.Suite);

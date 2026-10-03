@@ -192,6 +192,16 @@ package OpenCV.Core is
       Maximum_Location : Point;
    end record;
 
+   type ND_Min_Max_Result is record
+      Has_Minimum      : Boolean := False;
+      Has_Maximum      : Boolean := False;
+      Minimum          : Long_Float := 0.0;
+      Maximum          : Long_Float := 0.0;
+      Minimum_Location : Index_Array (1 .. 32) := (others => 0);
+      Maximum_Location : Index_Array (1 .. 32) := (others => 0);
+      Dimensions       : Natural := 0;
+   end record;
+
    type Mean_Std_Dev_Result is record
       Mean               : Scalar;
       Standard_Deviation : Scalar;
@@ -2196,6 +2206,26 @@ package OpenCV.Core is
    --  all-zero mask returns zero extrema and (-1, -1) locations. Point.X is
    --  the column and Point.Y is the row.
    function Min_Max_Loc (Self, Mask : Mat) return Min_Max_Result;
+
+   --  Dense extrema in Shape/Extent/Index_Array/Slice dimension order.
+   --  Self must be non-empty, C1, and UInt8, Int8, UInt16, Int16, Int32,
+   --  Float32, or Float64; Float16 is rejected on every supported version.
+   --  Coordinates are zero-based and relative to Self, including Slices.
+   --  For 2-D, entry 1 is row and entry 2 is column, unlike Min_Max_Loc's
+   --  Point (X => column, Y => row). Dimensions = Self.Dimension_Count;
+   --  only 1 .. Dimensions are meaningful, with unused entries zero.
+   --  Each Has flag independently reports a native defined location; an
+   --  undefined side has zero coordinates. Finite values are portable;
+   --  NaN/Infinity values and location validity follow linked OpenCV and
+   --  can differ by version/backend. Inputs and shallow aliases are unchanged.
+   --  Every logical dense element participates, unlike Sparse_Extrema's
+   --  stored-node-only reduction. Non-contiguous N-D input is supported.
+   function Min_Max_Indices (Self : Mat) return ND_Min_Max_Result;
+
+   --  Mask must be UInt8 C1 with identical dimension count and every extent.
+   --  Any nonzero mask element selects the corresponding complete element.
+   --  An all-zero mask returns zero values/locations and both Has flags False.
+   function Min_Max_Indices (Self : Mat; Mask : Mat) return ND_Min_Max_Result;
 
    --  Counts nonzero scalar elements. Supports single-channel Mats of any
    --  supported depth (including Float16). Rejects multi-channel Mats.

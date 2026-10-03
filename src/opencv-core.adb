@@ -8462,6 +8462,145 @@ package body OpenCV.Core is
             Y => Point_Coordinate (Maximum_Y)));
    end Min_Max_Loc;
 
+   procedure Validate_ND_Extrema (Self : Mat) is
+   begin
+      if Self.Is_Empty then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity, "Min_Max_Indices requires a non-empty Mat");
+      end if;
+      if Self.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Min_Max_Indices requires a single-channel Mat");
+      end if;
+      if Self.Depth = Float16 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Min_Max_Indices does not support Float16 Mats");
+      end if;
+   end Validate_ND_Extrema;
+
+   procedure Validate_ND_Mask (Source, Mask : Mat) is
+   begin
+      if Mask.Depth /= UInt8 or else Mask.Channels /= 1 then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Min_Max_Indices requires a UInt8 single-channel mask");
+      end if;
+      if Mask.Dimension_Count /= Source.Dimension_Count then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Min_Max_Indices mask must match every source dimension");
+      end if;
+      for Axis in 1 .. Source.Dimension_Count loop
+         if Mask.Extent (Axis) /= Source.Extent (Axis) then
+            Ada.Exceptions.Raise_Exception
+              (OpenCV_Error'Identity,
+               "Min_Max_Indices mask must match every source extent");
+         end if;
+      end loop;
+   end Validate_ND_Mask;
+
+   function Call_ND_Extrema
+     (Self : Mat; Mask : OpenCV.Internal.C_API.Mat_Handle; Masked : Boolean)
+      return ND_Min_Max_Result
+   is
+      --  Preserve native IEEE NaN/Infinity results without validity traps.
+      pragma Suppress (Validity_Check);
+      package C renames OpenCV.Internal.C_API;
+      Minimum, Maximum : aliased C.C_Double := 0.0;
+      Min_Indices      : C.C_Int32_Array (1 .. 32) := (others => 0);
+      Max_Indices      : C.C_Int32_Array (1 .. 32) := (others => 0);
+      Dimensions       : aliased C.C_Int32 := 0;
+      Has_Minimum      : aliased C.C_UInt8 := 0;
+      Has_Maximum      : aliased C.C_UInt8 := 0;
+      Status           : C.Status;
+      Result           : ND_Min_Max_Result;
+   begin
+      if Masked then
+         Status :=
+           C.Mat_Min_Max_Indices_Masked
+             (Self.Handle,
+              Mask,
+              Minimum'Access,
+              Maximum'Access,
+              Min_Indices (1)'Access,
+              Max_Indices (1)'Access,
+              32,
+              Dimensions'Access,
+              Has_Minimum'Access,
+              Has_Maximum'Access);
+      else
+         Status :=
+           C.Mat_Min_Max_Indices
+             (Self.Handle,
+              Minimum'Access,
+              Maximum'Access,
+              Min_Indices (1)'Access,
+              Max_Indices (1)'Access,
+              32,
+              Dimensions'Access,
+              Has_Minimum'Access,
+              Has_Maximum'Access);
+      end if;
+      Raise_On_Error (Status, "Min_Max_Indices");
+      if Dimensions < 2
+        or else Dimensions > 32
+        or else Natural (Dimensions) /= Self.Dimension_Count
+        or else Has_Minimum > 1
+        or else Has_Maximum > 1
+      then
+         Ada.Exceptions.Raise_Exception
+           (OpenCV_Error'Identity,
+            "Min_Max_Indices returned invalid metadata");
+      end if;
+      Result.Dimensions := Natural (Dimensions);
+      Result.Minimum := Long_Float (Minimum);
+      Result.Maximum := Long_Float (Maximum);
+      Result.Has_Minimum := Has_Minimum = 1;
+      Result.Has_Maximum := Has_Maximum = 1;
+      for Axis in 1 .. Result.Dimensions loop
+         if Result.Has_Minimum then
+            if Min_Indices (Axis) < 0
+              or else Min_Indices (Axis) >= C.C_Int32 (Self.Extent (Axis))
+            then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  "Min_Max_Indices returned an invalid minimum coordinate");
+            end if;
+            Result.Minimum_Location (Axis) :=
+              Size_Coordinate (Min_Indices (Axis));
+         end if;
+         if Result.Has_Maximum then
+            if Max_Indices (Axis) < 0
+              or else Max_Indices (Axis) >= C.C_Int32 (Self.Extent (Axis))
+            then
+               Ada.Exceptions.Raise_Exception
+                 (OpenCV_Error'Identity,
+                  "Min_Max_Indices returned an invalid maximum coordinate");
+            end if;
+            Result.Maximum_Location (Axis) :=
+              Size_Coordinate (Max_Indices (Axis));
+         end if;
+      end loop;
+      return Result;
+   end Call_ND_Extrema;
+
+   function Min_Max_Indices (Self : Mat) return ND_Min_Max_Result is
+   begin
+      Validate_ND_Extrema (Self);
+      return
+        Call_ND_Extrema (Self, OpenCV.Internal.C_API.Null_Mat_Handle, False);
+   end Min_Max_Indices;
+
+   function Min_Max_Indices (Self : Mat; Mask : Mat) return ND_Min_Max_Result
+   is
+   begin
+      Validate_ND_Extrema (Self);
+      Validate_ND_Mask (Self, Mask);
+      return Call_ND_Extrema (Self, Mask.Handle, True);
+   end Min_Max_Indices;
+
    function Count_Non_Zero (Self : Mat) return Mat_Size is
       Count  : aliased Interfaces.Integer_64 := 0;
       Status : OpenCV.Internal.C_API.Status;
