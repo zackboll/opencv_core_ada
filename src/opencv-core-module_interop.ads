@@ -21,8 +21,9 @@ package OpenCV.Core.Module_Interop is
 
    --  UMat handles have the same callback-only lifetime. A cooperating module
    --  may pass them only to its private native interop layer. Core owns both
-   --  the opaque wrapper and original cv::UMat header: do not delete the header
-   --  or retain its pointer after the callback/call scope. No public native
+   --  the opaque wrapper and original cv::UMat header: do not delete
+   --  the header or retain its pointer after the callback/call scope.
+   --  No public native
    --  pointer escapes and no ownership transfer, Mat conversion, or mapping
    --  occurs. All module shims must use a compatible OpenCV ABI/installation
    --  with Core. Output operations may rebind the actual Core-owned header.
