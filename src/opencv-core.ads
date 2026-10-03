@@ -1225,6 +1225,48 @@ package OpenCV.Core is
    function In_Range (Self : UMat; Lower, Upper : Scalar) return UMat;
    function Compare (Left, Right : UMat; Kind : Comparison_Kind) return UMat;
 
+   --  UMat-native normalization retains destination depth and accepts N-D.
+   --  Native Float16 normalization support depends on Kind/OpenCV version.
+   function Normalize
+     (Self  : UMat;
+      Kind  : Normalize_Kind := L2;
+      Alpha : Long_Float := 1.0;
+      Beta  : Long_Float := 0.0) return UMat;
+   --  Independent results, with the same numerical contracts as Mat.
+   --  Sqrt/Exp/Log require Float32 or Float64; all four support N-D and
+   --  process channels independently. Pow also accepts integer storage for
+   --  nonnegative integer powers, retaining native saturation/overflow.
+   --  Float16 is rejected by Sqrt/Exp/Log/Pow.
+   function Sqrt (Self : UMat) return UMat;
+   function Exp (Self : UMat) return UMat;
+   function Log (Self : UMat) return UMat;
+   function Pow (Self : UMat; Power : Long_Float) return UMat;
+   --  Matching 2-D Float32/Float64 operands, with independent channels.
+   function Magnitude (X, Y : UMat) return UMat;
+   function Phase (X, Y : UMat; Units : Angle_Unit := Radians) return UMat;
+   type UMat_Polar_Coordinates is record
+      Magnitude : UMat;
+      Angle     : UMat;
+   end record;
+   type UMat_Cartesian_Coordinates is record
+      X : UMat;
+      Y : UMat;
+   end record;
+   --  Each field owns an independent result header/storage; one native call
+   --  produces both fields. Angle accuracy follows Phase's Mat contract.
+   function Cart_To_Polar
+     (X, Y : UMat; Units : Angle_Unit := Radians)
+      return UMat_Polar_Coordinates;
+   --  Angle is authoritative. Empty Magnitude (default or typed), or the
+   --  angle-only overload, means unit magnitude. Non-empty Magnitude must
+   --  match Angle's 2-D shape, Float32/Float64 depth, and channels.
+   function Polar_To_Cart
+     (Magnitude, Angle : UMat; Units : Angle_Unit := Radians)
+      return UMat_Cartesian_Coordinates;
+   function Polar_To_Cart
+     (Angle : UMat; Units : Angle_Unit := Radians)
+      return UMat_Cartesian_Coordinates;
+
    function Bitwise_And (Left, Right : Mat) return Mat;
    function Bitwise_And (Left, Right, Mask : Mat) return Mat;
    function Bitwise_Or (Left, Right : Mat) return Mat;

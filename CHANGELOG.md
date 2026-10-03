@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Add UMat-native Normalize, Sqrt, Exp, Log, Pow, Magnitude, Phase,
+  Cart_To_Polar, and Polar_To_Cart (including angle-only unit magnitude),
+  shared typed Mat/UMat dispatch, independent dual-output UMat records,
+  empty-storage safety handling, and OpenCL-disabled public tests. Unary
+  math/normalization accepts N-D; matching Cartesian vector operands retain
+  the 2-D policy. Existing Mat public and C ABI signatures are unchanged.
+
 - Add UMat-native bitwise operations and masked variants, `In_Range` and
   `Compare`. UInt8 C1 UMat masks compose with masked UMat operations without
   host transfers; Float16 bitwise operations preserve exact stored bits.
