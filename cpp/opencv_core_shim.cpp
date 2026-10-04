@@ -6184,6 +6184,66 @@ opencv_core_mat_maximum(const opencv_core_mat_handle *left,
     }
 }
 
+opencv_core_status opencv_core_mat_minimum_into(
+    const opencv_core_mat_handle *left, const opencv_core_mat_handle *right,
+    opencv_core_mat_handle *destination) {
+    clear_error();
+    if (!left || !right || !destination)
+        return invalid_argument("null minimum operand or destination Mat");
+    // ABI safety: native output creation may release/rebind this header,
+    // severing the callback-scoped capability over external/selected storage.
+    if (destination->temporary_external_view)
+        return invalid_argument("temporary Mat cannot be an arithmetic destination");
+    try {
+        dense_min_max(left->value, right->value, destination->value,
+                      min_max_operation::minimum);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_mat_maximum_into(
+    const opencv_core_mat_handle *left, const opencv_core_mat_handle *right,
+    opencv_core_mat_handle *destination) {
+    clear_error();
+    if (!left || !right || !destination)
+        return invalid_argument("null maximum operand or destination Mat");
+    // ABI safety: native output creation may release/rebind this header,
+    // severing the callback-scoped capability over external/selected storage.
+    if (destination->temporary_external_view)
+        return invalid_argument("temporary Mat cannot be an arithmetic destination");
+    try {
+        dense_min_max(left->value, right->value, destination->value,
+                      min_max_operation::maximum);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_umat_minimum_into(
+    const opencv_core_umat_handle *left, const opencv_core_umat_handle *right,
+    opencv_core_umat_handle *destination) {
+    clear_error();
+    if (!left || !right || !destination)
+        return invalid_argument("null minimum operand or destination UMat");
+    try {
+        dense_min_max(left->value, right->value, destination->value,
+                      min_max_operation::minimum);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_umat_maximum_into(
+    const opencv_core_umat_handle *left, const opencv_core_umat_handle *right,
+    opencv_core_umat_handle *destination) {
+    clear_error();
+    if (!left || !right || !destination)
+        return invalid_argument("null maximum operand or destination UMat");
+    try {
+        dense_min_max(left->value, right->value, destination->value,
+                      min_max_operation::maximum);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
 // Typed C entry points share native execution while preserving distinct
 // opaque handle ownership. No InputArray proxy survives a native call.
 extern "C++" {

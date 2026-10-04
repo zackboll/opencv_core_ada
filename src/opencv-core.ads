@@ -1263,6 +1263,15 @@ package OpenCV.Core is
    procedure Abs_Diff (Left, Right : Mat; Destination : in out Mat);
    procedure Abs_Diff (Left, Right : UMat; Destination : in out UMat);
 
+   --  Same destination rules; direct element selection, without saturation.
+   --  Independent destinations match the functions. Exact/shallow aliases
+   --  retain native SIMD/tail selection: floating NaN classification and
+   --  signed-zero selection can differ from fresh results (not IEEE fmin/max).
+   procedure Minimum (Left, Right : Mat; Destination : in out Mat);
+   procedure Maximum (Left, Right : Mat; Destination : in out Mat);
+   procedure Minimum (Left, Right : UMat; Destination : in out UMat);
+   procedure Maximum (Left, Right : UMat; Destination : in out UMat);
+
    --  Returns an independent Mat with the compatible operands' shape and
    --  element type. Float16 Add_Weighted uses native CV_16F cv::addWeighted
    --  on OpenCV 5.0. On supported OpenCV 4.x releases, operands are widened

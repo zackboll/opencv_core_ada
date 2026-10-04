@@ -952,6 +952,50 @@ package body OpenCV.Core is
       return Result;
    end Abs_Diff;
 
+   procedure Minimum (Left, Right : Mat; Destination : in out Mat) is
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      if Destination.Temporary_View then
+         raise OpenCV_Error
+           with "temporary Mat views cannot be arithmetic destinations";
+      end if;
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Minimum_Into
+           (Left.Handle, Right.Handle, Destination.Handle),
+         "Mat destination minimum");
+   end Minimum;
+
+   procedure Maximum (Left, Right : Mat; Destination : in out Mat) is
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      if Destination.Temporary_View then
+         raise OpenCV_Error
+           with "temporary Mat views cannot be arithmetic destinations";
+      end if;
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Maximum_Into
+           (Left.Handle, Right.Handle, Destination.Handle),
+         "Mat destination maximum");
+   end Maximum;
+
+   procedure Minimum (Left, Right : UMat; Destination : in out UMat) is
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Minimum_Into
+           (Left.Handle, Right.Handle, Destination.Handle),
+         "UMat destination minimum");
+   end Minimum;
+
+   procedure Maximum (Left, Right : UMat; Destination : in out UMat) is
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Maximum_Into
+           (Left.Handle, Right.Handle, Destination.Handle),
+         "UMat destination maximum");
+   end Maximum;
+
    function Minimum (Left, Right : Mat) return Mat is
       Result     : Mat;
       New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=

@@ -1687,7 +1687,8 @@ Explicit Mat/Mat operations include:
 - `Scale_Add`
 
 `Mat` and `UMat` support both allocation-returning and destination-taking
-`Add` / `Subtract` / `Multiply` / `Divide` / `Abs_Diff` forms. All require matching **2-D**
+`Add` / `Subtract` / `Multiply` / `Divide` / `Abs_Diff` / `Minimum` / `Maximum`
+forms. All require matching **2-D**
 operands (shape, depth, and channels); Destination does not participate in
 validation.
 
@@ -1697,6 +1698,8 @@ Result := Subtract (A, B);
 Result := Multiply (A, B);
 Result := Divide (A, B);
 Result := Abs_Diff (A, B);
+Low  := Minimum (A, B);
+High := Maximum (A, B);
 
 Add
   (Left        => A,
@@ -1743,6 +1746,55 @@ destination and can reuse compatible half whole/Region storage. No extra half
 compatibility layer or cross-architecture bitwise guarantee is introduced.
 UMat arithmetic remains UMat-native at the binding boundary; OpenCV chooses
 OpenCL execution or CPU fallback, not necessarily GPU residency/execution.
+
+Reusable elementwise extrema are available for both Mat and UMat:
+
+```ada
+Minimum
+  (Left        => A,
+   Right       => B,
+   Destination => Existing_Low);
+
+Maximum
+  (Left        => A,
+   Right       => B,
+   Destination => Existing_High);
+```
+
+These pass the actual native Destination to the unchanged `dense_min_max`
+helper. Compatible whole/Region storage is reused, preserving shallow aliases
+and parent geometry; shape/depth/channel mismatches can reallocate/detach the
+destination without changing the old parent or its aliases. Destination may be
+Left or Right or an exact same-layout shallow alias of either; operands may
+alias each other. Arbitrary partially overlapping Regions are unsupported.
+The public contract remains matching **2-D** operands, with Destination excluded
+from operand validation. Temporary external/selected Mat views remain valid
+sources but cannot be destinations. Pre-native rejection preserves Destination;
+arbitrary post-native failure atomicity is not promised.
+
+Integer extrema are direct, channel-independent element selection, without
+arithmetic overflow or saturation (including Int16 and Int32 extrema). Ordinary
+finite values retain numerical correctness in place. Floating NaN and
+signed-zero selection follows native OpenCV, **not IEEE `fmin`/`fmax`**: neither
+unconditional NaN propagation nor bitwise commutativity/payload identity is
+promised. Independent destinations match the allocation-returning functions.
+Exact/shallow aliases instead retain native aliased-output behavior. In OpenCV
+5.0, fresh outputs can use a final SIMD block where exact aliases use a scalar
+tail; this can change NaN classification or zero sign at affected tail positions.
+This is native behavior, not a binding-created discrepancy or a memory-safety
+defect. The tested 4.1/4.6/4.10 CPU builds retained fresh/alias parity in these
+cases; that observation is not imposed on other versions/backends/architectures.
+
+Float16 policy is unchanged: 4.x widens both operands to Float32 Dense and
+narrows into the actual half Destination (reusing compatible whole/Region
+storage); 5.0 uses native half min/max, including its native alias/tail boundary.
+No normalization, copy-back or defensive preallocation is added. UMat remains
+native at the binding boundary, including Dense half intermediates; OpenCV may
+fall back internally to CPU, and GPU execution is not guaranteed. Empty output
+metadata remains native/version-specific. The existing helper avoids the known
+default-empty Mat and typed-empty UMat/OpenCL hazards. See
+[`tests/probes/min_max_destination_source_findings.md`](tests/probes/min_max_destination_source_findings.md)
+for the exact four-version source audit and actual-helper evidence.
 
 `Abs_Diff` passes the actual destination to the unchanged `dense_abs_diff`
 helper. Compatible whole/Region storage is reused; mismatched shape, depth or
