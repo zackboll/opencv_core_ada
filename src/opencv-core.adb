@@ -1198,6 +1198,81 @@ package body OpenCV.Core is
       return Result;
    end Scale_Add;
 
+   procedure Add_Weighted
+     (Left        : Mat;
+      Alpha       : Long_Float;
+      Right       : Mat;
+      Beta        : Long_Float;
+      Destination : in out Mat;
+      Gamma       : Long_Float := 0.0) is
+   begin
+      Validate_Add_Weighted_Compatibility (Left, Right);
+      if Destination.Temporary_View then
+         raise OpenCV_Error
+           with "temporary Mat views cannot be arithmetic destinations";
+      end if;
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Add_Weighted_Into
+           (Left.Handle,
+            OpenCV.Internal.C_API.C_Double (Alpha),
+            Right.Handle,
+            OpenCV.Internal.C_API.C_Double (Beta),
+            OpenCV.Internal.C_API.C_Double (Gamma),
+            Destination.Handle),
+         "Mat destination weighted addition");
+   end Add_Weighted;
+
+   procedure Scale_Add
+     (Self : Mat; Scale : Long_Float; Right : Mat; Destination : in out Mat) is
+   begin
+      Validate_Arithmetic_Compatibility (Self, Right);
+      if Destination.Temporary_View then
+         raise OpenCV_Error
+           with "temporary Mat views cannot be arithmetic destinations";
+      end if;
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Scale_Add_Into
+           (Self.Handle,
+            OpenCV.Internal.C_API.C_Double (Scale),
+            Right.Handle,
+            Destination.Handle),
+         "Mat destination scale-add");
+   end Scale_Add;
+
+   procedure Add_Weighted
+     (Left        : UMat;
+      Alpha       : Long_Float;
+      Right       : UMat;
+      Beta        : Long_Float;
+      Destination : in out UMat;
+      Gamma       : Long_Float := 0.0) is
+   begin
+      Validate_Add_Weighted_Compatibility (Left, Right);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Add_Weighted_Into
+           (Left.Handle,
+            OpenCV.Internal.C_API.C_Double (Alpha),
+            Right.Handle,
+            OpenCV.Internal.C_API.C_Double (Beta),
+            OpenCV.Internal.C_API.C_Double (Gamma),
+            Destination.Handle),
+         "UMat destination weighted addition");
+   end Add_Weighted;
+
+   procedure Scale_Add
+     (Self : UMat; Scale : Long_Float; Right : UMat; Destination : in out UMat)
+   is
+   begin
+      Validate_Arithmetic_Compatibility (Self, Right);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Scale_Add_Into
+           (Self.Handle,
+            OpenCV.Internal.C_API.C_Double (Scale),
+            Right.Handle,
+            Destination.Handle),
+         "UMat destination scale-add");
+   end Scale_Add;
+
    type UMat_Unary_Operation is
      access function
        (Self   : OpenCV.Internal.C_API.UMat_Handle;

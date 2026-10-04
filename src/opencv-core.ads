@@ -1316,6 +1316,37 @@ package OpenCV.Core is
    function Scale_Add
      (Self : UMat; Scale : Long_Float; Right : UMat) return UMat;
 
+   --  Write directly into caller storage using the existing numerical policy.
+   --  Compatible whole/Region destinations retain storage and shallow aliases;
+   --  mismatched destinations detach/reallocate to the source shape/type.
+   --  Add_Weighted accepts matching N-D sources; Scale_Add remains 2-D.
+   --  Exact and same-layout shallow source aliases are supported. Arbitrarily
+   --  partially overlapping Regions are unsupported. Native SIMD/FMA/tails can
+   --  give floating aliases different rounding from independent results.
+   --  Temporary Mat views cannot be destinations, but may be sources.
+   --  Coefficients are not validated or normalized; native precision applies.
+   procedure Add_Weighted
+     (Left        : Mat;
+      Alpha       : Long_Float;
+      Right       : Mat;
+      Beta        : Long_Float;
+      Destination : in out Mat;
+      Gamma       : Long_Float := 0.0);
+   procedure Scale_Add
+     (Self : Mat; Scale : Long_Float; Right : Mat; Destination : in out Mat);
+   procedure Add_Weighted
+     (Left        : UMat;
+      Alpha       : Long_Float;
+      Right       : UMat;
+      Beta        : Long_Float;
+      Destination : in out UMat;
+      Gamma       : Long_Float := 0.0);
+   procedure Scale_Add
+     (Self        : UMat;
+      Scale       : Long_Float;
+      Right       : UMat;
+      Destination : in out UMat);
+
    --  All UMat operands and masks stay UMat-native. Bitwise operations use
    --  stored bits, including exact Float16 bits. Binary operands have matching
    --  2-D shape and element type; masks are UInt8 C1 of matching 2-D size.

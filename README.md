@@ -1905,6 +1905,69 @@ Float16 storage and `convertTo` but do not implement these arithmetic kernels,
 so the binding widens internally to Float32, performs the operation, and
 narrows back to Float16. That fallback exists only for compatibility.
 
+### Reusable weighted arithmetic destinations
+
+Both Mat and UMat retain allocation-returning weighted functions with
+independent result storage, and also provide direct destination procedures:
+
+```ada
+Weighted := Add_Weighted (Left, 0.75, Right, 0.25, Gamma => 2.0);
+Add_Weighted
+  (Left        => Left,
+   Alpha       => 0.75,
+   Right       => Right,
+   Beta        => 0.25,
+   Destination => Existing,
+   Gamma       => 2.0);
+
+Scaled := Scale_Add (A, 1.5, B);
+Scale_Add
+  (Self        => A,
+   Scale       => 1.5,
+   Right       => B,
+   Destination => Existing);
+```
+
+Gamma stays last/defaulted. `Add_Weighted` accepts identical N-D source shape,
+depth and channels; `Scale_Add` intentionally requires matching 2-D sources.
+Destination is not an operand: incompatible shape, depth or channels reallocate
+or detach it. Compatible whole storage and interior Regions are reused, including
+the final Float16 compatibility narrowing, so retained aliases see writes and
+Regions stay attached to their Parent. Old aliases retain old storage after
+detachment. Exact Left/Self/Right and distinct same-layout shallow aliases are
+supported, using the old operand values. Operands may share storage with each
+other. Arbitrary partially overlapping Regions are **unsupported**; there is no
+overlap detection or hidden temporary-result/copy-back.
+
+Independent compatible output follows the allocation-returning function's
+same-build numerical contract. Floating alias rounding follows direct native
+execution: specifically, OpenCV 5.0 weighted Float32 kernels can use an overlapping
+SIMD last block for fresh output but a scalar tail for aliases, exposing FMA/order
+rounding differences at width 257. This does not relax ordinary integer exactness
+or floating numerical correctness. NaN payload identity, universal signed-zero
+identity, cross-architecture bits and fused/non-fused equivalence are not promised.
+
+Coefficients are passed as double without added finiteness checks. Native CPU
+weighted UInt8/Int16 kernels narrow coefficients to Float32; Int32 uses double
+work/coefficient precision. On 4.x weighted Float32 CPU scalar tails use double
+coefficients while SIMD lanes use Float32; 5.0 narrows Float32 coefficients on both
+paths. Float64 retains double. OpenCL arithmetic narrows scalars whenever its work
+depth is Float32 (including integer weighted work); double work retains double.
+Scale_Add narrows Scale for Float32, retains double for Float64, and delegates
+integer CPU arithmetic to addWeighted. UInt8 and Int16 saturate; Int32 has **no
+overflow/saturation promise**, and its native OpenCL Float32 work can round large
+integers. Exact integer observations use typed access, not Float64 conversion.
+
+Temporary external/selected Mat views may be sources, but cannot be Destination:
+native output creation/rebinding could sever their callback-scoped capability.
+Source-validation and raw null/capability failures preserve output; arbitrary
+post-native failure atomicity is not promised. Empty output metadata follows the
+existing helper, version and argument order, not normalization: weighted mixed
+default/typed empties are rejected by rank validation, whereas scale-add accepts
+the compatible UInt8 mixes. UMat stays UMat-native at the binding boundary,
+including Float16 intermediates; OpenCV may fall back to CPU. No GPU execution is
+claimed. See [exact source and probe findings](tests/probes/weighted_destination_source_findings.md).
+
 `Add_Weighted` accepts Float16 operands with the same shape, depth, and
 channel-count compatibility rules as the other public depths. Its result is
 always Float16. On OpenCV 4.1, 4.6, and 4.10, the binding widens Float16

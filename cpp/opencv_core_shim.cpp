@@ -6080,6 +6080,66 @@ opencv_core_mat_scale_add(const opencv_core_mat_handle *left, double scale,
     }
 }
 
+opencv_core_status opencv_core_mat_add_weighted_into(
+    const opencv_core_mat_handle *left, double alpha,
+    const opencv_core_mat_handle *right, double beta, double gamma,
+    opencv_core_mat_handle *destination) {
+    clear_error();
+    if (!left || !right || !destination)
+        return invalid_argument("null weighted operand or destination Mat");
+    // ABI safety: native output creation may release/rebind this header,
+    // severing the callback-scoped capability over external/selected storage.
+    if (destination->temporary_external_view)
+        return invalid_argument("temporary Mat cannot be an arithmetic destination");
+    try {
+        dense_add_weighted(left->value, alpha, right->value, beta, gamma,
+                           destination->value);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_umat_add_weighted_into(
+    const opencv_core_umat_handle *left, double alpha,
+    const opencv_core_umat_handle *right, double beta, double gamma,
+    opencv_core_umat_handle *destination) {
+    clear_error();
+    if (!left || !right || !destination)
+        return invalid_argument("null weighted operand or destination UMat");
+    try {
+        dense_add_weighted(left->value, alpha, right->value, beta, gamma,
+                           destination->value);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_mat_scale_add_into(
+    const opencv_core_mat_handle *left, double scale,
+    const opencv_core_mat_handle *right, opencv_core_mat_handle *destination) {
+    clear_error();
+    if (!left || !right || !destination)
+        return invalid_argument("null scale-add operand or destination Mat");
+    // ABI safety: native output creation may release/rebind this header,
+    // severing the callback-scoped capability over external/selected storage.
+    if (destination->temporary_external_view)
+        return invalid_argument("temporary Mat cannot be an arithmetic destination");
+    try {
+        dense_scale_add(left->value, scale, right->value, destination->value);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_umat_scale_add_into(
+    const opencv_core_umat_handle *left, double scale,
+    const opencv_core_umat_handle *right, opencv_core_umat_handle *destination) {
+    clear_error();
+    if (!left || !right || !destination)
+        return invalid_argument("null scale-add operand or destination UMat");
+    try {
+        dense_scale_add(left->value, scale, right->value, destination->value);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
 // OpenCV 4.x has no CV_16F min/max kernels: its min/max dispatch tables end
 // with a null CV_16F slot. OpenCV 5.x supplies native min16f/max16f. The same
 // Float32-model conformance tests run on both paths, including special values.
