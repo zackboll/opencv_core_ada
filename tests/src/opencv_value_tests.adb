@@ -9,6 +9,11 @@ with OpenCV.Core.UInt8_Access;
 package body OpenCV_Value_Tests is
 
    use type OpenCV.Point;
+   use type OpenCV.Point_3D;
+   use type OpenCV.Point_3D_Array;
+   use type OpenCV.Float32_Point_3D;
+   use type OpenCV.Float32_Point_3D_Array;
+   use type OpenCV.Float32_Value;
    use type OpenCV.Point_Coordinate;
    use type OpenCV.Size;
    use type OpenCV.Size_Coordinate;
@@ -77,6 +82,147 @@ package body OpenCV_Value_Tests is
         (One_Based'First = 1 and then One_Based (1) = (X => 5, Y => 6),
          "Point_Array preserves nonzero lower bounds");
    end Point_Array_Bounds_And_Empty_Arrays;
+
+   procedure Point_3D_Defaults (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Origin : OpenCV.Point_3D;
+   begin
+      AUnit.Assertions.Assert
+        (Origin = (X => 0, Y => 0, Z => 0), "default Point_3D is (0, 0, 0)");
+   end Point_3D_Defaults;
+
+   procedure Point_3D_Coordinates_And_Copy (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Negative : constant OpenCV.Point_3D := (X => -1, Y => -2, Z => -3);
+      Limits   : constant OpenCV.Point_3D :=
+        (X => OpenCV.Point_Coordinate'First,
+         Y => OpenCV.Point_Coordinate'Last,
+         Z => OpenCV.Point_Coordinate'First);
+      Copy     : OpenCV.Point_3D := Negative;
+   begin
+      AUnit.Assertions.Assert
+        (OpenCV.Point_Coordinate'First = -2**31
+         and then OpenCV.Point_Coordinate'Last = 2**31 - 1
+         and then Limits.X = -2**31
+         and then Limits.Y = 2**31 - 1
+         and then Limits.Z = -2**31,
+         "Point_3D preserves the signed 32-bit coordinate range");
+      AUnit.Assertions.Assert
+        (Copy = Negative and then Copy = (X => -1, Y => -2, Z => -3),
+         "Point_3D copies all three negative coordinates");
+      Copy.X := 4;
+      Copy.Y := 5;
+      Copy.Z := 6;
+      AUnit.Assertions.Assert
+        (Copy = (X => 4, Y => 5, Z => 6)
+         and then Copy /= Negative
+         and then Negative = (X => -1, Y => -2, Z => -3),
+         "Point_3D assignment has independent value semantics");
+   end Point_3D_Coordinates_And_Copy;
+
+   procedure Point_3D_Array_Bounds_And_Copy (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Empty      : constant OpenCV.Point_3D_Array (1 .. 0) := (others => <>);
+      Zero_Based : constant OpenCV.Point_3D_Array (0 .. 1) :=
+        ((X => 1, Y => 2, Z => 3), (X => -4, Y => -5, Z => -6));
+      Nonzero    : OpenCV.Point_3D_Array (7 .. 8) := Zero_Based;
+      Copy       : OpenCV.Point_3D_Array := Nonzero;
+   begin
+      AUnit.Assertions.Assert
+        (Empty'Length = 0 and then Empty'First = 1 and then Empty'Last = 0,
+         "Point_3D_Array accepts the null range 1 .. 0");
+      AUnit.Assertions.Assert
+        (Zero_Based'First = 0
+         and then Zero_Based'Last = 1
+         and then Zero_Based (0) = (X => 1, Y => 2, Z => 3)
+         and then Zero_Based (1) = (X => -4, Y => -5, Z => -6),
+         "Point_3D_Array preserves zero-based components");
+      AUnit.Assertions.Assert
+        (Nonzero'First = 7
+         and then Nonzero'Last = 8
+         and then Nonzero (7) = Zero_Based (0)
+         and then Nonzero (8) = Zero_Based (1)
+         and then Nonzero = Zero_Based
+         and then Copy'First = 7
+         and then Copy'Last = 8
+         and then Copy = Nonzero,
+         "Point_3D_Array copies across arbitrary Natural bounds");
+      Nonzero (7) := (X => 9, Y => 10, Z => 11);
+      Copy := Nonzero;
+      Nonzero (7).Z := 12;
+      AUnit.Assertions.Assert
+        (Copy (7) = (X => 9, Y => 10, Z => 11)
+         and then Copy (8) = Zero_Based (1)
+         and then Copy /= Nonzero
+         and then Zero_Based (0) = (X => 1, Y => 2, Z => 3),
+         "Point_3D_Array assignment copies independent values");
+   end Point_3D_Array_Bounds_And_Copy;
+
+   procedure Float32_Point_3D_Defaults (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Origin : OpenCV.Float32_Point_3D;
+   begin
+      AUnit.Assertions.Assert
+        (Origin = (X => 0.0, Y => 0.0, Z => 0.0),
+         "default Float32_Point_3D is (0.0, 0.0, 0.0)");
+   end Float32_Point_3D_Defaults;
+
+   procedure Float32_Point_3D_Coordinates_And_Copy (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Signed : constant OpenCV.Float32_Point_3D :=
+        (X => 1.25, Y => -2.5, Z => 3.75);
+      Copy   : OpenCV.Float32_Point_3D := Signed;
+   begin
+      AUnit.Assertions.Assert
+        (Copy = Signed and then Copy = (X => 1.25, Y => -2.5, Z => 3.75),
+         "Float32_Point_3D copies exact binary32 fractional coordinates");
+      Copy := (X => -1.25, Y => -2.5, Z => -3.75);
+      AUnit.Assertions.Assert
+        (Copy = (X => -1.25, Y => -2.5, Z => -3.75)
+         and then Copy /= Signed
+         and then Signed = (X => 1.25, Y => -2.5, Z => 3.75),
+         "Float32_Point_3D accepts negative XYZ and independent assignment");
+   end Float32_Point_3D_Coordinates_And_Copy;
+
+   procedure Float32_Point_3D_Array_Bounds_And_Copy (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      Empty      : constant OpenCV.Float32_Point_3D_Array (1 .. 0) :=
+        (others => <>);
+      Zero_Based : constant OpenCV.Float32_Point_3D_Array (0 .. 1) :=
+        ((X => 1.25, Y => -2.5, Z => 3.75),
+         (X => -4.5, Y => 5.25, Z => -6.75));
+      Nonzero    : OpenCV.Float32_Point_3D_Array (11 .. 12) := Zero_Based;
+      Copy       : OpenCV.Float32_Point_3D_Array := Nonzero;
+   begin
+      AUnit.Assertions.Assert
+        (Empty'Length = 0 and then Empty'First = 1 and then Empty'Last = 0,
+         "Float32_Point_3D_Array accepts the null range 1 .. 0");
+      AUnit.Assertions.Assert
+        (Zero_Based'First = 0
+         and then Zero_Based'Last = 1
+         and then Zero_Based (0) = (X => 1.25, Y => -2.5, Z => 3.75)
+         and then Zero_Based (1) = (X => -4.5, Y => 5.25, Z => -6.75),
+         "Float32_Point_3D_Array preserves zero-based components");
+      AUnit.Assertions.Assert
+        (Nonzero'First = 11
+         and then Nonzero'Last = 12
+         and then Nonzero (11) = Zero_Based (0)
+         and then Nonzero (12) = Zero_Based (1)
+         and then Nonzero = Zero_Based
+         and then Copy'First = 11
+         and then Copy'Last = 12
+         and then Copy = Nonzero,
+         "Float32_Point_3D_Array copies across arbitrary Natural bounds");
+      Nonzero (11) := (X => -7.25, Y => 8.5, Z => -9.75);
+      Copy := Nonzero;
+      Nonzero (11) := (X => 10.25, Y => -11.5, Z => 12.75);
+      AUnit.Assertions.Assert
+        (Copy (11) = (X => -7.25, Y => 8.5, Z => -9.75)
+         and then Copy (12) = Zero_Based (1)
+         and then Copy /= Nonzero
+         and then Zero_Based (0) = (X => 1.25, Y => -2.5, Z => 3.75),
+         "Float32_Point_3D_Array assignment copies independent values");
+   end Float32_Point_3D_Array_Bounds_And_Copy;
 
    procedure Make_Scalar_Preserves_Defaults_And_Components
      (Test : in out Fixture)
@@ -197,6 +343,27 @@ package body OpenCV_Value_Tests is
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
+      Result.Add_Test
+        (Caller.Create ("Point_3D defaults", Point_3D_Defaults'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Point_3D coordinates and copy",
+            Point_3D_Coordinates_And_Copy'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Point_3D_Array bounds and copy",
+            Point_3D_Array_Bounds_And_Copy'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32_Point_3D defaults", Float32_Point_3D_Defaults'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32_Point_3D coordinates and copy",
+            Float32_Point_3D_Coordinates_And_Copy'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Float32_Point_3D_Array bounds and copy",
+            Float32_Point_3D_Array_Bounds_And_Copy'Access));
       Result.Add_Test
         (Caller.Create
            ("Root value defaults and coordinate constraints",

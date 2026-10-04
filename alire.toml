@@ -1,6 +1,6 @@
 name = "opencv_core"
 description = "Thick Ada binding to OpenCV Core Library"
-version = "0.4.0"
+version = "0.5.0-dev"
 
 authors = ["Zack Boll"]
 maintainers = ["Zack Boll <zackboll@gmail.com>"]

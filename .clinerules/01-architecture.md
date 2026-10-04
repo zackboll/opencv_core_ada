@@ -155,8 +155,9 @@ Geometry, and future module crates:
 - numeric value subtypes: `UInt8_Value`, `UInt16_Value`, `Int16_Value`,
   `Int32_Value`, `Float32_Value`, `Float64_Value`
 - integer coordinates and geometry: `Point_Coordinate`, `Size_Coordinate`,
-  `Point`, `Point_Array`, `Size`, `Rect`
-- floating-point geometry: `Float32_Point`, `Float32_Size`, `Rotated_Rect`
+  `Point`, `Point_Array`, `Point_3D`, `Point_3D_Array`, `Size`, `Rect`
+- floating-point geometry: `Float32_Point`, `Float32_Point_3D`,
+  `Float32_Point_3D_Array`, `Float32_Size`, `Rotated_Rect`
 - shared scalar: `Scalar`, `Make_Scalar`
 - shared options: `Border_Kind`, `Angle_Unit`
 

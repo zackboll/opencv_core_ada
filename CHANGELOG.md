@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Begin `0.5.0-dev` with shared root `OpenCV.Point_3D`, `Point_3D_Array`,
+  `Float32_Point_3D`, and `Float32_Point_3D_Array` value types. Coordinates
+  default to zero; arrays preserve arbitrary Natural bounds and null ranges.
+  Float32 finiteness remains operation-specific. The immutable Core `0.4.0`
+  release is unchanged.
+
 - Add reusable `Minimum` and `Maximum` destination procedures for Mat and UMat
   through four narrow C exports using the actual output and unchanged
   `dense_min_max`. Preserve matching 2-D operands, independent function results,

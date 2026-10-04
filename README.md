@@ -477,13 +477,26 @@ Shared root types include numeric value subtypes (`OpenCV.UInt8_Value`,
 `OpenCV.Int32_Value`, `OpenCV.Float32_Value`, `OpenCV.Float64_Value`),
 integer coordinates
 and geometry (`OpenCV.Point_Coordinate`, `OpenCV.Size_Coordinate`,
-`OpenCV.Point`, `OpenCV.Point_Array`, `OpenCV.Size`, `OpenCV.Rect`),
-floating-point geometry (`OpenCV.Float32_Point`, `OpenCV.Float32_Size`,
+`OpenCV.Point`, `OpenCV.Point_Array`, `OpenCV.Point_3D`,
+`OpenCV.Point_3D_Array`, `OpenCV.Size`, `OpenCV.Rect`),
+floating-point geometry (`OpenCV.Float32_Point`, `OpenCV.Float32_Point_3D`,
+`OpenCV.Float32_Point_3D_Array`, `OpenCV.Float32_Size`,
 `OpenCV.Rotated_Rect`), the shared scalar (`OpenCV.Scalar`,
 `OpenCV.Make_Scalar`), and shared options (`OpenCV.Border_Kind` with
 literals such as `OpenCV.Reflect_101`, and `OpenCV.Angle_Unit`).
 
-This relocation is source-breaking. Callers that previously wrote
+The 3-D point families are ordinary Ada values with signed 32-bit integer
+or binary32 coordinates, all defaulting to zero. Their arrays preserve
+arbitrary `Natural` bounds, including null ranges. Binary32 values may
+represent NaN and infinities; each consuming operation defines its own
+finiteness policy. Root ownership follows native OpenCV's Core `Point3`
+value concept, allowing Geometry, Calib3D, and future 3-D module bindings
+to reuse these shared coordinates rather than redeclare them. These
+additive types belong to the `0.5.0-dev` development line, not the immutable
+`0.4.0` release.
+
+The earlier relocation of existing values to the root was source-breaking.
+Callers that previously wrote
 `OpenCV.Core.Point` or `OpenCV.Core.Make_Scalar` must update
 qualification and visibility to the root `OpenCV` package. Clients that
 use `"="` or other operators on those values need `with OpenCV;` so the
@@ -1495,6 +1508,8 @@ Major public abstractions include:
 
 - `OpenCV.Core.Mat`, `Mat_Type`, `Depth_Type`, `Channel_Count`, `Mat_Size`
 - `OpenCV.Size`, `OpenCV.Point`, `OpenCV.Point_Array`, `OpenCV.Rect`, `OpenCV.Scalar`
+- `OpenCV.Point_3D`, `OpenCV.Point_3D_Array`, `OpenCV.Float32_Point_3D`,
+  `OpenCV.Float32_Point_3D_Array`
 - `Index_Range`, `Index_Range_Array`
 - `Float16_Value`
 - `Mat_Array`
