@@ -1125,6 +1125,25 @@ opencv_core_mat_subtract(const opencv_core_mat_handle *left,
                          const opencv_core_mat_handle *right,
                          opencv_core_mat_handle **out_mat);
 
+/* Actual native output headers: compatible storage (including Regions) is
+ * reused; mismatches may reallocate/detach. Exact same-layout input/output
+ * aliases are supported, not arbitrary partial overlaps. Null handles and
+ * temporary Mat destinations reject before mutation. Native errors need not
+ * preserve the destination. Float16/empty compatibility follows add/subtract.
+ * UMat remains native at this boundary; OpenCV controls execution/fallback. */
+opencv_core_status opencv_core_mat_add_into(
+    const opencv_core_mat_handle *left, const opencv_core_mat_handle *right,
+    opencv_core_mat_handle *destination);
+opencv_core_status opencv_core_mat_subtract_into(
+    const opencv_core_mat_handle *left, const opencv_core_mat_handle *right,
+    opencv_core_mat_handle *destination);
+opencv_core_status opencv_core_umat_add_into(
+    const opencv_core_umat_handle *left, const opencv_core_umat_handle *right,
+    opencv_core_umat_handle *destination);
+opencv_core_status opencv_core_umat_subtract_into(
+    const opencv_core_umat_handle *left, const opencv_core_umat_handle *right,
+    opencv_core_umat_handle *destination);
+
 /*
  * Multiplies or divides two Mats with identical dimensions and type using an
  * OpenCV scale of 1.0. Each returns an independent result of the same type.

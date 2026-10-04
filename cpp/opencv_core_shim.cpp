@@ -5511,11 +5511,76 @@ static void dense_add_or_subtract(const Dense &left, const Dense &right,
     } else if (left.depth() == CV_16F) {
         add_or_subtract_float16(left, right, result, subtract);
     } else if (subtract) {
+#if CV_VERSION_MAJOR >= 5 || (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 10)
+        // ABI safety: subtract selects sub8u32f/sub8s32f from the OLD output
+        // depth with dtype=-1, then creates byte output and writes floats into
+        // it. Establish the byte layout first to prevent out-of-bounds writes.
+        if (!left.empty() && (left.depth() == CV_8U || left.depth() == CV_8S) &&
+            right.type() == left.type() && result.depth() == CV_32F) {
+            result.create(left.dims, left.size.p, left.type());
+        }
+#endif
         cv::subtract(left, right, result, cv::noArray(), -1);
     } else {
         cv::add(left, right, result, cv::noArray(), -1);
     }
 }
+}
+
+opencv_core_status opencv_core_mat_add_into(
+    const opencv_core_mat_handle *left, const opencv_core_mat_handle *right,
+    opencv_core_mat_handle *destination) {
+    clear_error();
+    if (!left || !right || !destination)
+        return invalid_argument("null addition operand or destination Mat");
+    // ABI safety: arithmetic can release/rebind this header, severing the
+    // callback-scoped logical capability over caller/selected storage.
+    if (destination->temporary_external_view)
+        return invalid_argument("temporary Mat cannot be an arithmetic destination");
+    try {
+        dense_add_or_subtract(left->value, right->value, destination->value, false);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_mat_subtract_into(
+    const opencv_core_mat_handle *left, const opencv_core_mat_handle *right,
+    opencv_core_mat_handle *destination) {
+    clear_error();
+    if (!left || !right || !destination)
+        return invalid_argument("null subtraction operand or destination Mat");
+    // ABI safety: arithmetic can release/rebind this header, severing the
+    // callback-scoped logical capability over caller/selected storage.
+    if (destination->temporary_external_view)
+        return invalid_argument("temporary Mat cannot be an arithmetic destination");
+    try {
+        dense_add_or_subtract(left->value, right->value, destination->value, true);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_umat_add_into(
+    const opencv_core_umat_handle *left, const opencv_core_umat_handle *right,
+    opencv_core_umat_handle *destination) {
+    clear_error();
+    if (!left || !right || !destination)
+        return invalid_argument("null addition operand or destination UMat");
+    try {
+        dense_add_or_subtract(left->value, right->value, destination->value, false);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_umat_subtract_into(
+    const opencv_core_umat_handle *left, const opencv_core_umat_handle *right,
+    opencv_core_umat_handle *destination) {
+    clear_error();
+    if (!left || !right || !destination)
+        return invalid_argument("null subtraction operand or destination UMat");
+    try {
+        dense_add_or_subtract(left->value, right->value, destination->value, true);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
 }
 
 // OpenCV 4.x exposes CV_16F Mat storage/conversion but the supported

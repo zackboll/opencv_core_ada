@@ -1231,6 +1231,21 @@ package OpenCV.Core is
    function Abs_Diff (Left, Right : UMat) return UMat;
    function Minimum (Left, Right : UMat) return UMat;
    function Maximum (Left, Right : UMat) return UMat;
+   --  Matching 2-D operands, as above; Destination is not an operand.
+   --  Compatible whole/Region storage is reused, preserving aliases/parent.
+   --  Shape/depth/channel mismatches may reallocate and detach a Region.
+   --  Destination may be Left/Right or a same-layout shallow alias of either;
+   --  operands may alias each other. Arbitrary partial overlap is unsupported.
+   --  Temporary Mat views are allowed as sources, never as Destination.
+   --  Pre-native validation leaves Destination unchanged; native failures
+   --  need not. Empty metadata retains native/version-specific behavior.
+   --  Float16 follows the function policy (Float32 widening on 4.x, native
+   --  on 5.x). UMat stays native here; OpenCV controls execution/fallback.
+   procedure Add (Left, Right : Mat; Destination : in out Mat);
+   procedure Subtract (Left, Right : Mat; Destination : in out Mat);
+   procedure Add (Left, Right : UMat; Destination : in out UMat);
+   procedure Subtract (Left, Right : UMat; Destination : in out UMat);
+
    --  Returns an independent Mat with the compatible operands' shape and
    --  element type. Float16 Add_Weighted uses native CV_16F cv::addWeighted
    --  on OpenCV 5.0. On supported OpenCV 4.x releases, operands are widened

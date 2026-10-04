@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Add reusable `Add` / `Subtract` destination procedures for Mat and UMat,
+  retaining matching 2-D operands and the existing allocation-returning and
+  Float16 policies. Actual native destinations reuse compatible whole/Region
+  storage, allow mismatches to detach, and support exact in-place/same-layout
+  aliases of either operand without a partial-overlap guarantee. Keep UMat
+  native at the boundary. Reject temporary Mat destinations independently in
+  Ada/C ABI; allow temporary sources. Pin empty metadata/version differences,
+  saturation, alias order/tails, failure preservation and Float16 reuse in a
+  focused suite and four exact-version source/probe audits. Narrowly prevent
+  the upstream 4.10/5.0 byte subtraction kernel from using an old Float32
+  destination depth to write floats into reallocated byte storage.
+
 - Add destination-taking `Normalize` procedures for Mat and UMat, using the
   actual native destination through the unchanged `dense_normalize` helper.
   Preserve source depth, all four kinds, N-D/multichannel behavior, empty UMat
