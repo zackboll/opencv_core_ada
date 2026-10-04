@@ -1246,6 +1246,11 @@ package OpenCV.Core is
    procedure Add (Left, Right : UMat; Destination : in out UMat);
    procedure Subtract (Left, Right : UMat; Destination : in out UMat);
 
+   --  Same destination rules as Add/Subtract above, with elementwise products.
+   --  UInt8/Int16 saturate; Int32 does not promise saturation on overflow.
+   procedure Multiply (Left, Right : Mat; Destination : in out Mat);
+   procedure Multiply (Left, Right : UMat; Destination : in out UMat);
+
    --  Returns an independent Mat with the compatible operands' shape and
    --  element type. Float16 Add_Weighted uses native CV_16F cv::addWeighted
    --  on OpenCV 5.0. On supported OpenCV 4.x releases, operands are widened

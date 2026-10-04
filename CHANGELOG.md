@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Add reusable elementwise `Multiply` destination procedures for Mat and UMat
+  through the existing helper and actual native destination. Preserve matching
+  2-D operands, independent function results, native saturation and Float16/
+  empty policies. Cover whole/Region reuse, mismatch detachment, either operand
+  as output, same-layout aliases, A*A, C3, temporary sources/destination rejection,
+  raw pre-native failure preservation, and UMat CPU fallback. Keep UMat native
+  at the boundary. Narrowly correct OpenCV 4.10+/5.x byte multiplication's old
+  UInt16/Int16 destination selector before it can write words into byte storage;
+  include exact four-version source findings and a private-helper layout probe.
+  Preserve native typed-empty KleidiCV Mat rejection and verify function/
+  procedure error parity rather than imposing platform-independent empty success.
+
 - Add reusable `Add` / `Subtract` destination procedures for Mat and UMat,
   retaining matching 2-D operands and the existing allocation-returning and
   Float16 policies. Actual native destinations reuse compatible whole/Region
