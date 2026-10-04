@@ -109,8 +109,10 @@ int main() {
         cv::Mat a(2, 257, CV_32SC3), b(2, 257, CV_32SC3);
         for (int row = 0; row < 2; ++row)
             for (int c = 0; c < 257; ++c) {
-                a.at<cv::Vec3i>(row, c) = l;
-                b.at<cv::Vec3i>(row, c) = r;
+                for (int ch = 0; ch < 3; ++ch) {
+                    a.at<cv::Vec3i>(row, c)[ch] = l[ch];
+                    b.at<cv::Vec3i>(row, c)[ch] = r[ch];
+                }
             }
         check(a, l);
         check(b, r);
