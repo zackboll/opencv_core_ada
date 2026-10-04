@@ -2354,7 +2354,49 @@ typed Mat/UMat helpers with no binding-side Mat temporaries or transfers.
 Normalize keeps the source depth, accepts N-D, and offers L1, L2, Infinity,
 and Min_Max without masks. Float16 norm normalization uses native support;
 Float16 Min_Max is unsupported in OpenCV 4.x and supported in OpenCV 5.
-No Float16 widening fallback is introduced. Sqrt/Exp/Log require Float32 or
+Float16 Infinity also retains native version/backend differences (CPU 4.1/4.6
+have incorrect half reduction results; 4.10/5.0 correct them). No new half
+widening or normalization policy is introduced.
+
+Both `Mat` and `UMat` offer independent results and reusable destinations:
+
+```ada
+Result := Source.Normalize (Kind => L2, Alpha => 1.0);
+Source.Normalize
+  (Destination => Existing,
+   Kind        => L2,
+   Alpha       => 1.0);
+```
+
+The procedure uses the actual native destination header. Compatible shape,
+source depth, and channels reuse storage, including interior `Region` storage
+still shared with its parent and existing shallow aliases. Incompatible shape
+or type can reallocate; an incompatible Region may detach while old aliases
+retain the original parent storage. Exact self (`Source.Normalize (Source, ...)`)
+and distinct same-layout shallow aliases are supported. Arbitrarily partially
+overlapping Regions are **not** guaranteed. N-D and unmasked multichannel
+normalization remain supported; there is no destination depth parameter.
+
+For L1/L2/Infinity, Alpha is the target norm, Beta is ignored, and a zero norm
+uses native zero scale. Min_Max uses the sorted Alpha/Beta bounds; equal bounds
+produce a constant, and constant input maps to the lower bound. Native integer
+rounding/saturation and floating approximation remain unchanged.
+
+Empty sources release destination pixels. OpenCV 4.x Mat release retains the
+old destination type; OpenCV 5.0 Mat recreates the empty source type. The existing
+UMat empty-storage safety helper releases ordinary empty outputs, retaining old
+type metadata even on 5.0 (where release resets dimension count to zero, giving
+a null `Shape`). Empty Float16 Min_Max remains native/version-sensitive
+(4.x rejects; 5.0 CPU succeeds); no new empty OpenCL guarantee is introduced.
+Temporary external/selected Mat views may be sources but are never mutable
+normalization destinations, even when currently compatible. Pre-native null,
+raw-kind, and temporary-destination rejection preserves the destination;
+arbitrary failure atomicity after native execution begins is not promised.
+UMat normalization introduces no binding-side host mapping/transfers. Exact-tag
+source ranges and probes are recorded in
+`tests/probes/normalize_destination_source_findings.md`.
+
+Sqrt/Exp/Log require Float32 or
 Float64, process channels independently, and accept N-D. Their approximation
 and special-value contracts match the Mat operations. Pow rejects Float16;
 floating depths accept integer and non-integer powers, while integer depths
@@ -2368,7 +2410,8 @@ operands, including channels. Angles use radians by default or `Degrees`.
 failure-atomically by one native call and have independent storage. Empty
 Magnitude (default or typed), or angle-only Polar_To_Cart, means unit magnitude.
 Non-empty Magnitude must match Angle's 2-D layout. Typed-empty unary/vector
-results retain type and shape; Normalize follows Mat's empty output release.
+results retain type and shape; Normalize preserves the empty compatibility
+behavior described above.
 Empty-storage safety bypasses avoid native OpenCL vector-width crashes.
 OpenCL is optional and the public math family is tested with it disabled;
 there is no GPU-execution guarantee.

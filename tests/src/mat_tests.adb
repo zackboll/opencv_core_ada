@@ -4,6 +4,7 @@ with Mat_Access_Tests;
 with Mat_View_Tests;
 with Mat_Conversion_Tests;
 with Convert_Destination_Tests;
+with Normalize_Destination_Tests;
 with Mat_Arithmetic_Tests;
 with Mat_Channel_Tests;
 with Mat_Mask_Tests;
@@ -80,6 +81,7 @@ package body Mat_Tests is
       Result.Add_Test (Mat_View_Tests.Suite);
       Result.Add_Test (Mat_Conversion_Tests.Suite);
       Result.Add_Test (Convert_Destination_Tests.Suite);
+      Result.Add_Test (Normalize_Destination_Tests.Suite);
       Result.Add_Test (Mat_Arithmetic_Tests.Suite);
       Result.Add_Test (Mat_Channel_Tests.Suite);
       Result.Add_Test (Mat_Mask_Tests.Suite);

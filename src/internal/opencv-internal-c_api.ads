@@ -1789,6 +1789,14 @@ package OpenCV.Internal.C_API is
       Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_normalize";
 
+   function Mat_Normalize_Into
+     (Source, Destination : Mat_Handle; Kind : C_Int32; Alpha, Beta : C_Double)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_normalize_into";
+
    function Mat_Add
      (Left, Right : Mat_Handle; Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_add";
@@ -1942,6 +1950,15 @@ package OpenCV.Internal.C_API is
       Alpha, Beta : C_Double;
       Result      : access UMat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_umat_normalize";
+   function UMat_Normalize_Into
+     (Source, Destination : UMat_Handle;
+      Kind                : C_Int32;
+      Alpha, Beta         : C_Double) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_normalize_into";
+
    function UMat_Sqrt
      (Source : UMat_Handle; Result : access UMat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_umat_sqrt";

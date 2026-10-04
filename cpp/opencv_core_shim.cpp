@@ -5448,6 +5448,26 @@ opencv_core_mat_normalize(const opencv_core_mat_handle *source,
     }
 }
 
+opencv_core_status opencv_core_mat_normalize_into(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination,
+    int32_t kind, double alpha, double beta) {
+    clear_error();
+    if (!source || !destination)
+        return invalid_argument("null normalization source or destination Mat");
+    int native_kind = 0;
+    if (!to_opencv_normalize_kind(kind, native_kind))
+        return invalid_argument("normalization kind is not supported");
+    // ABI safety: normalization can release/rebind this header, severing the
+    // callback-scoped logical capability over caller/selected storage.
+    if (destination->temporary_external_view)
+        return invalid_argument("temporary Mat cannot be a normalization destination");
+    try {
+        dense_normalize(source->value, destination->value, native_kind,
+                        alpha, beta);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
 // OpenCV 4.x exposes CV_16F Mat/UMat storage/conversion but the supported
 // 4.x Add/Subtract dispatch tables do not implement CV_16F arithmetic
 // (HAL add/sub kernels stop at 8u/8s/16u/16s/32s/32f/64f). OpenCV 5.x
@@ -6600,6 +6620,22 @@ opencv_core_status opencv_core_umat_normalize(
         [=](const cv::UMat &a, cv::UMat &dst) {
             dense_normalize(a, dst, native_kind, alpha, beta);
         });
+}
+
+opencv_core_status opencv_core_umat_normalize_into(
+    const opencv_core_umat_handle *source, opencv_core_umat_handle *destination,
+    int32_t kind, double alpha, double beta) {
+    clear_error();
+    if (!source || !destination)
+        return invalid_argument("null normalization source or destination UMat");
+    int native_kind = 0;
+    if (!to_opencv_normalize_kind(kind, native_kind))
+        return invalid_argument("normalization kind is not supported");
+    try {
+        dense_normalize(source->value, destination->value, native_kind,
+                        alpha, beta);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
 }
 
 opencv_core_status opencv_core_umat_sqrt(const opencv_core_umat_handle *source,
