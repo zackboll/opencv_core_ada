@@ -1251,6 +1251,12 @@ package OpenCV.Core is
    procedure Multiply (Left, Right : Mat; Destination : in out Mat);
    procedure Multiply (Left, Right : UMat; Destination : in out UMat);
 
+   --  Same destination rules, computing old Left / old Right even when
+   --  Destination is Right. Zero denominators follow OpenCV: integer zero,
+   --  floating infinity/NaN; Float16 retains the function's native policy.
+   procedure Divide (Left, Right : Mat; Destination : in out Mat);
+   procedure Divide (Left, Right : UMat; Destination : in out UMat);
+
    --  Returns an independent Mat with the compatible operands' shape and
    --  element type. Float16 Add_Weighted uses native CV_16F cv::addWeighted
    --  on OpenCV 5.0. On supported OpenCV 4.x releases, operands are widened

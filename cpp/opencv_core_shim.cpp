@@ -5812,6 +5812,34 @@ opencv_core_mat_divide(const opencv_core_mat_handle *left,
     }
 }
 
+opencv_core_status opencv_core_mat_divide_into(
+    const opencv_core_mat_handle *left, const opencv_core_mat_handle *right,
+    opencv_core_mat_handle *destination) {
+    clear_error();
+    if (!left || !right || !destination)
+        return invalid_argument("null division operand or destination Mat");
+    // ABI safety: arithmetic can release/rebind this header, severing the
+    // callback-scoped logical capability over caller/selected storage.
+    if (destination->temporary_external_view)
+        return invalid_argument("temporary Mat cannot be an arithmetic destination");
+    try {
+        dense_divide(left->value, right->value, destination->value);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_umat_divide_into(
+    const opencv_core_umat_handle *left, const opencv_core_umat_handle *right,
+    opencv_core_umat_handle *destination) {
+    clear_error();
+    if (!left || !right || !destination)
+        return invalid_argument("null division operand or destination UMat");
+    try {
+        dense_divide(left->value, right->value, destination->value);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
 // OpenCV 4.x exposes CV_16F Mat storage/conversion but its absdiff dispatch
 // tables do not implement CV_16F arithmetic. OpenCV 5.x provides native
 // Float16 absdiff, so use it there and widen only on older supported versions.

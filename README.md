@@ -1687,13 +1687,15 @@ Explicit Mat/Mat operations include:
 - `Scale_Add`
 
 `Mat` and `UMat` support both allocation-returning and destination-taking
-`Add` / `Subtract` / `Multiply` forms. All require matching **2-D** operands
-(shape, depth, and channels); Destination does not participate in validation.
+`Add` / `Subtract` / `Multiply` / `Divide` forms. All require matching **2-D**
+operands (shape, depth, and channels); Destination does not participate in
+validation.
 
 ```ada
 Result := Add (A, B);
 Result := Subtract (A, B);
 Result := Multiply (A, B);
+Result := Divide (A, B);
 
 Add
   (Left        => A,
@@ -1704,6 +1706,10 @@ Subtract
    Right       => B,
    Destination => Existing);
 Multiply
+  (Left        => A,
+   Right       => B,
+   Destination => Existing);
+Divide
   (Left        => A,
    Right       => B,
    Destination => Existing);
@@ -1732,6 +1738,23 @@ destination and can reuse compatible half whole/Region storage. No extra half
 compatibility layer or cross-architecture bitwise guarantee is introduced.
 UMat arithmetic remains UMat-native at the binding boundary; OpenCV chooses
 OpenCL execution or CPU fallback, not necessarily GPU residency/execution.
+
+`Divide` passes the actual destination to the unchanged division compatibility
+helper. `Divide (A, B, A)` and `Divide (A, B, B)` are supported: the latter still
+computes **old Left / old Right**, including exact-layout shallow aliases.
+Partial overlap is unsupported. Scale remains 1.0 and output preserves operand
+depth. Zero denominators are **not invalid**: native integer storage returns
+zero; Float32/Float64 preserve infinity/NaN, including the denominator zero sign
+where native execution preserves it. Integer quotients use OpenCV conversion/
+rounding, not Ada integer `/` (for example UInt8 `7 / 2 = 4`). `A / A` is one
+only for ordinary nonzero finite inputs: integer `0 / 0` is zero and ordinary
+floating `0 / 0` is NaN. Float16 policy is unchanged and procedure results match
+the existing function under the same build; no NaN payload guarantee is added.
+OpenCV 5.0 typed-empty Mat division releases the destination, unlike ordinary
+4.x typed-empty Mat creation; the existing UMat empty helper remains unchanged.
+No Divide old-destination-depth selector or preallocation correction exists.
+See [`tests/probes/divide_destination_source_findings.md`](tests/probes/divide_destination_source_findings.md)
+for the four exact-tag source audit, empty metadata, and actual-helper probe.
 
 Accepted empty operands release destination storage or create typed-empty
 headers through the established native/helper path. Old aliases keep their

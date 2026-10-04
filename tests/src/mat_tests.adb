@@ -7,6 +7,7 @@ with Convert_Destination_Tests;
 with Normalize_Destination_Tests;
 with Add_Subtract_Destination_Tests;
 with Multiply_Destination_Tests;
+with Divide_Destination_Tests;
 with Mat_Arithmetic_Tests;
 with Mat_Channel_Tests;
 with Mat_Mask_Tests;
@@ -86,6 +87,7 @@ package body Mat_Tests is
       Result.Add_Test (Normalize_Destination_Tests.Suite);
       Result.Add_Test (Add_Subtract_Destination_Tests.Suite);
       Result.Add_Test (Multiply_Destination_Tests.Suite);
+      Result.Add_Test (Divide_Destination_Tests.Suite);
       Result.Add_Test (Mat_Arithmetic_Tests.Suite);
       Result.Add_Test (Mat_Channel_Tests.Suite);
       Result.Add_Test (Mat_Mask_Tests.Suite);
