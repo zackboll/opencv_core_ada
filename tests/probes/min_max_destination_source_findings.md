@@ -182,6 +182,50 @@ operations share these rules. The explicit old alias remains live/writable.
 
 ## Reproduction and current verification boundary
 
+### ARM64 Numbers observation correction
+
+Review head `b5c6e6e40609cf3f345ceaca8476426ad0b7d4b9` failed the four
+Maximum Numbers/OpenCL-disabled registrations on Ubuntu and macOS ARM64.
+The disabled cases repeat Numbers; this was not an OpenCL-specific defect.
+The failing value is Int32 C3, channel 1, first row/column: the test's
+Float64 observation was **2147483648**, expected **2147483647**.
+
+`min_max_int32_fixture_probe.cpp` isolates Scalar construction, typed storage,
+direct-native fresh/reused selection, and conversion for observation. An
+AArch64 cross-compiled probe under QEMU with Debian OpenCV 4.6.0 found:
+
+- Scalar-built raw sources are already exactly
+  `(-2147483648, 2147483647, -7)` and `(9, -9, 12)` at every element.
+- Exact typed construction stores those same values, with no fixture change
+  to the intended inputs. Mat/UMat transfers preserve the raw integers.
+- Independent integer selection and direct-native fresh/reused Mat/UMat
+  minimum/maximum agree exactly with optimizations both enabled and disabled.
+- Widening either Scalar-built or exact-typed Int32 data to Float64 changes
+  INT_MAX to 2147483648 on this backend. Native Maximum's raw channel 1 is
+  still 2147483647; only its widened observation is wrong.
+
+This is a test observation defect, not a Scalar construction or max-kernel
+defect. Authoritative 4.6.0 `hal/intrin_neon.hpp:2230-2237` implements
+`v_cvt_f64(v_int32x4)`/`v_cvt_f64_high` through `vcvt_f32_s32` followed by
+`vcvt_f64_f32`; 5.0.0 retains that path at lines 2617-2624. Float32 cannot
+represent INT_MAX exactly. The conversion loop in 4.6.0
+`src/convert.simd.hpp:102-128` selects these SIMD conversions for wide data.
+The x86_64 host probe preserves INT_MAX when widening. Minimum never selects
+INT_MAX in this fixture, explaining the Maximum-only failure pattern.
+
+Numbers now constructs Int32 sources with `Int32_Vec3_Access.Set`, verifies
+both complete stored sources before arithmetic, and independently checks the
+allocation-returning function, destination and retained destination alias.
+Int32 observations use exact typed reads, never Convert_To(Float64). Other
+depths also verify sources and both result forms, with operation/depth/channel/
+row/column/Actual/Expected assertion diagnostics and no success-path noise.
+Production code, integer expectations and the approved special-alias suite
+are unchanged; no new C++ production guards or semantic normalization.
+
+Compile the standalone fixture probe with the same C++17 warning flags below,
+substituting `tests/probes/min_max_int32_fixture_probe.cpp` as the source.
+Its widening observations are diagnostic, not a new conversion contract.
+
 ```
 g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \
   $(pkg-config --cflags opencv4) tests/probes/min_max_destination_probe.cpp \

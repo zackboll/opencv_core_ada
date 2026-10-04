@@ -6,6 +6,7 @@ with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.Transfers;
 with OpenCV.Core.Float64_Access;
+with OpenCV.Core.Int32_Vec3_Access;
 with OpenCV.Core.UInt8_Access;
 with OpenCV.Core.UInt8_Mat_View;
 with Min_Max_Destination_Tests.Raw_ABI;
@@ -33,9 +34,13 @@ package body Min_Max_Destination_Tests is
        then Long_Float'Min (A, B)
        else Long_Float'Max (A, B));
 
-   procedure Check (Actual, Expected : Long_Float) is
+   procedure Check
+     (Actual, Expected : Long_Float;
+      Context          : String := "every finite extrema element") is
    begin
-      Assert (Actual = Expected, "every finite extrema element");
+      Assert
+        (Actual = Expected,
+         Context & " actual=" & Actual'Image & " expected=" & Expected'Image);
    end Check;
 
    procedure Equal (Actual, Expected : Mat) is
@@ -351,6 +356,81 @@ package body Min_Max_Destination_Tests is
       procedure Numbers (Test : in out Fixture) is
          pragma Unreferenced (Test);
          type Triple is array (0 .. 2) of Long_Float;
+         function Source (D : Depth_Type; Values : Triple) return Image is
+            H : Mat := Create (2, 257, (D, 3));
+         begin
+            if D = Int32 then
+               --  Write endpoints without Scalar floating-point conversion.
+               for Row in 0 .. 1 loop
+                  for C in 0 .. 256 loop
+                     Int32_Vec3_Access.Set
+                       (H,
+                        Row,
+                        C,
+                        (Int32_Value (Values (0)),
+                         Int32_Value (Values (1)),
+                         Int32_Value (Values (2))));
+                  end loop;
+               end loop;
+            else
+               H.Set_To (Make_Scalar (Values (0), Values (1), Values (2)));
+            end if;
+            return From_Mat (H);
+         end Source;
+         procedure Verify
+           (Self : Image; D : Depth_Type; Values : Triple; Context : String)
+         is
+            H : constant Mat := Observe (Self);
+            function Detail (Ch, Row, C : Integer) return String
+            is (Context
+                & " "
+                & D'Image
+                & " C3 channel="
+                & Ch'Image
+                & " row="
+                & Row'Image
+                & " column="
+                & C'Image);
+         begin
+            Assert
+              (H.Shape = Dimension_Array'(2, 257)
+               and then H.Depth = D
+               and then H.Channels = 3,
+               Context & " C3 layout");
+            if D = Int32 then
+               --  NEON Int32 -> Float64 may widen through Float32 and round
+               --  INT_MAX. Observe integer selection through exact access.
+               for Row in 0 .. 1 loop
+                  for C in 0 .. 256 loop
+                     for Ch in 0 .. 2 loop
+                        Check
+                          (Long_Float (Int32_Vec3_Access.Get (H, Row, C) (Ch)),
+                           Values (Ch),
+                           Detail (Ch, Row, C));
+                     end loop;
+                  end loop;
+               end loop;
+            else
+               declare
+                  W : constant Mat := H.Convert_To (Float64);
+               begin
+                  for Ch in 0 .. 2 loop
+                     declare
+                        V : constant Mat := W.Extract_Channel (Ch);
+                     begin
+                        for Row in 0 .. 1 loop
+                           for C in 0 .. 256 loop
+                              Check
+                                (Long_Float (Float64_Access.Get (V, Row, C)),
+                                 Values (Ch),
+                                 Detail (Ch, Row, C));
+                           end loop;
+                        end loop;
+                     end;
+                  end loop;
+               end;
+            end if;
+         end Verify;
       begin
          for D of Depths'(UInt8, Int16, Int32, Float32, Float64, Float16) loop
             declare
@@ -370,32 +450,21 @@ package body Min_Max_Destination_Tests is
                   elsif D in Int16 | Int32
                   then (9.0, -9.0, 12.0)
                   else (-2.0, -5.0, 2.0));
-               A     : Image := New_Image (2, 257, (D, 3));
-               B     : Image := New_Image (2, 257, (D, 3));
+               E     : constant Triple :=
+                 (Select_Value (L (0), R (0), Op),
+                  Select_Value (L (1), R (1), Op),
+                  Select_Value (L (2), R (2), Op));
+               A     : constant Image := Source (D, L);
+               B     : constant Image := Source (D, R);
                Dest  : Image := New_Image (2, 257, (D, 3));
                Alias : constant Image := Dest;
             begin
-               Set_To (A, Make_Scalar (L (0), L (1), L (2)));
-               Set_To (B, Make_Scalar (R (0), R (1), R (2)));
+               Verify (A, D, L, "stored Left before " & Op'Image);
+               Verify (B, D, R, "stored Right before " & Op'Image);
+               Verify (Fresh (A, B), D, E, "function " & Op'Image);
                Into (A, B, Dest);
-               Equal (Observe (Dest), Observe (Fresh (A, B)));
-               declare
-                  H : constant Mat := Observe (Alias).Convert_To (Float64);
-               begin
-                  for Ch in 0 .. 2 loop
-                     declare
-                        V : constant Mat := H.Extract_Channel (Ch);
-                     begin
-                        for Row in 0 .. 1 loop
-                           for C in 0 .. 256 loop
-                              Check
-                                (Long_Float (Float64_Access.Get (V, Row, C)),
-                                 Select_Value (L (Ch), R (Ch), Op));
-                           end loop;
-                        end loop;
-                     end;
-                  end loop;
-               end;
+               Verify (Dest, D, E, "destination " & Op'Image);
+               Verify (Alias, D, E, "retained alias " & Op'Image);
             end;
          end loop;
       end Numbers;
