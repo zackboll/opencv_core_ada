@@ -1687,18 +1687,23 @@ Explicit Mat/Mat operations include:
 - `Scale_Add`
 
 `Mat` and `UMat` support both allocation-returning and destination-taking
-`Add` / `Subtract` forms. Both require matching **2-D** operands (shape,
-depth, and channels); Destination does not participate in that validation.
+`Add` / `Subtract` / `Multiply` forms. All require matching **2-D** operands
+(shape, depth, and channels); Destination does not participate in validation.
 
 ```ada
 Result := Add (A, B);
 Result := Subtract (A, B);
+Result := Multiply (A, B);
 
 Add
   (Left        => A,
    Right       => B,
    Destination => Existing);
 Subtract
+  (Left        => A,
+   Right       => B,
+   Destination => Existing);
+Multiply
   (Left        => A,
    Right       => B,
    Destination => Existing);
@@ -1713,8 +1718,8 @@ a Region may detach while its old aliases/parent retain their storage.
 
 Destination may be Left or Right, or a distinct same-layout shallow alias of
 either, including order-sensitive `Subtract (A, B, B)` computing `A - old(B)`.
-Operands may themselves share the same layout/storage: `A + A` and `A - A`
-retain native numeric semantics. Arbitrarily partially overlapping Regions
+Operands may themselves share the same layout/storage: `A + A`, `A - A`, and
+`A * A` retain native numeric semantics. Arbitrarily partially overlapping Regions
 are **not supported**. Temporary external/selected Mat views are allowed as
 sources, but never as destinations, even with compatible shape/type.
 Operand/capability validation occurs before mutation; arbitrary post-native
@@ -1736,6 +1741,27 @@ whereas 5.0 clears dimensionality. Typed-empty UMat outputs retain operand
 type/2-D shape through the existing helper; typed-empty Mat outputs differ
 between 4.x and 5.0. See the exact-version table and source/probe evidence in
 [`tests/probes/add_subtract_destination_source_findings.md`](tests/probes/add_subtract_destination_source_findings.md).
+
+`Multiply` uses the existing multiplication helper with the actual destination,
+including its empty and Float16 compatibility paths. Exact `Multiply (A, B, A)`
+and `Multiply (A, B, B)`, same-layout shallow aliases of either operand, and
+`Multiply (A, A, A)` are supported; arbitrary partial Region overlap is not.
+UInt8 products saturate (`20 * 20 = 255`), signed Int16 products saturate at both
+limits, and Int32 retains OpenCV's non-saturating contract; no binding overflow
+policy is added. Scale remains 1.0 and output depth remains the operand depth.
+Multiply's typed-empty Mat path retains operand type/2-D shape except Float16
+on 4.x (release); typed-empty UMat retains operand metadata. Default/mixed Mat
+empties release output, whereas mixed UMat empties take the typed operand's
+metadata. Release preserves old destination depth/channels and old aliases;
+the released shape is zeroed 2-D on 4.x and dimensionless on 5.0.
+The helper narrowly corrects the old UInt16/Int16 destination layout before
+byte multiplication on OpenCV 4.10+/5.x, preventing an extended HAL kernel from
+writing 16-bit values into recreated byte storage. Compatible destinations,
+fresh results, and empty operands are unaffected. See
+[`tests/probes/multiply_destination_source_findings.md`](tests/probes/multiply_destination_source_findings.md)
+for the exact four-version source audit, native-call layout probe, and empty
+metadata table. No guaranteed GPU execution or cross-platform Float16 bit
+identity is implied.
 
 `Add`, `Subtract`, `Multiply`, `Divide`, `Abs_Diff`, `Minimum`, and `Maximum`
 accept Float16 operands with the same shape, depth, and channel-count

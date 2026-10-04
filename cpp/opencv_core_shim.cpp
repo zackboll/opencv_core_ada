@@ -5622,9 +5622,47 @@ static void dense_multiply(const Dense &left, const Dense &right,
     } else if (left.depth() == CV_16F) {
         multiply_float16(left, right, result);
     } else {
+#if CV_VERSION_MAJOR >= 5 || (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 10)
+        // ABI safety: multiply selects mul8u16u/mul8s16s from the OLD output
+        // depth with dtype=-1, then creates byte storage. Their ushort*/short*
+        // writes can overrun that storage. Establish the byte layout first.
+        if (!left.empty() && right.type() == left.type() &&
+            ((left.depth() == CV_8U && result.depth() == CV_16U) ||
+             (left.depth() == CV_8S && result.depth() == CV_16S))) {
+            result.create(left.dims, left.size.p, left.type());
+        }
+#endif
         cv::multiply(left, right, result, 1.0, -1);
     }
 }
+}
+
+opencv_core_status opencv_core_mat_multiply_into(
+    const opencv_core_mat_handle *left, const opencv_core_mat_handle *right,
+    opencv_core_mat_handle *destination) {
+    clear_error();
+    if (!left || !right || !destination)
+        return invalid_argument("null multiplication operand or destination Mat");
+    // ABI safety: arithmetic can release/rebind this header, severing the
+    // callback-scoped logical capability over caller/selected storage.
+    if (destination->temporary_external_view)
+        return invalid_argument("temporary Mat cannot be an arithmetic destination");
+    try {
+        dense_multiply(left->value, right->value, destination->value);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_umat_multiply_into(
+    const opencv_core_umat_handle *left, const opencv_core_umat_handle *right,
+    opencv_core_umat_handle *destination) {
+    clear_error();
+    if (!left || !right || !destination)
+        return invalid_argument("null multiplication operand or destination UMat");
+    try {
+        dense_multiply(left->value, right->value, destination->value);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
 }
 
 opencv_core_status

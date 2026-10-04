@@ -1830,6 +1830,20 @@ package OpenCV.Internal.C_API is
      (Left, Right : Mat_Handle; Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_multiply";
 
+   function Mat_Multiply_Into
+     (Left, Right, Destination : Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_multiply_into";
+
+   function UMat_Multiply_Into
+     (Left, Right, Destination : UMat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_multiply_into";
+
    function Mat_Divide
      (Left, Right : Mat_Handle; Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_divide";

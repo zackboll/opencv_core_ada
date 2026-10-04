@@ -1153,6 +1153,16 @@ opencv_core_mat_multiply(const opencv_core_mat_handle *left,
                          const opencv_core_mat_handle *right,
                          opencv_core_mat_handle **out_mat);
 
+/* Actual native multiplication destination; scale=1, dtype=-1. Reuse,
+ * aliasing and pre-native failure rules match add_into/subtract_into above.
+ * Float16 and empty compatibility follow the allocation-returning multiply. */
+opencv_core_status opencv_core_mat_multiply_into(
+    const opencv_core_mat_handle *left, const opencv_core_mat_handle *right,
+    opencv_core_mat_handle *destination);
+opencv_core_status opencv_core_umat_multiply_into(
+    const opencv_core_umat_handle *left, const opencv_core_umat_handle *right,
+    opencv_core_umat_handle *destination);
+
 opencv_core_status
 opencv_core_mat_divide(const opencv_core_mat_handle *left,
                        const opencv_core_mat_handle *right,
