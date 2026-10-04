@@ -1884,6 +1884,34 @@ package OpenCV.Internal.C_API is
      (Left, Right : Mat_Handle; Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_minimum";
 
+   function Mat_Minimum_Into
+     (Left, Right, Destination : Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_minimum_into";
+
+   function Mat_Maximum_Into
+     (Left, Right, Destination : Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_maximum_into";
+
+   function UMat_Minimum_Into
+     (Left, Right, Destination : UMat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_minimum_into";
+
+   function UMat_Maximum_Into
+     (Left, Right, Destination : UMat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_maximum_into";
+
    function Mat_Maximum
      (Left, Right : Mat_Handle; Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_maximum";

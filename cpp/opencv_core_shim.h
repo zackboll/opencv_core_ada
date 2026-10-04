@@ -1211,6 +1211,22 @@ opencv_core_mat_maximum(const opencv_core_mat_handle *left,
                         const opencv_core_mat_handle *right,
                         opencv_core_mat_handle **out_mat);
 
+/* Actual native destination, with the same reuse/capability/failure boundary
+ * as abs_diff_into. Exact aliases retain native floating SIMD/tail semantics,
+ * not unconditional NaN/zero-sign parity with independent output. */
+opencv_core_status opencv_core_mat_minimum_into(
+    const opencv_core_mat_handle *left, const opencv_core_mat_handle *right,
+    opencv_core_mat_handle *destination);
+opencv_core_status opencv_core_mat_maximum_into(
+    const opencv_core_mat_handle *left, const opencv_core_mat_handle *right,
+    opencv_core_mat_handle *destination);
+opencv_core_status opencv_core_umat_minimum_into(
+    const opencv_core_umat_handle *left, const opencv_core_umat_handle *right,
+    opencv_core_umat_handle *destination);
+opencv_core_status opencv_core_umat_maximum_into(
+    const opencv_core_umat_handle *left, const opencv_core_umat_handle *right,
+    opencv_core_umat_handle *destination);
+
 /* Owned, independently computed UMat results; operands remain UMat-native. */
 #define OPENCV_CORE_DECLARE_UMAT_ARITHMETIC(NAME)                         \
 opencv_core_status opencv_core_umat_##NAME(                                \

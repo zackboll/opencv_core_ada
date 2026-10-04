@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Add reusable `Minimum` and `Maximum` destination procedures for Mat and UMat
+  through four narrow C exports using the actual output and unchanged
+  `dense_min_max`. Preserve matching 2-D operands, independent function results,
+  compatible whole/Region reuse, mismatch detachment, Left/Right and same-layout
+  aliases, temporary-source permissions and destination rejection, Float16/empty
+  policy, and native UMat boundaries. Integer extrema are direct selection.
+  Independent outputs match functions; floating-special aliases preserve native
+  selection, including OpenCV 5.0's fresh-SIMD versus aliased-scalar tail NaN/
+  signed-zero differences. No normalization, overlap copies or preallocation
+  workaround. Add shared public/raw tests and exact four-version source/probe
+  evidence; arbitrary partial overlap remains unsupported.
+
 - Add reusable elementwise `Abs_Diff` destination procedures for Mat and UMat,
   passing the caller's actual native destination to unchanged `dense_abs_diff`.
   Preserve independent function results, matching 2-D operands, whole/Region
