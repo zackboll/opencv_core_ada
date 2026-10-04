@@ -1862,6 +1862,20 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_umat_divide_into";
 
+   function Mat_Abs_Diff_Into
+     (Left, Right, Destination : Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_abs_diff_into";
+
+   function UMat_Abs_Diff_Into
+     (Left, Right, Destination : UMat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_abs_diff_into";
+
    function Mat_Abs_Diff
      (Left, Right : Mat_Handle; Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_abs_diff";

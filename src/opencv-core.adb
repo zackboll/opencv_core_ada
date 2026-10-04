@@ -911,6 +911,28 @@ package body OpenCV.Core is
          "UMat destination division");
    end Divide;
 
+   procedure Abs_Diff (Left, Right : Mat; Destination : in out Mat) is
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      if Destination.Temporary_View then
+         raise OpenCV_Error
+           with "temporary Mat views cannot be arithmetic destinations";
+      end if;
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Abs_Diff_Into
+           (Left.Handle, Right.Handle, Destination.Handle),
+         "Mat destination absolute difference");
+   end Abs_Diff;
+
+   procedure Abs_Diff (Left, Right : UMat; Destination : in out UMat) is
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Abs_Diff_Into
+           (Left.Handle, Right.Handle, Destination.Handle),
+         "UMat destination absolute difference");
+   end Abs_Diff;
+
    function Abs_Diff (Left, Right : Mat) return Mat is
       Result     : Mat;
       New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
