@@ -5999,6 +5999,34 @@ opencv_core_mat_abs_diff(const opencv_core_mat_handle *left,
     }
 }
 
+opencv_core_status opencv_core_mat_abs_diff_into(
+    const opencv_core_mat_handle *left, const opencv_core_mat_handle *right,
+    opencv_core_mat_handle *destination) {
+    clear_error();
+    if (!left || !right || !destination)
+        return invalid_argument("null absolute-difference operand or destination Mat");
+    // ABI safety: native output handling may release/rebind this header,
+    // severing the callback-scoped capability over caller/selected storage.
+    if (destination->temporary_external_view)
+        return invalid_argument("temporary Mat cannot be an arithmetic destination");
+    try {
+        dense_abs_diff(left->value, right->value, destination->value);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_umat_abs_diff_into(
+    const opencv_core_umat_handle *left, const opencv_core_umat_handle *right,
+    opencv_core_umat_handle *destination) {
+    clear_error();
+    if (!left || !right || !destination)
+        return invalid_argument("null absolute-difference operand or destination UMat");
+    try {
+        dense_abs_diff(left->value, right->value, destination->value);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
 opencv_core_status
 opencv_core_mat_add_weighted(const opencv_core_mat_handle *left, double alpha,
                              const opencv_core_mat_handle *right, double beta,

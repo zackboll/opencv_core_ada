@@ -1186,6 +1186,17 @@ opencv_core_mat_abs_diff(const opencv_core_mat_handle *left,
                          const opencv_core_mat_handle *right,
                          opencv_core_mat_handle **out_mat);
 
+/* Actual native outputs: compatible whole/Region storage is reused;
+ * mismatches may reallocate. Exact/same-layout aliases are supported, not
+ * arbitrary partial overlap. Temporary Mat destinations are forbidden.
+ * Null/capability failures preserve destination; native failures need not. */
+opencv_core_status opencv_core_mat_abs_diff_into(
+    const opencv_core_mat_handle *left, const opencv_core_mat_handle *right,
+    opencv_core_mat_handle *destination);
+opencv_core_status opencv_core_umat_abs_diff_into(
+    const opencv_core_umat_handle *left, const opencv_core_umat_handle *right,
+    opencv_core_umat_handle *destination);
+
 /*
  * Calculates the OpenCV per-element minimum or maximum of two Mats with
  * identical dimensions and type, returning an independently allocated result.

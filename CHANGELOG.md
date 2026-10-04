@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Add reusable elementwise `Abs_Diff` destination procedures for Mat and UMat,
+  passing the caller's actual native destination to unchanged `dense_abs_diff`.
+  Preserve independent function results, matching 2-D operands, whole/Region
+  reuse, mismatch detachment, exact/same-layout aliases of either operand, and
+  the unsupported arbitrary partial-overlap boundary. Retain unsigned/C3,
+  Int16 saturation, native Int32 overflow, floating nonfinite/Float16/empty
+  policies, temporary source permissions and destination rejection, and
+  UMat-native boundaries. Include focused public/raw tests and four exact-tag
+  source/helper probes. No old-destination preallocation correction is needed.
+
 - Add reusable elementwise `Divide` destination procedures for Mat and UMat,
   passing actual native destinations to the unchanged compatibility helper.
   Retain independent function results, matching 2-D operands, whole/Region

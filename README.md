@@ -1687,7 +1687,7 @@ Explicit Mat/Mat operations include:
 - `Scale_Add`
 
 `Mat` and `UMat` support both allocation-returning and destination-taking
-`Add` / `Subtract` / `Multiply` / `Divide` forms. All require matching **2-D**
+`Add` / `Subtract` / `Multiply` / `Divide` / `Abs_Diff` forms. All require matching **2-D**
 operands (shape, depth, and channels); Destination does not participate in
 validation.
 
@@ -1696,6 +1696,7 @@ Result := Add (A, B);
 Result := Subtract (A, B);
 Result := Multiply (A, B);
 Result := Divide (A, B);
+Result := Abs_Diff (A, B);
 
 Add
   (Left        => A,
@@ -1710,6 +1711,10 @@ Multiply
    Right       => B,
    Destination => Existing);
 Divide
+  (Left        => A,
+   Right       => B,
+   Destination => Existing);
+Abs_Diff
   (Left        => A,
    Right       => B,
    Destination => Existing);
@@ -1738,6 +1743,29 @@ destination and can reuse compatible half whole/Region storage. No extra half
 compatibility layer or cross-architecture bitwise guarantee is introduced.
 UMat arithmetic remains UMat-native at the binding boundary; OpenCV chooses
 OpenCL execution or CPU fallback, not necessarily GPU residency/execution.
+
+`Abs_Diff` passes the actual destination to the unchanged `dense_abs_diff`
+helper. Compatible whole/Region storage is reused; mismatched shape, depth or
+channels may detach/reallocate without changing the old parent or aliases.
+Destination may be Left or Right, including distinct same-layout shallow
+aliases; arbitrary partially overlapping Regions are unsupported. Public
+operands remain matching **2-D** arrays, not scalars or N-D arithmetic.
+UInt8 differences do not wrap (`10` vs `200` gives `190`), channels are
+independent, and Int16 saturates (`-32768` vs `0` gives `32767`). Int32 overflow
+has no saturation guarantee and may yield negative native values; the binding
+does not normalize it. Ordinary finite/integer `Abs_Diff (A, A)` is zero, but
+equal infinities and NaNs produce native NaNs. Finite vs either infinity gives
+positive infinity; NaN operands propagate NaN classification, without payload
+preservation promises. Signed-zero pairs produced positive zero in the exact
+four-version CPU matrix; no stronger architecture-independent bit contract is
+introduced. Float16 policy is unchanged (4.x Float32 widening/final narrowing
+into the actual destination; 5.0 native half), and UMat stays native at the
+binding boundary. Typed/default Mat empty order differs on 4.x, whereas 5.0
+Mat releases early; the established UMat typed-empty compatibility path remains
+unchanged. OpenCV 5's same-width scalar helper cannot introduce an old-output
+write-width mismatch here, so no preallocation correction was added. See
+[`tests/probes/abs_diff_destination_source_findings.md`](tests/probes/abs_diff_destination_source_findings.md)
+for exact-tag paths, empty metadata, alias boundaries, and actual-helper probes.
 
 `Divide` passes the actual destination to the unchanged division compatibility
 helper. `Divide (A, B, A)` and `Divide (A, B, B)` are supported: the latter still

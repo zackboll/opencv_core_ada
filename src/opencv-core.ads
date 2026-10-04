@@ -1257,6 +1257,12 @@ package OpenCV.Core is
    procedure Divide (Left, Right : Mat; Destination : in out Mat);
    procedure Divide (Left, Right : UMat; Destination : in out UMat);
 
+   --  Same destination rules, computing native elementwise abs(Left-Right).
+   --  UInt8 does not wrap; Int16 saturates; Int32 overflow is not saturated.
+   --  Nonfinite floating results remain native, without NaN payload promises.
+   procedure Abs_Diff (Left, Right : Mat; Destination : in out Mat);
+   procedure Abs_Diff (Left, Right : UMat; Destination : in out UMat);
+
    --  Returns an independent Mat with the compatible operands' shape and
    --  element type. Float16 Add_Weighted uses native CV_16F cv::addWeighted
    --  on OpenCV 5.0. On supported OpenCV 4.x releases, operands are widened
