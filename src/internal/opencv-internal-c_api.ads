@@ -1801,6 +1801,27 @@ package OpenCV.Internal.C_API is
      (Left, Right : Mat_Handle; Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_add";
 
+   function Mat_Add_Into (Left, Right, Destination : Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_add_into";
+
+   function Mat_Subtract_Into
+     (Left, Right, Destination : Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_subtract_into";
+
+   function UMat_Add_Into
+     (Left, Right, Destination : UMat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_add_into";
+
+   function UMat_Subtract_Into
+     (Left, Right, Destination : UMat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_subtract_into";
+
    function Mat_Subtract
      (Left, Right : Mat_Handle; Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_subtract";

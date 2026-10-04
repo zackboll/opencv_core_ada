@@ -18,7 +18,7 @@ translation of the C++ headers.
 >
 > **Development status:** active, pre-1.0 API.
 >
-> **Current test baseline:** 1632 AUnit tests, with Ada and C++ warnings promoted
+> **Current test baseline:** 1686 AUnit tests, with Ada and C++ warnings promoted
 > to errors. GitHub Actions exercises the full test suite against four OpenCV
 > compatibility targets, plus a native Ubuntu 24.04 ARM64 job.
 >
@@ -1685,6 +1685,57 @@ Explicit Mat/Mat operations include:
 - `Maximum`
 - `Add_Weighted`
 - `Scale_Add`
+
+`Mat` and `UMat` support both allocation-returning and destination-taking
+`Add` / `Subtract` forms. Both require matching **2-D** operands (shape,
+depth, and channels); Destination does not participate in that validation.
+
+```ada
+Result := Add (A, B);
+Result := Subtract (A, B);
+
+Add
+  (Left        => A,
+   Right       => B,
+   Destination => Existing);
+Subtract
+  (Left        => A,
+   Right       => B,
+   Destination => Existing);
+```
+
+Functions retain their independent-result contract. Procedures pass the
+caller's actual native destination header to arithmetic, reusing compatible
+whole storage or an interior `Region`: its parent/geometry and preexisting
+shallow aliases remain attached, and outside parent pixels remain unchanged.
+An incompatible shape, depth, or channel count permits native reallocation;
+a Region may detach while its old aliases/parent retain their storage.
+
+Destination may be Left or Right, or a distinct same-layout shallow alias of
+either, including order-sensitive `Subtract (A, B, B)` computing `A - old(B)`.
+Operands may themselves share the same layout/storage: `A + A` and `A - A`
+retain native numeric semantics. Arbitrarily partially overlapping Regions
+are **not supported**. Temporary external/selected Mat views are allowed as
+sources, but never as destinations, even with compatible shape/type.
+Operand/capability validation occurs before mutation; arbitrary post-native
+failure atomicity is not promised. Integer saturation remains native (UInt8
+and Int16 saturate; Int32 does not saturate and overflow may change sign).
+
+Float16 follows the existing function policy: Float32 widening on OpenCV 4.x,
+native half arithmetic on 5.x. The 4.x final narrowing writes into the actual
+destination and can reuse compatible half whole/Region storage. No extra half
+compatibility layer or cross-architecture bitwise guarantee is introduced.
+UMat arithmetic remains UMat-native at the binding boundary; OpenCV chooses
+OpenCL execution or CPU fallback, not necessarily GPU residency/execution.
+
+Accepted empty operands release destination storage or create typed-empty
+headers through the established native/helper path. Old aliases keep their
+allocation. Release retains the old destination depth/channels, unlike a
+fresh return-value result; 4.x release retains zeroed dimensional extents,
+whereas 5.0 clears dimensionality. Typed-empty UMat outputs retain operand
+type/2-D shape through the existing helper; typed-empty Mat outputs differ
+between 4.x and 5.0. See the exact-version table and source/probe evidence in
+[`tests/probes/add_subtract_destination_source_findings.md`](tests/probes/add_subtract_destination_source_findings.md).
 
 `Add`, `Subtract`, `Multiply`, `Divide`, `Abs_Diff`, `Minimum`, and `Maximum`
 accept Float16 operands with the same shape, depth, and channel-count

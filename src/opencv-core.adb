@@ -785,6 +785,50 @@ package body OpenCV.Core is
       return Result;
    end Subtract;
 
+   procedure Add (Left, Right : Mat; Destination : in out Mat) is
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      if Destination.Temporary_View then
+         raise OpenCV_Error
+           with "temporary Mat views cannot be arithmetic destinations";
+      end if;
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Add_Into
+           (Left.Handle, Right.Handle, Destination.Handle),
+         "Mat destination addition");
+   end Add;
+
+   procedure Subtract (Left, Right : Mat; Destination : in out Mat) is
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      if Destination.Temporary_View then
+         raise OpenCV_Error
+           with "temporary Mat views cannot be arithmetic destinations";
+      end if;
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Subtract_Into
+           (Left.Handle, Right.Handle, Destination.Handle),
+         "Mat destination subtraction");
+   end Subtract;
+
+   procedure Add (Left, Right : UMat; Destination : in out UMat) is
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Add_Into
+           (Left.Handle, Right.Handle, Destination.Handle),
+         "UMat destination addition");
+   end Add;
+
+   procedure Subtract (Left, Right : UMat; Destination : in out UMat) is
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Subtract_Into
+           (Left.Handle, Right.Handle, Destination.Handle),
+         "UMat destination subtraction");
+   end Subtract;
+
    function Multiply (Left, Right : Mat) return Mat is
       Result     : Mat;
       New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
