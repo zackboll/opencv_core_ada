@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Add reusable elementwise `Divide` destination procedures for Mat and UMat,
+  passing actual native destinations to the unchanged compatibility helper.
+  Retain independent function results, matching 2-D operands, whole/Region
+  reuse, mismatch detachment, either operand as destination, and same-layout
+  aliases (including ordered old Left / old Right). Preserve native integer
+  rounding/zero-denominator results, floating infinity/NaN, Float16 and empty
+  version policies, temporary-source capability and destination rejection,
+  and UMat-native boundaries. Include focused public/raw tests and exact
+  four-version source/helper probes; no old-depth selector correction added.
+
 - Add reusable elementwise `Multiply` destination procedures for Mat and UMat
   through the existing helper and actual native destination. Preserve matching
   2-D operands, independent function results, native saturation and Float16/

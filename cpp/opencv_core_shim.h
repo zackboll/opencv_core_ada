@@ -1163,6 +1163,15 @@ opencv_core_status opencv_core_umat_multiply_into(
     const opencv_core_umat_handle *left, const opencv_core_umat_handle *right,
     opencv_core_umat_handle *destination);
 
+/* Same destination/alias/capability rules; compute old left / old right.
+ * Zero denominators and Float16/empty behavior follow the existing helper. */
+opencv_core_status opencv_core_mat_divide_into(
+    const opencv_core_mat_handle *left, const opencv_core_mat_handle *right,
+    opencv_core_mat_handle *destination);
+opencv_core_status opencv_core_umat_divide_into(
+    const opencv_core_umat_handle *left, const opencv_core_umat_handle *right,
+    opencv_core_umat_handle *destination);
+
 opencv_core_status
 opencv_core_mat_divide(const opencv_core_mat_handle *left,
                        const opencv_core_mat_handle *right,
