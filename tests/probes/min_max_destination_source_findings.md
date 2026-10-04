@@ -190,9 +190,9 @@ The disabled cases repeat Numbers; this was not an OpenCL-specific defect.
 The failing value is Int32 C3, channel 1, first row/column: the test's
 Float64 observation was **2147483648**, expected **2147483647**.
 
-`min_max_int32_fixture_probe.cpp` isolates Scalar construction, typed storage,
-direct-native fresh/reused selection, and conversion for observation. An
-AArch64 cross-compiled probe under QEMU with Debian OpenCV 4.6.0 found:
+A temporary standalone diagnostic isolated Scalar construction, typed storage,
+direct-native fresh/reused selection, and conversion for observation. AArch64
+cross-compiled probes under QEMU with Debian and Ubuntu 24.04 OpenCV 4.6.0 found:
 
 - Scalar-built raw sources are already exactly
   `(-2147483648, 2147483647, -7)` and `(9, -9, 12)` at every element.
@@ -213,18 +213,17 @@ represent INT_MAX exactly. The conversion loop in 4.6.0
 The x86_64 host probe preserves INT_MAX when widening. Minimum never selects
 INT_MAX in this fixture, explaining the Maximum-only failure pattern.
 
-Numbers now constructs Int32 sources with `Int32_Vec3_Access.Set`, verifies
-both complete stored sources before arithmetic, and independently checks the
-allocation-returning function, destination and retained destination alias.
-Int32 observations use exact typed reads, never Convert_To(Float64). Other
-depths also verify sources and both result forms, with operation/depth/channel/
-row/column/Actual/Expected assertion diagnostics and no success-path noise.
-Production code, integer expectations and the approved special-alias suite
-are unchanged; no new C++ production guards or semantic normalization.
+Numbers retains the original Scalar/Set_To construction, and verifies both
+complete stored Int32 sources through typed access before arithmetic. It checks
+allocation-returning results, reused Destination and retained aliases through
+exact Int32 reads and integer Min/Max expectations using Int32_Value'First/Last.
+Fresh/reused/alias parity also compares typed integers. No native Float64
+conversion participates in Int32 correctness assertions. Other depth fixtures
+and floating-special behavior are unchanged. There are no tolerances or
+architecture-dependent expected values, and no production changes.
 
-Compile the standalone fixture probe with the same C++17 warning flags below,
-substituting `tests/probes/min_max_int32_fixture_probe.cpp` as the source.
-Its widening observations are diagnostic, not a new conversion contract.
+Temporary diagnostic probes are not promoted into repository artifacts; their
+observations are evidence for the test correction, not a conversion contract.
 
 ```
 g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \
