@@ -11,6 +11,8 @@
   at the boundary. Narrowly correct OpenCV 4.10+/5.x byte multiplication's old
   UInt16/Int16 destination selector before it can write words into byte storage;
   include exact four-version source findings and a private-helper layout probe.
+  Preserve native typed-empty KleidiCV Mat rejection and verify function/
+  procedure error parity rather than imposing platform-independent empty success.
 
 - Add reusable `Add` / `Subtract` destination procedures for Mat and UMat,
   retaining matching 2-D operands and the existing allocation-returning and

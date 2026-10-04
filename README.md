@@ -1754,6 +1754,10 @@ on 4.x (release); typed-empty UMat retains operand metadata. Default/mixed Mat
 empties release output, whereas mixed UMat empties take the typed operand's
 metadata. Release preserves old destination depth/channels and old aliases;
 the released shape is zeroed 2-D on 4.x and dimensionless on 5.0.
+Native HAL configuration can also reject typed-empty Mat multiplication:
+OpenCV 5.0's KleidiCV `mul8u` does so on macOS ARM64. Both forms preserve the
+translated `OpenCV_Error`; the procedure may have created typed-empty output
+before that native failure. No cross-platform empty normalization is added.
 The helper narrowly corrects the old UInt16/Int16 destination layout before
 byte multiplication on OpenCV 4.10+/5.x, preventing an extended HAL kernel from
 writing 16-bit values into recreated byte storage. Compatible destinations,

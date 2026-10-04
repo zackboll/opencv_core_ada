@@ -1,5 +1,7 @@
 with AUnit.Assertions;
 with AUnit.Test_Caller;
+with Ada.Exceptions;
+with Ada.Strings.Fixed;
 with Mat_Test_Support;
 with Module_Bridge_Probe;
 with OpenCV;
@@ -489,9 +491,51 @@ package body Multiply_Destination_Tests is
                      end if;
                      Set_To (Destination, Make_Scalar (91.0, 92.0));
                      declare
-                        Expected : constant Image := Multiply (A, B);
+                        Expected                          : Image;
+                        Function_Failed, Procedure_Failed : Boolean := False;
+
+                        procedure Check_Empty_HAL_Error
+                          (Error : Ada.Exceptions.Exception_Occurrence)
+                        is
+                           Message : constant String :=
+                             Ada.Exceptions.Exception_Message (Error);
+                        begin
+                           --  OpenCV 5.0's KleidiCV mul8u can reject typed
+                           --  empty Mat pointers after native output creation.
+                           --  Preserve that existing function behavior; do not
+                           --  accept unrelated errors or normalize the helper.
+                           Assert
+                             (not Is_UMat
+                              and then Major = 5
+                              and then Mode = 1
+                              and then D = UInt8
+                              and then Ada.Strings.Fixed.Index
+                                         (Message,
+                                          "kleidicv_mul8u_with_fallback")
+                                       > 0
+                              and then Ada.Strings.Fixed.Index
+                                         (Message, "returned -1")
+                                       > 0,
+                              "only observed typed-empty KleidiCV rejection");
+                        end Check_Empty_HAL_Error;
                      begin
-                        Multiply (A, B, Destination);
+                        begin
+                           Expected := Multiply (A, B);
+                        exception
+                           when Error : OpenCV_Error =>
+                              Check_Empty_HAL_Error (Error);
+                              Function_Failed := True;
+                        end;
+                        begin
+                           Multiply (A, B, Destination);
+                        exception
+                           when Error : OpenCV_Error =>
+                              Check_Empty_HAL_Error (Error);
+                              Procedure_Failed := True;
+                        end;
+                        Assert
+                          (Function_Failed = Procedure_Failed,
+                           "empty native success/error parity");
                         Assert
                           (Is_Empty (Expected) and then Is_Empty (Destination),
                            "both APIs empty");
@@ -508,7 +552,11 @@ package body Multiply_Destination_Tests is
                            and then Channels (Destination)
                                     = (if Released then 2 else Ch),
                            "old type survives release, create takes type");
-                        if Released then
+                        if Function_Failed then
+                           Assert
+                             (Is_Empty (Expected),
+                              "failed function retains no result storage");
+                        elsif Released then
                            Assert
                              (Shape (Expected)'Length = 0
                               and then Depth (Expected) = UInt8

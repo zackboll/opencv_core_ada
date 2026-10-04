@@ -172,6 +172,41 @@ including second channel, survives and remains independently writable.
 The existing helper avoids default-empty 5.0 output scalar/totals mismatch and
 typed-empty UMat OpenCL vector prediction; no empty policy was modified here.
 
+### Hosted ARM64 HAL finding and corrective test
+
+The first review head `cb45a1d6951d0d0426586b7baf38f937e8a2b21d` passed
+all five local suites, but push run 37171086579 and PR run 37171089018 each
+reported 1710/1711 on macOS ARM64/Homebrew OpenCV 5.0.0. The **existing
+allocation-returning function** rejected typed-empty UInt8 Mat through
+`arithm.simd.hpp:914`: `kleidicv_mul8u_with_fallback returned -1`. No procedure
+had yet been attempted. Other hosted enabled jobs succeeded.
+
+The exact 5.0 source's matching fast path creates typed-empty output before
+calling mul8u with empty/null data. `arithm.simd.hpp:880-914` dispatches through
+CALL_HAL before CPU loops; a HAL error other than NOT_IMPLEMENTED becomes
+cv::Exception rather than a fallback. The tag's `hal/kleidicv/kleidicv.cmake`
+pins KleidiCV 26.03, archive hash `b85a745bfe0e87e67e30be9533eb6b24`.
+Raw Web retrieval hit a JavaScript challenge, but a native Git checkout of
+tag 26.03 succeeded at `b1dbf474b8685b97a64d03e828b359fbdc050d1f`.
+`adapters/opencv/kleidicv_hal.h:586-602` maps scale=1 mul8u to saturating
+multiply; lines 201-203 map every non-OK status to CV_HAL_ERROR_UNKNOWN.
+`kleidicv/src/arithmetics/multiply_neon.cpp:66-84` and `multiply_sc.h:47-64`
+check all pointers before image dimensions/loops. The byte specialization
+`kleidicv/include/kleidicv/utils.h:388-405` rejects nullptr regardless of
+height. Thus empty null pointers yield the observed HAL error before memory
+access, not an out-of-bounds write. No safety reason justifies changing the
+existing helper's native empty policy.
+
+The table above describes successful local configurations, **not** a universal
+empty-success contract. Production empty handling is unchanged. The corrective
+test attempts both function and procedure independently, requires success/error
+parity, and accepts only the observed OpenCV_Error for typed UInt8 Mat on 5.0
+with the named KleidiCV HAL/return diagnostic. It still checks typed-empty
+destination shape/depth/channels after native creation, every old alias pixel,
+and independent later writes, and continues the other depth/order cases.
+Other exceptions fail the test. No broad catch/skip or helper normalization was
+introduced; native post-failure destination preservation remains unpromised.
+
 ## Public validation / capability boundary review
 
 Both procedures invoke the unchanged Validate_Arithmetic_Compatibility used
