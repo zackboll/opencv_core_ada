@@ -8,6 +8,12 @@ with OpenCV.Core.UInt8_Access;
 
 procedure Root_Value_Consumer is
    use type OpenCV.Point;
+   use type OpenCV.Point_Coordinate;
+   use type OpenCV.Point_3D;
+   use type OpenCV.Point_3D_Array;
+   use type OpenCV.Float32_Point_3D;
+   use type OpenCV.Float32_Point_3D_Array;
+   use type OpenCV.Float32_Value;
    use type OpenCV.Size;
    use type OpenCV.Rect;
    use type OpenCV.Scalar;
@@ -27,7 +33,43 @@ procedure Root_Value_Consumer is
    View       : OpenCV.Core.Mat;
    Pixel      : OpenCV.UInt8_Value;
    Donor      : OpenCV.Core.Border_Interpolation_Result;
+   P          : OpenCV.Point_3D := (X => 1, Y => 2, Z => 3);
+   F          : OpenCV.Float32_Point_3D := (X => 1.25, Y => -2.5, Z => 3.75);
+   Points     : constant OpenCV.Point_3D_Array (7 .. 8) := (others => P);
+   Floats     : constant OpenCV.Float32_Point_3D_Array (13 .. 14) :=
+     (others => F);
+   Empty      : constant OpenCV.Point_3D_Array (1 .. 0) := (others => <>);
+   Empty_F    : constant OpenCV.Float32_Point_3D_Array (1 .. 0) :=
+     (others => <>);
+   Zero       : constant OpenCV.Point_3D_Array (0 .. 1) := Points;
+   Zero_F     : constant OpenCV.Float32_Point_3D_Array (0 .. 1) := Floats;
 begin
+   if P /= (X => 1, Y => 2, Z => 3)
+     or else F /= (X => 1.25, Y => -2.5, Z => 3.75)
+     or else Points'First /= 7
+     or else Points (8) /= P
+     or else Floats'First /= 13
+     or else Floats (14) /= F
+     or else Empty'Length /= 0
+     or else Empty_F'Length /= 0
+     or else Zero'First /= 0
+     or else Zero_F'First /= 0
+     or else Zero /= Points
+     or else Zero_F /= Floats
+   then
+      raise Program_Error with "root 3-D point values or bounds failed";
+   end if;
+
+   P := (X => -1, Y => -2, Z => -3);
+   F := (X => -1.25, Y => 2.5, Z => -3.75);
+   if Points (7) = P
+     or else Floats (13) = F
+     or else Points (7) /= (X => 1, Y => 2, Z => 3)
+     or else Floats (13) /= (X => 1.25, Y => -2.5, Z => 3.75)
+   then
+      raise Program_Error with "root 3-D point copies are not independent";
+   end if;
+
    if Dimensions /= Image.Dimensions then
       raise Program_Error with "root Size equality failed";
    end if;

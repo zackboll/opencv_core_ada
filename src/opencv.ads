@@ -39,6 +39,16 @@ package OpenCV is
    --  the null range 1 .. 0.
    type Point_Array is array (Natural range <>) of Point;
 
+   --  Shared value-semantic 3-D point with signed 32-bit coordinates.
+   type Point_3D is record
+      X : Point_Coordinate := 0;
+      Y : Point_Coordinate := 0;
+      Z : Point_Coordinate := 0;
+   end record;
+
+   --  Preserves arbitrary Natural bounds; null arrays are valid values.
+   type Point_3D_Array is array (Natural range <>) of Point_3D;
+
    --  Axis-aligned rectangle with a signed origin and nonnegative size.
    --  OpenCV rectangle origins may be negative. Width and Height remain
    --  nonnegative in this Ada value model. A Rect is not restricted merely
@@ -57,6 +67,18 @@ package OpenCV is
       X : Float32_Value := 0.0;
       Y : Float32_Value := 0.0;
    end record;
+
+   --  Shared value-semantic 3-D point with binary32 coordinates. NaN and
+   --  infinities are representable; finiteness is operation-specific policy,
+   --  not an invariant of this value type.
+   type Float32_Point_3D is record
+      X : Float32_Value := 0.0;
+      Y : Float32_Value := 0.0;
+      Z : Float32_Value := 0.0;
+   end record;
+
+   --  Preserves arbitrary Natural bounds; null arrays are valid values.
+   type Float32_Point_3D_Array is array (Natural range <>) of Float32_Point_3D;
 
    --  Value-semantic two-dimensional binary32 extent. Individual operations
    --  define whether negative dimensions are meaningful.
