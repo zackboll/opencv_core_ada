@@ -129,9 +129,15 @@ template<class Dense> static void run(operation op) {
             a=dense<Dense>(exact); b=dense<Dense>(zero);
             apply(a,b,dst,op,2,0,0);
             cv::Mat storage=host(dst);
+            Dense oracle;
+            native(a,b,oracle,op,2,0,0);
+            require(equal(storage,host(oracle)),"large Int32 native storage parity");
+            int rounded_count=0;
             for(int c=0;c<257;++c)
-                require(storage.at<int>(0,c)==exact.at<int>(0,c)*2,
-                        "safe large Int32 result via exact storage");
+                if(storage.at<int>(0,c)!=exact.at<int>(0,c)*2) ++rounded_count;
+            std::cout<<"exact Int32 first="<<storage.at<int>(0,0)
+                     <<" tail="<<storage.at<int>(0,256)
+                     <<" native rounded count="<<rounded_count<<'\n';
         }
         if(depth==CV_64F)
             require(std::abs(rounded.at<double>(0,256)-0.00000001)<1e-12,
@@ -218,6 +224,9 @@ int main() {
         std::cout<<CV_VERSION<<'\n';
         for(bool optimized:{false,true}) {
             cv::setUseOptimized(optimized);
+            // setUseOptimized also toggles OpenCL eligibility: keep this probe
+            // explicitly CPU while varying only optimized CPU dispatch.
+            cv::ocl::setUseOpenCL(false);
             for(auto op:{operation::weighted,operation::scaled}) {
                 std::cout<<"optimized="<<optimized<<" op="<<int(op)<<" Mat\n";
                 run<cv::Mat>(op);

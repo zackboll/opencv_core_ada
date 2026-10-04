@@ -103,6 +103,11 @@ The actual-helper probe runs width 257, finite near-boundary values, NaN,
 infinities, +/-zero, special coefficients and optimized dispatch off/on for
 Mat/UMat, F32/F64/F16, fresh/exact Left/exact Right/shallow Left/shallow Right.
 Exact direct-native alias oracle parity is required in every case.
+OpenCL is disabled **after each setUseOptimized toggle**, since that toggle can
+re-enable OpenCL eligibility. Thus optimized CPU and scalar CPU probe results
+are not accidentally mixed with OpenCL. The large Int32 witness is observed as
+200000002 on CPU through typed storage; native OpenCL rounding remains separately
+covered by the public UMat tests, without misidentifying it as a CPU defect.
 
 Observed 4.1/4.6/4.10: zero fresh/alias differences. Observed 5.0: 16 F32 weighted
 finite differences (Mat/UMat, all four alias layouts), with near-boundary Alpha
