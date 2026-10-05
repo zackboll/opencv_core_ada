@@ -1,7 +1,7 @@
 #include <opencv2/core/ocl.hpp>
 #include <cstdint>
 #include <limits>
-#include <iostream>
+#include <cstdio>
 #include "../../cpp/opencv_core_module_bridge.hpp"
 #include "../../cpp/opencv_core_shim.h"
 
@@ -116,8 +116,9 @@ extern "C" UMAT_PROBE_EXPORT void weighted_report_build_information() noexcept {
     try {
         static bool reported=false;
         if(!reported) {
-            std::cout << "Weighted Int32 native backend build information:\n"
-                      << cv::getBuildInformation() << std::flush;
+            std::printf("Weighted Int32 native backend build information:\n%s",
+                        cv::getBuildInformation().c_str());
+            std::fflush(stdout);
             reported=true;
         }
     } catch (...) {}
