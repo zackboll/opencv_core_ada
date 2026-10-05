@@ -75,6 +75,14 @@ diagnostics and falls back internally; no working GPU execution is claimed.
 Remote CI results are reported at the exact PR review head;
 pending/unexecuted runs must not be described as passing.
 
+Initial remote qualification exposed validator failures before completing the
+installation campaign: macOS normalized a double slash in TMPDIR, breaking
+literal trace comparison (fixed by physical evidence-path normalization with
+explicit diagnostics). Windows PE output contained the required probe export
+but `printf | grep -q` under `pipefail` reported it missing. Probe-dump checks
+now consume all input, retaining every existing symbol/import requirement.
+These are validator corrections, not native algorithm or ABI changes.
+
 Existing Core Windows CI remains main/manual only. Its new consumer stage must
 verify DLL/import-archive byte equality, DLL PE imports, prefix-only fresh links
 and both runs. Existing native tests and external-object/compiler checks remain
