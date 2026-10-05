@@ -4,6 +4,7 @@
 set -eu
 root=$(CDPATH= cd -- "${1:-$(dirname -- "$0")/..}" && pwd)
 work=$(mktemp -d "${TMPDIR:-/tmp}/core-installed-consumer.XXXXXXXX")
+work=$(CDPATH= cd -- "$work" && pwd -P)
 echo "Core installed consumer evidence: $work"
 unset GPR_PROJECT_PATH ADA_PROJECT_PATH CPATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH
 unset LIBRARY_PATH GCC_EXEC_PREFIX COMPILER_PATH LD_LIBRARY_PATH DYLD_LIBRARY_PATH
@@ -100,8 +101,14 @@ GPR
         gprbuild -p -v -vP2 -P consumer.gpr > "$work/$mode-build.log" 2>&1 || {
             cat "$work/$mode-build.log"; exit 1;
         }
-        grep -F "$trace_prefix/share/gpr/opencv_core.gpr" "$work/$mode-build.log"
-        grep -F "$trace_prefix/lib/opencv_core" "$work/$mode-build.log"
+        grep -F "$trace_prefix/share/gpr/opencv_core.gpr" "$work/$mode-build.log" || {
+            echo 'error: installed Core project absent from resolution trace' >&2
+            cat "$work/$mode-build.log"; exit 1;
+        }
+        grep -F "$trace_prefix/lib/opencv_core" "$work/$mode-build.log" || {
+            echo 'error: installed Core library absent from link trace' >&2
+            cat "$work/$mode-build.log"; exit 1;
+        }
         if grep -F "$trace_root/lib" "$work/$mode-build.log"; then
             echo 'error: installed consumer used source library path' >&2; exit 1
         fi
