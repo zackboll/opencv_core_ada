@@ -6504,6 +6504,89 @@ static opencv_core_status publish_dense_masked(const Handle *left,
 }
 }
 
+extern "C++" {
+static bool bitwise_temporary_destination(const opencv_core_mat_handle *dst) {
+    // ABI safety: output creation may release/rebind the header and sever
+    // the callback-scoped capability over external/selected backing storage.
+    return dst->temporary_external_view;
+}
+static bool bitwise_temporary_destination(const opencv_core_umat_handle *) {
+    return false;
+}
+}
+
+#define OPENCV_CORE_BITWISE_INTO(KIND, NAME, OP)                         \
+opencv_core_status opencv_core_##KIND##_bitwise_##NAME##_into(           \
+    const opencv_core_##KIND##_handle *left,                            \
+    const opencv_core_##KIND##_handle *right,                           \
+    opencv_core_##KIND##_handle *destination) {                        \
+    clear_error();                                                    \
+    if (!left || !right || !destination)                              \
+        return invalid_argument("null bitwise operand or destination"); \
+    if (bitwise_temporary_destination(destination))                   \
+        return invalid_argument("temporary Mat cannot be a destination"); \
+    try {                                                            \
+        dense_bitwise_binary(left->value, right->value,                \
+                             destination->value, bitwise_operation::OP); \
+        return OPENCV_CORE_OK;                                        \
+    } catch (...) { return translate_current_exception(); }           \
+}                                                                    \
+opencv_core_status opencv_core_##KIND##_bitwise_##NAME##_masked_into(   \
+    const opencv_core_##KIND##_handle *left,                            \
+    const opencv_core_##KIND##_handle *right,                           \
+    const opencv_core_##KIND##_handle *mask,                            \
+    opencv_core_##KIND##_handle *destination) {                        \
+    clear_error();                                                    \
+    if (!left || !right || !mask || !destination)                      \
+        return invalid_argument("null bitwise operand, mask or destination"); \
+    if (bitwise_temporary_destination(destination))                   \
+        return invalid_argument("temporary Mat cannot be a destination"); \
+    try {                                                            \
+        dense_bitwise_binary(left->value, right->value, destination->value, \
+                             bitwise_operation::OP, &mask->value);    \
+        return OPENCV_CORE_OK;                                        \
+    } catch (...) { return translate_current_exception(); }           \
+}
+OPENCV_CORE_BITWISE_INTO(mat, and, bit_and)
+OPENCV_CORE_BITWISE_INTO(mat, or, bit_or)
+OPENCV_CORE_BITWISE_INTO(mat, xor, bit_xor)
+OPENCV_CORE_BITWISE_INTO(umat, and, bit_and)
+OPENCV_CORE_BITWISE_INTO(umat, or, bit_or)
+OPENCV_CORE_BITWISE_INTO(umat, xor, bit_xor)
+#undef OPENCV_CORE_BITWISE_INTO
+
+#define OPENCV_CORE_BITWISE_NOT_INTO(KIND)                              \
+opencv_core_status opencv_core_##KIND##_bitwise_not_into(               \
+    const opencv_core_##KIND##_handle *source,                          \
+    opencv_core_##KIND##_handle *destination) {                        \
+    clear_error();                                                    \
+    if (!source || !destination)                                      \
+        return invalid_argument("null bitwise source or destination"); \
+    if (bitwise_temporary_destination(destination))                   \
+        return invalid_argument("temporary Mat cannot be a destination"); \
+    try {                                                            \
+        dense_bitwise_not(source->value, destination->value);         \
+        return OPENCV_CORE_OK;                                        \
+    } catch (...) { return translate_current_exception(); }           \
+}                                                                    \
+opencv_core_status opencv_core_##KIND##_bitwise_not_masked_into(        \
+    const opencv_core_##KIND##_handle *source,                          \
+    const opencv_core_##KIND##_handle *mask,                            \
+    opencv_core_##KIND##_handle *destination) {                        \
+    clear_error();                                                    \
+    if (!source || !mask || !destination)                             \
+        return invalid_argument("null bitwise source, mask or destination"); \
+    if (bitwise_temporary_destination(destination))                   \
+        return invalid_argument("temporary Mat cannot be a destination"); \
+    try {                                                            \
+        dense_bitwise_not(source->value, destination->value, &mask->value); \
+        return OPENCV_CORE_OK;                                        \
+    } catch (...) { return translate_current_exception(); }           \
+}
+OPENCV_CORE_BITWISE_NOT_INTO(mat)
+OPENCV_CORE_BITWISE_NOT_INTO(umat)
+#undef OPENCV_CORE_BITWISE_NOT_INTO
+
 opencv_core_status
 opencv_core_mat_bitwise_and(const opencv_core_mat_handle *left,
                             const opencv_core_mat_handle *right,

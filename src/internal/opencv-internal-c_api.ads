@@ -2015,6 +2015,102 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_umat_scale_add_into";
 
+   function Mat_Bitwise_And_Into
+     (Left, Right, Destination : Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_bitwise_and_into";
+   function Mat_Bitwise_And_Masked_Into
+     (Left, Right, Mask, Destination : Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_bitwise_and_masked_into";
+   function Mat_Bitwise_Or_Into
+     (Left, Right, Destination : Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_bitwise_or_into";
+   function Mat_Bitwise_Or_Masked_Into
+     (Left, Right, Mask, Destination : Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_bitwise_or_masked_into";
+   function Mat_Bitwise_Xor_Into
+     (Left, Right, Destination : Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_bitwise_xor_into";
+   function Mat_Bitwise_Xor_Masked_Into
+     (Left, Right, Mask, Destination : Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_bitwise_xor_masked_into";
+   function Mat_Bitwise_Not_Into (Self, Destination : Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_bitwise_not_into";
+   function Mat_Bitwise_Not_Masked_Into
+     (Self, Mask, Destination : Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_bitwise_not_masked_into";
+   function UMat_Bitwise_And_Into
+     (Left, Right, Destination : UMat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_bitwise_and_into";
+   function UMat_Bitwise_And_Masked_Into
+     (Left, Right, Mask, Destination : UMat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_bitwise_and_masked_into";
+   function UMat_Bitwise_Or_Into
+     (Left, Right, Destination : UMat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_bitwise_or_into";
+   function UMat_Bitwise_Or_Masked_Into
+     (Left, Right, Mask, Destination : UMat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_bitwise_or_masked_into";
+   function UMat_Bitwise_Xor_Into
+     (Left, Right, Destination : UMat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_bitwise_xor_into";
+   function UMat_Bitwise_Xor_Masked_Into
+     (Left, Right, Mask, Destination : UMat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_bitwise_xor_masked_into";
+   function UMat_Bitwise_Not_Into
+     (Self, Destination : UMat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_bitwise_not_into";
+   function UMat_Bitwise_Not_Masked_Into
+     (Self, Mask, Destination : UMat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_bitwise_not_masked_into";
+
    function UMat_Bitwise_And
      (Left, Right : UMat_Handle; Result : access UMat_Handle) return Status
    with

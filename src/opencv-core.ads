@@ -1358,6 +1358,24 @@ package OpenCV.Core is
    function Bitwise_Xor (Left, Right, Mask : UMat) return UMat;
    function Bitwise_Not (Self : UMat) return UMat;
    function Bitwise_Not (Self, Mask : UMat) return UMat;
+
+   --  Destination procedures reuse compatible whole/Region storage; a
+   --  mismatch detaches this header. Floating storage is operated on as bits.
+   --  With a mask, nonzero selects the entire element (all channels). Zero
+   --  preserves an existing compatible Destination element; after native
+   --  reallocation it leaves zero instead. Functions allocate independent
+   --  storage. Exact/same-layout source aliases are supported, but arbitrary
+   --  partial overlap and Destination aliasing Mask are outside the contract.
+   --  Binary operations and masked Not retain their existing 2-D policies;
+   --  unmasked Not supports N-D. UMat execution remains UMat-native.
+   procedure Bitwise_And (Left, Right : UMat; Destination : in out UMat);
+   procedure Bitwise_And (Left, Right, Mask : UMat; Destination : in out UMat);
+   procedure Bitwise_Or (Left, Right : UMat; Destination : in out UMat);
+   procedure Bitwise_Or (Left, Right, Mask : UMat; Destination : in out UMat);
+   procedure Bitwise_Xor (Left, Right : UMat; Destination : in out UMat);
+   procedure Bitwise_Xor (Left, Right, Mask : UMat; Destination : in out UMat);
+   procedure Bitwise_Not (Self : UMat; Destination : in out UMat);
+   procedure Bitwise_Not (Self, Mask : UMat; Destination : in out UMat);
    --  Range and comparison results are UInt8 C1 UMat masks.
    function In_Range (Self : UMat; Lower, Upper : Scalar) return UMat;
    function Compare (Left, Right : UMat; Kind : Comparison_Kind) return UMat;
@@ -1421,6 +1439,19 @@ package OpenCV.Core is
    function Bitwise_Xor (Left, Right, Mask : Mat) return Mat;
    function Bitwise_Not (Self : Mat) return Mat;
    function Bitwise_Not (Self, Mask : Mat) return Mat;
+
+   --  Same reuse, mask, bit-representation, dimensional and alias contracts
+   --  as the UMat procedures above. Temporary external/selected Mat views
+   --  are legal inputs, but cannot be Destination: output creation may rebind
+   --  their callback-scoped storage capability.
+   procedure Bitwise_And (Left, Right : Mat; Destination : in out Mat);
+   procedure Bitwise_And (Left, Right, Mask : Mat; Destination : in out Mat);
+   procedure Bitwise_Or (Left, Right : Mat; Destination : in out Mat);
+   procedure Bitwise_Or (Left, Right, Mask : Mat; Destination : in out Mat);
+   procedure Bitwise_Xor (Left, Right : Mat; Destination : in out Mat);
+   procedure Bitwise_Xor (Left, Right, Mask : Mat; Destination : in out Mat);
+   procedure Bitwise_Not (Self : Mat; Destination : in out Mat);
+   procedure Bitwise_Not (Self, Mask : Mat; Destination : in out Mat);
    function In_Range (Self : Mat; Lower, Upper : Scalar) return Mat;
    --  Returns an independent Mat rotated by Kind.  90-degree rotations
    --  exchange rows and columns; a half turn preserves dimensions and every
