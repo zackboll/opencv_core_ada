@@ -1279,6 +1279,27 @@ opencv_core_status opencv_core_umat_scale_add(
     const opencv_core_umat_handle *left, double scale,
     const opencv_core_umat_handle *right, opencv_core_umat_handle **out);
 
+/* Write into the actual destination through the allocation forms' helpers.
+ * Compatible storage/Regions are reused; mismatches detach. Exact/same-layout
+ * aliases are supported, arbitrary partial overlap is not. Null handles and
+ * temporary Mat destinations fail before execution without changing output.
+ * No arbitrary post-native failure atomicity is promised. Source semantic
+ * policy belongs to Ada, not these raw ABI functions. */
+opencv_core_status opencv_core_mat_add_weighted_into(
+    const opencv_core_mat_handle *left, double alpha,
+    const opencv_core_mat_handle *right, double beta, double gamma,
+    opencv_core_mat_handle *destination);
+opencv_core_status opencv_core_umat_add_weighted_into(
+    const opencv_core_umat_handle *left, double alpha,
+    const opencv_core_umat_handle *right, double beta, double gamma,
+    opencv_core_umat_handle *destination);
+opencv_core_status opencv_core_mat_scale_add_into(
+    const opencv_core_mat_handle *left, double scale,
+    const opencv_core_mat_handle *right, opencv_core_mat_handle *destination);
+opencv_core_status opencv_core_umat_scale_add_into(
+    const opencv_core_umat_handle *left, double scale,
+    const opencv_core_umat_handle *right, opencv_core_umat_handle *destination);
+
 /* Unmasked bitwise operations preserve the complete stored bit pattern. */
 /* UMat-only bitwise operations: sources, masks and results remain UMat. */
 opencv_core_status opencv_core_umat_bitwise_and(const opencv_core_umat_handle *left,

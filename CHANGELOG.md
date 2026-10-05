@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Add reusable `Add_Weighted` and `Scale_Add` destinations for Mat and UMat
+  through four narrow C exports calling the unchanged production helpers on
+  the actual destination. Preserve whole/Region storage, shallow aliases,
+  mismatch detachment, N-D weighted addition and intentionally 2-D scale-add.
+  Preserve coefficient precision, integer saturation (not Int32 overflow),
+  Float16 compatibility and UMat residency. Exact/same-layout aliases use native
+  ordering and rounding; OpenCV 5.0 Float32 weighted SIMD/scalar-tail differences
+  are tested against a separate native alias oracle. Temporary Mat destinations
+  remain prohibited, temporary sources permitted, partial overlap unsupported.
+  Add shared public/raw tests and exact four-version source/helper probes.
+
 - Begin `0.5.0-dev` with shared root `OpenCV.Point_3D`, `Point_3D_Array`,
   `Float32_Point_3D`, and `Float32_Point_3D_Array` value types. Coordinates
   default to zero; arrays preserve arbitrary Natural bounds and null ranges.
