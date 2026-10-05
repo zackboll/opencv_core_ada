@@ -1,6 +1,7 @@
 with AUnit.Assertions;
 with Interfaces;
 with OpenCV.Core.Module_Interop;
+with OpenCV.Core.Int32_Access;
 with OpenCV.Internal.C_API;
 
 package body Weighted_Destination_Tests.Raw_ABI is
@@ -57,6 +58,17 @@ package body Weighted_Destination_Tests.Raw_ABI is
    with Import, Convention => C, External_Name => "umat_probe_use_opencl";
    function OpenCL_Enabled return Boolean
    is (Use_OpenCL /= 0);
+   procedure Report_Int32_Backend (Result : OpenCV.Core.Mat) is
+      procedure Build_Information
+      with
+        Import,
+        Convention    => C,
+        External_Name => "weighted_report_build_information";
+   begin
+      if OpenCV.Core.Int32_Access.Get (Result, 0, 0) /= 200000002 then
+         Build_Information;
+      end if;
+   end Report_Int32_Backend;
    function Set_OpenCL
      (Enabled : Interfaces.Unsigned_8) return Interfaces.Unsigned_8
    with Import, Convention => C, External_Name => "umat_probe_set_opencl";

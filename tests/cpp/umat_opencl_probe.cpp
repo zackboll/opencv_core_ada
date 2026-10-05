@@ -1,6 +1,7 @@
 #include <opencv2/core/ocl.hpp>
 #include <cstdint>
 #include <limits>
+#include <iostream>
 #include "../../cpp/opencv_core_module_bridge.hpp"
 #include "../../cpp/opencv_core_shim.h"
 
@@ -108,6 +109,18 @@ extern "C" UMAT_PROBE_EXPORT std::int32_t weighted_native_expected(
         }
         return 1;
     } catch (...) { return 0; }
+}
+
+// Test diagnostics only: identify the native build for precision observations.
+extern "C" UMAT_PROBE_EXPORT void weighted_report_build_information() noexcept {
+    try {
+        static bool reported=false;
+        if(!reported) {
+            std::cout << "Weighted Int32 native backend build information:\n"
+                      << cv::getBuildInformation() << std::flush;
+            reported=true;
+        }
+    } catch (...) {}
 }
 
 // Special coefficients bypass Ada's -gnatVa validity checks, not production

@@ -4,6 +4,7 @@ with OpenCV.Core;
 private package Weighted_Destination_Tests.Raw_ABI is
    procedure With_OpenCL_Disabled (Process : not null access procedure);
    function OpenCL_Enabled return Boolean;
+   procedure Report_Int32_Backend (Result : OpenCV.Core.Mat);
    function Native_Expected
      (Left, Right        : OpenCV.Core.Mat;
       Op                 : Operation_Kind;

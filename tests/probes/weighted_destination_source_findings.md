@@ -71,10 +71,10 @@ especially Float32 630-662 and init_addw_f32/f64 719-758.
 Audited `matmul.simd.hpp`: 4.1/4.6 scaleAdd_32f/64f around 1934-1974,
 4.10:1935-1974, 5.0:2461-2500.
 
-| CPU weighted output | Coefficients / work |
+| Generic CPU weighted fallback output | Coefficients / work |
 |---|---|
 | UInt8, Int16 | Float32 weights/work, native rounded saturating output |
-| Int32 | double weights/work, safe in-range tests only, no saturation promise |
+| Int32 | double weights/work; HAL can preempt this; no saturation promise |
 | Float32 4.x | double weights/scalar evaluation; SIMD broadcasts float weights |
 | Float32 5.0 | Float32 weights/work on scalar and SIMD paths |
 | Float64 | double weights/work |
@@ -85,9 +85,11 @@ OpenCL `arithm.cpp` converts userdata coefficients to float at wdepth=CV_32F
 (4.1:530, 4.6/4.10:516, 5.0:542). Fast weighted work is at least F32, so
 UMat integer execution can round large exact integer values. CPU Int32 and
 OpenCL-enabled UMat need not produce identical large-integer answers.
-The tests observe exact storage with Int32_Access, demand function/procedure/
-direct-native parity, and demand the independently derived exact result in the
-exception-safe OpenCL-disabled run. No Float64 conversion observes Int32 answers.
+The tests observe exact storage with Int32_Access and demand function/procedure/
+direct-native parity for the large precision witness on every backend, including
+the exception-safe OpenCL-disabled run. A separate Float32-exact Int32 witness
+requires the independently derived mathematical answer. No Float64 conversion
+observes either Int32 witness. OpenCL is not the only precision-changing backend.
 
 Scale_Add F32 narrows Scale to float before CPU kernel dispatch, F64 retains
 double. Integer CPU path uses weighted policy; OpenCL uses max(depth,F32) work.
@@ -104,10 +106,60 @@ infinities, +/-zero, special coefficients and optimized dispatch off/on for
 Mat/UMat, F32/F64/F16, fresh/exact Left/exact Right/shallow Left/shallow Right.
 Exact direct-native alias oracle parity is required in every case.
 OpenCL is disabled **after each setUseOptimized toggle**, since that toggle can
-re-enable OpenCL eligibility. Thus optimized CPU and scalar CPU probe results
-are not accidentally mixed with OpenCL. The large Int32 witness is observed as
-200000002 on CPU through typed storage; native OpenCL rounding remains separately
-covered by the public UMat tests, without misidentifying it as a CPU defect.
+re-enable OpenCL eligibility. CPU dispatch observations are not accidentally
+mixed with OpenCL. OpenCL-disabled does NOT force the generic scalar/double CPU
+fallback: CPU HAL/platform backends may still execute. Prior local x86 Linux
+CPU probes observed 200000002 through typed storage; native OpenCL can produce
+200000000. Neither observation is a universal CPU precision contract.
+
+### Corrective investigation: macOS ARM64 native Int32 precision
+
+At review head `b75a6c4f0e4c662d4619e0ad1b0f0f996a6e4811`, push run
+37243386166/job 111556401012 and PR run 37243388888/job 111556408233 each
+executed 1858 tests: 1853 passed, 5 assertions failed, zero unexpected errors.
+Homebrew OpenCV was 5.0.0_7 arm64_tahoe. Exact stored procedure result was
+200000000 rather than the test's generic-path expectation 200000002, for both
+operations, Mat/UMat, and the explicitly OpenCL-disabled UMat run.
+
+Exact 5.0 `arithm.simd.hpp:887-919` dispatcher invokes CALL_HAL before
+CV_CPU_DISPATCH. The generic CV_32S no-SIMD double fallback at 803 therefore
+does not establish a universal CPU precision guarantee. Exact 5.0
+`matmul.dispatch.cpp:650-653` delegates integer Scale_Add to addWeighted,
+explaining why a shared weighted backend can affect both operations; both are
+nevertheless independently verified against their functions and native oracle.
+
+An authoritative candidate path exists in exact 5.0
+`hal/carotene/hal/tegra_hal.hpp:804-805` (cv_hal_addWeighted32s mapping) and
+`hal/carotene/src/add_weighted.cpp:98-140`: wAdd<s32> stores Float32 coefficients,
+converts vector operands with vcvt[q]_f32_s32, and also evaluates scalar operands
+with Float32 coefficients. This can round 100000001 to 100000000 before scaling.
+The original affected job did not report cv::getBuildInformation or an active
+HAL identity, so this is source evidence of a possible path, NOT an attribution
+of the observed result to Carotene or KleidiCV. Conservatively this is a native
+macOS ARM64/OpenCV 5 CPU-backend precision difference pending exact native parity.
+
+The corrective adds a mandatory source/function/procedure/retained-alias/
+separately constructed Raw_ABI.Native_Expected(Alias_Mode=0) gate. Source is
+checked exactly as +/-100000001 and zero Right; each result uses Int32_Access.
+Exact Left/Right and shallow Left/Right destinations additionally require their
+direct-native same-alias result. Mat and UMat, ordinary and OpenCL-disabled,
+run both operations separately. Diagnostics log all exact stored observations
+and report build information once when the native result differs from 200000002.
+Any parity discrepancy remains a failure, not an accepted alternative or skip.
+
+The independent mathematical example +/-1000000 scaled by 2 must equal
++/-2000000 exactly on all backends. The coefficient-rounding Int32 witness
+also uses function/direct-native parity rather than selecting an expected value
+by OS, architecture or OpenCL state. Existing small integer/C3/alias exactness
+and the approved Float32 width-257 alias/FMA boundary are unchanged. No production
+helper, export, coefficient passing, policy, ownership or Float16 code changes.
+Final hosted parity and build-information evidence are recorded in PR #50.
+Local corrective tests confirm exact source 100000001 and identical
+function/procedure/retained-alias/direct-native 200000002 for Mat and
+OpenCL-disabled UMat on x86 Linux (host and exact-version CPU environments).
+Host ordinary OpenCL-enabled UMat independently confirms 200000000 in all four
+observations for each operation. These are observed values, not conditional
+expected answers. The registration count remains 1858.
 
 Observed 4.1/4.6/4.10: zero fresh/alias differences. Observed 5.0: 16 F32 weighted
 finite differences (Mat/UMat, all four alias layouts), with near-boundary Alpha

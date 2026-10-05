@@ -1947,16 +1947,23 @@ rounding differences at width 257. This does not relax ordinary integer exactnes
 or floating numerical correctness. NaN payload identity, universal signed-zero
 identity, cross-architecture bits and fused/non-fused equivalence are not promised.
 
-Coefficients are passed as double without added finiteness checks. Native CPU
-weighted UInt8/Int16 kernels narrow coefficients to Float32; Int32 uses double
-work/coefficient precision. On 4.x weighted Float32 CPU scalar tails use double
-coefficients while SIMD lanes use Float32; 5.0 narrows Float32 coefficients on both
+Coefficients are passed as double without added finiteness checks. Generic CPU
+weighted UInt8/Int16 kernels narrow coefficients to Float32; the generic Int32
+fallback uses double work/coefficient precision, but a platform HAL can preempt
+that fallback with different native precision. On 4.x weighted Float32 CPU
+scalar tails use double coefficients while SIMD lanes use Float32;
+5.0 narrows Float32 coefficients on both
 paths. Float64 retains double. OpenCL arithmetic narrows scalars whenever its work
 depth is Float32 (including integer weighted work); double work retains double.
 Scale_Add narrows Scale for Float32, retains double for Float64, and delegates
 integer CPU arithmetic to addWeighted. UInt8 and Int16 saturate; Int32 has **no
-overflow/saturation promise**, and its native OpenCL Float32 work can round large
-integers. Exact integer observations use typed access, not Float64 conversion.
+overflow/saturation promise**. OpenCL Float32 work and platform CPU backends can
+round large Int32 values differently from the generic double fallback. Native
+backend behavior is authoritative for function and destination forms, rather
+than normalized by the binding. Disabling OpenCL does not force generic CPU
+execution or disable CPU HALs. Exact integer observations use typed access,
+not Float64 conversion; portable exact mathematics is tested separately from
+deliberately precision-sensitive large-integer native parity.
 
 Temporary external/selected Mat views may be sources, but cannot be Destination:
 native output creation/rebinding could sever their callback-scoped capability.

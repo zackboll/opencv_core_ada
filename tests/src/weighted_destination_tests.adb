@@ -1,5 +1,6 @@
 with AUnit.Assertions;
 with AUnit.Test_Caller;
+with Ada.Text_IO;
 with Mat_Test_Support;
 with Module_Bridge_Probe;
 with OpenCV;
@@ -434,7 +435,7 @@ package body Weighted_Destination_Tests is
                Equal (Observe (Dest), Observe (Fresh (A, B)));
             end;
          end loop;
-         --  Both Int16 endpoints, safe exact Int32 values (not conversion).
+         --  Both Int16 endpoints and portable exact Int32 mathematics.
          for D of Depth_List'(Int16, Int32) loop
             declare
                A    : Image := New_Image (1, 2, (D, 1));
@@ -442,7 +443,7 @@ package body Weighted_Destination_Tests is
                Dest : Image;
                H    : Mat := Create (1, 2, (Int32, 1));
                V    : constant Int32_Value :=
-                 (if D = Int16 then 20000 else 100000001);
+                 (if D = Int16 then 20000 else 1000000);
             begin
                Int32_Access.Set (H, 0, 0, V);
                Int32_Access.Set (H, 0, 1, -V);
@@ -453,26 +454,95 @@ package body Weighted_Destination_Tests is
                  (H, 0, 0, (if D = Int16 then 32767 else V * 2));
                Int32_Access.Set
                  (H, 0, 1, (if D = Int16 then -32768 else (-V) * 2));
-               if D = Int32 and then Is_UMat and then Raw_ABI.OpenCL_Enabled
-               then
-                  Equal
-                    (Observe (Dest),
-                     Raw_ABI.Native_Expected
-                       (Observe (A),
-                        Observe (B),
-                        Op,
-                        0,
-                        Is_UMat,
-                        2.0,
-                        0.0,
-                        0.0));
-                  Equal
-                    (Observe (Dest), Observe (Fresh (A, B, 2.0, 0.0, 0.0)));
-               else
-                  Equal (Observe (Dest), H.Convert_To (D));
-               end if;
+               Equal (Observe (Dest), H.Convert_To (D));
             end;
          end loop;
+         --  This large witness is in range but not Float32-exact. HAL may
+         --  preempt generic double work even with OpenCL disabled. Preserve
+         --  exact native backend storage, not a universal mathematical answer.
+         declare
+            H : Mat := Create (1, 2, (Int32, 1));
+            Z : Mat := Create (1, 2, (Int32, 1));
+            procedure Source_Storage (A : Image) is
+               Source : constant Mat := Observe (A);
+            begin
+               Assert
+                 (Int32_Access.Get (Source, 0, 0) = 100000001
+                  and then Int32_Access.Get (Source, 0, 1) = -100000001,
+                  "large witness exact source storage");
+            end Source_Storage;
+         begin
+            Int32_Access.Set (H, 0, 0, 100000001);
+            Int32_Access.Set (H, 0, 1, -100000001);
+            Int32_Access.Set (Z, 0, 0, 0);
+            Int32_Access.Set (Z, 0, 1, 0);
+            for Mode in 0 .. 4 loop
+               declare
+                  A     : Image := From_Mat (H.Clone);
+                  B     : Image := From_Mat (Z.Clone);
+                  Dest  : Image := New_Image (1, 2, (Int32, 1));
+                  Alias : Image := Dest;
+                  E     : constant Mat :=
+                    Raw_ABI.Native_Expected
+                      (H,
+                       Z,
+                       Op,
+                       (if Mode = 0 then 0 elsif Mode in 1 | 3 then 1 else 2),
+                       Is_UMat,
+                       2.0,
+                       0.0,
+                       0.0);
+               begin
+                  Source_Storage (A);
+                  Equal (Observe (B), Z);
+                  if Mode = 0 then
+                     declare
+                        F : constant Image := Fresh (A, B, 2.0, 0.0, 0.0);
+                     begin
+                        Into (A, B, Dest, 2.0, 0.0, 0.0);
+                        Equal (Observe (F), E);
+                        Equal (Observe (Dest), Observe (F));
+                        Equal (Observe (Dest), E);
+                        Equal (Observe (Alias), E);
+                        Source_Storage (A);
+                        Equal (Observe (B), Z);
+                        Ada.Text_IO.Put_Line
+                          ("Weighted Int32 parity "
+                           & Op'Image
+                           & " UMat="
+                           & Is_UMat'Image
+                           & " OpenCL="
+                           & Raw_ABI.OpenCL_Enabled'Image
+                           & " source="
+                           & Int32_Access.Get (H, 0, 0)'Image
+                           & " function="
+                           & Int32_Access.Get (Observe (F), 0, 0)'Image
+                           & " procedure="
+                           & Int32_Access.Get (Observe (Dest), 0, 0)'Image
+                           & " alias="
+                           & Int32_Access.Get (Observe (Alias), 0, 0)'Image
+                           & " native="
+                           & Int32_Access.Get (E, 0, 0)'Image);
+                        Raw_ABI.Report_Int32_Backend (E);
+                     end;
+                  else
+                     Alias := (if Mode in 1 | 3 then A else B);
+                     if Mode = 1 then
+                        Into (A, B, A, 2.0, 0.0, 0.0);
+                        Dest := A;
+                     elsif Mode = 2 then
+                        Into (A, B, B, 2.0, 0.0, 0.0);
+                        Dest := B;
+                     else
+                        Dest := Alias;
+                        Into (A, B, Dest, 2.0, 0.0, 0.0);
+                     end if;
+                     Equal (Observe (Dest), E);
+                     Equal (Observe (Alias), E);
+                  end if;
+               end;
+            end loop;
+         end;
          for D of Depth_List'(UInt8, Int16, Int32) loop
             declare
                A    : Image := New_Image (1, 257, (D, 1));
@@ -484,16 +554,23 @@ package body Weighted_Destination_Tests is
                Set_To (B, Make_Scalar (0.0));
                Into (A, B, Dest, 1.499_999_99, 1.0, 0.0);
                for C in 0 .. 256 loop
-                  Int32_Access.Set
-                    (E,
-                     0,
-                     C,
-                     (if D = Int32
-                        and then not (Is_UMat and then Raw_ABI.OpenCL_Enabled)
-                      then 1
-                      else 2));
+                  Int32_Access.Set (E, 0, C, 2);
                end loop;
-               Equal (Observe (Dest), E.Convert_To (D));
+               if D = Int32 then
+                  Equal
+                    (Observe (Dest),
+                     Raw_ABI.Native_Expected
+                       (Observe (A),
+                        Observe (B),
+                        Op,
+                        0,
+                        Is_UMat,
+                        1.499_999_99,
+                        1.0,
+                        0.0));
+               else
+                  Equal (Observe (Dest), E.Convert_To (D));
+               end if;
                Equal
                  (Observe (Dest),
                   Observe (Fresh (A, B, 1.499_999_99, 1.0, 0.0)));
