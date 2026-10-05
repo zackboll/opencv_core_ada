@@ -106,18 +106,21 @@ GPR
         gprls -v -U -P consumer.gpr > "$work/$mode-resolution.log" 2>&1 || {
             cat "$work/$mode-resolution.log"; exit 1;
         }
-        grep -F "$trace_prefix/include/opencv_core/" "$work/$mode-resolution.log" || {
+        # Keep raw logs; normalize native Windows separators for path auditing.
+        tr '\\' '/' < "$work/$mode-resolution.log" > "$work/$mode-resolution-paths.log"
+        tr '\\' '/' < "$work/$mode-build.log" > "$work/$mode-build-paths.log"
+        grep -F "$trace_prefix/include/opencv_core/" "$work/$mode-resolution-paths.log" || {
             echo 'error: installed Core sources absent from resolution trace' >&2
             cat "$work/$mode-resolution.log"; exit 1;
         }
-        grep -F "$trace_prefix/lib/opencv_core" "$work/$mode-build.log" || {
+        grep -F "$trace_prefix/lib/opencv_core" "$work/$mode-build-paths.log" || {
             echo 'error: installed Core library absent from link trace' >&2
             cat "$work/$mode-build.log"; exit 1;
         }
-        if grep -F "$trace_root/lib" "$work/$mode-build.log"; then
+        if grep -F "$trace_root/lib" "$work/$mode-build-paths.log"; then
             echo 'error: installed consumer used source library path' >&2; exit 1
         fi
-        if [ "$mode" = relocated ] && grep -F 'prefix-a/' "$work/$mode-build.log"; then
+        if [ "$mode" = relocated ] && grep -F 'prefix-a/' "$work/$mode-build-paths.log"; then
             echo 'error: relocated consumer used original prefix' >&2; exit 1
         fi
         runtime_dirs=$(find "$prefix/lib" "$prefix/bin" -type d 2>/dev/null | paste -sd ':' -)
