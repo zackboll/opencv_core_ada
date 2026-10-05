@@ -83,6 +83,13 @@ but `printf | grep -q` under `pipefail` reported it missing. Probe-dump checks
 now consume all input, retaining every existing symbol/import requirement.
 These are validator corrections, not native algorithm or ABI changes.
 
+Windows run `37260190823` on `7c70c7e` passed 1858/1858 native cases and
+recursive installation, including installed DLL/import-archive byte equality
+and PE imports. Its fresh consumer build then rejected legacy `-vP2` in the
+Windows GPRbuild. The validator uses portable `gprbuild -v` plus `gprls -v -U`
+source/ALI resolution and the actual verbose library link instead. Installed/
+relocated runtime success still requires the final corrected Windows campaign.
+
 Existing Core Windows CI remains main/manual only. Its new consumer stage must
 verify DLL/import-archive byte equality, DLL PE imports, prefix-only fresh links
 and both runs. Existing native tests and external-object/compiler checks remain

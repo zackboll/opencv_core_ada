@@ -98,12 +98,17 @@ GPR
         esac
         export GPR_PROJECT_PATH
         cd "$consumer"
-        gprbuild -p -v -vP2 -P consumer.gpr > "$work/$mode-build.log" 2>&1 || {
+        gprbuild -p -v -P consumer.gpr > "$work/$mode-build.log" 2>&1 || {
             cat "$work/$mode-build.log"; exit 1;
         }
-        grep -F "$trace_prefix/share/gpr/opencv_core.gpr" "$work/$mode-build.log" || {
-            echo 'error: installed Core project absent from resolution trace' >&2
-            cat "$work/$mode-build.log"; exit 1;
+        # Portable source/object resolution trace: Windows GPRbuild 26 rejects
+        # the legacy -vP2 parser switch. GPRls records actual installed ALIs/specs.
+        gprls -v -U -P consumer.gpr > "$work/$mode-resolution.log" 2>&1 || {
+            cat "$work/$mode-resolution.log"; exit 1;
+        }
+        grep -F "$trace_prefix/include/opencv_core/" "$work/$mode-resolution.log" || {
+            echo 'error: installed Core sources absent from resolution trace' >&2
+            cat "$work/$mode-resolution.log"; exit 1;
         }
         grep -F "$trace_prefix/lib/opencv_core" "$work/$mode-build.log" || {
             echo 'error: installed Core library absent from link trace' >&2
