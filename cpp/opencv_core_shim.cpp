@@ -6376,8 +6376,14 @@ static void make_empty_dense_like(const cv::Mat &source, cv::Mat &dst) {
     else dst = cv::Mat(0, 0, source.type());
 }
 
-static bool bitwise_empty_bypass(const cv::Mat &, const cv::Mat &,
-                                  const cv::Mat *) { return false; }
+static bool bitwise_empty_bypass(const cv::Mat &a, const cv::Mat &b,
+                                  const cv::Mat *mask) {
+    // Empty compatibility: OpenCV 5's matching typed-0x0 Mat fast path
+    // dispatches a zero-work byte kernel. The hosted macOS ARM64 native HAL
+    // returns -1 for and8u rather than accepting that invocation. Avoid native
+    // execution when there are no source elements; retain empty metadata below.
+    return a.empty() && b.empty() && (mask == nullptr || mask->empty());
+}
 static bool bitwise_empty_bypass(const cv::UMat &a, const cv::UMat &b,
                                   const cv::UMat *mask) {
     // ABI safety: OpenCV 4.10's ocl_binary_op calls
@@ -6396,7 +6402,9 @@ static void dense_bitwise_binary(const Dense &a, const Dense &b, Dense &dst,
     if ((a.empty() && b.empty() && (a.dims == 0 || b.dims == 0) &&
          (mask == nullptr || mask->empty())) ||
         bitwise_empty_bypass(a, b, mask)) {
-        if (mask) {
+        if (mask || (a.dims != 0 && b.dims != 0)) {
+            // Masked output follows Left. Unmasked typed/typed output follows
+            // the source too, not Mat release()'s old destination type.
             make_empty_dense_like(a, dst);
         } else {
             make_empty_arithmetic_result(a, b, dst);

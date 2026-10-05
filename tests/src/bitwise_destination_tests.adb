@@ -846,6 +846,33 @@ package body Bitwise_Destination_Tests is
       procedure Empty (Test : in out Fixture) is
          pragma Unreferenced (Test);
       begin
+         --  Isolate the hosted blocker before the all-operation matrix.
+         declare
+            A      : constant Image := New_Image (0, 0, (UInt8, 1));
+            B      : constant Image := New_Image (0, 0, (UInt8, 1));
+            M      : Image;
+            F      : constant Image := Fresh (A, B, M, And_Operation, False);
+            D      : Image := Wrap (Empty_Destination);
+            Alias  : constant Image := D;
+            Before : constant Mat := Observe (Alias).Clone;
+         begin
+            Assert
+              (Is_Empty (F)
+               and then Dimension_Count (F) = 2
+               and then Shape (F) = Dimension_Array'(0, 0)
+               and then Depth (F) = UInt8
+               and then Channels (F) = 1,
+               "isolated typed-empty And function metadata");
+            Into (A, B, M, D, And_Operation, False);
+            Assert
+              (Is_Empty (D)
+               and then Dimension_Count (D) = 2
+               and then Shape (D) = Dimension_Array'(0, 0)
+               and then Depth (D) = UInt8
+               and then Channels (D) = 1,
+               "isolated typed-empty And procedure metadata");
+            Equal (Observe (Alias), Before);
+         end;
          for Op in Bitwise_Operation loop
             for Masked in Boolean loop
                for Dpth of Depth_Type_Array'(UInt8, Float16) loop
@@ -884,9 +911,39 @@ package body Bitwise_Destination_Tests is
                               Into (A, B, M, D, Op, Masked);
                               Assert
                                 (Is_Empty (D), "empty destination result");
-                              Assert
-                                (Is_Empty (Fresh (A, B, M, Op, Masked)),
-                                 "empty allocation result");
+                              declare
+                                 F                 : constant Image :=
+                                   Fresh (A, B, M, Op, Masked);
+                                 Function_Released : constant Boolean :=
+                                   (if Op = Not_Operation or else Masked
+                                    then not Typed_Source
+                                    elsif Is_UMat
+                                    then Form = 0
+                                    else Form /= 3);
+                              begin
+                                 Assert
+                                   (Is_Empty (F), "empty allocation result");
+                                 --  A released fresh header is rank 0 even
+                                 --  on 4.x, and retains default UInt8 C1.
+                                 Assert
+                                   (Dimension_Count (F)
+                                    = (if Function_Released then 0 else 2),
+                                    "empty function release/create rank");
+                                 Assert
+                                   (Depth (F)
+                                    = (if Function_Released
+                                       then UInt8
+                                       else Dpth)
+                                    and then Channels (F) = 1,
+                                    "empty function source/default type");
+                                 Assert
+                                   (Shape (F)'Length = Dimension_Count (F),
+                                    "empty function shape rank");
+                                 for Extent of Shape (F) loop
+                                    Assert
+                                      (Extent = 0, "empty function extent");
+                                 end loop;
+                              end;
                               Assert
                                 (Shape (D)'Length = Dimension_Count (D),
                                  "empty metadata readable");

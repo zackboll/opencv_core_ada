@@ -41,8 +41,9 @@ No getSubExtFunc/getMulExtFunc-like old destination depth selector exists.
 Mismatched type/channel output is safe after normal native creation; no
 defensive preallocation, result temporary, assignment or copy-back is needed.
 
-**dense_bitwise_binary, dense_bitwise_not and bitwise_empty_bypass are unchanged.**
-All 16 into exports call these actual helpers on `destination->value`.
+All 16 into exports remain thin and call the shared actual helpers on
+`destination->value`. The corrective below extends only shared Mat empty
+handling; ordinary nonempty dispatch is unchanged.
 
 | Tag | matrix_wrap.cpp create/createSameSize/release | Mat/UMat N-D create |
 |---|---|---|
@@ -129,12 +130,12 @@ Function/procedure N-D rejections and unchanged destinations are tested.
 
 ## Empty compatibility boundary
 
-No empty policy was rewritten. Existing helpers handle default-empty 0-D
+Existing helpers handle default-empty 0-D
 sources to avoid OpenCV 5 create turning them into scalar storage followed by
 getContinuousSize2D mismatched-total access. Both-empty UMat bypass remains:
 4.10 ocl_binary_op can predict vector width on null typed-empty storage before
-CPU fallback. Typed-empty Mat normally reaches native output creation;
-typed-empty UMat follows make_empty_dense_like. A typed-empty mask is empty
+CPU fallback. Typed-empty Mat now bypasses zero-work execution too;
+typed-empty UMat still follows make_empty_dense_like. A typed-empty mask is empty
 to native binary_op (haveMask=false), not an N-D mask extension.
 
 The helper probe records dims/type/every extent for every operation, source
@@ -163,6 +164,52 @@ Masked binary uses Left for empty representation; Not uses Self. Mixed raw
 half inputs may differ from public compatibility deliberately. Probe output
 logs each combination rather than requiring result metadata equal to function
 metadata. Semantic consistency and old alias survival are mandatory.
+
+### PR #51 hosted OpenCV 5/macOS ARM64 corrective
+
+Failing reviewed head: `dcca839b54e7995f1c31b9289001df54e685e231`.
+Push workflow 37254413147 reported only `Bitwise destination Mat empty`:
+1875 executed, 1874 passed, zero assertions, one unexpected OpenCV error.
+`and8u ==> cv_hal_and8u returned -1` at arithm.simd.hpp:852.
+
+The isolated `bitwise_empty_probe.cpp` constructs matching Left/Right typed
+UInt8 C1 empties (rank 2, shape (0,0), total 0), independently calls direct
+`cv::bitwise_and`, actual `dense_bitwise_binary`, allocation-returning C export,
+and destination-taking C export. Procedures start from Int16 C2 (2,257), with
+an observable retained Alias. Every call logs source/destination metadata and
+result or exception; it does not infer the failing combination from loop order.
+Linux host 4.10 and exact Linux 5.0 accept all four reviewed-head calls and
+produce source-typed rank-2 (0,0) output; Alias survives unchanged. Hosted
+macOS CI runs this probe against both the reviewed and corrective actual shim,
+then the complete all-operation helper probe and public Ada suite. Exact hosted
+observations are recorded in the PR alongside the corrective SHA.
+
+Exact 5.0 arithm.cpp:169-193 admits matching typed 0x0 arrays to binary_op's
+unmasked fast path, creates source-typed output, computes zero byte width, and
+still invokes the byte kernel. An empty native mask has `haveMask=false`, so
+it follows this same path. arithm.simd.hpp:822-829 invokes
+`CALL_HAL(opname, cv_hal_##opname, ...)` before generic CPU dispatch;
+and8u/or8u/xor8u instantiate it at 852-854, and Not does likewise at 860-861.
+The hosted native HAL rejects zero-work and8u with -1. There is no evidence
+identifying the registered backend for this particular call: no Carotene or
+KleidiCV attribution is made.
+
+The shared Mat `bitwise_empty_bypass` now handles both-empty operands with no
+mask or an empty mask, preventing any zero-element byte/HAL execution for
+And/Or/Xor/Not. Masked binary follows Left; Not follows Self. Unmasked
+typed/typed uses `make_empty_dense_like`, rather than the releasing Mat
+`make_empty_arithmetic_result` overload. Default/default and either-order
+default/typed unmasked mixes still release. The metadata table above is
+unchanged, including intentional old-destination versus fresh-function type
+differences and OpenCV 4.x/5.0 release rank differences. This is an empty
+compatibility workaround, not normalization of ordinary nonempty HAL behavior.
+
+The UMat bypass and its null-storage ABI-safety rationale remain unchanged.
+Reviewed/corrective helper probe UMat metadata logs are compared byte-for-byte
+on the host and each exact Linux version. Strengthened existing registrations
+assert allocation-function rank/shape/depth/channels independently from
+procedure metadata, while the helper probe now treats any empty exception as
+a failure and asserts every empty result's exact rank/type/extents.
 
 ## Validation-boundary review and residency
 

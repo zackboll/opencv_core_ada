@@ -1,5 +1,8 @@
 // Standalone: includes the actual private production helpers, not replicas.
-#include "../../cpp/opencv_core_shim.cpp"
+#ifndef BITWISE_SHIM_SOURCE
+#define BITWISE_SHIM_SOURCE "../../cpp/opencv_core_shim.cpp"
+#endif
+#include BITWISE_SHIM_SOURCE
 #include <opencv2/core/ocl.hpp>
 #include <iostream>
 #include <cstring>
@@ -169,9 +172,17 @@ template<class Dense> static void run(const char *family) {
         Dense m=typed_mask?Dense(0,0,CV_8U):Dense();
         Dense d(2,257,CV_16SC2); d.setTo(cv::Scalar::all(91)); Dense alias=d;
         cv::Mat old=host(alias).clone();
-        try {
+        {
             apply(a,b,d,op,masked?&m:nullptr);
             require(d.empty(),"empty semantic result");
+            const bool released=op==3||masked ? !(form&1) :
+                std::is_same<Dense,cv::UMat>::value ? form==0 : form!=3;
+            require(d.dims==(released && CV_VERSION_MAJOR>=5 ? 0 : 2),
+                    "empty release/create rank");
+            require(d.type()==(released ? CV_16SC2 : depth),
+                    "empty old-type/source-type");
+            for(int i=0;i<d.dims;++i)
+                require(d.size[i]==0,"every empty shape extent");
             require(!alias.empty(),"old empty-result alias survives");
             require(equal(host(alias),old),"every old empty-result alias bit survives");
             std::cout<<family<<" empty depth="<<depth<<" form="<<form
@@ -180,8 +191,6 @@ template<class Dense> static void run(const char *family) {
                      <<" shape=";
             for(int i=0;i<d.dims;++i) std::cout<<d.size[i]<<',';
             std::cout<<'\n';
-        } catch(const cv::Exception &ex) {
-            std::cout<<family<<" raw empty native rejection "<<ex.code<<'\n';
         }
     }
     // Mask=Destination observation only: explicitly outside binding contract.

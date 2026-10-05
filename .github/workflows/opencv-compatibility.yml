@@ -598,6 +598,29 @@ jobs:
           set -eu
           alr -n build
 
+      - name: Isolate reviewed and corrected empty bitwise paths
+        run: |
+          set -eu
+          git fetch --no-tags origin dcca839b54e7995f1c31b9289001df54e685e231
+          git show dcca839b54e7995f1c31b9289001df54e685e231:cpp/opencv_core_shim.cpp > "$RUNNER_TEMP/reviewed_shim.cpp"
+          clang++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -Wno-error=c11-extensions \
+            $(pkg-config --cflags "$OPENCV_PKG") -I"$PWD/cpp" \
+            -DBITWISE_SHIM_SOURCE="\"$RUNNER_TEMP/reviewed_shim.cpp\"" \
+            tests/probes/bitwise_empty_probe.cpp \
+            $(pkg-config --libs-only-L "$OPENCV_PKG") -lopencv_core \
+            -o "$RUNNER_TEMP/reviewed-empty-probe"
+          "$RUNNER_TEMP/reviewed-empty-probe"
+          clang++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -Wno-error=c11-extensions \
+            $(pkg-config --cflags "$OPENCV_PKG") tests/probes/bitwise_empty_probe.cpp \
+            $(pkg-config --libs-only-L "$OPENCV_PKG") -lopencv_core \
+            -o "$RUNNER_TEMP/corrected-empty-probe"
+          "$RUNNER_TEMP/corrected-empty-probe"
+          clang++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -Wno-error=c11-extensions \
+            $(pkg-config --cflags "$OPENCV_PKG") tests/probes/bitwise_destination_probe.cpp \
+            $(pkg-config --libs-only-L "$OPENCV_PKG") -lopencv_core \
+            -o "$RUNNER_TEMP/bitwise-helper-probe"
+          "$RUNNER_TEMP/bitwise-helper-probe"
+
       - name: Run test suite
         id: tests
         if: ${{ always() && steps.root-build.outcome == 'success' }}
