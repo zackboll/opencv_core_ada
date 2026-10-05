@@ -6,6 +6,8 @@ with OpenCV;
 with OpenCV.Core;
 with OpenCV.Core.Transfers;
 with OpenCV.Core.Float64_Access;
+with OpenCV.Core.Int32_Access;
+with OpenCV.Core.Int32_Vec3;
 with OpenCV.Core.Int32_Vec3_Access;
 with OpenCV.Core.UInt8_Access;
 with OpenCV.Core.UInt8_Mat_View;
@@ -18,6 +20,8 @@ package body Min_Max_Destination_Tests is
    use AUnit.Assertions;
    use type UInt8_Value;
    use type Float64_Value;
+   use type Int32_Value;
+   use type Int32_Vec3.Vector;
    use type Float64_Access.Float64_Classification;
    subtype Fixture is Mat_Test_Fixture;
    package Caller is new AUnit.Test_Caller (Fixture);
@@ -34,18 +38,18 @@ package body Min_Max_Destination_Tests is
        then Long_Float'Min (A, B)
        else Long_Float'Max (A, B));
 
-   procedure Check
-     (Actual, Expected : Long_Float;
-      Context          : String := "every finite extrema element") is
+   procedure Check (Actual, Expected : Long_Float) is
    begin
-      Assert
-        (Actual = Expected,
-         Context & " actual=" & Actual'Image & " expected=" & Expected'Image);
+      Assert (Actual = Expected, "every finite extrema element");
    end Check;
 
    procedure Equal (Actual, Expected : Mat) is
-      A : constant Mat := Actual.Convert_To (Float64);
-      E : constant Mat := Expected.Convert_To (Float64);
+      A : constant Mat :=
+        (if Actual.Depth = Int32 then Actual else Actual.Convert_To (Float64));
+      E : constant Mat :=
+        (if Expected.Depth = Int32
+         then Expected
+         else Expected.Convert_To (Float64));
    begin
       Assert
         (Actual.Shape = Expected.Shape
@@ -59,20 +63,30 @@ package body Min_Max_Destination_Tests is
          begin
             for R in 0 .. X.Rows - 1 loop
                for C in 0 .. X.Columns - 1 loop
-                  Assert
-                    (Float64_Access.Classify (X, R, C)
-                     = Float64_Access.Classify (Y, R, C),
-                     "every native classification, including tail");
-                  if Float64_Access.Classify (X, R, C) = Float64_Access.Finite
-                  then
-                     Check
-                       (Long_Float (Float64_Access.Get (X, R, C)),
-                        Long_Float (Float64_Access.Get (Y, R, C)));
-                     if Float64_Access.Get (X, R, C) = 0.0 then
-                        Assert
-                          (Raw_ABI.Negative_Zero (X, R, C)
-                           = Raw_ABI.Negative_Zero (Y, R, C),
-                           "native zero sign including alias/tail boundary");
+                  if Actual.Depth = Int32 then
+                     --  Native NEON widening can round INT_MAX via Float32.
+                     Assert
+                       (Int32_Access.Get (X, R, C)
+                        = Int32_Access.Get (Y, R, C),
+                        "exact Int32 fresh/reused/alias parity");
+                  else
+                     Assert
+                       (Float64_Access.Classify (X, R, C)
+                        = Float64_Access.Classify (Y, R, C),
+                        "every native classification, including tail");
+                     if Float64_Access.Classify (X, R, C)
+                       = Float64_Access.Finite
+                     then
+                        Check
+                          (Long_Float (Float64_Access.Get (X, R, C)),
+                           Long_Float (Float64_Access.Get (Y, R, C)));
+                        if Float64_Access.Get (X, R, C) = 0.0 then
+                           Assert
+                             (Raw_ABI.Negative_Zero (X, R, C)
+                              = Raw_ABI.Negative_Zero (Y, R, C),
+                              "native zero sign including alias/tail "
+                              & "boundary");
+                        end if;
                      end if;
                   end if;
                end loop;
@@ -134,7 +148,9 @@ package body Min_Max_Destination_Tests is
       function Fresh (A, B : Image) return Image
       is (if Op = Minimum_Operation then Minimum (A, B) else Maximum (A, B));
       procedure All_Values (Self : Image; Value : Long_Float) is
-         V : constant Mat := Observe (Self).Convert_To (Float64);
+         H : constant Mat := Observe (Self);
+         V : constant Mat :=
+           (if H.Depth = Int32 then H else H.Convert_To (Float64));
       begin
          for Ch in 0 .. Natural (V.Channels) - 1 loop
             declare
@@ -142,8 +158,14 @@ package body Min_Max_Destination_Tests is
             begin
                for R in 0 .. C.Rows - 1 loop
                   for Col in 0 .. C.Columns - 1 loop
-                     Check
-                       (Long_Float (Float64_Access.Get (C, R, Col)), Value);
+                     if V.Depth = Int32 then
+                        Assert
+                          (Int32_Access.Get (C, R, Col) = Int32_Value (Value),
+                           "exact Int32 constant value");
+                     else
+                        Check
+                          (Long_Float (Float64_Access.Get (C, R, Col)), Value);
+                     end if;
                   end loop;
                end loop;
             end;
@@ -184,13 +206,26 @@ package body Min_Max_Destination_Tests is
                All_Values (Alias, 19.0);
                Set_To (A, Make_Scalar (29.0));
                declare
-                  V : constant Mat := Observe (E).Convert_To (Float64);
+                  H : constant Mat := Observe (E);
+                  V : constant Mat :=
+                    (if D = Int32 then H else H.Convert_To (Float64));
                begin
                   for C in 0 .. 256 loop
-                     Check
-                       (Long_Float (Float64_Access.Get (V, 0, C)),
-                        Select_Value
-                          (Input (C, D, True), Input (C, D, False), Op));
+                     if D = Int32 then
+                        Assert
+                          (Int32_Access.Get (V, 0, C)
+                           = Int32_Value
+                               (Select_Value
+                                  (Input (C, D, True),
+                                   Input (C, D, False),
+                                   Op)),
+                           "exact Int32 independent function result");
+                     else
+                        Check
+                          (Long_Float (Float64_Access.Get (V, 0, C)),
+                           Select_Value
+                             (Input (C, D, True), Input (C, D, False), Op));
+                     end if;
                   end loop;
                end;
             end;
@@ -335,18 +370,32 @@ package body Min_Max_Destination_Tests is
                   end case;
                   Equal (Observe (Dest), Observe (E));
                   declare
-                     V : constant Mat := Observe (Dest).Convert_To (Float64);
+                     H : constant Mat := Observe (Dest);
+                     V : constant Mat :=
+                       (if D = Int32 then H else H.Convert_To (Float64));
                   begin
                      for C in 0 .. 256 loop
-                        Check
-                          (Long_Float (Float64_Access.Get (V, 0, C)),
-                           (if Mode >= 5
-                            then Input (C, D, True)
-                            else
-                              Select_Value
-                                (Input (C, D, True),
-                                 Input (C, D, False),
-                                 Op)));
+                        declare
+                           Expected : constant Long_Float :=
+                             (if Mode >= 5
+                              then Input (C, D, True)
+                              else
+                                Select_Value
+                                  (Input (C, D, True),
+                                   Input (C, D, False),
+                                   Op));
+                        begin
+                           if D = Int32 then
+                              Assert
+                                (Int32_Access.Get (V, 0, C)
+                                 = Int32_Value (Expected),
+                                 "exact Int32 mathematical alias result");
+                           else
+                              Check
+                                (Long_Float (Float64_Access.Get (V, 0, C)),
+                                 Expected);
+                           end if;
+                        end;
                      end loop;
                   end;
                end;
@@ -356,81 +405,26 @@ package body Min_Max_Destination_Tests is
       procedure Numbers (Test : in out Fixture) is
          pragma Unreferenced (Test);
          type Triple is array (0 .. 2) of Long_Float;
-         function Source (D : Depth_Type; Values : Triple) return Image is
-            H : Mat := Create (2, 257, (D, 3));
-         begin
-            if D = Int32 then
-               --  Write endpoints without Scalar floating-point conversion.
-               for Row in 0 .. 1 loop
-                  for C in 0 .. 256 loop
-                     Int32_Vec3_Access.Set
-                       (H,
-                        Row,
-                        C,
-                        (Int32_Value (Values (0)),
-                         Int32_Value (Values (1)),
-                         Int32_Value (Values (2))));
-                  end loop;
-               end loop;
-            else
-               H.Set_To (Make_Scalar (Values (0), Values (1), Values (2)));
-            end if;
-            return From_Mat (H);
-         end Source;
-         procedure Verify
-           (Self : Image; D : Depth_Type; Values : Triple; Context : String)
+         procedure Verify_Int32
+           (Self : Image; Values : Int32_Vec3.Vector; Context : String)
          is
             H : constant Mat := Observe (Self);
-            function Detail (Ch, Row, C : Integer) return String
-            is (Context
-                & " "
-                & D'Image
-                & " C3 channel="
-                & Ch'Image
-                & " row="
-                & Row'Image
-                & " column="
-                & C'Image);
          begin
             Assert
               (H.Shape = Dimension_Array'(2, 257)
-               and then H.Depth = D
+               and then H.Depth = Int32
                and then H.Channels = 3,
                Context & " C3 layout");
-            if D = Int32 then
-               --  NEON Int32 -> Float64 may widen through Float32 and round
-               --  INT_MAX. Observe integer selection through exact access.
-               for Row in 0 .. 1 loop
-                  for C in 0 .. 256 loop
-                     for Ch in 0 .. 2 loop
-                        Check
-                          (Long_Float (Int32_Vec3_Access.Get (H, Row, C) (Ch)),
-                           Values (Ch),
-                           Detail (Ch, Row, C));
-                     end loop;
-                  end loop;
+            --  Inspect storage directly: Int32 -> Float64 on NEON can
+            --  round INT_MAX through a Float32 intermediate.
+            for Row in 0 .. 1 loop
+               for C in 0 .. 256 loop
+                  Assert
+                    (Int32_Vec3_Access.Get (H, Row, C) = Values,
+                     Context & " row=" & Row'Image & " column=" & C'Image);
                end loop;
-            else
-               declare
-                  W : constant Mat := H.Convert_To (Float64);
-               begin
-                  for Ch in 0 .. 2 loop
-                     declare
-                        V : constant Mat := W.Extract_Channel (Ch);
-                     begin
-                        for Row in 0 .. 1 loop
-                           for C in 0 .. 256 loop
-                              Check
-                                (Long_Float (Float64_Access.Get (V, Row, C)),
-                                 Values (Ch),
-                                 Detail (Ch, Row, C));
-                           end loop;
-                        end loop;
-                     end;
-                  end loop;
-               end;
-            end if;
-         end Verify;
+            end loop;
+         end Verify_Int32;
       begin
          for D of Depths'(UInt8, Int16, Int32, Float32, Float64, Float16) loop
             declare
@@ -450,21 +444,68 @@ package body Min_Max_Destination_Tests is
                   elsif D in Int16 | Int32
                   then (9.0, -9.0, 12.0)
                   else (-2.0, -5.0, 2.0));
-               E     : constant Triple :=
-                 (Select_Value (L (0), R (0), Op),
-                  Select_Value (L (1), R (1), Op),
-                  Select_Value (L (2), R (2), Op));
-               A     : constant Image := Source (D, L);
-               B     : constant Image := Source (D, R);
+               A     : Image := New_Image (2, 257, (D, 3));
+               B     : Image := New_Image (2, 257, (D, 3));
                Dest  : Image := New_Image (2, 257, (D, 3));
                Alias : constant Image := Dest;
             begin
-               Verify (A, D, L, "stored Left before " & Op'Image);
-               Verify (B, D, R, "stored Right before " & Op'Image);
-               Verify (Fresh (A, B), D, E, "function " & Op'Image);
+               Set_To (A, Make_Scalar (L (0), L (1), L (2)));
+               Set_To (B, Make_Scalar (R (0), R (1), R (2)));
+               if D = Int32 then
+                  Verify_Int32
+                    (A,
+                     (Int32_Value'First, Int32_Value'Last, -7),
+                     "stored Left before " & Op'Image);
+                  Verify_Int32
+                    (B, (9, -9, 12), "stored Right before " & Op'Image);
+               end if;
                Into (A, B, Dest);
-               Verify (Dest, D, E, "destination " & Op'Image);
-               Verify (Alias, D, E, "retained alias " & Op'Image);
+               declare
+                  E : constant Image := Fresh (A, B);
+               begin
+                  Equal (Observe (Dest), Observe (E));
+                  Equal (Observe (Alias), Observe (E));
+                  if D = Int32 then
+                     declare
+                        Left     : constant Int32_Vec3.Vector :=
+                          (Int32_Value'First, Int32_Value'Last, -7);
+                        Right    : constant Int32_Vec3.Vector := (9, -9, 12);
+                        Expected : Int32_Vec3.Vector;
+                     begin
+                        for Ch in Expected'Range loop
+                           Expected (Ch) :=
+                             (if Op = Minimum_Operation
+                              then Int32_Value'Min (Left (Ch), Right (Ch))
+                              else Int32_Value'Max (Left (Ch), Right (Ch)));
+                        end loop;
+                        Verify_Int32 (E, Expected, "function " & Op'Image);
+                        Verify_Int32
+                          (Dest, Expected, "destination " & Op'Image);
+                        Verify_Int32
+                          (Alias, Expected, "retained alias " & Op'Image);
+                     end;
+                  else
+                     declare
+                        H : constant Mat :=
+                          Observe (Alias).Convert_To (Float64);
+                     begin
+                        for Ch in 0 .. 2 loop
+                           declare
+                              V : constant Mat := H.Extract_Channel (Ch);
+                           begin
+                              for Row in 0 .. 1 loop
+                                 for C in 0 .. 256 loop
+                                    Check
+                                      (Long_Float
+                                         (Float64_Access.Get (V, Row, C)),
+                                       Select_Value (L (Ch), R (Ch), Op));
+                                 end loop;
+                              end loop;
+                           end;
+                        end loop;
+                     end;
+                  end if;
+               end;
             end;
          end loop;
       end Numbers;
