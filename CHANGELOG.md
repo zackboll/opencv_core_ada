@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Correct Windows `External_Relocatable` shim installation: retain external
+  MSYS2 compilation, but declare C++ and actual sources so GPRinstall recognizes
+  the prebuilt library. Require installation of its externally produced import
+  archive beside the DLL. Add negative GPRinstall regressions and fresh installed/
+  relocated public Mat consumers; no public Ada API or native ABI changes.
+
 - Add reusable `Add_Weighted` and `Scale_Add` destinations for Mat and UMat
   through four narrow C exports calling the unchanged production helpers on
   the actual destination. Preserve whole/Region storage, shallow aliases,

@@ -2970,6 +2970,30 @@ opencv_core_ada/
 `config/opencv_core_install.gpr` is generated locally by
 `scripts/configure_opencv.sh` and is not a hand-maintained public interface.
 
+### Installed Core Mat consumer
+
+After native prerequisites and the Alire toolchain are available, run directly:
+
+```sh
+sh scripts/validate_installed_mat_consumer.sh
+alr -n exec -- python3 -m unittest discover -s tests -p test_external_shim_install.py -v
+```
+
+The first command recursively installs real Core projects with GPRinstall, checks
+the authoritative exported bridge, then compiles/links/runs a fresh public Mat
+consumer against prefix-only project lookup. It moves prefix A to a longer B,
+verifies A is absent, and repeats with new consumer objects. On Windows it also
+checks installed DLL/import-archive byte equality and PE imports, using the
+external MSYS2 compiler/runtime and static Ada runtime isolation. It does not
+manually copy shim artifacts. Evidence and build logs remain in the reported
+temporary directory. Linux and macOS retain their existing shim build modes.
+
+The Python tests are separate GPRinstall configuration/helper evidence, not
+native Core algorithm coverage. They reproduce the language-less external
+project failure, demonstrate that declaring only C++ loses the library, and
+exercise library/required-artifact installation plus missing-archive rejection.
+See [the corrective qualification record](docs/windows-external-shim-install.md).
+
 ---
 
 ## Development approach

@@ -193,6 +193,11 @@ jobs:
           git rev-parse HEAD
           scripts/validate_root_value_consumer.sh "$PWD"
 
+      - name: External shim GPRinstall regression and installed Mat consumer
+        run: |
+          alr -n exec -- python3 -m unittest discover -s tests -p test_external_shim_install.py -v
+          sh scripts/validate_installed_mat_consumer.sh
+
   ubuntu-arm64:
     name: OpenCV Ubuntu 24.04 ARM64
     runs-on: ubuntu-24.04-arm
@@ -244,6 +249,9 @@ jobs:
 
       - name: Run test suite
         run: alr -C tests run
+
+      - name: Recursive installed and relocated Core Mat consumer
+        run: sh scripts/validate_installed_mat_consumer.sh
 
       - name: Smoke test relocatable Ada library
         run: |
@@ -602,6 +610,9 @@ jobs:
         id: tests
         if: ${{ always() && steps.root-build.outcome == 'success' }}
         run: alr -n -C tests run
+
+      - name: Recursive installed and relocated Core Mat consumer
+        run: sh scripts/validate_installed_mat_consumer.sh
 
       - name: Verify shim library architecture
         if: ${{ always() && steps.root-build.outcome == 'success' }}
@@ -1715,6 +1726,9 @@ jobs:
           if printf '%s\n' "${deps}" | grep -qi 'libgnarl-16.dll'; then
             echo "warning: test executable still imports libgnarl-16.dll"
           fi
+
+      - name: Recursive installed and relocated Core Mat consumer
+        run: sh scripts/validate_installed_mat_consumer.sh
 
       - name: Smoke test relocatable Ada library
         run: |
