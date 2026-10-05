@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Add all 16 reusable masked/unmasked `Bitwise_And`, `Bitwise_Or`,
+  `Bitwise_Xor`, and `Bitwise_Not` Mat/UMat procedures and 16 narrow C exports.
+  Call unchanged production helpers on the actual destination. Compatible
+  masked outputs preserve unselected old bits; native reallocation clears
+  unselected elements to zero. Preserve Region reuse, mismatch detachment,
+  exact/same-layout source aliases, binary/masked 2-D policies, N-D unmasked
+  Not, raw floating bits (including binary16 payloads), empty compatibility
+  and UMat residency. Temporary Mat destinations remain prohibited; temporary
+  sources/masks remain legal. Partial overlap and destination/mask aliases are
+  outside the contract. Add shared public/raw tests and four-version source
+  audit and actual-helper probe.
+
 - Add reusable `Add_Weighted` and `Scale_Add` destinations for Mat and UMat
   through four narrow C exports calling the unchanged production helpers on
   the actual destination. Preserve whole/Region storage, shallow aliases,

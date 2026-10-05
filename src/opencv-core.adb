@@ -1579,6 +1579,181 @@ package body OpenCV.Core is
       return Result;
    end Bitwise_Not;
 
+   procedure Bitwise_And (Left, Right : Mat; Destination : in out Mat) is
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      if Destination.Temporary_View then
+         raise OpenCV_Error with "temporary Mat cannot be a destination";
+      end if;
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Bitwise_And_Into
+           (Left.Handle, Right.Handle, Destination.Handle),
+         "Mat destination bitwise and");
+   end Bitwise_And;
+
+   procedure Bitwise_And (Left, Right, Mask : Mat; Destination : in out Mat) is
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      Validate_Mask (Left, Mask);
+      if Destination.Temporary_View then
+         raise OpenCV_Error with "temporary Mat cannot be a destination";
+      end if;
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Bitwise_And_Masked_Into
+           (Left.Handle, Right.Handle, Mask.Handle, Destination.Handle),
+         "Mat destination masked bitwise and");
+   end Bitwise_And;
+
+   procedure Bitwise_Or (Left, Right : Mat; Destination : in out Mat) is
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      if Destination.Temporary_View then
+         raise OpenCV_Error with "temporary Mat cannot be a destination";
+      end if;
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Bitwise_Or_Into
+           (Left.Handle, Right.Handle, Destination.Handle),
+         "Mat destination bitwise or");
+   end Bitwise_Or;
+
+   procedure Bitwise_Or (Left, Right, Mask : Mat; Destination : in out Mat) is
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      Validate_Mask (Left, Mask);
+      if Destination.Temporary_View then
+         raise OpenCV_Error with "temporary Mat cannot be a destination";
+      end if;
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Bitwise_Or_Masked_Into
+           (Left.Handle, Right.Handle, Mask.Handle, Destination.Handle),
+         "Mat destination masked bitwise or");
+   end Bitwise_Or;
+
+   procedure Bitwise_Xor (Left, Right : Mat; Destination : in out Mat) is
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      if Destination.Temporary_View then
+         raise OpenCV_Error with "temporary Mat cannot be a destination";
+      end if;
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Bitwise_Xor_Into
+           (Left.Handle, Right.Handle, Destination.Handle),
+         "Mat destination bitwise xor");
+   end Bitwise_Xor;
+
+   procedure Bitwise_Xor (Left, Right, Mask : Mat; Destination : in out Mat) is
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      Validate_Mask (Left, Mask);
+      if Destination.Temporary_View then
+         raise OpenCV_Error with "temporary Mat cannot be a destination";
+      end if;
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Bitwise_Xor_Masked_Into
+           (Left.Handle, Right.Handle, Mask.Handle, Destination.Handle),
+         "Mat destination masked bitwise xor");
+   end Bitwise_Xor;
+
+   procedure Bitwise_Not (Self : Mat; Destination : in out Mat) is
+   begin
+      if Destination.Temporary_View then
+         raise OpenCV_Error with "temporary Mat cannot be a destination";
+      end if;
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Bitwise_Not_Into
+           (Self.Handle, Destination.Handle),
+         "Mat destination bitwise not");
+   end Bitwise_Not;
+
+   procedure Bitwise_Not (Self, Mask : Mat; Destination : in out Mat) is
+   begin
+      Validate_Mask (Self, Mask);
+      if Destination.Temporary_View then
+         raise OpenCV_Error with "temporary Mat cannot be a destination";
+      end if;
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Bitwise_Not_Masked_Into
+           (Self.Handle, Mask.Handle, Destination.Handle),
+         "Mat destination masked bitwise not");
+   end Bitwise_Not;
+
+   procedure Bitwise_And (Left, Right : UMat; Destination : in out UMat) is
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Bitwise_And_Into
+           (Left.Handle, Right.Handle, Destination.Handle),
+         "UMat destination bitwise and");
+   end Bitwise_And;
+
+   procedure Bitwise_And (Left, Right, Mask : UMat; Destination : in out UMat)
+   is
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      Validate_Mask (Left, Mask);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Bitwise_And_Masked_Into
+           (Left.Handle, Right.Handle, Mask.Handle, Destination.Handle),
+         "UMat destination masked bitwise and");
+   end Bitwise_And;
+
+   procedure Bitwise_Or (Left, Right : UMat; Destination : in out UMat) is
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Bitwise_Or_Into
+           (Left.Handle, Right.Handle, Destination.Handle),
+         "UMat destination bitwise or");
+   end Bitwise_Or;
+
+   procedure Bitwise_Or (Left, Right, Mask : UMat; Destination : in out UMat)
+   is
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      Validate_Mask (Left, Mask);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Bitwise_Or_Masked_Into
+           (Left.Handle, Right.Handle, Mask.Handle, Destination.Handle),
+         "UMat destination masked bitwise or");
+   end Bitwise_Or;
+
+   procedure Bitwise_Xor (Left, Right : UMat; Destination : in out UMat) is
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Bitwise_Xor_Into
+           (Left.Handle, Right.Handle, Destination.Handle),
+         "UMat destination bitwise xor");
+   end Bitwise_Xor;
+
+   procedure Bitwise_Xor (Left, Right, Mask : UMat; Destination : in out UMat)
+   is
+   begin
+      Validate_Arithmetic_Compatibility (Left, Right);
+      Validate_Mask (Left, Mask);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Bitwise_Xor_Masked_Into
+           (Left.Handle, Right.Handle, Mask.Handle, Destination.Handle),
+         "UMat destination masked bitwise xor");
+   end Bitwise_Xor;
+
+   procedure Bitwise_Not (Self : UMat; Destination : in out UMat) is
+   begin
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Bitwise_Not_Into
+           (Self.Handle, Destination.Handle),
+         "UMat destination bitwise not");
+   end Bitwise_Not;
+
+   procedure Bitwise_Not (Self, Mask : UMat; Destination : in out UMat) is
+   begin
+      Validate_Mask (Self, Mask);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Bitwise_Not_Masked_Into
+           (Self.Handle, Mask.Handle, Destination.Handle),
+         "UMat destination masked bitwise not");
+   end Bitwise_Not;
+
    function In_Range (Self : Mat; Lower, Upper : Scalar) return Mat is
       Result     : Mat;
       New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=

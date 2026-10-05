@@ -2046,6 +2046,55 @@ Available masked/unmasked families include:
 
 OpenCV's stored-bit interpretation is preserved for floating-point Mats.
 
+All four families also provide masked and unmasked reusable destination
+procedures for both `Mat` and `UMat`. Existing functions still allocate
+independent results:
+
+```ada
+Bitwise_Xor
+  (Left        => A,
+   Right       => B,
+   Destination => Existing);
+Bitwise_And
+  (Left        => A,
+   Right       => B,
+   Mask        => Selection,
+   Destination => Existing);
+```
+
+**Masked reuse preserves unselected values.** With a compatible masked
+Destination, `mask == 0` preserves the exact old Destination element. If native
+output creation reallocates Destination, OpenCV initializes the new masked
+output to zero, so `mask == 0` produces zero there. This is intentionally not
+normalized to the allocation-returning function. An all-zero mask leaves a
+compatible destination unchanged, but produces zeros after reallocation and
+in the allocation-returning function. Every nonzero mask byte selects: `1`,
+`2`, `127`, and `255` all select the whole element, including all C3/C4 channels.
+
+Compatible whole matrices and Regions retain their storage, geometry and
+shallow aliases. Shape, depth or channel mismatches detach only Destination's
+header; the old Parent and aliases survive. Exact source/destination aliases
+and distinct shallow headers with the same storage/layout are supported for
+Left, Right and Not's Self, including masks; selected elements use old source
+bits and unselected elements retain old destination bits. Arbitrarily partially
+overlapping Regions are unsupported. Destination aliasing Mask is outside the
+supported alias contract; there are no overlap detection or hidden copies.
+
+Floating storage is treated as raw bits, including Float16 binary16 zeros,
+infinities and NaN payloads; this is not floating arithmetic. Unmasked Not
+retains genuine N-D capability. Binary And/Or/Xor retain matching 2-D operands;
+masked operations retain the existing matching 2-D UInt8 C1 mask boundary.
+Temporary external/selected Mat views are legal sources/masks, but never
+destinations, even if compatible. Ada validation and raw pre-native rejection
+leave destination unchanged; arbitrary post-native failure atomicity is not
+promised. Empty results preserve the existing helper/version representation
+boundary: release may retain the old destination type and (4.x) zero extents,
+while 5.0 release resets rank. Function and destination empty metadata need not
+be identical. UMat operations remain native at the binding boundary, without
+Mat mapping or staging; OpenCV itself may fall back to CPU.
+
+See [exact source and helper-probe findings](tests/probes/bitwise_destination_source_findings.md).
+
 ### Channel manipulation
 
 Current channel operations include:

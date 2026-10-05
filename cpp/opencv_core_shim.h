@@ -1302,6 +1302,39 @@ opencv_core_status opencv_core_umat_scale_add_into(
 
 /* Unmasked bitwise operations preserve the complete stored bit pattern. */
 /* UMat-only bitwise operations: sources, masks and results remain UMat. */
+/* Into calls retain native masked reuse/reallocation semantics. Required
+ * handles are nonnull; temporary Mat destinations are forbidden. Exact and
+ * same-layout source aliases are supported, not partial overlap or mask aliases.
+ * Pre-native rejection does not modify destination; native failures need not
+ * be atomic. No ownership transfer occurs. */
+#define OPENCV_CORE_DECLARE_BITWISE_INTO(KIND, NAME) \
+opencv_core_status opencv_core_##KIND##_bitwise_##NAME##_into( \
+    const opencv_core_##KIND##_handle *left, \
+    const opencv_core_##KIND##_handle *right, \
+    opencv_core_##KIND##_handle *destination); \
+opencv_core_status opencv_core_##KIND##_bitwise_##NAME##_masked_into( \
+    const opencv_core_##KIND##_handle *left, \
+    const opencv_core_##KIND##_handle *right, \
+    const opencv_core_##KIND##_handle *mask, \
+    opencv_core_##KIND##_handle *destination);
+OPENCV_CORE_DECLARE_BITWISE_INTO(mat, and)
+OPENCV_CORE_DECLARE_BITWISE_INTO(mat, or)
+OPENCV_CORE_DECLARE_BITWISE_INTO(mat, xor)
+OPENCV_CORE_DECLARE_BITWISE_INTO(umat, and)
+OPENCV_CORE_DECLARE_BITWISE_INTO(umat, or)
+OPENCV_CORE_DECLARE_BITWISE_INTO(umat, xor)
+#undef OPENCV_CORE_DECLARE_BITWISE_INTO
+opencv_core_status opencv_core_mat_bitwise_not_into(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination);
+opencv_core_status opencv_core_mat_bitwise_not_masked_into(
+    const opencv_core_mat_handle *source, const opencv_core_mat_handle *mask,
+    opencv_core_mat_handle *destination);
+opencv_core_status opencv_core_umat_bitwise_not_into(
+    const opencv_core_umat_handle *source, opencv_core_umat_handle *destination);
+opencv_core_status opencv_core_umat_bitwise_not_masked_into(
+    const opencv_core_umat_handle *source, const opencv_core_umat_handle *mask,
+    opencv_core_umat_handle *destination);
+
 opencv_core_status opencv_core_umat_bitwise_and(const opencv_core_umat_handle *left,
     const opencv_core_umat_handle *right, opencv_core_umat_handle **out);
 opencv_core_status opencv_core_umat_bitwise_or(const opencv_core_umat_handle *left,
