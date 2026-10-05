@@ -172,17 +172,34 @@ Push workflow 37254413147 reported only `Bitwise destination Mat empty`:
 1875 executed, 1874 passed, zero assertions, one unexpected OpenCV error.
 `and8u ==> cv_hal_and8u returned -1` at arithm.simd.hpp:852.
 
-The isolated `bitwise_empty_probe.cpp` constructs matching Left/Right typed
-UInt8 C1 empties (rank 2, shape (0,0), total 0), independently calls direct
-`cv::bitwise_and`, actual `dense_bitwise_binary`, allocation-returning C export,
-and destination-taking C export. Procedures start from Int16 C2 (2,257), with
-an observable retained Alias. Every call logs source/destination metadata and
-result or exception; it does not infer the failing combination from loop order.
-Linux host 4.10 and exact Linux 5.0 accept all four reviewed-head calls and
-produce source-typed rank-2 (0,0) output; Alias survives unchanged. Hosted
-macOS CI runs this probe against both the reviewed and corrective actual shim,
-then the complete all-operation helper probe and public Ada suite. Exact hosted
-observations are recorded in the PR alongside the corrective SHA.
+During investigation, a temporary isolated probe constructed matching
+Left/Right typed UInt8 C1 empties (rank 2, shape (0,0), total 0), independently
+calling direct `cv::bitwise_and`, actual `dense_bitwise_binary`, the
+allocation-returning C export and the destination-taking C export. Each
+destination started from Int16 C2 (2,257), with an observable retained Alias.
+This confirmed the combination independently of the AUnit loop order.
+
+Linux host 4.10 and exact Linux 5.0 accepted all four reviewed-head calls,
+producing source-typed rank-2 (0,0) output with Alias unchanged. Hosted macOS
+ARM64/OpenCV 5.0 push workflow 37255862270 compiled the isolated probe against
+both the actual failing shim and corrective `17beab216ca88fd32fab4e51d6efe8899ea52e2f`.
+At the failing head, direct native and actual-helper calls threw HAL and8u -1;
+the destination export returned an OpenCV error after creating typed-empty
+UInt8 C1 output, and the allocation export returned an error with a null
+result. At the corrective head, helper and both exports succeeded with
+source-typed rank-2 (0,0) metadata; direct native still threw. Old Int16 C2
+Alias storage survived unchanged in every case. The complete current-head
+helper probe and public suite passed, with 1875/1875 and zero assertions/errors.
+Exact hosted observations are also recorded in PR #51.
+
+The temporary `bitwise_empty_probe.cpp` and historical-head CI diagnostic
+step were removed before merge; they are not permanent regression gates.
+The compatibility workflow is restored exactly to its pre-diagnostic state
+from `dcca839b54e7995f1c31b9289001df54e685e231` and no longer fetches or compiles
+that broken historical head. Permanent regression coverage remains in the
+normal current-head public tests (`bitwise_destination_tests.adb`) and actual
+helper probe (`bitwise_destination_probe.cpp`), including isolated typed-empty
+And plus the all-operation empty metadata/alias matrix.
 
 Exact 5.0 arithm.cpp:169-193 admits matching typed 0x0 arrays to binary_op's
 unmasked fast path, creates source-typed output, computes zero byte width, and
