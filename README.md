@@ -10,7 +10,7 @@ access, and Ada exceptions while keeping the C++ ABI behind a small stable C
 interface. It is intentionally an Ada API over OpenCV rather than a mechanical
 translation of the C++ headers.
 
-> **Version:** `0.4.0`
+> **Version:** `0.4.1`
 >
 > **OpenCV compatibility:** **4.1 through 5.0**, inclusive. The public Ada API
 > is intended to remain the same across this range. Not every intermediate
@@ -27,6 +27,10 @@ translation of the C++ headers.
 > in separate Ada crates that can depend on this Core binding.
 
 ## Project names
+
+Version 0.4.1 is a maintenance patch correcting recursive GPRinstall of the
+externally built Windows Core shim. It installs the shim DLL and requires its
+import archive; the public Ada and C APIs are unchanged from 0.4.0.
 
 Several related names appear in the repository:
 
@@ -2650,10 +2654,11 @@ partially integrated batches.
 The Alire crate version is currently:
 
 ```text
-0.4.0
+0.4.1
 ```
 
-See `CHANGELOG.md` for the 0.4.0 UMat additions, the historical 0.3.0 typed
+See `CHANGELOG.md` for the 0.4.1 Windows install correction, the 0.4.0 UMat
+additions, the historical 0.3.0 typed
 Mat and SparseMat additions, and the 0.2.0 shared-value relocation.
 
 The API should still be considered experimental until 1.0. Public names and

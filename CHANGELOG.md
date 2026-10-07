@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## 0.4.1
+
+Maintenance patch based on the immutable 0.4.0 release; no public Ada or C API
+changes and no post-0.4.0 Core functionality.
+
+- Correct recursive GPRinstall of the externally built Windows Core shim by
+  declaring its C++ language and source directory while retaining
+  `Externally_Built = True` and `Library_Kind = relocatable`.
+- Require installation of `lib/libopencv_core_shim.dll.a` beside the external
+  shim DLL. A missing import archive fails installation. The MSYS2 MinGW64
+  external compiler boundary is unchanged; GPRbuild does not compile the shim.
+- Add packaging regressions for zero-language, language-only, corrected, and
+  missing-archive installation, plus fresh public Mat consumers against the
+  original and moved installation prefixes, including Windows PE/path audits.
+
 ## 0.4.0
 
 This release completes the initial controlled UMat / Transparent API surface,
