@@ -116,6 +116,12 @@
 - Added dense N-D `Min_Max_Indices`, with native-order zero-based coordinates,
   independent location-validity flags, and full-shape UInt8 C1 masks.
 
+- Correct Windows `External_Relocatable` shim installation: retain external
+  MSYS2 compilation, but declare C++ and actual sources so GPRinstall recognizes
+  the prebuilt library. Require installation of its externally produced import
+  archive beside the DLL. Add negative GPRinstall regressions and fresh installed/
+  relocated public Mat consumers; no public Ada API or native ABI changes.
+
 ## 0.4.0
 
 This release completes the initial controlled UMat / Transparent API surface,

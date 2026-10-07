@@ -193,6 +193,11 @@ jobs:
           git rev-parse HEAD
           scripts/validate_root_value_consumer.sh "$PWD"
 
+      - name: External shim GPRinstall regression and installed Mat consumer
+        run: |
+          alr -n exec -- python3 -m unittest discover -s tests -p test_external_shim_install.py -v
+          sh scripts/validate_installed_mat_consumer.sh
+
   ubuntu-arm64:
     name: OpenCV Ubuntu 24.04 ARM64
     runs-on: ubuntu-24.04-arm
@@ -244,6 +249,9 @@ jobs:
 
       - name: Run test suite
         run: alr -C tests run
+
+      - name: Recursive installed and relocated Core Mat consumer
+        run: sh scripts/validate_installed_mat_consumer.sh
 
       - name: Smoke test relocatable Ada library
         run: |
@@ -602,6 +610,9 @@ jobs:
         id: tests
         if: ${{ always() && steps.root-build.outcome == 'success' }}
         run: alr -n -C tests run
+
+      - name: Recursive installed and relocated Core Mat consumer
+        run: sh scripts/validate_installed_mat_consumer.sh
 
       - name: Verify shim library architecture
         if: ${{ always() && steps.root-build.outcome == 'success' }}
@@ -1466,23 +1477,25 @@ jobs:
           echo "=== Module bridge probe DLL exports and imports (${dump} -p) ==="
           probe_dump=$(alr exec -- "${dump}" -p "${probe_dll}")
           printf '%s\n' "${probe_dump}"
+          # Consume the full PE dump: grep -q can SIGPIPE printf under pipefail
+          # and falsely reject a symbol that is present near the start.
           for symbol in opencv_core_module_probe_input opencv_core_module_probe_mutate opencv_core_module_probe_create opencv_core_module_probe_invalid_inputs; do
-            if ! printf '%s\n' "${probe_dump}" | grep -q "${symbol}"; then
+            if ! printf '%s\n' "${probe_dump}" | grep "${symbol}" >/dev/null; then
               echo "error: module bridge probe does not export ${symbol}" >&2
               exit 1
             fi
           done
           for symbol in opencv_core_mat_resolve_input opencv_core_mat_resolve_output; do
-            if ! printf '%s\n' "${probe_dump}" | grep -q "${symbol}"; then
+            if ! printf '%s\n' "${probe_dump}" | grep "${symbol}" >/dev/null; then
               echo "error: module bridge probe does not import ${symbol} from Core shim" >&2
               exit 1
             fi
           done
-          if ! printf '%s\n' "${probe_dump}" | grep -qi 'libopencv_core_shim.dll'; then
+          if ! printf '%s\n' "${probe_dump}" | grep -i 'libopencv_core_shim.dll' >/dev/null; then
             echo "error: module bridge probe does not import libopencv_core_shim.dll" >&2
             exit 1
           fi
-          if ! printf '%s\n' "${probe_dump}" | grep -qi 'libopencv_core-500.dll'; then
+          if ! printf '%s\n' "${probe_dump}" | grep -i 'libopencv_core-500.dll' >/dev/null; then
             echo "error: module bridge probe does not import MSYS2 OpenCV Core" >&2
             exit 1
           fi
@@ -1715,6 +1728,9 @@ jobs:
           if printf '%s\n' "${deps}" | grep -qi 'libgnarl-16.dll'; then
             echo "warning: test executable still imports libgnarl-16.dll"
           fi
+
+      - name: Recursive installed and relocated Core Mat consumer
+        run: sh scripts/validate_installed_mat_consumer.sh
 
       - name: Smoke test relocatable Ada library
         run: |
