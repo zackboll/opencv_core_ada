@@ -498,8 +498,8 @@ package body Mask_Destination_Tests is
       begin
          for D of Depth_List'(UInt8, Int16, Float32) loop
             for Mode in 0 .. 3 loop
-               --  Type-changing exact UMat aliases differ by backend and
-               --  remain research-only, outside the supported contract.
+               --  Positive alias cases; rejected exact UMat cases have
+               --  dedicated pre-native preservation tests below.
                if not Is_UMat or else D = UInt8 or else Mode >= 2 then
                   declare
                      A    : Image := Input (D);
@@ -855,6 +855,113 @@ package body Mask_Destination_Tests is
         Create_UMat,
         Is_UMat => True);
 
+   procedure UMat_Exact_Aliases (Test : in out Fixture) is
+      pragma Unreferenced (Test);
+      procedure Unchanged (Self : UMat; Before : Mat) is
+         H        : constant Mat := Transfers.To_Mat (Self);
+         Wide     : constant Mat := H.Convert_To (Float64);
+         Old_Wide : constant Mat := Before.Convert_To (Float64);
+      begin
+         Assert
+           (Self.Dimension_Count = Before.Dimension_Count
+            and then Self.Shape = Before.Shape
+            and then Self.Depth = Before.Depth
+            and then Self.Channels = Before.Channels,
+            "exact alias failure preserves rank/shape/type");
+         for Ch in 0 .. Natural (H.Channels) - 1 loop
+            declare
+               A : constant Mat := Wide.Extract_Channel (Ch);
+               B : constant Mat := Old_Wide.Extract_Channel (Ch);
+            begin
+               for R in 0 .. H.Rows - 1 loop
+                  for C in 0 .. H.Columns - 1 loop
+                     Assert
+                       (Float64_Access.Get (A, R, C)
+                        = Float64_Access.Get (B, R, C),
+                        "every exact source/retained-alias pixel preserved");
+                  end loop;
+               end loop;
+            end;
+         end loop;
+      end Unchanged;
+      function Source (D : Depth_Type; Ch : Channel_Count := 1) return UMat is
+         H : Mat := Create (2, 257, (Float64, Ch));
+      begin
+         for Channel in 0 .. Natural (Ch) - 1 loop
+            declare
+               Plane : Mat := Create (2, 257, (Float64, 1));
+            begin
+               for R in 0 .. 1 loop
+                  for C in 0 .. 256 loop
+                     Float64_Access.Set
+                       (Plane,
+                        R,
+                        C,
+                        Float64_Value (1 + R + C mod 7 + Channel * 10));
+                  end loop;
+               end loop;
+               H.Insert_Channel (Plane, Channel);
+            end;
+         end loop;
+         return Transfers.To_UMat (H.Convert_To (D));
+      end Source;
+   begin
+      for D of Depth_List'(Int16, Float32, Float64, Float16) loop
+         for Into_Right in Boolean loop
+            A :
+            declare
+               Left         : UMat := Source (D);
+               Right        : UMat := Source (D);
+               Left_Alias   : constant UMat := Left;
+               Right_Alias  : constant UMat := Right;
+               Before_Left  : constant Mat := Transfers.To_Mat (Left).Clone;
+               Before_Right : constant Mat := Transfers.To_Mat (Right).Clone;
+            begin
+               begin
+                  if Into_Right then
+                     Compare (Left, Right, Equal, Right);
+                  else
+                     Compare (Left, Right, Equal, Left);
+                  end if;
+                  Assert (False, "depth-changing exact UMat Compare rejects");
+               exception
+                  when OpenCV_Error =>
+                     null;
+               end;
+               Unchanged (Left, Before_Left);
+               Unchanged (Right, Before_Right);
+               Unchanged (Left_Alias, Before_Left);
+               Unchanged (Right_Alias, Before_Right);
+            end A;
+         end loop;
+      end loop;
+      for D of Depth_List'(UInt8, Int16, Float32, Float16) loop
+         for Ch in Channel_Count range 1 .. 3 loop
+            if Ch = 1 or else (D = UInt8 and then Ch = 3) then
+               declare
+                  Self   : UMat := Source (D, Ch);
+                  Alias  : constant UMat := Self;
+                  Before : constant Mat := Transfers.To_Mat (Self).Clone;
+               begin
+                  begin
+                     In_Range
+                       (Self,
+                        Make_Scalar (0.0, 0.0, 0.0),
+                        Make_Scalar (100.0, 100.0, 100.0),
+                        Self);
+                     Assert (False, "exact UMat range rejects");
+                  exception
+                     when OpenCV_Error =>
+                        null;
+                  end;
+                  Unchanged (Self, Before);
+                  Unchanged (Alias, Before);
+               end;
+            end if;
+         end loop;
+      end loop;
+   end UMat_Exact_Aliases;
+
    procedure Temporary (Test : in out Fixture) is
       pragma Unreferenced (Test);
       Data : aliased UInt8_Mat_View.Buffer_Array := (0 .. 9 => 2);
@@ -934,12 +1041,22 @@ package body Mask_Destination_Tests is
          UMat_Cases.Half (Test);
          UMat_Cases.Failures (Test);
          Raw_ABI.UMat_Check (Test);
+         UMat_Exact_Aliases (Test);
+         Raw_ABI.UMat_Exact_Aliases (Test);
       end Run;
    begin
       Raw_ABI.With_OpenCL_Disabled (Run'Access);
    end CPU;
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
+      Result.Add_Test
+        (Caller.Create
+           ("mask UMat exact aliases reject unchanged",
+            UMat_Exact_Aliases'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("mask raw UMat exact aliases reject unchanged",
+            Raw_ABI.UMat_Exact_Aliases'Access));
       Result.Add_Test
         (Caller.Create
            ("mask Mat semantic failures", Mat_Cases.Failures'Access));

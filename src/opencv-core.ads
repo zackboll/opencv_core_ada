@@ -1384,8 +1384,9 @@ package OpenCV.Core is
    --  detach Destination. Compare retains C1 matching 2-D operands. In_Range
    --  supports N-D and at most four channels, requiring all channels in range.
    --  Float16 requires OpenCV 5.0+. Partial overlap is outside the contract.
-   --  Source/Destination aliasing for In_Range is outside the contract.
-   --  Type-changing exact UMat Compare aliases are outside the contract.
+   --  Exact UMat In_Range source/Destination aliases are rejected for ABI
+   --  safety; other shared-storage aliases remain outside the contract.
+   --  Exact depth-changing UMat Compare aliases are rejected for ABI safety.
    --  UInt8 C1 exact and distinct shallow Compare aliases are supported.
    --  Both-empty Compare releases Destination; empty In_Range is rejected.
    --  Execution remains UMat-native, including native internal CPU fallback.

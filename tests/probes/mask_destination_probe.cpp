@@ -4,6 +4,8 @@
 #include <iostream>
 #include <limits>
 #include <string>
+#include <cstring>
+#include <type_traits>
 
 static void require(bool condition, const char *message) {
     if (!condition) throw std::runtime_error(message);
@@ -14,6 +16,50 @@ static cv::Mat host(const cv::UMat &m) {
 }
 template<class Dense> static Dense dense(const cv::Mat &m) {
     Dense result; m.copyTo(result); return result;
+}
+static void storage_equal(const cv::Mat &a, const cv::Mat &b) {
+    require(a.dims==b.dims && a.size==b.size && a.type()==b.type(),
+            "unchanged source metadata");
+    cv::Mat x=a.clone(),y=b.clone();
+    require(std::memcmp(x.data,y.data,x.total()*x.elemSize())==0,
+            "every unchanged source byte");
+}
+static void equal(const cv::Mat &a, const cv::Mat &b);
+static void exact_guards(bool range) {
+    for(int depth:{CV_8U,CV_16S,CV_32F,CV_64F,CV_16F})
+        for(int cn:{1,3}) {
+            if(!range && cn!=1) continue;
+            if(range && cn!=1 && depth!=CV_8U) continue;
+            cv::Mat x(2,257,CV_32FC(cn));
+            for(int r=0;r<2;++r) for(int c=0;c<257;++c)
+                for(int ch=0;ch<cn;++ch)
+                    x.ptr<float>(r)[c*cn+ch]=float(1+r+c%7+ch*10);
+            x.convertTo(x,CV_MAKETYPE(depth,cn));
+            for(int mode=0;mode<(range?1:2);++mode) {
+                cv::UMat a=dense<cv::UMat>(x),b=dense<cv::UMat>(x);
+                cv::UMat aa=a,bb=b;
+                bool rejected=false;
+                try {
+                    if(range) dense_in_range_scalar(a,cv::Scalar::all(0),
+                                                    cv::Scalar::all(100),a);
+                    else dense_compare(a,b,cv::CMP_EQ,mode==0?a:b);
+                } catch(const cv::Exception &e) {
+                    require(e.code==cv::Error::StsBadArg,
+                            "controlled alias guard, not native assertion");
+                    rejected=true;
+                }
+                if(range || depth!=CV_8U) {
+                    require(rejected,"exact UMat alias must reject");
+                    storage_equal(host(a),x); storage_equal(host(b),x);
+                    storage_equal(host(aa),x); storage_equal(host(bb),x);
+                } else {
+                    require(!rejected,"UInt8 exact Compare remains allowed");
+                    cv::Mat expected(2,257,CV_8UC1,cv::Scalar(255));
+                    equal(host(mode==0?a:b),expected);
+                }
+            }
+        }
+    std::cout<<"exact UMat helper rejection/preservation/UInt8 gates passed\n";
 }
 static void equal(const cv::Mat &a, const cv::Mat &b) {
     require(a.size == b.size && a.type() == CV_8UC1 && b.type() == CV_8UC1,
@@ -57,6 +103,9 @@ template<class Dense> static void aliases(bool range, bool direct) {
             Dense d=range?a:(mode==2?a:b);
             std::cout<<"alias depth="<<depth<<" cn="<<cn
                      <<" mode="<<mode<<std::endl;
+            const bool must_reject=!direct && std::is_same<Dense,cv::UMat>::value
+                && (range?mode==0:(mode<2 && depth!=CV_8U));
+            bool rejected=false;
             try {
                 if(mode==0) execute(a,b,a,range,cv::CMP_LT,direct);
                 else if(!range && mode==1)
@@ -65,7 +114,12 @@ template<class Dense> static void aliases(bool range, bool direct) {
                 equal(host(mode==0?a:(!range && mode==1)?b:d),host(e));
                 std::cout<<"parity\n";
             } catch(const std::exception &err) {
+                rejected=true;
                 std::cout<<"exception/difference: "<<err.what()<<'\n';
+            }
+            if(must_reject) {
+                require(rejected,"helper exact alias rejection");
+                storage_equal(host(a),x); storage_equal(host(b),y);
             }
         }
     }
@@ -234,7 +288,7 @@ template<class Dense> static void half(bool range) {
 }
 int main(int argc,char **argv) {
     if(argc!=5) {
-        std::cerr<<"usage: probe mat|umat compare|range layouts|aliases|native-aliases|half opencl-request\n";
+        std::cerr<<"usage: probe mat|umat compare|range layouts|aliases|native-aliases|half|exact-guards opencl-request\n";
         return 2;
     }
     cv::ocl::setUseOpenCL(std::string(argv[4])=="1");
@@ -243,7 +297,8 @@ int main(int argc,char **argv) {
     const bool range=std::string(argv[2])=="range";
     const std::string mode=argv[3];
     try {
-        if(std::string(argv[1])=="mat") {
+        if(mode=="exact-guards") exact_guards(range);
+        else if(std::string(argv[1])=="mat") {
             if(mode=="layouts") layouts<cv::Mat>(range);
             else if(mode=="half") half<cv::Mat>(range);
             else aliases<cv::Mat>(range,mode=="native-aliases");

@@ -1957,11 +1957,15 @@ conversion or binding-level host staging.
 
 Mat Compare supports exact Left/Right destinations and same-layout shallow
 aliases. UMat Compare supports UInt8 C1 exact aliases and distinct same-layout
-shallow aliases; **type-changing exact UMat source/Destination aliases are
-outside the supported contract**. Native CPU mapping ownership assertions and
-OpenCL source-acquisition order make those cases backend-dependent.
-**In_Range source/Destination aliasing is outside the supported contract** for
-both Mat and UMat: CPU success does not establish OpenCL safety/parity. Arbitrary
+shallow aliases; **exact depth-changing UMat source/Destination aliases are
+rejected for ABI safety** before native execution, raising `OpenCV_Error` and
+preserving both sources and retained aliases. Native CPU mapping ownership
+assertions and OpenCL source-acquisition order make those cases unsafe.
+**Exact UMat In_Range Self/Destination aliases are rejected for ABI safety**
+regardless of OpenCL state. Other shared-storage In_Range aliases, and Mat
+In_Range source/Destination aliases, remain outside the supported contract;
+Mat behavior is unchanged. Only native object/header address identity is checked,
+not UMatData/refcounts or generalized shared-storage overlap. Arbitrary
 partially overlapping Regions are unsupported for both operations. Use a
 separate output when these restrictions apply; no overlap detection is added.
 

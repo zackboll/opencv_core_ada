@@ -15,8 +15,10 @@ g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \
 ```
 
 Use `opencv5` for OpenCV 5. Arguments are `mat|umat`, `compare|range`,
-`layouts|half|aliases|native-aliases`, and OpenCL request `0|1`. Layout/half
-modes assert supported behavior. Alias modes are research reports: native
+`layouts|half|exact-guards|aliases|native-aliases`, and OpenCL request `0|1`.
+Layout/half/exact-guards modes assert supported behavior. Actual-helper aliases
+also assert exact UMat rejection and source preservation. Native alias modes
+are research reports: native
 exceptions or byte differences are printed, not silently converted to passing
 alias guarantees. Run those modes separately; unsupported aliases must not
 enter ordinary AUnit execution. No historical native-crash mode is retained.

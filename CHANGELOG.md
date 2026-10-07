@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Reject exact depth-changing UMat Compare aliases and exact UMat In_Range
+  Self/Destination aliases in shared helpers before native output creation.
+  Preserve UInt8 exact Compare and qualified distinct shallow aliases, Mat
+  behavior, and the approved Float16 gate. Detect only native object identity;
+  no shared-storage/partial-overlap detector or copies. Add public/raw/helper
+  rejection and complete source/retained-alias preservation coverage.
+
 - Add four reusable `Compare` and scalar-bounded `In_Range` destination
   procedures for Mat/UMat and four C exports using the actual native output.
   Preserve UInt8 C1 masks, whole/Region reuse, mismatch detachment, Compare's
@@ -9,8 +16,9 @@
   temporary Mat destinations while permitting temporary inputs. Shared helpers
   now reject Float16 on OpenCV 4.x before unsafe null CPU dispatch; OpenCV 5
   retains native half support, with no conversion or staging. In_Range source
-  aliases and type-changing exact UMat Compare aliases are unsupported because
-  native behavior differs by backend. Add focused public/raw tests, exact
+  shared-storage aliases are unsupported; exact UMat In_Range and depth-changing
+  exact UMat Compare aliases are rejected because native behavior differs by
+  backend. Add focused public/raw tests, exact
   source findings and an actual-helper probe. UMat remains native.
 
 - Add all 16 reusable masked/unmasked `Bitwise_And`, `Bitwise_Or`,

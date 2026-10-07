@@ -268,6 +268,149 @@ package body Mask_Destination_Tests.Raw_ABI is
          Cleanup;
          raise;
    end Mat_Check;
+   procedure UMat_Exact_Aliases
+     (Test : in out Mat_Test_Support.Mat_Test_Fixture)
+   is
+      pragma Unreferenced (Test);
+      A, B, Alias_A, Alias_B : aliased C.UMat_Handle := C.Null_UMat_Handle;
+      Value                  : aliased C.Scalar := (2.0, 12.0, 22.0, 32.0);
+      Lower                  : aliased C.Scalar := (0.0, 0.0, 0.0, 0.0);
+      Upper                  : aliased C.Scalar :=
+        (100.0, 100.0, 100.0, 100.0);
+      type Depth_List is array (Positive range <>) of C.C_Int32;
+      use type C.C_Float64;
+      procedure Cleanup is
+      begin
+         C.UMat_Destroy (Alias_B);
+         Alias_B := C.Null_UMat_Handle;
+         C.UMat_Destroy (Alias_A);
+         Alias_A := C.Null_UMat_Handle;
+         C.UMat_Destroy (B);
+         B := C.Null_UMat_Handle;
+         C.UMat_Destroy (A);
+         A := C.Null_UMat_Handle;
+      end Cleanup;
+      procedure Unchanged (H : C.UMat_Handle; D, Ch : C.C_Int32) is
+         Rank, Rows, Cols, Dep, Channels : aliased C.C_Int32;
+         Wide                            : aliased C.UMat_Handle :=
+           C.Null_UMat_Handle;
+         Host, Plane                     : aliased C.Mat_Handle :=
+           C.Null_Mat_Handle;
+         Pixel                           : aliased C.C_Float64;
+         procedure Release_Observation is
+         begin
+            C.Mat_Destroy (Plane);
+            C.Mat_Destroy (Host);
+            C.UMat_Destroy (Wide);
+         end Release_Observation;
+      begin
+         OK (C.UMat_Dimension_Count (H, Rank'Access));
+         OK (C.UMat_Extent (H, 0, Rows'Access));
+         OK (C.UMat_Extent (H, 1, Cols'Access));
+         OK (C.UMat_Depth (H, Dep'Access));
+         OK (C.UMat_Channels (H, Channels'Access));
+         Assert
+           (Rank = 2
+            and then Rows = 2
+            and then Cols = 257
+            and then Dep = D
+            and then Channels = Ch,
+            "raw exact alias preserves rank/shape/depth/channels");
+         OK (C.UMat_Convert_To (H, 6, 1.0, 0.0, Wide'Access));
+         OK (C.UMat_To_Mat (Wide, Host'Access));
+         for Channel in 0 .. Ch - 1 loop
+            OK (C.Mat_Extract_Channel (Host, Channel, Plane'Access));
+            for R in C.C_Int32 range 0 .. 1 loop
+               for Col in C.C_Int32 range 0 .. 256 loop
+                  OK (C.Mat_Get_Float64 (Plane, R, Col, Pixel'Access));
+                  Assert
+                    (Pixel = C.C_Float64 (2 + 10 * Channel),
+                     "every raw source/retained-alias value unchanged");
+               end loop;
+            end loop;
+            C.Mat_Destroy (Plane);
+            Plane := C.Null_Mat_Handle;
+         end loop;
+         Release_Observation;
+      exception
+         when others =>
+            Release_Observation;
+            raise;
+      end Unchanged;
+      procedure Prepare (D, Ch : C.C_Int32) is
+      begin
+         OK (C.UMat_Create_2D (2, 257, D, Ch, A'Access));
+         OK (C.UMat_Create_2D (2, 257, D, Ch, B'Access));
+         OK (C.UMat_Set_To (A, Value'Access));
+         OK (C.UMat_Set_To (B, Value'Access));
+         OK (C.UMat_Copy (A, Alias_A'Access));
+         OK (C.UMat_Copy (B, Alias_B'Access));
+      end Prepare;
+   begin
+      for D of Depth_List'(3, 5, 6, 7) loop
+         for Into_Right in Boolean loop
+            Prepare (D, 1);
+            Assert
+              (C.UMat_Compare_Into (A, B, 0, (if Into_Right then B else A))
+               = C.Error_OpenCV,
+               "raw exact Compare translated rejection");
+            Unchanged (A, D, 1);
+            Unchanged (B, D, 1);
+            Unchanged (Alias_A, D, 1);
+            Unchanged (Alias_B, D, 1);
+            Cleanup;
+         end loop;
+      end loop;
+      for D of Depth_List'(0, 3, 5, 7) loop
+         for Ch in C.C_Int32 range 1 .. 3 loop
+            if Ch = 1 or else (D = 0 and then Ch = 3) then
+               Prepare (D, Ch);
+               Assert
+                 (C.UMat_In_Range_Scalar_Into
+                    (A, Lower'Access, Upper'Access, A)
+                  = C.Error_OpenCV,
+                  "raw exact range translated rejection");
+               Unchanged (A, D, Ch);
+               Unchanged (Alias_A, D, Ch);
+               Cleanup;
+            end if;
+         end loop;
+      end loop;
+      --  Raw ABI keeps native multichannel Compare: no public C1 duplication.
+      for Into_Right in Boolean loop
+         Prepare (0, 3);
+         OK (C.UMat_Compare_Into (A, B, 0, (if Into_Right then B else A)));
+         declare
+            Host, Plane : aliased C.Mat_Handle := C.Null_Mat_Handle;
+            Byte        : aliased C.C_UInt8;
+         begin
+            OK (C.UMat_To_Mat ((if Into_Right then B else A), Host'Access));
+            for Ch in C.C_Int32 range 0 .. 2 loop
+               OK (C.Mat_Extract_Channel (Host, Ch, Plane'Access));
+               for R in C.C_Int32 range 0 .. 1 loop
+                  for Col in C.C_Int32 range 0 .. 256 loop
+                     OK (C.Mat_Get_UInt8 (Plane, R, Col, Byte'Access));
+                     Assert (Byte = 255, "raw UInt8 C3 exact Compare allowed");
+                  end loop;
+               end loop;
+               C.Mat_Destroy (Plane);
+               Plane := C.Null_Mat_Handle;
+            end loop;
+            C.Mat_Destroy (Host);
+         exception
+            when others =>
+               C.Mat_Destroy (Plane);
+               C.Mat_Destroy (Host);
+               raise;
+         end;
+         Cleanup;
+      end loop;
+   exception
+      when others =>
+         Cleanup;
+         raise;
+   end UMat_Exact_Aliases;
+
    procedure UMat_Check (Test : in out Mat_Test_Support.Mat_Test_Fixture) is
       pragma Unreferenced (Test);
       Source, Half_Source, D, Parent, Region : aliased C.UMat_Handle :=
