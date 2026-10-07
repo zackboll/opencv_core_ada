@@ -2296,6 +2296,37 @@ package OpenCV.Internal.C_API is
       return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_compare";
 
+   function Mat_Compare_Into
+     (Left, Right : Mat_Handle; Kind : C_Int32; Destination : Mat_Handle)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_compare_into";
+   function UMat_Compare_Into
+     (Left, Right : UMat_Handle; Kind : C_Int32; Destination : UMat_Handle)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_compare_into";
+   function Mat_In_Range_Scalar_Into
+     (Self         : Mat_Handle;
+      Lower, Upper : access constant Scalar;
+      Destination  : Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_in_range_scalar_into";
+   function UMat_In_Range_Scalar_Into
+     (Self         : UMat_Handle;
+      Lower, Upper : access constant Scalar;
+      Destination  : UMat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_in_range_scalar_into";
+
    function Mat_Region
      (Source : Mat_Handle;
       X      : C_Int32;

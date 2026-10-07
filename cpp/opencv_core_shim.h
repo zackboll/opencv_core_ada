@@ -1454,6 +1454,23 @@ opencv_core_mat_compare(const opencv_core_mat_handle *left,
                         int32_t comparison_kind,
                         opencv_core_mat_handle **out_mat);
 
+/* Reuses compatible native output storage; mismatches rebind only destination.
+ * Temporary Mat destinations are rejected. No post-native failure atomicity
+ * or arbitrary partial-overlap guarantee. Float16 requires OpenCV 5.0+.
+ */
+opencv_core_status opencv_core_mat_compare_into(
+    const opencv_core_mat_handle *left, const opencv_core_mat_handle *right,
+    int32_t comparison_kind, opencv_core_mat_handle *destination);
+opencv_core_status opencv_core_umat_compare_into(
+    const opencv_core_umat_handle *left, const opencv_core_umat_handle *right,
+    int32_t comparison_kind, opencv_core_umat_handle *destination);
+opencv_core_status opencv_core_mat_in_range_scalar_into(
+    const opencv_core_mat_handle *source, const opencv_core_scalar *lower,
+    const opencv_core_scalar *upper, opencv_core_mat_handle *destination);
+opencv_core_status opencv_core_umat_in_range_scalar_into(
+    const opencv_core_umat_handle *source, const opencv_core_scalar *lower,
+    const opencv_core_scalar *upper, opencv_core_umat_handle *destination);
+
 /*
  * Creates a distinct Mat header for the indicated non-empty 2D region. The
  * header shares source storage through OpenCV reference counting.

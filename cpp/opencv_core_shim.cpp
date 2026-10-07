@@ -6442,14 +6442,53 @@ static void dense_bitwise_not(const Dense &source, Dense &dst,
     else cv::bitwise_not(source, dst);
 }
 
+static void mask_range_alias_preflight(const cv::Mat &, const cv::Mat &) {}
+static void mask_range_alias_preflight(const cv::UMat &source,
+                                       const cv::UMat &dst) {
+    // ABI safety: exact UMat output creation precedes source acquisition in
+    // OpenCL inRange; rebinding/mutation invalidates the source seen there,
+    // unlike CPU acquisition order. Reject before either native path begins.
+    if (&source == &dst)
+        CV_Error(cv::Error::StsBadArg,
+                 "In_Range cannot use its exact source UMat as destination");
+}
+static void mask_compare_alias_preflight(const cv::Mat &, const cv::Mat &,
+                                         const cv::Mat &) {}
+static void mask_compare_alias_preflight(const cv::UMat &a, const cv::UMat &b,
+                                         const cv::UMat &dst) {
+    // ABI safety: exact type-changing UMat output creation can invalidate
+    // mapped source ownership on CPU or mutate the source acquired later by
+    // OpenCL Compare. UInt8 output does not require a depth-changing rebind.
+    if ((&a == &dst && a.depth() != CV_8U) ||
+        (&b == &dst && b.depth() != CV_8U))
+        CV_Error(cv::Error::StsBadArg,
+                 "Compare cannot change the depth of an exact source UMat");
+}
+
 template <typename Dense>
 static void dense_in_range_scalar(const Dense &source, const cv::Scalar &lower,
                                   const cv::Scalar &upper, Dense &dst) {
+    mask_range_alias_preflight(source, dst);
+#if CV_VERSION_MAJOR < 5
+    // ABI safety: OpenCV 4.x CPU fallback calls a null Float16 inRange
+    // dispatch entry. Reject before native output creation or OpenCL admission.
+    if (source.depth() == CV_16F)
+        CV_Error(cv::Error::StsUnsupportedFormat,
+                 "Float16 In_Range requires OpenCV 5.0 or newer");
+#endif
     cv::inRange(source, lower, upper, dst);
 }
 
 template <typename Dense>
 static void dense_compare(const Dense &a, const Dense &b, int kind, Dense &dst) {
+    mask_compare_alias_preflight(a, b, dst);
+#if CV_VERSION_MAJOR < 5
+    // ABI safety: OpenCV 4.x has no Float16 compare dispatch entry; 4.1
+    // invokes that null pointer. CPU fallback must be safe on every device.
+    if (a.depth() == CV_16F || b.depth() == CV_16F)
+        CV_Error(cv::Error::StsUnsupportedFormat,
+                 "Float16 Compare requires OpenCV 5.0 or newer");
+#endif
     cv::compare(a, b, dst, kind);
 }
 
@@ -7114,6 +7153,70 @@ opencv_core_status opencv_core_umat_compare(
         std::unique_ptr<opencv_core_umat_handle> owned(
             new opencv_core_umat_handle(result));
         *out = owned.release();
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_mat_compare_into(
+    const opencv_core_mat_handle *left, const opencv_core_mat_handle *right,
+    int32_t comparison_kind, opencv_core_mat_handle *destination) {
+    clear_error();
+    if (!left || !right || !destination)
+        return invalid_argument("null compare operand or destination");
+    int native_kind = 0;
+    if (!to_opencv_compare_kind(comparison_kind, native_kind))
+        return invalid_argument("comparison kind is not supported");
+    // ABI safety: output creation can release/rebind the temporary header,
+    // severing its callback-scoped external/selected storage capability.
+    if (destination->temporary_external_view)
+        return invalid_argument("temporary Mat cannot be a destination");
+    try {
+        dense_compare(left->value, right->value, native_kind, destination->value);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_umat_compare_into(
+    const opencv_core_umat_handle *left, const opencv_core_umat_handle *right,
+    int32_t comparison_kind, opencv_core_umat_handle *destination) {
+    clear_error();
+    if (!left || !right || !destination)
+        return invalid_argument("null compare operand or destination");
+    int native_kind = 0;
+    if (!to_opencv_compare_kind(comparison_kind, native_kind))
+        return invalid_argument("comparison kind is not supported");
+    try {
+        dense_compare(left->value, right->value, native_kind, destination->value);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_mat_in_range_scalar_into(
+    const opencv_core_mat_handle *source, const opencv_core_scalar *lower,
+    const opencv_core_scalar *upper, opencv_core_mat_handle *destination) {
+    clear_error();
+    if (!source || !lower || !upper || !destination)
+        return invalid_argument("null range source, bounds or destination");
+    // ABI safety: output creation can release/rebind the temporary header,
+    // severing its callback-scoped external/selected storage capability.
+    if (destination->temporary_external_view)
+        return invalid_argument("temporary Mat cannot be a destination");
+    try {
+        dense_in_range_scalar(source->value, to_opencv_scalar(*lower),
+                              to_opencv_scalar(*upper), destination->value);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_umat_in_range_scalar_into(
+    const opencv_core_umat_handle *source, const opencv_core_scalar *lower,
+    const opencv_core_scalar *upper, opencv_core_umat_handle *destination) {
+    clear_error();
+    if (!source || !lower || !upper || !destination)
+        return invalid_argument("null range source, bounds or destination");
+    try {
+        dense_in_range_scalar(source->value, to_opencv_scalar(*lower),
+                              to_opencv_scalar(*upper), destination->value);
         return OPENCV_CORE_OK;
     } catch (...) { return translate_current_exception(); }
 }

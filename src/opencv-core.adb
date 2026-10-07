@@ -1802,6 +1802,70 @@ package body OpenCV.Core is
       return Result;
    end Compare;
 
+   procedure Compare
+     (Left, Right : Mat; Kind : Comparison_Kind; Destination : in out Mat) is
+   begin
+      Validate_Compare_Compatibility (Left, Right);
+      if Destination.Temporary_View then
+         raise OpenCV_Error with "temporary Mat cannot be a destination";
+      end if;
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Compare_Into
+           (Left.Handle,
+            Right.Handle,
+            To_C_Comparison_Kind (Kind),
+            Destination.Handle),
+         "Mat destination compare");
+   end Compare;
+
+   procedure Compare
+     (Left, Right : UMat; Kind : Comparison_Kind; Destination : in out UMat) is
+   begin
+      Validate_Compare_Compatibility (Left, Right);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Compare_Into
+           (Left.Handle,
+            Right.Handle,
+            To_C_Comparison_Kind (Kind),
+            Destination.Handle),
+         "UMat destination compare");
+   end Compare;
+
+   procedure In_Range
+     (Self : Mat; Lower : Scalar; Upper : Scalar; Destination : in out Mat)
+   is
+      C_Lower : aliased OpenCV.Internal.C_API.Scalar := To_C_Scalar (Lower);
+      C_Upper : aliased OpenCV.Internal.C_API.Scalar := To_C_Scalar (Upper);
+   begin
+      if Self.Channels > 4 then
+         raise OpenCV_Error
+           with "Scalar range supports at most four Mat channels";
+      end if;
+      if Destination.Temporary_View then
+         raise OpenCV_Error with "temporary Mat cannot be a destination";
+      end if;
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_In_Range_Scalar_Into
+           (Self.Handle, C_Lower'Access, C_Upper'Access, Destination.Handle),
+         "Mat destination in-range");
+   end In_Range;
+
+   procedure In_Range
+     (Self : UMat; Lower : Scalar; Upper : Scalar; Destination : in out UMat)
+   is
+      C_Lower : aliased OpenCV.Internal.C_API.Scalar := To_C_Scalar (Lower);
+      C_Upper : aliased OpenCV.Internal.C_API.Scalar := To_C_Scalar (Upper);
+   begin
+      if Self.Channels > 4 then
+         raise OpenCV_Error
+           with "UMat Scalar range supports at most four channels";
+      end if;
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_In_Range_Scalar_Into
+           (Self.Handle, C_Lower'Access, C_Upper'Access, Destination.Handle),
+         "UMat destination in-range");
+   end In_Range;
+
    function Normalize
      (Self  : Mat;
       Kind  : Normalize_Kind := L2;
