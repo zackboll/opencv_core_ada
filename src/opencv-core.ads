@@ -1380,6 +1380,20 @@ package OpenCV.Core is
    function In_Range (Self : UMat; Lower, Upper : Scalar) return UMat;
    function Compare (Left, Right : UMat; Kind : Comparison_Kind) return UMat;
 
+   --  UInt8 C1 output reuses compatible whole/Region storage; mismatches
+   --  detach Destination. Compare retains C1 matching 2-D operands. In_Range
+   --  supports N-D and at most four channels, requiring all channels in range.
+   --  Float16 requires OpenCV 5.0+. Partial overlap is outside the contract.
+   --  Source/Destination aliasing for In_Range is outside the contract.
+   --  Type-changing exact UMat Compare aliases are outside the contract.
+   --  UInt8 C1 exact and distinct shallow Compare aliases are supported.
+   --  Both-empty Compare releases Destination; empty In_Range is rejected.
+   --  Execution remains UMat-native, including native internal CPU fallback.
+   procedure Compare
+     (Left, Right : UMat; Kind : Comparison_Kind; Destination : in out UMat);
+   procedure In_Range
+     (Self : UMat; Lower : Scalar; Upper : Scalar; Destination : in out UMat);
+
    --  UMat-native normalization retains destination depth and accepts N-D.
    --  Native Float16 normalization support depends on Kind/OpenCV version.
    function Normalize
@@ -1477,6 +1491,19 @@ package OpenCV.Core is
    --  depth.  The result is an independent UInt8 single-channel mask with 255
    --  where the comparison is true and 0 otherwise, suitable for masked ops.
    function Compare (Left, Right : Mat; Kind : Comparison_Kind) return Mat;
+
+   --  UInt8 C1 output reuses compatible whole/Region storage; mismatches
+   --  detach Destination. Compare retains C1 matching 2-D operands. In_Range
+   --  supports N-D and at most four channels, requiring all channels in range.
+   --  Float16 requires OpenCV 5.0+. Partial overlap is outside the contract.
+   --  Source/Destination aliasing for In_Range is outside the contract.
+   --  Both-empty Compare releases Destination; empty In_Range is rejected.
+   --  Temporary inputs are legal, but a temporary Destination is rejected.
+   --  Compare supports exact and same-layout shallow source aliases.
+   procedure Compare
+     (Left, Right : Mat; Kind : Comparison_Kind; Destination : in out Mat);
+   procedure In_Range
+     (Self : Mat; Lower : Scalar; Upper : Scalar; Destination : in out Mat);
    function Is_Empty (Self : Mat) return Boolean;
    function Rows (Self : Mat) return Natural;
    function Columns (Self : Mat) return Natural;

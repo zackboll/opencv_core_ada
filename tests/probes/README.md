@@ -1,5 +1,28 @@
 # Native source and behavior probes
 
+## Comparison and scalar-range destination probe
+
+`mask_destination_probe.cpp` includes the actual private production helpers.
+Compile alone (do not also link the shim), linking the installed OpenCV Core:
+
+```sh
+g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror \
+  $(pkg-config --cflags opencv4) tests/probes/mask_destination_probe.cpp \
+  -lopencv_core -o /tmp/mask-destination-probe
+/tmp/mask-destination-probe mat compare layouts 0
+/tmp/mask-destination-probe umat range layouts 0
+/tmp/mask-destination-probe umat compare half 0
+```
+
+Use `opencv5` for OpenCV 5. Arguments are `mat|umat`, `compare|range`,
+`layouts|half|aliases|native-aliases`, and OpenCL request `0|1`. Layout/half
+modes assert supported behavior. Alias modes are research reports: native
+exceptions or byte differences are printed, not silently converted to passing
+alias guarantees. Run those modes separately; unsupported aliases must not
+enter ordinary AUnit execution. No historical native-crash mode is retained.
+See `mask_destination_source_findings.md` for exact tags, the authorized
+Float16 shared-helper safety correction and backend-dependent alias boundaries.
+
 Task 041's `convert_destination_source_findings.md` records exact 4.1.0, 4.6.0,
 4.10.0, and 5.0.0 conversion/create/OutputArray findings. The isolated
 `convert_destination_probe.cpp` pins the differing default/typed empty Mat and

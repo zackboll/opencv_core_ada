@@ -1907,6 +1907,76 @@ narrows back to Float16. That fallback exists only for compatibility.
 
 ### Reusable weighted arithmetic destinations
 
+### Reusable comparison and scalar-range masks
+
+Both `Mat` and `UMat` retain their allocation-returning `Compare` and
+scalar-bounded `In_Range` functions and also provide reusable destinations:
+
+```ada
+Compare
+  (Left        => A,
+   Right       => B,
+   Kind        => Greater_Than,
+   Destination => Mask);
+
+In_Range
+  (Self        => Image,
+   Lower       => Make_Scalar (10.0, 20.0, 30.0),
+   Upper       => Make_Scalar (50.0, 60.0, 70.0),
+   Destination => Mask);
+```
+
+Successful nonempty outputs always have source shape and **UInt8 C1** type,
+with bytes exactly **0 or 255**. Compatible whole outputs and interior Regions
+reuse storage: retained shallow aliases and the Parent see mask writes, and
+later writes remain reciprocal. Shape, depth or channel mismatches cause native
+reallocation/detachment of Destination only; the old Parent and aliases retain
+their old storage. The binding passes the actual native Destination, without
+hidden preallocation, temporary output/copy-back or overlap copies.
+
+Compare retains its existing **single-channel**, identical Rows/Columns/Depth
+policy and all six comparison kinds. Genuine N-D operands are rejected through
+the existing Rows/Columns validation before Destination mutation. Scalar-bounded
+In_Range accepts at most four source channels and supports genuine **N-D**
+sources, including `(2, 3, 5)` Mat/UMat. Both bounds are inclusive. An element is
+selected only when **every** source channel satisfies its own scalar bounds.
+Bounds undergo native source-depth conversion: for example, integer sources
+with bounds 1.2 and 2.8 use rounded bounds 1 and 3, not mathematical ceiling and
+floor. Floating comparisons, NaN, infinities and signed zero follow the same-build
+native/function behavior; no replacement NaN policy is imposed.
+For example, some native CPU builds produce different NaN `Not_Equal` bytes
+in vector lanes and the scalar tail; masks still contain only exact 0/255.
+
+For both functions and procedures, **Float16 requires OpenCV 5.0 or newer**.
+On supported OpenCV 4.x, shared production helpers reject Float16 with a
+controlled OpenCV/Ada error before native output creation, because the CPU
+dispatch tables lack half kernels and some paths call a null function pointer.
+This applies regardless of OpenCL availability and preserves Destination on
+that failure. OpenCV 5 uses native half kernels. There is no Float32 compatibility
+conversion or binding-level host staging.
+
+Mat Compare supports exact Left/Right destinations and same-layout shallow
+aliases. UMat Compare supports UInt8 C1 exact aliases and distinct same-layout
+shallow aliases; **type-changing exact UMat source/Destination aliases are
+outside the supported contract**. Native CPU mapping ownership assertions and
+OpenCL source-acquisition order make those cases backend-dependent.
+**In_Range source/Destination aliasing is outside the supported contract** for
+both Mat and UMat: CPU success does not establish OpenCL safety/parity. Arbitrary
+partially overlapping Regions are unsupported for both operations. Use a
+separate output when these restrictions apply; no overlap detection is added.
+
+Compatible both-empty Compare operands release Destination. Release metadata
+follows native OpenCV and the old output, rather than a fresh function result:
+4.x retains rank with zero extents; 5.0 clears rank/shape. Old depth/channels
+remain, and old aliases survive. Empty In_Range raises `OpenCV_Error` and leaves
+Destination unchanged. Temporary external/selected Mat inputs are legal, but
+temporary Destinations are rejected independently in Ada and the raw ABI,
+even when their layout already matches. Null/enum/capability rejection is
+pre-native; arbitrary failures after native execution starts are not promised
+atomic. UMat paths stay UMat-native at the boundary; OpenCV can internally fall
+back to CPU (including N-D iteration). OpenCL enabled is not proof of GPU
+execution. See [exact source and helper findings](tests/probes/mask_destination_source_findings.md).
+
 Both Mat and UMat retain allocation-returning weighted functions with
 independent result storage, and also provide direct destination procedures:
 
