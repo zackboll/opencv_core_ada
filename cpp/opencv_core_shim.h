@@ -1365,6 +1365,27 @@ opencv_core_status opencv_core_umat_normalize(
 opencv_core_status opencv_core_umat_normalize_into(
     const opencv_core_umat_handle *source, opencv_core_umat_handle *destination,
     int32_t kind, double alpha, double beta);
+/* Reusable unary outputs: native creation reuses compatible storage and
+ * detaches mismatched storage. Temporary Mat destinations are prohibited. */
+opencv_core_status opencv_core_mat_sqrt_into(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination);
+opencv_core_status opencv_core_mat_exp_into(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination);
+opencv_core_status opencv_core_mat_log_into(
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination);
+opencv_core_status opencv_core_mat_pow_into(
+    const opencv_core_mat_handle *source, double power,
+    opencv_core_mat_handle *destination);
+opencv_core_status opencv_core_umat_sqrt_into(
+    const opencv_core_umat_handle *source, opencv_core_umat_handle *destination);
+opencv_core_status opencv_core_umat_exp_into(
+    const opencv_core_umat_handle *source, opencv_core_umat_handle *destination);
+opencv_core_status opencv_core_umat_log_into(
+    const opencv_core_umat_handle *source, opencv_core_umat_handle *destination);
+opencv_core_status opencv_core_umat_pow_into(
+    const opencv_core_umat_handle *source, double power,
+    opencv_core_umat_handle *destination);
+
 opencv_core_status opencv_core_umat_sqrt(
     const opencv_core_umat_handle *source, opencv_core_umat_handle **out);
 opencv_core_status opencv_core_umat_exp(

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Add reusable Sqrt, Exp, Log, and Pow destinations for Mat and UMat through
+  eight C exports using actual native outputs. Preserve whole/Region reuse,
+  mismatch detachment, N-D storage, native approximations and source policies.
+  Temporary Mat outputs remain prohibited; UMat stays native at the boundary.
+  Preserve empty Pow compatibility in shared Mat destination handling and
+  narrowly protect Pow(2) byte outputs from old word-depth HAL selection on
+  OpenCV 4.10/5.0 without changing native Pow dispatch.
+
 - Reject exact depth-changing UMat Compare aliases and exact UMat In_Range
   Self/Destination aliases in shared helpers before native output creation.
   Preserve UInt8 exact Compare and qualified distinct shallow aliases, Mat

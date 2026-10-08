@@ -2795,6 +2795,52 @@ floating depths accept integer and non-integer powers, while integer depths
 accept only nonnegative integer powers. UInt8/Int8/UInt16/Int16 saturate;
 Int32 overflow remains native and non-saturating.
 
+All four operations also accept reusable `Mat` and `UMat` destinations:
+
+```ada
+Sqrt
+  (Self        => Input,
+   Destination => Existing);
+
+Pow
+  (Self        => Input,
+   Power       => 2.0,
+   Destination => Existing);
+```
+
+The procedure passes Existing directly as the native output: compatible whole
+or Region storage is reused, including shallow Alias attachment. A shape,
+depth, or channel mismatch detaches Existing; old Parents and Aliases retain
+their storage. No temporary-result assignment or copy-back is used. N-D
+sources and outputs are supported; use Dimension_Count and Shape rather than
+Rows/Columns for their metadata.
+
+Exact and distinct same-layout shallow source aliases retain native operation
+ordering. Arbitrary partially overlapping Regions are unsupported; no overlap
+copies are added. Temporary external/selected Mat sources are permitted, but
+temporary Mat destinations are prohibited even when compatible. Validation
+failures before native execution leave Destination unchanged; arbitrary
+post-native failure atomicity is not promised.
+
+Sqrt follows native Pow(0.5); Exp/Log and general fractional Pow retain native
+approximations, HAL/backend precision and special-value limitations. There is
+no portable NaN payload, signed-zero, overflow or subnormal bit contract.
+Float16 remains unsupported. Integer powers retain native saturation except
+for Int32 overflow, which is not promised to saturate.
+
+Typed-empty Float32/Float64 sources are accepted by the float operations;
+default-empty and integer-depth sources are rejected by their existing policy.
+Pow accepts default-empty for nonnegative integer powers and typed empties
+under its existing depth/power policy. Empty Pow avoids unsafe zero-element
+native HAL paths. Releasing a reused destination can retain old metadata
+differently from a fresh empty result; native version-specific representation
+is not normalized across Mat/UMat or OpenCV versions.
+
+UMat procedures pass cv::UMat directly; no binding-level mapping, transfers or
+host staging occur. Native OpenCV may fall back to CPU, especially for N-D.
+Requesting OpenCL does not establish GPU execution. Audit evidence is in
+`tests/probes/unary_math_destination_source_findings.md`.
+
 Magnitude, Phase, and Cart_To_Polar require matching 2-D Float32/Float64
 operands, including channels. Angles use radians by default or `Degrees`.
 `UMat_Polar_Coordinates` owns Magnitude/Angle UMat results, and

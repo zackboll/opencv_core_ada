@@ -1735,6 +1735,17 @@ package OpenCV.Internal.C_API is
      (Source, Table : Mat_Handle; Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_apply_lut";
 
+   function Mat_Sqrt_Into (Source, Destination : Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_sqrt_into";
+   function Mat_Exp_Into (Source, Destination : Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_exp_into";
+   function Mat_Log_Into (Source, Destination : Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_log_into";
+   function Mat_Pow_Into
+     (Source : Mat_Handle; Power : C_Double; Destination : Mat_Handle)
+      return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_pow_into";
+
    function Mat_Sqrt
      (Source : Mat_Handle; Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_sqrt";
@@ -2184,6 +2195,17 @@ package OpenCV.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_core_umat_normalize_into";
+
+   function UMat_Sqrt_Into (Source, Destination : UMat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_sqrt_into";
+   function UMat_Exp_Into (Source, Destination : UMat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_exp_into";
+   function UMat_Log_Into (Source, Destination : UMat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_log_into";
+   function UMat_Pow_Into
+     (Source : UMat_Handle; Power : C_Double; Destination : UMat_Handle)
+      return Status
+   with Import, Convention => C, External_Name => "opencv_core_umat_pow_into";
 
    function UMat_Sqrt
      (Source : UMat_Handle; Result : access UMat_Handle) return Status
