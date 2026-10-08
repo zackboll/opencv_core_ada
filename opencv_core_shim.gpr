@@ -20,8 +20,10 @@ project OpenCV_Core_Shim is
          for Library_Kind use "relocatable";
       when "External_Relocatable" =>
          for Externally_Built use "True";
-         for Languages use ();
-         for Source_Dirs use ();
+         --  GPRinstall needs a language and actual sources to recognize this
+         --  as a library, even though only the external MSYS2 builder compiles it.
+         for Languages use ("C++");
+         for Source_Dirs use ("cpp/");
          for Library_Kind use "relocatable";
    end case;
 
@@ -79,5 +81,17 @@ project OpenCV_Core_Shim is
             null;
       end case;
    end Linker;
+
+   package Install is
+      case OpenCV_Core_Install.Shim_Build is
+         when "External_Relocatable" =>
+            --  The external builder, not GPRbuild, produces this import archive.
+            --  Install it beside the DLL in the generated Library_Dir.
+            for Required_Artifacts ("lib/opencv_core_shim") use
+              ("lib/libopencv_core_shim.dll.a");
+         when "Static_PIC" | "Relocatable" =>
+            null;
+      end case;
+   end Install;
 
 end OpenCV_Core_Shim;
