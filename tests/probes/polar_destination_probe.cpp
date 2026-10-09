@@ -24,22 +24,52 @@ template <typename Dense>
 static void run_dense() {
     for (int depth : {CV_32F, CV_64F}) for (int channels : {1, 3})
     for (bool degrees : {false, true}) for (int operation = 0; operation < 3; ++operation)
-    for (int mismatch = 0; mismatch < 4; ++mismatch) {
+    for (int mismatch = 0; mismatch < 4; ++mismatch)
+    for (int layout = 0; layout < 4; ++layout)
+    for (int bad = 0; bad < 3; ++bad)
+    for (bool native : {false, true}) {
         int type = CV_MAKETYPE(depth, channels);
         Dense a(2, 257, type), b(2, 257, type);
         a.setTo(cv::Scalar::all(3)); b.setTo(cv::Scalar::all(4));
-        Dense p(5, 261, type), q(5, 261, type);
+        const int old_type = bad == 1 ? CV_MAKETYPE(CV_8U, channels)
+                           : bad == 2 ? CV_MAKETYPE(depth, 2) : type;
+        Dense p(5, 600, type), q(5, 600, type);
         p.setTo(cv::Scalar::all(91)); q.setTo(cv::Scalar::all(92));
-        Dense x = p(cv::Rect(2, 1, 257, 2)), y = q(cv::Rect(2, 1, 257, 2));
-        if (mismatch & 1) x = p(cv::Rect(2, 1, 17, 2));
-        if (mismatch & 2) y = q(cv::Rect(2, 1, 17, 2));
+        Dense dp(5, 600, old_type), dq(5, 600, old_type);
+        dp.setTo(cv::Scalar::all(91)); dq.setTo(cv::Scalar::all(92));
+        Dense x = layout == 0 ? Dense(2, 257, type)
+                             : p(cv::Rect(2, 1, 257, 2));
+        Dense y = layout == 0 ? Dense(2, 257, type)
+                  : layout == 2 ? p(cv::Rect(300, 1, 257, 2))
+                                : q(cv::Rect(2, 1, 257, 2));
+        x.setTo(cv::Scalar::all(91)); y.setTo(cv::Scalar::all(92));
+        if (mismatch & 1) x = layout == 0 ? Dense(2, bad ? 257 : 17, old_type)
+                             : dp(cv::Rect(2, 1, bad ? 257 : 17, 2));
+        if (mismatch & 2) y = layout == 0 ? Dense(2, bad ? 257 : 17, old_type)
+                             : dq(cv::Rect(2, 1, bad ? 257 : 17, 2));
+        x.setTo(cv::Scalar::all(91)); y.setTo(cv::Scalar::all(92));
         Dense ax = x, ay = y, ex, ey;
+        const size_t sx = x.step[0], sy = y.step[0];
+        cv::Size wx, wy; cv::Point ox, oy;
+        x.locateROI(wx, ox); y.locateROI(wy, oy);
         if (operation == 0) {
-            dense_cart_to_polar(a, b, x, y, degrees);
+            if (native) cv::cartToPolar(a, b, x, y, degrees);
+            else dense_cart_to_polar(a, b, x, y, degrees);
             cv::cartToPolar(a, b, ex, ey, degrees);
         } else {
             Dense magnitude = operation == 2 ? Dense() : a;
-            dense_polar_to_cart(magnitude, b, x, y, degrees);
+            if (!native) dense_polar_to_cart(magnitude, b, x, y, degrees);
+            else {
+#if CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR < 10
+                if (operation == 2 && depth == CV_64F) {
+                    Dense angle32, x32, y32;
+                    b.convertTo(angle32, CV_32F);
+                    cv::polarToCart(cv::noArray(), angle32, x32, y32, degrees);
+                    x32.convertTo(x, CV_64F); y32.convertTo(y, CV_64F);
+                } else
+#endif
+                    cv::polarToCart(magnitude, b, x, y, degrees);
+            }
 #if CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR < 10
             if (operation == 2 && depth == CV_64F) {
                 // Do not enter the known partially-uninitialized legacy path.
@@ -52,6 +82,25 @@ static void run_dense() {
                 cv::polarToCart(magnitude, b, ex, ey, degrees);
         }
         equal(x, ex); equal(y, ey);
+        if (!(mismatch & 1)) {
+            cv::Size w; cv::Point o; x.locateROI(w, o);
+            require(w == wx && o == ox && x.step[0] == sx, "first geometry");
+        }
+        if (!(mismatch & 2)) {
+            cv::Size w; cv::Point o; y.locateROI(w, o);
+            require(w == wy && o == oy && y.step[0] == sy, "second geometry");
+        }
+        if (layout != 0) {
+            cv::Mat ep(5, 600, type, cv::Scalar::all(91));
+            cv::Mat eq(5, 600, type, cv::Scalar::all(92));
+            if (layout == 2)
+                ep(cv::Rect(300, 1, 257, 2)).setTo(cv::Scalar::all(92));
+            if (!(mismatch & 1)) observe(ex).copyTo(ep(cv::Rect(2, 1, 257, 2)));
+            if (!(mismatch & 2)) observe(ey).copyTo(
+                layout == 2 ? ep(cv::Rect(300, 1, 257, 2))
+                            : eq(cv::Rect(2, 1, 257, 2)));
+            equal(observe(p), ep); equal(observe(q), eq);
+        }
         if (!(mismatch & 1)) equal(ax, x);
         else require(cv::norm(observe(ax), cv::NORM_INF) == 91, "first detach");
         if (!(mismatch & 2)) equal(ay, y);
@@ -60,6 +109,29 @@ static void run_dense() {
         if (!(mismatch & 1)) require(cv::norm(observe(x), cv::NORM_INF) == 7, "first reuse");
         ay.setTo(cv::Scalar::all(8));
         if (!(mismatch & 2)) require(cv::norm(observe(y), cv::NORM_INF) == 8, "second reuse");
+        if (!(mismatch & 1)) {
+            require(cv::norm(observe(x), cv::NORM_INF) == 7, "no cross write");
+            x.setTo(cv::Scalar::all(9)); equal(x, ax);
+        } else {
+            x.setTo(cv::Scalar::all(9));
+            require(cv::norm(observe(ax), cv::NORM_INF) == 7, "first old alias");
+        }
+        if (!(mismatch & 2)) { y.setTo(cv::Scalar::all(10)); equal(y, ay); }
+        else {
+            y.setTo(cv::Scalar::all(10));
+            require(cv::norm(observe(ay), cv::NORM_INF) == 8, "second old alias");
+        }
+        if (layout != 0) {
+            cv::Mat ep(5, 600, type, cv::Scalar::all(91));
+            cv::Mat eq(5, 600, type, cv::Scalar::all(92));
+            if (layout == 2)
+                ep(cv::Rect(300, 1, 257, 2)).setTo(cv::Scalar::all(92));
+            if (!(mismatch & 1)) ep(cv::Rect(2, 1, 257, 2)).setTo(cv::Scalar::all(9));
+            if (!(mismatch & 2))
+                (layout == 2 ? ep(cv::Rect(300, 1, 257, 2))
+                             : eq(cv::Rect(2, 1, 257, 2))).setTo(cv::Scalar::all(10));
+            equal(observe(p), ep); equal(observe(q), eq);
+        }
         require((depth == CV_64F ? observe(p).template at<double>(0, 0)
                                 : observe(p).template at<float>(0, 0)) == 91,
                 "first parent corner");
@@ -143,6 +215,41 @@ static void special() {
         }
     }
 }
+static void selected_geometry() {
+    const int32_t sizes[] = {3, 5, 7}, starts[] = {1, 1, 2}, stops[] = {2, 3, 5};
+    const uint8_t drop[] = {1, 0, 0};
+    opencv_core_mat_handle parent;
+    parent.value = cv::Mat(3, sizes, CV_64F, cv::Scalar::all(93));
+    const cv::Mat before = parent.value.clone();
+    for (auto call : {opencv_core_mat_cart_to_polar_into,
+                      opencv_core_mat_polar_to_cart_into})
+    for (bool first : {false, true}) for (int layout = 0; layout < 4; ++layout) {
+        opencv_core_mat_handle *view = nullptr;
+        require(opencv_core_mat_select_nd_view(&parent, 3, drop, starts, stops,
+                                               &view) == OPENCV_CORE_OK,
+                "raw selected view construction");
+        std::unique_ptr<opencv_core_mat_handle> owner(view);
+        const auto *data = view->value.data;
+        const auto *allocation = parent.value.data;
+        const size_t step = view->value.step[0];
+        opencv_core_mat_handle a, b, other;
+        a.value = cv::Mat(layout == 1 ? 1 : 2, 3,
+                         layout == 2 ? CV_32F : layout == 3 ? CV_64FC3 : CV_64F,
+                         cv::Scalar::all(3));
+        b.value = a.value.clone();
+        other.value = cv::Mat(2, 3, CV_64F, cv::Scalar::all(92));
+        const cv::Mat va = a.value.clone(), vb = b.value.clone();
+        const cv::Mat vo = other.value.clone(), vv = view->value.clone();
+        require(call(&a, &b, 0, first ? view : &other,
+                     first ? &other : view) == OPENCV_CORE_ERROR_INVALID_ARGUMENT,
+                "selected output rejection");
+        require(view->value.data == data && view->value.step[0] == step &&
+                parent.value.data == allocation && view->temporary_external_view,
+                "selected allocation/geometry/capability preserved");
+        equal(view->value, vv); equal(parent.value, before);
+        equal(a.value, va); equal(b.value, vb); equal(other.value, vo);
+    }
+}
 int main() {
     try {
         std::cout << "OpenCV " << CV_VERSION << '\n';
@@ -151,6 +258,7 @@ int main() {
         raw<opencv_core_umat_handle>(opencv_core_umat_cart_to_polar_into);
         raw<opencv_core_umat_handle>(opencv_core_umat_polar_to_cart_into);
         special();
+        selected_geometry();
         for (bool requested : {false, true}) {
             cv::ocl::setUseOpenCL(requested);
             std::cout << "OpenCL requested=" << requested

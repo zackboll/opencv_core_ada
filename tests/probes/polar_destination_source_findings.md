@@ -93,8 +93,8 @@ native object, and capability-severing output header rebinding.
 Ordinary public float/shape/channel policy remains Ada-only.
 
 Input/input identity is permitted. Distinct overlapping shared-storage
-headers, arbitrary partial Regions, and common-Parent output Regions are
-not qualified as supported arrangements. No refcount/UMatData inspection,
+headers and arbitrary partial Regions are unsupported. Disjoint common-Parent
+output Regions are qualified by the corrective tests below. No refcount/UMatData inspection,
 hidden source copies, output copies, or host staging is added.
 
 The probe includes the production shim, exercising its actual helpers and
@@ -114,3 +114,71 @@ host encounters AMD runtime kernel compilation errors: its precompiled
 OpenCL AST references missing `clang/17/include/opencl-c-base.h`. CPU fallback
 passes; GPU execution is not verified. OpenCL-disabled tests restore prior
 state even on exception.
+
+## Corrective qualification
+
+The corrective adds separately registered Mat/UMat common-Parent and reverse
+polar reconstruction tests, plus a complete empty-input permutation test.
+Production helpers, validators, exports and numerical behavior are unchanged.
+
+* Common Parent: 5x600 storage, two 2x257 outputs at (2,1) and (300,1),
+  Float32/Float64 C1/C3, radians/degrees, both transforms and angle-only.
+  Every Parent element is compared to an independently constructed expected
+  Parent, including all guards. Retained aliases and reciprocal writes prove
+  attachment and independence. Native probes also compare original offsets,
+  whole sizes and row steps. This arrangement is supported; partial overlap
+  remains unsupported. The audited create/dispatch ordering described above
+  does not require the two outputs to have different owning allocations.
+* Selected raw outputs: actual `Mat_Select_ND_View` fixes the first dimension
+  of an owning 3x5x7 Parent and retains interior 2x3 storage. Both positions of
+  both exports reject compatible, shape-, depth- and channel-incompatible
+  layouts with Error_Invalid_Argument. Full Parent/source/output snapshots,
+  rank/shape/depth/channels, data pointers, steps and capability flags are
+  preserved. `Mat_Copy` intentionally rejects temporary capabilities; a
+  second independent selection retains an alias over the same storage rather
+  than bypassing that restriction. Existing external/padding tests remain.
+* Reverse reconstruction: positive magnitudes 0.25 through 22.25 and original
+  canonical angles spanning all quadrants, width 257, two rows, all four
+  float/channel formats and both units. Recovered magnitude uses relative
+  tolerance 2e-6; angular wrap distance uses the existing source-backed
+  0.3-degree fast-angle bound. Original values, not recovered angles, are the
+  oracle. Both Cartesian coordinate metadata are checked.
+* Exact alias rejection: raw tests retain source/output/Parent shallow aliases
+  and deep snapshots; check all values and rank/shape/depth/channels after
+  every exact identity rejection. Interior Region Parents include untouched
+  guards. Input/input identity remains accepted. UMat transfers here observe
+  nonempty pixel data only, not authoritative empty metadata.
+* Empty permutations: Float32/64 matching typed empties, default empties,
+  both directions of empty/nonempty Cartesian mismatch, mismatched empty
+  channels and depths; polar default/typed Magnitude, nonempty Magnitude,
+  typed/default Angle and angle-only. Empty Magnitude deliberately has an
+  unrelated UInt8 C2 old layout. Fresh and reused outputs are compared with
+  functions using direct Mat/UMat rank/shape/depth/channel observers. Rejected
+  cases preserve recognizable outputs and aliases; successful empty results
+  preserve old aliases. No new empty metadata normalization is added.
+* Standalone probe: actual helpers and separate direct-native execution use
+  whole outputs, independent Regions and disjoint common-Parent Regions,
+  each/both shape/depth/channel mismatch and reciprocal alias writes. Every
+  Parent guard is checked before and after writes. Legacy Float64 unit
+  magnitude uses the safe Float32-native/conversion oracle, never the known
+  uninitialized direct-native legacy path; final conversions reuse Regions.
+
+OpenCL requested/enabled remains distinct from verified GPU execution. The
+host's AMD compilation failure still causes CPU fallback; no GPU claim is made.
+
+Final corrective qualification (same Ada/probe/shim sources as the corrective
+commit; no production changes):
+
+| Environment | Registered | Executed | Passed | Failed assertions | Errors |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Host 4.10.0 | 2024 | 2024 | 2024 | 0 | 0 |
+| Exact 4.1.0 | 2024 | 2024 | 2024 | 0 | 0 |
+| Exact 4.6.0 | 2024 | 2024 | 2024 | 0 | 0 |
+| Exact 4.10.0 | 2024 | 2024 | 2024 | 0 | 0 |
+| Exact 5.0.0 | 2024 | 2024 | 2024 | 0 | 0 |
+
+All five actual-helper/direct-native probes pass, including direct-native
+disjoint-Region execution and the raw selected geometry checks. Strict C++17
+`-Wall -Wextra -Wpedantic -Werror`, shared-shim `--no-undefined`, Ada warnings
+as errors, GNATformat, changed Ada 79-column checks and `git diff --check`
+pass. GNATprove is not applicable: no SPARK-compatible computation changes.

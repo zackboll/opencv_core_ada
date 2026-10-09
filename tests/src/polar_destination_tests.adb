@@ -79,9 +79,178 @@ package body Polar_Destination_Tests is
    package Cases is
       procedure Storage (Test : in out Mat_Test_Fixture);
       procedure Numbers (Test : in out Mat_Test_Fixture);
+      procedure Common_Parent (Test : in out Mat_Test_Fixture);
+      procedure Reverse_Reconstruction (Test : in out Mat_Test_Fixture);
    end Cases;
 
    package body Cases is
+      procedure Common_Parent (Test : in out Mat_Test_Fixture) is
+         pragma Unreferenced (Test);
+      begin
+         for D in Float32 .. Float64 loop
+            for Ch of Channel_List'(1, 3) loop
+               for Unit in Angle_Unit loop
+                  for Op in 0 .. 2 loop
+                     declare
+                        T        : constant Mat_Type := (D, Ch);
+                        P        : Image := New_Image (5, 600, T);
+                        A, B     : Image := New_Image (2, 257, T);
+                        X        : Image := Region (P, (2, 1, 257, 2));
+                        Y        : Image := Region (P, (300, 1, 257, 2));
+                        AX       : Image := X;
+                        AY       : Image := Y;
+                        LX       : constant Region_Location :=
+                          Locate_Region (X);
+                        LY       : constant Region_Location :=
+                          Locate_Region (Y);
+                        EX, EY   : Image;
+                        Expected : Mat := Create (5, 600, T);
+                        RX       : Mat := Expected.Region ((2, 1, 257, 2));
+                        RY       : Mat := Expected.Region ((300, 1, 257, 2));
+                     begin
+                        Set_To (P, Make_Scalar (91.0, 91.0, 91.0));
+                        Expected.Set_To (Make_Scalar (91.0, 91.0, 91.0));
+                        Set_To (A, Make_Scalar (3.0, 5.0, -3.0));
+                        Set_To (B, Make_Scalar (4.0, 12.0, -4.0));
+                        if Op = 0 then
+                           Cart_To_Polar (A, B, EX, EY, Unit);
+                           Cart_To_Polar (A, B, X, Y, Unit);
+                        elsif Op = 1 then
+                           Polar_To_Cart (A, B, EX, EY, Unit);
+                           Polar_To_Cart (A, B, X, Y, Unit);
+                        else
+                           Polar_To_Cart (B, EX, EY, Unit);
+                           Polar_To_Cart (B, X, Y, Unit);
+                        end if;
+                        Observe (EX).Copy_To (RX);
+                        Observe (EY).Copy_To (RY);
+                        Equal (Observe (P), Expected);
+                        Equal (Observe (AX), Observe (EX));
+                        Equal (Observe (AY), Observe (EY));
+                        Assert
+                          (Locate_Region (X) = LX
+                           and then Locate_Region (Y) = LY,
+                           "common Parent offsets");
+                        Set_To (AX, Make_Scalar (7.0, 7.0, 7.0));
+                        RX.Set_To (Make_Scalar (7.0, 7.0, 7.0));
+                        Equal (Observe (P), Expected);
+                        Set_To (Y, Make_Scalar (8.0, 8.0, 8.0));
+                        RY.Set_To (Make_Scalar (8.0, 8.0, 8.0));
+                        Equal (Observe (AY), RY);
+                        Equal (Observe (P), Expected);
+                        Set_To (X, Make_Scalar (9.0, 9.0, 9.0));
+                        RX.Set_To (Make_Scalar (9.0, 9.0, 9.0));
+                        Equal (Observe (AX), RX);
+                        Set_To (AY, Make_Scalar (10.0, 10.0, 10.0));
+                        RY.Set_To (Make_Scalar (10.0, 10.0, 10.0));
+                        Equal (Observe (Y), RY);
+                        Equal (Observe (P), Expected);
+                     end;
+                  end loop;
+               end loop;
+            end loop;
+         end loop;
+      end Common_Parent;
+
+      procedure Reverse_Reconstruction (Test : in out Mat_Test_Fixture) is
+         pragma Unreferenced (Test);
+      begin
+         for D in Float32 .. Float64 loop
+            for Ch of Channel_List'(1, 3) loop
+               for Unit in Angle_Unit loop
+                  declare
+                     T                              : constant Mat_Type :=
+                       (D, Ch);
+                     HM, HA                         : constant Mat :=
+                       Create (2, 257, (Float64, Ch));
+                     Magnitude, Angle, X, Y, RM, RA : Image;
+                     Scale                          : constant Long_Float :=
+                       (if Unit = Degrees
+                        then 1.0
+                        else Ada.Numerics.Pi / 180.0);
+                  begin
+                     for Row in 0 .. 1 loop
+                        for Col in 0 .. 256 loop
+                           declare
+                              PM : Mat :=
+                                HM.Region
+                                  ((Point_Coordinate (Col),
+                                    Point_Coordinate (Row),
+                                    1,
+                                    1));
+                              PA : Mat :=
+                                HA.Region
+                                  ((Point_Coordinate (Col),
+                                    Point_Coordinate (Row),
+                                    1,
+                                    1));
+                              V  : constant Long_Float :=
+                                Long_Float ((Col * 37 + Row * 19) mod 360);
+                              M  : constant Long_Float :=
+                                0.25 + Long_Float (Col mod 23);
+                           begin
+                              PM.Set_To (Make_Scalar (M, M, M));
+                              PA.Set_To
+                                (Make_Scalar
+                                   (V * Scale, V * Scale, V * Scale));
+                           end;
+                        end loop;
+                     end loop;
+                     Magnitude := From_Mat (HM.Convert_To (D));
+                     Angle := From_Mat (HA.Convert_To (D));
+                     Polar_To_Cart (Magnitude, Angle, X, Y, Unit);
+                     Assert
+                       (Observe (X).Shape = HM.Shape
+                        and then Observe (Y).Shape = HM.Shape
+                        and then Observe (X).Depth = T.Depth
+                        and then Observe (Y).Depth = T.Depth
+                        and then Observe (X).Channels = T.Channels
+                        and then Observe (Y).Channels = T.Channels,
+                        "reverse coordinates metadata");
+                     Cart_To_Polar (X, Y, RM, RA, Unit);
+                     for Channel in 0 .. Natural (Ch) - 1 loop
+                        declare
+                           M : constant Mat :=
+                             Observe (RM).Convert_To (Float64).Extract_Channel
+                               (Channel);
+                           A : constant Mat :=
+                             Observe (RA).Convert_To (Float64).Extract_Channel
+                               (Channel);
+                        begin
+                           for Row in 0 .. 1 loop
+                              for Col in 0 .. 256 loop
+                                 declare
+                                    Expected_M : constant Float64_Value :=
+                                      0.25 + Float64_Value (Col mod 23);
+                                    Expected_A : constant Long_Float :=
+                                      Long_Float
+                                        ((Col * 37 + Row * 19) mod 360)
+                                      * Scale;
+                                    Distance   : constant Long_Float :=
+                                      abs (Long_Float (F.Get (A, Row, Col))
+                                           - Expected_A);
+                                 begin
+                                    Assert
+                                      (abs (F.Get (M, Row, Col) - Expected_M)
+                                       < 0.000_002 * Expected_M,
+                                       "reverse original magnitude");
+                                    Assert
+                                      (Long_Float'Min
+                                         (Distance,
+                                          abs (360.0 * Scale - Distance))
+                                       < 0.3 * Scale,
+                                       "reverse original wrapped angle");
+                                 end;
+                              end loop;
+                           end loop;
+                        end;
+                     end loop;
+                  end;
+               end loop;
+            end loop;
+         end loop;
+      end Reverse_Reconstruction;
+
       procedure All_Values (A : Image; V : Long_Float) is
          H : constant Mat := Observe (A);
          E : Mat := Create (H.Shape, (H.Depth, H.Channels));
@@ -457,6 +626,207 @@ package body Polar_Destination_Tests is
       end;
    end Boundaries;
 
+   procedure Empty_Permutations (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      function Same (P, Q : Mat) return Boolean
+      is (P.Is_Empty = Q.Is_Empty
+          and then P.Dimension_Count = Q.Dimension_Count
+          and then P.Shape = Q.Shape
+          and then P.Depth = Q.Depth
+          and then P.Channels = Q.Channels);
+      function Same (P, Q : UMat) return Boolean
+      is (P.Is_Empty = Q.Is_Empty
+          and then P.Dimension_Count = Q.Dimension_Count
+          and then P.Shape = Q.Shape
+          and then P.Element_Type = Q.Element_Type);
+   begin
+      for D in Float32 .. Float64 loop
+         for Reused in Boolean loop
+            for Kind in 0 .. 12 loop
+               declare
+                  A, B   : Mat;
+                  UA, UB : UMat;
+                  X, Y   : Mat;
+                  UX, UY : UMat;
+                  Polar  : constant Boolean := Kind >= 5 and then Kind /= 12;
+                  Reject : constant Boolean :=
+                    Kind in 1 .. 4 or else Kind in 10 | 12;
+                  procedure Attempt is
+                  begin
+                     if not Polar then
+                        Cart_To_Polar (A, B, X, Y);
+                     elsif Kind = 11 then
+                        Polar_To_Cart (B, X, Y);
+                     else
+                        Polar_To_Cart (A, B, X, Y);
+                     end if;
+                  end Attempt;
+                  procedure UAttempt is
+                  begin
+                     if not Polar then
+                        Cart_To_Polar (UA, UB, UX, UY);
+                     elsif Kind = 11 then
+                        Polar_To_Cart (UB, UX, UY);
+                     else
+                        Polar_To_Cart (UA, UB, UX, UY);
+                     end if;
+                  end UAttempt;
+               begin
+                  if Kind /= 1 and then Kind /= 10 then
+                     B :=
+                       Create
+                         ((if Kind in 2 .. 3 or else Kind in 5 .. 7
+                           then 2
+                           else 0),
+                          3,
+                          (D, 3));
+                     UB :=
+                       Create_UMat
+                         ((if Kind in 2 .. 3 or else Kind in 5 .. 7
+                           then 2
+                           else 0),
+                          3,
+                          (D, 3));
+                  end if;
+                  if Kind in 0 | 2 | 4 | 6 | 9 | 12 then
+                     A := Create (0, 3, (D, 3));
+                     UA := Create_UMat (0, 3, (D, 3));
+                  elsif Kind = 3 or else Kind = 7 then
+                     A := Create (2, 3, (D, 3));
+                     UA := Create_UMat (2, 3, (D, 3));
+                  end if;
+                  if Kind = 3 then
+                     B := Create (0, 3, (D, 3));
+                     UB := Create_UMat (0, 3, (D, 3));
+                  elsif Kind = 4 then
+                     B := Create (0, 3, (D, 1));
+                     UB := Create_UMat (0, 3, (D, 1));
+                  elsif Kind = 12 then
+                     B :=
+                       Create
+                         (0,
+                          3,
+                          ((if D = Float32 then Float64 else Float32), 3));
+                     UB :=
+                       Create_UMat
+                         (0,
+                          3,
+                          ((if D = Float32 then Float64 else Float32), 3));
+                  end if;
+                  if Kind in 6 | 9 then
+                     A := Create (0, 17, (UInt8, 2));
+                     UA := Create_UMat (0, 17, (UInt8, 2));
+                  end if;
+                  if not A.Is_Empty then
+                     A.Set_To (Make_Scalar (3.0, 3.0, 3.0));
+                     UA.Set_To (Make_Scalar (3.0, 3.0, 3.0));
+                  end if;
+                  if not B.Is_Empty then
+                     B.Set_To (Make_Scalar (4.0, 4.0, 4.0));
+                     UB.Set_To (Make_Scalar (4.0, 4.0, 4.0));
+                  end if;
+                  if Reused or else Reject then
+                     X := Create (2, 3, (Float64, 1));
+                     Y := Create (2, 3, (Float64, 1));
+                     UX := Create_UMat (2, 3, (Float64, 1));
+                     UY := Create_UMat (2, 3, (Float64, 1));
+                     X.Set_To (Make_Scalar (91.0));
+                     Y.Set_To (Make_Scalar (92.0));
+                     UX.Set_To (Make_Scalar (91.0));
+                     UY.Set_To (Make_Scalar (92.0));
+                  end if;
+                  declare
+                     AX  : constant Mat := X;
+                     AY  : constant Mat := Y;
+                     AUX : constant UMat := UX;
+                     AUY : constant UMat := UY;
+                  begin
+                     if Reject then
+                        Assert_Raises_OpenCV_Error
+                          (Attempt'Access, "empty Cartesian rejection");
+                        Assert_Raises_OpenCV_Error
+                          (UAttempt'Access, "empty UMat rejection");
+                        Equal (X, AX);
+                        Equal (Y, AY);
+                        Equal (Transfers.To_Mat (UX), Transfers.To_Mat (AUX));
+                        Equal (Transfers.To_Mat (UY), Transfers.To_Mat (AUY));
+                        declare
+                           EX, EY : Mat := Create (2, 3, (Float64, 1));
+                        begin
+                           EX.Set_To (Make_Scalar (91.0));
+                           EY.Set_To (Make_Scalar (92.0));
+                           Equal (X, EX);
+                           Equal (Y, EY);
+                           Equal (AX, EX);
+                           Equal (AY, EY);
+                           Equal (Transfers.To_Mat (UX), EX);
+                           Equal (Transfers.To_Mat (UY), EY);
+                           Equal (Transfers.To_Mat (AUX), EX);
+                           Equal (Transfers.To_Mat (AUY), EY);
+                        end;
+                     else
+                        Attempt;
+                        UAttempt;
+                        if Polar then
+                           declare
+                              E  : constant Cartesian_Coordinates :=
+                                Polar_To_Cart (A, B);
+                              UE : constant UMat_Cartesian_Coordinates :=
+                                Polar_To_Cart (UA, UB);
+                           begin
+                              Assert
+                                (Same (X, E.X) and then Same (Y, E.Y),
+                                 "empty Mat polar metadata");
+                              Assert
+                                (Same (UX, UE.X) and then Same (UY, UE.Y),
+                                 "empty UMat polar direct metadata");
+                              if not X.Is_Empty then
+                                 Equal (X, E.X);
+                                 Equal (Y, E.Y);
+                                 Equal
+                                   (Transfers.To_Mat (UX),
+                                    Transfers.To_Mat (UE.X));
+                                 Equal
+                                   (Transfers.To_Mat (UY),
+                                    Transfers.To_Mat (UE.Y));
+                              end if;
+                           end;
+                        else
+                           declare
+                              E  : constant Polar_Coordinates :=
+                                Cart_To_Polar (A, B);
+                              UE : constant UMat_Polar_Coordinates :=
+                                Cart_To_Polar (UA, UB);
+                           begin
+                              Assert
+                                (Same (X, E.Magnitude)
+                                 and then Same (Y, E.Angle),
+                                 "empty Mat metadata");
+                              Assert
+                                (Same (UX, UE.Magnitude)
+                                 and then Same (UY, UE.Angle),
+                                 "empty UMat metadata");
+                           end;
+                        end if;
+                        if Reused and then X.Is_Empty then
+                           Assert
+                             (F.Get (AX, 0, 0) = 91.0
+                              and then F.Get (AY, 0, 0) = 92.0,
+                              "old Mat empty aliases survive");
+                           Assert
+                             (F.Get (Transfers.To_Mat (AUX), 0, 0) = 91.0
+                              and then F.Get (Transfers.To_Mat (AUY), 0, 0)
+                                       = 92.0,
+                              "old UMat empty aliases survive");
+                        end if;
+                     end if;
+                  end;
+               end;
+            end loop;
+         end loop;
+      end loop;
+   end Empty_Permutations;
+
    procedure Temporary (View : in out Mat) is
       A    : Mat := Create (2, 3, (Float64, 1));
       X, Y : Mat;
@@ -739,6 +1109,21 @@ package body Polar_Destination_Tests is
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
+      Result.Add_Test
+        (Caller.Create ("Mat polar common Parent", M.Common_Parent'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Polar empty permutations", Empty_Permutations'Access));
+      Result.Add_Test
+        (Caller.Create ("UMat polar common Parent", U.Common_Parent'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Mat reverse polar reconstruction",
+            M.Reverse_Reconstruction'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("UMat reverse polar reconstruction",
+            U.Reverse_Reconstruction'Access));
       Result.Add_Test
         (Caller.Create ("Polar special classifications", Special'Access));
       Result.Add_Test

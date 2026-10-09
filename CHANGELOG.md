@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Complete paired polar destination qualification: disjoint common-Parent
+  Regions, raw selected output rejection and alias preservation, reverse polar
+  reconstruction, empty permutations, and whole/depth/channel native probes.
+
 - Add six reusable paired Cart_To_Polar/Polar_To_Cart destination procedures
   for Mat and UMat, including angle-only unit magnitude, through four C exports.
   Preserve the existing native helpers, Float64 pre-4.10 correction, and empty

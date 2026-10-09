@@ -61,7 +61,10 @@ Both outputs must be distinct native objects, and neither may be exactly
 either source. These portable identity restrictions are checked before native
 execution on every supported version. Input/input identity remains permitted.
 Distinct headers sharing overlapping storage and arbitrary partial Region
-overlap are unsupported; common-Parent output Regions are not qualified.
+overlap are unsupported. Disjoint output Regions of one Parent are supported:
+distinct headers retain their offsets and row steps, and writes to either
+output do not affect the other or the intervening guards. This does not permit
+source/output storage overlap or partially overlapping output Regions.
 Temporary external or selected Mat views are permitted as sources under the
 existing validators, but prohibited in either output position. Preflight
 rejection preserves both outputs; native exceptions do not promise two-output
