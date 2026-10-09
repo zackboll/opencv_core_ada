@@ -858,6 +858,7 @@ package OpenCV.Core is
    --  +Infinity, and a typed 0x0 source stays empty. A default empty Mat and
    --  non-floating depths are rejected.
    function Sqrt (Self : Mat) return Mat;
+   procedure Sqrt (Self : Mat; Destination : in out Mat);
    --  Returns an independent Mat with Self's shape, depth, and channel count.
    --  Self must be Float32 or Float64. Each channel is processed independently
    --  by cv::exp. On OpenCV 4.10 the implementation is approximate (about
@@ -866,6 +867,7 @@ package OpenCV.Core is
    --  and Infinity are not handled. A typed 0x0 source stays empty. A default
    --  empty Mat and non-floating depths are rejected.
    function Exp (Self : Mat) return Mat;
+   procedure Exp (Self : Mat; Destination : in out Mat);
    --  Returns an independent Mat with Self's shape, depth, and channel count.
    --  Self must be Float32 or Float64. Each channel is processed independently
    --  by cv::log (natural logarithm). On OpenCV 4.10 the implementation is
@@ -873,6 +875,7 @@ package OpenCV.Core is
    --  and Infinity is undefined. A typed 0x0 source stays empty. A default
    --  empty Mat and non-floating depths are rejected.
    function Log (Self : Mat) return Mat;
+   procedure Log (Self : Mat; Destination : in out Mat);
    --  Returns an independent Mat with Self's shape, depth, and channel count.
    --  Each channel is processed independently by cv::pow. When Power is an
    --  integer, source signs are preserved (src(I) ** Power). When Power is
@@ -889,6 +892,12 @@ package OpenCV.Core is
    --  empty Mat is accepted for a nonnegative integer Power and rejected
    --  otherwise.
    function Pow (Self : Mat; Power : Long_Float) return Mat;
+   procedure Pow (Self : Mat; Power : Long_Float; Destination : in out Mat);
+   --  Destination overloads use the actual native output, reusing compatible
+   --  whole/Region storage and detaching mismatched storage. N-D is supported.
+   --  Source policies and native numerical approximations are unchanged.
+   --  Exact and shallow aliases are native; partial overlap is unsupported.
+   --  Temporary Mat destinations are prohibited; temporary sources are valid.
    --  Returns an independent Mat with X's shape, depth, and channel count.
    --  X and Y must be Float32 or Float64 with identical dimensions, depth,
    --  and channel count. Each channel is processed independently by
@@ -1420,6 +1429,12 @@ package OpenCV.Core is
    function Exp (Self : UMat) return UMat;
    function Log (Self : UMat) return UMat;
    function Pow (Self : UMat; Power : Long_Float) return UMat;
+   procedure Sqrt (Self : UMat; Destination : in out UMat);
+   procedure Exp (Self : UMat; Destination : in out UMat);
+   procedure Log (Self : UMat; Destination : in out UMat);
+   procedure Pow (Self : UMat; Power : Long_Float; Destination : in out UMat);
+   --  Native UMat destinations follow the Mat reuse and alias boundaries.
+   --  No binding-level host staging is performed, including for N-D storage.
    --  Matching 2-D Float32/Float64 operands, with independent channels.
    function Magnitude (X, Y : UMat) return UMat;
    function Phase (X, Y : UMat; Units : Angle_Unit := Radians) return UMat;

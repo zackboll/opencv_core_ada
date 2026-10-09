@@ -5064,7 +5064,34 @@ static void dense_log(const cv::UMat &source, cv::UMat &dst) {
     if (!empty_float_math(source, dst)) cv::log(source, dst);
 }
 template <typename Dense>
-static void dense_pow(const Dense &source, double power, Dense &dst) {
+static void prepare_pow_output(const Dense &source, double power, Dense &dst) {
+#if CV_VERSION_MAJOR >= 5 || (CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR >= 10)
+    // ABI safety: native Pow's effective integer-2 specialization calls
+    // multiply, which selects 16-bit HAL writes from the OLD destination
+    // depth before creating byte output storage. Establish byte layout first.
+    // Keep cv::pow dispatch (including the 4.10 Intel OpenCL exception).
+    const int ipower = cvRound(power);
+    if (!source.empty() && ipower == 2 &&
+        std::fabs(ipower - power) < DBL_EPSILON &&
+        ((source.depth() == CV_8U && dst.depth() == CV_16U) ||
+         (source.depth() == CV_8S && dst.depth() == CV_16S))) {
+        dst.create(source.dims, source.size.p, source.type());
+    }
+#else
+    (void)source;
+    (void)power;
+    (void)dst;
+#endif
+}
+static void dense_pow(const cv::Mat &source, double power, cv::Mat &dst) {
+    // ABI safety: empty Pow can enter OpenCV 5 ARM64 HAL with null storage.
+    // Preserve the allocation-returning Mat policy, including typed empties.
+    if (source.empty()) {
+        if (source.dims == 0) dst.release();
+        else dst = cv::Mat(0, 0, source.type());
+        return;
+    }
+    prepare_pow_output(source, power, dst);
     cv::pow(source, power, dst);
 }
 static void dense_pow(const cv::UMat &source, double power, cv::UMat &dst) {
@@ -5075,6 +5102,7 @@ static void dense_pow(const cv::UMat &source, double power, cv::UMat &dst) {
         make_empty_dense_like(source, dst);
         return;
     }
+    prepare_pow_output(source, power, dst);
     cv::pow(source, power, dst);
 }
 template <typename Dense>
@@ -5148,6 +5176,63 @@ static void dense_polar_to_cart(const cv::UMat &m, const cv::UMat &a,
     }
     dense_polar_to_cart<cv::UMat>(m, a, x, y, degrees);
 }
+}
+
+#define OPENCV_CORE_UNARY_MATH_INTO(name, expression)                         \
+opencv_core_status opencv_core_mat_##name##_into(                            \
+    const opencv_core_mat_handle *source, opencv_core_mat_handle *destination) { \
+    clear_error();                                                         \
+    if (!source || !destination)                                           \
+        return invalid_argument("null unary math source or destination Mat"); \
+    /* ABI safety: output creation can release/rebind callback-scoped       \
+       external or selected storage, severing the temporary capability. */ \
+    if (destination->temporary_external_view)                               \
+        return invalid_argument("temporary Mat cannot be a math destination"); \
+    try {                                                                  \
+        expression;                                                        \
+        return OPENCV_CORE_OK;                                              \
+    } catch (...) { return translate_current_exception(); }                 \
+}                                                                          \
+opencv_core_status opencv_core_umat_##name##_into(                           \
+    const opencv_core_umat_handle *source, opencv_core_umat_handle *destination) { \
+    clear_error();                                                         \
+    if (!source || !destination)                                           \
+        return invalid_argument("null unary math source or destination UMat"); \
+    try {                                                                  \
+        expression;                                                        \
+        return OPENCV_CORE_OK;                                              \
+    } catch (...) { return translate_current_exception(); }                 \
+}
+OPENCV_CORE_UNARY_MATH_INTO(sqrt, dense_sqrt(source->value, destination->value))
+OPENCV_CORE_UNARY_MATH_INTO(exp, dense_exp(source->value, destination->value))
+OPENCV_CORE_UNARY_MATH_INTO(log, dense_log(source->value, destination->value))
+#undef OPENCV_CORE_UNARY_MATH_INTO
+
+opencv_core_status opencv_core_mat_pow_into(
+    const opencv_core_mat_handle *source, double power,
+    opencv_core_mat_handle *destination) {
+    clear_error();
+    if (!source || !destination)
+        return invalid_argument("null power source or destination Mat");
+    // ABI safety: native output creation may release/rebind callback-scoped
+    // external or selected storage, severing the temporary capability.
+    if (destination->temporary_external_view)
+        return invalid_argument("temporary Mat cannot be a math destination");
+    try {
+        dense_pow(source->value, power, destination->value);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+opencv_core_status opencv_core_umat_pow_into(
+    const opencv_core_umat_handle *source, double power,
+    opencv_core_umat_handle *destination) {
+    clear_error();
+    if (!source || !destination)
+        return invalid_argument("null power source or destination UMat");
+    try {
+        dense_pow(source->value, power, destination->value);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
 }
 
 opencv_core_status

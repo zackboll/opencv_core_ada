@@ -13,6 +13,7 @@ with Min_Max_Destination_Tests;
 with Weighted_Destination_Tests;
 with Bitwise_Destination_Tests;
 with Mask_Destination_Tests;
+with Unary_Math_Destination_Tests;
 with Mat_Arithmetic_Tests;
 with Mat_Channel_Tests;
 with Mat_Mask_Tests;
@@ -98,6 +99,7 @@ package body Mat_Tests is
       Result.Add_Test (Weighted_Destination_Tests.Suite);
       Result.Add_Test (Bitwise_Destination_Tests.Suite);
       Result.Add_Test (Mask_Destination_Tests.Suite);
+      Result.Add_Test (Unary_Math_Destination_Tests.Suite);
       Result.Add_Test (Mat_Arithmetic_Tests.Suite);
       Result.Add_Test (Mat_Channel_Tests.Suite);
       Result.Add_Test (Mat_Mask_Tests.Suite);

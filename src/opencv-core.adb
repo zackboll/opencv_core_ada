@@ -3970,6 +3970,86 @@ package body OpenCV.Core is
       Validate_Float_Math (Source.Depth, Operation);
    end Validate_UMat_Float;
 
+   procedure Sqrt (Self : Mat; Destination : in out Mat) is
+   begin
+      Validate_Float_Math (Self.Depth, "Sqrt");
+      if Destination.Temporary_View then
+         raise OpenCV_Error with "temporary Mat cannot be a math destination";
+      end if;
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Sqrt_Into (Self.Handle, Destination.Handle),
+         "Mat destination Sqrt");
+   end Sqrt;
+
+   procedure Exp (Self : Mat; Destination : in out Mat) is
+   begin
+      Validate_Float_Math (Self.Depth, "Exp");
+      if Destination.Temporary_View then
+         raise OpenCV_Error with "temporary Mat cannot be a math destination";
+      end if;
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Exp_Into (Self.Handle, Destination.Handle),
+         "Mat destination Exp");
+   end Exp;
+
+   procedure Log (Self : Mat; Destination : in out Mat) is
+   begin
+      Validate_Float_Math (Self.Depth, "Log");
+      if Destination.Temporary_View then
+         raise OpenCV_Error with "temporary Mat cannot be a math destination";
+      end if;
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Log_Into (Self.Handle, Destination.Handle),
+         "Mat destination Log");
+   end Log;
+
+   procedure Pow (Self : Mat; Power : Long_Float; Destination : in out Mat) is
+   begin
+      Validate_Pow (Self.Depth, Power);
+      if Destination.Temporary_View then
+         raise OpenCV_Error with "temporary Mat cannot be a math destination";
+      end if;
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Pow_Into
+           (Self.Handle, Interfaces.C.double (Power), Destination.Handle),
+         "Mat destination Pow");
+   end Pow;
+
+   procedure Sqrt (Self : UMat; Destination : in out UMat) is
+   begin
+      Validate_UMat_Float (Self, "Sqrt");
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Sqrt_Into
+           (Self.Handle, Destination.Handle),
+         "UMat destination Sqrt");
+   end Sqrt;
+
+   procedure Exp (Self : UMat; Destination : in out UMat) is
+   begin
+      Validate_UMat_Float (Self, "Exp");
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Exp_Into (Self.Handle, Destination.Handle),
+         "UMat destination Exp");
+   end Exp;
+
+   procedure Log (Self : UMat; Destination : in out UMat) is
+   begin
+      Validate_UMat_Float (Self, "Log");
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Log_Into (Self.Handle, Destination.Handle),
+         "UMat destination Log");
+   end Log;
+
+   procedure Pow (Self : UMat; Power : Long_Float; Destination : in out UMat)
+   is
+   begin
+      Validate_Pow (Self.Depth, Power);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Pow_Into
+           (Self.Handle, Interfaces.C.double (Power), Destination.Handle),
+         "UMat destination Pow");
+   end Pow;
+
    type UMat_Math_Unary_Operation is
      access function
        (Source : OpenCV.Internal.C_API.UMat_Handle;
