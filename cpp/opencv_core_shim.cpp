@@ -5344,6 +5344,68 @@ opencv_core_mat_pow(const opencv_core_mat_handle *source, double power,
     }
 }
 
+opencv_core_status opencv_core_mat_magnitude_into(
+    const opencv_core_mat_handle *x, const opencv_core_mat_handle *y,
+    opencv_core_mat_handle *destination) {
+    clear_error();
+    if (!x || !y || !destination)
+        return invalid_argument("null magnitude operand or destination Mat");
+    // ABI safety: native output creation may release/rebind callback-scoped
+    // external or selected storage, severing the temporary capability.
+    if (destination->temporary_external_view)
+        return invalid_argument("temporary Mat cannot be a math destination");
+    try {
+        dense_magnitude(x->value, y->value, destination->value);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_mat_phase_into(
+    const opencv_core_mat_handle *x, const opencv_core_mat_handle *y,
+    uint8_t angle_in_degrees, opencv_core_mat_handle *destination) {
+    clear_error();
+    if (!x || !y || !destination)
+        return invalid_argument("null phase operand or destination Mat");
+    // ABI safety: native output creation may release/rebind callback-scoped
+    // external or selected storage, severing the temporary capability.
+    if (destination->temporary_external_view)
+        return invalid_argument("temporary Mat cannot be a math destination");
+    if (angle_in_degrees > 1)
+        return invalid_argument("angle_in_degrees must be 0 or 1");
+    try {
+        dense_phase(x->value, y->value, destination->value,
+                    angle_in_degrees != 0);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_umat_magnitude_into(
+    const opencv_core_umat_handle *x, const opencv_core_umat_handle *y,
+    opencv_core_umat_handle *destination) {
+    clear_error();
+    if (!x || !y || !destination)
+        return invalid_argument("null magnitude operand or destination UMat");
+    try {
+        dense_magnitude(x->value, y->value, destination->value);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_umat_phase_into(
+    const opencv_core_umat_handle *x, const opencv_core_umat_handle *y,
+    uint8_t angle_in_degrees, opencv_core_umat_handle *destination) {
+    clear_error();
+    if (!x || !y || !destination)
+        return invalid_argument("null phase operand or destination UMat");
+    if (angle_in_degrees > 1)
+        return invalid_argument("angle_in_degrees must be 0 or 1");
+    try {
+        dense_phase(x->value, y->value, destination->value,
+                    angle_in_degrees != 0);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
 opencv_core_status
 opencv_core_mat_magnitude(const opencv_core_mat_handle *x,
                           const opencv_core_mat_handle *y,

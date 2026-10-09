@@ -1040,6 +1040,19 @@ opencv_core_mat_pow(const opencv_core_mat_handle *source, double power,
  * CV_32F or CV_64F depth and identical size and type. The result has X's
  * shape, depth, and channel count.
  */
+opencv_core_status opencv_core_mat_magnitude_into(
+    const opencv_core_mat_handle *x, const opencv_core_mat_handle *y,
+    opencv_core_mat_handle *destination);
+opencv_core_status opencv_core_mat_phase_into(
+    const opencv_core_mat_handle *x, const opencv_core_mat_handle *y,
+    uint8_t angle_in_degrees, opencv_core_mat_handle *destination);
+opencv_core_status opencv_core_umat_magnitude_into(
+    const opencv_core_umat_handle *x, const opencv_core_umat_handle *y,
+    opencv_core_umat_handle *destination);
+opencv_core_status opencv_core_umat_phase_into(
+    const opencv_core_umat_handle *x, const opencv_core_umat_handle *y,
+    uint8_t angle_in_degrees, opencv_core_umat_handle *destination);
+
 opencv_core_status
 opencv_core_mat_magnitude(const opencv_core_mat_handle *x,
                           const opencv_core_mat_handle *y,

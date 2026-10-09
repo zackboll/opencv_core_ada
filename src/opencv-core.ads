@@ -906,17 +906,28 @@ package OpenCV.Core is
    --  including Float16 are rejected.
 
    function Magnitude (X, Y : Mat) return Mat;
+   procedure Magnitude (X, Y : Mat; Destination : in out Mat);
+   --  Write directly into compatible whole/Region storage; otherwise detach.
+   --  Matching 2-D Float32/Float64 sources; channels computed independently.
+   --  Exact and shallow source aliases are supported, partial overlap is not.
+   --  Temporary Mat destinations are prohibited.
+   --
    --  Returns an independent Mat with X's shape, depth, and channel count.
    --  X and Y are the Cartesian components of 2D vectors. They must be
    --  Float32 or Float64 with identical dimensions, depth, and channel
    --  count. Each channel is processed independently by cv::phase as
-   --  atan2 (Y, X). Units selects radians in [0, 2*Pi) by default or
-   --  degrees in [0, 360). OpenCV documents about 0.3 degrees of angle
-   --  estimation accuracy. When both X and Y are zero, the angle is 0.
+   --  atan2 (Y, X). Units selects radians by default or degrees. OpenCV
+   --  documents about 0.3 degrees of angle estimation accuracy; the native
+   --  approximation does not guarantee a strict half-open full-turn range.
+   --  When both X and Y are zero, the angle is 0.
    --  A typed 0x0 pair stays empty. A default empty Mat, mismatched
    --  shape or type, and non-floating depths including Float16 are
    --  rejected.
    function Phase (X, Y : Mat; Units : Angle_Unit := Radians) return Mat;
+   procedure Phase
+     (X, Y : Mat; Destination : in out Mat; Units : Angle_Unit := Radians);
+   --  Same destination/storage rules as Magnitude, with native fast angles.
+   --
    --  Returns independently owned Magnitude and Angle Mats with X's shape,
    --  depth, and channel count. X and Y are the Cartesian components of 2D
    --  vectors. They must be Float32 or Float64 with identical dimensions,
@@ -1437,7 +1448,12 @@ package OpenCV.Core is
    --  No binding-level host staging is performed, including for N-D storage.
    --  Matching 2-D Float32/Float64 operands, with independent channels.
    function Magnitude (X, Y : UMat) return UMat;
+   procedure Magnitude (X, Y : UMat; Destination : in out UMat);
+   --  Native UMat destination reuse, without binding-level host staging.
    function Phase (X, Y : UMat; Units : Angle_Unit := Radians) return UMat;
+   procedure Phase
+     (X, Y : UMat; Destination : in out UMat; Units : Angle_Unit := Radians);
+   --  Matching 2-D float sources, native angle units and storage semantics.
    type UMat_Polar_Coordinates is record
       Magnitude : UMat;
       Angle     : UMat;
