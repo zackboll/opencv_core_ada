@@ -1804,6 +1804,23 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_polar_to_cart";
 
+   function Mat_Cart_To_Polar_Into
+     (X, Y             : Mat_Handle;
+      Angle_In_Degrees : C_Boolean;
+      Magnitude, Angle : Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_cart_to_polar_into";
+   function Mat_Polar_To_Cart_Into
+     (Magnitude, Angle : Mat_Handle;
+      Angle_In_Degrees : C_Boolean;
+      X, Y             : Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_polar_to_cart_into";
+
    function Mat_Normalize
      (Source : Mat_Handle;
       Kind   : C_Int32;
@@ -2269,6 +2286,23 @@ package OpenCV.Internal.C_API is
      Import,
      Convention    => C,
      External_Name => "opencv_core_umat_polar_to_cart";
+
+   function UMat_Cart_To_Polar_Into
+     (X, Y             : UMat_Handle;
+      Angle_In_Degrees : C_Boolean;
+      Magnitude, Angle : UMat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_cart_to_polar_into";
+   function UMat_Polar_To_Cart_Into
+     (Magnitude, Angle : UMat_Handle;
+      Angle_In_Degrees : C_Boolean;
+      X, Y             : UMat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_polar_to_cart_into";
 
    function UMat_Compare
      (Left, Right : UMat_Handle; Kind : C_Int32; Result : access UMat_Handle)

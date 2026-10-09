@@ -1423,6 +1423,30 @@ opencv_core_status opencv_core_umat_polar_to_cart(
     const opencv_core_umat_handle *m, const opencv_core_umat_handle *a,
     uint8_t degrees, opencv_core_umat_handle **x, opencv_core_umat_handle **y);
 
+/* Paired reusable outputs: all handles are required, outputs must differ
+ * from each other and both sources. Overlapping storage through distinct
+ * headers is unsupported. Temporary Mat outputs are forbidden. Flags are
+ * 0/1. Preflight failure preserves both outputs; native failure does not
+ * promise rollback. Empty (not null) magnitude means unit magnitude. */
+opencv_core_status opencv_core_mat_cart_to_polar_into(
+    const opencv_core_mat_handle *x, const opencv_core_mat_handle *y,
+    uint8_t angle_in_degrees,
+    opencv_core_mat_handle *magnitude_destination,
+    opencv_core_mat_handle *angle_destination);
+opencv_core_status opencv_core_mat_polar_to_cart_into(
+    const opencv_core_mat_handle *magnitude, const opencv_core_mat_handle *angle,
+    uint8_t angle_in_degrees, opencv_core_mat_handle *x_destination,
+    opencv_core_mat_handle *y_destination);
+opencv_core_status opencv_core_umat_cart_to_polar_into(
+    const opencv_core_umat_handle *x, const opencv_core_umat_handle *y,
+    uint8_t angle_in_degrees,
+    opencv_core_umat_handle *magnitude_destination,
+    opencv_core_umat_handle *angle_destination);
+opencv_core_status opencv_core_umat_polar_to_cart_into(
+    const opencv_core_umat_handle *magnitude, const opencv_core_umat_handle *angle,
+    uint8_t angle_in_degrees, opencv_core_umat_handle *x_destination,
+    opencv_core_umat_handle *y_destination);
+
 opencv_core_status opencv_core_umat_compare(
     const opencv_core_umat_handle *left, const opencv_core_umat_handle *right,
     int32_t comparison_kind, opencv_core_umat_handle **out);

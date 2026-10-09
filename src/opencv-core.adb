@@ -4219,6 +4219,71 @@ package body OpenCV.Core is
       return Result;
    end Phase;
 
+   function To_C_Angle_Unit
+     (Units : Angle_Unit) return OpenCV.Internal.C_API.C_Boolean
+   is (if Units = Degrees
+       then OpenCV.Internal.C_API.C_True
+       else OpenCV.Internal.C_API.C_False);
+
+   procedure Validate_Polar_Destinations (A, B, P, Q : UMat) is
+      use type OpenCV.Internal.C_API.UMat_Handle;
+   begin
+      if P.Handle = Q.Handle
+        or else A.Handle = P.Handle
+        or else A.Handle = Q.Handle
+        or else B.Handle = P.Handle
+        or else B.Handle = Q.Handle
+      then
+         raise OpenCV_Error
+           with "polar outputs must be distinct native objects";
+      end if;
+   end Validate_Polar_Destinations;
+
+   procedure Cart_To_Polar
+     (X, Y             : UMat;
+      Magnitude, Angle : in out UMat;
+      Units            : Angle_Unit := Radians) is
+   begin
+      Validate_Matching_Float_Operands (X, Y, "Cart_To_Polar");
+      Validate_Polar_Destinations (X, Y, Magnitude, Angle);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Cart_To_Polar_Into
+           (X.Handle,
+            Y.Handle,
+            To_C_Angle_Unit (Units),
+            Magnitude.Handle,
+            Angle.Handle),
+         "UMat destination Cart_To_Polar");
+   end Cart_To_Polar;
+
+   procedure Polar_To_Cart
+     (Magnitude, Angle : UMat;
+      X, Y             : in out UMat;
+      Units            : Angle_Unit := Radians) is
+   begin
+      Validate_UMat_Float (Angle, "Polar_To_Cart");
+      if not Magnitude.Is_Empty then
+         Validate_Matching_Float_Operands (Magnitude, Angle, "Polar_To_Cart");
+      end if;
+      Validate_Polar_Destinations (Magnitude, Angle, X, Y);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Polar_To_Cart_Into
+           (Magnitude.Handle,
+            Angle.Handle,
+            To_C_Angle_Unit (Units),
+            X.Handle,
+            Y.Handle),
+         "UMat destination Polar_To_Cart");
+   end Polar_To_Cart;
+
+   procedure Polar_To_Cart
+     (Angle : UMat; X, Y : in out UMat; Units : Angle_Unit := Radians)
+   is
+      Empty_Magnitude : UMat;
+   begin
+      Polar_To_Cart (Empty_Magnitude, Angle, X, Y, Units);
+   end Polar_To_Cart;
+
    function Cart_To_Polar
      (X, Y : UMat; Units : Angle_Unit := Radians) return UMat_Polar_Coordinates
    is
@@ -4549,6 +4614,62 @@ package body OpenCV.Core is
       Empty_Magnitude : Mat;
    begin
       return Polar_To_Cart (Empty_Magnitude, Angle, Units);
+   end Polar_To_Cart;
+
+   procedure Validate_Polar_Destinations (A, B, P, Q : Mat) is
+   begin
+      if P.Temporary_View or else Q.Temporary_View then
+         raise OpenCV_Error with "temporary Mat cannot be a polar destination";
+      end if;
+      if P.Handle = Q.Handle
+        or else A.Handle = P.Handle
+        or else A.Handle = Q.Handle
+        or else B.Handle = P.Handle
+        or else B.Handle = Q.Handle
+      then
+         raise OpenCV_Error
+           with "polar outputs must be distinct native objects";
+      end if;
+   end Validate_Polar_Destinations;
+
+   procedure Cart_To_Polar
+     (X, Y : Mat; Magnitude, Angle : in out Mat; Units : Angle_Unit := Radians)
+   is
+   begin
+      Validate_Matching_Float_Operands (X, Y, "Cart_To_Polar");
+      Validate_Polar_Destinations (X, Y, Magnitude, Angle);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Cart_To_Polar_Into
+           (X.Handle,
+            Y.Handle,
+            To_C_Angle_Unit (Units),
+            Magnitude.Handle,
+            Angle.Handle),
+         "Mat destination Cart_To_Polar");
+   end Cart_To_Polar;
+
+   procedure Polar_To_Cart
+     (Magnitude, Angle : Mat; X, Y : in out Mat; Units : Angle_Unit := Radians)
+   is
+   begin
+      Validate_Polar_To_Cart_Operands (Magnitude, Angle);
+      Validate_Polar_Destinations (Magnitude, Angle, X, Y);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Polar_To_Cart_Into
+           (Magnitude.Handle,
+            Angle.Handle,
+            To_C_Angle_Unit (Units),
+            X.Handle,
+            Y.Handle),
+         "Mat destination Polar_To_Cart");
+   end Polar_To_Cart;
+
+   procedure Polar_To_Cart
+     (Angle : Mat; X, Y : in out Mat; Units : Angle_Unit := Radians)
+   is
+      Empty_Magnitude : Mat;
+   begin
+      Polar_To_Cart (Empty_Magnitude, Angle, X, Y, Units);
    end Polar_To_Cart;
 
    type DFT_Channel_Requirement is (Real_Or_Complex, Real_Only, Complex_Only);
