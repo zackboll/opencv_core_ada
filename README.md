@@ -26,6 +26,63 @@ translation of the C++ headers.
 > `imgcodecs`, `highgui`, `videoio`, `features2d`, `calib3d`, and `dnn` belong
 > in separate Ada crates that can depend on this Core binding.
 
+## Reusable paired polar destinations
+
+The allocation-returning polar functions remain available. Six procedure
+overloads write two actual caller-owned destinations, for both `Mat` and
+`UMat`, including angle-only `Polar_To_Cart`:
+
+```ada
+Cart_To_Polar
+  (X         => Horizontal,
+   Y         => Vertical,
+   Magnitude => Existing_Magnitude,
+   Angle     => Existing_Angle,
+   Units     => Radians);
+
+Polar_To_Cart
+  (Magnitude => Existing_Magnitude,
+   Angle     => Existing_Angle,
+   X         => Horizontal,
+   Y         => Vertical,
+   Units     => Radians);
+
+Polar_To_Cart (Existing_Angle, Horizontal, Vertical, Degrees);
+```
+
+Each transform uses the existing single native transform helper, not separate
+Magnitude/Phase or trigonometric operations. Compatible whole outputs and
+Regions keep their storage and shallow aliases. Each output with mismatched
+shape, depth, or channels detaches independently; old Parents and retained
+aliases remain alive. Cart_To_Polar follows X's layout; Polar_To_Cart follows
+Angle's. Destination layout need not be prevalidated or preallocated.
+
+Both outputs must be distinct native objects, and neither may be exactly
+either source. These portable identity restrictions are checked before native
+execution on every supported version. Input/input identity remains permitted.
+Distinct headers sharing overlapping storage and arbitrary partial Region
+overlap are unsupported; common-Parent output Regions are not qualified.
+Temporary external or selected Mat views are permitted as sources under the
+existing validators, but prohibited in either output position. Preflight
+rejection preserves both outputs; native exceptions do not promise two-output
+rollback. No hidden source/output copies support forbidden aliases.
+
+Empty Magnitude (default or typed) means unit magnitude. The angle-only
+procedure forwards a default-empty Magnitude to the two-input procedure.
+The existing pre-4.10 Float64 correction still performs native Float32
+coordinates followed by numeric Float64 conversion into the destinations.
+Cart_To_Polar retains matching Float32/Float64 2-D inputs. Polar_To_Cart
+retains its existing N-D Angle support with empty Magnitude and its matching
+2-D policy for nonempty Magnitude. Default-empty Angle is rejected;
+typed-empty Angle remains accepted. Empty outputs follow the shared helpers'
+native metadata behavior, with direct UMat observation rather than transfers.
+
+Radians remain default; Degrees is explicit. Fast angles retain approximately
+0.3-degree accuracy and do not imply a strict half-open turn interval.
+Coordinates retain native approximations, not libc bit-pattern guarantees.
+UMat production inputs and outputs remain UMat, without new host staging;
+OpenCL availability and actual kernel execution depend on the native runtime.
+
 ## Project names
 
 Several related names appear in the repository:

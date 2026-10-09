@@ -943,6 +943,15 @@ package OpenCV.Core is
    --  including Float16 are rejected.
    function Cart_To_Polar
      (X, Y : Mat; Units : Angle_Unit := Radians) return Polar_Coordinates;
+   procedure Cart_To_Polar
+     (X, Y             : Mat;
+      Magnitude, Angle : in out Mat;
+      Units            : Angle_Unit := Radians);
+   --  Writes both caller-owned destinations in one native transform.
+   --  Compatible whole/Region storage is reused; each mismatched output
+   --  detaches independently. Outputs must be distinct native objects and
+   --  must not be exactly either source. Distinct headers with overlapping
+   --  storage are unsupported. Temporary Mat views cannot be outputs.
    --  Returns independently owned X and Y Mats with Angle's shape, depth,
    --  and channel count. Angle is the authoritative operand and must be
    --  Float32 or Float64. When Magnitude is non-empty, it must have the
@@ -960,6 +969,16 @@ package OpenCV.Core is
       return Cartesian_Coordinates;
    function Polar_To_Cart
      (Angle : Mat; Units : Angle_Unit := Radians) return Cartesian_Coordinates;
+   procedure Polar_To_Cart
+     (Magnitude, Angle : Mat;
+      X, Y             : in out Mat;
+      Units            : Angle_Unit := Radians);
+   procedure Polar_To_Cart
+     (Angle : Mat; X, Y : in out Mat; Units : Angle_Unit := Radians);
+   --  Same paired destination/alias rules as Cart_To_Polar. Empty Magnitude
+   --  means unit magnitude, including the angle-only procedure. The existing
+   --  pre-4.10 Float64 correction also writes compatible Region storage.
+   --  Empty-Magnitude N-D Angle support follows the function's contract.
    --  Returns an independently owned full-complex Discrete Fourier
    --  Transform of Self using OpenCV 4.10 cv::dft. This is not DCT,
    --  a packed CCS spectrum, a batched DFT_ROWS transform, or an
@@ -1467,6 +1486,11 @@ package OpenCV.Core is
    function Cart_To_Polar
      (X, Y : UMat; Units : Angle_Unit := Radians)
       return UMat_Polar_Coordinates;
+   procedure Cart_To_Polar
+     (X, Y             : UMat;
+      Magnitude, Angle : in out UMat;
+      Units            : Angle_Unit := Radians);
+   --  Same paired destination/alias rules as Mat, without host staging.
    --  Angle is authoritative. Empty Magnitude (default or typed), or the
    --  angle-only overload, means unit magnitude. Non-empty Magnitude must
    --  match Angle's 2-D shape, Float32/Float64 depth, and channels.
@@ -1476,6 +1500,14 @@ package OpenCV.Core is
    function Polar_To_Cart
      (Angle : UMat; Units : Angle_Unit := Radians)
       return UMat_Cartesian_Coordinates;
+   procedure Polar_To_Cart
+     (Magnitude, Angle : UMat;
+      X, Y             : in out UMat;
+      Units            : Angle_Unit := Radians);
+   procedure Polar_To_Cart
+     (Angle : UMat; X, Y : in out UMat; Units : Angle_Unit := Radians);
+   --  Empty Magnitude means unit magnitude; native UMat residency and the
+   --  existing typed-empty/legacy Float64 helper behavior are preserved.
 
    function Bitwise_And (Left, Right : Mat) return Mat;
    function Bitwise_And (Left, Right, Mask : Mat) return Mat;

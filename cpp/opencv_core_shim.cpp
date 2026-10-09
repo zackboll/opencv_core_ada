@@ -5406,6 +5406,99 @@ opencv_core_status opencv_core_umat_phase_into(
     } catch (...) { return translate_current_exception(); }
 }
 
+extern "C++" {
+namespace {
+template <typename Handle>
+static opencv_core_status polar_destination_preflight(
+    const Handle *first, const Handle *second, uint8_t degrees,
+    Handle *out_first, Handle *out_second) {
+    if (!first || !second || !out_first || !out_second)
+        return invalid_argument("null polar source or destination handle");
+    if (degrees > 1)
+        return invalid_argument("angle_in_degrees must be 0 or 1");
+    // ABI safety: 4.1 does not reject identical output objects before writing
+    // two different results into one object. 4.6 forbids exact source/output
+    // identity; 4.1 can overwrite source values before later native reads.
+    // Reject all exact output identities before either output is mutated,
+    // providing one portable boundary rather than version-dependent writes.
+    if (out_first == out_second || first == out_first || first == out_second ||
+        second == out_first || second == out_second)
+        return invalid_argument("polar outputs must be distinct from sources and each other");
+    return OPENCV_CORE_OK;
+}
+}
+}
+
+opencv_core_status opencv_core_mat_cart_to_polar_into(
+    const opencv_core_mat_handle *x, const opencv_core_mat_handle *y,
+    uint8_t angle_in_degrees, opencv_core_mat_handle *magnitude_destination,
+    opencv_core_mat_handle *angle_destination) {
+    clear_error();
+    const auto status = polar_destination_preflight(
+        x, y, angle_in_degrees, magnitude_destination, angle_destination);
+    if (status != OPENCV_CORE_OK) return status;
+    // ABI safety: create/release can sever a callback-scoped external or
+    // selected Mat capability. Preflight both outputs before native mutation.
+    if (magnitude_destination->temporary_external_view ||
+        angle_destination->temporary_external_view)
+        return invalid_argument("temporary Mat cannot be a polar destination");
+    try {
+        dense_cart_to_polar(x->value, y->value, magnitude_destination->value,
+                            angle_destination->value, angle_in_degrees != 0);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_mat_polar_to_cart_into(
+    const opencv_core_mat_handle *magnitude, const opencv_core_mat_handle *angle,
+    uint8_t angle_in_degrees, opencv_core_mat_handle *x_destination,
+    opencv_core_mat_handle *y_destination) {
+    clear_error();
+    const auto status = polar_destination_preflight(
+        magnitude, angle, angle_in_degrees, x_destination, y_destination);
+    if (status != OPENCV_CORE_OK) return status;
+    // ABI safety: create/release can sever a callback-scoped external or
+    // selected Mat capability. Preflight both outputs before native mutation.
+    if (x_destination->temporary_external_view ||
+        y_destination->temporary_external_view)
+        return invalid_argument("temporary Mat cannot be a polar destination");
+    try {
+        dense_polar_to_cart(magnitude->value, angle->value, x_destination->value,
+                            y_destination->value, angle_in_degrees != 0);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_umat_cart_to_polar_into(
+    const opencv_core_umat_handle *x, const opencv_core_umat_handle *y,
+    uint8_t angle_in_degrees, opencv_core_umat_handle *magnitude_destination,
+    opencv_core_umat_handle *angle_destination) {
+    clear_error();
+    const auto status = polar_destination_preflight(
+        x, y, angle_in_degrees, magnitude_destination, angle_destination);
+    if (status != OPENCV_CORE_OK) return status;
+    try {
+        dense_cart_to_polar(x->value, y->value, magnitude_destination->value,
+                            angle_destination->value, angle_in_degrees != 0);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_umat_polar_to_cart_into(
+    const opencv_core_umat_handle *magnitude, const opencv_core_umat_handle *angle,
+    uint8_t angle_in_degrees, opencv_core_umat_handle *x_destination,
+    opencv_core_umat_handle *y_destination) {
+    clear_error();
+    const auto status = polar_destination_preflight(
+        magnitude, angle, angle_in_degrees, x_destination, y_destination);
+    if (status != OPENCV_CORE_OK) return status;
+    try {
+        dense_polar_to_cart(magnitude->value, angle->value, x_destination->value,
+                            y_destination->value, angle_in_degrees != 0);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
 opencv_core_status
 opencv_core_mat_magnitude(const opencv_core_mat_handle *x,
                           const opencv_core_mat_handle *y,
