@@ -4175,6 +4175,30 @@ package body OpenCV.Core is
       return Result;
    end Magnitude;
 
+   procedure Magnitude (X, Y : UMat; Destination : in out UMat) is
+   begin
+      Validate_Matching_Float_Operands (X, Y, "Magnitude");
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Magnitude_Into
+           (X.Handle, Y.Handle, Destination.Handle),
+         "UMat destination Magnitude");
+   end Magnitude;
+
+   procedure Phase
+     (X, Y : UMat; Destination : in out UMat; Units : Angle_Unit := Radians) is
+   begin
+      Validate_Matching_Float_Operands (X, Y, "Phase");
+      Raise_On_Error
+        (OpenCV.Internal.C_API.UMat_Phase_Into
+           (X.Handle,
+            Y.Handle,
+            (if Units = Degrees
+             then OpenCV.Internal.C_API.C_True
+             else OpenCV.Internal.C_API.C_False),
+            Destination.Handle),
+         "UMat destination Phase");
+   end Phase;
+
    function Phase (X, Y : UMat; Units : Angle_Unit := Radians) return UMat is
       Result : UMat;
       Handle : aliased OpenCV.Internal.C_API.UMat_Handle :=
@@ -4333,6 +4357,36 @@ package body OpenCV.Core is
       Result.Handle := New_Handle;
       return Result;
    end Magnitude;
+
+   procedure Magnitude (X, Y : Mat; Destination : in out Mat) is
+   begin
+      Validate_Matching_Float_Operands (X, Y, "Magnitude");
+      if Destination.Temporary_View then
+         raise OpenCV_Error with "temporary Mat cannot be a math destination";
+      end if;
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Magnitude_Into
+           (X.Handle, Y.Handle, Destination.Handle),
+         "Mat destination Magnitude");
+   end Magnitude;
+
+   procedure Phase
+     (X, Y : Mat; Destination : in out Mat; Units : Angle_Unit := Radians) is
+   begin
+      Validate_Matching_Float_Operands (X, Y, "Phase");
+      if Destination.Temporary_View then
+         raise OpenCV_Error with "temporary Mat cannot be a math destination";
+      end if;
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Phase_Into
+           (X.Handle,
+            Y.Handle,
+            (if Units = Degrees
+             then OpenCV.Internal.C_API.C_True
+             else OpenCV.Internal.C_API.C_False),
+            Destination.Handle),
+         "Mat destination Phase");
+   end Phase;
 
    function Phase (X, Y : Mat; Units : Angle_Unit := Radians) return Mat is
       Result           : Mat;

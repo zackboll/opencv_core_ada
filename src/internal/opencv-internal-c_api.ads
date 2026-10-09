@@ -1767,6 +1767,18 @@ package OpenCV.Internal.C_API is
      (X, Y : Mat_Handle; Result : access Mat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_mat_magnitude";
 
+   function Mat_Magnitude_Into (X, Y, Destination : Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_magnitude_into";
+
+   function Mat_Phase_Into
+     (X, Y             : Mat_Handle;
+      Angle_In_Degrees : C_Boolean;
+      Destination      : Mat_Handle) return Status
+   with Import, Convention => C, External_Name => "opencv_core_mat_phase_into";
+
    function Mat_Phase
      (X, Y             : Mat_Handle;
       Angle_In_Degrees : C_Boolean;
@@ -2223,6 +2235,19 @@ package OpenCV.Internal.C_API is
    function UMat_Magnitude
      (X, Y : UMat_Handle; Result : access UMat_Handle) return Status
    with Import, Convention => C, External_Name => "opencv_core_umat_magnitude";
+   function UMat_Magnitude_Into (X, Y, Destination : UMat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_magnitude_into";
+   function UMat_Phase_Into
+     (X, Y             : UMat_Handle;
+      Angle_In_Degrees : C_Boolean;
+      Destination      : UMat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_umat_phase_into";
    function UMat_Phase
      (X, Y             : UMat_Handle;
       Angle_In_Degrees : C_Boolean;

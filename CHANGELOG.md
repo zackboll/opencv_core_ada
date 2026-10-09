@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Add reusable Magnitude and Phase destinations for Mat and UMat through four
+  narrow C exports using actual native outputs. Preserve whole/Region storage,
+  mismatch detachment, matching 2-D Float32/Float64 source policy, independent
+  channels, native precision and fast-angle degree/radian selection. Support
+  exact/shallow source aliases, not partial overlap. Preserve typed-empty UMat
+  helpers, prohibit temporary Mat outputs, and retain native UMat residency.
+
 - Add reusable Sqrt, Exp, Log, and Pow destinations for Mat and UMat through
   eight C exports using actual native outputs. Preserve whole/Region reuse,
   mismatch detachment, N-D storage, native approximations and source policies.

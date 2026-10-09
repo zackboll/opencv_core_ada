@@ -1687,6 +1687,50 @@ Element-wise mathematics and coordinate conversion:
 - `Cart_To_Polar`
 - `Polar_To_Cart`
 
+### Reusable Magnitude and Phase destinations
+
+Both Mat and UMat retain their allocation-returning functions and also accept
+an actual caller-owned output:
+
+```ada
+Magnitude
+  (X           => Horizontal,
+   Y           => Vertical,
+   Destination => Existing);
+
+Phase
+  (X           => Horizontal,
+   Y           => Vertical,
+   Destination => Existing,
+   Units       => Degrees);
+```
+
+Compatible whole and Region destinations retain their storage and geometry;
+shallow aliases observe the writes. A mismatched shape, depth, or channel count
+detaches the destination through native output creation, leaving old Parent
+storage and retained aliases intact. No temporary result/copy-back is used.
+
+Sources must have matching 2-D layout, Float32 or Float64 depth, and channel
+count. Channels are computed independently. Genuine N-D and default-empty
+sources are rejected before destination mutation. Matching typed-empty sources
+retain existing native Mat empty behavior and the source-typed UMat empty
+compatibility helper; empty metadata is not a universal cross-version release
+contract. Query UMat metadata directly rather than through an empty transfer.
+
+Magnitude preserves native `sqrt(X*X + Y*Y)` precision/overflow behavior.
+Phase computes native `atan2(Y, X)` angles with approximately 0.3-degree
+accuracy; omitted units mean Radians. Degrees may be selected explicitly.
+Use angular wraparound distance near the full-turn boundary rather than a
+strict half-open interval or exact mathematical bit comparisons. Special
+floating values retain native backend behavior, without normalization.
+
+Exact X/Y destination aliases and distinct shallow source aliases are
+supported, including X=Y. Arbitrarily partially overlapping Regions are not
+supported. Temporary external/selected Mat sources are legal, but temporary
+Mat destinations are prohibited because native output creation can release or
+rebind callback-scoped storage. UMat stays native at the binding boundary;
+OpenCV may choose CPU fallback without binding-level host staging.
+
 ### Arithmetic
 
 Explicit Mat/Mat operations include:
