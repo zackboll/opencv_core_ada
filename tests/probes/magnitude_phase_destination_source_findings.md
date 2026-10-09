@@ -113,6 +113,15 @@ Direct metadata tests deliberately do not transfer empty UMat to Mat, because
 that transfer may discard metadata. Observed helper and Mat-native 0x0 outputs
 on all four builds have rank two and source type, fresh and reused.
 
+Isolated --raw-empty native UMat CPU research confirms why these observations
+must not be generalized to helper behavior. With a fresh native output, all
+four versions produce rank zero/type zero. With reused native CV_16SC3 output,
+4.x produces rank two/type 19 (old depth/channels), while 5.0 produces rank
+zero/type 67 (old channels with release-reset depth). Both are empty, and old
+aliases survive. The unchanged production UMat helper instead reconstructs
+rank two/source type. No generalized raw-empty bypass or helper correction is
+introduced. OpenCL-empty raw research is intentionally not run in normal tests.
+
 Temporary external and selected Mat sources remain legal. Public and raw
 temporary outputs reject before native execution; tests preserve rank, shape,
 format, values, selected Parent, and padded external backing. Raw tests also
