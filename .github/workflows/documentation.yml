@@ -1,0 +1,72 @@
+name: Ada API Documentation
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Serialize main publication; cancel superseded runs before they can deploy.
+concurrency:
+  group: documentation-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install native prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential libopencv-dev pkg-config unzip python3
+      - name: Install Alire 2.1.1
+        run: |
+          curl --fail --location --output /tmp/alire.zip https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip
+          unzip /tmp/alire.zip -d /tmp/alire
+          sudo install -m 0755 /tmp/alire/bin/alr /usr/local/bin/alr
+      - name: Select qualified compiler and project tools
+        run: |
+          alr -n --force toolchain --select gnat_native=16.1.0 gprbuild=26.0.1
+          alr toolchain
+      - name: Generate and validate public API
+        run: sh scripts/generate_docs.sh
+      - name: Upload review artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ada-api-${{ github.sha }}
+          path: _site/
+          if-no-files-found: error
+      - name: Upload generator diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gnatdoc-diagnostics-${{ github.sha }}
+          path: obj/docs/gnatdoc.log
+      - name: Configure Pages
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/configure-pages@v5
+      - name: Upload Pages artifact
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site/
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

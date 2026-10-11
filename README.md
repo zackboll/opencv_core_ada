@@ -4,6 +4,10 @@
 
 A thick, idiomatic Ada 2022 binding for the **OpenCV Core** module.
 
+API documentation is generated from the public Ada specifications with GNATdoc.
+See [documentation generation and comment policy](docs/documentation.md) for
+local commands, PR artifacts, and the main-only GitHub Pages publishing setup.
+
 `opencv_core_ada` exposes OpenCV Core through Ada-controlled resources, strong
 types, records, overloads, discriminated results, generics, scoped zero-copy
 access, and Ada exceptions while keeping the C++ ABI behind a small stable C

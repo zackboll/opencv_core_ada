@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenCV Core Ada</title>
+<body>
+<main>
+<h1>OpenCV Core Ada</h1>
+<p>A thick, idiomatic Ada 2022 binding for the OpenCV Core module, with
+controlled resources, strong types, typed access and Ada exceptions.</p>
+<p><a href="api/index.html">Generated Ada API reference</a></p>
+<p>The package specifications are the authoritative API declarations.
+The <a href="https://github.com/zackboll/opencv_core_ada/blob/main/README.md">repository README</a>
+defines the supported OpenCV version policy (currently 4.1 through 5.0,
+inclusive; not every intermediate release is explicitly tested).</p>
+<h2>Install with Alire</h2>
+<pre>alr with opencv_core</pre>
+<p>Install the native OpenCV development library and pkg-config as described
+in the README. This crate covers Core only, not image codecs or GUI modules.</p>
+<h2>Basic usage</h2>
+<pre>with OpenCV.Core;
+
+procedure Example is
+   use OpenCV.Core;
+   Image : constant Mat := Create (2, 3, (Depth =&gt; UInt8, Channels =&gt; 1));
+   Copy  : constant Mat := Image.Clone;
+begin
+   pragma Assert (Copy.Rows = 2 and then Copy.Columns = 3);
+end Example;</pre>
+<p>Assignment shares OpenCV storage; <code>Clone</code> makes a deep copy.</p>
+<nav>
+<a href="https://github.com/zackboll/opencv_core_ada">Source repository</a> ·
+<a href="https://github.com/zackboll/opencv_core_ada/releases">Releases</a> ·
+<a href="https://github.com/zackboll/opencv_core_ada/issues">Issue tracker</a>
+</nav>
+</main>
+</body>
+</html>
