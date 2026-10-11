@@ -1014,16 +1014,92 @@ jobs:
           esac
           alr exec -- pacman --version
 
-      - name: Install OpenCV through Alire MSYS2
+      - name: Synchronize Alire MSYS2 and install OpenCV
         run: |
           set -eu
-          alr exec -- pacman -Sy --noconfirm --needed \
+
+          # MSYS2 only supports full upgrades. Refreshing databases and then
+          # installing selected packages (-Sy) is a partial upgrade: newer
+          # libgcc/libstdc++ can break exact version dependencies of packages
+          # already present in the Alire-managed installation (cc-libs,
+          # libgfortran, libquadmath).
+          #
+          # Official procedure: https://www.msys2.org/docs/updating/
+          # and https://www.msys2.org/docs/ci/
+          # A core upgrade replaces the running pacman and exits non-zero so the
+          # caller starts a fresh process. Any other failure must still fail CI.
+          upgrade_msys2() {
+            set +e
+            output=$(alr exec -- pacman -Syu --noconfirm 2>&1)
+            status=$?
+            set -e
+            printf '%s\n' "${output}"
+            if [ "${status}" -eq 0 ]; then
+              return 0
+            fi
+            if printf '%s\n' "${output}" | grep -Fq \
+              'To complete this update all MSYS2 processes'; then
+              echo "MSYS2 core upgrade requested a fresh process (status ${status})"
+              return 0
+            fi
+            echo "error: MSYS2 full upgrade failed with status ${status}" >&2
+            return "${status}"
+          }
+
+          echo "=== MSYS2 full upgrade (stage 1) ==="
+          upgrade_msys2
+          echo "=== MSYS2 full upgrade (stage 2) ==="
+          upgrade_msys2
+          echo "=== MSYS2 full upgrade (stage 3, must already be current) ==="
+          alr exec -- pacman -Syu --noconfirm
+
+          echo "=== Install OpenCV from synchronized repositories ==="
+          alr exec -- pacman -S --noconfirm --needed \
             mingw-w64-x86_64-opencv \
             mingw-w64-x86_64-pkg-config \
             mingw-w64-x86_64-gcc
 
           echo "=== Installed MSYS2 packages ==="
-          alr exec -- pacman -Q mingw-w64-x86_64-opencv mingw-w64-x86_64-pkg-config mingw-w64-x86_64-gcc
+          alr exec -- pacman -Q \
+            mingw-w64-x86_64-opencv \
+            mingw-w64-x86_64-pkg-config \
+            mingw-w64-x86_64-gcc \
+            mingw-w64-x86_64-libgcc \
+            mingw-w64-x86_64-libstdc++ \
+            mingw-w64-x86_64-cc-libs \
+            mingw-w64-x86_64-libgfortran \
+            mingw-w64-x86_64-libquadmath
+
+          echo "=== GCC runtime dependency consistency ==="
+          runtime_versions=$(
+            alr exec -- pacman -Q \
+              mingw-w64-x86_64-libgcc \
+              mingw-w64-x86_64-libstdc++ \
+              mingw-w64-x86_64-cc-libs \
+              mingw-w64-x86_64-libgfortran \
+              mingw-w64-x86_64-libquadmath \
+              | awk '{print $2}' \
+              | sort -u
+          )
+          version_count=$(printf '%s\n' "${runtime_versions}" | grep -c .)
+          printf '%s\n' "${runtime_versions}"
+          if [ "${version_count}" -ne 1 ]; then
+            echo "error: GCC runtime packages are not the same version" >&2
+            exit 1
+          fi
+
+          echo "=== Toolchain still visible after MSYS2 upgrade ==="
+          alr version
+          toolchain=$(alr toolchain)
+          printf '%s\n' "${toolchain}"
+          printf '%s\n' "${toolchain}" | grep -q 'gnat_native[[:space:]]*16\.1\.0'
+          printf '%s\n' "${toolchain}" | grep -q 'gprbuild[[:space:]]*26\.0\.1'
+          alr exec -- gnat --version
+          alr exec -- gprbuild --version
+          alr exec -- g++ --version
+          alr exec -- which x86_64-w64-mingw32-pkg-config
+          alr exec -- x86_64-w64-mingw32-pkg-config --modversion opencv5
+
 
       - name: Demonstrate pkg-config collision
         run: |
