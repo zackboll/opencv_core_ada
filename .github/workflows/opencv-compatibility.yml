@@ -1090,13 +1090,12 @@ jobs:
 
           echo "=== Toolchain still visible after MSYS2 upgrade ==="
           alr version
-          alr toolchain
-          gnat_version=$(alr exec -- gnat --version)
-          gprbuild_version=$(alr exec -- gprbuild --version)
-          printf '%s\n' "${gnat_version}"
-          printf '%s\n' "${gprbuild_version}"
-          printf '%s\n' "${gnat_version}" | grep -q '16\.1\.0'
-          printf '%s\n' "${gprbuild_version}" | grep -q '26\.0\.1'
+          toolchain=$(alr toolchain)
+          printf '%s\n' "${toolchain}"
+          printf '%s\n' "${toolchain}" | grep -q 'gnat_native[[:space:]]*16\.1\.0'
+          printf '%s\n' "${toolchain}" | grep -q 'gprbuild[[:space:]]*26\.0\.1'
+          alr exec -- gnat --version
+          alr exec -- gprbuild --version
           alr exec -- g++ --version
           alr exec -- which x86_64-w64-mingw32-pkg-config
           alr exec -- x86_64-w64-mingw32-pkg-config --modversion opencv5
