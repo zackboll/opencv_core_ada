@@ -4256,6 +4256,19 @@ package body OpenCV.Core is
          "UMat destination Cart_To_Polar");
    end Cart_To_Polar;
 
+   procedure Cart_To_Polar
+     (X, Y        : UMat;
+      Destination : in out UMat_Polar_Coordinates;
+      Units       : Angle_Unit := Radians) is
+   begin
+      Cart_To_Polar
+        (X         => X,
+         Y         => Y,
+         Magnitude => Destination.Magnitude,
+         Angle     => Destination.Angle,
+         Units     => Units);
+   end Cart_To_Polar;
+
    procedure Polar_To_Cart
      (Magnitude, Angle : UMat;
       X, Y             : in out UMat;
@@ -4282,6 +4295,31 @@ package body OpenCV.Core is
       Empty_Magnitude : UMat;
    begin
       Polar_To_Cart (Empty_Magnitude, Angle, X, Y, Units);
+   end Polar_To_Cart;
+
+   procedure Polar_To_Cart
+     (Magnitude, Angle : UMat;
+      Destination      : in out UMat_Cartesian_Coordinates;
+      Units            : Angle_Unit := Radians) is
+   begin
+      Polar_To_Cart
+        (Magnitude  => Magnitude,
+         Angle      => Angle,
+         X          => Destination.X,
+         Y          => Destination.Y,
+         Units      => Units);
+   end Polar_To_Cart;
+
+   procedure Polar_To_Cart
+     (Angle       : UMat;
+      Destination : in out UMat_Cartesian_Coordinates;
+      Units       : Angle_Unit := Radians) is
+   begin
+      Polar_To_Cart
+        (Angle       => Angle,
+         X           => Destination.X,
+         Y           => Destination.Y,
+         Units       => Units);
    end Polar_To_Cart;
 
    function Cart_To_Polar
@@ -4648,6 +4686,19 @@ package body OpenCV.Core is
          "Mat destination Cart_To_Polar");
    end Cart_To_Polar;
 
+   procedure Cart_To_Polar
+     (X, Y        : Mat;
+      Destination : in out Polar_Coordinates;
+      Units       : Angle_Unit := Radians) is
+   begin
+      Cart_To_Polar
+        (X         => X,
+         Y         => Y,
+         Magnitude => Destination.Magnitude,
+         Angle     => Destination.Angle,
+         Units     => Units);
+   end Cart_To_Polar;
+
    procedure Polar_To_Cart
      (Magnitude, Angle : Mat; X, Y : in out Mat; Units : Angle_Unit := Radians)
    is
@@ -4670,6 +4721,31 @@ package body OpenCV.Core is
       Empty_Magnitude : Mat;
    begin
       Polar_To_Cart (Empty_Magnitude, Angle, X, Y, Units);
+   end Polar_To_Cart;
+
+   procedure Polar_To_Cart
+     (Magnitude, Angle : Mat;
+      Destination      : in out Cartesian_Coordinates;
+      Units            : Angle_Unit := Radians) is
+   begin
+      Polar_To_Cart
+        (Magnitude => Magnitude,
+         Angle     => Angle,
+         X         => Destination.X,
+         Y         => Destination.Y,
+         Units     => Units);
+   end Polar_To_Cart;
+
+   procedure Polar_To_Cart
+     (Angle       : Mat;
+      Destination : in out Cartesian_Coordinates;
+      Units       : Angle_Unit := Radians) is
+   begin
+      Polar_To_Cart
+        (Angle => Angle,
+         X     => Destination.X,
+         Y     => Destination.Y,
+         Units => Units);
    end Polar_To_Cart;
 
    type DFT_Channel_Requirement is (Real_Or_Complex, Real_Only, Complex_Only);
