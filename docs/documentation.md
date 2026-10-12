@@ -86,13 +86,16 @@ the comparison. Ordinary non-warning log text is ignored. Removed warnings are
 printed and do not fail the build. Do not silence a warning with `@exclude`,
 an empty comment, or a changed generator invocation.
 
-The current baseline contains 4,299 identities. It was 4,484 raw warnings on
+The current baseline contains 4,134 identities. It was 4,484 raw warnings on
 main `53c14c469b22ba1c608836d9a16c0947e2c80323`, 4,460 after documenting the
 six polar record-destination overloads, 4,395 after documenting the shared
 `OpenCV` value types and the `Fixed_Matrices` and `Vectors` generic foundations
-(65 warnings removed, none added), and 4,299 after documenting the foundational
+(65 warnings removed, none added), 4,299 after documenting the foundational
 `OpenCV.Core` types on main `73bf27f7c04fc650fbfcecf175517c2487e9af24`
-(96 removed, none added). Regenerate it only from a complete pinned
+(96 removed, none added), and 4,134 after documenting the Mat and UMat
+lifecycle, metadata and region APIs on main
+`4b0a4dcdeb6f068b2293ac8871ac5b8a1ddf8614` (165 removed, none added).
+Regenerate it only from a complete pinned
 GNATdoc 26.0.0 log and the sources of that same revision:
 
 ```sh
@@ -105,15 +108,40 @@ not remain attached to the same declaration after later comment edits.
 
 ### Remaining warning backlog
 
-Counts below are the 4,299 baseline warnings, grouped by GNATdoc category:
+Counts below are the 4,134 baseline warnings, grouped by GNATdoc category:
 
 | Category | Warnings |
 | --- | ---: |
-| Undocumented parameter | 2,988 |
-| Undocumented entity | 869 |
-| Undocumented return | 356 |
+| Undocumented parameter | 2,900 |
+| Undocumented entity | 836 |
+| Undocumented return | 312 |
 | Undocumented component | 49 |
 | Undocumented enumeration literal | 37 |
+
+The Mat/UMat lifecycle task (DOC-005) removed 165 warnings: 33 undocumented
+entities, 88 undocumented parameters and 44 undocumented return values; none
+were added. By family: lifecycle and conversion 55 (`Create` 12,
+`Create_UMat` 7, `Clone` 6, `Copy_To` 8, `Convert_To` 22), metadata 82 and
+regions and slicing 28 (`Region`, `Slice`, `Locate_Region` and
+`Adjust_Region`, Mat and UMat). Every overload was documented
+individually. `Dimensions` is documented for Mat only, and the UMat
+`Copy_To` function is documented as the only UMat form, so the Mat and UMat
+`Copy_To` overload sets are explicitly not symmetrical. `Set_To`,
+`Reshape`, `Row_View`, `Column_View`, `Diagonal_View`, arithmetic and the private
+controlled-type hooks were deliberately left alone. All 165 targeted warnings were
+eliminated, and no targeted warning remains. Decisions: the two stale
+trailing UMat comments were replaced by leading blocks, because leading
+style would otherwise attach them to the next declaration; `Rows`, `Columns`
+and `Dimensions` raise only for Mats of more than two dimensions (a default
+Mat reports 0 x 0), and no cross-version claim about empty headers was made
+beyond what the existing contracts already state.
+
+`validate_docs.py` now checks these APIs per overload. Sections are keyed by
+the complete normalized declaration and by native GNATdoc anchor, never by
+the bare name, so one overload's text cannot satisfy another overload's
+check; the leading prose, `Parameters` and `Return Value` text are each
+required inside the correct section. The older simplified section key used
+for type declarations is unchanged and is not used for overloaded operations.
 
 The Core type task (DOC-004) removed 96 warnings: 18 undocumented entities,
 52 enumeration literals and 26 record components. It covered the
@@ -141,7 +169,7 @@ By public package family:
 | Family | Warnings |
 | --- | ---: |
 | `OpenCV.Core` typed `*_mat_view` packages | 1,245 |
-| `OpenCV.Core` (`opencv-core.ads`) | 1,141 |
+| `OpenCV.Core` (`opencv-core.ads`) | 976 |
 | `OpenCV.Core` typed `*_access` packages | 890 |
 | `OpenCV.Core` typed `*_row_access` packages | 554 |
 | `OpenCV.Core` typed `*_buffer_access` packages | 208 |
@@ -157,9 +185,10 @@ Recommended cleanup order, one family per review:
 
 1. `OpenCV`, `OpenCV.Core.Fixed_Matrices` and `OpenCV.Core.Vectors` (done).
 2. `OpenCV.Core` foundational types, enumerations and result records (done).
-3. `Mat`/`UMat` operations and lifecycle APIs in `opencv-core.ads`, where prose
-   often exists but parameters and returns still lack `@param` and `@return`,
-   followed by the other Core operation families.
+3. `Mat`/`UMat` lifecycle, metadata and region APIs in `opencv-core.ads`
+   (done, DOC-005). Next: Mat/UMat mutation (`Set_To`), `Reshape`, and the
+   remaining view APIs (`Row_View`, `Column_View`, `Diagonal_View`), then the
+   arithmetic and destination-operation families.
 4. `Persistence`, `Sparse`, `Transfers`, and `Module_Interop`.
 5. One typed-access generic pattern (`Get`/`Set`, row, buffer, then mat view),
    applied consistently to its instances rather than documented one depth at a
@@ -197,7 +226,7 @@ checked against actual specifications, not a fixed count.
 Existing comments mix leading and trailing styles. Generation uses **leading**
 because most long public policy comments precede declarations. Some historical
 trailing comments therefore do not attach to the intended entity. No comments
-are deleted or mass-migrated. The current run has 4,299 documentation
+are deleted or mass-migrated. The current run has 4,134 documentation
 warnings. This is not evidence that declarations are missing: validation checks
 the pages and representative declarations separately. No unsupported public
 declaration was identified in the inspected representative pages; this is not
