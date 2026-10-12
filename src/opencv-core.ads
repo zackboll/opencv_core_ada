@@ -286,15 +286,53 @@ package OpenCV.Core is
    --  OpenCV.Core.Float16_Access stores and loads the exact encoding.
    type Float16_Value is private;
 
+   --  Reinterprets a 16-bit pattern as a Float16_Value without numeric
+   --  conversion. Every pattern is accepted, including NaN payloads, signed
+   --  zeros, infinities, and subnormals, and is retained exactly.
+   --  @param Bits The IEEE-754 binary16 bit pattern.
+   --  @return The Float16_Value holding exactly those bits.
    function Float16_From_Bits
      (Bits : Interfaces.Unsigned_16) return Float16_Value;
+
+   --  Returns the exact stored binary16 bit pattern of Value. This is not a
+   --  numeric conversion; use To_Float32 for the numeric value.
+   --  @param Value The Float16_Value to inspect.
+   --  @return The stored 16-bit pattern.
    function Float16_Bits (Value : Float16_Value) return Interfaces.Unsigned_16;
 
+   --  Reports whether Value is a NaN: exponent bits all one and a nonzero
+   --  fraction. The NaN sign and payload are not considered.
+   --  @param Value The Float16_Value to classify.
+   --  @return True when Value is a NaN.
    function Is_NaN (Value : Float16_Value) return Boolean;
+
+   --  Reports whether Value is positive or negative infinity: exponent bits
+   --  all one and a zero fraction.
+   --  @param Value The Float16_Value to classify.
+   --  @return True when Value is an infinity of either sign.
    function Is_Infinite (Value : Float16_Value) return Boolean;
+
+   --  Reports whether Value is neither an infinity nor a NaN. Zeros and
+   --  subnormals are finite.
+   --  @param Value The Float16_Value to classify.
+   --  @return True when the exponent bits are not all one.
    function Is_Finite (Value : Float16_Value) return Boolean;
+
+   --  Reports whether Value is subnormal: exponent bits all zero and a
+   --  nonzero fraction. Positive and negative zero are not subnormal.
+   --  @param Value The Float16_Value to classify.
+   --  @return True when Value is a nonzero subnormal of either sign.
    function Is_Subnormal (Value : Float16_Value) return Boolean;
+
+   --  Reports whether Value is positive or negative zero.
+   --  @param Value The Float16_Value to classify.
+   --  @return True when the exponent and fraction bits are all zero.
    function Is_Zero (Value : Float16_Value) return Boolean;
+
+   --  Reports the stored sign bit. It is True for negative zero, negative
+   --  finite values, negative infinity, and NaNs with the sign bit set.
+   --  @param Value The Float16_Value to inspect.
+   --  @return True when bit 15 is set.
    function Is_Negative (Value : Float16_Value) return Boolean;
 
    --  Converts IEEE binary32 to binary16 using round-to-nearest,
@@ -306,6 +344,8 @@ package OpenCV.Core is
    --  remains NaN. Payload width shrinks, so NaN encodings are not
    --  required to round-trip exactly through Float32. This is numeric
    --  conversion, not Float16_From_Bits.
+   --  @param Value The binary32 value to convert.
+   --  @return The nearest binary16 value under the stated rounding rule.
    function To_Float16 (Value : Float32_Value) return Float16_Value;
 
    --  Expands binary16 to binary32 exactly for every finite Float16
@@ -313,6 +353,8 @@ package OpenCV.Core is
    --  NaNs, with the binary16 payload placed in the most significant
    --  bits of the binary32 fraction. This is numeric conversion, not
    --  Float16_Bits.
+   --  @param Value The binary16 value to convert.
+   --  @return The equal binary32 value.
    function To_Float32 (Value : Float16_Value) return Float32_Value;
 
    --  Runtime element format of a Mat or UMat.
@@ -504,7 +546,17 @@ package OpenCV.Core is
       Depth       : Depth_Type;
       Scale       : Long_Float := 1.0;
       Offset      : Long_Float := 0.0);
+
+   --  Sets every element of Self in place to Value. Self keeps its shape,
+   --  depth and channel count; Scalar component N initializes channel N.
+   --  Self must have at most four channels, otherwise OpenCV_Error is
+   --  raised, as it is for any failure reported by OpenCV. Writes go
+   --  through Self's header, so every other header sharing Self's storage
+   --  observes the change.
+   --  @param Self The UMat to fill.
+   --  @param Value Per-channel fill value; component N is used for channel N.
    procedure Set_To (Self : in out UMat; Value : Scalar);
+
    --  Creates a distinct UMat header sharing Self's storage for a 2-D region
    --  of interest; no elements are copied and only native UMat headers are
    --  used, without host mapping. Self must be nonempty and exactly 2-D.
@@ -657,6 +709,8 @@ package OpenCV.Core is
    --  deterministic pseudorandom data, not cryptographic randomness. It does
    --  not alter OpenCV's thread-local default RNG and composes with explicit
    --  Fill_Uniform, Fill_Normal, and Shuffle calls.
+   --  @param Generator The generator to advance.
+   --  @param Value The raw 32-bit result of the step.
    procedure Next_Random
      (Generator : in out Random_Number_Generator;
       Value     : out Interfaces.Unsigned_32);
@@ -667,6 +721,13 @@ package OpenCV.Core is
    --  forms consume exactly two MWC Next steps. This deterministic operation
    --  is not cryptographic, does not alter OpenCV's thread-local default RNG,
    --  and composes with explicit Fill_Uniform, Fill_Normal, and Shuffle calls.
+   --  @param Generator The generator to advance.
+   --  @param Lower_Bound Finite inclusive lower bound.
+   --  @param Upper_Bound Finite upper bound, not less than Lower_Bound; it is
+   --  excluded from the result unless equal to Lower_Bound.
+   --  @param Value The drawn value.
+   --  @exception OpenCV_Error Raised when a bound is not finite or the
+   --  bounds are not ordered.
    procedure Uniform_Random
      (Generator   : in out Random_Number_Generator;
       Lower_Bound : Long_Float;
@@ -676,6 +737,10 @@ package OpenCV.Core is
    --  Selects OpenCV's random or Arthur--Vassilvitskii k-means++ center
    --  initialization. Both choices consume OpenCV's global RNG. Cluster
    --  numbers, including their order in Centers, have no semantic meaning.
+   --  @enum Random_Centers Initial centers are chosen randomly from the
+   --  samples.
+   --  @enum Plus_Plus_Centers Initial centers are chosen by the k-means++
+   --  procedure.
    type K_Means_Initialization is (Random_Centers, Plus_Plus_Centers);
 
    --  OpenCV 4.10 k-means always uses both count and epsilon termination.
@@ -683,6 +748,11 @@ package OpenCV.Core is
    --  prevents the silent clamping performed by the native implementation.
    type K_Means_Iteration_Count is range 2 .. 100;
 
+   --  Termination criteria for K_Means. Iteration of an attempt ends when the
+   --  iteration limit is reached or when the cluster centers move by less
+   --  than Epsilon, whichever happens first.
+   --  @field Maximum_Iterations Maximum number of iterations, in 2 .. 100.
+   --  @field Epsilon Center-movement threshold that ends iteration early.
    type K_Means_Criteria is record
       Maximum_Iterations : K_Means_Iteration_Count := 100;
       Epsilon            : Long_Float := 1.0E-4;
@@ -691,12 +761,27 @@ package OpenCV.Core is
    --  Independently owned K_Means outputs. Labels is N x 1 Int32 C1, and
    --  Centers is Cluster_Count x feature-dimension Float32 C1. Compactness is
    --  sum_i ||sample_i - center[labels_i]||**2.
+   --  @field Labels Zero-based cluster index assigned to each sample.
+   --  @field Centers One cluster center per row.
+   --  @field Compactness Sum of squared distances from each sample to its
+   --  assigned center.
    type K_Means_Result is record
       Labels      : Mat;
       Centers     : Mat;
       Compactness : Long_Float;
    end record;
 
+   --  Distance measure used by K_Nearest_Neighbors. Float32 inputs support
+   --  the L1, L2, and squared L2 measures; UInt8 inputs additionally support
+   --  both Hamming measures.
+   --  @enum L1_Distance Sum of absolute coordinate differences.
+   --  @enum L2_Distance Euclidean distance.
+   --  @enum Squared_L2_Distance Squared Euclidean distance, without the
+   --  square root.
+   --  @enum Hamming_Distance Number of differing bits between UInt8 rows.
+   --  @enum Hamming_2_Distance OpenCV's Hamming2 measure, which counts
+   --  differing bits in 2-bit groups (a group counts once if either of its
+   --  bits differs).
    type Batch_Distance_Kind is
      (L1_Distance,
       L2_Distance,
@@ -706,6 +791,10 @@ package OpenCV.Core is
 
    --  Independently owned K-nearest-neighbor outputs. Indices is Int32 C1
    --  and contains zero-based rows of the candidate Mat.
+   --  @field Distances Distance from each query row to each of its nearest
+   --  candidates, nearest first.
+   --  @field Indices Zero-based candidate row of each corresponding entry of
+   --  Distances.
    type Nearest_Neighbor_Result is record
       Distances : Mat;
       Indices   : Mat;
@@ -715,7 +804,9 @@ package OpenCV.Core is
    --  sqrt (X**2 + Y**2). Angle is the corresponding OpenCV fast phase
    --  of (X, Y). Each component has normal Mat controlled ownership and
    --  is independent of the source Mats and of the other component.
-
+   --  @field Magnitude Per-element vector length.
+   --  @field Angle Per-element angle, in the unit requested from the
+   --  producing operation.
    type Polar_Coordinates is record
       Magnitude : Mat;
       Angle     : Mat;
@@ -725,6 +816,8 @@ package OpenCV.Core is
    --  Magnitude * cos (Angle) and Y is Magnitude * sin (Angle).
    --  Each component has normal Mat controlled ownership and
    --  is independent of the source Mats and of the other component.
+   --  @field X Per-element horizontal component.
+   --  @field Y Per-element vertical component.
    type Cartesian_Coordinates is record
       X : Mat;
       Y : Mat;
@@ -735,6 +828,8 @@ package OpenCV.Core is
    --  per-feature average computed by OpenCV. Each field has normal
    --  Mat controlled ownership and is independent of Self and of the
    --  other field.
+   --  @field Covariance The feature covariance matrix.
+   --  @field Mean The per-feature average computed by OpenCV.
    type Covariance_Result is record
       Covariance : Mat;
       Mean       : Mat;
@@ -746,6 +841,9 @@ package OpenCV.Core is
    --  corresponding eigenvectors stored by row. Each field has normal
    --  Mat controlled ownership and is independent of Self and of the
    --  other field.
+   --  @field Eigenvalues N x 1 column of eigenvalues.
+   --  @field Eigenvectors N x N matrix whose rows are the eigenvectors that
+   --  correspond to the eigenvalues.
    type Eigen_Decomposition_Result is record
       Eigenvalues  : Mat;
       Eigenvectors : Mat;
@@ -758,6 +856,11 @@ package OpenCV.Core is
    --  row so that row i corresponds to eigenvalue i. Each field has
    --  normal Mat controlled ownership and is independent of Self and
    --  of the other fields.
+   --  @field Mean Per-feature average.
+   --  @field Eigenvalues K x 1 column of principal variances, in descending
+   --  order.
+   --  @field Eigenvectors One principal direction per row; row i
+   --  corresponds to eigenvalue i.
    type Principal_Component_Analysis_Result is record
       Mean         : Mat;
       Eigenvalues  : Mat;
@@ -770,6 +873,10 @@ package OpenCV.Core is
    --  direction stored in a column corresponding to the eigenvalue in
    --  that column. The fields have normal Mat controlled ownership and
    --  are independent of the input Mats and of each other.
+   --  @field Eigenvalues K x 1 column of discriminant eigenvalues, in
+   --  descending order.
+   --  @field Eigenvectors D x K matrix; each column is the discriminant
+   --  direction for the eigenvalue in the same column position.
    type Linear_Discriminant_Analysis_Result is record
       Eigenvalues  : Mat;
       Eigenvectors : Mat;
@@ -782,6 +889,11 @@ package OpenCV.Core is
    --  columns. V_Transpose is the R x Columns matrix of transposed
    --  right singular vectors. Each field has normal Mat controlled
    --  ownership and is independent of Self and of the other fields.
+   --  @field Singular_Values R x 1 column of nonnegative singular values in
+   --  descending order.
+   --  @field U Rows x R matrix of left singular vectors stored as columns.
+   --  @field V_Transpose R x Columns matrix of transposed right singular
+   --  vectors.
    type Singular_Value_Decomposition_Result is record
       Singular_Values : Mat;
       U               : Mat;
@@ -792,6 +904,10 @@ package OpenCV.Core is
    --  Invertible is True. Inverse has normal Mat controlled ownership
    --  and independent storage. A singular matrix yields Invertible
    --  False rather than a zero-filled placeholder inverse.
+   --  @field Invertible True when the matrix was invertible and Inverse is
+   --  present.
+   --  @field Inverse The inverse matrix. Present only when Invertible is
+   --  True.
    type Inversion_Result (Invertible : Boolean := False) is record
       case Invertible is
          when True =>
@@ -806,6 +922,8 @@ package OpenCV.Core is
    --  Solved is True. Solution has normal Mat controlled ownership
    --  and independent storage. A singular coefficient matrix yields
    --  Solved False rather than a zero-filled placeholder solution.
+   --  @field Solved True when the system was solved and Solution is present.
+   --  @field Solution The solution matrix. Present only when Solved is True.
    type Solve_Result (Solved : Boolean := False) is record
       case Solved is
          when True =>
@@ -818,11 +936,21 @@ package OpenCV.Core is
 
    --  Status of a continuous linear-program maximization. Numerical_Loss means
    --  OpenCV lost a feasible solution through floating-point arithmetic.
+   --  @enum Unique_Optimum The optimum exists and is unique.
+   --  @enum Multiple_Optima Several optima exist; one arbitrary optimum is
+   --  reported.
+   --  @enum Unbounded The objective can grow without bound.
+   --  @enum Infeasible No point satisfies the constraints.
+   --  @enum Numerical_Loss OpenCV reported SOLVELP_LOST after losing a
+   --  feasible solution through floating-point arithmetic.
    type Linear_Program_Status is
      (Unique_Optimum, Multiple_Optima, Unbounded, Infeasible, Numerical_Loss);
 
    --  Unique_Optimum and Multiple_Optima contain one independently owned
    --  solution. The remaining statuses deliberately expose no candidate Mat.
+   --  @field Status Outcome of the optimization; selects the variant.
+   --  @field Solution N x 1 Float64 optimum. Present only for
+   --  Unique_Optimum and Multiple_Optima.
    type Linear_Program_Result (Status : Linear_Program_Status := Infeasible) is
    record
       case Status is
@@ -851,6 +979,12 @@ package OpenCV.Core is
    --  are unchanged, the result owns independent storage, and
    --  non-contiguous Regions are supported. Numerical rounding and SVD
    --  singular-value thresholding apply.
+   --  @param Self The coefficient matrix A, with at least as many rows as
+   --  columns.
+   --  @param Right_Hand_Side The matrix B, with one row per row of Self.
+   --  @return The N x K least-squares solution, in independent storage.
+   --  @exception OpenCV_Error Raised when an operand violates the stated
+   --  shape, depth or channel requirements or OpenCV reports a failure.
    function Solve_Least_Squares (Self : Mat; Right_Hand_Side : Mat) return Mat;
 
    --  Solves a continuous linear program using OpenCV 4.10 simplex: maximize
@@ -868,6 +1002,12 @@ package OpenCV.Core is
    --  are unchanged and non-contiguous Regions are supported. This is
    --  maximization only; a caller may negate c when its minimization fits
    --  this formulation.
+   --  @param Objective The objective coefficient vector c.
+   --  @param Constraints The matrix [A | b] of inequality constraints.
+   --  @param Constraint_Tolerance Finite nonnegative constraint tolerance.
+   --  @return The solver status, and the optimum when one is reported.
+   --  @exception OpenCV_Error Raised when an operand or tolerance is invalid
+   --  or OpenCV reports a failure.
    function Solve_Linear_Program
      (Objective            : Mat;
       Constraints          : Mat;
@@ -879,6 +1019,11 @@ package OpenCV.Core is
    --  For repeated-root polynomials the count is not an architecture-
    --  independent number of mathematically distinct roots; OpenCV may
    --  return a duplicate repeated root as an extra reported value.
+   --  @enum Infinitely_Many_Roots OpenCV reports infinitely many roots.
+   --  @enum No_Real_Roots No real root is reported.
+   --  @enum One_Real_Root One real root is reported.
+   --  @enum Two_Real_Roots Two real roots are reported.
+   --  @enum Three_Real_Roots Three real roots are reported.
    type Cubic_Root_Status is
      (Infinitely_Many_Roots,
       No_Real_Roots,
@@ -892,6 +1037,9 @@ package OpenCV.Core is
    --  depth; only its leading one, two, or three entries selected by Status
    --  are valid to inspect. OpenCV does not guarantee root ordering, and
    --  repeated-root cases may include duplicate values.
+   --  @field Status Reported real-root count; selects the variant.
+   --  @field Roots 3 x 1 Mat whose leading entries, as counted by Status,
+   --  hold the reported roots. Present only for a finite positive count.
    type Cubic_Solution_Result (Status : Cubic_Root_Status := No_Real_Roots) is
    record
       case Status is
@@ -908,6 +1056,9 @@ package OpenCV.Core is
    --  Float64 components' absolute-value sum is at most OpenCV 4.10's
    --  DBL_EPSILON are trimmed; OpenCV's original-degree padding rows are not
    --  exposed.
+   --  @field Roots The roots as complex values in C2 elements, one per row.
+   --  @field Maximum_Correction The value returned by cv::solvePoly: the
+   --  largest difference between successive root estimates.
    type Polynomial_Solution_Result is record
       Roots              : Mat;
       Maximum_Correction : Long_Float;
@@ -918,11 +1069,25 @@ package OpenCV.Core is
    --  shallow-copy assignment semantics.
    type Mat_Array is array (Natural range <>) of Mat;
 
+   --  Selects where a Channel_Route obtains the value for its destination
+   --  channel.
+   --  @enum From_Source The value is copied from a channel of a source Mat.
+   --  @enum Zero_Fill The destination channel is set to zero and no source
+   --  channel is named.
    type Channel_Source_Kind is (From_Source, Zero_Fill);
 
    --  Source_Index and Destination_Index are the actual indices of Sources
    --  and Destinations, respectively. Channel indices are zero-based within
    --  their selected Mat. Zero_Fill writes zero to the destination channel.
+   --  @field Source_Kind Selects the variant: From_Source or Zero_Fill.
+   --  @field Destination_Index Index, within the destination collection, of
+   --  the Mat that receives the value.
+   --  @field Destination_Channel Zero-based channel of that destination Mat
+   --  that receives the value.
+   --  @field Source_Index Index, within the source collection, of the Mat
+   --  that supplies the value. Present only when Source_Kind is From_Source.
+   --  @field Source_Channel Zero-based channel of that source Mat that
+   --  supplies the value. Present only when Source_Kind is From_Source.
    type Channel_Route (Source_Kind : Channel_Source_Kind := From_Source) is
    record
       Destination_Index   : Natural;
@@ -937,6 +1102,9 @@ package OpenCV.Core is
       end case;
    end record;
 
+   --  An ordered list of channel routes. Routes are applied in a single
+   --  Mix_Channels call; no two routes may target the same destination
+   --  channel.
    type Channel_Route_Array is array (Natural range <>) of Channel_Route;
 
    --  Creates a typed two-dimensional Mat with Rows rows and Columns columns.
@@ -983,11 +1151,34 @@ package OpenCV.Core is
    --  Creates an independent square matrix with Diagonal on its main diagonal
    --  and zero in every off-diagonal element. Diagonal must be a row or column
    --  vector. The result preserves Diagonal's depth and channel count.
+   --  @param Diagonal Row or column vector supplying the diagonal elements.
+   --  @return A new square Mat with independent storage.
+   --  @exception OpenCV_Error Raised when Diagonal is not a row or column
+   --  vector or OpenCV reports a failure.
    function Diagonal_Matrix (Diagonal : Mat) return Mat;
 
-   --  Both operations create a distinct Mat header sharing Self's storage.
-   --  Depth and total scalar storage are preserved; Columns is derived.
+   --  Creates a distinct 2-D Mat header sharing Self's storage with a new
+   --  channel count and the same number of rows. Depth and the total scalar
+   --  count (Rows * Columns * Channels) are preserved, so Columns is derived.
+   --  No elements are copied. The reshape is rejected with OpenCV_Error when
+   --  the new channel count does not preserve the scalar count with the
+   --  existing row count, when the derived column count would exceed the
+   --  signed 32-bit limit, or when native reshape rejects the layout.
+   --  @param Self The Mat to reinterpret.
+   --  @param Channels Channel count of the result.
+   --  @return A new header sharing Self's storage.
    function Reshape (Self : Mat; Channels : Channel_Count) return Mat;
+
+   --  Creates a distinct 2-D Mat header sharing Self's storage with a new
+   --  channel count and row count. Depth and the total scalar count are
+   --  preserved, so Columns is derived. No elements are copied. Raises
+   --  OpenCV_Error when Channels and Rows do not preserve the total scalar
+   --  count, when the derived column count would exceed the signed 32-bit
+   --  limit, or when native reshape rejects the layout.
+   --  @param Self The Mat to reinterpret.
+   --  @param Channels Channel count of the result.
+   --  @param Rows Positive row count of the result.
+   --  @return A new header sharing Self's storage.
    function Reshape
      (Self : Mat; Channels : Channel_Count; Rows : Positive) return Mat;
 
@@ -1003,7 +1194,18 @@ package OpenCV.Core is
    --  an OpenCV preserve-dimension sentinel. The target scalar count,
    --  product (Shape) * requested Channels, must equal Self.Total *
    --  Self.Channels exactly.
+   --  @param Self The nonempty, continuous Mat to reinterpret.
+   --  @param Shape New extent of each dimension, in native dimension order.
+   --  @return A new header sharing Self's storage, with Self's channel count.
    function Reshape (Self : Mat; Shape : Dimension_Array) return Mat;
+
+   --  Shape-and-Channels form of the N-dimensional Reshape above: the result
+   --  has the extents in Shape and the explicit channel count Channels,
+   --  with the same preconditions and failure behavior.
+   --  @param Self The nonempty, continuous Mat to reinterpret.
+   --  @param Channels Channel count of the result.
+   --  @param Shape New extent of each dimension, in native dimension order.
+   --  @return A new header sharing Self's storage.
    function Reshape
      (Self : Mat; Channels : Channel_Count; Shape : Dimension_Array)
       return Mat;
@@ -1013,6 +1215,12 @@ package OpenCV.Core is
    --  offsets select diagonals above it (Offset 1 starts at row 0, column 1),
    --  and negative offsets select diagonals below it (Offset -1 starts at row
    --  1, column 0). Offset must select at least one element.
+   --  @param Self The Mat whose diagonal is viewed.
+   --  @param Offset Zero-based diagonal selector: zero for the main diagonal,
+   --  positive above it, negative below it.
+   --  @return A new single-column header sharing Self's storage.
+   --  @exception OpenCV_Error Raised when Offset selects no element or
+   --  OpenCV reports a failure.
    function Diagonal_View
      (Self : Mat; Offset : Point_Coordinate := 0) return Mat;
 
@@ -1036,6 +1244,15 @@ package OpenCV.Core is
    --  and nonnegative. Initialization applies to every attempt. Attempts
    --  defaults to 3. KMEANS_USE_INITIAL_LABELS is provided by the distinct
    --  overload below.
+   --  @param Samples The Float32 samples to cluster.
+   --  @param Cluster_Count Number of clusters, at most the sample count.
+   --  @param Criteria Termination criteria of each attempt.
+   --  @param Attempts Number of independent attempts; the attempt with the
+   --  lowest compactness is returned.
+   --  @param Initialization Center initialization used by every attempt.
+   --  @return Labels, centers and compactness, in independent storage.
+   --  @exception OpenCV_Error Raised when an operand or criterion is invalid
+   --  or OpenCV reports a failure.
    function K_Means
      (Samples        : Mat;
       Cluster_Count  : Positive;
@@ -1058,6 +1275,17 @@ package OpenCV.Core is
    --  compactness of all attempts, so its labels may be from a later attempt.
    --  Set_Random_Seed makes those later randomized attempts reproducible
    --  on the calling thread.
+   --  @param Samples The Float32 samples to cluster.
+   --  @param Cluster_Count Number of clusters, at most the sample count.
+   --  @param Initial_Labels Initial zero-based cluster label of every sample.
+   --  @param Criteria Termination criteria of each attempt.
+   --  @param Attempts Number of attempts; the first starts from
+   --  Initial_Labels.
+   --  @param Subsequent_Initialization Center initialization used by
+   --  attempts after the first.
+   --  @return Labels, centers and compactness, in independent storage.
+   --  @exception OpenCV_Error Raised when an operand or criterion is invalid
+   --  or OpenCV reports a failure.
    function K_Means
      (Samples                   : Mat;
       Cluster_Count             : Positive;
@@ -1080,20 +1308,36 @@ package OpenCV.Core is
    --  independent storage, inputs are unchanged, and non-contiguous Regions
    --  are supported. Masks, update, crosscheck, and all-pairs mode are not
    --  exposed.
+   --  @param Queries Rows to search for.
+   --  @param Candidates Rows to search among.
+   --  @param Neighbor_Count Number of neighbors returned per query row, at
+   --  most Candidates.Rows.
+   --  @param Kind Distance measure.
+   --  @return Distances and zero-based candidate indices, in independent
+   --  storage.
+   --  @exception OpenCV_Error Raised when an operand or Kind is unsupported
+   --  or OpenCV reports a failure.
    function K_Nearest_Neighbors
      (Queries        : Mat;
       Candidates     : Mat;
       Neighbor_Count : Positive;
       Kind           : Batch_Distance_Kind := L2_Distance)
       return Nearest_Neighbor_Result;
+
    --  Returns an independent Mat whose rows and columns are swapped. Element
    --  depth and channel count are preserved, including for multi-channel Mats.
    --  Empty Mats produce an empty result. Non-contiguous Regions are accepted.
+   --  @param Self The Mat to transpose.
+   --  @return A new Mat with independent storage.
    function Transpose (Self : Mat) return Mat;
+
    --  Returns an independent Mat with the same dimensions and element type as
    --  Self. Vertical reverses row order, Horizontal reverses column order,
    --  and Both_Axes reverses both. Empty Mats produce an empty result.
    --  Non-contiguous Regions are accepted.
+   --  @param Self The Mat to flip.
+   --  @param Kind Axis or axes to reverse.
+   --  @return A new Mat with independent storage.
    function Flip (Self : Mat; Kind : Flip_Kind) return Mat;
 
    --  Returns an independent Mat with Self's rows, columns, depth, and
@@ -1110,10 +1354,18 @@ package OpenCV.Core is
    --  source shape, depth, and channel count. Typed empty Float16 is
    --  rejected. Equal values are sorted correctly, but their relative order
    --  is not guaranteed. NaN ordering is not part of the public contract.
+   --  @param Self The single-channel Mat to sort.
+   --  @param Axis Whether each row or each column is sorted independently.
+   --  @param Order Ascending or descending order.
+   --  @return A new Mat of Self's shape and element type holding the sorted
+   --  values.
+   --  @exception OpenCV_Error Raised for an unsupported depth, a
+   --  multi-channel Mat, or an OpenCV failure.
    function Sort
      (Self  : Mat;
       Axis  : Sort_Axis := Each_Row;
       Order : Sort_Order := Ascending) return Mat;
+
    --  Returns an independent Int32 single-channel Mat of Self's rows and
    --  columns containing zero-based indices, not the sorted values. Each_Row
    --  independently orders the columns of every row and stores the original
@@ -1132,6 +1384,12 @@ package OpenCV.Core is
    --  raise OpenCV_Error because OpenCV 4.10's sortIdx implementation asserts
    --  that source and destination data pointers differ, and empty Mats share
    --  a null data pointer. Typed empty Float16 is rejected before the ABI.
+   --  @param Self The single-channel Mat to order.
+   --  @param Axis Whether each row or each column is ordered independently.
+   --  @param Order Ascending or descending order.
+   --  @return A new Int32 Mat of zero-based indices into Self.
+   --  @exception OpenCV_Error Raised for an unsupported depth, a
+   --  multi-channel Mat, an empty Mat, or an OpenCV failure.
    function Sort_Indices
      (Self  : Mat;
       Axis  : Sort_Axis := Each_Row;
@@ -1143,6 +1401,17 @@ package OpenCV.Core is
    --  pixels from its parent Mat. Isolated true restricts extrapolation to the
    --  Region boundaries. Empty Mats produce an empty result when every border
    --  is zero.
+   --  @param Self The source Mat.
+   --  @param Top Rows added above Self.
+   --  @param Bottom Rows added below Self.
+   --  @param Left Columns added left of Self.
+   --  @param Right Columns added right of Self.
+   --  @param Kind Border extrapolation mode.
+   --  @param Value Border color used by Constant_Border.
+   --  @param Isolated When True, extrapolation never reads outside Self's
+   --  Region boundaries.
+   --  @return A new Mat with independent storage.
+   --  @exception OpenCV_Error Raised when OpenCV rejects the operands.
    function Copy_Make_Border
      (Self     : Mat;
       Top      : Natural;
@@ -1161,6 +1430,11 @@ package OpenCV.Core is
    --  OpenCV's -1 sentinel is not exposed. This computes only a coordinate;
    --  it neither reads a Mat nor copies pixels. Extreme coordinates that would
    --  overflow OpenCV 4.10 signed arithmetic raise OpenCV_Error.
+   --  @param Position Zero-based coordinate, possibly outside 0 .. Length - 1.
+   --  @param Length Positive extent of the source axis.
+   --  @param Kind Border extrapolation mode.
+   --  @return The zero-based donor coordinate, or Uses_Constant True when
+   --  none exists.
    function Border_Interpolate
      (Position : Point_Coordinate; Length : Positive; Kind : Border_Kind)
       return Border_Interpolation_Result;
@@ -1171,37 +1445,63 @@ package OpenCV.Core is
    --  Mats return an empty Mat_Array. Single-channel Mats return one deep
    --  copy.
    --  Non-contiguous Regions and all supported Mat depths are accepted.
+   --  @param Self The Mat to separate.
+   --  @return One new single-channel Mat per channel of Self.
    function Split (Self : Mat) return Mat_Array;
+
    --  Returns an independent single-channel Mat containing the zero-based
    --  Channel of Self. Channel must be in 0 .. Self.Channels - 1. The result
    --  preserves Self's depth and dimensions, and does not share pixel storage
    --  with Self. Non-contiguous Regions and all supported Mat depths are
    --  accepted. An empty Mat accepts channel 0 and returns an empty,
    --  single-channel UInt8 Mat, matching OpenCV semantics.
+   --  @param Self The Mat to read.
+   --  @param Channel Zero-based channel to extract.
+   --  @return A new single-channel Mat with independent storage.
+   --  @exception OpenCV_Error Raised when Channel is out of range.
    function Extract_Channel (Self : Mat; Channel : Natural) return Mat;
+
    --  Copies the single channel in Source into the zero-based Channel of Self.
    --  Source and Self must have identical dimensions and depth; Channel must
    --  be in 0 .. Self.Channels - 1. Self is modified in place, preserving its
    --  dimensions and element type. Non-contiguous Regions are accepted and
    --  retain normal shared-storage view semantics. Empty UInt8 single-channel
    --  Mats accept channel 0 as a no-op, matching OpenCV semantics.
+   --  @param Self The Mat modified in place.
+   --  @param Source The single-channel Mat to copy from.
+   --  @param Channel Zero-based channel of Self that receives Source.
+   --  @exception OpenCV_Error Raised when the dimensions or depths differ,
+   --  Source is not single-channel, or Channel is out of range.
    procedure Insert_Channel
      (Self : in out Mat; Source : Mat; Channel : Natural);
+
    --  Copies or zero-fills the specified channels into preallocated
    --  Destinations. Mat indices in Routes directly index the supplied arrays;
    --  their lower bounds need not be zero. All source and destination Mats
    --  must have identical dimensions and depth. A destination channel may
    --  occur in at most one route. Routes are applied in array iteration order.
    --  An empty Routes array is a no-op.
+   --  @param Sources Mats read by From_Source routes.
+   --  @param Destinations Preallocated Mats whose channels are written.
+   --  @param Routes Channel copies and zero fills to perform.
+   --  @exception OpenCV_Error Raised when the Mats differ in dimensions or
+   --  depth, an index is out of range, or two routes target the same
+   --  destination channel.
    procedure Mix_Channels
      (Sources      : Mat_Array;
       Destinations : in out Mat_Array;
       Routes       : Channel_Route_Array);
+
    --  Concatenates the channels of every non-empty input Mat, in array
    --  iteration order, into an independent Mat. Inputs may themselves be
    --  multi-channel, but must have identical dimensions and depth. The input
    --  array must not be empty and the total channel count must not exceed 512.
+   --  @param Channels The Mats whose channels are concatenated.
+   --  @return A new Mat with independent storage.
+   --  @exception OpenCV_Error Raised when Channels is empty, the Mats differ
+   --  in dimensions or depth, or the channel total exceeds 512.
    function Merge (Channels : Mat_Array) return Mat;
+
    --  Copies Self into Destination, allocating or reallocating Destination to
    --  Self's shape and element type when necessary. Destination may be a
    --  compatible view. Exact self-copy is supported; partially overlapping
@@ -1265,9 +1565,14 @@ package OpenCV.Core is
    --  Returns an independent UInt8 Mat with Self's shape and channel count.
    --  Each channel is converted as saturate_cast<UInt8>
    --  (abs (Self * Scale + Offset)).
+   --  @param Self The source Mat.
+   --  @param Scale Factor applied to each source value.
+   --  @param Offset Value added after scaling.
+   --  @return A new UInt8 Mat with independent storage.
    function Convert_Scale_Abs
      (Self : Mat; Scale : Long_Float := 1.0; Offset : Long_Float := 0.0)
       return Mat;
+
    --  Applies a 256-entry lookup table to an 8-bit source. Self must have
    --  UInt8 or Int8 depth. Table must contain exactly 256 continuous
    --  elements and either one channel or the same channel count as Self.
@@ -1276,15 +1581,40 @@ package OpenCV.Core is
    --  8-bit pattern (0 .. 255), matching OpenCV 4.10.0. Float16 tables and
    --  16-bit sources are not supported. A 0x0 8-bit source produces a 0x0
    --  result; a default empty Mat is rejected by OpenCV.
+   --  @param Self The UInt8 or Int8 source Mat.
+   --  @param Table The 256-entry lookup table.
+   --  @return A new Mat with independent storage.
+   --  @exception OpenCV_Error Raised for an unsupported depth, a table of
+   --  the wrong size, continuity or channel count, or an empty source.
    function Apply_LUT (Self : Mat; Table : Mat) return Mat;
+
    --  Returns an independent Mat with Self's shape, depth, and channel count.
    --  Self must be Float32 or Float64. Each channel is processed independently
    --  by cv::sqrt. On OpenCV 4.10 the 0.5-power HAL path uses std::sqrt, so
    --  negative finite values and -Infinity become NaN, +Infinity stays
    --  +Infinity, and a typed 0x0 source stays empty. A default empty Mat and
    --  non-floating depths are rejected.
+   --  @param Self The Float32 or Float64 source.
+   --  @return A new Mat with independent storage.
+   --  @exception OpenCV_Error Raised for a default empty Mat, a
+   --  non-floating depth, or an OpenCV failure.
    function Sqrt (Self : Mat) return Mat;
+
+   --  Destination form of Sqrt, with the same source policy and numerical
+   --  behavior. The result is written to the actual native Destination:
+   --  compatible whole or Region storage is reused (including through a
+   --  Region that shares its parent) and mismatched storage is reallocated
+   --  and may detach. Exact and shallow source aliases are native; partial
+   --  overlap is unsupported. A temporary view cannot be a Destination,
+   --  although temporary sources are valid. A failure after the native call
+   --  begins is not promised to leave Destination unchanged.
+   --  @param Self The Float32 or Float64 source.
+   --  @param Destination The caller-owned Mat that receives the result.
+   --  @exception OpenCV_Error Raised for a default empty Mat, a
+   --  non-floating depth, a temporary-view Destination, or an OpenCV
+   --  failure.
    procedure Sqrt (Self : Mat; Destination : in out Mat);
+
    --  Returns an independent Mat with Self's shape, depth, and channel count.
    --  Self must be Float32 or Float64. Each channel is processed independently
    --  by cv::exp. On OpenCV 4.10 the implementation is approximate (about
@@ -1292,16 +1622,50 @@ package OpenCV.Core is
    --  may convert denormalized outputs to zero. Special values such as NaN
    --  and Infinity are not handled. A typed 0x0 source stays empty. A default
    --  empty Mat and non-floating depths are rejected.
+   --  @param Self The Float32 or Float64 source.
+   --  @return A new Mat with independent storage.
+   --  @exception OpenCV_Error Raised for a default empty Mat, a
+   --  non-floating depth, or an OpenCV failure.
    function Exp (Self : Mat) return Mat;
+
+   --  Destination form of Exp, with the same source policy and numerical
+   --  behavior. Destination storage follows the rules of the Sqrt
+   --  Destination form: compatible storage is reused, mismatched storage may
+   --  detach, partial overlap is unsupported, a temporary view cannot be a
+   --  Destination, and a failure after the native call begins is not
+   --  promised to leave Destination unchanged.
+   --  @param Self The Float32 or Float64 source.
+   --  @param Destination The caller-owned Mat that receives the result.
+   --  @exception OpenCV_Error Raised for a default empty Mat, a
+   --  non-floating depth, a temporary-view Destination, or an OpenCV
+   --  failure.
    procedure Exp (Self : Mat; Destination : in out Mat);
+
    --  Returns an independent Mat with Self's shape, depth, and channel count.
    --  Self must be Float32 or Float64. Each channel is processed independently
    --  by cv::log (natural logarithm). On OpenCV 4.10 the implementation is
    --  approximate. Output on zero, negative, and special values such as NaN
    --  and Infinity is undefined. A typed 0x0 source stays empty. A default
    --  empty Mat and non-floating depths are rejected.
+   --  @param Self The Float32 or Float64 source.
+   --  @return A new Mat with independent storage.
+   --  @exception OpenCV_Error Raised for a default empty Mat, a
+   --  non-floating depth, or an OpenCV failure.
    function Log (Self : Mat) return Mat;
+
+   --  Destination form of Log, with the same source policy and numerical
+   --  behavior. Destination storage follows the rules of the Sqrt
+   --  Destination form: compatible storage is reused, mismatched storage may
+   --  detach, partial overlap is unsupported, a temporary view cannot be a
+   --  Destination, and a failure after the native call begins is not
+   --  promised to leave Destination unchanged.
+   --  @param Self The Float32 or Float64 source.
+   --  @param Destination The caller-owned Mat that receives the result.
+   --  @exception OpenCV_Error Raised for a default empty Mat, a
+   --  non-floating depth, a temporary-view Destination, or an OpenCV
+   --  failure.
    procedure Log (Self : Mat; Destination : in out Mat);
+
    --  Returns an independent Mat with Self's shape, depth, and channel count.
    --  Each channel is processed independently by cv::pow. When Power is an
    --  integer, source signs are preserved (src(I) ** Power). When Power is
@@ -1317,27 +1681,58 @@ package OpenCV.Core is
    --  Infinity are not handled. A typed 0x0 source stays empty. A default
    --  empty Mat is accepted for a nonnegative integer Power and rejected
    --  otherwise.
+   --  @param Self The source Mat.
+   --  @param Power The exponent.
+   --  @return A new Mat with independent storage.
+   --  @exception OpenCV_Error Raised when Self's depth or the default-empty
+   --  state is unsupported for Power, or OpenCV reports a failure.
    function Pow (Self : Mat; Power : Long_Float) return Mat;
+
+   --  Destination form of Pow, with the same source policy and numerical
+   --  behavior. The result is written to the actual native Destination:
+   --  compatible whole or Region storage is reused and mismatched storage is
+   --  reallocated and may detach. N-dimensional Mats are supported. Exact and
+   --  shallow source aliases are native; partial overlap is unsupported. A
+   --  temporary view cannot be a Destination, although temporary sources are
+   --  valid. A failure after the native call begins is not promised to leave
+   --  Destination unchanged.
+   --  @param Self The source Mat.
+   --  @param Power The exponent.
+   --  @param Destination The caller-owned Mat that receives the result.
+   --  @exception OpenCV_Error Raised when Self's depth or the default-empty
+   --  state is unsupported for Power, a temporary-view Destination is
+   --  supplied, or OpenCV reports a failure.
    procedure Pow (Self : Mat; Power : Long_Float; Destination : in out Mat);
-   --  Destination overloads use the actual native output, reusing compatible
-   --  whole/Region storage and detaching mismatched storage. N-D is supported.
-   --  Source policies and native numerical approximations are unchanged.
-   --  Exact and shallow aliases are native; partial overlap is unsupported.
-   --  Temporary Mat destinations are prohibited; temporary sources are valid.
+
    --  Returns an independent Mat with X's shape, depth, and channel count.
    --  X and Y must be Float32 or Float64 with identical dimensions, depth,
    --  and channel count. Each channel is processed independently by
    --  cv::magnitude as sqrt (X**2 + Y**2). A typed 0x0 pair stays empty. A
    --  default empty Mat, mismatched shape or type, and non-floating depths
    --  including Float16 are rejected.
-
+   --  @param X Float32 or Float64 horizontal component.
+   --  @param Y Vector component matching X in dimensions, depth, and
+   --  channel count.
+   --  @return A new Mat with independent storage.
+   --  @exception OpenCV_Error Raised for a default empty Mat, mismatched
+   --  operands, an unsupported depth, or an OpenCV failure.
    function Magnitude (X, Y : Mat) return Mat;
+
+   --  Destination form of Magnitude, with the same source policy. The result
+   --  is written directly into compatible whole or Region storage;
+   --  mismatched storage is reallocated and may detach. Exact and shallow
+   --  source aliases are supported, partial overlap is not. A temporary view
+   --  cannot be a Destination. A failure after the native call begins is not
+   --  promised to leave Destination unchanged.
+   --  @param X Float32 or Float64 horizontal component.
+   --  @param Y Vector component matching X in dimensions, depth, and
+   --  channel count.
+   --  @param Destination The caller-owned Mat that receives the magnitudes.
+   --  @exception OpenCV_Error Raised for a default empty Mat, mismatched
+   --  operands, an unsupported depth, a temporary-view Destination, or an
+   --  OpenCV failure.
    procedure Magnitude (X, Y : Mat; Destination : in out Mat);
-   --  Write directly into compatible whole/Region storage; otherwise detach.
-   --  Matching 2-D Float32/Float64 sources; channels computed independently.
-   --  Exact and shallow source aliases are supported, partial overlap is not.
-   --  Temporary Mat destinations are prohibited.
-   --
+
    --  Returns an independent Mat with X's shape, depth, and channel count.
    --  X and Y are the Cartesian components of 2D vectors. They must be
    --  Float32 or Float64 with identical dimensions, depth, and channel
@@ -1349,11 +1744,29 @@ package OpenCV.Core is
    --  A typed 0x0 pair stays empty. A default empty Mat, mismatched
    --  shape or type, and non-floating depths including Float16 are
    --  rejected.
+   --  @param X Float32 or Float64 horizontal component.
+   --  @param Y Vertical component matching X in dimensions, depth, and
+   --  channel count.
+   --  @param Units Angle unit of the result: radians by default, or degrees.
+   --  @return A new Mat of angles with independent storage.
+   --  @exception OpenCV_Error Raised for a default empty Mat, mismatched
+   --  operands, an unsupported depth, or an OpenCV failure.
    function Phase (X, Y : Mat; Units : Angle_Unit := Radians) return Mat;
+
+   --  Destination form of Phase, using the same native fast-angle
+   --  computation and the destination, alias, and temporary-view rules of
+   --  the Magnitude Destination form.
+   --  @param X Float32 or Float64 horizontal component.
+   --  @param Y Vertical component matching X in dimensions, depth, and
+   --  channel count.
+   --  @param Destination The caller-owned Mat that receives the angles.
+   --  @param Units Angle unit of the result: radians by default, or degrees.
+   --  @exception OpenCV_Error Raised for a default empty Mat, mismatched
+   --  operands, an unsupported depth, a temporary-view Destination, or an
+   --  OpenCV failure.
    procedure Phase
      (X, Y : Mat; Destination : in out Mat; Units : Angle_Unit := Radians);
-   --  Same destination/storage rules as Magnitude, with native fast angles.
-   --
+
    --  Returns independently owned Magnitude and Angle Mats with X's shape,
    --  depth, and channel count. X and Y are the Cartesian components of 2D
    --  vectors. They must be Float32 or Float64 with identical dimensions,
@@ -1367,12 +1780,35 @@ package OpenCV.Core is
    --  Magnitude and Angle are 0. A typed 0x0 pair stays empty. A default
    --  empty Mat, mismatched shape or type, and non-floating depths
    --  including Float16 are rejected.
+   --  @param X Float32 or Float64 horizontal component.
+   --  @param Y Vertical component matching X in dimensions, depth, and
+   --  channel count.
+   --  @param Units Angle unit of the result: radians by default, or degrees.
+   --  @return Independently owned magnitude and angle Mats.
+   --  @exception OpenCV_Error Raised for a default empty Mat, mismatched
+   --  operands, an unsupported depth, or an OpenCV failure.
    function Cart_To_Polar
      (X, Y : Mat; Units : Angle_Unit := Radians) return Polar_Coordinates;
+
+   --  Writes both caller-owned destinations in one native transform.
+   --  Compatible whole or Region storage is reused; each mismatched output
+   --  detaches independently. Outputs must be distinct native objects and
+   --  must not be exactly either source. Distinct headers with overlapping
+   --  storage are unsupported. Temporary Mat views cannot be outputs.
+   --  @param X Float32 or Float64 horizontal component.
+   --  @param Y Vertical component matching X in dimensions, depth, and
+   --  channel count.
+   --  @param Magnitude The caller-owned Mat that receives the magnitudes.
+   --  @param Angle The caller-owned Mat that receives the angles.
+   --  @param Units Angle unit of Angle: radians by default, or degrees.
+   --  @exception OpenCV_Error Raised for a default empty Mat, mismatched
+   --  operands, an unsupported depth, an unsupported output alias or
+   --  temporary view, or an OpenCV failure.
    procedure Cart_To_Polar
      (X, Y             : Mat;
       Magnitude, Angle : in out Mat;
       Units            : Angle_Unit := Radians);
+
    --  Groups the two caller-owned destinations. Each field independently owns
    --  its Mat header; the record is not a transactional update and does not
    --  change native alias rules. Compatible storage is reused and mismatched
@@ -1388,11 +1824,7 @@ package OpenCV.Core is
      (X, Y        : Mat;
       Destination : in out Polar_Coordinates;
       Units       : Angle_Unit := Radians);
-   --  Writes both caller-owned destinations in one native transform.
-   --  Compatible whole/Region storage is reused; each mismatched output
-   --  detaches independently. Outputs must be distinct native objects and
-   --  must not be exactly either source. Distinct headers with overlapping
-   --  storage are unsupported. Temporary Mat views cannot be outputs.
+
    --  Returns independently owned X and Y Mats with Angle's shape, depth,
    --  and channel count. Angle is the authoritative operand and must be
    --  Float32 or Float64. When Magnitude is non-empty, it must have the
@@ -1405,17 +1837,61 @@ package OpenCV.Core is
    --  1e-6. There is no required Angle range. A typed 0x0 Angle stays
    --  empty. A default empty Angle is rejected. Float16 and other
    --  non-floating Angle depths are rejected.
+   --  @param Magnitude Non-empty polar magnitude matching Angle, or empty to
+   --  mean unit magnitude for every Angle element.
+   --  @param Angle Authoritative polar angle. Float32 or Float64.
+   --  @param Units Angle unit of Angle: radians by default, or degrees.
+   --  @return Independently owned X and Y Mats.
+   --  @exception OpenCV_Error Raised for a default empty Angle, mismatched
+   --  operands, an unsupported depth, or an OpenCV failure.
    function Polar_To_Cart
      (Magnitude, Angle : Mat; Units : Angle_Unit := Radians)
       return Cartesian_Coordinates;
+
+   --  Angle-only form of Polar_To_Cart: every Angle element has unit
+   --  magnitude, so the results are the cosine and sine of Angle. Operand
+   --  rules and failure behavior match the two-operand function.
+   --  @param Angle Polar angle. Float32 or Float64.
+   --  @param Units Angle unit of Angle: radians by default, or degrees.
+   --  @return Independently owned X and Y Mats.
+   --  @exception OpenCV_Error Raised for a default empty Angle, an
+   --  unsupported depth, or an OpenCV failure.
    function Polar_To_Cart
      (Angle : Mat; Units : Angle_Unit := Radians) return Cartesian_Coordinates;
+
+   --  Writes the Cartesian components into caller-owned X and Y in one
+   --  native transform. Compatible whole or Region storage is reused; each
+   --  mismatched output detaches independently. Outputs must be distinct
+   --  native objects and must not be exactly any source. Distinct headers
+   --  with overlapping storage are unsupported. Temporary Mat views cannot
+   --  be outputs. An empty Magnitude means unit magnitude.
+   --  @param Magnitude Non-empty polar magnitude matching Angle, or empty to
+   --  mean unit magnitude for every Angle element.
+   --  @param Angle Authoritative polar angle. Float32 or Float64.
+   --  @param X The caller-owned Mat that receives Magnitude * cos (Angle).
+   --  @param Y The caller-owned Mat that receives Magnitude * sin (Angle).
+   --  @param Units Angle unit of Angle: radians by default, or degrees.
+   --  @exception OpenCV_Error Raised for a default empty Angle, mismatched
+   --  operands, an unsupported depth, an unsupported output alias or
+   --  temporary view, or an OpenCV failure.
    procedure Polar_To_Cart
      (Magnitude, Angle : Mat;
       X, Y             : in out Mat;
       Units            : Angle_Unit := Radians);
+
+   --  Angle-only destination form of Polar_To_Cart: every Angle element has
+   --  unit magnitude. Destination, alias, and temporary-view rules match the
+   --  two-operand procedure.
+   --  @param Angle Polar angle. Float32 or Float64.
+   --  @param X The caller-owned Mat that receives cos (Angle).
+   --  @param Y The caller-owned Mat that receives sin (Angle).
+   --  @param Units Angle unit of Angle: radians by default, or degrees.
+   --  @exception OpenCV_Error Raised for a default empty Angle, an
+   --  unsupported depth, an unsupported output alias or temporary view, or
+   --  an OpenCV failure.
    procedure Polar_To_Cart
      (Angle : Mat; X, Y : in out Mat; Units : Angle_Unit := Radians);
+
    --  Groups the two caller-owned destinations. Each field independently owns
    --  its Mat header; the record is not a transactional update and does not
    --  change native alias rules. Compatible storage is reused and mismatched
@@ -1470,7 +1946,12 @@ package OpenCV.Core is
    --  32-bit, and each transformed dimension must fit that same
    --  limit after multiplication by the full-complex element size
    --  (8 bytes for Float32, 16 bytes for Float64).
+   --  @param Self The real or complex spatial-domain Mat.
+   --  @return A new C2 Mat holding the unscaled complex spectrum.
+   --  @exception OpenCV_Error Raised for an unsupported shape, depth or
+   --  channel count, a size beyond the stated limits, or an OpenCV failure.
    function Discrete_Fourier_Transform (Self : Mat) return Mat;
+
    --  Returns an independently owned normalized inverse Discrete
    --  Fourier Transform of a full-complex spectrum using OpenCV
    --  4.10 cv::dft with DFT_INVERSE and DFT_SCALE. Self must be a
@@ -1490,7 +1971,12 @@ package OpenCV.Core is
    --  32-bit, and each transformed dimension must fit that same
    --  limit after multiplication by the full-complex element size
    --  (8 bytes for Float32, 16 bytes for Float64).
+   --  @param Self The full-complex C2 spectrum.
+   --  @return A new C2 Mat holding the normalized inverse transform.
+   --  @exception OpenCV_Error Raised for an unsupported shape, depth or
+   --  channel count, a size beyond the stated limits, or an OpenCV failure.
    function Inverse_Discrete_Fourier_Transform (Self : Mat) return Mat;
+
    --  Returns an independently owned real inverse Discrete Fourier
    --  Transform of a full-complex spectrum using OpenCV 4.10
    --  cv::dft with DFT_INVERSE, DFT_SCALE, and DFT_REAL_OUTPUT.
@@ -1514,7 +2000,12 @@ package OpenCV.Core is
    --  dimension must fit that same limit after multiplication by
    --  the full-complex element size (8 bytes for Float32, 16 bytes
    --  for Float64).
+   --  @param Self The full-complex C2 spectrum, assumed conjugate-symmetric.
+   --  @return A new C1 Mat holding the normalized real inverse transform.
+   --  @exception OpenCV_Error Raised for an unsupported shape, depth or
+   --  channel count, a size beyond the stated limits, or an OpenCV failure.
    function Inverse_Real_Discrete_Fourier_Transform (Self : Mat) return Mat;
+
    --  Returns OpenCV's native packed CCS representation of the unscaled
    --  forward DFT. Self must be a non-empty Float32 or Float64 C1 Mat. A
    --  1 x N row, an N x 1 column, and an ordinary M x N Mat are supported,
@@ -1524,7 +2015,12 @@ package OpenCV.Core is
    --  layout to pass it to Inverse_Packed_Discrete_Fourier_Transform. Self is
    --  unchanged and the result owns independent storage. The same DFT
    --  signed-arithmetic safety limits documented above apply.
+   --  @param Self The real C1 spatial-domain Mat.
+   --  @return A new C1 Mat holding the packed CCS spectrum.
+   --  @exception OpenCV_Error Raised for an unsupported shape, depth or
+   --  channel count, a size beyond the stated limits, or an OpenCV failure.
    function Packed_Discrete_Fourier_Transform (Self : Mat) return Mat;
+
    --  Returns the normalized real C1 inverse of an OpenCV packed CCS Mat.
    --  Self must be a non-empty Float32 or Float64 C1 packed spectrum, normally
    --  produced by Packed_Discrete_Fourier_Transform. OpenCV cv::dft is called
@@ -1532,26 +2028,47 @@ package OpenCV.Core is
    --  rows, columns, and depth, owns independent storage, and approximately
    --  reproduces the original real source. Self is unchanged. The packed
    --  layout remains opaque and the same DFT arithmetic-safety limits apply.
+   --  @param Self The packed CCS C1 spectrum.
+   --  @return A new C1 Mat holding the normalized real inverse.
+   --  @exception OpenCV_Error Raised for an unsupported shape, depth or
+   --  channel count, a size beyond the stated limits, or an OpenCV failure.
    function Inverse_Packed_Discrete_Fourier_Transform (Self : Mat) return Mat;
+
    --  Returns a full-complex DFT in which every row is transformed as an
    --  independent 1-D signal using cv::dft with DFT_ROWS. Self must satisfy
    --  the same depth, channel, non-empty, and size requirements as
    --  Discrete_Fourier_Transform. Float32 or Float64 C1 input returns C2;
    --  C2 input remains C2. Rows and columns are preserved. Continuity is not
    --  required, Self is unchanged, and the result owns independent storage.
+   --  @param Self The Float32 or Float64 C1 or C2 Mat whose rows are signals.
+   --  @return A new C2 Mat holding one complex spectrum per row.
+   --  @exception OpenCV_Error Raised for an unsupported shape, depth or
+   --  channel count, a size beyond the stated limits, or an OpenCV failure.
    function Discrete_Fourier_Transform_Rows (Self : Mat) return Mat;
+
    --  Returns the normalized row-wise inverse of a full-complex C2 spectrum
    --  using DFT_ROWS, DFT_INVERSE, and DFT_SCALE. Each row is inverted and
    --  scaled independently by its column count. The result remains C2 and
    --  preserves Self's rows, columns, and Float32 or Float64 depth.
+   --  @param Self The full-complex C2 Mat whose rows are spectra.
+   --  @return A new C2 Mat holding one normalized inverse per row.
+   --  @exception OpenCV_Error Raised for an unsupported shape, depth or
+   --  channel count, or an OpenCV failure.
    function Inverse_Discrete_Fourier_Transform_Rows (Self : Mat) return Mat;
+
    --  Returns the normalized C1 real row-wise inverse of a full-complex C2
    --  spectrum using DFT_ROWS, DFT_INVERSE, DFT_SCALE, and DFT_REAL_OUTPUT.
    --  Every row is independently inverted. As with the ordinary real inverse,
    --  each input row is expected to have conjugate symmetry. The result owns
    --  independent storage and preserves rows, columns, and floating depth.
+   --  @param Self The full-complex C2 Mat whose rows are conjugate-symmetric
+   --  spectra.
+   --  @return A new C1 Mat holding one normalized real signal per row.
+   --  @exception OpenCV_Error Raised for an unsupported shape, depth or
+   --  channel count, or an OpenCV failure.
    function Inverse_Real_Discrete_Fourier_Transform_Rows
      (Self : Mat) return Mat;
+
    --  Returns one independently transformed packed CCS spectrum per row using
    --  DFT_ROWS without DFT_COMPLEX_OUTPUT. Self must be a non-empty, exactly
    --  2-D Float32 or Float64 C1 Mat. For an M x N Mat, rows are a batch
@@ -1560,7 +2077,12 @@ package OpenCV.Core is
    --  preserved; odd row counts and odd positive row lengths are supported.
    --  Continuity is not required, Self is unchanged, and the result owns
    --  independent storage. The same DFT arithmetic-safety limits apply.
+   --  @param Self The real C1 Mat whose rows are signals.
+   --  @return A new C1 Mat holding one packed CCS spectrum per row.
+   --  @exception OpenCV_Error Raised for an unsupported shape, depth or
+   --  channel count, a size beyond the stated limits, or an OpenCV failure.
    function Packed_Discrete_Fourier_Transform_Rows (Self : Mat) return Mat;
+
    --  Returns the normalized C1 real inverse of every packed CCS row using
    --  DFT_ROWS, DFT_INVERSE, DFT_SCALE, and DFT_REAL_OUTPUT. Self has the same
    --  structural and type requirements as
@@ -1569,8 +2091,13 @@ package OpenCV.Core is
    --  not inspect CCS contents or numerical validity. Each row is
    --  reconstructed independently. Shape and depth are preserved, Self is
    --  unchanged, and the result owns independent storage.
+   --  @param Self The C1 Mat whose rows are packed CCS spectra.
+   --  @return A new C1 Mat holding one normalized real signal per row.
+   --  @exception OpenCV_Error Raised for an unsupported shape, depth or
+   --  channel count, or an OpenCV failure.
    function Inverse_Packed_Discrete_Fourier_Transform_Rows
      (Self : Mat) return Mat;
+
    --  Returns an independently owned Discrete Cosine Transform of
    --  Self using OpenCV 4.10 cv::dct. This is not DFT, a packed CCS
    --  spectrum, a batched DCT_ROWS transform, or an in-place
@@ -1594,7 +2121,13 @@ package OpenCV.Core is
    --  must fit signed 32-bit after multiplication by the complex
    --  element size used by the DCT DFT path (8 bytes for Float32,
    --  16 bytes for Float64).
+   --  @param Self The real C1 Mat to transform.
+   --  @return A new C1 Mat holding the DCT.
+   --  @exception OpenCV_Error Raised for an unsupported shape, depth, channel
+   --  count or odd transformed dimension, a size beyond the stated limits,
+   --  or an OpenCV failure.
    function Discrete_Cosine_Transform (Self : Mat) return Mat;
+
    --  Returns an independently owned inverse Discrete Cosine
    --  Transform of Self using OpenCV 4.10 cv::dct with DCT_INVERSE.
    --  Self must be a non-empty 2-D Float32 or Float64 Mat with
@@ -1606,7 +2139,13 @@ package OpenCV.Core is
    --  storage. Very large matrices whose transformed dimensions
    --  would cause OpenCV 4.10's internal signed DCT work-buffer
    --  arithmetic to overflow are rejected with OpenCV_Error.
+   --  @param Self The C1 DCT coefficients to invert.
+   --  @return A new C1 Mat holding the inverse DCT.
+   --  @exception OpenCV_Error Raised for an unsupported shape, depth, channel
+   --  count or odd transformed dimension, a size beyond the stated limits,
+   --  or an OpenCV failure.
    function Inverse_Discrete_Cosine_Transform (Self : Mat) return Mat;
+
    --  Returns an independently owned DCT in which every row is transformed
    --  as an independent 1-D signal using cv::dct with DCT_ROWS. Self must be
    --  a non-empty 2-D Float32 or Float64 Mat with exactly one channel. The
@@ -1614,13 +2153,23 @@ package OpenCV.Core is
    --  number of independent signals and may be odd. Rows, columns, depth, and
    --  channel count are preserved. Non-contiguous Regions are supported and
    --  Self is unchanged.
+   --  @param Self The real C1 Mat whose rows are signals.
+   --  @return A new C1 Mat holding one DCT per row.
+   --  @exception OpenCV_Error Raised for an unsupported shape, depth,
+   --  channel count or odd row length, or an OpenCV failure.
    function Discrete_Cosine_Transform_Rows (Self : Mat) return Mat;
+
    --  Returns the independently owned row-wise inverse DCT using DCT_ROWS
    --  and DCT_INVERSE. Each row is independently inverse-transformed using
    --  OpenCV's orthonormal convention, so no additional scaling is applied.
    --  Input requirements and result metadata match
    --  Discrete_Cosine_Transform_Rows.
+   --  @param Self The C1 Mat whose rows are DCT coefficients.
+   --  @return A new C1 Mat holding one inverse DCT per row.
+   --  @exception OpenCV_Error Raised for an unsupported shape, depth,
+   --  channel count or odd row length, or an OpenCV failure.
    function Inverse_Discrete_Cosine_Transform_Rows (Self : Mat) return Mat;
+
    --  Returns an independently owned per-element product of two
    --  full-complex spectra using OpenCV 4.10 cv::mulSpectrums.
    --  Left and Right must be non-empty 2-D Float32 or Float64 Mats
@@ -1637,6 +2186,12 @@ package OpenCV.Core is
    --  not required; non-contiguous Regions are supported. Left and
    --  Right are unchanged. The result has the same rows, columns,
    --  depth, and two channels, and owns independent storage.
+   --  @param Left The first full-complex C2 spectrum.
+   --  @param Right The second full-complex C2 spectrum, matching Left.
+   --  @param Kind Ordinary or conjugate-right multiplication.
+   --  @return A new C2 Mat holding the per-element product.
+   --  @exception OpenCV_Error Raised for empty, mismatched or unsupported
+   --  operands, or an OpenCV failure.
    function Multiply_Spectra
      (Left  : Mat;
       Right : Mat;
@@ -1652,6 +2207,12 @@ package OpenCV.Core is
    --  operation uses neither DFT_ROWS nor an inverse transform, and does not
    --  pad or crop. Non-contiguous Regions are supported. Both operands remain
    --  unchanged; the result preserves their shape and depth and remains C1.
+   --  @param Left The first packed CCS C1 spectrum.
+   --  @param Right The second packed CCS C1 spectrum, matching Left.
+   --  @param Kind Ordinary or conjugate-right multiplication.
+   --  @return A new C1 Mat holding the packed product.
+   --  @exception OpenCV_Error Raised for empty, mismatched or unsupported
+   --  operands, or an OpenCV failure.
    function Multiply_Packed_Spectra
      (Left  : Mat;
       Right : Mat;
@@ -1669,6 +2230,12 @@ package OpenCV.Core is
    --  Non-contiguous Regions are supported. Both operands remain unchanged;
    --  the result preserves shape and depth, remains C1, and owns independent
    --  storage.
+   --  @param Left The first Mat whose rows are packed CCS spectra.
+   --  @param Right The second Mat of packed row spectra, matching Left.
+   --  @param Kind Ordinary or conjugate-right multiplication.
+   --  @return A new C1 Mat holding the row-wise packed products.
+   --  @exception OpenCV_Error Raised for empty, mismatched or unsupported
+   --  operands, or an OpenCV failure.
    function Multiply_Packed_Spectra_Rows
      (Left  : Mat;
       Right : Mat;
@@ -1683,6 +2250,9 @@ package OpenCV.Core is
    --  size under the separate OpenCV 4.10 DFT signed-arithmetic
    --  safety limits. A request too close to INT_MAX raises
    --  OpenCV_Error because OpenCV returns a negative sentinel.
+   --  @param Minimum_Size The smallest acceptable transform length.
+   --  @return The smallest efficient length not less than Minimum_Size.
+   --  @exception OpenCV_Error Raised when no valid length can be returned.
    function Optimal_DFT_Size (Minimum_Size : Positive) return Positive;
 
    --  Returns OpenCV 4.10's recommended efficient even DCT length
@@ -1695,16 +2265,26 @@ package OpenCV.Core is
    --  minimum executable DCT size. The returned length does not
    --  imply that a Mat of that size passes the separate
    --  Float32/Float64 DCT arithmetic-safety limits.
+   --  @param Minimum_Size The smallest acceptable transform length.
+   --  @return The recommended even length not less than Minimum_Size.
+   --  @exception OpenCV_Error Raised when no valid length can be returned.
    function Optimal_DCT_Size (Minimum_Size : Positive) return Positive;
 
    --  Returns an independent Mat with Self's shape and element type.  For L1,
    --  L2, and Infinity, Alpha is the target norm and Beta is ignored.  For
    --  Min_Max, Alpha and Beta specify the destination range bounds.
+   --  @param Self The source Mat.
+   --  @param Kind Norm to target, or Min_Max to map onto a range.
+   --  @param Alpha Target norm, or lower bound for Min_Max.
+   --  @param Beta Upper bound for Min_Max; ignored for the norm kinds.
+   --  @return A new Mat with independent storage.
+   --  @exception OpenCV_Error Raised when OpenCV rejects the operands.
    function Normalize
      (Self  : Mat;
       Kind  : Normalize_Kind := L2;
       Alpha : Long_Float := 1.0;
       Beta  : Long_Float := 0.0) return Mat;
+
    --  Same normalization semantics, using Destination's actual native header.
    --  Compatible whole/Region storage is reused; incompatible storage may be
    --  reallocated (a Region then detaches). Supports N-D, exact self, and
@@ -1712,6 +2292,13 @@ package OpenCV.Core is
    --  Temporary Mat views cannot be destinations, even when compatible.
    --  Empty metadata and Float16 results retain native/version-specific
    --  behavior. Native failures need not preserve Destination.
+   --  @param Self The source Mat.
+   --  @param Destination The caller-owned Mat that receives the result.
+   --  @param Kind Norm to target, or Min_Max to map onto a range.
+   --  @param Alpha Target norm, or lower bound for Min_Max.
+   --  @param Beta Upper bound for Min_Max; ignored for the norm kinds.
+   --  @exception OpenCV_Error Raised for a temporary-view Destination or
+   --  when OpenCV rejects the operands.
    procedure Normalize
      (Self        : Mat;
       Destination : in out Mat;
@@ -1719,63 +2306,281 @@ package OpenCV.Core is
       Alpha       : Long_Float := 1.0;
       Beta        : Long_Float := 0.0);
 
-   --  Both operands must have identical 2D shape and element type.  Each
-   --  result owns independent storage and preserves that element type.
+   --  Adds corresponding elements of two Mats. Both operands must have
+   --  identical 2-D shape and element type. The result owns independent
+   --  storage and preserves that element type; saturation and overflow
+   --  follow native OpenCV arithmetic for the depth.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @return A new Mat with independent storage.
+   --  @exception OpenCV_Error Raised when the operands are mismatched or
+   --  OpenCV reports a failure.
    function Add (Left, Right : Mat) return Mat;
+
+   --  Subtracts Right from Left element by element. Operand and result
+   --  rules match the Add function.
+   --  @param Left The minuend.
+   --  @param Right The subtrahend, matching Left.
+   --  @return A new Mat with independent storage.
+   --  @exception OpenCV_Error Raised when the operands are mismatched or
+   --  OpenCV reports a failure.
    function Subtract (Left, Right : Mat) return Mat;
+
+   --  Multiplies corresponding elements. Operand and result rules match the
+   --  Add function.
+   --  @param Left The first factor.
+   --  @param Right The second factor, matching Left.
+   --  @return A new Mat with independent storage.
+   --  @exception OpenCV_Error Raised when the operands are mismatched or
+   --  OpenCV reports a failure.
    function Multiply (Left, Right : Mat) return Mat;
+
+   --  Divides Left by Right element by element. Operand and result rules
+   --  match the Add function; zero denominators follow native OpenCV
+   --  behavior.
+   --  @param Left The dividend.
+   --  @param Right The divisor, matching Left.
+   --  @return A new Mat with independent storage.
+   --  @exception OpenCV_Error Raised when the operands are mismatched or
+   --  OpenCV reports a failure.
    function Divide (Left, Right : Mat) return Mat;
+
+   --  Computes the absolute difference of corresponding elements. Operand
+   --  and result rules match the Add function.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @return A new Mat with independent storage.
+   --  @exception OpenCV_Error Raised when the operands are mismatched or
+   --  OpenCV reports a failure.
    function Abs_Diff (Left, Right : Mat) return Mat;
+
+   --  Selects the smaller of corresponding elements. Operand and result
+   --  rules match the Add function.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @return A new Mat with independent storage.
+   --  @exception OpenCV_Error Raised when the operands are mismatched or
+   --  OpenCV reports a failure.
    function Minimum (Left, Right : Mat) return Mat;
+
+   --  Selects the larger of corresponding elements. Operand and result rules
+   --  match the Add function.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @return A new Mat with independent storage.
+   --  @exception OpenCV_Error Raised when the operands are mismatched or
+   --  OpenCV reports a failure.
    function Maximum (Left, Right : Mat) return Mat;
-   --  Native UMat arithmetic retains UMat storage and independent results.
-   --  Operands must have identical 2-D shape, depth, and channels.
+
+   --  UMat form of the Mat Add function: adds corresponding elements with
+   --  native UMat arithmetic. Operands must have identical 2-D shape, depth,
+   --  and channels. The result is a new UMat with independent storage.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @return A new UMat with independent storage.
+   --  @exception OpenCV_Error Raised when the operands are mismatched or
+   --  OpenCV reports a failure.
    function Add (Left, Right : UMat) return UMat;
+
+   --  UMat form of the Mat Subtract function. Operand and result rules match
+   --  the UMat Add function.
+   --  @param Left The minuend.
+   --  @param Right The subtrahend, matching Left.
+   --  @return A new UMat with independent storage.
+   --  @exception OpenCV_Error Raised when the operands are mismatched or
+   --  OpenCV reports a failure.
    function Subtract (Left, Right : UMat) return UMat;
+
+   --  UMat form of the Mat Multiply function. Operand and result rules match
+   --  the UMat Add function.
+   --  @param Left The first factor.
+   --  @param Right The second factor, matching Left.
+   --  @return A new UMat with independent storage.
+   --  @exception OpenCV_Error Raised when the operands are mismatched or
+   --  OpenCV reports a failure.
    function Multiply (Left, Right : UMat) return UMat;
+
+   --  UMat form of the Mat Divide function. Operand and result rules match
+   --  the UMat Add function; zero denominators follow native OpenCV
+   --  behavior.
+   --  @param Left The dividend.
+   --  @param Right The divisor, matching Left.
+   --  @return A new UMat with independent storage.
+   --  @exception OpenCV_Error Raised when the operands are mismatched or
+   --  OpenCV reports a failure.
    function Divide (Left, Right : UMat) return UMat;
+
+   --  UMat form of the Mat Abs_Diff function. Operand and result rules match
+   --  the UMat Add function.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @return A new UMat with independent storage.
+   --  @exception OpenCV_Error Raised when the operands are mismatched or
+   --  OpenCV reports a failure.
    function Abs_Diff (Left, Right : UMat) return UMat;
+
+   --  UMat form of the Mat Minimum function. Operand and result rules match
+   --  the UMat Add function.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @return A new UMat with independent storage.
+   --  @exception OpenCV_Error Raised when the operands are mismatched or
+   --  OpenCV reports a failure.
    function Minimum (Left, Right : UMat) return UMat;
+
+   --  UMat form of the Mat Maximum function. Operand and result rules match
+   --  the UMat Add function.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @return A new UMat with independent storage.
+   --  @exception OpenCV_Error Raised when the operands are mismatched or
+   --  OpenCV reports a failure.
    function Maximum (Left, Right : UMat) return UMat;
-   --  Matching 2-D operands, as above; Destination is not an operand.
-   --  Compatible whole/Region storage is reused, preserving aliases/parent.
-   --  Shape/depth/channel mismatches may reallocate and detach a Region.
-   --  Destination may be Left/Right or a same-layout shallow alias of either;
-   --  operands may alias each other. Arbitrary partial overlap is unsupported.
-   --  Temporary Mat views are allowed as sources, never as Destination.
-   --  Pre-native validation leaves Destination unchanged; native failures
-   --  need not. Empty metadata retains native/version-specific behavior.
-   --  Float16 follows the function policy (Float32 widening on 4.x, native
-   --  on 5.x). UMat stays native here; OpenCV controls execution/fallback.
+
+   --  Destination form of Add. The operands have matching 2-D shape and
+   --  element type; Destination is not an operand. Compatible whole or
+   --  Region storage is reused, preserving aliases and parent sharing, while
+   --  a shape, depth, or channel mismatch may reallocate and detach a
+   --  Region. Destination may be Left, Right, or a same-layout shallow alias
+   --  of either, and the operands may alias each other; arbitrary partial
+   --  overlap is unsupported. Temporary Mat views are allowed as sources but
+   --  never as Destination. Validation before the native call leaves
+   --  Destination unchanged, but native failures need not. Empty metadata
+   --  retains native and version-specific behavior. Float16 follows the
+   --  function policy (Float32 widening on OpenCV 4.x, native on 5.x).
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @param Destination The caller-owned Mat that receives the sum.
+   --  @exception OpenCV_Error Raised for mismatched operands, a
+   --  temporary-view Destination, or an OpenCV failure.
    procedure Add (Left, Right : Mat; Destination : in out Mat);
+
+   --  Destination form of Subtract. Destination, alias, and failure rules
+   --  match the Mat Add destination form.
+   --  @param Left The minuend.
+   --  @param Right The subtrahend, matching Left.
+   --  @param Destination The caller-owned Mat that receives the difference.
+   --  @exception OpenCV_Error Raised for mismatched operands, a
+   --  temporary-view Destination, or an OpenCV failure.
    procedure Subtract (Left, Right : Mat; Destination : in out Mat);
+
+   --  UMat destination form of Add. The rules of the Mat Add destination form
+   --  apply to native UMat storage; OpenCV controls execution and any
+   --  internal fallback.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @param Destination The caller-owned UMat that receives the sum.
+   --  @exception OpenCV_Error Raised for mismatched operands or an OpenCV
+   --  failure.
    procedure Add (Left, Right : UMat; Destination : in out UMat);
+
+   --  UMat destination form of Subtract. Destination, alias, and failure
+   --  rules match the UMat Add destination form.
+   --  @param Left The minuend.
+   --  @param Right The subtrahend, matching Left.
+   --  @param Destination The caller-owned UMat that receives the difference.
+   --  @exception OpenCV_Error Raised for mismatched operands or an OpenCV
+   --  failure.
    procedure Subtract (Left, Right : UMat; Destination : in out UMat);
 
-   --  Same destination rules as Add/Subtract above, with elementwise products.
-   --  UInt8/Int16 saturate; Int32 does not promise saturation on overflow.
+   --  Destination form of Multiply: elementwise products under the
+   --  destination rules of the Mat Add destination form. UInt8 and Int16
+   --  results saturate; Int32 overflow is not promised to saturate.
+   --  @param Left The first factor.
+   --  @param Right The second factor, matching Left.
+   --  @param Destination The caller-owned Mat that receives the products.
+   --  @exception OpenCV_Error Raised for mismatched operands, a
+   --  temporary-view Destination, or an OpenCV failure.
    procedure Multiply (Left, Right : Mat; Destination : in out Mat);
+
+   --  UMat destination form of Multiply, under the rules of the Mat
+   --  Multiply destination form.
+   --  @param Left The first factor.
+   --  @param Right The second factor, matching Left.
+   --  @param Destination The caller-owned UMat that receives the products.
+   --  @exception OpenCV_Error Raised for mismatched operands or an OpenCV
+   --  failure.
    procedure Multiply (Left, Right : UMat; Destination : in out UMat);
 
-   --  Same destination rules, computing old Left / old Right even when
-   --  Destination is Right. Zero denominators follow OpenCV: integer zero,
-   --  floating infinity/NaN; Float16 retains the function's native policy.
+   --  Destination form of Divide under the destination rules of the Mat Add
+   --  destination form. The quotient is computed from the original Left and
+   --  Right values even when Destination is Right. Zero denominators follow
+   --  OpenCV: integer zero, or floating infinity or NaN; Float16 retains the
+   --  function's native policy.
+   --  @param Left The dividend.
+   --  @param Right The divisor, matching Left.
+   --  @param Destination The caller-owned Mat that receives the quotients.
+   --  @exception OpenCV_Error Raised for mismatched operands, a
+   --  temporary-view Destination, or an OpenCV failure.
    procedure Divide (Left, Right : Mat; Destination : in out Mat);
+
+   --  UMat destination form of Divide, under the rules of the Mat Divide
+   --  destination form.
+   --  @param Left The dividend.
+   --  @param Right The divisor, matching Left.
+   --  @param Destination The caller-owned UMat that receives the quotients.
+   --  @exception OpenCV_Error Raised for mismatched operands or an OpenCV
+   --  failure.
    procedure Divide (Left, Right : UMat; Destination : in out UMat);
 
-   --  Same destination rules, computing native elementwise abs(Left-Right).
+   --  Destination form of Abs_Diff under the destination rules of the Mat Add
+   --  destination form, computing native elementwise abs (Left - Right).
    --  UInt8 does not wrap; Int16 saturates; Int32 overflow is not saturated.
    --  Nonfinite floating results remain native, without NaN payload promises.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @param Destination The caller-owned Mat that receives the differences.
+   --  @exception OpenCV_Error Raised for mismatched operands, a
+   --  temporary-view Destination, or an OpenCV failure.
    procedure Abs_Diff (Left, Right : Mat; Destination : in out Mat);
+
+   --  UMat destination form of Abs_Diff, under the rules of the Mat Abs_Diff
+   --  destination form.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @param Destination The caller-owned UMat that receives the differences.
+   --  @exception OpenCV_Error Raised for mismatched operands or an OpenCV
+   --  failure.
    procedure Abs_Diff (Left, Right : UMat; Destination : in out UMat);
 
-   --  Same destination rules; direct element selection, without saturation.
-   --  Independent destinations match the functions. Exact/shallow aliases
-   --  retain native SIMD/tail selection: floating NaN classification and
-   --  signed-zero selection can differ from fresh results (not IEEE fmin/max).
+   --  Destination form of Minimum under the destination rules of the Mat Add
+   --  destination form, with direct element selection and no saturation.
+   --  Independent destinations match the function. Exact or shallow aliases
+   --  retain native SIMD and tail selection, so floating NaN classification
+   --  and signed-zero selection can differ from a fresh result; this is not
+   --  IEEE fmin.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @param Destination The caller-owned Mat that receives the minima.
+   --  @exception OpenCV_Error Raised for mismatched operands, a
+   --  temporary-view Destination, or an OpenCV failure.
    procedure Minimum (Left, Right : Mat; Destination : in out Mat);
+
+   --  Destination form of Maximum, under the rules of the Mat Minimum
+   --  destination form; the selection is not IEEE fmax.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @param Destination The caller-owned Mat that receives the maxima.
+   --  @exception OpenCV_Error Raised for mismatched operands, a
+   --  temporary-view Destination, or an OpenCV failure.
    procedure Maximum (Left, Right : Mat; Destination : in out Mat);
+
+   --  UMat destination form of Minimum, under the rules of the Mat Minimum
+   --  destination form.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @param Destination The caller-owned UMat that receives the minima.
+   --  @exception OpenCV_Error Raised for mismatched operands or an OpenCV
+   --  failure.
    procedure Minimum (Left, Right : UMat; Destination : in out UMat);
+
+   --  UMat destination form of Maximum, under the rules of the Mat Minimum
+   --  destination form.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @param Destination The caller-owned UMat that receives the maxima.
+   --  @exception OpenCV_Error Raised for mismatched operands or an OpenCV
+   --  failure.
    procedure Maximum (Left, Right : UMat; Destination : in out UMat);
 
    --  Returns an independent Mat with the compatible operands' shape and
@@ -1788,12 +2593,21 @@ package OpenCV.Core is
    --  architecture, SIMD dispatch, or vector-tail placement. Scale_Add has
    --  no native CV_16F kernel through OpenCV 5.0, so it uses Float32
    --  compatibility on every supported version.
+   --  @param Left The first operand.
+   --  @param Alpha Weight applied to Left.
+   --  @param Right The second operand, matching Left.
+   --  @param Beta Weight applied to Right.
+   --  @param Gamma Scalar added to the weighted sum.
+   --  @return A new Mat holding Left * Alpha + Right * Beta + Gamma.
+   --  @exception OpenCV_Error Raised when the operands are mismatched or
+   --  OpenCV reports a failure.
    function Add_Weighted
      (Left  : Mat;
       Alpha : Long_Float;
       Right : Mat;
       Beta  : Long_Float;
       Gamma : Long_Float := 0.0) return Mat;
+
    --  Returns an independent Mat with Self's shape and element type.
    --  Each element is Self * Scale + Right. Depths below Float32 use
    --  OpenCV's addWeighted path: UInt8, Int8, UInt16, and Int16 saturate;
@@ -1807,30 +2621,63 @@ package OpenCV.Core is
    --  guaranteed to be independent of architecture, SIMD dispatch, or
    --  vector-tail placement.
    --  Both operands must have identical 2D shape and element type.
+   --  @param Self The Mat that is scaled.
+   --  @param Scale Factor applied to Self.
+   --  @param Right The Mat added after scaling, matching Self.
+   --  @return A new Mat with independent storage.
+   --  @exception OpenCV_Error Raised when the operands are mismatched or
+   --  OpenCV reports a failure.
    function Scale_Add (Self : Mat; Scale : Long_Float; Right : Mat) return Mat;
 
-   --  UMat results remain UMat-native. Add_Weighted accepts matching N-D
-   --  shape, depth, and channels; Scale_Add retains the 2-D Mat policy.
-   --  Float16 uses the same version-dependent widening and coefficient
-   --  rounding contracts as the corresponding Mat overloads above.
+   --  UMat form of Add_Weighted. The result remains UMat-native. Operands
+   --  must have matching N-dimensional shape, depth, and channels. Float16
+   --  uses the same version-dependent widening and coefficient rounding as
+   --  the Mat function.
+   --  @param Left The first operand.
+   --  @param Alpha Weight applied to Left.
+   --  @param Right The second operand, matching Left.
+   --  @param Beta Weight applied to Right.
+   --  @param Gamma Scalar added to the weighted sum.
+   --  @return A new UMat holding Left * Alpha + Right * Beta + Gamma.
+   --  @exception OpenCV_Error Raised when the operands are mismatched or
+   --  OpenCV reports a failure.
    function Add_Weighted
      (Left  : UMat;
       Alpha : Long_Float;
       Right : UMat;
       Beta  : Long_Float;
       Gamma : Long_Float := 0.0) return UMat;
+
+   --  UMat form of Scale_Add. The result remains UMat-native. Operands retain
+   --  the 2-D shape and element-type policy of the Mat function, with the
+   --  same Float16 widening and rounding behavior.
+   --  @param Self The UMat that is scaled.
+   --  @param Scale Factor applied to Self.
+   --  @param Right The UMat added after scaling, matching Self.
+   --  @return A new UMat with independent storage.
+   --  @exception OpenCV_Error Raised when the operands are mismatched or
+   --  OpenCV reports a failure.
    function Scale_Add
      (Self : UMat; Scale : Long_Float; Right : UMat) return UMat;
 
-   --  Write directly into caller storage using the existing numerical policy.
-   --  Compatible whole/Region destinations retain storage and shallow aliases;
-   --  mismatched destinations detach/reallocate to the source shape/type.
-   --  Add_Weighted accepts matching N-D sources; Scale_Add remains 2-D.
-   --  Exact and same-layout shallow source aliases are supported. Arbitrarily
-   --  partially overlapping Regions are unsupported. Native SIMD/FMA/tails can
-   --  give floating aliases different rounding from independent results.
-   --  Temporary Mat views cannot be destinations, but may be sources.
-   --  Coefficients are not validated or normalized; native precision applies.
+   --  Destination form of Add_Weighted, writing directly into caller storage
+   --  under the numerical policy of the function. Compatible whole or Region
+   --  destinations retain storage and shallow aliases; mismatched
+   --  destinations detach or reallocate to the source shape and type. The
+   --  sources may be N-dimensional. Exact and same-layout shallow source
+   --  aliases are supported, arbitrary partially overlapping Regions are
+   --  not, and native SIMD, fused multiply-add and tail handling can give
+   --  floating aliases different rounding from independent results.
+   --  Temporary Mat views may be sources but not destinations. Coefficients
+   --  are not validated or normalized; native precision applies.
+   --  @param Left The first operand.
+   --  @param Alpha Weight applied to Left.
+   --  @param Right The second operand, matching Left.
+   --  @param Beta Weight applied to Right.
+   --  @param Destination The caller-owned Mat that receives the result.
+   --  @param Gamma Scalar added to the weighted sum.
+   --  @exception OpenCV_Error Raised for mismatched operands, a
+   --  temporary-view Destination, or an OpenCV failure.
    procedure Add_Weighted
      (Left        : Mat;
       Alpha       : Long_Float;
@@ -1838,8 +2685,29 @@ package OpenCV.Core is
       Beta        : Long_Float;
       Destination : in out Mat;
       Gamma       : Long_Float := 0.0);
+
+   --  Destination form of Scale_Add under the destination, alias, and
+   --  rounding rules of the Mat Add_Weighted destination form. Operands
+   --  remain two-dimensional.
+   --  @param Self The Mat that is scaled.
+   --  @param Scale Factor applied to Self.
+   --  @param Right The Mat added after scaling, matching Self.
+   --  @param Destination The caller-owned Mat that receives the result.
+   --  @exception OpenCV_Error Raised for mismatched operands, a
+   --  temporary-view Destination, or an OpenCV failure.
    procedure Scale_Add
      (Self : Mat; Scale : Long_Float; Right : Mat; Destination : in out Mat);
+
+   --  UMat destination form of Add_Weighted, under the rules of the Mat
+   --  Add_Weighted destination form and native UMat storage.
+   --  @param Left The first operand.
+   --  @param Alpha Weight applied to Left.
+   --  @param Right The second operand, matching Left.
+   --  @param Beta Weight applied to Right.
+   --  @param Destination The caller-owned UMat that receives the result.
+   --  @param Gamma Scalar added to the weighted sum.
+   --  @exception OpenCV_Error Raised for mismatched operands or an OpenCV
+   --  failure.
    procedure Add_Weighted
      (Left        : UMat;
       Alpha       : Long_Float;
@@ -1847,6 +2715,15 @@ package OpenCV.Core is
       Beta        : Long_Float;
       Destination : in out UMat;
       Gamma       : Long_Float := 0.0);
+
+   --  UMat destination form of Scale_Add, under the rules of the Mat
+   --  Scale_Add destination form and native UMat storage.
+   --  @param Self The UMat that is scaled.
+   --  @param Scale Factor applied to Self.
+   --  @param Right The UMat added after scaling, matching Self.
+   --  @param Destination The caller-owned UMat that receives the result.
+   --  @exception OpenCV_Error Raised for mismatched operands or an OpenCV
+   --  failure.
    procedure Scale_Add
      (Self        : UMat;
       Scale       : Long_Float;
@@ -1856,60 +2733,237 @@ package OpenCV.Core is
    --  All UMat operands and masks stay UMat-native. Bitwise operations use
    --  stored bits, including exact Float16 bits. Binary operands have matching
    --  2-D shape and element type; masks are UInt8 C1 of matching 2-D size.
+   --  Computes the bitwise AND of corresponding elements. Floating storage,
+   --  including Float16, is operated on as stored bits. Operands must have
+   --  matching 2-D shape and element type.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @return A new UMat with independent storage.
+   --  @exception OpenCV_Error Raised when the operands are mismatched or
+   --  OpenCV reports a failure.
    function Bitwise_And (Left, Right : UMat) return UMat;
+
+   --  Masked bitwise AND. Elements selected by a nonzero Mask value (the
+   --  complete element, all channels) receive Left and Right; the others are
+   --  zero in the new UMat. Mask is UInt8 C1 with the operands' 2-D size.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @param Mask UInt8 single-channel selector of matching size.
+   --  @return A new UMat with independent storage.
+   --  @exception OpenCV_Error Raised when the operands or Mask are
+   --  mismatched or OpenCV reports a failure.
    function Bitwise_And (Left, Right, Mask : UMat) return UMat;
+
+   --  Computes the bitwise OR of corresponding elements, with the operand
+   --  rules of the unmasked Bitwise_And function.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @return A new UMat with independent storage.
+   --  @exception OpenCV_Error Raised when the operands are mismatched or
+   --  OpenCV reports a failure.
    function Bitwise_Or (Left, Right : UMat) return UMat;
+
+   --  Masked bitwise OR, with the mask rules of the masked Bitwise_And
+   --  function.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @param Mask UInt8 single-channel selector of matching size.
+   --  @return A new UMat with independent storage.
+   --  @exception OpenCV_Error Raised when the operands or Mask are
+   --  mismatched or OpenCV reports a failure.
    function Bitwise_Or (Left, Right, Mask : UMat) return UMat;
+
+   --  Computes the bitwise exclusive OR of corresponding elements, with the
+   --  operand rules of the unmasked Bitwise_And function.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @return A new UMat with independent storage.
+   --  @exception OpenCV_Error Raised when the operands are mismatched or
+   --  OpenCV reports a failure.
    function Bitwise_Xor (Left, Right : UMat) return UMat;
+
+   --  Masked bitwise exclusive OR, with the mask rules of the masked
+   --  Bitwise_And function.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @param Mask UInt8 single-channel selector of matching size.
+   --  @return A new UMat with independent storage.
+   --  @exception OpenCV_Error Raised when the operands or Mask are
+   --  mismatched or OpenCV reports a failure.
    function Bitwise_Xor (Left, Right, Mask : UMat) return UMat;
+
+   --  Inverts every stored bit of Self, including the bits of floating
+   --  storage. Unmasked inversion supports N-dimensional UMats.
+   --  @param Self The source UMat.
+   --  @return A new UMat with independent storage.
+   --  @exception OpenCV_Error Raised when OpenCV reports a failure.
    function Bitwise_Not (Self : UMat) return UMat;
+
+   --  Masked bitwise NOT. Elements selected by a nonzero Mask value (the
+   --  complete element, all channels) are inverted; the others are zero in
+   --  the new UMat. Mask is UInt8 C1 with Self's 2-D size.
+   --  @param Self The source UMat.
+   --  @param Mask UInt8 single-channel selector of matching size.
+   --  @return A new UMat with independent storage.
+   --  @exception OpenCV_Error Raised when Mask is mismatched or OpenCV
+   --  reports a failure.
    function Bitwise_Not (Self, Mask : UMat) return UMat;
 
-   --  Destination procedures reuse compatible whole/Region storage; a
-   --  mismatch detaches this header. Floating storage is operated on as bits.
-   --  With a mask, nonzero selects the entire element (all channels). Zero
-   --  preserves an existing compatible Destination element; after native
-   --  reallocation it leaves zero instead. Functions allocate independent
-   --  storage. Exact/same-layout source aliases are supported, but arbitrary
-   --  partial overlap and Destination aliasing Mask are outside the contract.
-   --  Binary operations and masked Not retain their existing 2-D policies;
-   --  unmasked Not supports N-D. UMat execution remains UMat-native.
+   --  Destination form of Bitwise_And. Compatible whole or Region storage is
+   --  reused; a mismatch detaches this header. Floating storage is operated
+   --  on as bits. Exact and same-layout source aliases are supported;
+   --  arbitrary partial overlap is outside the contract. Operands retain the
+   --  2-D policy of the function. Execution remains UMat-native.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @param Destination The caller-owned UMat that receives the result.
+   --  @exception OpenCV_Error Raised for mismatched operands or an OpenCV
+   --  failure.
    procedure Bitwise_And (Left, Right : UMat; Destination : in out UMat);
+
+   --  Masked destination form of Bitwise_And. A nonzero Mask value selects
+   --  the entire element (all channels). An unselected element keeps its
+   --  value in a compatible existing Destination, and is zero after native
+   --  reallocation. Destination aliasing Mask is outside the contract.
+   --  Other rules match the unmasked destination form.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @param Mask UInt8 single-channel selector of matching size.
+   --  @param Destination The caller-owned UMat that receives the result.
+   --  @exception OpenCV_Error Raised for mismatched operands or Mask, or an
+   --  OpenCV failure.
    procedure Bitwise_And (Left, Right, Mask : UMat; Destination : in out UMat);
+
+   --  Destination form of Bitwise_Or, with the rules of the Bitwise_And
+   --  destination form.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @param Destination The caller-owned UMat that receives the result.
+   --  @exception OpenCV_Error Raised for mismatched operands or an OpenCV
+   --  failure.
    procedure Bitwise_Or (Left, Right : UMat; Destination : in out UMat);
+
+   --  Masked destination form of Bitwise_Or, with the rules of the masked
+   --  Bitwise_And destination form.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @param Mask UInt8 single-channel selector of matching size.
+   --  @param Destination The caller-owned UMat that receives the result.
+   --  @exception OpenCV_Error Raised for mismatched operands or Mask, or an
+   --  OpenCV failure.
    procedure Bitwise_Or (Left, Right, Mask : UMat; Destination : in out UMat);
+
+   --  Destination form of Bitwise_Xor, with the rules of the Bitwise_And
+   --  destination form.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @param Destination The caller-owned UMat that receives the result.
+   --  @exception OpenCV_Error Raised for mismatched operands or an OpenCV
+   --  failure.
    procedure Bitwise_Xor (Left, Right : UMat; Destination : in out UMat);
+
+   --  Masked destination form of Bitwise_Xor, with the rules of the masked
+   --  Bitwise_And destination form.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @param Mask UInt8 single-channel selector of matching size.
+   --  @param Destination The caller-owned UMat that receives the result.
+   --  @exception OpenCV_Error Raised for mismatched operands or Mask, or an
+   --  OpenCV failure.
    procedure Bitwise_Xor (Left, Right, Mask : UMat; Destination : in out UMat);
+
+   --  Destination form of Bitwise_Not, with the storage and alias rules of
+   --  the Bitwise_And destination form. Unmasked inversion supports
+   --  N-dimensional UMats.
+   --  @param Self The source UMat.
+   --  @param Destination The caller-owned UMat that receives the result.
+   --  @exception OpenCV_Error Raised when OpenCV reports a failure.
    procedure Bitwise_Not (Self : UMat; Destination : in out UMat);
+
+   --  Masked destination form of Bitwise_Not, with the mask rules of the
+   --  masked Bitwise_And destination form. Masked inversion retains the
+   --  2-D policy.
+   --  @param Self The source UMat.
+   --  @param Mask UInt8 single-channel selector of matching size.
+   --  @param Destination The caller-owned UMat that receives the result.
+   --  @exception OpenCV_Error Raised when Mask is mismatched or OpenCV
+   --  reports a failure.
    procedure Bitwise_Not (Self, Mask : UMat; Destination : in out UMat);
-   --  Range and comparison results are UInt8 C1 UMat masks.
+
+   --  Tests each element against inclusive per-channel bounds and returns a
+   --  UInt8 C1 mask: an element is set only when every channel lies within
+   --  its Lower and Upper components. Supports N-dimensional UMats with at
+   --  most four channels. A Float16 source requires OpenCV 5.0 or later.
+   --  @param Self The UMat to test.
+   --  @param Lower Inclusive per-channel lower bounds.
+   --  @param Upper Inclusive per-channel upper bounds.
+   --  @return A new UInt8 C1 mask UMat.
+   --  @exception OpenCV_Error Raised for an empty UMat, more than four
+   --  channels, an unsupported depth, or an OpenCV failure.
    function In_Range (Self : UMat; Lower, Upper : Scalar) return UMat;
+
+   --  Compares corresponding elements of two single-channel UMats and
+   --  returns a UInt8 C1 mask. Operands have matching 2-D shape.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @param Kind Relation tested, read as Left relation Right.
+   --  @return A new UInt8 C1 mask UMat.
+   --  @exception OpenCV_Error Raised when the operands are mismatched or
+   --  OpenCV reports a failure.
    function Compare (Left, Right : UMat; Kind : Comparison_Kind) return UMat;
 
-   --  UInt8 C1 output reuses compatible whole/Region storage; mismatches
-   --  detach Destination. Compare retains C1 matching 2-D operands. In_Range
-   --  supports N-D and at most four channels, requiring all channels in range.
-   --  Float16 requires OpenCV 5.0+. Partial overlap is outside the contract.
-   --  Exact UMat In_Range source/Destination aliases are rejected for ABI
-   --  safety; other shared-storage aliases remain outside the contract.
-   --  Exact depth-changing UMat Compare aliases are rejected for ABI safety.
-   --  UInt8 C1 exact and distinct shallow Compare aliases are supported.
-   --  Both-empty Compare releases Destination; empty In_Range is rejected.
-   --  Execution remains UMat-native, including native internal CPU fallback.
+   --  Destination form of Compare. The UInt8 C1 output reuses compatible
+   --  whole or Region storage; mismatches detach Destination. Exact aliases
+   --  that would change depth are rejected for ABI safety, while UInt8 C1
+   --  exact and distinct shallow aliases are supported. Other partial
+   --  overlap is outside the contract. If both operands are empty,
+   --  Destination is released. Execution remains UMat-native, including
+   --  OpenCV's internal CPU fallback.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @param Kind Relation tested, read as Left relation Right.
+   --  @param Destination The caller-owned UMat that receives the mask.
+   --  @exception OpenCV_Error Raised for mismatched operands, a rejected
+   --  alias, or an OpenCV failure.
    procedure Compare
      (Left, Right : UMat; Kind : Comparison_Kind; Destination : in out UMat);
+
+   --  Destination form of In_Range. The UInt8 C1 output reuses compatible
+   --  whole or Region storage; mismatches detach Destination. An exact
+   --  source and Destination alias is rejected for ABI safety, and other
+   --  shared-storage aliases are outside the contract. An empty UMat is
+   --  rejected. Other rules match the function.
+   --  @param Self The UMat to test.
+   --  @param Lower Inclusive per-channel lower bounds.
+   --  @param Upper Inclusive per-channel upper bounds.
+   --  @param Destination The caller-owned UMat that receives the mask.
+   --  @exception OpenCV_Error Raised for an empty UMat, an exact alias, an
+   --  unsupported channel count or depth, or an OpenCV failure.
    procedure In_Range
      (Self : UMat; Lower : Scalar; Upper : Scalar; Destination : in out UMat);
 
    --  UMat-native normalization retains destination depth and accepts N-D.
    --  Native Float16 normalization support depends on Kind/OpenCV version.
+   --  @param Self The source UMat.
+   --  @param Kind Norm to target, or Min_Max to map onto a range.
+   --  @param Alpha Target norm, or lower bound for Min_Max.
+   --  @param Beta Upper bound for Min_Max; ignored for the norm kinds.
+   --  @return A new UMat with independent storage.
+   --  @exception OpenCV_Error Raised when OpenCV rejects the operands.
    function Normalize
      (Self  : UMat;
       Kind  : Normalize_Kind := L2;
       Alpha : Long_Float := 1.0;
       Beta  : Long_Float := 0.0) return UMat;
+
    --  UMat-native destination reuse, with the Mat procedure's alias/reallocate
    --  contract and the existing UMat empty-storage compatibility handling.
+   --  @param Self The source UMat.
+   --  @param Destination The caller-owned UMat that receives the result.
+   --  @param Kind Norm to target, or Min_Max to map onto a range.
+   --  @param Alpha Target norm, or lower bound for Min_Max.
+   --  @param Beta Upper bound for Min_Max; ignored for the norm kinds.
+   --  @exception OpenCV_Error Raised when OpenCV rejects the operands.
    procedure Normalize
      (Self        : UMat;
       Destination : in out UMat;
@@ -1917,46 +2971,175 @@ package OpenCV.Core is
       Alpha       : Long_Float := 1.0;
       Beta        : Long_Float := 0.0);
 
-   --  Independent results, with the same numerical contracts as Mat.
-   --  Sqrt/Exp/Log require Float32 or Float64; all four support N-D and
-   --  process channels independently. Pow also accepts integer storage for
-   --  nonnegative integer powers, retaining native saturation/overflow.
-   --  Float16 is rejected by Sqrt/Exp/Log/Pow.
+   --  Square root with the numerical contract of the Mat Sqrt function.
+   --  Requires Float32 or Float64 (Float16 is rejected), supports
+   --  N-dimensional UMats, and processes channels independently.
+   --  @param Self The Float32 or Float64 source.
+   --  @return A new UMat with independent storage.
+   --  @exception OpenCV_Error Raised for an unsupported depth or an OpenCV
+   --  failure.
    function Sqrt (Self : UMat) return UMat;
+
+   --  Exponential with the numerical contract of the Mat Exp function.
+   --  Requires Float32 or Float64 (Float16 is rejected), supports
+   --  N-dimensional UMats, and processes channels independently.
+   --  @param Self The Float32 or Float64 source.
+   --  @return A new UMat with independent storage.
+   --  @exception OpenCV_Error Raised for an unsupported depth or an OpenCV
+   --  failure.
    function Exp (Self : UMat) return UMat;
+
+   --  Natural logarithm with the numerical contract of the Mat Log function.
+   --  Requires Float32 or Float64 (Float16 is rejected), supports
+   --  N-dimensional UMats, and processes channels independently.
+   --  @param Self The Float32 or Float64 source.
+   --  @return A new UMat with independent storage.
+   --  @exception OpenCV_Error Raised for an unsupported depth or an OpenCV
+   --  failure.
    function Log (Self : UMat) return UMat;
+
+   --  Power with the numerical contract of the Mat Pow function. Supports
+   --  N-dimensional UMats and processes channels independently. Integer
+   --  storage is accepted for nonnegative integer powers, retaining native
+   --  saturation and overflow behavior. Float16 is rejected.
+   --  @param Self The source UMat.
+   --  @param Power The exponent.
+   --  @return A new UMat with independent storage.
+   --  @exception OpenCV_Error Raised for an unsupported depth or exponent
+   --  combination, or an OpenCV failure.
    function Pow (Self : UMat; Power : Long_Float) return UMat;
+
+   --  UMat destination form of Sqrt. Native UMat destinations follow the
+   --  reuse and alias boundaries of the Mat Sqrt destination form. No
+   --  binding-level host staging is performed, including for N-dimensional
+   --  storage.
+   --  @param Self The Float32 or Float64 source.
+   --  @param Destination The caller-owned UMat that receives the result.
+   --  @exception OpenCV_Error Raised for an unsupported depth or an OpenCV
+   --  failure.
    procedure Sqrt (Self : UMat; Destination : in out UMat);
+
+   --  UMat destination form of Exp, under the rules of the UMat Sqrt
+   --  destination form.
+   --  @param Self The Float32 or Float64 source.
+   --  @param Destination The caller-owned UMat that receives the result.
+   --  @exception OpenCV_Error Raised for an unsupported depth or an OpenCV
+   --  failure.
    procedure Exp (Self : UMat; Destination : in out UMat);
+
+   --  UMat destination form of Log, under the rules of the UMat Sqrt
+   --  destination form.
+   --  @param Self The Float32 or Float64 source.
+   --  @param Destination The caller-owned UMat that receives the result.
+   --  @exception OpenCV_Error Raised for an unsupported depth or an OpenCV
+   --  failure.
    procedure Log (Self : UMat; Destination : in out UMat);
+
+   --  UMat destination form of Pow, under the rules of the UMat Sqrt
+   --  destination form.
+   --  @param Self The source UMat.
+   --  @param Power The exponent.
+   --  @param Destination The caller-owned UMat that receives the result.
+   --  @exception OpenCV_Error Raised for an unsupported depth or exponent
+   --  combination, or an OpenCV failure.
    procedure Pow (Self : UMat; Power : Long_Float; Destination : in out UMat);
-   --  Native UMat destinations follow the Mat reuse and alias boundaries.
-   --  No binding-level host staging is performed, including for N-D storage.
-   --  Matching 2-D Float32/Float64 operands, with independent channels.
+
+   --  UMat form of Magnitude: sqrt (X**2 + Y**2) computed natively without
+   --  binding-level host staging. X and Y are matching 2-D Float32 or
+   --  Float64 UMats; channels are computed independently.
+   --  @param X Float32 or Float64 horizontal component.
+   --  @param Y Vertical component matching X in dimensions, depth, and
+   --  channel count.
+   --  @return A new UMat with independent storage.
+   --  @exception OpenCV_Error Raised for mismatched or unsupported operands
+   --  or an OpenCV failure.
    function Magnitude (X, Y : UMat) return UMat;
+
+   --  UMat destination form of Magnitude. Native UMat destination reuse,
+   --  without binding-level host staging, follows the rules of the Mat
+   --  Magnitude destination form.
+   --  @param X Float32 or Float64 horizontal component.
+   --  @param Y Vertical component matching X in dimensions, depth, and
+   --  channel count.
+   --  @param Destination The caller-owned UMat that receives the magnitudes.
+   --  @exception OpenCV_Error Raised for mismatched or unsupported operands
+   --  or an OpenCV failure.
    procedure Magnitude (X, Y : UMat; Destination : in out UMat);
-   --  Native UMat destination reuse, without binding-level host staging.
+
+   --  UMat form of Phase, using matching 2-D Float32 or Float64 sources and
+   --  the native angle units and storage semantics of the Mat function.
+   --  @param X Float32 or Float64 horizontal component.
+   --  @param Y Vertical component matching X in dimensions, depth, and
+   --  channel count.
+   --  @param Units Angle unit of the result: radians by default, or degrees.
+   --  @return A new UMat of angles with independent storage.
+   --  @exception OpenCV_Error Raised for mismatched or unsupported operands
+   --  or an OpenCV failure.
    function Phase (X, Y : UMat; Units : Angle_Unit := Radians) return UMat;
+
+   --  UMat destination form of Phase. Native UMat destination reuse, without
+   --  binding-level host staging, follows the rules of the Mat Phase
+   --  destination form.
+   --  @param X Float32 or Float64 horizontal component.
+   --  @param Y Vertical component matching X in dimensions, depth, and
+   --  channel count.
+   --  @param Destination The caller-owned UMat that receives the angles.
+   --  @param Units Angle unit of the result: radians by default, or degrees.
+   --  @exception OpenCV_Error Raised for mismatched or unsupported operands
+   --  or an OpenCV failure.
    procedure Phase
      (X, Y : UMat; Destination : in out UMat; Units : Angle_Unit := Radians);
-   --  Matching 2-D float sources, native angle units and storage semantics.
+
+   --  Independent polar outputs of the UMat Cart_To_Polar. Each field owns
+   --  its own result header and storage, and one native call produces both
+   --  fields. Angle accuracy follows the Mat Phase contract.
+   --  @field Magnitude Per-element vector length.
+   --  @field Angle Per-element angle, in the unit requested from the
+   --  producing operation.
    type UMat_Polar_Coordinates is record
       Magnitude : UMat;
       Angle     : UMat;
    end record;
+
+   --  Independent Cartesian outputs of the UMat Polar_To_Cart. Each field
+   --  owns its own result header and storage.
+   --  @field X Per-element horizontal component.
+   --  @field Y Per-element vertical component.
    type UMat_Cartesian_Coordinates is record
       X : UMat;
       Y : UMat;
    end record;
-   --  Each field owns an independent result header/storage; one native call
-   --  produces both fields. Angle accuracy follows Phase's Mat contract.
+
+   --  UMat form of Cart_To_Polar. One native call produces both results,
+   --  with the operand rules and angle accuracy of the Mat function.
+   --  @param X Float32 or Float64 horizontal component.
+   --  @param Y Vertical component matching X in dimensions, depth, and
+   --  channel count.
+   --  @param Units Angle unit of the result: radians by default, or degrees.
+   --  @return Independently owned magnitude and angle UMats.
+   --  @exception OpenCV_Error Raised for mismatched or unsupported operands
+   --  or an OpenCV failure.
    function Cart_To_Polar
      (X, Y : UMat; Units : Angle_Unit := Radians)
       return UMat_Polar_Coordinates;
+
+   --  UMat destination form of Cart_To_Polar with individual destinations,
+   --  under the paired destination and alias rules of the Mat form, without
+   --  host staging: outputs must be distinct native objects, not exactly
+   --  either source, and overlapping storage is unsupported.
+   --  @param X Float32 or Float64 horizontal component.
+   --  @param Y Vertical component matching X in dimensions, depth, and
+   --  channel count.
+   --  @param Magnitude The caller-owned UMat that receives the magnitudes.
+   --  @param Angle The caller-owned UMat that receives the angles.
+   --  @param Units Angle unit of Angle: radians by default, or degrees.
+   --  @exception OpenCV_Error Raised for mismatched or unsupported operands,
+   --  an unsupported output alias, or an OpenCV failure.
    procedure Cart_To_Polar
      (X, Y             : UMat;
       Magnitude, Angle : in out UMat;
       Units            : Angle_Unit := Radians);
+
    --  Groups the two caller-owned destinations. Each field independently owns
    --  its UMat header; the record is not a transactional update and does not
    --  change native alias rules. Compatible storage is reused and mismatched
@@ -1977,18 +3160,57 @@ package OpenCV.Core is
    --  Angle is authoritative. Empty Magnitude (default or typed), or the
    --  angle-only overload, means unit magnitude. Non-empty Magnitude must
    --  match Angle's 2-D shape, Float32/Float64 depth, and channels.
+   --  @param Magnitude Non-empty polar magnitude matching Angle, or empty to
+   --  mean unit magnitude for every Angle element.
+   --  @param Angle Authoritative polar angle. Float32 or Float64.
+   --  @param Units Angle unit of Angle: radians by default, or degrees.
+   --  @return Independently owned X and Y UMats.
+   --  @exception OpenCV_Error Raised for a default empty Angle, mismatched
+   --  operands, an unsupported depth, or an OpenCV failure.
    function Polar_To_Cart
      (Magnitude, Angle : UMat; Units : Angle_Unit := Radians)
       return UMat_Cartesian_Coordinates;
+
+   --  Angle-only UMat form of Polar_To_Cart: every Angle element has unit
+   --  magnitude, so the results are the cosine and sine of Angle.
+   --  @param Angle Polar angle. Float32 or Float64.
+   --  @param Units Angle unit of Angle: radians by default, or degrees.
+   --  @return Independently owned X and Y UMats.
+   --  @exception OpenCV_Error Raised for a default empty Angle, an
+   --  unsupported depth, or an OpenCV failure.
    function Polar_To_Cart
      (Angle : UMat; Units : Angle_Unit := Radians)
       return UMat_Cartesian_Coordinates;
+
+   --  UMat destination form of Polar_To_Cart with individual destinations,
+   --  under the paired destination and alias rules of the Mat form: outputs
+   --  must be distinct native objects, not exactly any source, and
+   --  overlapping storage is unsupported.
+   --  @param Magnitude Non-empty polar magnitude matching Angle, or empty to
+   --  mean unit magnitude for every Angle element.
+   --  @param Angle Authoritative polar angle. Float32 or Float64.
+   --  @param X The caller-owned UMat that receives Magnitude * cos (Angle).
+   --  @param Y The caller-owned UMat that receives Magnitude * sin (Angle).
+   --  @param Units Angle unit of Angle: radians by default, or degrees.
+   --  @exception OpenCV_Error Raised for a default empty Angle, mismatched
+   --  operands, an unsupported depth or output alias, or an OpenCV failure.
    procedure Polar_To_Cart
      (Magnitude, Angle : UMat;
       X, Y             : in out UMat;
       Units            : Angle_Unit := Radians);
+
+   --  Angle-only UMat destination form of Polar_To_Cart: every Angle element
+   --  has unit magnitude. Destination and alias rules match the two-operand
+   --  UMat procedure.
+   --  @param Angle Polar angle. Float32 or Float64.
+   --  @param X The caller-owned UMat that receives cos (Angle).
+   --  @param Y The caller-owned UMat that receives sin (Angle).
+   --  @param Units Angle unit of Angle: radians by default, or degrees.
+   --  @exception OpenCV_Error Raised for a default empty Angle, an
+   --  unsupported depth or output alias, or an OpenCV failure.
    procedure Polar_To_Cart
      (Angle : UMat; X, Y : in out UMat; Units : Angle_Unit := Radians);
+
    --  Groups the two caller-owned destinations. Each field independently owns
    --  its UMat header; the record is not a transactional update and does not
    --  change native alias rules. Compatible storage is reused and mismatched
@@ -2020,65 +3242,259 @@ package OpenCV.Core is
       Destination : in out UMat_Cartesian_Coordinates;
       Units       : Angle_Unit := Radians);
 
+   --  Computes the bitwise AND of corresponding elements, operating on
+   --  stored bits (floating storage, including Float16, is not converted).
+   --  Operands must have matching shape and element type. The result owns
+   --  independent storage.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @return A new Mat with independent storage.
+   --  @exception OpenCV_Error Raised when the operands are mismatched or
+   --  OpenCV reports a failure.
    function Bitwise_And (Left, Right : Mat) return Mat;
+
+   --  Masked bitwise AND. A nonzero Mask value selects the complete element
+   --  (all channels); unselected elements are zero in the new Mat. Mask is
+   --  UInt8 C1 with the operands' shape.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @param Mask UInt8 single-channel selector of matching shape.
+   --  @return A new Mat with independent storage.
+   --  @exception OpenCV_Error Raised when the operands or Mask are
+   --  mismatched or OpenCV reports a failure.
    function Bitwise_And (Left, Right, Mask : Mat) return Mat;
+
+   --  Computes the bitwise OR of corresponding elements, with the operand
+   --  rules of the unmasked Bitwise_And function.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @return A new Mat with independent storage.
+   --  @exception OpenCV_Error Raised when the operands are mismatched or
+   --  OpenCV reports a failure.
    function Bitwise_Or (Left, Right : Mat) return Mat;
+
+   --  Masked bitwise OR, with the mask rules of the masked Bitwise_And
+   --  function.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @param Mask UInt8 single-channel selector of matching shape.
+   --  @return A new Mat with independent storage.
+   --  @exception OpenCV_Error Raised when the operands or Mask are
+   --  mismatched or OpenCV reports a failure.
    function Bitwise_Or (Left, Right, Mask : Mat) return Mat;
+
+   --  Computes the bitwise exclusive OR of corresponding elements, with the
+   --  operand rules of the unmasked Bitwise_And function.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @return A new Mat with independent storage.
+   --  @exception OpenCV_Error Raised when the operands are mismatched or
+   --  OpenCV reports a failure.
    function Bitwise_Xor (Left, Right : Mat) return Mat;
+
+   --  Masked bitwise exclusive OR, with the mask rules of the masked
+   --  Bitwise_And function.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @param Mask UInt8 single-channel selector of matching shape.
+   --  @return A new Mat with independent storage.
+   --  @exception OpenCV_Error Raised when the operands or Mask are
+   --  mismatched or OpenCV reports a failure.
    function Bitwise_Xor (Left, Right, Mask : Mat) return Mat;
+
+   --  Inverts every stored bit of Self, including the bits of floating
+   --  storage. Unmasked inversion supports N-dimensional Mats.
+   --  @param Self The source Mat.
+   --  @return A new Mat with independent storage.
+   --  @exception OpenCV_Error Raised when OpenCV reports a failure.
    function Bitwise_Not (Self : Mat) return Mat;
+
+   --  Masked bitwise NOT. A nonzero Mask value selects the complete element
+   --  (all channels) for inversion; unselected elements are zero in the new
+   --  Mat. Mask is UInt8 C1 with Self's shape.
+   --  @param Self The source Mat.
+   --  @param Mask UInt8 single-channel selector of matching shape.
+   --  @return A new Mat with independent storage.
+   --  @exception OpenCV_Error Raised when Mask is mismatched or OpenCV
+   --  reports a failure.
    function Bitwise_Not (Self, Mask : Mat) return Mat;
 
-   --  Same reuse, mask, bit-representation, dimensional and alias contracts
-   --  as the UMat procedures above. Temporary external/selected Mat views
-   --  are legal inputs, but cannot be Destination: output creation may rebind
-   --  their callback-scoped storage capability.
+   --  Destination form of Bitwise_And with the reuse, mask,
+   --  bit-representation, dimensional and alias contracts of the UMat
+   --  procedures above: compatible whole or Region storage is reused, a
+   --  mismatch detaches, exact and same-layout source aliases are supported
+   --  and arbitrary partial overlap is not. Temporary external or selected
+   --  Mat views are legal inputs but cannot be Destination, because output
+   --  creation may rebind their callback-scoped storage capability.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @param Destination The caller-owned Mat that receives the result.
+   --  @exception OpenCV_Error Raised for mismatched operands, a
+   --  temporary-view Destination, or an OpenCV failure.
    procedure Bitwise_And (Left, Right : Mat; Destination : in out Mat);
+
+   --  Masked destination form of Bitwise_And, under the rules of the Mat
+   --  Bitwise_And destination form. A nonzero Mask value selects the whole
+   --  element; an unselected element keeps its value in a compatible
+   --  existing Destination and is zero after native reallocation.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @param Mask UInt8 single-channel selector of matching shape.
+   --  @param Destination The caller-owned Mat that receives the result.
+   --  @exception OpenCV_Error Raised for mismatched operands or Mask, a
+   --  temporary-view Destination, or an OpenCV failure.
    procedure Bitwise_And (Left, Right, Mask : Mat; Destination : in out Mat);
+
+   --  Destination form of Bitwise_Or, under the rules of the Mat Bitwise_And
+   --  destination form.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @param Destination The caller-owned Mat that receives the result.
+   --  @exception OpenCV_Error Raised for mismatched operands, a
+   --  temporary-view Destination, or an OpenCV failure.
    procedure Bitwise_Or (Left, Right : Mat; Destination : in out Mat);
+
+   --  Masked destination form of Bitwise_Or, under the rules of the masked
+   --  Mat Bitwise_And destination form.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @param Mask UInt8 single-channel selector of matching shape.
+   --  @param Destination The caller-owned Mat that receives the result.
+   --  @exception OpenCV_Error Raised for mismatched operands or Mask, a
+   --  temporary-view Destination, or an OpenCV failure.
    procedure Bitwise_Or (Left, Right, Mask : Mat; Destination : in out Mat);
+
+   --  Destination form of Bitwise_Xor, under the rules of the Mat
+   --  Bitwise_And destination form.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @param Destination The caller-owned Mat that receives the result.
+   --  @exception OpenCV_Error Raised for mismatched operands, a
+   --  temporary-view Destination, or an OpenCV failure.
    procedure Bitwise_Xor (Left, Right : Mat; Destination : in out Mat);
+
+   --  Masked destination form of Bitwise_Xor, under the rules of the masked
+   --  Mat Bitwise_And destination form.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @param Mask UInt8 single-channel selector of matching shape.
+   --  @param Destination The caller-owned Mat that receives the result.
+   --  @exception OpenCV_Error Raised for mismatched operands or Mask, a
+   --  temporary-view Destination, or an OpenCV failure.
    procedure Bitwise_Xor (Left, Right, Mask : Mat; Destination : in out Mat);
+
+   --  Destination form of Bitwise_Not, under the rules of the Mat
+   --  Bitwise_And destination form. Unmasked inversion supports
+   --  N-dimensional Mats.
+   --  @param Self The source Mat.
+   --  @param Destination The caller-owned Mat that receives the result.
+   --  @exception OpenCV_Error Raised for a temporary-view Destination or an
+   --  OpenCV failure.
    procedure Bitwise_Not (Self : Mat; Destination : in out Mat);
+
+   --  Masked destination form of Bitwise_Not, under the rules of the masked
+   --  Mat Bitwise_And destination form.
+   --  @param Self The source Mat.
+   --  @param Mask UInt8 single-channel selector of matching shape.
+   --  @param Destination The caller-owned Mat that receives the result.
+   --  @exception OpenCV_Error Raised for a mismatched Mask, a
+   --  temporary-view Destination, or an OpenCV failure.
    procedure Bitwise_Not (Self, Mask : Mat; Destination : in out Mat);
+
+   --  Tests each element against inclusive per-channel bounds and returns a
+   --  UInt8 C1 mask: an element is set only when every channel lies within
+   --  its Lower and Upper components. Supports N-dimensional Mats with at
+   --  most four channels. Float16 requires OpenCV 5.0 or later.
+   --  @param Self The Mat to test.
+   --  @param Lower Inclusive per-channel lower bounds.
+   --  @param Upper Inclusive per-channel upper bounds.
+   --  @return A new UInt8 C1 mask Mat.
+   --  @exception OpenCV_Error Raised for an empty Mat, more than four
+   --  channels, an unsupported depth, or an OpenCV failure.
    function In_Range (Self : Mat; Lower, Upper : Scalar) return Mat;
+
    --  Returns an independent Mat rotated by Kind.  90-degree rotations
    --  exchange rows and columns; a half turn preserves dimensions and every
    --  variant preserves element depth and channel count.
+   --  @param Self The Mat to rotate.
+   --  @param Kind Rotation to apply.
+   --  @return A new Mat with independent storage.
    function Rotate (Self : Mat; Kind : Rotation_Kind) return Mat;
+
    --  Returns an independent Mat tiled vertically Row_Repetitions times and
    --  horizontally Column_Repetitions times. Element depth and channel count
    --  are preserved. Empty Mats produce an empty result.
+   --  @param Self The Mat to tile.
+   --  @param Row_Repetitions Number of vertical repetitions.
+   --  @param Column_Repetitions Number of horizontal repetitions.
+   --  @return A new Mat with independent storage.
+   --  @exception OpenCV_Error Raised when the tiled size is not supported
+   --  or OpenCV reports a failure.
    function Repeat
      (Self : Mat; Row_Repetitions : Positive; Column_Repetitions : Positive)
       return Mat;
+
    --  Concatenates Sources left to right into an independent Mat. Inputs must
    --  have identical row counts and complete element types. Their column
    --  counts may differ. An empty input array produces an empty Mat; empty
    --  individual Mats are accepted when they satisfy the same requirements.
+   --  @param Sources The Mats to join, in left-to-right order.
+   --  @return A new Mat with independent storage.
+   --  @exception OpenCV_Error Raised when the row counts or element types
+   --  differ.
    function HConcat (Sources : Mat_Array) return Mat;
+
    --  Concatenates Sources top to bottom into an independent Mat. Inputs must
    --  have identical column counts and complete element types. Their row
    --  counts may differ. An empty input array produces an empty Mat; empty
    --  individual Mats are accepted when they satisfy the same requirements.
+   --  @param Sources The Mats to join, in top-to-bottom order.
+   --  @return A new Mat with independent storage.
+   --  @exception OpenCV_Error Raised when the column counts or element types
+   --  differ.
    function VConcat (Sources : Mat_Array) return Mat;
+
    --  Both operands must be single-channel with identical rows, columns, and
    --  depth.  The result is an independent UInt8 single-channel mask with 255
    --  where the comparison is true and 0 otherwise, suitable for masked ops.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @param Kind Relation tested, read as Left relation Right.
+   --  @return A new UInt8 C1 mask Mat.
+   --  @exception OpenCV_Error Raised when the operands are mismatched or
+   --  multi-channel, or OpenCV reports a failure.
    function Compare (Left, Right : Mat; Kind : Comparison_Kind) return Mat;
 
-   --  UInt8 C1 output reuses compatible whole/Region storage; mismatches
-   --  detach Destination. Compare retains C1 matching 2-D operands. In_Range
-   --  supports N-D and at most four channels, requiring all channels in range.
-   --  Float16 requires OpenCV 5.0+. Partial overlap is outside the contract.
-   --  Source/Destination aliasing for In_Range is outside the contract.
-   --  Both-empty Compare releases Destination; empty In_Range is rejected.
+   --  Destination form of Compare. The UInt8 C1 output reuses compatible
+   --  whole or Region storage; mismatches detach Destination. Operands retain
+   --  the C1 matching 2-D policy of the function. Exact and same-layout
+   --  shallow source aliases are supported; other partial overlap is outside
+   --  the contract. If both operands are empty, Destination is released.
    --  Temporary inputs are legal, but a temporary Destination is rejected.
-   --  Compare supports exact and same-layout shallow source aliases.
+   --  @param Left The first operand.
+   --  @param Right The second operand, matching Left.
+   --  @param Kind Relation tested, read as Left relation Right.
+   --  @param Destination The caller-owned Mat that receives the mask.
+   --  @exception OpenCV_Error Raised for mismatched operands, a
+   --  temporary-view Destination, or an OpenCV failure.
    procedure Compare
      (Left, Right : Mat; Kind : Comparison_Kind; Destination : in out Mat);
+
+   --  Destination form of In_Range. The UInt8 C1 output reuses compatible
+   --  whole or Region storage; mismatches detach Destination. Source and
+   --  Destination aliasing is outside the contract. An empty Mat is rejected.
+   --  Temporary inputs are legal, but a temporary Destination is rejected.
+   --  Other rules match the function.
+   --  @param Self The Mat to test.
+   --  @param Lower Inclusive per-channel lower bounds.
+   --  @param Upper Inclusive per-channel upper bounds.
+   --  @param Destination The caller-owned Mat that receives the mask.
+   --  @exception OpenCV_Error Raised for an empty Mat, a temporary-view
+   --  Destination, an unsupported channel count or depth, or an OpenCV
+   --  failure.
    procedure In_Range
      (Self : Mat; Lower : Scalar; Upper : Scalar; Destination : in out Mat);
+
    --  Reports whether Self has no elements, as defined by native Mat empty.
    --  A default header is empty, but an empty result is not necessarily
    --  equivalent to a default header: a typed zero-extent Mat is also empty
