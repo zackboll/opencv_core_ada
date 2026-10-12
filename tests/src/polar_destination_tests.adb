@@ -76,7 +76,9 @@ package body Polar_Destination_Tests is
         procedure Polar_To_Cart
           (Angle : Image; X, Y : in out Image; Units : Angle_Unit := Radians)
         is <>;
-   package Cases is
+
+   package Cases
+   is
       procedure Storage (Test : in out Mat_Test_Fixture);
       procedure Numbers (Test : in out Mat_Test_Fixture);
       procedure Common_Parent (Test : in out Mat_Test_Fixture);
@@ -1107,6 +1109,178 @@ package body Polar_Destination_Tests is
       end loop;
    end Special;
 
+   procedure Record_Overloads (Test : in out Mat_Test_Fixture) is
+      pragma Unreferenced (Test);
+      function Same (P, Q : Mat) return Boolean
+      is (P.Is_Empty = Q.Is_Empty
+          and then P.Shape = Q.Shape
+          and then P.Depth = Q.Depth
+          and then P.Channels = Q.Channels
+          and then P.Dimension_Count = Q.Dimension_Count);
+   begin
+      for D in Float32 .. Float64 loop
+         for Unit in Angle_Unit loop
+            declare
+               A    : Mat := Create (2, 3, (D, 1));
+               B    : Mat := Create (2, 3, (D, 1));
+               XM   : Mat := Create (2, 3, (D, 1));
+               YM   : Mat := Create (2, 3, (D, 1));
+               XR   : Mat := Create (2, 3, (D, 1));
+               YR   : Mat := Create (2, 3, (D, 1));
+               RM   : constant Mat := Create (2, 3, (D, 1));
+               RA   : constant Mat := Create (2, 3, (D, 1));
+               OutP : Polar_Coordinates := (RM, RA);
+               OutC : Cartesian_Coordinates;
+               UA   : UMat := Create_UMat (2, 3, (D, 1));
+               UB   : UMat := Create_UMat (2, 3, (D, 1));
+               UXM  : UMat := Create_UMat (2, 3, (D, 1));
+               UYM  : UMat := Create_UMat (2, 3, (D, 1));
+               UXR  : UMat := Create_UMat (2, 3, (D, 1));
+               UYR  : UMat := Create_UMat (2, 3, (D, 1));
+               UOut : UMat_Polar_Coordinates := (UXR, UYR);
+               UC   : UMat_Cartesian_Coordinates;
+            begin
+               A.Set_To (Make_Scalar (3.0));
+               B.Set_To (Make_Scalar (4.0));
+               UA.Set_To (Make_Scalar (3.0));
+               UB.Set_To (Make_Scalar (4.0));
+               Cart_To_Polar (A, B, XM, YM, Unit);
+               Cart_To_Polar (A, B, OutP, Unit);
+               Equal (XM, OutP.Magnitude);
+               Equal (YM, OutP.Angle);
+               Assert
+                 (Locate_Region (OutP.Magnitude) = Locate_Region (RM),
+                  "Mat record reuses polar magnitude storage");
+               Assert
+                 (Locate_Region (OutP.Angle) = Locate_Region (RA),
+                  "Mat record reuses polar angle storage");
+               Cart_To_Polar (UA, UB, UXM, UYM, Unit);
+               Cart_To_Polar (UA, UB, UOut, Unit);
+               Equal
+                 (Transfers.To_Mat (UXM), Transfers.To_Mat (UOut.Magnitude));
+               Equal (Transfers.To_Mat (UYM), Transfers.To_Mat (UOut.Angle));
+               Assert
+                 (Locate_Region (UOut.Magnitude) = Locate_Region (UXR),
+                  "UMat record reuses polar magnitude storage");
+               Assert
+                 (Locate_Region (UOut.Angle) = Locate_Region (UYR),
+                  "UMat record reuses polar angle storage");
+               OutC := (Create (2, 3, (D, 1)), Create (2, 3, (D, 1)));
+               Polar_To_Cart (A, B, XR, YR, Unit);
+               Polar_To_Cart (A, B, OutC, Unit);
+               Equal (XR, OutC.X);
+               Equal (YR, OutC.Y);
+               UC := (Create_UMat (2, 3, (D, 1)), Create_UMat (2, 3, (D, 1)));
+               Polar_To_Cart (UA, UB, UXR, UYR, Unit);
+               Polar_To_Cart (UA, UB, UC, Unit);
+               Equal (Transfers.To_Mat (UXR), Transfers.To_Mat (UC.X));
+               Equal (Transfers.To_Mat (UYR), Transfers.To_Mat (UC.Y));
+               declare
+                  Unit_Out : Cartesian_Coordinates :=
+                    (Create (2, 3, (D, 1)), Create (2, 3, (D, 1)));
+                  U_Unit   : UMat_Cartesian_Coordinates :=
+                    (Create_UMat (2, 3, (D, 1)), Create_UMat (2, 3, (D, 1)));
+               begin
+                  Polar_To_Cart (A, XR, YR, Unit);
+                  Polar_To_Cart (A, Unit_Out, Unit);
+                  Equal (XR, Unit_Out.X);
+                  Equal (YR, Unit_Out.Y);
+                  Polar_To_Cart (UA, UXR, UYR, Unit);
+                  Polar_To_Cart (UA, U_Unit, Unit);
+                  Equal (Transfers.To_Mat (UXR), Transfers.To_Mat (U_Unit.X));
+                  Equal (Transfers.To_Mat (UYR), Transfers.To_Mat (U_Unit.Y));
+               end;
+               declare
+                  Wide   : Mat := Create (4, 5, (UInt8, 3));
+                  Parent : Mat := Create (6, 5, (D, 1));
+                  Kept   : constant Region_Location :=
+                    Locate_Region (Parent.Region ((2, 1, 3, 2)));
+                  Dest   : Polar_Coordinates :=
+                    (Wide, Parent.Region ((2, 1, 3, 2)));
+               begin
+                  Wide.Set_To (Make_Scalar (1.0, 2.0, 3.0));
+                  Parent.Set_To (Make_Scalar (7.0));
+                  Cart_To_Polar (A, B, Dest, Unit);
+                  Equal (XM, Dest.Magnitude);
+                  Equal (YM, Dest.Angle);
+                  Assert
+                    (Dest.Magnitude.Shape = A.Shape,
+                     "mismatched magnitude field reallocates");
+                  Assert
+                    (Locate_Region (Dest.Angle) = Kept,
+                     "compatible angle region stays attached");
+               end;
+            end;
+            declare
+               Empty : constant Mat := Create (0, 0, (D, 1));
+               X, Y  : Mat := Create (1, 1, (Float64, 1));
+               Dest  : Polar_Coordinates := (X, Y);
+               AX    : constant Mat := X;
+               AY    : constant Mat := Y;
+            begin
+               X.Set_To (Make_Scalar (91.0));
+               Y.Set_To (Make_Scalar (92.0));
+               Cart_To_Polar (Empty, Empty, Dest);
+               declare
+                  E : constant Polar_Coordinates :=
+                    Cart_To_Polar (Empty, Empty);
+               begin
+                  Assert
+                    (Same (Dest.Magnitude, E.Magnitude),
+                     "record typed-empty magnitude metadata");
+                  Assert
+                    (Same (Dest.Angle, E.Angle),
+                     "record typed-empty angle metadata");
+               end;
+               Assert
+                 (F.Get (AX, 0, 0) = 91.0,
+                  "record empty transform preserves old magnitude alias");
+               Assert
+                 (F.Get (AY, 0, 0) = 92.0,
+                  "record empty transform preserves old angle alias");
+            end;
+            declare
+               Bad  : constant Mat := Create (2, 2, (UInt8, 1));
+               Dest : Cartesian_Coordinates;
+               procedure Attempt is
+               begin
+                  Polar_To_Cart (Bad, Dest);
+               end Attempt;
+            begin
+               Assert_Raises_OpenCV_Error
+                 (Attempt'Access, "record overload rejects invalid angle");
+            end;
+            declare
+               Angle : Mat := Create (Dimension_Array'(2, 3, 4), (D, 1));
+               Dest  : Cartesian_Coordinates;
+            begin
+               Angle.Set_To (Make_Scalar (0.0));
+               Polar_To_Cart (Angle, Dest);
+               Assert
+                 (Dest.X.Shape = Angle.Shape,
+                  "record unit-magnitude N-D X shape");
+               Assert
+                 (Dest.Y.Shape = Angle.Shape,
+                  "record unit-magnitude N-D Y shape");
+            end;
+         end loop;
+      end loop;
+      declare
+         Returned : constant Polar_Coordinates :=
+           Cart_To_Polar
+             (Create (1, 1, (Float32, 1)), Create (1, 1, (Float32, 1)));
+         Split_X  : Mat;
+         Split_Y  : Mat;
+      begin
+         Polar_To_Cart (Returned.Angle, Split_X, Split_Y);
+         Assert
+           (not Split_X.Is_Empty, "old procedure signature remains callable");
+         Assert
+           (not Returned.Magnitude.Is_Empty,
+            "function-returning polar overload remains callable");
+      end;
+   end Record_Overloads;
+
    function Suite return AUnit.Test_Suites.Access_Test_Suite is
    begin
       Result.Add_Test
@@ -1144,6 +1318,9 @@ package body Polar_Destination_Tests is
         (Caller.Create ("Polar empty and N-D boundaries", Boundaries'Access));
       Result.Add_Test
         (Caller.Create ("Polar temporary capabilities", Capability'Access));
+      Result.Add_Test
+        (Caller.Create
+           ("Polar record destination overloads", Record_Overloads'Access));
       Result.Add_Test (Caller.Create ("Polar OpenCL disabled", CPU'Access));
       return Result'Access;
    end Suite;

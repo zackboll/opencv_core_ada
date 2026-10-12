@@ -947,6 +947,15 @@ package OpenCV.Core is
      (X, Y             : Mat;
       Magnitude, Angle : in out Mat;
       Units            : Angle_Unit := Radians);
+   --  Groups the two caller-owned destinations. Each field independently owns
+   --  its Mat header; the record is not a transactional update and does not
+   --  change native alias rules. Compatible storage is reused and mismatched
+   --  storage may detach or reallocate independently. Validation and the
+   --  native transform are the same as the individual-destination procedure.
+   procedure Cart_To_Polar
+     (X, Y        : Mat;
+      Destination : in out Polar_Coordinates;
+      Units       : Angle_Unit := Radians);
    --  Writes both caller-owned destinations in one native transform.
    --  Compatible whole/Region storage is reused; each mismatched output
    --  detaches independently. Outputs must be distinct native objects and
@@ -975,6 +984,20 @@ package OpenCV.Core is
       Units            : Angle_Unit := Radians);
    procedure Polar_To_Cart
      (Angle : Mat; X, Y : in out Mat; Units : Angle_Unit := Radians);
+   --  Groups the two caller-owned destinations. Each field independently owns
+   --  its Mat header; the record is not a transactional update and does not
+   --  change native alias rules. Compatible storage is reused and mismatched
+   --  storage may detach or reallocate independently. Empty Magnitude, and
+   --  the angle-only overload, still mean unit magnitude. Validation and the
+   --  native transform are the same as the individual-destination procedures.
+   procedure Polar_To_Cart
+     (Magnitude, Angle : Mat;
+      Destination      : in out Cartesian_Coordinates;
+      Units            : Angle_Unit := Radians);
+   procedure Polar_To_Cart
+     (Angle       : Mat;
+      Destination : in out Cartesian_Coordinates;
+      Units       : Angle_Unit := Radians);
    --  Same paired destination/alias rules as Cart_To_Polar. Empty Magnitude
    --  means unit magnitude, including the angle-only procedure. The existing
    --  pre-4.10 Float64 correction also writes compatible Region storage.
@@ -1490,6 +1513,15 @@ package OpenCV.Core is
      (X, Y             : UMat;
       Magnitude, Angle : in out UMat;
       Units            : Angle_Unit := Radians);
+   --  Groups the two caller-owned destinations. Each field independently owns
+   --  its UMat header; the record is not a transactional update and does not
+   --  change native alias rules. Compatible storage is reused and mismatched
+   --  storage may detach or reallocate independently. Validation and the
+   --  native transform are the same as the individual-destination procedure.
+   procedure Cart_To_Polar
+     (X, Y        : UMat;
+      Destination : in out UMat_Polar_Coordinates;
+      Units       : Angle_Unit := Radians);
    --  Same paired destination/alias rules as Mat, without host staging.
    --  Angle is authoritative. Empty Magnitude (default or typed), or the
    --  angle-only overload, means unit magnitude. Non-empty Magnitude must
@@ -1506,6 +1538,20 @@ package OpenCV.Core is
       Units            : Angle_Unit := Radians);
    procedure Polar_To_Cart
      (Angle : UMat; X, Y : in out UMat; Units : Angle_Unit := Radians);
+   --  Groups the two caller-owned destinations. Each field independently owns
+   --  its UMat header; the record is not a transactional update and does not
+   --  change native alias rules. Compatible storage is reused and mismatched
+   --  storage may detach or reallocate independently. Empty Magnitude, and
+   --  the angle-only overload, still mean unit magnitude. Validation and the
+   --  native transform are the same as the individual-destination procedures.
+   procedure Polar_To_Cart
+     (Magnitude, Angle : UMat;
+      Destination      : in out UMat_Cartesian_Coordinates;
+      Units            : Angle_Unit := Radians);
+   procedure Polar_To_Cart
+     (Angle       : UMat;
+      Destination : in out UMat_Cartesian_Coordinates;
+      Units       : Angle_Unit := Radians);
    --  Empty Magnitude means unit magnitude; native UMat residency and the
    --  existing typed-empty/legacy Float64 helper behavior are preserved.
 
