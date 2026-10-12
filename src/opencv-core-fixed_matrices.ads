@@ -1,10 +1,14 @@
 --  Fixed-size, value-semantic matrix with compile-time dimensions.
 --
 --  Instantiating this package fixes the element type and both dimensions.
---  Matrix is an ordinary Ada array: it is copied by assignment and involves
---  no allocation, ownership, or native handle. Indices are zero-based and
---  elements are addressed as (Row, Column). This describes logical indexing
---  only; no native memory layout is implied.
+--  Indices are zero-based and elements are addressed as (Row, Column). This
+--  describes logical indexing only; no native memory layout is implied.
+--
+--  Matrix is an ordinary Ada array and this generic does not introduce an
+--  OpenCV native handle of its own. Array assignment follows Ada assignment
+--  semantics for the actual element type. Element copying, adjustment,
+--  finalization, and resource ownership depend on the type supplied when the
+--  generic is instantiated.
 --
 --  Element_Type is the type of each element. Row_Count and Column_Count are
 --  the dimensions and must be positive; valid row indices are 0 through
@@ -14,8 +18,11 @@
 --  @formal Column_Count Number of columns. Must be positive.
 
 generic
+   --  Type of each matrix element.
    type Element_Type is private;
+   --  Number of rows. Must be positive.
    Row_Count : Positive;
+   --  Number of columns. Must be positive.
    Column_Count : Positive;
 package OpenCV.Core.Fixed_Matrices is
 

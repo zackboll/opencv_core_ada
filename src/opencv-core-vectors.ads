@@ -1,17 +1,24 @@
 --  Fixed-length, value-semantic vector with a compile-time length.
 --
 --  Instantiating this package fixes the element type and the number of
---  components. Vector is an ordinary Ada array: it is copied by assignment
---  and involves no allocation, ownership, or native handle.
+--  components.
 --
---  Element_Type is the type of each component. Length is the number of
+--  Vector is an ordinary Ada array and this generic does not introduce an
+--  OpenCV native handle of its own. Array assignment follows Ada assignment
+--  semantics for the actual element type. Element copying, adjustment,
+--  finalization, and resource ownership depend on the type supplied when the
+--  generic is instantiated.
+--
+--  Element_Type is the type of each element. Length is the number of
 --  components and must be positive; component indices therefore range from
 --  zero through Length - 1.
---  @formal Element_Type Type of each vector component.
+--  @formal Element_Type Type of each vector element.
 --  @formal Length Number of components. Must be positive.
 
 generic
+   --  Type of each vector element.
    type Element_Type is private;
+   --  Number of components. Must be positive.
    Length : Positive;
 package OpenCV.Core.Vectors is
 

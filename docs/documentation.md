@@ -156,9 +156,13 @@ GNATdoc 26 parses this repository's Ada 2022 declarations, controlled public
 views, overload signatures, discriminated records and generic formal parts.
 GNATdoc 26.0.0 attaches documentation for enumeration literals through
 `@enum` (`@value` is not recognized) and for generic formals through `@formal`
-in the generic unit's leading comment block. Inline comments between generic
-formals render, but do not satisfy the generic-formal warning. Overloads have
-distinct native anchors. Generic instantiations link to their
+in the generic unit's leading comment block. Tested arrangements: `@formal`
+alone clears the generic-formal warning but its text is not rendered anywhere
+on the page; adjacent leading comments on the individual formals alone render
+under each formal's heading but leave the warning; both together clear the
+warning and render under each formal. The generic units therefore use both, and
+`validate_docs.py` checks the formal descriptions on the intended package
+pages. Overloads have distinct native anchors. Generic instantiations link to their
 generic template rather than duplicating every instantiated declaration.
 The native index provides a flat, fully qualified compilation-unit list and
 tagged-type links, not a collapsible hierarchy. Package filenames are native
@@ -168,7 +172,7 @@ checked against actual specifications, not a fixed count.
 Existing comments mix leading and trailing styles. Generation uses **leading**
 because most long public policy comments precede declarations. Some historical
 trailing comments therefore do not attach to the intended entity. No comments
-are deleted or mass-migrated. The current run has 4,395 undocumented-entity
+are deleted or mass-migrated. The current run has 4,395 documentation
 warnings. This is not evidence that declarations are missing: validation checks
 the pages and representative declarations separately. No unsupported public
 declaration was identified in the inspected representative pages; this is not

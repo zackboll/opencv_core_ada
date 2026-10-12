@@ -90,6 +90,20 @@ def validate(site):
         for declaration in declarations:
             if declaration not in text:
                 errors.append(f"missing representative declaration: {name}.{declaration}")
+    formal_text = {
+        "OpenCV.Core.Fixed_Matrices": (
+            "Type of each matrix element.", "Number of rows. Must be positive.",
+            "Number of columns. Must be positive.",
+            "does not introduce an OpenCV native handle of its own"),
+        "OpenCV.Core.Vectors": (
+            "Type of each vector element.", "Number of components. Must be positive.",
+            "does not introduce an OpenCV native handle of its own"),
+    }
+    for name, phrases in formal_text.items():
+        text = " ".join(packages.get(name, (None, ""))[1].split())
+        for phrase in phrases:
+            if phrase not in text:
+                errors.append(f"generic documentation did not render: {name}: {phrase}")
     core_path = packages.get("OpenCV.Core", (None, ""))[0]
     if core_path:
         core_html = core_path.read_text(encoding="utf-8")
