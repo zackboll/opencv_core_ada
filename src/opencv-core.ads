@@ -3639,11 +3639,46 @@ package OpenCV.Core is
    procedure Adjust_Region
      (Self : in out Mat; Top, Bottom, Left, Right : Region_Adjustment);
 
-   --  These operations create distinct Mat headers sharing Self's storage.
-   --  Index_Range uses its direct half-open [Start, Stop) representation.
+   --  Creates a distinct Mat header sharing Self's storage for one row. No
+   --  elements are copied; writes through either header are visible through
+   --  the other, and the shared storage persists while any header refers to
+   --  it.
+   --  @param Self The Mat containing the row.
+   --  @param Row Zero-based row index, less than Self.Rows.
+   --  @return A new single-row header sharing Self's storage.
+   --  @exception OpenCV_Error Raised when Row is outside Self.
    function Row_View (Self : Mat; Row : Size_Coordinate) return Mat;
+
+   --  Creates a distinct Mat header sharing Self's storage for a contiguous
+   --  range of rows. Index_Range uses its direct half-open [Start, Stop)
+   --  representation, so Stop is the first row excluded. No elements are
+   --  copied.
+   --  @param Self The Mat containing the rows.
+   --  @param Rows Zero-based half-open row range, with Start not greater than
+   --  Stop and Stop not greater than Self.Rows.
+   --  @return A new header sharing Self's storage.
+   --  @exception OpenCV_Error Raised when Rows is inverted or extends past
+   --  Self.
    function Row_View (Self : Mat; Rows : Index_Range) return Mat;
+
+   --  Creates a distinct Mat header sharing Self's storage for one column.
+   --  No elements are copied; the result is generally not continuous.
+   --  @param Self The Mat containing the column.
+   --  @param Column Zero-based column index, less than Self.Columns.
+   --  @return A new single-column header sharing Self's storage.
+   --  @exception OpenCV_Error Raised when Column is outside Self.
    function Column_View (Self : Mat; Column : Size_Coordinate) return Mat;
+
+   --  Creates a distinct Mat header sharing Self's storage for a range of
+   --  columns. Index_Range uses its direct half-open [Start, Stop)
+   --  representation, so Stop is the first column excluded. No elements are
+   --  copied; the result is generally not continuous.
+   --  @param Self The Mat containing the columns.
+   --  @param Columns Zero-based half-open column range, with Start not
+   --  greater than Stop and Stop not greater than Self.Columns.
+   --  @return A new header sharing Self's storage.
+   --  @exception OpenCV_Error Raised when Columns is inverted or extends
+   --  past Self.
    function Column_View (Self : Mat; Columns : Index_Range) return Mat;
 
    --  Creates a distinct Mat header sharing Self's storage for the selected
@@ -3705,6 +3740,15 @@ package OpenCV.Core is
    --  Mat view; Clone it first to select from owned storage. Exceptions
    --  raised by Process propagate unchanged, and writes completed through
    --  View before the exception remain visible in Self.
+   --  @param Self The Mat to select from; it must not be a temporary
+   --  caller-buffer view.
+   --  @param Selections One selector per source dimension, in iteration
+   --  order.
+   --  @param Process Callback that receives the temporary View. The View is
+   --  valid only during the call and must not be retained, copied, sliced,
+   --  reshaped, or passed to Module_Interop.
+   --  @exception OpenCV_Error Raised before Process is invoked when a
+   --  selection requirement is violated.
    procedure With_Selected_View
      (Self       : in out Mat;
       Selections : Dimension_Selection_Array;
@@ -3715,34 +3759,66 @@ package OpenCV.Core is
    --  Fill_Normal, and every other OpenCV operation that uses the default RNG
    --  (including K_Means when it consumes that RNG) advance this state. A call
    --  from another thread controls that other thread's independent RNG.
+   --  @param Seed The new state seed for the calling thread's default RNG.
    procedure Set_Random_Seed (Seed : Interfaces.Integer_32);
 
    --  Creates a caller-owned OpenCV 4.10 cv::RNG state. Seed zero maps to the
    --  default state 16#FFFF_FFFF#, matching cv::RNG (uint64).
+   --  @param Seed The 64-bit initial state; zero selects 16#FFFF_FFFF#.
+   --  @return A new generator, independent of OpenCV's default RNG.
    function Make_Random_Number_Generator
      (Seed : Interfaces.Unsigned_64 := 16#FFFF_FFFF#)
       return Random_Number_Generator;
 
    --  Restarts Generator at Seed without changing OpenCV's calling-thread
    --  default RNG. Seed zero maps to the default state 16#FFFF_FFFF#.
+   --  @param Generator The generator to restart.
+   --  @param Seed The 64-bit state; zero selects 16#FFFF_FFFF#.
    procedure Reseed
      (Generator : in out Random_Number_Generator;
       Seed      : Interfaces.Unsigned_64);
 
+   --  Sets every element of Self in place to Value. Self keeps its shape,
+   --  depth and channel count; Scalar component N initializes channel N.
+   --  Writes go through Self's header, so every header sharing Self's
+   --  storage (including a parent of a Region) observes the change.
+   --  @param Self The Mat to fill.
+   --  @param Value Per-channel fill value; component N is used for channel N.
+   --  @exception OpenCV_Error Raised when OpenCV reports a failure.
    procedure Set_To (Self : in out Mat; Value : Scalar);
+
    --  Sets elements selected by Mask to Value. Mask uses the common mask
    --  contract (UInt8, one channel, same shape as Self). Any nonzero mask
-   --  value selects the complete element, including every channel.
+   --  value selects the complete element, including every channel. Elements
+   --  not selected by Mask are unchanged.
+   --  @param Self The Mat to modify.
+   --  @param Value Per-channel fill value; component N is used for channel N.
+   --  @param Mask UInt8 single-channel selector with Self's shape.
+   --  @exception OpenCV_Error Raised when Mask violates the mask contract or
+   --  OpenCV reports a failure.
    procedure Set_To (Self : in out Mat; Value : Scalar; Mask : Mat);
+
    --  Fills Self in place from OpenCV's default RNG. Each channel uses its
    --  corresponding Scalar bound; generated values are lower-inclusive and
    --  upper-exclusive. Self must be non-empty and have 1 .. 4 channels.
    --  UInt8, Int8, UInt16, Int16, Int32, Float32, Float64, and Float16 are
    --  supported. Non-contiguous Regions are supported and remain Regions.
+   --  @param Self The non-empty Mat to fill.
+   --  @param Lower_Bound Per-channel inclusive lower bound.
+   --  @param Upper_Bound Per-channel exclusive upper bound.
+   --  @exception OpenCV_Error Raised for an empty Mat, an unsupported depth
+   --  or channel count, or an OpenCV failure.
    procedure Fill_Uniform
      (Self : in out Mat; Lower_Bound, Upper_Bound : Scalar);
+
    --  As above, using and advancing the supplied caller-owned Generator
    --  instead of the calling thread's default RNG.
+   --  @param Self The non-empty Mat to fill.
+   --  @param Generator The generator that supplies and records the sequence.
+   --  @param Lower_Bound Per-channel inclusive lower bound.
+   --  @param Upper_Bound Per-channel exclusive upper bound.
+   --  @exception OpenCV_Error Raised for an empty Mat, an unsupported depth
+   --  or channel count, or an OpenCV failure.
    procedure Fill_Uniform
      (Self        : in out Mat;
       Generator   : in out Random_Number_Generator;
@@ -3754,10 +3830,22 @@ package OpenCV.Core is
    --  UInt16, Int16, Int32, Float32, or Float64. Integer results use OpenCV's
    --  saturating conversion/clipping. Float16 is unsupported. Non-contiguous
    --  Regions are supported and remain Regions.
+   --  @param Self The non-empty Mat to fill.
+   --  @param Mean Per-channel mean.
+   --  @param Standard_Deviation Per-channel standard deviation.
+   --  @exception OpenCV_Error Raised for an empty Mat, an unsupported depth
+   --  or channel count, or an OpenCV failure.
    procedure Fill_Normal
      (Self : in out Mat; Mean : Scalar; Standard_Deviation : Scalar);
+
    --  As above, using and advancing the supplied caller-owned Generator
    --  instead of the calling thread's default RNG.
+   --  @param Self The non-empty Mat to fill.
+   --  @param Generator The generator that supplies and records the sequence.
+   --  @param Mean Per-channel mean.
+   --  @param Standard_Deviation Per-channel standard deviation.
+   --  @exception OpenCV_Error Raised for an empty Mat, an unsupported depth
+   --  or channel count, or an OpenCV failure.
    procedure Fill_Normal
      (Self               : in out Mat;
       Generator          : in out Random_Number_Generator;
@@ -3772,17 +3860,38 @@ package OpenCV.Core is
    --  element sizes of only 1, 2, 3, 4, 6, 8, 12, 16, 24, and 32 bytes.
    --  The order may remain unchanged by chance. Iteration_Factor is not
    --  exposed because OpenCV 4.10's randShuffle implementation ignores it.
+   --  @param Self The row or column vector to permute.
+   --  @exception OpenCV_Error Raised for an empty Mat, a Mat that is not a
+   --  2-D vector, an unsupported element size, or an OpenCV failure.
    procedure Shuffle (Self : in out Mat);
+
    --  As above, using and advancing the supplied caller-owned Generator
    --  instead of the calling thread's default RNG.
+   --  @param Self The row or column vector to permute.
+   --  @param Generator The generator that supplies and records the sequence.
+   --  @exception OpenCV_Error Raised for an empty Mat, a Mat that is not a
+   --  2-D vector, an unsupported element size, or an OpenCV failure.
    procedure Shuffle
      (Self : in out Mat; Generator : in out Random_Number_Generator);
+
+   --  Returns the per-channel sum of every element of Self, computed by
+   --  native cv::sum. Scalar holds at most four components, so Mats with more
+   --  channels are outside the representable result.
+   --  @param Self The Mat to total.
+   --  @return A Scalar whose component N is the sum of channel N.
+   --  @exception OpenCV_Error Raised when OpenCV rejects Self.
    function Sum (Self : Mat) return Scalar;
+
    --  Returns the per-channel sum of Self's main diagonal. Rectangular and
    --  empty Mats are accepted. Self must have at most four channels, matching
    --  Scalar's complete representation. Float16 Mats are not supported by
    --  OpenCV's trace implementation. Non-contiguous views are accepted.
+   --  @param Self The Mat whose diagonal is summed.
+   --  @return A Scalar whose component N is the diagonal sum of channel N.
+   --  @exception OpenCV_Error Raised for more than four channels, a Float16
+   --  Mat, or an OpenCV failure.
    function Trace (Self : Mat) return Scalar;
+
    --  Returns the determinant of a non-empty square single-channel Mat as
    --  Long_Float. Self must be Float32 or Float64. 1x1 through 3x3 use
    --  OpenCV's direct formulas; larger matrices use OpenCV LU factorization
@@ -3790,7 +3899,12 @@ package OpenCV.Core is
    --  modified. Non-contiguous Regions are supported. Empty Mats are
    --  rejected, including typed 0x0 matrices. Exact floating-point
    --  arithmetic is not promised for arbitrary matrices.
+   --  @param Self The non-empty square single-channel Float32 or Float64 Mat.
+   --  @return The determinant, or 0 for a singular matrix.
+   --  @exception OpenCV_Error Raised for an empty, non-square or unsupported
+   --  Self, or an OpenCV failure.
    function Determinant (Self : Mat) return Long_Float;
+
    --  Performs ordinary matrix inversion using OpenCV 4.10 DECOMP_LU.
    --  Self must be a non-empty square single-channel Float32 or Float64
    --  Mat. 1x1 through 3x3 use OpenCV's direct paths; larger matrices
@@ -3802,7 +3916,13 @@ package OpenCV.Core is
    --  including typed 0x0 matrices, rectangular Mats, multi-channel
    --  Mats, and unsupported depths are rejected. Numerical rounding is
    --  inherent in floating-point inversion.
+   --  @param Self The non-empty square single-channel Float32 or Float64 Mat.
+   --  @return Invertible True with the Inverse, or Invertible False for a
+   --  singular matrix.
+   --  @exception OpenCV_Error Raised for an empty, non-square or unsupported
+   --  Self, or an OpenCV failure.
    function Invert (Self : Mat) return Inversion_Result;
+
    --  Solves A * X = B using OpenCV 4.10 DECOMP_LU only. Self is the
    --  coefficient matrix A and must be a non-empty square single-channel
    --  Float32 or Float64 Mat. Right_Hand_Side is B and must be a
@@ -3815,7 +3935,14 @@ package OpenCV.Core is
    --  Both inputs remain unchanged. Non-contiguous Regions are
    --  accepted. This is not a least-squares or pseudo-solution API.
    --  Numerical rounding is inherent in floating-point solution.
+   --  @param Self The square coefficient matrix A.
+   --  @param Right_Hand_Side The matrix B, with one row per row of Self.
+   --  @return Solved True with the Solution, or Solved False for a singular
+   --  A.
+   --  @exception OpenCV_Error Raised when an operand violates the stated
+   --  shape, depth or channel requirements or OpenCV reports a failure.
    function Solve (Self : Mat; Right_Hand_Side : Mat) return Solve_Result;
+
    --  Finds real roots with OpenCV 4.10 cv::solveCubic, unlike Solve
    --  which solves a linear system. Coefficients must be a non-empty,
    --  single-channel Float32 or Float64 vector of shape 1 x 3, 3 x 1, 1 x 4,
@@ -3829,7 +3956,30 @@ package OpenCV.Core is
    --  coefficient depth, and has only the Status-selected leading entries
    --  valid to inspect. Root ordering is not guaranteed. Coefficients are
    --  unchanged, and non-contiguous Regions are accepted.
+   --  @param Coefficients The 3- or 4-element coefficient vector.
+   --  @return The reported root count and, for a finite positive count, the
+   --  roots.
+   --  @exception OpenCV_Error Raised when Coefficients violates the stated
+   --  shape, channel or depth requirements or OpenCV reports a failure.
    function Solve_Cubic (Coefficients : Mat) return Cubic_Solution_Result;
+
+   --  Finds the complex roots of a polynomial with OpenCV cv::solvePoly.
+   --  Coefficients is a non-empty row or column vector of at least two
+   --  Float32 or Float64 coefficients with one channel (real) or two channels
+   --  (real and imaginary parts), holding the constant term first so that
+   --  coefficient I multiplies x**I. Trailing high-order coefficients whose
+   --  absolute-value sum is at most DBL_EPSILON are discarded to find the
+   --  effective degree. A constant or identically-zero polynomial is
+   --  rejected. The roots are returned in an independently owned effective-
+   --  degree x 1 C2 Mat, and Coefficients is unchanged.
+   --  @param Coefficients The polynomial coefficient vector.
+   --  @param Maximum_Iterations Iteration limit passed to OpenCV, at most the
+   --  signed 32-bit range.
+   --  @return The roots and the maximum correction reported by OpenCV.
+   --  @exception OpenCV_Error Raised for an empty or non-vector
+   --  Coefficients, an unsupported depth or channel count, fewer than two
+   --  coefficients, a constant or zero polynomial, a degree beyond OpenCV's
+   --  safe range, or an OpenCV failure.
    function Solve_Polynomial
      (Coefficients : Mat; Maximum_Iterations : Positive := 300)
       return Polynomial_Solution_Result;
@@ -3850,7 +4000,13 @@ package OpenCV.Core is
    --  is not required; non-contiguous Regions are supported. Inputs
    --  are unchanged. Exact SIMD accumulation order and
    --  architecture-identical floating results are not promised.
+   --  @param Self The first operand.
+   --  @param Other The second operand, matching Self in shape and type.
+   --  @return The sum of all corresponding element-channel products.
+   --  @exception OpenCV_Error Raised for empty, mismatched or unsupported
+   --  operands, or an OpenCV failure.
    function Dot_Product (Self : Mat; Other : Mat) return Long_Float;
+
    --  Returns the scalar Mahalanobis distance of Self and Other as
    --  Long_Float, corresponding to OpenCV 4.10 cv::Mahalanobis's
    --  double. This is the weighted distance
@@ -3866,6 +4022,12 @@ package OpenCV.Core is
    --  including typed empty vectors, integer depths, Float16, and
    --  multi-channel operands are rejected. Continuity is not required;
    --  non-contiguous Regions are supported. Inputs are unchanged.
+   --  @param Self The first vector.
+   --  @param Other The second vector, matching Self in shape and type.
+   --  @param Inverse_Covariance The N x N inverse covariance matrix.
+   --  @return The Mahalanobis distance.
+   --  @exception OpenCV_Error Raised for empty, mismatched or unsupported
+   --  operands, or an OpenCV failure.
    function Mahalanobis_Distance
      (Self : Mat; Other : Mat; Inverse_Covariance : Mat) return Long_Float;
 
@@ -3885,6 +4047,11 @@ package OpenCV.Core is
    --  non-contiguous Regions are supported. Inputs are unchanged.
    --  The independently owned result has Self's Rows, Columns, Depth,
    --  and channel count.
+   --  @param Self The first three-component vector.
+   --  @param Other The second three-component vector, matching Self.
+   --  @return A new Mat holding Self x Other, with independent storage.
+   --  @exception OpenCV_Error Raised for empty, mismatched or unsupported
+   --  operands, or an OpenCV failure.
    function Cross_Product (Self : Mat; Other : Mat) return Mat;
 
    --  Performs algebraic matrix multiplication Result = Left * Right
@@ -3899,6 +4066,11 @@ package OpenCV.Core is
    --  and channel 1 as the imaginary part. Unsupported depths and
    --  other channel counts are rejected. Continuity is not required;
    --  non-contiguous Regions are supported. Inputs are unchanged.
+   --  @param Left The left factor.
+   --  @param Right The right factor, with Right.Rows = Left.Columns.
+   --  @return The product, with independent storage.
+   --  @exception OpenCV_Error Raised for empty, incompatible or unsupported
+   --  operands, or an OpenCV failure.
    function Matrix_Multiply (Left, Right : Mat) return Mat;
 
    --  Computes Result = Product_Scale * Left * Right + Addend_Scale *
@@ -3919,6 +4091,15 @@ package OpenCV.Core is
    --  other channel counts are rejected. Continuity is not required;
    --  non-contiguous Regions are supported. Inputs are unchanged.
    --  Float32 scaling follows OpenCV's Float32 numerical behavior.
+   --  @param Left The left factor.
+   --  @param Right The right factor, with Right.Rows = Left.Columns.
+   --  @param Addend The matrix added to the scaled product, with shape
+   --  Left.Rows x Right.Columns.
+   --  @param Product_Scale Real weight applied to Left * Right.
+   --  @param Addend_Scale Real weight applied to Addend.
+   --  @return The result, with independent storage.
+   --  @exception OpenCV_Error Raised for empty, incompatible or unsupported
+   --  operands, or an OpenCV failure.
    function Matrix_Multiply_Add
      (Left, Right   : Mat;
       Addend        : Mat;
@@ -3943,9 +4124,27 @@ package OpenCV.Core is
    --  symmetric, owns independent storage, and does not modify Self.
    --  Continuity is not required; non-contiguous Regions are
    --  supported. Delta/centering is not part of this API.
+   --  @param Self The source Mat.
+   --  @param Order Whether Self'T * Self or Self * Self'T is computed.
+   --  @param Scale Factor applied to the complete product.
+   --  @return A new symmetric Mat with automatic output depth.
+   --  @exception OpenCV_Error Raised for an empty or unsupported Self or an
+   --  OpenCV failure.
    function Transposed_Product
      (Self : Mat; Order : Transposed_Product_Order; Scale : Long_Float := 1.0)
       return Mat;
+
+   --  Uncentered transposed product with an explicit result depth. The
+   --  source rules, scale rules and result shape match the automatic-depth
+   --  overload; Output_Depth must be Float32 or Float64, and a Float64 source
+   --  cannot produce Float32 output.
+   --  @param Self The source Mat.
+   --  @param Order Whether Self'T * Self or Self * Self'T is computed.
+   --  @param Output_Depth Depth of the result, Float32 or Float64.
+   --  @param Scale Factor applied to the complete product.
+   --  @return A new symmetric Mat of depth Output_Depth.
+   --  @exception OpenCV_Error Raised for an empty or unsupported Self, an
+   --  unsupported Output_Depth, or an OpenCV failure.
    function Transposed_Product
      (Self         : Mat;
       Order        : Transposed_Product_Order;
@@ -3977,11 +4176,36 @@ package OpenCV.Core is
    --  This is a general centered transposed product; covariance
    --  construction is one use, not the only meaning. The formal is
    --  named Offset because Ada reserves Delta.
+   --  @param Self The source Mat.
+   --  @param Offset The non-empty Mat subtracted from Self before the
+   --  product, broadcast by OpenCV.
+   --  @param Order Whether the transposed-times-self or self-times-transposed
+   --  form is computed.
+   --  @param Scale Factor applied to the completed centered product.
+   --  @return A new symmetric Mat with automatic output depth.
+   --  @exception OpenCV_Error Raised for an empty or unsupported Self or
+   --  Offset, an incompatible Offset shape, or an OpenCV failure.
    function Transposed_Product
      (Self   : Mat;
       Offset : Mat;
       Order  : Transposed_Product_Order;
       Scale  : Long_Float := 1.0) return Mat;
+
+   --  Centered transposed product with an explicit result depth. The source,
+   --  Offset, scale and result-shape rules match the automatic-depth
+   --  centered overload. An explicit Float32 depth rejects a Float64 Self or
+   --  Offset; an explicit Float64 depth accepts every supported combination.
+   --  @param Self The source Mat.
+   --  @param Offset The non-empty Mat subtracted from Self before the
+   --  product, broadcast by OpenCV.
+   --  @param Order Whether the transposed-times-self or self-times-transposed
+   --  form is computed.
+   --  @param Output_Depth Depth of the result, Float32 or Float64.
+   --  @param Scale Factor applied to the completed centered product.
+   --  @return A new symmetric Mat of depth Output_Depth.
+   --  @exception OpenCV_Error Raised for an empty or unsupported Self or
+   --  Offset, an incompatible Offset shape, an unsupported Output_Depth, or
+   --  an OpenCV failure.
    function Transposed_Product
      (Self         : Mat;
       Offset       : Mat;
@@ -4009,6 +4233,13 @@ package OpenCV.Core is
    --  caller does not preallocate either output. Continuity is not
    --  required; non-contiguous Regions are supported. Self is
    --  unchanged.
+   --  @param Self The 2-D single-channel Float32 or Float64 sample matrix.
+   --  @param Orientation Whether samples are the rows or the columns of Self.
+   --  @param Scaling Whether the accumulation is left raw or divided by the
+   --  sample count.
+   --  @return The covariance matrix and the mean, in independent storage.
+   --  @exception OpenCV_Error Raised for an empty or unsupported Self, no
+   --  samples in the chosen orientation, or an OpenCV failure.
    function Covariance
      (Self        : Mat;
       Orientation : Sample_Orientation := Samples_Are_Rows;
@@ -4045,6 +4276,12 @@ package OpenCV.Core is
    --  this contract yields a populated result. An OpenCV numerical
    --  failure (cv::eigen returning false) raises OpenCV_Error rather
    --  than exposing a Boolean.
+   --  @param Self The real symmetric matrix; symmetry is a caller
+   --  precondition that is not checked.
+   --  @return Eigenvalues (largest first) and the corresponding eigenvectors
+   --  stored by row.
+   --  @exception OpenCV_Error Raised for an empty, non-square or unsupported
+   --  Self, a dimension above 8_460, or a numerical failure in OpenCV.
    function Eigen_Decomposition (Self : Mat) return Eigen_Decomposition_Result;
 
    --  Computes the real non-symmetric eigendecomposition using OpenCV 4.10
@@ -4058,6 +4295,11 @@ package OpenCV.Core is
    --  not have unique bases. Non-contiguous Regions are supported. Self is
    --  unchanged; both result Mats are independently owned and independent of
    --  Self and each other.
+   --  @param Self The real square matrix, whose eigenvalues must all be real.
+   --  @return Eigenvalues (largest first) and the corresponding eigenvectors
+   --  stored by row.
+   --  @exception OpenCV_Error Raised for an empty, non-square or unsupported
+   --  Self, an oversized dimension, or an OpenCV failure.
    function Non_Symmetric_Eigen_Decomposition
      (Self : Mat) return Eigen_Decomposition_Result;
 
@@ -4083,9 +4325,28 @@ package OpenCV.Core is
    --  D must not exceed 8460 because OpenCV 4.10's internal LDA eigensolver
    --  can use either a non-symmetric path or the symmetric cv::eigen fallback;
    --  this signed-arithmetic safety limit covers both paths.
+   --  @param Samples The N x D matrix of observations, one per row.
+   --  @param Labels Int32 C1 row or column vector holding the class label of
+   --  each observation.
+   --  @return Discriminant eigenvalues and eigenvectors, using the automatic
+   --  component count.
+   --  @exception OpenCV_Error Raised for empty or unsupported operands,
+   --  fewer than two classes, a feature count above 8460, or an OpenCV
+   --  failure.
    function Linear_Discriminant_Analysis
      (Samples : Mat; Labels : Mat) return Linear_Discriminant_Analysis_Result;
 
+   --  Explicit-component form of Linear_Discriminant_Analysis. Components must
+   --  not exceed the automatic count min (class count - 1, D); other rules
+   --  match the automatic overload.
+   --  @param Samples The N x D matrix of observations, one per row.
+   --  @param Labels Int32 C1 row or column vector holding the class label of
+   --  each observation.
+   --  @param Components Number of discriminant directions to retain.
+   --  @return Discriminant eigenvalues and eigenvectors with K = Components.
+   --  @exception OpenCV_Error Raised for empty or unsupported operands,
+   --  fewer than two classes, too many Components, a feature count above
+   --  8460, or an OpenCV failure.
    function Linear_Discriminant_Analysis
      (Samples : Mat; Labels : Mat; Components : Positive)
       return Linear_Discriminant_Analysis_Result;
@@ -4103,6 +4364,12 @@ package OpenCV.Core is
    --  non-contiguous Regions are supported. Self and Basis are unchanged.
    --  The result owns independent storage. Finite sample and basis values are
    --  a caller precondition; this binding does not replace NaN or Infinity.
+   --  @param Self The N x D samples to project, one per row.
+   --  @param Basis A previously computed LDA result; only Eigenvectors is
+   --  used.
+   --  @return The N x K projected coordinates.
+   --  @exception OpenCV_Error Raised for empty, mismatched or unsupported
+   --  operands, or an OpenCV failure.
    function LDA_Project
      (Self : Mat; Basis : Linear_Discriminant_Analysis_Result) return Mat;
 
@@ -4122,6 +4389,12 @@ package OpenCV.Core is
    --  The result owns independent storage. Finite coordinate and basis
    --  values are a caller precondition; this binding does not replace NaN
    --  or Infinity.
+   --  @param Self The N x K projected coordinates, one sample per row.
+   --  @param Basis A previously computed LDA result; only Eigenvectors is
+   --  used.
+   --  @return The N x D reconstructed feature-space values.
+   --  @exception OpenCV_Error Raised for empty, mismatched or unsupported
+   --  operands, or an OpenCV failure.
    function LDA_Reconstruct
      (Self : Mat; Basis : Linear_Discriminant_Analysis_Result) return Mat;
 
@@ -4147,6 +4420,10 @@ package OpenCV.Core is
    --  independently owned. The caller does not preallocate any
    --  output. Continuity is not required; non-contiguous Regions are
    --  supported. Self is unchanged.
+   --  @param Self The non-empty single-channel Float32 or Float64 matrix.
+   --  @return Singular values, U, and V_Transpose in compact form.
+   --  @exception OpenCV_Error Raised for an empty or unsupported Self or an
+   --  OpenCV failure.
    function Singular_Value_Decomposition
      (Self : Mat) return Singular_Value_Decomposition_Result;
 
@@ -4185,6 +4462,12 @@ package OpenCV.Core is
    --  non-contiguous Regions are supported subject to OpenCV 4.10's
    --  signed-index limits on inherited physical row strides. Basis
    --  fields and Right_Hand_Side are unchanged.
+   --  @param Basis A compact SVD result describing A.
+   --  @param Right_Hand_Side The matrix B, with M rows.
+   --  @return The N x K solution, in independent storage.
+   --  @exception OpenCV_Error Raised for a malformed Basis, a mismatched or
+   --  empty Right_Hand_Side, a product beyond the stated limit, or an OpenCV
+   --  failure.
    function SVD_Back_Substitute
      (Basis : Singular_Value_Decomposition_Result; Right_Hand_Side : Mat)
       return Mat;
@@ -4207,6 +4490,10 @@ package OpenCV.Core is
    --  Self.Rows * Self.Columns must not exceed 2_147_483_647
    --  because OpenCV 4.10 forms the packed N x M destination
    --  address with signed int index arithmetic. Self is unchanged.
+   --  @param Self The non-empty single-channel Float32 or Float64 matrix.
+   --  @return The N x M pseudoinverse, in independent storage.
+   --  @exception OpenCV_Error Raised for an empty or unsupported Self, a
+   --  size beyond the stated limit, or an OpenCV failure.
    function Pseudo_Inverse (Self : Mat) return Mat;
 
    --  Returns the reciprocal 2-norm condition number of Self:
@@ -4231,6 +4518,10 @@ package OpenCV.Core is
    --  return metric. There is no caller tolerance. Continuity is
    --  not required; non-contiguous Regions are supported. Self is
    --  unchanged. Ordinary floating-point rounding applies.
+   --  @param Self The non-empty single-channel Float32 or Float64 matrix.
+   --  @return sigma_min / sigma_max, or 0.0 when sigma_max is zero.
+   --  @exception OpenCV_Error Raised for an empty or unsupported Self or an
+   --  OpenCV failure.
    function Reciprocal_Condition_Number (Self : Mat) return Long_Float;
 
    --  Returns an independently owned unit-length N x 1 vector minimizing
@@ -4246,6 +4537,10 @@ package OpenCV.Core is
    --  4.10's internal SVD temporary-workspace arithmetic would overflow the
    --  host allocation size. Self is unchanged, and there is no caller
    --  tolerance.
+   --  @param Self The non-empty Float32 or Float64 C1 matrix.
+   --  @return A new N x 1 unit vector with independent storage.
+   --  @exception OpenCV_Error Raised for an empty or unsupported Self, a
+   --  workspace size beyond the stated limit, or an OpenCV failure.
    function SVD_Solve_Zero (Self : Mat) return Mat;
 
    --  Computes the PCA basis of Self using OpenCV 4.10 cv::PCA.
@@ -4305,14 +4600,43 @@ package OpenCV.Core is
    --  caller precondition: this binding does not replace NaN or
    --  Infinity, and OpenCV's eigen path is not specified for
    --  non-finite input.
+   --  @param Self The 2-D single-channel Float32 or Float64 sample matrix.
+   --  @param Orientation Whether samples are the rows or the columns of Self.
+   --  @return The mean, eigenvalues and eigenvectors retaining every
+   --  available component.
+   --  @exception OpenCV_Error Raised for an empty or unsupported Self, a
+   --  component count above 8_460, or an OpenCV failure.
    function Principal_Component_Analysis
      (Self : Mat; Orientation : Sample_Orientation := Samples_Are_Rows)
       return Principal_Component_Analysis_Result;
+
+   --  Explicit-component form of Principal_Component_Analysis: retains
+   --  exactly the requested number of leading components, which must lie in
+   --  1 .. K_all as described above. Excess requests raise OpenCV_Error
+   --  rather than being clamped.
+   --  @param Self The 2-D single-channel Float32 or Float64 sample matrix.
+   --  @param Components Number of leading components to retain.
+   --  @param Orientation Whether samples are the rows or the columns of Self.
+   --  @return The mean, eigenvalues and eigenvectors with K = Components.
+   --  @exception OpenCV_Error Raised for an empty or unsupported Self, an
+   --  out-of-range Components, a component count above 8_460, or an OpenCV
+   --  failure.
    function Principal_Component_Analysis
      (Self        : Mat;
       Components  : Positive;
       Orientation : Sample_Orientation := Samples_Are_Rows)
       return Principal_Component_Analysis_Result;
+
+   --  Retained-variance form of Principal_Component_Analysis: OpenCV chooses
+   --  K from the variance fraction as described above, always keeping at
+   --  least two components, so at least two components must be available.
+   --  @param Self The 2-D single-channel Float32 or Float64 sample matrix.
+   --  @param Retained_Variance Fraction in (0.0, 1.0]; 0.95 means 95 percent.
+   --  @param Orientation Whether samples are the rows or the columns of Self.
+   --  @return The mean, eigenvalues and eigenvectors for the chosen K.
+   --  @exception OpenCV_Error Raised for an empty or unsupported Self, an
+   --  invalid Retained_Variance, fewer than two available components, a
+   --  component count above 8_460, or an OpenCV failure.
    function Principal_Component_Analysis
      (Self              : Mat;
       Retained_Variance : Long_Float;
@@ -4341,6 +4665,13 @@ package OpenCV.Core is
    --  non-contiguous Regions are supported. Self and Basis are
    --  unchanged. Finite sample values are a caller precondition:
    --  this binding does not replace NaN or Infinity.
+   --  @param Self The observations to project.
+   --  @param Basis A previously computed PCA result; Eigenvalues is unused.
+   --  @param Orientation Whether samples are the rows or the columns of Self;
+   --  it must match the layout that produced Basis.
+   --  @return The projected coordinates, S x K or K x S.
+   --  @exception OpenCV_Error Raised for empty, mismatched or unsupported
+   --  operands, or an OpenCV failure.
    function PCA_Project
      (Self        : Mat;
       Basis       : Principal_Component_Analysis_Result;
@@ -4367,6 +4698,13 @@ package OpenCV.Core is
    --  non-contiguous Regions are supported. Self and Basis are
    --  unchanged. Finite coordinate values are a caller
    --  precondition: this binding does not replace NaN or Infinity.
+   --  @param Self The principal-component coordinates.
+   --  @param Basis A previously computed PCA result; Eigenvalues is unused.
+   --  @param Orientation Whether samples are the rows or the columns of Self;
+   --  it must match the layout that produced Basis.
+   --  @return The reconstructed feature-space samples, S x F or F x S.
+   --  @exception OpenCV_Error Raised for empty, mismatched or unsupported
+   --  operands, or an OpenCV failure.
    function PCA_Back_Project
      (Self        : Mat;
       Basis       : Principal_Component_Analysis_Result;
@@ -4399,6 +4737,11 @@ package OpenCV.Core is
    --  required; non-contiguous Regions are supported for both Self and
    --  Coefficients. Inputs are unchanged. The result owns independent
    --  storage.
+   --  @param Self The source Mat whose elements are channel vectors.
+   --  @param Coefficients The M x N linear or M x (N + 1) affine matrix.
+   --  @return A new Mat with M channels and independent storage.
+   --  @exception OpenCV_Error Raised for empty, mismatched or unsupported
+   --  operands, or an OpenCV failure.
    function Transform (Self : Mat; Coefficients : Mat) return Mat;
 
    --  Interprets each Self element as a 2D or 3D vector and applies
@@ -4424,16 +4767,36 @@ package OpenCV.Core is
    --  result owns independent storage.
    --  Float32 C2, Float64 C2, Float32 C3, and Float64 C3 results can be
    --  inspected directly via their corresponding Vec2/Vec3_Access packages.
+   --  @param Self The Float32 or Float64 Mat of 2D or 3D vectors.
+   --  @param Transform_Matrix The 3x3 (C2) or 4x4 (C3) matrix.
+   --  @return A new Mat with independent storage.
+   --  @exception OpenCV_Error Raised for empty, mismatched or unsupported
+   --  operands, or an OpenCV failure.
    function Perspective_Transform
      (Self : Mat; Transform_Matrix : Mat) return Mat;
 
    --  Reduces a two-dimensional Mat independently in every channel.
-   --  Across_Rows
-   --  produces one row; Across_Columns produces one column. The result owns
-   --  independent storage. Without Output_Depth, OpenCV uses Self's depth.
-   --  Maximum and Minimum require their output depth to equal Self.Depth.
+   --  Across_Rows produces one row; Across_Columns produces one column. The
+   --  result owns independent storage and, without an Output_Depth, uses
+   --  Self's depth.
+   --  @param Self The two-dimensional Mat to reduce.
+   --  @param Axis Direction of the reduction.
+   --  @param Kind Reduction to apply.
+   --  @return A new Mat with independent storage.
+   --  @exception OpenCV_Error Raised for an unsupported operand or an OpenCV
+   --  failure.
    function Reduce
      (Self : Mat; Axis : Reduction_Axis; Kind : Reduction_Kind) return Mat;
+
+   --  Reduces as the overload above, with an explicit result depth. Maximum
+   --  and Minimum require Output_Depth to equal Self.Depth.
+   --  @param Self The two-dimensional Mat to reduce.
+   --  @param Axis Direction of the reduction.
+   --  @param Kind Reduction to apply.
+   --  @param Output_Depth Depth of the result.
+   --  @return A new Mat of depth Output_Depth with independent storage.
+   --  @exception OpenCV_Error Raised for an unsupported operand or depth
+   --  combination, or an OpenCV failure.
    function Reduce
      (Self         : Mat;
       Axis         : Reduction_Axis;
@@ -4449,34 +4812,89 @@ package OpenCV.Core is
    --  Regions are supported, Self is unchanged, and results do not share its
    --  storage. OpenCV leaves behavior unspecified when Float32 or Float64 NaN
    --  values participate in the reduction.
+   --  @param Self The non-empty single-channel Mat to search.
+   --  @param Axis Direction of the reduction.
+   --  @param Occurrence Whether the first or last equal extremum is chosen.
+   --  @return A new Int32 C1 Mat of zero-based indices of the minima.
+   --  @exception OpenCV_Error Raised for an empty, multi-channel or
+   --  unsupported-depth Self, or an OpenCV failure.
    function Arg_Minimum
      (Self       : Mat;
       Axis       : Reduction_Axis;
       Occurrence : Extremum_Occurrence := First_Occurrence) return Mat;
+
+   --  Maximum counterpart of Arg_Minimum, with the same shape, depth,
+   --  occurrence and NaN rules.
+   --  @param Self The non-empty single-channel Mat to search.
+   --  @param Axis Direction of the reduction.
+   --  @param Occurrence Whether the first or last equal extremum is chosen.
+   --  @return A new Int32 C1 Mat of zero-based indices of the maxima.
+   --  @exception OpenCV_Error Raised for an empty, multi-channel or
+   --  unsupported-depth Self, or an OpenCV failure.
    function Arg_Maximum
      (Self       : Mat;
       Axis       : Reduction_Axis;
       Occurrence : Extremum_Occurrence := First_Occurrence) return Mat;
-   --  Both reductions operate independently on each channel.  They support
-   --  one through four channels, matching Scalar's complete representation.
-   --  Mean returns a zero Scalar for an empty Mat; Mean_Std_Dev rejects one.
+
+   --  Mean and Mean_Std_Dev operate independently on each channel and
+   --  support one through four channels, matching Scalar's complete
+   --  representation. Mean returns a zero Scalar for an empty Mat;
+   --  Mean_Std_Dev rejects one.
+   --  @param Self The Mat to average.
+   --  @return A Scalar whose component N is the mean of channel N.
+   --  @exception OpenCV_Error Raised for more than four channels or an
+   --  OpenCV failure.
    function Mean (Self : Mat) return Scalar;
+
    --  Mean of Self elements selected by Mask. Mask uses the common mask
    --  contract (UInt8, one channel, same shape as Self). Any nonzero mask
    --  value selects the element. An all-zero mask returns a zero Scalar.
    --  Empty Self/Mask follow OpenCV mean semantics (zero Scalar).
+   --  @param Self The Mat to average.
+   --  @param Mask UInt8 single-channel selector with Self's shape.
+   --  @return A Scalar whose component N is the mean of channel N.
+   --  @exception OpenCV_Error Raised for more than four channels, a Mask
+   --  that violates the mask contract, or an OpenCV failure.
    function Mean (Self, Mask : Mat) return Scalar;
+
+   --  Per-channel mean and population standard deviation of every element of
+   --  Self. Self must have one through four channels and must not be empty.
+   --  @param Self The non-empty Mat to summarize.
+   --  @return The per-channel mean and standard deviation.
+   --  @exception OpenCV_Error Raised for an empty Mat, more than four
+   --  channels, or an OpenCV failure.
    function Mean_Std_Dev (Self : Mat) return Mean_Std_Dev_Result;
+
    --  Per-channel mean and population standard deviation of Self elements
    --  selected by Mask. Mask uses the common mask contract. Any nonzero mask
    --  value selects the element. An all-zero mask returns zero mean and
    --  standard-deviation Scalars. Empty Self/Mask is rejected.
+   --  @param Self The non-empty Mat to summarize.
+   --  @param Mask UInt8 single-channel selector with Self's shape.
+   --  @return The per-channel mean and standard deviation.
+   --  @exception OpenCV_Error Raised for an empty Mat, more than four
+   --  channels, a Mask that violates the mask contract, or an OpenCV
+   --  failure.
    function Mean_Std_Dev (Self, Mask : Mat) return Mean_Std_Dev_Result;
+
+   --  Computes the requested norm over every element of Self, as a single
+   --  Long_Float across all channels.
+   --  @param Self The Mat to measure.
+   --  @param Kind L1, L2 or infinity norm.
+   --  @return The norm of Self.
+   --  @exception OpenCV_Error Raised when OpenCV rejects Self.
    function Norm (Self : Mat; Kind : Norm_Kind := L2) return Long_Float;
+
    --  Computes the requested norm over elements selected by Mask. Mask uses
    --  the common mask contract (UInt8, one channel, same shape as Self). Any
    --  nonzero mask value selects every scalar component of the element. Empty
    --  Self/Mask and all-zero masks return zero according to OpenCV semantics.
+   --  @param Self The Mat to measure.
+   --  @param Mask UInt8 single-channel selector with Self's shape.
+   --  @param Kind L1, L2 or infinity norm.
+   --  @return The norm of the selected elements.
+   --  @exception OpenCV_Error Raised for a Mask that violates the mask
+   --  contract or an OpenCV failure.
    function Norm
      (Self : Mat; Mask : Mat; Kind : Norm_Kind := L2) return Long_Float;
 
@@ -4492,15 +4910,32 @@ package OpenCV.Core is
    --  infinity. Inputs are unchanged. OpenCV itself would produce non-finite
    --  results for zero, negative, or non-finite peak values; this Ada API
    --  rejects those values.
+   --  @param Left The first Mat.
+   --  @param Right The second Mat, matching Left in size, depth and channels.
+   --  @param Peak_Value Maximum possible value, positive and finite.
+   --  @return The PSNR in decibels.
+   --  @exception OpenCV_Error Raised for empty or mismatched operands, an
+   --  invalid Peak_Value, or an OpenCV failure.
    function Peak_Signal_To_Noise_Ratio
      (Left : Mat; Right : Mat; Peak_Value : Long_Float := 255.0)
       return Long_Float;
 
+   --  Finds the minimum and maximum of a single-channel Mat and their 2-D
+   --  locations. Point.X is the column and Point.Y is the row, zero-based.
+   --  @param Self The single-channel Mat to search.
+   --  @return The extrema and their locations.
+   --  @exception OpenCV_Error Raised when OpenCV rejects Self.
    function Min_Max_Loc (Self : Mat) return Min_Max_Result;
+
    --  Finds extrema among Self elements selected by Mask. Mask uses the
    --  common mask contract. Any nonzero mask value selects the element. An
    --  all-zero mask returns zero extrema and (-1, -1) locations. Point.X is
    --  the column and Point.Y is the row.
+   --  @param Self The single-channel Mat to search.
+   --  @param Mask UInt8 single-channel selector with Self's shape.
+   --  @return The extrema and their locations among selected elements.
+   --  @exception OpenCV_Error Raised for a Mask that violates the mask
+   --  contract or an OpenCV failure.
    function Min_Max_Loc (Self, Mask : Mat) return Min_Max_Result;
 
    --  Dense extrema in Shape/Extent/Index_Array/Slice dimension order.
@@ -4516,21 +4951,37 @@ package OpenCV.Core is
    --  can differ by version/backend. Inputs and shallow aliases are unchanged.
    --  Every logical dense element participates, unlike Sparse_Extrema's
    --  stored-node-only reduction. Non-contiguous N-D input is supported.
+   --  @param Self The non-empty single-channel Mat to search.
+   --  @return The extrema and their zero-based N-dimensional locations.
+   --  @exception OpenCV_Error Raised for an empty, multi-channel or
+   --  unsupported-depth Self, or an OpenCV failure.
    function Min_Max_Indices (Self : Mat) return ND_Min_Max_Result;
 
    --  Mask must be UInt8 C1 with identical dimension count and every extent.
    --  Any nonzero mask element selects the corresponding complete element.
    --  An all-zero mask returns zero values/locations and both Has flags False.
+   --  Other rules match the unmasked overload.
+   --  @param Self The non-empty single-channel Mat to search.
+   --  @param Mask UInt8 single-channel selector with Self's shape.
+   --  @return The extrema and locations among selected elements.
+   --  @exception OpenCV_Error Raised for an unsupported Self, a Mask that
+   --  violates the mask contract, or an OpenCV failure.
    function Min_Max_Indices (Self : Mat; Mask : Mat) return ND_Min_Max_Result;
 
    --  Counts nonzero scalar elements. Supports single-channel Mats of any
    --  supported depth (including Float16). Rejects multi-channel Mats.
    --  Non-contiguous views are supported. Empty Mat returns 0.
+   --  @param Self The single-channel Mat to scan.
+   --  @return The number of nonzero elements.
+   --  @exception OpenCV_Error Raised for a multi-channel Mat.
    function Count_Non_Zero (Self : Mat) return Mat_Size;
 
    --  Returns true if a single-channel Mat contains at least one nonzero
    --  element. Supports non-contiguous views. Rejects multi-channel Mats.
    --  Empty Mat returns false.
+   --  @param Self The single-channel Mat to scan.
+   --  @return True when at least one element is nonzero.
+   --  @exception OpenCV_Error Raised for a multi-channel Mat.
    function Has_Non_Zero (Self : Mat) return Boolean;
 
    --  Returns locations of all nonzero elements in row-major order. Point.X
@@ -4539,6 +4990,10 @@ package OpenCV.Core is
    --  Float16 and multi-channel Mats are rejected. Empty and all-zero Mats
    --  return an empty Point_Array. Locations for a Region are relative to that
    --  Region rather than to its parent Mat.
+   --  @param Self The 2-D single-channel Mat to scan.
+   --  @return The zero-based locations of all nonzero elements.
+   --  @exception OpenCV_Error Raised for a multi-channel, Float16 or
+   --  otherwise unsupported Mat.
    function Find_Non_Zero (Self : Mat) return Point_Array;
 
    --  Checks every scalar channel value of Self. The no-bound overload
@@ -4560,7 +5015,21 @@ package OpenCV.Core is
    --  Mat and typed 0x0 Mats, are valid when they contain no elements.
    --  Non-contiguous Regions are accepted; First_Invalid is relative to
    --  Self. Does not modify Self.
+   --  @param Self The Mat to check.
+   --  @return Valid True, or the location of the first invalid element.
+   --  @exception OpenCV_Error Raised for an unsupported depth or an OpenCV
+   --  failure.
    function Check_Range (Self : Mat) return Range_Check_Result;
+
+   --  Bounded form of Check_Range: values must lie in the half-open interval
+   --  [Minimum, Maximum), subject to the integer-depth conversion described
+   --  above.
+   --  @param Self The Mat to check.
+   --  @param Minimum Inclusive lower bound.
+   --  @param Maximum Exclusive upper bound.
+   --  @return Valid True, or the location of the first invalid element.
+   --  @exception OpenCV_Error Raised for an unsupported depth or an OpenCV
+   --  failure.
    function Check_Range
      (Self : Mat; Minimum : Long_Float; Maximum : Long_Float)
       return Range_Check_Result;
@@ -4578,6 +5047,9 @@ package OpenCV.Core is
    --  observes the same mutation. A typed 0x0 Float32 Mat is a no-op
    --  that preserves its depth and channel count. A default empty Mat
    --  is rejected because its depth is not Float32.
+   --  @param Self The Float32 Mat modified in place.
+   --  @param Value Replacement stored for each NaN, converted to Float32.
+   --  @exception OpenCV_Error Raised for a non-Float32 Mat.
    procedure Patch_NaNs (Self : in out Mat; Value : Float32_Value := 0.0);
 
    --  Completes Self into a symmetric square Mat in place. Source names
@@ -4597,6 +5069,10 @@ package OpenCV.Core is
    --  preserves its depth and channel count. A default empty Mat is
    --  rejected because its depth is not Float32 or Float64. This
    --  procedure does not allocate a replacement Mat.
+   --  @param Self The square Float32 or Float64 Mat modified in place.
+   --  @param Source The triangle that is authoritative and is reflected.
+   --  @exception OpenCV_Error Raised for a non-square Mat or an unsupported
+   --  depth.
    procedure Complete_Symmetry
      (Self : in out Mat; Source : Symmetry_Source := Upper_Triangle);
 
@@ -4618,6 +5094,9 @@ package OpenCV.Core is
    --  diagonal. A normal shallow Mat alias observes the same
    --  mutation. Clone remains independent. A default empty Mat and
    --  typed 0x0 Mats are no-ops that preserve their metadata.
+   --  @param Self The Mat modified in place.
+   --  @param Value Diagonal value; component N initializes channel N.
+   --  @exception OpenCV_Error Raised for a Mat with more than four channels.
    procedure Set_Identity
      (Self  : in out Mat;
       Value : Scalar := (Component_0 => 1.0, others => 0.0));
@@ -4643,17 +5122,41 @@ private
         OpenCV.Internal.C_API.Null_UMat_Handle;
    end record;
 
+   --  Controlled initialization: gives the UMat a default empty native
+   --  header.
+   --  @param Self The UMat being initialized.
    overriding
    procedure Initialize (Self : in out UMat);
+
+   --  Controlled assignment hook: replaces the copied handle with a new
+   --  native header that shares the same reference-counted storage, so
+   --  assignment is shallow.
+   --  @param Self The UMat that has just been assigned.
    overriding
    procedure Adjust (Self : in out UMat);
+
+   --  Controlled finalization: releases the native header owned by the UMat.
+   --  Storage is freed when the last header referring to it is released.
+   --  @param Self The UMat being finalized.
    overriding
    procedure Finalize (Self : in out UMat);
 
+   --  Controlled initialization: gives the Mat a default empty native
+   --  header.
+   --  @param Self The Mat being initialized.
    overriding
    procedure Initialize (Self : in out Mat);
+
+   --  Controlled assignment hook: replaces the copied handle with a new
+   --  native header that shares the same reference-counted storage, so
+   --  assignment is shallow.
+   --  @param Self The Mat that has just been assigned.
    overriding
    procedure Adjust (Self : in out Mat);
+
+   --  Controlled finalization: releases the native header owned by the Mat.
+   --  Storage is freed when the last header referring to it is released.
+   --  @param Self The Mat being finalized.
    overriding
    procedure Finalize (Self : in out Mat);
 
