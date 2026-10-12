@@ -62,22 +62,39 @@ local links fail the build.
 Historical documentation warnings are measured, not suppressed. After a
 successful GNATdoc run, `scripts/compare_gnatdoc_warnings.py` compares
 `obj/docs/gnatdoc.log` with `docs/gnatdoc-warning-baseline.txt`. The baseline
-stores every current warning, including duplicate overloads. Comparison ignores
-a pure source-line shift: warnings are paired by filename, column, category,
-and declaration or parameter identity, in source order. Added occurrences fail
-the build. Removed occurrences are printed and do not fail it, so a cleanup can
-shrink the backlog before the baseline is updated in the same change. Do not
-silence a warning with `@exclude`, an empty comment, or a changed generator
-invocation.
+stores one identity per warning:
 
-The current baseline contains 4,460 warnings, down from 4,484 on main
-`53c14c469b22ba1c608836d9a16c0947e2c80323` after documenting the six polar
-record-destination overloads. Regenerate the baseline only from a complete
-pinned GNATdoc 26.0.0 log:
+```text
+filename: normalized declaration signature: warning: message
+```
+
+The signature is the Ada declaration with comments removed and whitespace
+normalized. It includes the parameter profile, so two overloads that share a
+parameter name remain different warnings. Source line and column numbers are
+used only to find that declaration in the current `src/` tree. A pure line
+shift, comment edit, or reordering of the log matches. A warning that moves
+from one declaration to another is an addition and fails the build, even when
+the filename, column, and message text are unchanged.
+
+Every warning must map to exactly one declaration. An unmapped location, two
+declarations with the same normalized profile, or a warning-shaped diagnostic
+that is not the pinned GNATdoc 26.0.0 `file:line:column: warning:` form fails
+the comparison. Ordinary non-warning log text is ignored. Removed warnings are
+printed and do not fail the build. Do not silence a warning with `@exclude`,
+an empty comment, or a changed generator invocation.
+
+The current baseline contains 4,460 identities, down from 4,484 raw warnings
+on main `53c14c469b22ba1c608836d9a16c0947e2c80323` after documenting the six
+polar record-destination overloads. Regenerate it only from a complete pinned
+GNATdoc 26.0.0 log and the sources of that same revision:
 
 ```sh
-grep ': warning:' obj/docs/gnatdoc.log > docs/gnatdoc-warning-baseline.txt
+python3 scripts/compare_gnatdoc_warnings.py --write-baseline \
+    docs/gnatdoc-warning-baseline.txt obj/docs/gnatdoc.log
 ```
+
+Do not replace the baseline with a raw copy of the log. Old line numbers do
+not remain attached to the same declaration after later comment edits.
 
 ### Remaining warning backlog
 
