@@ -130,7 +130,7 @@ class CompareWarningsTest(unittest.TestCase):
         self.assertEqual(
             added,
             [
-                "demo.ads: procedure Procedure_B (Image : Matrix);: "
+                "demo.ads: Demo.Procedure_B: procedure Procedure_B (Image : Matrix);: "
                 "warning: parameter `Image` is not documented"
             ],
         )
@@ -313,6 +313,245 @@ class CompareWarningsTest(unittest.TestCase):
                 "current",
             )
         self.assertIn("ambiguous or unmapped", str(caught.exception))
+
+    def test_nested_package_signatures_stay_distinct(self):
+        source = textwrap.dedent(
+            """\
+            package Demo is
+               package Inner is
+                  procedure Read (Image : Mat);
+               end Inner;
+
+               procedure Read (Image : Mat);
+            end Demo;
+            """
+        )
+        write_sources(self.root, source)
+        log = (
+            "demo.ads:3:17: warning: parameter `Image` is not documented\n"
+            "demo.ads:6:14: warning: parameter `Image` is not documented\n"
+        )
+        identities = identities_from_log(log, self.root, "current")
+        self.assertEqual(len(set(identities)), 2)
+        self.assertTrue(any(": Demo.Inner.Read:" in item for item in identities))
+        self.assertTrue(any(": Demo.Read:" in item for item in identities))
+        self.assertFalse(any("Demo.Demo" in item for item in identities))
+
+    def test_warning_moved_between_scopes_fails(self):
+        source = textwrap.dedent(
+            """\
+            package Demo is
+               package Inner is
+                  procedure Read (Image : Mat);
+               end Inner;
+
+               procedure Read (Image : Mat);
+            end Demo;
+            """
+        )
+        write_sources(self.root, source)
+        baseline_log = "demo.ads:3:17: warning: parameter `Image` is not documented\n"
+        current_log = "demo.ads:6:14: warning: parameter `Image` is not documented\n"
+        baseline = "\n".join(
+            identities_from_log(baseline_log, self.root, "baseline")
+        ) + "\n"
+        added, removed = compare(baseline, current_log, self.root)
+        self.assertEqual(len(added), 1)
+        self.assertEqual(len(removed), 1)
+        self.assertIn("Demo.Read", added[0])
+        self.assertIn("Demo.Inner.Read", removed[0])
+
+    def test_indentation_does_not_merge_scopes(self):
+        source = textwrap.dedent(
+            """\
+            package Demo is
+            package Inner is
+            procedure Read (Image : Mat);
+            end Inner;
+            procedure Read (Image : Mat);
+            end Demo;
+            """
+        )
+        write_sources(self.root, source)
+        identities = identities_from_log(
+            "demo.ads:3:11: warning: parameter `Image` is not documented\n"
+            "demo.ads:5:11: warning: parameter `Image` is not documented\n",
+            self.root,
+            "current",
+        )
+        self.assertEqual(len(set(identities)), 2)
+
+    def test_record_components_with_the_same_name_stay_distinct(self):
+        source = textwrap.dedent(
+            """\
+            package Demo is
+               type Left is record
+                  Image : Integer;
+               end record;
+               type Right is record
+                  Image : Integer;
+               end record;
+            end Demo;
+            """
+        )
+        write_sources(self.root, source)
+        identities = identities_from_log(
+            "demo.ads:2:9: warning: component `Image` is not documented\n"
+            "demo.ads:5:9: warning: component `Image` is not documented\n",
+            self.root,
+            "current",
+        )
+        self.assertIn("Demo.Left.Image", identities[0])
+        self.assertIn("Demo.Right.Image", identities[1])
+
+    def test_multiline_function_keeps_return_profile(self):
+        source = textwrap.dedent(
+            """\
+            package Demo is
+               function Get
+                 (Image : Mat; Row, Column : Integer)
+                  return OpenCV.Core.Float16_Vec3.Vector;
+            end Demo;
+            """
+        )
+        write_sources(self.root, source)
+        identities = identities_from_log(
+            "demo.ads:2:13: warning: entity `Get` is not documented\n",
+            self.root,
+            "current",
+        )
+        self.assertIn("return OpenCV.Core.Float16_Vec3.Vector;", identities[0])
+        self.assertIn("(Image : Mat; Row, Column : Integer)", identities[0])
+
+    def test_multiline_procedure_keeps_complete_profile(self):
+        source = textwrap.dedent(
+            """\
+            package Demo is
+               procedure Set
+                 (Image : in out Mat;
+                  Value : Vector);
+            end Demo;
+            """
+        )
+        write_sources(self.root, source)
+        identities = identities_from_log(
+            "demo.ads:2:14: warning: parameter `Value` is not documented\n",
+            self.root,
+            "current",
+        )
+        self.assertIn("Value : Vector", identities[0])
+        self.assertIn("in out Mat", identities[0])
+
+    def test_qualified_return_overloads_stay_distinct(self):
+        source = textwrap.dedent(
+            """\
+            package Demo is
+               function Get (Image : Mat) return OpenCV.Core.Float16_Vec3.Vector;
+               function Get (Image : Mat) return OpenCV.Core.Float32_Vec3.Vector;
+            end Demo;
+            """
+        )
+        write_sources(self.root, source)
+        identities = identities_from_log(
+            "demo.ads:2:13: warning: entity `Get` is not documented\n"
+            "demo.ads:3:13: warning: entity `Get` is not documented\n",
+            self.root,
+            "current",
+        )
+        self.assertIn("Float16_Vec3.Vector", identities[0])
+        self.assertIn("Float32_Vec3.Vector", identities[1])
+        self.assertNotEqual(identities[0], identities[1])
+
+    def test_comments_and_movement_do_not_change_scoped_identity(self):
+        source = textwrap.dedent(
+            """\
+            package Demo is
+               --  moved below a comment
+               function Get
+                 (Image : Mat; Row, Column : Integer)
+                  return OpenCV.Core.Float16_Vec3.Vector;
+            end Demo;
+            """
+        )
+        write_sources(self.root, source)
+        moved = identities_from_log(
+            "demo.ads:3:13: warning: entity `Get` is not documented\n",
+            self.root,
+            "current",
+        )
+        original = textwrap.dedent(
+            """\
+            package Demo is
+               function Get
+                 (Image : Mat; Row, Column : Integer)
+                  return OpenCV.Core.Float16_Vec3.Vector;
+            end Demo;
+            """
+        )
+        write_sources(self.root, original)
+        baseline = identities_from_log(
+            "demo.ads:2:13: warning: entity `Get` is not documented\n",
+            self.root,
+            "baseline",
+        )
+        self.assertEqual(moved, baseline)
+
+    def test_string_literals_do_not_corrupt_declaration_scanning(self):
+        source = textwrap.dedent(
+            """\
+            package Demo is
+               Label : constant String := "a; b -- still a string";
+               procedure Read (Image : Mat);
+            end Demo;
+            """
+        )
+        write_sources(self.root, source)
+        identities = identities_from_log(
+            "demo.ads:3:14: warning: parameter `Image` is not documented\n",
+            self.root,
+            "current",
+        )
+        self.assertIn("Demo.Read", identities[0])
+        self.assertIn("procedure Read (Image : Mat);", identities[0])
+
+    def test_generic_and_discriminant_keep_scope(self):
+        source = textwrap.dedent(
+            """\
+            generic
+               type Element_Type is private;
+            package Demo is
+               type Result (Valid : Boolean := False) is record
+                  Image : Element_Type;
+               end record;
+            end Demo;
+            """
+        )
+        write_sources(self.root, source)
+        identities = identities_from_log(
+            "demo.ads:3:9: warning: generic formal `Element_Type` is not documented\n"
+            "demo.ads:4:9: warning: component `Valid` is not documented\n"
+            "demo.ads:4:9: warning: component `Image` is not documented\n",
+            self.root,
+            "current",
+        )
+        self.assertIn("generic Element_Type", identities[0])
+        self.assertIn("Demo.Result.Valid", identities[1])
+        self.assertIn("Demo.Result.Image", identities[2])
+
+    def test_unsupported_unclosed_scope_fails_closed(self):
+        write_sources(
+            self.root,
+            "package Demo is\n   procedure Read (Image : Mat);\n",
+        )
+        with self.assertRaises(WarningComparisonError) as caught:
+            identities_from_log(
+                "demo.ads:2:14: warning: parameter `Image` is not documented\n",
+                self.root,
+                "current",
+            )
+        self.assertIn("unclosed Ada scope", str(caught.exception))
+
+
 
 
 if __name__ == "__main__":

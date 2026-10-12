@@ -65,14 +65,17 @@ successful GNATdoc run, `scripts/compare_gnatdoc_warnings.py` compares
 stores one identity per warning:
 
 ```text
-filename: normalized declaration signature: warning: message
+filename: enclosing scope: normalized declaration signature: warning: message
 ```
 
-The signature is the Ada declaration with comments removed and whitespace
-normalized. It includes the parameter profile, so two overloads that share a
-parameter name remain different warnings. Source line and column numbers are
-used only to find that declaration in the current `src/` tree. A pure line
-shift, comment edit, or reordering of the log matches. A warning that moves
+The signature is the complete Ada declaration with comments removed and
+whitespace normalized. A semicolon inside a parameter list does not end it, so
+a function identity keeps its return profile. The enclosing scope is the
+package, nested package, generic formal, or record that contains the
+declaration. Two identical profiles in different scopes, and two record
+components with the same name, remain different warnings. Source line and
+column numbers are used only to find that declaration in the current `src/`
+tree. A pure line shift, comment edit, or reordering of the log matches. A warning that moves
 from one declaration to another is an addition and fails the build, even when
 the filename, column, and message text are unchanged.
 

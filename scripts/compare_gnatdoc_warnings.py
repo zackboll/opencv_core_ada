@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
 """Compare GNATdoc warnings by Ada declaration, not by source position.
 
-A warning identity is the filename, the normalized declaration signature, and
-the warning message. Source line and column numbers only locate that
-declaration in the current sources. They are not part of the identity.
+A warning identity is the filename, the enclosing Ada scope, the normalized
+declaration signature, and the warning message. Source line and column
+numbers only locate that declaration. They are not part of the identity.
 
-The same parameter name on two overloads therefore cannot cancel. Inserting an
-overload, moving a declaration, or editing only its documentation comments does
-not change the signature. A historical warning that disappears while the same
-text appears on another declaration is both a removal and an addition, and the
-addition fails the comparison.
+The scope is the package and, for a component, the record type that contains
+the declaration. Two subprograms with the same profile in different packages
+therefore cannot cancel, and two record components with the same name stay
+distinct. A semicolon inside a parameter list does not end the declaration:
+the signature keeps the full profile, including a function's return type.
+Comments and Ada string literals are not treated as code.
 
-Every current warning must map to exactly one declaration. Ambiguous or
-unmapped locations fail closed. Warning-shaped diagnostics that do not match
-the pinned GNATdoc 26.0.0 format also fail, including malformed baseline
-entries. Ordinary non-warning log text is ignored.
+Every current warning must map to exactly one declaration. Ambiguous,
+unscoped, or unmapped locations fail closed. Warning-shaped diagnostics that
+do not match the pinned GNATdoc 26.0.0 format also fail, including malformed
+baseline entries. Ordinary non-warning log text is ignored.
 
 The baseline is the normalized identity list produced by --write-baseline from
 one complete GNATdoc log and the sources of that same revision. It is not a
@@ -46,10 +47,35 @@ class WarningComparisonError(Exception):
     """A diagnostic cannot be identified safely."""
 
 
-def code_only(line):
-    """Drop a trailing Ada comment. This binding does not use '--' in strings."""
-    marker = line.find("--")
-    return line if marker < 0 else line[:marker]
+def code_tokens(line):
+    """Yield code characters, skipping comments and Ada string literals.
+
+    A doubled quote inside a string is one escaped quote. Text after `--`
+    outside a string is a comment, so a semicolon or `--` inside a string does
+    not end a declaration or hide the following code.
+    """
+    characters = []
+    index = 0
+    while index < len(line):
+        if line.startswith("--", index):
+            break
+        if line[index] == '"':
+            characters.append(" ")
+            index += 1
+            while index < len(line):
+                if line[index] == '"':
+                    if index + 1 < len(line) and line[index + 1] == '"':
+                        index += 2
+                        continue
+                    index += 1
+                    break
+                index += 1
+            else:
+                raise WarningComparisonError("unterminated Ada string literal")
+            continue
+        characters.append(line[index])
+        index += 1
+    return "".join(characters)
 
 
 def name_at(line, column):
@@ -68,97 +94,312 @@ def name_at(line, column):
     return line[column - 1:end]
 
 
-def declaration_index(lines):
-    """Index normalized declarations by the column and name GNATdoc reports.
+def _normalize(text):
+    signature = re.sub(r"\s+", " ", text).strip()
+    signature = re.sub(r"\(\s+", "(", signature)
+    signature = re.sub(r"\s+\)", ")", signature)
+    signature = re.sub(r"\s*,\s*", ", ", signature)
+    signature = re.sub(r"\s*:\s*", " : ", signature)
+    signature = re.sub(r"\s*;", ";", signature)
+    return re.sub(r"\s+", " ", signature).strip()
 
-    The signature keeps the declaration keyword, name, profile, and semicolon.
-    Whitespace is collapsed and comments are removed. Two overloads stay
-    distinct because their profiles differ.
+
+def _scope_name(stack):
+    if not any(item[0] == "package" for item in stack):
+        raise WarningComparisonError("declaration is not inside a package")
+    return ".".join(item[1] for item in stack if item[0] in ("package", "record"))
+
+
+
+def declaration_index(lines):
+    """Index declarations by the column and name GNATdoc reports.
+
+    Parentheses are counted character by character after comments and string
+    literals are removed. A semicolon ends a subprogram only at parenthesis
+    depth zero, so a parameter separator cannot drop the return profile.
+    Package and record boundaries update the scope used in the identity.
     """
     declarations = []
+    stack = []
+    pending_generic = []
     index = 0
     while index < len(lines):
-        raw = lines[index]
-        code = code_only(raw)
+        try:
+            code = code_tokens(lines[index])
+        except WarningComparisonError as error:
+            raise WarningComparisonError(f"line {index + 1}: {error}") from error
         header = HEADER_RE.match(code)
-        object_header = None if header else OBJECT_RE.match(code)
-        if header is None and object_header is None:
+        component = None if header else OBJECT_RE.match(code)
+        if header is None and component is None:
+            if code.strip() == "generic":
+                pending_generic.append(index)
+            else:
+                _close_scopes(lines, stack, index, code)
             index += 1
             continue
-        if header is not None:
-            name_match = NAME_AFTER_KEYWORD_RE.match(code[header.end():])
-            if name_match is None:
+        if component is not None:
+            if pending_generic and not any(item[0] == "package" for item in stack):
                 index += 1
                 continue
-            name = name_match.group(1)
-            column = raw.find(name, header.end()) + 1
-            kind = header.group(3)
-        else:
-            name = object_header.group(2)
-            column = raw.find(name) + 1
-            kind = "object"
-        depth = 0
-        parts = []
-        end = index
-        cursor = index
-        while cursor < len(lines) and cursor - index < 80:
-            piece = code_only(lines[cursor])
-            parts.append(" ".join(piece.split()))
-            depth += piece.count("(") - piece.count(")")
-            package_ends = (
-                kind == "package" and depth <= 0 and re.search(r"\bis\b|;", piece)
+            if not any(item[0] == "package" for item in stack):
+                index += 1
+                continue
+            in_record = any(item[0] == "record" for item in stack)
+            name = component.group(2)
+            column = lines[index].find(name) + 1
+            scope = _scope_name(stack) if in_record else ".".join(
+                item[1] for item in stack if item[0] == "package"
             )
-            record_continues = (
-                kind == "type" and depth <= 0 and re.search(r"\brecord\b", piece)
-                and "end record" not in piece
-            )
-            other_ends = (
-                kind != "package" and not record_continues and ";" in piece
-                and depth <= 0
-            )
-            if package_ends or other_ends:
-                end = cursor
-                break
-            cursor += 1
-        else:
-            end = cursor
-        signature = re.sub(r"\s+", " ", " ".join(part for part in parts if part))
-        signature = re.sub(r"\(\s+", "(", signature)
-        signature = re.sub(r"\s+\)", ")", signature)
-        signature = re.sub(r"\s*,\s*", ", ", signature)
-        signature = re.sub(r"\s*:\s*", " : ", signature)
-        signature = re.sub(r"\s*;", ";", signature)
-        signature = re.sub(r"\s+", " ", signature).strip()
-        declaration = {
-            "start": index + 1,
-            "end": end + 1,
-            "column": column,
-            "name": name,
-            "signature": signature.strip(),
-        }
-        declarations.append(declaration)
-        if kind == "type" and " record" in signature:
-            for component_line in range(index, end + 1):
-                component = OBJECT_RE.match(code_only(lines[component_line]))
-                if component is None or component.group(2) == name:
-                    continue
-                component_name = component.group(2)
-                component_column = lines[component_line].find(component_name) + 1
-                declarations.append(
-                    {
-                        "start": component_line + 1,
-                        "end": component_line + 1,
-                        "column": component_column,
-                        "name": component_name,
-                        "signature": signature.strip(),
-                    }
+            end, signature, _depth = _declaration_span(lines, index, "object")
+            declarations.append(
+                _declaration(
+                    index + 1, end + 1, column, name, f"{scope}.{name}",
+                    _normalize(signature),
                 )
+            )
+            index = end + 1
+            continue
+        name_match = NAME_AFTER_KEYWORD_RE.match(code[header.end():])
+        if name_match is None:
+            index += 1
+            continue
+        name = name_match.group(1)
+        column = lines[index].find(name, header.end()) + 1
+        kind = header.group(3)
+        if kind == "package":
+            scope = ".".join(item[1] for item in stack if item[0] == "package")
+            qualified = f"{scope}.{name}" if scope else name
+            end, package_text, _depth = _package_header(lines, index)
+            if pending_generic:
+                generic_start = pending_generic.pop(0)
+                formals = _generic_formals(lines, generic_start + 1, index)
+                for formal in formals:
+                    declarations.append(formal)
+            signature = _normalize(f"package {qualified} is")
+            if " is new " in _normalize(package_text):
+                signature = _normalize(package_text.replace(name, qualified, 1))
+            declarations.append(
+                _declaration(index + 1, end + 1, column, name, qualified, signature)
+            )
+            if " is new " not in _normalize(package_text):
+                stack.append(("package", name, None))
+            index = end + 1
+            continue
+        if kind == "type" and pending_generic and not any(
+            item[0] == "package" for item in stack
+        ):
+            end, signature, _depth = _declaration_span(lines, index, "object")
+            declarations.append(
+                _declaration(
+                    index + 1, end + 1, column, name,
+                    f"generic {name}", _normalize(signature),
+                )
+            )
+            index = end + 1
+            continue
+        try:
+            scope = _scope_name(stack)
+        except WarningComparisonError as error:
+            raise WarningComparisonError(
+                f"line {index + 1}: {name}: {error}"
+            ) from error
+        end, signature, depth_at_end = _declaration_span(lines, index, kind)
+        signature = _normalize(signature)
+        qualified = f"{scope}.{name}"
+        declarations.append(
+            _declaration(index + 1, end + 1, column, name, qualified, signature)
+        )
+        if kind == "type" and "(" in signature and " is record" not in signature:
+            _enumeration_literals(lines, declarations, index, end, qualified, signature)
+        if kind == "type" and re.search(r"\bis\s+record\b|\brecord\b", signature):
+            header_only = re.split(r"\brecord\b", signature, maxsplit=1)[0] + "record"
+            declarations[-1]["signature"] = _normalize(header_only)
+            record_end = _record_end(lines, index + 2)
+            declarations[-1]["end"] = record_end + 1
+            stack.append(("record", name, depth_at_end))
+            index += 1
+            continue
+        if (
+            kind == "type"
+            and signature.rstrip(";").endswith(" is")
+            and index + 1 < len(lines)
+            and code_tokens(lines[index + 1]).strip() == "record"
+        ):
+            declarations[-1]["signature"] = _normalize(signature.rstrip(";") + " record")
+            record_end = _record_end(lines, index + 2)
+            declarations[-1]["end"] = record_end + 1
+            stack.append(("record", name, 0))
+            index += 2
+            continue
         index = end + 1
-    indexed = {}
+    if stack:
+        raise WarningComparisonError(
+            "unclosed Ada scope: " + ".".join(item[1] for item in stack)
+        )
+    return _by_location(declarations)
+
+
+def _package_header(lines, start):
+    return _declaration_span(lines, start, "package")
+
+
+def _generic_formals(lines, start, stop):
+    """Return formal declarations between `generic` and the package header."""
+    formals = []
+    cursor = start
+    while cursor < stop:
+        code = code_tokens(lines[cursor])
+        header = HEADER_RE.match(code)
+        formal = None if header else OBJECT_RE.match(code)
+        if header is None and formal is None:
+            cursor += 1
+            continue
+        if formal is not None:
+            name = formal.group(2)
+            column = lines[cursor].find(name) + 1
+        else:
+            name_match = NAME_AFTER_KEYWORD_RE.match(code[header.end():])
+            if name_match is None:
+                cursor += 1
+                continue
+            name = name_match.group(1)
+            column = lines[cursor].find(name, header.end()) + 1
+        end, signature, _depth = _declaration_span(lines, cursor, "object")
+        formals.append(
+            _declaration(
+                cursor + 1, end + 1, column, name,
+                f"generic {name}", _normalize(signature),
+            )
+        )
+        cursor = end + 1
+    return formals
+
+
+def _record_end(lines, start):
+    """Return the line index of the matching `end record`, ignoring nested records."""
+    depth = 1
+    for cursor in range(start, len(lines)):
+        stripped = " ".join(code_tokens(lines[cursor]).split())
+        if re.search(r"\brecord\b", stripped) and not re.match(r"end\s+record\b", stripped):
+            depth += 1
+        if re.match(r"end\s+record\b", stripped):
+            depth -= 1
+            if depth == 0:
+                return cursor
+    raise WarningComparisonError(f"line {start + 1}: record has no end record")
+
+
+def _declaration(start, end, column, name, scope, signature):
+    return {
+        "start": start,
+        "end": end,
+        "column": column,
+        "name": name,
+        "scope": scope,
+        "signature": signature,
+    }
+
+
+def _enumeration_literals(lines, declarations, start, end, scope, signature):
+    """Record enumeration literals. Other parenthesized types simply add none."""
+    if " is (" not in signature and not signature.rstrip(";").endswith(" is"):
+        return
+    text = " ".join(code_tokens(lines[cursor]) for cursor in range(start, end + 1))
+    listed = re.search(r"\bis\s*\((.*)\)\s*;", text, re.S)
+    if listed is None:
+        return
+    for literal in re.findall(r"[A-Za-z][A-Za-z0-9_]*", listed.group(1)):
+        for cursor in range(start, end + 1):
+            column = lines[cursor].find(literal)
+            if column < 0:
+                continue
+            declarations.append(
+                _declaration(
+                    cursor + 1, cursor + 1, column + 1, literal,
+                    f"{scope}.{literal}", signature,
+                )
+            )
+            break
+
+
+def _declaration_span(lines, start, kind):
+    """Return the last line, signature text, and parenthesis depth."""
+    depth = 0
+    parts = []
+    for cursor in range(start, min(len(lines), start + 80)):
+        code = code_tokens(lines[cursor])
+        parts.append(" ".join(code.split()))
+        ended = False
+        for character in code:
+            if character == "(":
+                depth += 1
+            elif character == ")":
+                depth -= 1
+                if depth < 0:
+                    raise WarningComparisonError(
+                        f"line {cursor + 1}: unbalanced parenthesis"
+                    )
+            elif character == ";" and depth == 0 and kind != "package":
+                ended = True
+                break
+        if kind == "package" and depth == 0 and ";" in code:
+            ended = True
+        if kind == "package" and depth == 0 and re.search(r"\bis\b", code):
+            if "is new" not in " ".join(code.split()):
+                ended = True
+        if ended:
+            return cursor, " ".join(part for part in parts if part), depth
+    raise WarningComparisonError(
+        f"line {start + 1}: declaration signature did not terminate"
+    )
+
+
+def _record_components(lines, declarations, stack, start, end, scope, record, signature):
+    """Components are reported by GNATdoc on the record type, not their line."""
+    for component_line in range(start, end + 1):
+        component = OBJECT_RE.match(code_tokens(lines[component_line]))
+        if component is None or component.group(2) == record:
+            continue
+        component_name = component.group(2)
+        component_column = lines[component_line].find(component_name) + 1
+        declarations.append(
+            _declaration(
+                component_line + 1,
+                component_line + 1,
+                component_column,
+                component_name,
+                f"{scope}.{record}.{component_name}",
+                signature,
+            )
+        )
+
+
+def _close_scopes(lines, stack, index, code):
+    stripped = " ".join(code.split())
+    if re.match(r"end\s+record\b", stripped) or stripped == "end record;":
+        if not stack or stack[-1][0] != "record":
+            raise WarningComparisonError(f"line {index + 1}: end record without a record")
+        stack.pop()
+        return
+    if re.match(r"end\b", stripped) and not re.match(
+        r"end\s+(record|case|loop)\b", stripped
+    ):
+        if not stack or stack[-1][0] != "package":
+            raise WarningComparisonError(f"line {index + 1}: end without a package")
+        stack.pop()
+
+
+def _by_location(declarations):
+    grouped = {}
     for declaration in declarations:
-        key = (declaration["column"], declaration["name"], declaration["signature"])
-        indexed.setdefault(key, []).append(declaration)
-    for duplicates in indexed.values():
+        key = (
+            declaration["column"],
+            declaration["name"],
+            declaration["scope"],
+            declaration["signature"],
+        )
+        grouped.setdefault(key, []).append(declaration)
+    for duplicates in grouped.values():
         if len(duplicates) > 1:
             for declaration in duplicates:
                 declaration["ambiguous"] = True
@@ -168,6 +409,43 @@ def declaration_index(lines):
             (declaration["column"], declaration["name"]), []
         ).append(declaration)
     return by_location
+
+
+def _subject_declaration(lines, indexed, owner, subject, message):
+    """Attach a component, literal, or generic formal to its owner.
+
+    GNATdoc reports these warnings at the enclosing type or package name.
+    The identity uses the member found inside that owner's span. Several
+    members with the same name, or none, fail closed.
+    """
+    if message.startswith("generic formal "):
+        start = 1
+    else:
+        start = owner["start"]
+    if message.startswith("component "):
+        profile = owner["signature"]
+        head = profile.split(" is ", 1)[0]
+        if re.search(rf"\b{re.escape(subject)}\b", head) and "(" in head:
+            located = dict(owner)
+            located["scope"] = f"{owner['scope']}.{subject}"
+            return located
+    matches = []
+    for declarations in indexed.values():
+        for declaration in declarations:
+            if declaration["name"] != subject:
+                continue
+            if not (start <= declaration["start"] <= owner["end"]):
+                continue
+            if message.startswith("component ") and owner["name"] not in declaration["scope"]:
+                continue
+            matches.append(declaration)
+    unique = {(item["scope"], item["signature"]): item for item in matches}
+    if len(unique) != 1:
+        raise WarningComparisonError(
+            f"ambiguous or missing {message} under {owner['scope']}"
+        )
+    return next(iter(unique.values()))
+
 
 def _comment_gap(lines, start, stop):
     return all(
@@ -231,12 +509,18 @@ def parse_warnings(text, label):
                     f"{label}:{number}: unrecognized warning diagnostic: {stripped}"
                 )
             continue
+        message = match.group("message").strip()
+        subject = re.match(
+            r"(?:parameter|component|enumeration literal|generic formal) `([^`]+)`",
+            message,
+        )
         records.append(
             (
                 match.group("file"),
                 int(match.group("line")),
                 int(match.group("column")),
-                match.group("message").strip(),
+                message,
+                None if subject is None else subject.group(1),
             )
         )
     return records
@@ -248,7 +532,7 @@ def identities_from_log(text, source_root, label):
     sources = {}
     indexes = {}
     identities = []
-    for filename, line_number, column, message in records:
+    for filename, line_number, column, message, subject in records:
         if filename not in sources:
             path = source_root / filename
             if not path.is_file():
@@ -261,11 +545,22 @@ def identities_from_log(text, source_root, label):
             declaration = locate_declaration(
                 sources[filename], indexes[filename], line_number, column
             )
+            if subject is not None and (
+                message.startswith("component ")
+                or message.startswith("enumeration literal ")
+                or message.startswith("generic formal ")
+            ):
+                declaration = _subject_declaration(
+                    sources[filename], indexes[filename], declaration, subject, message
+                )
         except WarningComparisonError as error:
             raise WarningComparisonError(
                 f"{label}: {filename}:{line_number}:{column}: {error}"
             ) from error
-        identities.append(f"{filename}: {declaration['signature']}: warning: {message}")
+        identities.append(
+            f"{filename}: {declaration['scope']}: {declaration['signature']}: "
+            f"warning: {message}"
+        )
     return identities
 
 
