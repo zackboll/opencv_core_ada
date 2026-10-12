@@ -110,6 +110,46 @@ def validate(site):
         overloads = re.findall(r"<h4 id=([^ >]+)>Add</h4>", core_html)
         if len(set(overloads)) < 4:
             errors.append("Mat/UMat Add overloads lack distinct native anchors")
+        # Inspect each declaration's own section (from its native heading and
+        # declaration snippet to the next declaration), not the whole page.
+        sections = {}
+        for match in re.finditer(
+                r"<h4 id=[^ >]+>([^<]+)</h4><pre class=ada-code-snippet><code>"
+                r"(.*?)</code></pre>(.*?)(?=<h4 id=|$)", core_html, re.S):
+            code = " ".join(match[2].split())
+            sections[code.split(" is")[0].split(" (")[0]] = (
+                " ".join(re.sub(r"<[^>]+>", " ", match[3]).split()))
+        core_docs = {
+            "type Depth_Type": ("UInt8 Unsigned 8-bit integer channel values",
+                                "Float16 IEEE binary16", "not a value-range"),
+            "type Reduction_Axis": ("Across_Rows Combines the rows of each column",
+                                    "Across_Columns Combines the columns of each row"),
+            "type Covariance_Scaling": ("Unscaled", "By_Sample_Count",
+                                        "not the 1/(N - 1) estimator"),
+            "type Region_Location": ("Whole_Size Extent of the original allocation",
+                                     "Offset Zero-based location"),
+            "type Dimension_Selection": ("Kind Selects the variant",
+                                         "Bounds Zero-based half-open",
+                                         "Index Zero-based index selected",
+                                         "never holds both"),
+            "type Mat_Type": ("Depth Storage depth", "Channels Number of channels"),
+            "type ND_Min_Max_Result": ("Has_Minimum True when",
+                                       "Dimensions Number of source dimensions",
+                                       "not an extremum"),
+            "type Range_Check_Result": ("Valid True when no invalid element",
+                                        "First_Invalid Zero-based location",
+                                        "Present only when Valid is False"),
+            "type Mat": ("Ada assignment is shallow", "Clone makes an explicit deep copy"),
+            "type UMat": ("not guaranteed to be active", "Clone makes an explicit deep copy"),
+        }
+        for declaration, phrases in core_docs.items():
+            section = sections.get(declaration)
+            if section is None:
+                errors.append(f"OpenCV.Core declaration section missing: {declaration}")
+                continue
+            for phrase in phrases:
+                if phrase not in section:
+                    errors.append(f"OpenCV.Core {declaration} lacks rendered text: {phrase}")
     transfers_text = packages.get("OpenCV.Core.Transfers", (None, ""))[1]
     if "Explicit independent copies" not in transfers_text:
         errors.append("representative source comment did not render")

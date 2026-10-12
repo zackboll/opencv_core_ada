@@ -2,16 +2,63 @@ with Ada.Finalization;
 with Interfaces;
 private with OpenCV.Internal.C_API;
 
+--  Core module matrix abstractions and operations. This package declares
+--  Mat and UMat, which are controlled native-resource abstractions rather
+--  than ordinary value-only arrays, together with the matrix-specific types
+--  (element depth, channel count, shapes, regions and result records) and
+--  the Core operations that use them. Shared geometry and scalar values such
+--  as Point, Size, Rect and Scalar are declared in the parent package
+--  OpenCV. Native OpenCV compatibility spans the versions supported by this
+--  repository; the package does not promise identical implementation details
+--  across them. Input validation, alias restrictions and exception behavior
+--  are defined by the contract of each operation.
+
 package OpenCV.Core is
 
+   --  Per-channel storage representation of Mat and UMat elements. Depth
+   --  describes how each channel value is stored; it is not a value-range,
+   --  saturation or rounding policy, which belong to the operation that
+   --  converts or writes the values. The channel count is separate (see
+   --  Mat_Type).
+   --  @enum UInt8 Unsigned 8-bit integer channel values.
+   --  @enum Int8 Signed 8-bit integer channel values.
+   --  @enum UInt16 Unsigned 16-bit integer channel values.
+   --  @enum Int16 Signed 16-bit integer channel values.
+   --  @enum Int32 Signed 32-bit integer channel values.
+   --  @enum Float32 IEEE binary32 floating-point channel values.
+   --  @enum Float64 IEEE binary64 floating-point channel values.
+   --  @enum Float16 IEEE binary16 channel values, exposed as Float16_Value
+   --  bit patterns. Operation support for this depth is operation-specific.
    type Depth_Type is
      (UInt8, Int8, UInt16, Int16, Int32, Float32, Float64, Float16);
 
+   --  Norm reduced by Mat.Norm over the selected elements into a single
+   --  Long_Float. Compare Normalize_Kind, which selects a normalization
+   --  target instead.
+   --  @enum L1 Sum of the absolute values of the selected scalar components.
+   --  @enum L2 Euclidean norm: square root of the sum of the squared selected
+   --  scalar components.
+   --  @enum Infinity Largest absolute value among the selected scalar
+   --  components.
    type Norm_Kind is (L1, L2, Infinity);
 
    --  Min_Max is a normalization mode rather than a Mat.Norm reduction kind.
+   --  @enum L1 Scale so that the L1 norm equals the requested target value.
+   --  @enum L2 Scale so that the L2 norm equals the requested target value.
+   --  @enum Infinity Scale so that the infinity norm equals the requested
+   --  target value.
+   --  @enum Min_Max Map the data range onto the requested lower and upper
+   --  bounds instead of targeting a norm.
    type Normalize_Kind is (L1, L2, Infinity, Min_Max);
 
+   --  Element-wise relation applied by Compare, read as Left relation Right.
+   --  @enum Equal True where Left equals Right.
+   --  @enum Not_Equal True where Left differs from Right.
+   --  @enum Less_Than True where Left is strictly less than Right.
+   --  @enum Less_Or_Equal True where Left is less than or equal to Right.
+   --  @enum Greater_Than True where Left is strictly greater than Right.
+   --  @enum Greater_Or_Equal True where Left is greater than or equal to
+   --  Right.
    type Comparison_Kind is
      (Equal,
       Not_Equal,
@@ -20,27 +67,59 @@ package OpenCV.Core is
       Greater_Than,
       Greater_Or_Equal);
 
+   --  Mirror direction applied by Flip.
+   --  @enum Vertical Reverses the order of the rows.
+   --  @enum Horizontal Reverses the order of the columns.
+   --  @enum Both_Axes Reverses both the row order and the column order.
    type Flip_Kind is (Vertical, Horizontal, Both_Axes);
 
+   --  Rotation applied by Rotate. Quarter turns exchange rows and columns.
+   --  @enum Clockwise_90 Quarter turn clockwise.
+   --  @enum Half_Turn Rotation by 180 degrees, preserving the dimensions.
+   --  @enum Counterclockwise_90 Quarter turn counterclockwise.
    type Rotation_Kind is (Clockwise_90, Half_Turn, Counterclockwise_90);
 
+   --  Direction in which Reduce and the Arg_ operations combine values.
+   --  @enum Across_Rows Combines the rows of each column, producing a
+   --  result with one row.
+   --  @enum Across_Columns Combines the columns of each row, producing a
+   --  result with one column.
    type Reduction_Axis is (Across_Rows, Across_Columns);
 
+   --  Combining rule applied by Reduce, independently in each channel.
+   --  @enum Sum Adds the combined values.
+   --  @enum Average Arithmetic mean of the combined values.
+   --  @enum Maximum Largest of the combined values.
+   --  @enum Minimum Smallest of the combined values.
+   --  @enum Sum_Of_Squares Adds the squares of the combined values.
    type Reduction_Kind is (Sum, Average, Maximum, Minimum, Sum_Of_Squares);
 
    --  Selects which equal extremum is reported by Arg_Minimum and Arg_Maximum.
+   --  @enum First_Occurrence Reports the first equal extremum along the
+   --  reduced axis, which is the lowest index.
+   --  @enum Last_Occurrence Reports the last equal extremum along the
+   --  reduced axis, which is the highest index.
    type Extremum_Occurrence is (First_Occurrence, Last_Occurrence);
 
    --  Sort axis names describe the values being ordered, not a reduction.
    --  Each_Row sorts the columns of every row independently, left to right.
    --  Each_Column sorts the rows of every column independently, top to bottom.
+   --  @enum Each_Row Orders the values within each row.
+   --  @enum Each_Column Orders the values within each column.
    type Sort_Axis is (Each_Row, Each_Column);
 
+   --  Ordering direction used by Sort.
+   --  @enum Ascending Smallest value first.
+   --  @enum Descending Largest value first.
    type Sort_Order is (Ascending, Descending);
 
    --  Selects the uncentered transposed-product orientation. There is
    --  no default; the caller must choose which square product is
    --  intended.
+   --  @enum Transpose_Times_Self Product of the transpose of Self with
+   --  Self; the result has one row and column per column of Self.
+   --  @enum Self_Times_Transpose Product of Self with its transpose; the
+   --  result has one row and column per row of Self.
    type Transposed_Product_Order is
      (Transpose_Times_Self, Self_Times_Transpose);
 
@@ -48,17 +127,29 @@ package OpenCV.Core is
    --  completing symmetry in place. Upper_Triangle copies the upper
    --  triangle onto the lower triangle. Lower_Triangle copies the lower
    --  triangle onto the upper triangle.
+   --  @enum Upper_Triangle The upper triangle is authoritative and is
+   --  reflected onto the lower triangle.
+   --  @enum Lower_Triangle The lower triangle is authoritative and is
+   --  reflected onto the upper triangle.
    type Symmetry_Source is (Upper_Triangle, Lower_Triangle);
 
    --  Interprets a 2-D sample matrix for Covariance. Samples_Are_Rows
    --  treats each row as one observation. Samples_Are_Columns treats
    --  each column as one observation.
+   --  @enum Samples_Are_Rows Each row is one observation and each column
+   --  is one feature.
+   --  @enum Samples_Are_Columns Each column is one observation and each
+   --  row is one feature.
    type Sample_Orientation is (Samples_Are_Rows, Samples_Are_Columns);
 
    --  Selects whether Covariance divides the accumulation by the
    --  sample count N. Unscaled leaves the raw accumulation.
    --  By_Sample_Count applies OpenCV's COVAR_SCALE factor 1/N. This
    --  is not unbiased covariance and is not 1/(N - 1).
+   --  @enum Unscaled The raw centered accumulation is returned without
+   --  division.
+   --  @enum By_Sample_Count The accumulation is multiplied by 1/N, where N
+   --  is the number of samples. This is not the 1/(N - 1) estimator.
    type Covariance_Scaling is (Unscaled, By_Sample_Count);
 
    --  Selects ordinary complex spectrum multiplication or
@@ -68,11 +159,20 @@ package OpenCV.Core is
    --  correlation. This operation performs only spectral
    --  multiplication; inverse transformation and any required
    --  padding or cropping remain caller operations.
+   --  @enum Ordinary_Spectrum_Product Multiplies corresponding elements as
+   --  complex numbers without conjugation, as used for convolution.
+   --  @enum Conjugate_Right_Spectrum_Product Multiplies each left element
+   --  by the complex conjugate of the corresponding right element, as used
+   --  for correlation.
    type Spectrum_Multiplication_Kind is
      (Ordinary_Spectrum_Product, Conjugate_Right_Spectrum_Product);
 
+   --  Number of channels per matrix element. This counts channels, not
+   --  bytes; the byte size of an element also depends on the depth.
    type Channel_Count is new Interfaces.Integer_32 range 1 .. 512;
 
+   --  Nonnegative size or count. The consuming operation determines whether
+   --  a value counts elements, bytes, or another quantity.
    type Mat_Size is
      new Interfaces.Integer_64 range 0 .. Interfaces.Integer_64'Last;
 
@@ -81,6 +181,12 @@ package OpenCV.Core is
 
    --  Retained allocation geometry, not an owning parent object. Offset is
    --  zero-based (X = column, Y = row), including for nested Regions.
+   --  This record describes geometry and offsets only; it does not identify
+   --  the native allocation.
+   --  @field Whole_Size Extent of the original allocation that contains the
+   --  Region.
+   --  @field Offset Zero-based location of the Region's first element within
+   --  that allocation.
    type Region_Location is record
       Whole_Size : Size;
       Offset     : Point;
@@ -88,6 +194,12 @@ package OpenCV.Core is
 
    --  A border interpolation either selects a zero-based source coordinate or
    --  indicates that an out-of-range Constant_Border coordinate has no donor.
+   --  Consumers must test Uses_Constant before reading Index; Index exists
+   --  only when Uses_Constant is False.
+   --  @field Uses_Constant True when no source coordinate is available and
+   --  the caller must supply the constant border value instead.
+   --  @field Index Zero-based source coordinate. Present only when
+   --  Uses_Constant is False.
    type Border_Interpolation_Result (Uses_Constant : Boolean := False) is
    record
       case Uses_Constant is
@@ -100,6 +212,9 @@ package OpenCV.Core is
    end record;
 
    --  A zero-based half-open index interval: Start <= index < Stop.
+   --  @field Start Zero-based first index included in the interval.
+   --  @field Stop Zero-based bound one past the last included index; the
+   --  index Stop itself is excluded.
    type Index_Range is record
       Start : Size_Coordinate := 0;
       Stop  : Size_Coordinate := 0;
@@ -130,8 +245,18 @@ package OpenCV.Core is
    --  dimension restricted to the half-open interval Bounds; Fix_Index
    --  selects the single zero-based Index and drops the dimension from the
    --  result.
+   --  @enum Keep_Range The dimension is retained, restricted to a range.
+   --  @enum Fix_Index A single index is selected and the dimension is
+   --  removed, so the result has one fewer dimension.
    type Dimension_Selection_Kind is (Keep_Range, Fix_Index);
 
+   --  Selector for one source dimension. Kind determines which variant
+   --  component exists; a value never holds both Bounds and Index.
+   --  @field Kind Selects the variant: Keep_Range or Fix_Index.
+   --  @field Bounds Zero-based half-open interval retained for the
+   --  dimension. Present only when Kind is Keep_Range.
+   --  @field Index Zero-based index selected for the dimension, which is
+   --  then removed from the result. Present only when Kind is Fix_Index.
    type Dimension_Selection (Kind : Dimension_Selection_Kind := Keep_Range) is
    record
       case Kind is
@@ -190,11 +315,23 @@ package OpenCV.Core is
    --  Float16_Bits.
    function To_Float32 (Value : Float16_Value) return Float32_Value;
 
+   --  Runtime element format of a Mat or UMat.
+   --  @field Depth Storage depth of each channel value of an element.
+   --  @field Channels Number of channels in each matrix element.
    type Mat_Type is record
       Depth    : Depth_Type;
       Channels : Channel_Count;
    end record;
 
+   --  Extrema and their 2-D locations, as returned by Min_Max_Loc. The
+   --  producing operation defines how masks, empty inputs and equal extrema
+   --  are handled.
+   --  @field Minimum Smallest value found.
+   --  @field Maximum Largest value found.
+   --  @field Minimum_Location Location of the minimum, with X the column
+   --  and Y the row, zero-based.
+   --  @field Maximum_Location Location of the maximum, with X the column
+   --  and Y the row, zero-based.
    type Min_Max_Result is record
       Minimum          : Long_Float;
       Maximum          : Long_Float;
@@ -202,6 +339,28 @@ package OpenCV.Core is
       Maximum_Location : Point;
    end record;
 
+   --  Extrema and N-dimensional locations, as returned by Min_Max_Indices.
+   --  Each Has_ flag independently reports whether the corresponding value
+   --  and location are meaningful. When a flag is False, treat that side's
+   --  value and location as absent; the default zero contents are not an
+   --  extremum. Locations are zero-based and ordered like the dimensions of
+   --  the source Mat.
+   --  @field Has_Minimum True when Minimum and Minimum_Location are
+   --  meaningful.
+   --  @field Has_Maximum True when Maximum and Maximum_Location are
+   --  meaningful.
+   --  @field Minimum Smallest value found. Meaningful only when Has_Minimum
+   --  is True.
+   --  @field Maximum Largest value found. Meaningful only when Has_Maximum
+   --  is True.
+   --  @field Minimum_Location Zero-based index of the minimum in each
+   --  dimension. Meaningful only when Has_Minimum is True, and then only for
+   --  entries 1 .. Dimensions. The array has fixed capacity 32.
+   --  @field Maximum_Location Zero-based index of the maximum in each
+   --  dimension. Meaningful only when Has_Maximum is True, and then only for
+   --  entries 1 .. Dimensions. The array has fixed capacity 32.
+   --  @field Dimensions Number of source dimensions, which is how many
+   --  leading entries of each location array are meaningful.
    type ND_Min_Max_Result is record
       Has_Minimum      : Boolean := False;
       Has_Maximum      : Boolean := False;
@@ -212,6 +371,13 @@ package OpenCV.Core is
       Dimensions       : Natural := 0;
    end record;
 
+   --  Per-channel statistics returned by Mean_Std_Dev. The estimator and
+   --  the treatment of masks and empty inputs are defined by that
+   --  operation.
+   --  @field Mean Mean value of each channel, in the corresponding Scalar
+   --  component.
+   --  @field Standard_Deviation Standard deviation of each channel, in the
+   --  corresponding Scalar component.
    type Mean_Std_Dev_Result is record
       Mean               : Scalar;
       Standard_Deviation : Scalar;
@@ -219,6 +385,11 @@ package OpenCV.Core is
 
    --  Discriminated result of Check_Range. First_Invalid is present only
    --  when Valid is False. Point.X is the column and Point.Y is the row.
+   --  Consumers must test Valid before reading First_Invalid.
+   --  @field Valid True when no invalid element was found.
+   --  @field First_Invalid Zero-based location of the first invalid element
+   --  in row-major order, with X the column and Y the row. Present only when
+   --  Valid is False.
    type Range_Check_Result (Valid : Boolean := True) is record
       case Valid is
          when True =>
@@ -229,7 +400,27 @@ package OpenCV.Core is
       end case;
    end record;
 
+   --  Runtime-typed matrix backed by a native OpenCV cv::Mat. Each Mat
+   --  object is a controlled header that owns its native resource and
+   --  releases it on finalization. Ada assignment is shallow: the target
+   --  gets its own independent header while the underlying data remains
+   --  shared and reference counted, so a distinct header does not imply
+   --  distinct storage. Clone makes an explicit deep copy with independent
+   --  storage. Regions and other views may share the underlying allocation.
+   --  Mutating operations and destination procedures have operation-specific
+   --  alias and storage-reuse restrictions, and operations are not generally
+   --  transactional on failure. Behavior of an empty Mat can vary between
+   --  OpenCV versions.
    type Mat is tagged private;
+
+   --  Runtime-typed matrix backed by native OpenCV UMat storage. It follows
+   --  the same controlled-header ownership model as Mat: assignment is
+   --  shallow and shares data through separate headers, while Clone makes an
+   --  explicit deep copy. UMat uses native OpenCV UMat storage semantics;
+   --  OpenCL acceleration is optional and is not guaranteed to be active.
+   --  Views and mutating or destination operations have operation-specific
+   --  alias and storage-reuse restrictions, and empty-header behavior can
+   --  vary between OpenCV versions.
    type UMat is tagged private;
 
    --  UMat allocation uses USAGE_DEFAULT; OpenCL is optional. Assignment

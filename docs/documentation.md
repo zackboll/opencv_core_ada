@@ -86,11 +86,13 @@ the comparison. Ordinary non-warning log text is ignored. Removed warnings are
 printed and do not fail the build. Do not silence a warning with `@exclude`,
 an empty comment, or a changed generator invocation.
 
-The current baseline contains 4,395 identities. It was 4,484 raw warnings on
+The current baseline contains 4,299 identities. It was 4,484 raw warnings on
 main `53c14c469b22ba1c608836d9a16c0947e2c80323`, 4,460 after documenting the
-six polar record-destination overloads, and 4,395 after documenting the shared
+six polar record-destination overloads, 4,395 after documenting the shared
 `OpenCV` value types and the `Fixed_Matrices` and `Vectors` generic foundations
-(65 warnings removed, none added). Regenerate it only from a complete pinned
+(65 warnings removed, none added), and 4,299 after documenting the foundational
+`OpenCV.Core` types on main `73bf27f7c04fc650fbfcecf175517c2487e9af24`
+(96 removed, none added). Regenerate it only from a complete pinned
 GNATdoc 26.0.0 log and the sources of that same revision:
 
 ```sh
@@ -103,22 +105,43 @@ not remain attached to the same declaration after later comment edits.
 
 ### Remaining warning backlog
 
-Counts below are the 4,395 baseline warnings, grouped by GNATdoc category:
+Counts below are the 4,299 baseline warnings, grouped by GNATdoc category:
 
 | Category | Warnings |
 | --- | ---: |
 | Undocumented parameter | 2,988 |
-| Undocumented entity | 887 |
+| Undocumented entity | 869 |
 | Undocumented return | 356 |
-| Undocumented component | 75 |
-| Undocumented enumeration literal | 89 |
+| Undocumented component | 49 |
+| Undocumented enumeration literal | 37 |
+
+The Core type task (DOC-004) removed 96 warnings: 18 undocumented entities,
+52 enumeration literals and 26 record components. It covered the
+`OpenCV.Core` package itself; `Mat` and `UMat`; `Depth_Type`, `Norm_Kind`,
+`Normalize_Kind`, `Comparison_Kind`, `Flip_Kind`, `Rotation_Kind`,
+`Reduction_Axis`, `Reduction_Kind`, `Extremum_Occurrence`, `Sort_Axis`,
+`Sort_Order`, `Transposed_Product_Order`, `Symmetry_Source`,
+`Sample_Orientation`, `Covariance_Scaling`, `Spectrum_Multiplication_Kind` and
+`Dimension_Selection_Kind`; `Channel_Count`, `Mat_Size`, `Region_Location`,
+`Border_Interpolation_Result`, `Index_Range` and `Dimension_Selection`; and
+`Mat_Type`, `Min_Max_Result`, `ND_Min_Max_Result`, `Mean_Std_Dev_Result` and
+`Range_Check_Result`. All 96 targeted warnings were eliminated; none remain in
+that scope. Of the 49 remaining component and 37 remaining enumeration-literal
+warnings, none belong to those types.
+
+GNATdoc 26.0.0 limitation observed: enumeration literals and record
+components are documented from the type's leading block with `@enum` and
+`@field`. The same block documents discriminants and variant components of a
+discriminated record; each appears under "Record fields" and the prose must
+state which variant component exists, because GNATdoc does not render the
+variant condition beside the field.
 
 By public package family:
 
 | Family | Warnings |
 | --- | ---: |
 | `OpenCV.Core` typed `*_mat_view` packages | 1,245 |
-| `OpenCV.Core` (`opencv-core.ads`) | 1,237 |
+| `OpenCV.Core` (`opencv-core.ads`) | 1,141 |
 | `OpenCV.Core` typed `*_access` packages | 890 |
 | `OpenCV.Core` typed `*_row_access` packages | 554 |
 | `OpenCV.Core` typed `*_buffer_access` packages | 208 |
@@ -133,10 +156,12 @@ By public package family:
 Recommended cleanup order, one family per review:
 
 1. `OpenCV`, `OpenCV.Core.Fixed_Matrices` and `OpenCV.Core.Vectors` (done).
-2. `OpenCV.Core` operations in `opencv-core.ads`, where prose often exists but
-   parameters and returns still lack `@param` and `@return`.
-3. `Persistence`, `Sparse`, `Transfers`, and `Module_Interop`.
-4. One typed-access generic pattern (`Get`/`Set`, row, buffer, then mat view),
+2. `OpenCV.Core` foundational types, enumerations and result records (done).
+3. `Mat`/`UMat` operations and lifecycle APIs in `opencv-core.ads`, where prose
+   often exists but parameters and returns still lack `@param` and `@return`,
+   followed by the other Core operation families.
+4. `Persistence`, `Sparse`, `Transfers`, and `Module_Interop`.
+5. One typed-access generic pattern (`Get`/`Set`, row, buffer, then mat view),
    applied consistently to its instances rather than documented one depth at a
    time with copied text.
 
@@ -172,7 +197,7 @@ checked against actual specifications, not a fixed count.
 Existing comments mix leading and trailing styles. Generation uses **leading**
 because most long public policy comments precede declarations. Some historical
 trailing comments therefore do not attach to the intended entity. No comments
-are deleted or mass-migrated. The current run has 4,395 documentation
+are deleted or mass-migrated. The current run has 4,299 documentation
 warnings. This is not evidence that declarations are missing: validation checks
 the pages and representative declarations separately. No unsupported public
 declaration was identified in the inspected representative pages; this is not
