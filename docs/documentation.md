@@ -86,9 +86,11 @@ the comparison. Ordinary non-warning log text is ignored. Removed warnings are
 printed and do not fail the build. Do not silence a warning with `@exclude`,
 an empty comment, or a changed generator invocation.
 
-The current baseline contains 4,460 identities, down from 4,484 raw warnings
-on main `53c14c469b22ba1c608836d9a16c0947e2c80323` after documenting the six
-polar record-destination overloads. Regenerate it only from a complete pinned
+The current baseline contains 4,395 identities. It was 4,484 raw warnings on
+main `53c14c469b22ba1c608836d9a16c0947e2c80323`, 4,460 after documenting the
+six polar record-destination overloads, and 4,395 after documenting the shared
+`OpenCV` value types and the `Fixed_Matrices` and `Vectors` generic foundations
+(65 warnings removed, none added). Regenerate it only from a complete pinned
 GNATdoc 26.0.0 log and the sources of that same revision:
 
 ```sh
@@ -101,16 +103,15 @@ not remain attached to the same declaration after later comment edits.
 
 ### Remaining warning backlog
 
-Counts below are the 4,460 baseline warnings, grouped by GNATdoc category:
+Counts below are the 4,395 baseline warnings, grouped by GNATdoc category:
 
 | Category | Warnings |
 | --- | ---: |
-| Undocumented parameter | 2,992 |
-| Undocumented entity | 910 |
-| Undocumented return | 357 |
-| Undocumented component | 100 |
-| Undocumented enumeration literal | 96 |
-| Undocumented generic formal | 5 |
+| Undocumented parameter | 2,988 |
+| Undocumented entity | 887 |
+| Undocumented return | 356 |
+| Undocumented component | 75 |
+| Undocumented enumeration literal | 89 |
 
 By public package family:
 
@@ -123,18 +124,15 @@ By public package family:
 | `OpenCV.Core` typed `*_buffer_access` packages | 208 |
 | `OpenCV.Core.Sparse` | 101 |
 | `OpenCV.Core.Persistence` | 100 |
-| `OpenCV` shared values (`opencv.ads`) | 53 |
-| Fixed-size value instances | 30 |
+| Fixed-size value instances | 25 |
 | `OpenCV.Core.Module_Interop` | 15 |
 | `OpenCV.Core.Sparse` typed children | 8 |
-| `OpenCV.Core.Fixed_Matrices` | 7 |
 | Typed conversions | 7 |
 | `OpenCV.Core.Transfers` | 5 |
 
 Recommended cleanup order, one family per review:
 
-1. `OpenCV` and `OpenCV.Core.Fixed_Matrices`, because they are small shared
-   contracts used by every later package.
+1. `OpenCV`, `OpenCV.Core.Fixed_Matrices` and `OpenCV.Core.Vectors` (done).
 2. `OpenCV.Core` operations in `opencv-core.ads`, where prose often exists but
    parameters and returns still lack `@param` and `@return`.
 3. `Persistence`, `Sparse`, `Transfers`, and `Module_Interop`.
@@ -156,7 +154,11 @@ not published.
 
 GNATdoc 26 parses this repository's Ada 2022 declarations, controlled public
 views, overload signatures, discriminated records and generic formal parts.
-Overloads have distinct native anchors. Generic instantiations link to their
+GNATdoc 26.0.0 attaches documentation for enumeration literals through
+`@enum` (`@value` is not recognized) and for generic formals through `@formal`
+in the generic unit's leading comment block. Inline comments between generic
+formals render, but do not satisfy the generic-formal warning. Overloads have
+distinct native anchors. Generic instantiations link to their
 generic template rather than duplicating every instantiated declaration.
 The native index provides a flat, fully qualified compilation-unit list and
 tagged-type links, not a collapsible hierarchy. Package filenames are native
@@ -166,7 +168,7 @@ checked against actual specifications, not a fixed count.
 Existing comments mix leading and trailing styles. Generation uses **leading**
 because most long public policy comments precede declarations. Some historical
 trailing comments therefore do not attach to the intended entity. No comments
-are deleted or mass-migrated. The initial run has 4,460 undocumented-entity
+are deleted or mass-migrated. The current run has 4,395 undocumented-entity
 warnings. This is not evidence that declarations are missing: validation checks
 the pages and representative declarations separately. No unsupported public
 declaration was identified in the inspected representative pages; this is not
