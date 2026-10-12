@@ -55,9 +55,93 @@ comments and dependencies are unchanged. Tests and applications are not
 built for documentation generation.
 
 Output is deleted before each generation. Full diagnostics are retained in
-`obj/docs/gnatdoc.log`, not published. Undocumented declarations, parameters and
-returns are warnings, not PR failures. Generation errors, partial-generation
-diagnostics, absent public package pages, and broken local links fail the build.
+`obj/docs/gnatdoc.log`, not published. `--warnings` stays enabled. Generation
+errors, partial-generation diagnostics, absent public package pages, and broken
+local links fail the build.
+
+Historical documentation warnings are measured, not suppressed. After a
+successful GNATdoc run, `scripts/compare_gnatdoc_warnings.py` compares
+`obj/docs/gnatdoc.log` with `docs/gnatdoc-warning-baseline.txt`. The baseline
+stores one identity per warning:
+
+```text
+filename: enclosing scope: normalized declaration signature: warning: message
+```
+
+The signature is the complete Ada declaration with comments removed and
+whitespace normalized. A semicolon inside a parameter list does not end it, so
+a function identity keeps its return profile. The enclosing scope is the
+package, nested package, generic formal, or record that contains the
+declaration. Two identical profiles in different scopes, and two record
+components with the same name, remain different warnings. Source line and
+column numbers are used only to find that declaration in the current `src/`
+tree. A pure line shift, comment edit, or reordering of the log matches. A warning that moves
+from one declaration to another is an addition and fails the build, even when
+the filename, column, and message text are unchanged.
+
+Every warning must map to exactly one declaration. An unmapped location, two
+declarations with the same normalized profile, or a warning-shaped diagnostic
+that is not the pinned GNATdoc 26.0.0 `file:line:column: warning:` form fails
+the comparison. Ordinary non-warning log text is ignored. Removed warnings are
+printed and do not fail the build. Do not silence a warning with `@exclude`,
+an empty comment, or a changed generator invocation.
+
+The current baseline contains 4,460 identities, down from 4,484 raw warnings
+on main `53c14c469b22ba1c608836d9a16c0947e2c80323` after documenting the six
+polar record-destination overloads. Regenerate it only from a complete pinned
+GNATdoc 26.0.0 log and the sources of that same revision:
+
+```sh
+python3 scripts/compare_gnatdoc_warnings.py --write-baseline \
+    docs/gnatdoc-warning-baseline.txt obj/docs/gnatdoc.log
+```
+
+Do not replace the baseline with a raw copy of the log. Old line numbers do
+not remain attached to the same declaration after later comment edits.
+
+### Remaining warning backlog
+
+Counts below are the 4,460 baseline warnings, grouped by GNATdoc category:
+
+| Category | Warnings |
+| --- | ---: |
+| Undocumented parameter | 2,992 |
+| Undocumented entity | 910 |
+| Undocumented return | 357 |
+| Undocumented component | 100 |
+| Undocumented enumeration literal | 96 |
+| Undocumented generic formal | 5 |
+
+By public package family:
+
+| Family | Warnings |
+| --- | ---: |
+| `OpenCV.Core` typed `*_mat_view` packages | 1,245 |
+| `OpenCV.Core` (`opencv-core.ads`) | 1,237 |
+| `OpenCV.Core` typed `*_access` packages | 890 |
+| `OpenCV.Core` typed `*_row_access` packages | 554 |
+| `OpenCV.Core` typed `*_buffer_access` packages | 208 |
+| `OpenCV.Core.Sparse` | 101 |
+| `OpenCV.Core.Persistence` | 100 |
+| `OpenCV` shared values (`opencv.ads`) | 53 |
+| Fixed-size value instances | 30 |
+| `OpenCV.Core.Module_Interop` | 15 |
+| `OpenCV.Core.Sparse` typed children | 8 |
+| `OpenCV.Core.Fixed_Matrices` | 7 |
+| Typed conversions | 7 |
+| `OpenCV.Core.Transfers` | 5 |
+
+Recommended cleanup order, one family per review:
+
+1. `OpenCV` and `OpenCV.Core.Fixed_Matrices`, because they are small shared
+   contracts used by every later package.
+2. `OpenCV.Core` operations in `opencv-core.ads`, where prose often exists but
+   parameters and returns still lack `@param` and `@return`.
+3. `Persistence`, `Sparse`, `Transfers`, and `Module_Interop`.
+4. One typed-access generic pattern (`Get`/`Set`, row, buffer, then mat view),
+   applied consistently to its instances rather than documented one depth at a
+   time with copied text.
+
 
 ## Coverage and qualified limitations
 
@@ -117,9 +201,10 @@ view/callback lifetime restrictions, overlap restrictions and native-library
 safety limitations. Document relevant OpenCV version constraints and examples
 when helpful. Do not imply that native failures provide rollback unless the
 API promises it. Preserve existing comments; migrate only focused comments
-when reviewing the affected API. Generate documentation and inspect rendering
-in the PR artifact. The specification remains the source of truth, not a second
-handwritten API manual.
+when reviewing the affected API. A new public declaration must not add a
+GNATdoc warning: the documentation workflow fails when the warning baseline
+grows. Generate documentation and inspect rendering in the PR artifact. The
+specification remains the source of truth, not a second handwritten API manual.
 
 ## CI and Pages review gate
 

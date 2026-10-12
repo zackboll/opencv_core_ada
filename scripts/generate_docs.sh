@@ -43,5 +43,7 @@ if grep -Ei '(^|[[:space:]])(error:|fatal:|ignore file due to)' obj/docs/gnatdoc
 fi
 warnings=$(grep -c 'warning:' obj/docs/gnatdoc.log || true)
 echo "GNATdoc: $warnings documentation warnings (see obj/docs/gnatdoc.log)"
+python3 scripts/compare_gnatdoc_warnings.py \
+    docs/gnatdoc-warning-baseline.txt obj/docs/gnatdoc.log
 cp docs/index.html _site/index.html
 python3 scripts/validate_docs.py _site
