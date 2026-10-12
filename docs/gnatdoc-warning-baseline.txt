@@ -3184,91 +3184,9 @@ opencv-core.ads: OpenCV.Core.To_Float16: function To_Float16 (Value : Float32_Va
 opencv-core.ads: OpenCV.Core.To_Float16: function To_Float16 (Value : Float32_Value) return Float16_Value;: warning: return value is not documented
 opencv-core.ads: OpenCV.Core.To_Float32: function To_Float32 (Value : Float16_Value) return Float32_Value;: warning: parameter `Value` is not documented
 opencv-core.ads: OpenCV.Core.To_Float32: function To_Float32 (Value : Float16_Value) return Float32_Value;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Create_UMat: function Create_UMat (Rows, Columns : Natural; Element_Type : Mat_Type) return UMat with Pre => Rows <= 2_147_483_647 and then Columns <= 2_147_483_647;: warning: parameter `Rows` is not documented
-opencv-core.ads: OpenCV.Core.Create_UMat: function Create_UMat (Rows, Columns : Natural; Element_Type : Mat_Type) return UMat with Pre => Rows <= 2_147_483_647 and then Columns <= 2_147_483_647;: warning: parameter `Columns` is not documented
-opencv-core.ads: OpenCV.Core.Create_UMat: function Create_UMat (Rows, Columns : Natural; Element_Type : Mat_Type) return UMat with Pre => Rows <= 2_147_483_647 and then Columns <= 2_147_483_647;: warning: parameter `Element_Type` is not documented
-opencv-core.ads: OpenCV.Core.Create_UMat: function Create_UMat (Rows, Columns : Natural; Element_Type : Mat_Type) return UMat with Pre => Rows <= 2_147_483_647 and then Columns <= 2_147_483_647;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Create_UMat: function Create_UMat (Shape : Dimension_Array; Element_Type : Mat_Type) return UMat;: warning: parameter `Shape` is not documented
-opencv-core.ads: OpenCV.Core.Create_UMat: function Create_UMat (Shape : Dimension_Array; Element_Type : Mat_Type) return UMat;: warning: parameter `Element_Type` is not documented
-opencv-core.ads: OpenCV.Core.Create_UMat: function Create_UMat (Shape : Dimension_Array; Element_Type : Mat_Type) return UMat;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Clone: function Clone (Self : UMat) return UMat;: warning: entity `Clone` is not documented
-opencv-core.ads: OpenCV.Core.Clone: function Clone (Self : UMat) return UMat;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Clone: function Clone (Self : UMat) return UMat;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Copy_To: function Copy_To (Self : UMat) return UMat;: warning: entity `Copy_To` is not documented
-opencv-core.ads: OpenCV.Core.Copy_To: function Copy_To (Self : UMat) return UMat;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Copy_To: function Copy_To (Self : UMat) return UMat;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Convert_To: function Convert_To (Self : UMat; Depth : Depth_Type; Scale : Long_Float : = 1.0; Offset : Long_Float : = 0.0) return UMat;: warning: entity `Convert_To` is not documented
-opencv-core.ads: OpenCV.Core.Convert_To: function Convert_To (Self : UMat; Depth : Depth_Type; Scale : Long_Float : = 1.0; Offset : Long_Float : = 0.0) return UMat;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Convert_To: function Convert_To (Self : UMat; Depth : Depth_Type; Scale : Long_Float : = 1.0; Offset : Long_Float : = 0.0) return UMat;: warning: parameter `Depth` is not documented
-opencv-core.ads: OpenCV.Core.Convert_To: function Convert_To (Self : UMat; Depth : Depth_Type; Scale : Long_Float : = 1.0; Offset : Long_Float : = 0.0) return UMat;: warning: parameter `Scale` is not documented
-opencv-core.ads: OpenCV.Core.Convert_To: function Convert_To (Self : UMat; Depth : Depth_Type; Scale : Long_Float : = 1.0; Offset : Long_Float : = 0.0) return UMat;: warning: parameter `Offset` is not documented
-opencv-core.ads: OpenCV.Core.Convert_To: function Convert_To (Self : UMat; Depth : Depth_Type; Scale : Long_Float : = 1.0; Offset : Long_Float : = 0.0) return UMat;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Convert_To: procedure Convert_To (Self : UMat; Destination : in out UMat; Depth : Depth_Type; Scale : Long_Float : = 1.0; Offset : Long_Float : = 0.0);: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Convert_To: procedure Convert_To (Self : UMat; Destination : in out UMat; Depth : Depth_Type; Scale : Long_Float : = 1.0; Offset : Long_Float : = 0.0);: warning: parameter `Destination` is not documented
-opencv-core.ads: OpenCV.Core.Convert_To: procedure Convert_To (Self : UMat; Destination : in out UMat; Depth : Depth_Type; Scale : Long_Float : = 1.0; Offset : Long_Float : = 0.0);: warning: parameter `Depth` is not documented
-opencv-core.ads: OpenCV.Core.Convert_To: procedure Convert_To (Self : UMat; Destination : in out UMat; Depth : Depth_Type; Scale : Long_Float : = 1.0; Offset : Long_Float : = 0.0);: warning: parameter `Scale` is not documented
-opencv-core.ads: OpenCV.Core.Convert_To: procedure Convert_To (Self : UMat; Destination : in out UMat; Depth : Depth_Type; Scale : Long_Float : = 1.0; Offset : Long_Float : = 0.0);: warning: parameter `Offset` is not documented
 opencv-core.ads: OpenCV.Core.Set_To: procedure Set_To (Self : in out UMat; Value : Scalar);: warning: entity `Set_To` is not documented
 opencv-core.ads: OpenCV.Core.Set_To: procedure Set_To (Self : in out UMat; Value : Scalar);: warning: parameter `Self` is not documented
 opencv-core.ads: OpenCV.Core.Set_To: procedure Set_To (Self : in out UMat; Value : Scalar);: warning: parameter `Value` is not documented
-opencv-core.ads: OpenCV.Core.Region: function Region (Self : UMat; Area : Rect) return UMat;: warning: entity `Region` is not documented
-opencv-core.ads: OpenCV.Core.Region: function Region (Self : UMat; Area : Rect) return UMat;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Region: function Region (Self : UMat; Area : Rect) return UMat;: warning: parameter `Area` is not documented
-opencv-core.ads: OpenCV.Core.Region: function Region (Self : UMat; Area : Rect) return UMat;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Locate_Region: function Locate_Region (Self : UMat) return Region_Location;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Locate_Region: function Locate_Region (Self : UMat) return Region_Location;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Adjust_Region: procedure Adjust_Region (Self : in out UMat; Top, Bottom, Left, Right : Region_Adjustment);: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Adjust_Region: procedure Adjust_Region (Self : in out UMat; Top, Bottom, Left, Right : Region_Adjustment);: warning: parameter `Top` is not documented
-opencv-core.ads: OpenCV.Core.Adjust_Region: procedure Adjust_Region (Self : in out UMat; Top, Bottom, Left, Right : Region_Adjustment);: warning: parameter `Bottom` is not documented
-opencv-core.ads: OpenCV.Core.Adjust_Region: procedure Adjust_Region (Self : in out UMat; Top, Bottom, Left, Right : Region_Adjustment);: warning: parameter `Left` is not documented
-opencv-core.ads: OpenCV.Core.Adjust_Region: procedure Adjust_Region (Self : in out UMat; Top, Bottom, Left, Right : Region_Adjustment);: warning: parameter `Right` is not documented
-opencv-core.ads: OpenCV.Core.Slice: function Slice (Self : UMat; Ranges : Index_Range_Array) return UMat;: warning: entity `Slice` is not documented
-opencv-core.ads: OpenCV.Core.Slice: function Slice (Self : UMat; Ranges : Index_Range_Array) return UMat;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Slice: function Slice (Self : UMat; Ranges : Index_Range_Array) return UMat;: warning: parameter `Ranges` is not documented
-opencv-core.ads: OpenCV.Core.Slice: function Slice (Self : UMat; Ranges : Index_Range_Array) return UMat;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Is_Empty: function Is_Empty (Self : UMat) return Boolean;: warning: entity `Is_Empty` is not documented
-opencv-core.ads: OpenCV.Core.Is_Empty: function Is_Empty (Self : UMat) return Boolean;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Is_Empty: function Is_Empty (Self : UMat) return Boolean;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Is_Continuous: function Is_Continuous (Self : UMat) return Boolean;: warning: entity `Is_Continuous` is not documented
-opencv-core.ads: OpenCV.Core.Is_Continuous: function Is_Continuous (Self : UMat) return Boolean;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Is_Continuous: function Is_Continuous (Self : UMat) return Boolean;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Is_Submatrix: function Is_Submatrix (Self : UMat) return Boolean;: warning: entity `Is_Submatrix` is not documented
-opencv-core.ads: OpenCV.Core.Is_Submatrix: function Is_Submatrix (Self : UMat) return Boolean;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Is_Submatrix: function Is_Submatrix (Self : UMat) return Boolean;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Dimension_Count: function Dimension_Count (Self : UMat) return Natural;: warning: entity `Dimension_Count` is not documented
-opencv-core.ads: OpenCV.Core.Dimension_Count: function Dimension_Count (Self : UMat) return Natural;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Dimension_Count: function Dimension_Count (Self : UMat) return Natural;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Extent: function Extent (Self : UMat; Axis : Positive) return Size_Coordinate;: warning: entity `Extent` is not documented
-opencv-core.ads: OpenCV.Core.Extent: function Extent (Self : UMat; Axis : Positive) return Size_Coordinate;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Extent: function Extent (Self : UMat; Axis : Positive) return Size_Coordinate;: warning: parameter `Axis` is not documented
-opencv-core.ads: OpenCV.Core.Extent: function Extent (Self : UMat; Axis : Positive) return Size_Coordinate;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Shape: function Shape (Self : UMat) return Dimension_Array;: warning: entity `Shape` is not documented
-opencv-core.ads: OpenCV.Core.Shape: function Shape (Self : UMat) return Dimension_Array;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Shape: function Shape (Self : UMat) return Dimension_Array;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Rows: function Rows (Self : UMat) return Natural;: warning: entity `Rows` is not documented
-opencv-core.ads: OpenCV.Core.Rows: function Rows (Self : UMat) return Natural;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Rows: function Rows (Self : UMat) return Natural;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Columns: function Columns (Self : UMat) return Natural;: warning: entity `Columns` is not documented
-opencv-core.ads: OpenCV.Core.Columns: function Columns (Self : UMat) return Natural;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Columns: function Columns (Self : UMat) return Natural;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Depth: function Depth (Self : UMat) return Depth_Type;: warning: entity `Depth` is not documented
-opencv-core.ads: OpenCV.Core.Depth: function Depth (Self : UMat) return Depth_Type;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Depth: function Depth (Self : UMat) return Depth_Type;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Channels: function Channels (Self : UMat) return Channel_Count;: warning: entity `Channels` is not documented
-opencv-core.ads: OpenCV.Core.Channels: function Channels (Self : UMat) return Channel_Count;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Channels: function Channels (Self : UMat) return Channel_Count;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Element_Type: function Element_Type (Self : UMat) return Mat_Type;: warning: entity `Element_Type` is not documented
-opencv-core.ads: OpenCV.Core.Element_Type: function Element_Type (Self : UMat) return Mat_Type;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Element_Type: function Element_Type (Self : UMat) return Mat_Type;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Total: function Total (Self : UMat) return Mat_Size;: warning: entity `Total` is not documented
-opencv-core.ads: OpenCV.Core.Total: function Total (Self : UMat) return Mat_Size;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Total: function Total (Self : UMat) return Mat_Size;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Element_Size: function Element_Size (Self : UMat) return Mat_Size;: warning: entity `Element_Size` is not documented
-opencv-core.ads: OpenCV.Core.Element_Size: function Element_Size (Self : UMat) return Mat_Size;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Element_Size: function Element_Size (Self : UMat) return Mat_Size;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Channel_Size: function Channel_Size (Self : UMat) return Mat_Size;: warning: entity `Channel_Size` is not documented
-opencv-core.ads: OpenCV.Core.Channel_Size: function Channel_Size (Self : UMat) return Mat_Size;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Channel_Size: function Channel_Size (Self : UMat) return Mat_Size;: warning: return value is not documented
 opencv-core.ads: OpenCV.Core.Next_Random: procedure Next_Random (Generator : in out Random_Number_Generator; Value : out Interfaces.Unsigned_32);: warning: parameter `Generator` is not documented
 opencv-core.ads: OpenCV.Core.Next_Random: procedure Next_Random (Generator : in out Random_Number_Generator; Value : out Interfaces.Unsigned_32);: warning: parameter `Value` is not documented
 opencv-core.ads: OpenCV.Core.Uniform_Random: procedure Uniform_Random (Generator : in out Random_Number_Generator; Lower_Bound : Long_Float; Upper_Bound : Long_Float; Value : out Long_Float);: warning: parameter `Generator` is not documented
@@ -3344,18 +3262,6 @@ opencv-core.ads: OpenCV.Core.Channel_Route.Destination_Channel: Destination_Chan
 opencv-core.ads: OpenCV.Core.Channel_Route.Source_Index: Source_Index : Natural;: warning: component `Source_Index` is not documented
 opencv-core.ads: OpenCV.Core.Channel_Route.Source_Channel: Source_Channel : Natural;: warning: component `Source_Channel` is not documented
 opencv-core.ads: OpenCV.Core.Channel_Route_Array: type Channel_Route_Array is array (Natural range <>) of Channel_Route;: warning: entity `Channel_Route_Array` is not documented
-opencv-core.ads: OpenCV.Core.Create: function Create (Rows, Columns : Natural; Element_Type : Mat_Type) return Mat with Pre => Rows <= 2_147_483_647 and then Columns <= 2_147_483_647;: warning: entity `Create` is not documented
-opencv-core.ads: OpenCV.Core.Create: function Create (Rows, Columns : Natural; Element_Type : Mat_Type) return Mat with Pre => Rows <= 2_147_483_647 and then Columns <= 2_147_483_647;: warning: parameter `Rows` is not documented
-opencv-core.ads: OpenCV.Core.Create: function Create (Rows, Columns : Natural; Element_Type : Mat_Type) return Mat with Pre => Rows <= 2_147_483_647 and then Columns <= 2_147_483_647;: warning: parameter `Columns` is not documented
-opencv-core.ads: OpenCV.Core.Create: function Create (Rows, Columns : Natural; Element_Type : Mat_Type) return Mat with Pre => Rows <= 2_147_483_647 and then Columns <= 2_147_483_647;: warning: parameter `Element_Type` is not documented
-opencv-core.ads: OpenCV.Core.Create: function Create (Rows, Columns : Natural; Element_Type : Mat_Type) return Mat with Pre => Rows <= 2_147_483_647 and then Columns <= 2_147_483_647;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Create: function Create (Dimensions : Size; Element_Type : Mat_Type) return Mat;: warning: entity `Create` is not documented
-opencv-core.ads: OpenCV.Core.Create: function Create (Dimensions : Size; Element_Type : Mat_Type) return Mat;: warning: parameter `Dimensions` is not documented
-opencv-core.ads: OpenCV.Core.Create: function Create (Dimensions : Size; Element_Type : Mat_Type) return Mat;: warning: parameter `Element_Type` is not documented
-opencv-core.ads: OpenCV.Core.Create: function Create (Dimensions : Size; Element_Type : Mat_Type) return Mat;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Create: function Create (Shape : Dimension_Array; Element_Type : Mat_Type) return Mat;: warning: parameter `Shape` is not documented
-opencv-core.ads: OpenCV.Core.Create: function Create (Shape : Dimension_Array; Element_Type : Mat_Type) return Mat;: warning: parameter `Element_Type` is not documented
-opencv-core.ads: OpenCV.Core.Create: function Create (Shape : Dimension_Array; Element_Type : Mat_Type) return Mat;: warning: return value is not documented
 opencv-core.ads: OpenCV.Core.Diagonal_Matrix: function Diagonal_Matrix (Diagonal : Mat) return Mat;: warning: parameter `Diagonal` is not documented
 opencv-core.ads: OpenCV.Core.Diagonal_Matrix: function Diagonal_Matrix (Diagonal : Mat) return Mat;: warning: return value is not documented
 opencv-core.ads: OpenCV.Core.Reshape: function Reshape (Self : Mat; Channels : Channel_Count) return Mat;: warning: parameter `Self` is not documented
@@ -3377,9 +3283,6 @@ opencv-core.ads: OpenCV.Core.Reshape: function Reshape (Self : Mat; Channels : C
 opencv-core.ads: OpenCV.Core.Diagonal_View: function Diagonal_View (Self : Mat; Offset : Point_Coordinate : = 0) return Mat;: warning: parameter `Self` is not documented
 opencv-core.ads: OpenCV.Core.Diagonal_View: function Diagonal_View (Self : Mat; Offset : Point_Coordinate : = 0) return Mat;: warning: parameter `Offset` is not documented
 opencv-core.ads: OpenCV.Core.Diagonal_View: function Diagonal_View (Self : Mat; Offset : Point_Coordinate : = 0) return Mat;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Clone: function Clone (Self : Mat) return Mat;: warning: entity `Clone` is not documented
-opencv-core.ads: OpenCV.Core.Clone: function Clone (Self : Mat) return Mat;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Clone: function Clone (Self : Mat) return Mat;: warning: return value is not documented
 opencv-core.ads: OpenCV.Core.K_Means: function K_Means (Samples : Mat; Cluster_Count : Positive; Criteria : K_Means_Criteria : = (Maximum_Iterations => 100, Epsilon => 1.0E-4); Attempts : Positive : = 3; Initialization : K_Means_Initialization : = Plus_Plus_Centers) return K_Means_Result;: warning: parameter `Samples` is not documented
 opencv-core.ads: OpenCV.Core.K_Means: function K_Means (Samples : Mat; Cluster_Count : Positive; Criteria : K_Means_Criteria : = (Maximum_Iterations => 100, Epsilon => 1.0E-4); Attempts : Positive : = 3; Initialization : K_Means_Initialization : = Plus_Plus_Centers) return K_Means_Result;: warning: parameter `Cluster_Count` is not documented
 opencv-core.ads: OpenCV.Core.K_Means: function K_Means (Samples : Mat; Cluster_Count : Positive; Criteria : K_Means_Criteria : = (Maximum_Iterations => 100, Epsilon => 1.0E-4); Attempts : Positive : = 3; Initialization : K_Means_Initialization : = Plus_Plus_Centers) return K_Means_Result;: warning: parameter `Criteria` is not documented
@@ -3437,22 +3340,6 @@ opencv-core.ads: OpenCV.Core.Mix_Channels: procedure Mix_Channels (Sources : Mat
 opencv-core.ads: OpenCV.Core.Mix_Channels: procedure Mix_Channels (Sources : Mat_Array; Destinations : in out Mat_Array; Routes : Channel_Route_Array);: warning: parameter `Routes` is not documented
 opencv-core.ads: OpenCV.Core.Merge: function Merge (Channels : Mat_Array) return Mat;: warning: parameter `Channels` is not documented
 opencv-core.ads: OpenCV.Core.Merge: function Merge (Channels : Mat_Array) return Mat;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Copy_To: procedure Copy_To (Self : Mat; Destination : in out Mat);: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Copy_To: procedure Copy_To (Self : Mat; Destination : in out Mat);: warning: parameter `Destination` is not documented
-opencv-core.ads: OpenCV.Core.Copy_To: procedure Copy_To (Self : Mat; Destination : in out Mat; Mask : Mat);: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Copy_To: procedure Copy_To (Self : Mat; Destination : in out Mat; Mask : Mat);: warning: parameter `Destination` is not documented
-opencv-core.ads: OpenCV.Core.Copy_To: procedure Copy_To (Self : Mat; Destination : in out Mat; Mask : Mat);: warning: parameter `Mask` is not documented
-opencv-core.ads: OpenCV.Core.Convert_To: function Convert_To (Self : Mat; Depth : Depth_Type; Scale : Long_Float : = 1.0; Offset : Long_Float : = 0.0) return Mat;: warning: entity `Convert_To` is not documented
-opencv-core.ads: OpenCV.Core.Convert_To: function Convert_To (Self : Mat; Depth : Depth_Type; Scale : Long_Float : = 1.0; Offset : Long_Float : = 0.0) return Mat;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Convert_To: function Convert_To (Self : Mat; Depth : Depth_Type; Scale : Long_Float : = 1.0; Offset : Long_Float : = 0.0) return Mat;: warning: parameter `Depth` is not documented
-opencv-core.ads: OpenCV.Core.Convert_To: function Convert_To (Self : Mat; Depth : Depth_Type; Scale : Long_Float : = 1.0; Offset : Long_Float : = 0.0) return Mat;: warning: parameter `Scale` is not documented
-opencv-core.ads: OpenCV.Core.Convert_To: function Convert_To (Self : Mat; Depth : Depth_Type; Scale : Long_Float : = 1.0; Offset : Long_Float : = 0.0) return Mat;: warning: parameter `Offset` is not documented
-opencv-core.ads: OpenCV.Core.Convert_To: function Convert_To (Self : Mat; Depth : Depth_Type; Scale : Long_Float : = 1.0; Offset : Long_Float : = 0.0) return Mat;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Convert_To: procedure Convert_To (Self : Mat; Destination : in out Mat; Depth : Depth_Type; Scale : Long_Float : = 1.0; Offset : Long_Float : = 0.0);: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Convert_To: procedure Convert_To (Self : Mat; Destination : in out Mat; Depth : Depth_Type; Scale : Long_Float : = 1.0; Offset : Long_Float : = 0.0);: warning: parameter `Destination` is not documented
-opencv-core.ads: OpenCV.Core.Convert_To: procedure Convert_To (Self : Mat; Destination : in out Mat; Depth : Depth_Type; Scale : Long_Float : = 1.0; Offset : Long_Float : = 0.0);: warning: parameter `Depth` is not documented
-opencv-core.ads: OpenCV.Core.Convert_To: procedure Convert_To (Self : Mat; Destination : in out Mat; Depth : Depth_Type; Scale : Long_Float : = 1.0; Offset : Long_Float : = 0.0);: warning: parameter `Scale` is not documented
-opencv-core.ads: OpenCV.Core.Convert_To: procedure Convert_To (Self : Mat; Destination : in out Mat; Depth : Depth_Type; Scale : Long_Float : = 1.0; Offset : Long_Float : = 0.0);: warning: parameter `Offset` is not documented
 opencv-core.ads: OpenCV.Core.Convert_Scale_Abs: function Convert_Scale_Abs (Self : Mat; Scale : Long_Float : = 1.0; Offset : Long_Float : = 0.0) return Mat;: warning: parameter `Self` is not documented
 opencv-core.ads: OpenCV.Core.Convert_Scale_Abs: function Convert_Scale_Abs (Self : Mat; Scale : Long_Float : = 1.0; Offset : Long_Float : = 0.0) return Mat;: warning: parameter `Scale` is not documented
 opencv-core.ads: OpenCV.Core.Convert_Scale_Abs: function Convert_Scale_Abs (Self : Mat; Scale : Long_Float : = 1.0; Offset : Long_Float : = 0.0) return Mat;: warning: parameter `Offset` is not documented
@@ -3996,55 +3883,6 @@ opencv-core.ads: OpenCV.Core.In_Range: procedure In_Range (Self : Mat; Lower : S
 opencv-core.ads: OpenCV.Core.In_Range: procedure In_Range (Self : Mat; Lower : Scalar; Upper : Scalar; Destination : in out Mat);: warning: parameter `Lower` is not documented
 opencv-core.ads: OpenCV.Core.In_Range: procedure In_Range (Self : Mat; Lower : Scalar; Upper : Scalar; Destination : in out Mat);: warning: parameter `Upper` is not documented
 opencv-core.ads: OpenCV.Core.In_Range: procedure In_Range (Self : Mat; Lower : Scalar; Upper : Scalar; Destination : in out Mat);: warning: parameter `Destination` is not documented
-opencv-core.ads: OpenCV.Core.Is_Empty: function Is_Empty (Self : Mat) return Boolean;: warning: entity `Is_Empty` is not documented
-opencv-core.ads: OpenCV.Core.Is_Empty: function Is_Empty (Self : Mat) return Boolean;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Is_Empty: function Is_Empty (Self : Mat) return Boolean;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Rows: function Rows (Self : Mat) return Natural;: warning: entity `Rows` is not documented
-opencv-core.ads: OpenCV.Core.Rows: function Rows (Self : Mat) return Natural;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Rows: function Rows (Self : Mat) return Natural;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Columns: function Columns (Self : Mat) return Natural;: warning: entity `Columns` is not documented
-opencv-core.ads: OpenCV.Core.Columns: function Columns (Self : Mat) return Natural;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Columns: function Columns (Self : Mat) return Natural;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Shape: function Shape (Self : Mat) return Dimension_Array;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Shape: function Shape (Self : Mat) return Dimension_Array;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Dimension_Count: function Dimension_Count (Self : Mat) return Natural;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Dimension_Count: function Dimension_Count (Self : Mat) return Natural;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Extent: function Extent (Self : Mat; Axis : Positive) return Size_Coordinate;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Extent: function Extent (Self : Mat; Axis : Positive) return Size_Coordinate;: warning: parameter `Axis` is not documented
-opencv-core.ads: OpenCV.Core.Extent: function Extent (Self : Mat; Axis : Positive) return Size_Coordinate;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Dimensions: function Dimensions (Self : Mat) return Size;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Dimensions: function Dimensions (Self : Mat) return Size;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Channels: function Channels (Self : Mat) return Channel_Count;: warning: entity `Channels` is not documented
-opencv-core.ads: OpenCV.Core.Channels: function Channels (Self : Mat) return Channel_Count;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Channels: function Channels (Self : Mat) return Channel_Count;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Depth: function Depth (Self : Mat) return Depth_Type;: warning: entity `Depth` is not documented
-opencv-core.ads: OpenCV.Core.Depth: function Depth (Self : Mat) return Depth_Type;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Depth: function Depth (Self : Mat) return Depth_Type;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Total: function Total (Self : Mat) return Mat_Size;: warning: entity `Total` is not documented
-opencv-core.ads: OpenCV.Core.Total: function Total (Self : Mat) return Mat_Size;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Total: function Total (Self : Mat) return Mat_Size;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Element_Size: function Element_Size (Self : Mat) return Mat_Size;: warning: entity `Element_Size` is not documented
-opencv-core.ads: OpenCV.Core.Element_Size: function Element_Size (Self : Mat) return Mat_Size;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Element_Size: function Element_Size (Self : Mat) return Mat_Size;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Channel_Size: function Channel_Size (Self : Mat) return Mat_Size;: warning: entity `Channel_Size` is not documented
-opencv-core.ads: OpenCV.Core.Channel_Size: function Channel_Size (Self : Mat) return Mat_Size;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Channel_Size: function Channel_Size (Self : Mat) return Mat_Size;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Is_Continuous: function Is_Continuous (Self : Mat) return Boolean;: warning: entity `Is_Continuous` is not documented
-opencv-core.ads: OpenCV.Core.Is_Continuous: function Is_Continuous (Self : Mat) return Boolean;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Is_Continuous: function Is_Continuous (Self : Mat) return Boolean;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Is_Submatrix: function Is_Submatrix (Self : Mat) return Boolean;: warning: entity `Is_Submatrix` is not documented
-opencv-core.ads: OpenCV.Core.Is_Submatrix: function Is_Submatrix (Self : Mat) return Boolean;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Is_Submatrix: function Is_Submatrix (Self : Mat) return Boolean;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Region: function Region (Self : Mat; Area : Rect) return Mat;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Region: function Region (Self : Mat; Area : Rect) return Mat;: warning: parameter `Area` is not documented
-opencv-core.ads: OpenCV.Core.Region: function Region (Self : Mat; Area : Rect) return Mat;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Locate_Region: function Locate_Region (Self : Mat) return Region_Location;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Locate_Region: function Locate_Region (Self : Mat) return Region_Location;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Adjust_Region: procedure Adjust_Region (Self : in out Mat; Top, Bottom, Left, Right : Region_Adjustment);: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Adjust_Region: procedure Adjust_Region (Self : in out Mat; Top, Bottom, Left, Right : Region_Adjustment);: warning: parameter `Top` is not documented
-opencv-core.ads: OpenCV.Core.Adjust_Region: procedure Adjust_Region (Self : in out Mat; Top, Bottom, Left, Right : Region_Adjustment);: warning: parameter `Bottom` is not documented
-opencv-core.ads: OpenCV.Core.Adjust_Region: procedure Adjust_Region (Self : in out Mat; Top, Bottom, Left, Right : Region_Adjustment);: warning: parameter `Left` is not documented
-opencv-core.ads: OpenCV.Core.Adjust_Region: procedure Adjust_Region (Self : in out Mat; Top, Bottom, Left, Right : Region_Adjustment);: warning: parameter `Right` is not documented
 opencv-core.ads: OpenCV.Core.Row_View: function Row_View (Self : Mat; Row : Size_Coordinate) return Mat;: warning: parameter `Self` is not documented
 opencv-core.ads: OpenCV.Core.Row_View: function Row_View (Self : Mat; Row : Size_Coordinate) return Mat;: warning: parameter `Row` is not documented
 opencv-core.ads: OpenCV.Core.Row_View: function Row_View (Self : Mat; Row : Size_Coordinate) return Mat;: warning: return value is not documented
@@ -4060,9 +3898,6 @@ opencv-core.ads: OpenCV.Core.Column_View: function Column_View (Self : Mat; Colu
 opencv-core.ads: OpenCV.Core.Column_View: function Column_View (Self : Mat; Columns : Index_Range) return Mat;: warning: parameter `Self` is not documented
 opencv-core.ads: OpenCV.Core.Column_View: function Column_View (Self : Mat; Columns : Index_Range) return Mat;: warning: parameter `Columns` is not documented
 opencv-core.ads: OpenCV.Core.Column_View: function Column_View (Self : Mat; Columns : Index_Range) return Mat;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Slice: function Slice (Self : Mat; Ranges : Index_Range_Array) return Mat;: warning: parameter `Self` is not documented
-opencv-core.ads: OpenCV.Core.Slice: function Slice (Self : Mat; Ranges : Index_Range_Array) return Mat;: warning: parameter `Ranges` is not documented
-opencv-core.ads: OpenCV.Core.Slice: function Slice (Self : Mat; Ranges : Index_Range_Array) return Mat;: warning: return value is not documented
 opencv-core.ads: OpenCV.Core.With_Selected_View: procedure With_Selected_View (Self : in out Mat; Selections : Dimension_Selection_Array; Process : not null access procedure (View : in out Mat));: warning: parameter `Self` is not documented
 opencv-core.ads: OpenCV.Core.With_Selected_View: procedure With_Selected_View (Self : in out Mat; Selections : Dimension_Selection_Array; Process : not null access procedure (View : in out Mat));: warning: parameter `Selections` is not documented
 opencv-core.ads: OpenCV.Core.With_Selected_View: procedure With_Selected_View (Self : in out Mat; Selections : Dimension_Selection_Array; Process : not null access procedure (View : in out Mat));: warning: parameter `Process` is not documented

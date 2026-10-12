@@ -423,26 +423,81 @@ package OpenCV.Core is
    --  vary between OpenCV versions.
    type UMat is tagged private;
 
-   --  UMat allocation uses USAGE_DEFAULT; OpenCL is optional. Assignment
-   --  retains shared storage via distinct native headers; Clone copies data.
+   --  Creates a typed two-dimensional UMat with the requested number of rows
+   --  and columns. The element type fixes both the depth and the channel
+   --  count of every element. Allocation uses native OpenCV UMat storage
+   --  with USAGE_DEFAULT; OpenCL is optional, so the UMat is not guaranteed
+   --  to be resident on a GPU or to execute through OpenCL. A zero Rows or
+   --  Columns yields a typed, zero-extent UMat that still reports two
+   --  dimensions, which is distinct from a default UMat header. Element
+   --  contents are not promised to be initialized. Assignment retains shared
+   --  storage via distinct native headers; Clone copies data.
+   --  @param Rows Number of rows, at most the native signed 32-bit limit.
+   --  @param Columns Number of columns, at most the native signed 32-bit
+   --  limit.
+   --  @param Element_Type Depth and channel count of each element.
+   --  @return A new UMat that owns its own header and storage.
    function Create_UMat
      (Rows, Columns : Natural; Element_Type : Mat_Type) return UMat
    with Pre => Rows <= 2_147_483_647 and then Columns <= 2_147_483_647;
-   --  Two to 32 nonzero extents; OpenCV 5 accepts at most 10 dimensions.
+
+   --  Creates a typed N-dimensional UMat. Shape is read in iteration order,
+   --  independent of its index bounds: the first element is the extent of
+   --  native dimension 0, and so on. Two to 32 nonzero extents; OpenCV 5
+   --  accepts at most 10 dimensions. A shape that violates the Ada-checked
+   --  count or nonzero-extent limits raises OpenCV_Error. As for the 2-D
+   --  overload, native UMat storage is used and active OpenCL execution is
+   --  not guaranteed.
+   --  @param Shape Extent of each dimension, in native dimension order.
+   --  @param Element_Type Depth and channel count of each element.
+   --  @return A new UMat that owns its own header and storage.
    function Create_UMat
      (Shape : Dimension_Array; Element_Type : Mat_Type) return UMat;
+
+   --  Returns an independent deep copy of Self's elements. Unlike Ada
+   --  assignment, which shares storage through a distinct header, the result
+   --  does not share storage with Self. The metadata of a clone of an empty
+   --  UMat follows the installed OpenCV release.
+   --  @param Self The UMat to copy.
+   --  @return A new UMat with independent storage.
    function Clone (Self : UMat) return UMat;
+
+   --  Copies Self into a newly allocated UMat using native copyTo. This is
+   --  the only UMat Copy_To form: unlike Mat, there is no caller-owned
+   --  destination or masked procedure, so the Mat and UMat Copy_To overload
+   --  sets are not symmetrical. The result owns independent storage.
+   --  @param Self The UMat to copy.
+   --  @return A new UMat holding a copy of Self's elements.
    function Copy_To (Self : UMat) return UMat;
+
+   --  Converts Self to the requested depth into a new UMat, computing
+   --  Scale * Self + Offset for every element. The channel count and shape
+   --  are preserved and the result owns independent storage. Conversion
+   --  follows native OpenCV rules, and a failure reported by OpenCV is raised
+   --  as OpenCV_Error. Empty-source metadata follows the installed OpenCV
+   --  version.
+   --  @param Self The source UMat.
+   --  @param Depth Depth of the result.
+   --  @param Scale Factor applied to each source value before Offset.
+   --  @param Offset Value added after scaling.
+   --  @return A new UMat of the requested depth.
    function Convert_To
      (Self   : UMat;
       Depth  : Depth_Type;
       Scale  : Long_Float := 1.0;
       Offset : Long_Float := 0.0) return UMat;
+
    --  Converts into the actual native destination, reusing matching storage
    --  or reallocating mismatched storage. Compatible Regions retain parent
    --  sharing; incompatible Regions may detach. Exact self is supported,
    --  but arbitrary partially overlapping views are not supported.
-   --  Empty-source metadata follows the installed OpenCV version.
+   --  Empty-source metadata follows the installed OpenCV version. A failure
+   --  after native conversion starts need not leave Destination unchanged.
+   --  @param Self The source UMat.
+   --  @param Destination The caller-owned UMat that receives the result.
+   --  @param Depth Depth of the converted elements.
+   --  @param Scale Factor applied to each source value before Offset.
+   --  @param Offset Value added after scaling.
    procedure Convert_To
      (Self        : UMat;
       Destination : in out UMat;
@@ -450,28 +505,144 @@ package OpenCV.Core is
       Scale       : Long_Float := 1.0;
       Offset      : Long_Float := 0.0);
    procedure Set_To (Self : in out UMat; Value : Scalar);
+   --  Creates a distinct UMat header sharing Self's storage for a 2-D region
+   --  of interest; no elements are copied and only native UMat headers are
+   --  used, without host mapping. Self must be nonempty and exactly 2-D.
+   --  Area uses zero-based coordinates: X and Y must be nonnegative, the
+   --  origin must lie inside Self, Width and Height must be positive, and the
+   --  whole rectangle must fit inside Self. Otherwise OpenCV_Error is raised.
+   --  The shared storage persists while any header refers to it.
+   --  @param Self The UMat containing the region.
+   --  @param Area Zero-based rectangle selecting the region.
+   --  @return A new UMat header that may share Self's allocation.
    function Region (Self : UMat; Area : Rect) return UMat;
-   --  Nonempty, exactly 2-D; native UMat headers only, without host mapping.
+
+   --  Returns the geometry of the allocation retained by Self's region
+   --  header: the whole allocation's extent and Self's zero-based offset in
+   --  it. The result is geometry only and is not an allocation identity:
+   --  two unrelated UMats can report identical values. Self must be nonempty
+   --  and exactly 2-D, otherwise OpenCV_Error is raised.
+   --  @param Self The UMat to locate.
+   --  @return Whole-allocation size and Self's offset within it.
    function Locate_Region (Self : UMat) return Region_Location;
+
    --  Header-only adjustment with the same clipping/crossing semantics as
-   --  Mat below. Other shallow headers keep their independent geometry.
+   --  Mat below. Positive adjustments move a boundary outward and negative
+   --  adjustments move it inward, within the retained parent allocation. No
+   --  elements are copied, and other shallow headers keep their independent
+   --  geometry. Is_Submatrix is not a reliable indicator of the adjusted
+   --  geometry. Self must be nonempty and exactly 2-D, otherwise OpenCV_Error
+   --  is raised; native failures are also raised as OpenCV_Error, and the
+   --  header is not promised to be unchanged for every native failure.
+   --  @param Self The UMat header to adjust.
+   --  @param Top Adjustment of the top boundary.
+   --  @param Bottom Adjustment of the bottom boundary.
+   --  @param Left Adjustment of the left boundary.
+   --  @param Right Adjustment of the right boundary.
    procedure Adjust_Region
      (Self : in out UMat; Top, Bottom, Left, Right : Region_Adjustment);
+
+   --  Creates a distinct UMat header sharing Self's storage for an
+   --  N-dimensional slice. Exactly one half-open Index_Range is required per
+   --  source dimension, applied in iteration order regardless of the array's
+   --  index bounds. Every range must be nonempty (Start < Stop) and Stop must
+   --  not exceed that dimension's extent, otherwise OpenCV_Error is raised.
+   --  Depth, channel count and dimension count are retained, and each extent
+   --  becomes Stop - Start. The slice is not necessarily contiguous.
+   --  @param Self The UMat to slice.
+   --  @param Ranges One zero-based half-open range per source dimension.
+   --  @return A new UMat header that may share Self's allocation.
    function Slice (Self : UMat; Ranges : Index_Range_Array) return UMat;
 
+   --  Reports whether Self has no elements, as defined by native UMat empty.
+   --  A default header is empty, but an empty result is not necessarily a
+   --  default header: a typed zero-extent UMat is also empty.
+   --  @param Self The UMat to inspect.
+   --  @return True when the UMat is empty.
    function Is_Empty (Self : UMat) return Boolean;
+
+   --  Reports whether Self's current layout is continuous, with no gaps
+   --  between rows. A region or slice that shares a larger allocation need
+   --  not be continuous.
+   --  @param Self The UMat to inspect.
+   --  @return True when the native layout is continuous.
    function Is_Continuous (Self : UMat) return Boolean;
+
+   --  Reports the native UMat submatrix flag. After Adjust_Region the flag
+   --  is not authoritative current geometry; use Locate_Region for the
+   --  retained allocation geometry.
+   --  @param Self The UMat to inspect.
+   --  @return The native submatrix flag.
    function Is_Submatrix (Self : UMat) return Boolean;
+
+   --  Returns the native number of dimensions. A default UMat reports 0,
+   --  while a typed 2-D UMat, including a zero-extent one, reports 2.
+   --  @param Self The UMat to inspect.
+   --  @return The dimension count.
    function Dimension_Count (Self : UMat) return Natural;
+
+   --  Returns the extent of a 1-based axis. Axis 1 is native dimension 0.
+   --  Raises OpenCV_Error when Axis is greater than Dimension_Count.
+   --  @param Self The UMat to inspect.
+   --  @param Axis One-based dimension, in 1 .. Dimension_Count.
+   --  @return The extent of that dimension.
    function Extent (Self : UMat; Axis : Positive) return Size_Coordinate;
+
+   --  Returns every extent in native dimension order, indexed 1 ..
+   --  Dimension_Count. A UMat with no dimensions returns a null array. A 2-D
+   --  UMat returns (Rows, Columns); an N-D UMat returns every axis extent.
+   --  @param Self The UMat to inspect.
+   --  @return The extents of all dimensions.
    function Shape (Self : UMat) return Dimension_Array;
+
+   --  Returns the row count of a 2-D UMat. Raises OpenCV_Error when native
+   --  OpenCV reports no row count because Self has more than two dimensions,
+   --  so Rows alone does not describe an N-D shape; use Shape for that.
+   --  @param Self The UMat to inspect.
+   --  @return The number of rows.
    function Rows (Self : UMat) return Natural;
+
+   --  Returns the column count of a 2-D UMat. Raises OpenCV_Error when native
+   --  OpenCV reports no column count because Self has more than two
+   --  dimensions, so Columns alone does not describe an N-D shape; use Shape
+   --  for that.
+   --  @param Self The UMat to inspect.
+   --  @return The number of columns.
    function Columns (Self : UMat) return Natural;
+
+   --  Returns the depth of each channel value. Depth is independent of the
+   --  channel count, which Channels reports.
+   --  @param Self The UMat to inspect.
+   --  @return The element depth.
    function Depth (Self : UMat) return Depth_Type;
+
+   --  Returns the number of channels in each element. This counts channels,
+   --  not bytes; Element_Size gives the byte size of a complete element.
+   --  @param Self The UMat to inspect.
+   --  @return The channel count.
    function Channels (Self : UMat) return Channel_Count;
+
+   --  Returns Self's runtime element type, composed from Depth and Channels.
+   --  @param Self The UMat to inspect.
+   --  @return The depth and channel count of each element.
    function Element_Type (Self : UMat) return Mat_Type;
+
+   --  Returns the native total: the number of matrix elements. A
+   --  multi-channel element counts once, and the value is not a byte count.
+   --  @param Self The UMat to inspect.
+   --  @return The number of elements.
    function Total (Self : UMat) return Mat_Size;
+
+   --  Returns the size in bytes of one complete element, including all of its
+   --  channels (native elemSize).
+   --  @param Self The UMat to inspect.
+   --  @return The byte size of one element.
    function Element_Size (Self : UMat) return Mat_Size;
+
+   --  Returns the size in bytes of one channel of an element (native
+   --  elemSize1), as opposed to the complete element size.
+   --  @param Self The UMat to inspect.
+   --  @return The byte size of one channel.
    function Channel_Size (Self : UMat) return Mat_Size;
 
    --  OpenCV 4.10 cv::RNG Multiply-With-Carry state. This deterministic
@@ -768,10 +939,30 @@ package OpenCV.Core is
 
    type Channel_Route_Array is array (Natural range <>) of Channel_Route;
 
+   --  Creates a typed two-dimensional Mat with Rows rows and Columns columns.
+   --  Element_Type fixes the depth and channel count of every element, so the
+   --  storage is Rows * Columns elements of that type. A zero Rows or Columns
+   --  produces a typed, zero-extent Mat that reports two dimensions; this is
+   --  distinct from a default Mat header, which is untyped and reports none.
+   --  The metadata of empty constructions is not promised to be identical
+   --  across OpenCV releases. Element contents are not promised to be
+   --  initialized.
+   --  @param Rows Number of rows, at most the native signed 32-bit limit.
+   --  @param Columns Number of columns, at most the native signed 32-bit
+   --  limit.
+   --  @param Element_Type Depth and channel count of each element.
+   --  @return A new Mat that owns its own header and storage.
    function Create
      (Rows, Columns : Natural; Element_Type : Mat_Type) return Mat
    with Pre => Rows <= 2_147_483_647 and then Columns <= 2_147_483_647;
 
+   --  Creates a typed two-dimensional Mat from a Size. Height gives the row
+   --  count and Width the column count, so this is Create (Dimensions.Height,
+   --  Dimensions.Width, Element_Type). A zero extent produces a typed,
+   --  zero-extent Mat rather than a default header.
+   --  @param Dimensions Width (columns) and Height (rows) of the Mat.
+   --  @param Element_Type Depth and channel count of each element.
+   --  @return A new Mat that owns its own header and storage.
    function Create (Dimensions : Size; Element_Type : Mat_Type) return Mat;
 
    --  Creates a genuine N-dimensional Mat. Dimension order follows Ada
@@ -779,7 +970,13 @@ package OpenCV.Core is
    --  promotes a 1-D request to 2-D. Each extent must be nonzero, and the
    --  dimension count must not exceed OpenCV's 32-dimension limit. When the
    --  linked OpenCV has a smaller native Mat capacity (10 on OpenCV 5.0),
-   --  longer shapes raise OpenCV_Error before native construction.
+   --  longer shapes raise OpenCV_Error before native construction. The
+   --  result is owned by the caller's Mat and shares storage only through
+   --  later shallow copies.
+   --  @param Shape Extent of each dimension, in native dimension order
+   --  regardless of the array's index bounds.
+   --  @param Element_Type Depth and channel count of each element.
+   --  @return A new N-dimensional Mat that owns its own storage.
    function Create
      (Shape : Dimension_Array; Element_Type : Mat_Type) return Mat;
 
@@ -819,6 +1016,14 @@ package OpenCV.Core is
    function Diagonal_View
      (Self : Mat; Offset : Point_Coordinate := 0) return Mat;
 
+   --  Returns an independent deep copy of Self's elements. Unlike Ada
+   --  assignment, which creates a distinct header over shared storage, the
+   --  result owns separate storage, so later changes to either Mat do not
+   --  affect the other. Cloning a Region or other view copies only the
+   --  elements it selects. The metadata of a clone of an empty Mat follows
+   --  the installed OpenCV release.
+   --  @param Self The Mat to copy.
+   --  @return A new Mat with independent storage.
    function Clone (Self : Mat) return Mat;
 
    --  Clusters Float32 samples with OpenCV 4.10 cv::kmeans. Samples must be a
@@ -1000,19 +1205,44 @@ package OpenCV.Core is
    --  Copies Self into Destination, allocating or reallocating Destination to
    --  Self's shape and element type when necessary. Destination may be a
    --  compatible view. Exact self-copy is supported; partially overlapping
-   --  source and destination storage is not supported by OpenCV.
+   --  source and destination storage is not supported by OpenCV. Compatible
+   --  Destination storage is reused, including through a Region that shares
+   --  its parent; a mismatched Destination is reallocated and may detach
+   --  from any parent. An empty Self follows the installed OpenCV release. A
+   --  failed native copy is not promised to leave Destination unchanged.
+   --  @param Self The source Mat.
+   --  @param Destination The caller-owned Mat that receives the elements.
    procedure Copy_To (Self : Mat; Destination : in out Mat);
+
    --  Copies elements selected by Mask into Destination. Mask uses the common
    --  mask contract (UInt8, one channel, same shape as Self). Any nonzero mask
    --  value selects the complete element, including every channel. Unselected
    --  elements retain their values in a compatible Destination; if Destination
-   --  is allocated or reallocated, they are initialized to zero.
+   --  is allocated or reallocated, they are initialized to zero. A Mask that
+   --  violates the contract raises OpenCV_Error before the native copy. A
+   --  failed native copy is not promised to leave Destination unchanged.
+   --  @param Self The source Mat.
+   --  @param Destination The caller-owned Mat that receives selected elements.
+   --  @param Mask UInt8 single-channel Mat with Self's shape; nonzero entries
+   --  select elements to copy.
    procedure Copy_To (Self : Mat; Destination : in out Mat; Mask : Mat);
+
+   --  Converts Self to the requested depth into a new Mat, computing the
+   --  native saturating Scale * Self + Offset for every element. Nonempty
+   --  results preserve the source shape and channel count and own independent
+   --  storage. Because the result is new, source/destination aliasing does
+   --  not apply. Empty metadata follows OpenCV.
+   --  @param Self The source Mat.
+   --  @param Depth Depth of the result.
+   --  @param Scale Factor applied to each source value before Offset.
+   --  @param Offset Value added after scaling.
+   --  @return A new Mat of the requested depth.
    function Convert_To
      (Self   : Mat;
       Depth  : Depth_Type;
       Scale  : Long_Float := 1.0;
       Offset : Long_Float := 0.0) return Mat;
+
    --  Reuses a compatible destination's storage, including parent sharing
    --  through a Region; native reallocation may detach incompatible Regions.
    --  Nonempty results preserve source shape/channels and use the native
@@ -1021,6 +1251,11 @@ package OpenCV.Core is
    --  are allowed as sources, but rejected as destinations. Empty metadata
    --  follows OpenCV. Exceptions after native conversion starts need not
    --  leave Destination unchanged.
+   --  @param Self The source Mat.
+   --  @param Destination The caller-owned Mat that receives the result.
+   --  @param Depth Depth of the converted elements.
+   --  @param Scale Factor applied to each source value before Offset.
+   --  @param Offset Value added after scaling.
    procedure Convert_To
      (Self        : Mat;
       Destination : in out Mat;
@@ -1844,8 +2079,29 @@ package OpenCV.Core is
      (Left, Right : Mat; Kind : Comparison_Kind; Destination : in out Mat);
    procedure In_Range
      (Self : Mat; Lower : Scalar; Upper : Scalar; Destination : in out Mat);
+   --  Reports whether Self has no elements, as defined by native Mat empty.
+   --  A default header is empty, but an empty result is not necessarily
+   --  equivalent to a default header: a typed zero-extent Mat is also empty
+   --  and retains its type. Empty-Mat metadata can vary between OpenCV
+   --  releases.
+   --  @param Self The Mat to inspect.
+   --  @return True when the Mat is empty.
    function Is_Empty (Self : Mat) return Boolean;
+
+   --  Returns the row count of a 2-D Mat. Raises OpenCV_Error when native
+   --  OpenCV reports no row count because Self has more than two dimensions,
+   --  so Rows alone does not describe an N-dimensional shape; use Shape or
+   --  Extent for that.
+   --  @param Self The Mat to inspect.
+   --  @return The number of rows.
    function Rows (Self : Mat) return Natural;
+
+   --  Returns the column count of a 2-D Mat. Raises OpenCV_Error when native
+   --  OpenCV reports no column count because Self has more than two
+   --  dimensions, so Columns alone does not describe an N-dimensional shape;
+   --  use Shape or Extent for that.
+   --  @param Self The Mat to inspect.
+   --  @return The number of columns.
    function Columns (Self : Mat) return Natural;
 
    --  Returns every extent in Mat dimension order, indexed 1 ..
@@ -1854,35 +2110,95 @@ package OpenCV.Core is
    --  A normal 2-D Mat returns (1 => Rows, 2 => Columns). A genuine N-D Mat
    --  returns Extent for every axis rather than Rows or Columns. Dimensions
    --  remains the 2-D Size view.
+   --  @param Self The Mat to inspect.
+   --  @return The extents of all dimensions, in native dimension order.
    function Shape (Self : Mat) return Dimension_Array;
 
    --  Returns OpenCV's Mat.dims. A genuine default empty Mat reports 0. A
    --  typed 2-D Mat, including Create (0, 0, ...), reports 2.
+   --  @param Self The Mat to inspect.
+   --  @return The number of dimensions.
    function Dimension_Count (Self : Mat) return Natural;
 
    --  Returns the extent of 1-based Axis. Axis 1 is OpenCV dimension 0.
    --  Raises OpenCV_Error when Axis is greater than Dimension_Count.
+   --  @param Self The Mat to inspect.
+   --  @param Axis One-based dimension, in 1 .. Dimension_Count.
+   --  @return The extent of that dimension.
    function Extent (Self : Mat; Axis : Positive) return Size_Coordinate;
 
-   --  Composed from the established column and row queries: Width = Columns,
-   --  Height = Rows.  No separate C ABI accessor is required.
+   --  Returns the 2-D size of Self, composed from the established column and
+   --  row queries: Width = Columns, Height = Rows. This operation exists only
+   --  for Mat; UMat has no Dimensions function. Like Rows and Columns, it
+   --  raises OpenCV_Error for an N-dimensional Mat, so use Shape there.
+   --  @param Self The Mat to inspect.
+   --  @return Width (columns) and Height (rows).
    function Dimensions (Self : Mat) return Size;
+
+   --  Returns the number of channels in each element. This counts channels,
+   --  not bytes; Element_Size gives the byte size of a complete element.
+   --  @param Self The Mat to inspect.
+   --  @return The channel count.
    function Channels (Self : Mat) return Channel_Count;
+
+   --  Returns the depth of each channel value. Depth is independent of the
+   --  channel count, which Channels reports.
+   --  @param Self The Mat to inspect.
+   --  @return The element depth.
    function Depth (Self : Mat) return Depth_Type;
+
+   --  Returns the native total: the number of matrix elements. A
+   --  multi-channel element counts once, and the value is neither a scalar
+   --  count nor a byte count.
+   --  @param Self The Mat to inspect.
+   --  @return The number of elements.
    function Total (Self : Mat) return Mat_Size;
+
+   --  Returns the size in bytes of one complete element, including all of its
+   --  channels (native elemSize).
+   --  @param Self The Mat to inspect.
+   --  @return The byte size of one element.
    function Element_Size (Self : Mat) return Mat_Size;
+
+   --  Returns the size in bytes of one channel of an element (native
+   --  elemSize1), as opposed to the complete element size.
+   --  @param Self The Mat to inspect.
+   --  @return The byte size of one channel.
    function Channel_Size (Self : Mat) return Mat_Size;
+
+   --  Reports whether Self's current layout is continuous, with no gaps
+   --  between rows. A Region or slice that shares a larger allocation need
+   --  not be continuous. This describes layout, not allocation identity.
+   --  @param Self The Mat to inspect.
+   --  @return True when the native layout is continuous.
    function Is_Continuous (Self : Mat) return Boolean;
+
+   --  Reports the native Mat submatrix flag. After Adjust_Region the flag is
+   --  not recomputed, so it is not authoritative current geometry; use
+   --  Locate_Region for the retained allocation geometry.
+   --  @param Self The Mat to inspect.
+   --  @return The native submatrix flag.
    function Is_Submatrix (Self : Mat) return Boolean;
 
    --  Creates a distinct Mat header sharing Self's storage for a 2-D ROI.
    --  Rect origins are signed, but a Mat ROI still requires a nonnegative
    --  zero-based origin that lies entirely inside Self. Width and Height
-   --  must be positive.
+   --  must be positive. Pixels are not deep-copied; the returned header may
+   --  share Self's allocation, which persists while any header refers to it.
+   --  An invalid Area raises OpenCV_Error. This is a native Region, distinct
+   --  from a callback-scoped temporary external Mat view.
+   --  @param Self The Mat containing the region.
+   --  @param Area Zero-based rectangle selecting the region.
+   --  @return A new Mat header that may share Self's allocation.
    function Region (Self : Mat; Area : Rect) return Mat;
 
    --  Requires a nonempty, exactly 2-D, non-temporary Mat. Describes the
    --  retained original allocation even after the parent variable finalizes.
+   --  The result is geometry only and is not an allocation identity: two
+   --  unrelated Mats can report identical extents and offsets. Otherwise
+   --  OpenCV_Error is raised.
+   --  @param Self The Mat to locate.
+   --  @return Whole-allocation size and Self's offset within it.
    function Locate_Region (Self : Mat) return Region_Location;
 
    --  Changes only Self's header, never copies pixels. Positive adjustments
@@ -1895,7 +2211,15 @@ package OpenCV.Core is
    --  rejected without change.
    --  Whole headers are supported. Continuity is updated; Is_Submatrix is
    --  NOT recomputed and is not authoritative current geometry.
-   --  Requires a nonempty, exactly 2-D, non-temporary Mat.
+   --  Requires a nonempty, exactly 2-D, non-temporary Mat. Other shallow
+   --  headers over the same allocation keep their independent geometry.
+   --  Failures are not promised to be transactional beyond the guarantees
+   --  stated above.
+   --  @param Self The Mat header to adjust.
+   --  @param Top Adjustment of the top boundary.
+   --  @param Bottom Adjustment of the bottom boundary.
+   --  @param Left Adjustment of the left boundary.
+   --  @param Right Adjustment of the right boundary.
    procedure Adjust_Region
      (Self : in out Mat; Top, Bottom, Left, Right : Region_Adjustment);
 
@@ -1912,7 +2236,11 @@ package OpenCV.Core is
    --  array's index bounds. Empty ranges (Start = Stop) are rejected because
    --  OpenCV's N-D range constructor does not accept them consistently from
    --  4.1 through 5.0. The result keeps Self's depth, channel count, and
-   --  dimension count; each extent becomes Stop - Start.
+   --  dimension count; each extent becomes Stop - Start. The slice is not
+   --  necessarily contiguous.
+   --  @param Self The Mat to slice.
+   --  @param Ranges One zero-based half-open range per source dimension.
+   --  @return A new Mat header that may share Self's allocation.
    function Slice (Self : Mat; Ranges : Index_Range_Array) return Mat;
 
    --  Invokes Process with a zero-copy, callback-scoped view of Self that
