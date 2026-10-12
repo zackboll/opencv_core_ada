@@ -3156,79 +3156,6 @@ opencv-core-uint8_vec4_row_access.ads: OpenCV.Core.UInt8_Vec4_Row_Access.With_Wr
 opencv-core-uint8_vec4_row_access.ads: OpenCV.Core.UInt8_Vec4_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Image` is not documented
 opencv-core-uint8_vec4_row_access.ads: OpenCV.Core.UInt8_Vec4_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Row` is not documented
 opencv-core-uint8_vec4_row_access.ads: OpenCV.Core.UInt8_Vec4_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Process` is not documented
-opencv-core.ads: OpenCV.Core: package OpenCV.Core is: warning: entity `OpenCV.Core` is not documented
-opencv-core.ads: OpenCV.Core.Depth_Type: type Depth_Type is (UInt8, Int8, UInt16, Int16, Int32, Float32, Float64, Float16);: warning: entity `Depth_Type` is not documented
-opencv-core.ads: OpenCV.Core.Depth_Type.UInt8: type Depth_Type is (UInt8, Int8, UInt16, Int16, Int32, Float32, Float64, Float16);: warning: enumeration literal `UInt8` is not documented
-opencv-core.ads: OpenCV.Core.Depth_Type.Int8: type Depth_Type is (UInt8, Int8, UInt16, Int16, Int32, Float32, Float64, Float16);: warning: enumeration literal `Int8` is not documented
-opencv-core.ads: OpenCV.Core.Depth_Type.UInt16: type Depth_Type is (UInt8, Int8, UInt16, Int16, Int32, Float32, Float64, Float16);: warning: enumeration literal `UInt16` is not documented
-opencv-core.ads: OpenCV.Core.Depth_Type.Int16: type Depth_Type is (UInt8, Int8, UInt16, Int16, Int32, Float32, Float64, Float16);: warning: enumeration literal `Int16` is not documented
-opencv-core.ads: OpenCV.Core.Depth_Type.Int32: type Depth_Type is (UInt8, Int8, UInt16, Int16, Int32, Float32, Float64, Float16);: warning: enumeration literal `Int32` is not documented
-opencv-core.ads: OpenCV.Core.Depth_Type.Float32: type Depth_Type is (UInt8, Int8, UInt16, Int16, Int32, Float32, Float64, Float16);: warning: enumeration literal `Float32` is not documented
-opencv-core.ads: OpenCV.Core.Depth_Type.Float64: type Depth_Type is (UInt8, Int8, UInt16, Int16, Int32, Float32, Float64, Float16);: warning: enumeration literal `Float64` is not documented
-opencv-core.ads: OpenCV.Core.Depth_Type.Float16: type Depth_Type is (UInt8, Int8, UInt16, Int16, Int32, Float32, Float64, Float16);: warning: enumeration literal `Float16` is not documented
-opencv-core.ads: OpenCV.Core.Norm_Kind: type Norm_Kind is (L1, L2, Infinity);: warning: entity `Norm_Kind` is not documented
-opencv-core.ads: OpenCV.Core.Norm_Kind.L1: type Norm_Kind is (L1, L2, Infinity);: warning: enumeration literal `L1` is not documented
-opencv-core.ads: OpenCV.Core.Norm_Kind.L2: type Norm_Kind is (L1, L2, Infinity);: warning: enumeration literal `L2` is not documented
-opencv-core.ads: OpenCV.Core.Norm_Kind.Infinity: type Norm_Kind is (L1, L2, Infinity);: warning: enumeration literal `Infinity` is not documented
-opencv-core.ads: OpenCV.Core.Normalize_Kind.L1: type Normalize_Kind is (L1, L2, Infinity, Min_Max);: warning: enumeration literal `L1` is not documented
-opencv-core.ads: OpenCV.Core.Normalize_Kind.L2: type Normalize_Kind is (L1, L2, Infinity, Min_Max);: warning: enumeration literal `L2` is not documented
-opencv-core.ads: OpenCV.Core.Normalize_Kind.Infinity: type Normalize_Kind is (L1, L2, Infinity, Min_Max);: warning: enumeration literal `Infinity` is not documented
-opencv-core.ads: OpenCV.Core.Normalize_Kind.Min_Max: type Normalize_Kind is (L1, L2, Infinity, Min_Max);: warning: enumeration literal `Min_Max` is not documented
-opencv-core.ads: OpenCV.Core.Comparison_Kind: type Comparison_Kind is (Equal, Not_Equal, Less_Than, Less_Or_Equal, Greater_Than, Greater_Or_Equal);: warning: entity `Comparison_Kind` is not documented
-opencv-core.ads: OpenCV.Core.Comparison_Kind.Equal: type Comparison_Kind is (Equal, Not_Equal, Less_Than, Less_Or_Equal, Greater_Than, Greater_Or_Equal);: warning: enumeration literal `Equal` is not documented
-opencv-core.ads: OpenCV.Core.Comparison_Kind.Not_Equal: type Comparison_Kind is (Equal, Not_Equal, Less_Than, Less_Or_Equal, Greater_Than, Greater_Or_Equal);: warning: enumeration literal `Not_Equal` is not documented
-opencv-core.ads: OpenCV.Core.Comparison_Kind.Less_Than: type Comparison_Kind is (Equal, Not_Equal, Less_Than, Less_Or_Equal, Greater_Than, Greater_Or_Equal);: warning: enumeration literal `Less_Than` is not documented
-opencv-core.ads: OpenCV.Core.Comparison_Kind.Less_Or_Equal: type Comparison_Kind is (Equal, Not_Equal, Less_Than, Less_Or_Equal, Greater_Than, Greater_Or_Equal);: warning: enumeration literal `Less_Or_Equal` is not documented
-opencv-core.ads: OpenCV.Core.Comparison_Kind.Greater_Than: type Comparison_Kind is (Equal, Not_Equal, Less_Than, Less_Or_Equal, Greater_Than, Greater_Or_Equal);: warning: enumeration literal `Greater_Than` is not documented
-opencv-core.ads: OpenCV.Core.Comparison_Kind.Greater_Or_Equal: type Comparison_Kind is (Equal, Not_Equal, Less_Than, Less_Or_Equal, Greater_Than, Greater_Or_Equal);: warning: enumeration literal `Greater_Or_Equal` is not documented
-opencv-core.ads: OpenCV.Core.Flip_Kind: type Flip_Kind is (Vertical, Horizontal, Both_Axes);: warning: entity `Flip_Kind` is not documented
-opencv-core.ads: OpenCV.Core.Flip_Kind.Vertical: type Flip_Kind is (Vertical, Horizontal, Both_Axes);: warning: enumeration literal `Vertical` is not documented
-opencv-core.ads: OpenCV.Core.Flip_Kind.Horizontal: type Flip_Kind is (Vertical, Horizontal, Both_Axes);: warning: enumeration literal `Horizontal` is not documented
-opencv-core.ads: OpenCV.Core.Flip_Kind.Both_Axes: type Flip_Kind is (Vertical, Horizontal, Both_Axes);: warning: enumeration literal `Both_Axes` is not documented
-opencv-core.ads: OpenCV.Core.Rotation_Kind: type Rotation_Kind is (Clockwise_90, Half_Turn, Counterclockwise_90);: warning: entity `Rotation_Kind` is not documented
-opencv-core.ads: OpenCV.Core.Rotation_Kind.Clockwise_90: type Rotation_Kind is (Clockwise_90, Half_Turn, Counterclockwise_90);: warning: enumeration literal `Clockwise_90` is not documented
-opencv-core.ads: OpenCV.Core.Rotation_Kind.Half_Turn: type Rotation_Kind is (Clockwise_90, Half_Turn, Counterclockwise_90);: warning: enumeration literal `Half_Turn` is not documented
-opencv-core.ads: OpenCV.Core.Rotation_Kind.Counterclockwise_90: type Rotation_Kind is (Clockwise_90, Half_Turn, Counterclockwise_90);: warning: enumeration literal `Counterclockwise_90` is not documented
-opencv-core.ads: OpenCV.Core.Reduction_Axis: type Reduction_Axis is (Across_Rows, Across_Columns);: warning: entity `Reduction_Axis` is not documented
-opencv-core.ads: OpenCV.Core.Reduction_Axis.Across_Rows: type Reduction_Axis is (Across_Rows, Across_Columns);: warning: enumeration literal `Across_Rows` is not documented
-opencv-core.ads: OpenCV.Core.Reduction_Axis.Across_Columns: type Reduction_Axis is (Across_Rows, Across_Columns);: warning: enumeration literal `Across_Columns` is not documented
-opencv-core.ads: OpenCV.Core.Reduction_Kind: type Reduction_Kind is (Sum, Average, Maximum, Minimum, Sum_Of_Squares);: warning: entity `Reduction_Kind` is not documented
-opencv-core.ads: OpenCV.Core.Reduction_Kind.Sum: type Reduction_Kind is (Sum, Average, Maximum, Minimum, Sum_Of_Squares);: warning: enumeration literal `Sum` is not documented
-opencv-core.ads: OpenCV.Core.Reduction_Kind.Average: type Reduction_Kind is (Sum, Average, Maximum, Minimum, Sum_Of_Squares);: warning: enumeration literal `Average` is not documented
-opencv-core.ads: OpenCV.Core.Reduction_Kind.Maximum: type Reduction_Kind is (Sum, Average, Maximum, Minimum, Sum_Of_Squares);: warning: enumeration literal `Maximum` is not documented
-opencv-core.ads: OpenCV.Core.Reduction_Kind.Minimum: type Reduction_Kind is (Sum, Average, Maximum, Minimum, Sum_Of_Squares);: warning: enumeration literal `Minimum` is not documented
-opencv-core.ads: OpenCV.Core.Reduction_Kind.Sum_Of_Squares: type Reduction_Kind is (Sum, Average, Maximum, Minimum, Sum_Of_Squares);: warning: enumeration literal `Sum_Of_Squares` is not documented
-opencv-core.ads: OpenCV.Core.Extremum_Occurrence.First_Occurrence: type Extremum_Occurrence is (First_Occurrence, Last_Occurrence);: warning: enumeration literal `First_Occurrence` is not documented
-opencv-core.ads: OpenCV.Core.Extremum_Occurrence.Last_Occurrence: type Extremum_Occurrence is (First_Occurrence, Last_Occurrence);: warning: enumeration literal `Last_Occurrence` is not documented
-opencv-core.ads: OpenCV.Core.Sort_Axis.Each_Row: type Sort_Axis is (Each_Row, Each_Column);: warning: enumeration literal `Each_Row` is not documented
-opencv-core.ads: OpenCV.Core.Sort_Axis.Each_Column: type Sort_Axis is (Each_Row, Each_Column);: warning: enumeration literal `Each_Column` is not documented
-opencv-core.ads: OpenCV.Core.Sort_Order: type Sort_Order is (Ascending, Descending);: warning: entity `Sort_Order` is not documented
-opencv-core.ads: OpenCV.Core.Sort_Order.Ascending: type Sort_Order is (Ascending, Descending);: warning: enumeration literal `Ascending` is not documented
-opencv-core.ads: OpenCV.Core.Sort_Order.Descending: type Sort_Order is (Ascending, Descending);: warning: enumeration literal `Descending` is not documented
-opencv-core.ads: OpenCV.Core.Transposed_Product_Order.Transpose_Times_Self: type Transposed_Product_Order is (Transpose_Times_Self, Self_Times_Transpose);: warning: enumeration literal `Transpose_Times_Self` is not documented
-opencv-core.ads: OpenCV.Core.Transposed_Product_Order.Self_Times_Transpose: type Transposed_Product_Order is (Transpose_Times_Self, Self_Times_Transpose);: warning: enumeration literal `Self_Times_Transpose` is not documented
-opencv-core.ads: OpenCV.Core.Symmetry_Source.Upper_Triangle: type Symmetry_Source is (Upper_Triangle, Lower_Triangle);: warning: enumeration literal `Upper_Triangle` is not documented
-opencv-core.ads: OpenCV.Core.Symmetry_Source.Lower_Triangle: type Symmetry_Source is (Upper_Triangle, Lower_Triangle);: warning: enumeration literal `Lower_Triangle` is not documented
-opencv-core.ads: OpenCV.Core.Sample_Orientation.Samples_Are_Rows: type Sample_Orientation is (Samples_Are_Rows, Samples_Are_Columns);: warning: enumeration literal `Samples_Are_Rows` is not documented
-opencv-core.ads: OpenCV.Core.Sample_Orientation.Samples_Are_Columns: type Sample_Orientation is (Samples_Are_Rows, Samples_Are_Columns);: warning: enumeration literal `Samples_Are_Columns` is not documented
-opencv-core.ads: OpenCV.Core.Covariance_Scaling.Unscaled: type Covariance_Scaling is (Unscaled, By_Sample_Count);: warning: enumeration literal `Unscaled` is not documented
-opencv-core.ads: OpenCV.Core.Covariance_Scaling.By_Sample_Count: type Covariance_Scaling is (Unscaled, By_Sample_Count);: warning: enumeration literal `By_Sample_Count` is not documented
-opencv-core.ads: OpenCV.Core.Spectrum_Multiplication_Kind.Ordinary_Spectrum_Product: type Spectrum_Multiplication_Kind is (Ordinary_Spectrum_Product, Conjugate_Right_Spectrum_Product);: warning: enumeration literal `Ordinary_Spectrum_Product` is not documented
-opencv-core.ads: OpenCV.Core.Spectrum_Multiplication_Kind.Conjugate_Right_Spectrum_Product: type Spectrum_Multiplication_Kind is (Ordinary_Spectrum_Product, Conjugate_Right_Spectrum_Product);: warning: enumeration literal `Conjugate_Right_Spectrum_Product` is not documented
-opencv-core.ads: OpenCV.Core.Channel_Count: type Channel_Count is new Interfaces.Integer_32 range 1 .. 512;: warning: entity `Channel_Count` is not documented
-opencv-core.ads: OpenCV.Core.Mat_Size: type Mat_Size is new Interfaces.Integer_64 range 0 .. Interfaces.Integer_64'Last;: warning: entity `Mat_Size` is not documented
-opencv-core.ads: OpenCV.Core.Region_Location.Whole_Size: Whole_Size : Size;: warning: component `Whole_Size` is not documented
-opencv-core.ads: OpenCV.Core.Region_Location.Offset: Offset : Point;: warning: component `Offset` is not documented
-opencv-core.ads: OpenCV.Core.Border_Interpolation_Result.Uses_Constant: type Border_Interpolation_Result (Uses_Constant : Boolean : = False) is record: warning: component `Uses_Constant` is not documented
-opencv-core.ads: OpenCV.Core.Border_Interpolation_Result.Index: Index : Size_Coordinate;: warning: component `Index` is not documented
-opencv-core.ads: OpenCV.Core.Index_Range.Start: Start : Size_Coordinate : = 0;: warning: component `Start` is not documented
-opencv-core.ads: OpenCV.Core.Index_Range.Stop: Stop : Size_Coordinate : = 0;: warning: component `Stop` is not documented
-opencv-core.ads: OpenCV.Core.Dimension_Selection_Kind.Keep_Range: type Dimension_Selection_Kind is (Keep_Range, Fix_Index);: warning: enumeration literal `Keep_Range` is not documented
-opencv-core.ads: OpenCV.Core.Dimension_Selection_Kind.Fix_Index: type Dimension_Selection_Kind is (Keep_Range, Fix_Index);: warning: enumeration literal `Fix_Index` is not documented
-opencv-core.ads: OpenCV.Core.Dimension_Selection: type Dimension_Selection (Kind : Dimension_Selection_Kind : = Keep_Range) is record: warning: entity `Dimension_Selection` is not documented
-opencv-core.ads: OpenCV.Core.Dimension_Selection.Kind: type Dimension_Selection (Kind : Dimension_Selection_Kind : = Keep_Range) is record: warning: component `Kind` is not documented
-opencv-core.ads: OpenCV.Core.Dimension_Selection.Bounds: Bounds : Index_Range;: warning: component `Bounds` is not documented
-opencv-core.ads: OpenCV.Core.Dimension_Selection.Index: Index : Size_Coordinate;: warning: component `Index` is not documented
 opencv-core.ads: OpenCV.Core.Float16_From_Bits: function Float16_From_Bits (Bits : Interfaces.Unsigned_16) return Float16_Value;: warning: entity `Float16_From_Bits` is not documented
 opencv-core.ads: OpenCV.Core.Float16_From_Bits: function Float16_From_Bits (Bits : Interfaces.Unsigned_16) return Float16_Value;: warning: parameter `Bits` is not documented
 opencv-core.ads: OpenCV.Core.Float16_From_Bits: function Float16_From_Bits (Bits : Interfaces.Unsigned_16) return Float16_Value;: warning: return value is not documented
@@ -3257,29 +3184,6 @@ opencv-core.ads: OpenCV.Core.To_Float16: function To_Float16 (Value : Float32_Va
 opencv-core.ads: OpenCV.Core.To_Float16: function To_Float16 (Value : Float32_Value) return Float16_Value;: warning: return value is not documented
 opencv-core.ads: OpenCV.Core.To_Float32: function To_Float32 (Value : Float16_Value) return Float32_Value;: warning: parameter `Value` is not documented
 opencv-core.ads: OpenCV.Core.To_Float32: function To_Float32 (Value : Float16_Value) return Float32_Value;: warning: return value is not documented
-opencv-core.ads: OpenCV.Core.Mat_Type: type Mat_Type is record: warning: entity `Mat_Type` is not documented
-opencv-core.ads: OpenCV.Core.Mat_Type.Depth: Depth : Depth_Type;: warning: component `Depth` is not documented
-opencv-core.ads: OpenCV.Core.Mat_Type.Channels: Channels : Channel_Count;: warning: component `Channels` is not documented
-opencv-core.ads: OpenCV.Core.Min_Max_Result: type Min_Max_Result is record: warning: entity `Min_Max_Result` is not documented
-opencv-core.ads: OpenCV.Core.Min_Max_Result.Minimum: Minimum : Long_Float;: warning: component `Minimum` is not documented
-opencv-core.ads: OpenCV.Core.Min_Max_Result.Maximum: Maximum : Long_Float;: warning: component `Maximum` is not documented
-opencv-core.ads: OpenCV.Core.Min_Max_Result.Minimum_Location: Minimum_Location : Point;: warning: component `Minimum_Location` is not documented
-opencv-core.ads: OpenCV.Core.Min_Max_Result.Maximum_Location: Maximum_Location : Point;: warning: component `Maximum_Location` is not documented
-opencv-core.ads: OpenCV.Core.ND_Min_Max_Result: type ND_Min_Max_Result is record: warning: entity `ND_Min_Max_Result` is not documented
-opencv-core.ads: OpenCV.Core.ND_Min_Max_Result.Has_Minimum: Has_Minimum : Boolean : = False;: warning: component `Has_Minimum` is not documented
-opencv-core.ads: OpenCV.Core.ND_Min_Max_Result.Has_Maximum: Has_Maximum : Boolean : = False;: warning: component `Has_Maximum` is not documented
-opencv-core.ads: OpenCV.Core.ND_Min_Max_Result.Minimum: Minimum : Long_Float : = 0.0;: warning: component `Minimum` is not documented
-opencv-core.ads: OpenCV.Core.ND_Min_Max_Result.Maximum: Maximum : Long_Float : = 0.0;: warning: component `Maximum` is not documented
-opencv-core.ads: OpenCV.Core.ND_Min_Max_Result.Minimum_Location: Minimum_Location : Index_Array (1 .. 32) : = (others => 0);: warning: component `Minimum_Location` is not documented
-opencv-core.ads: OpenCV.Core.ND_Min_Max_Result.Maximum_Location: Maximum_Location : Index_Array (1 .. 32) : = (others => 0);: warning: component `Maximum_Location` is not documented
-opencv-core.ads: OpenCV.Core.ND_Min_Max_Result.Dimensions: Dimensions : Natural : = 0;: warning: component `Dimensions` is not documented
-opencv-core.ads: OpenCV.Core.Mean_Std_Dev_Result: type Mean_Std_Dev_Result is record: warning: entity `Mean_Std_Dev_Result` is not documented
-opencv-core.ads: OpenCV.Core.Mean_Std_Dev_Result.Mean: Mean : Scalar;: warning: component `Mean` is not documented
-opencv-core.ads: OpenCV.Core.Mean_Std_Dev_Result.Standard_Deviation: Standard_Deviation : Scalar;: warning: component `Standard_Deviation` is not documented
-opencv-core.ads: OpenCV.Core.Range_Check_Result.Valid: type Range_Check_Result (Valid : Boolean : = True) is record: warning: component `Valid` is not documented
-opencv-core.ads: OpenCV.Core.Range_Check_Result.First_Invalid: First_Invalid : Point;: warning: component `First_Invalid` is not documented
-opencv-core.ads: OpenCV.Core.Mat: type Mat is tagged private;: warning: entity `Mat` is not documented
-opencv-core.ads: OpenCV.Core.UMat: type UMat is tagged private;: warning: entity `UMat` is not documented
 opencv-core.ads: OpenCV.Core.Create_UMat: function Create_UMat (Rows, Columns : Natural; Element_Type : Mat_Type) return UMat with Pre => Rows <= 2_147_483_647 and then Columns <= 2_147_483_647;: warning: parameter `Rows` is not documented
 opencv-core.ads: OpenCV.Core.Create_UMat: function Create_UMat (Rows, Columns : Natural; Element_Type : Mat_Type) return UMat with Pre => Rows <= 2_147_483_647 and then Columns <= 2_147_483_647;: warning: parameter `Columns` is not documented
 opencv-core.ads: OpenCV.Core.Create_UMat: function Create_UMat (Rows, Columns : Natural; Element_Type : Mat_Type) return UMat with Pre => Rows <= 2_147_483_647 and then Columns <= 2_147_483_647;: warning: parameter `Element_Type` is not documented
