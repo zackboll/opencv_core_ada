@@ -55,9 +55,73 @@ comments and dependencies are unchanged. Tests and applications are not
 built for documentation generation.
 
 Output is deleted before each generation. Full diagnostics are retained in
-`obj/docs/gnatdoc.log`, not published. Undocumented declarations, parameters and
-returns are warnings, not PR failures. Generation errors, partial-generation
-diagnostics, absent public package pages, and broken local links fail the build.
+`obj/docs/gnatdoc.log`, not published. `--warnings` stays enabled. Generation
+errors, partial-generation diagnostics, absent public package pages, and broken
+local links fail the build.
+
+Historical documentation warnings are measured, not suppressed. After a
+successful GNATdoc run, `scripts/compare_gnatdoc_warnings.py` compares
+`obj/docs/gnatdoc.log` with `docs/gnatdoc-warning-baseline.txt`. The baseline
+stores every current warning, including duplicate overloads. Comparison ignores
+a pure source-line shift: warnings are paired by filename, column, category,
+and declaration or parameter identity, in source order. Added occurrences fail
+the build. Removed occurrences are printed and do not fail it, so a cleanup can
+shrink the backlog before the baseline is updated in the same change. Do not
+silence a warning with `@exclude`, an empty comment, or a changed generator
+invocation.
+
+The current baseline contains 4,460 warnings, down from 4,484 on main
+`53c14c469b22ba1c608836d9a16c0947e2c80323` after documenting the six polar
+record-destination overloads. Regenerate the baseline only from a complete
+pinned GNATdoc 26.0.0 log:
+
+```sh
+grep ': warning:' obj/docs/gnatdoc.log > docs/gnatdoc-warning-baseline.txt
+```
+
+### Remaining warning backlog
+
+Counts below are the 4,460 baseline warnings, grouped by GNATdoc category:
+
+| Category | Warnings |
+| --- | ---: |
+| Undocumented parameter | 2,992 |
+| Undocumented entity | 910 |
+| Undocumented return | 357 |
+| Undocumented component | 100 |
+| Undocumented enumeration literal | 96 |
+| Undocumented generic formal | 5 |
+
+By public package family:
+
+| Family | Warnings |
+| --- | ---: |
+| `OpenCV.Core` typed `*_mat_view` packages | 1,245 |
+| `OpenCV.Core` (`opencv-core.ads`) | 1,237 |
+| `OpenCV.Core` typed `*_access` packages | 890 |
+| `OpenCV.Core` typed `*_row_access` packages | 554 |
+| `OpenCV.Core` typed `*_buffer_access` packages | 208 |
+| `OpenCV.Core.Sparse` | 101 |
+| `OpenCV.Core.Persistence` | 100 |
+| `OpenCV` shared values (`opencv.ads`) | 53 |
+| Fixed-size value instances | 30 |
+| `OpenCV.Core.Module_Interop` | 15 |
+| `OpenCV.Core.Sparse` typed children | 8 |
+| `OpenCV.Core.Fixed_Matrices` | 7 |
+| Typed conversions | 7 |
+| `OpenCV.Core.Transfers` | 5 |
+
+Recommended cleanup order, one family per review:
+
+1. `OpenCV` and `OpenCV.Core.Fixed_Matrices`, because they are small shared
+   contracts used by every later package.
+2. `OpenCV.Core` operations in `opencv-core.ads`, where prose often exists but
+   parameters and returns still lack `@param` and `@return`.
+3. `Persistence`, `Sparse`, `Transfers`, and `Module_Interop`.
+4. One typed-access generic pattern (`Get`/`Set`, row, buffer, then mat view),
+   applied consistently to its instances rather than documented one depth at a
+   time with copied text.
+
 
 ## Coverage and qualified limitations
 
@@ -117,9 +181,10 @@ view/callback lifetime restrictions, overlap restrictions and native-library
 safety limitations. Document relevant OpenCV version constraints and examples
 when helpful. Do not imply that native failures provide rollback unless the
 API promises it. Preserve existing comments; migrate only focused comments
-when reviewing the affected API. Generate documentation and inspect rendering
-in the PR artifact. The specification remains the source of truth, not a second
-handwritten API manual.
+when reviewing the affected API. A new public declaration must not add a
+GNATdoc warning: the documentation workflow fails when the warning baseline
+grows. Generate documentation and inspect rendering in the PR artifact. The
+specification remains the source of truth, not a second handwritten API manual.
 
 ## CI and Pages review gate
 

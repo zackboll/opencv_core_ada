@@ -952,6 +952,12 @@ package OpenCV.Core is
    --  change native alias rules. Compatible storage is reused and mismatched
    --  storage may detach or reallocate independently. Validation and the
    --  native transform are the same as the individual-destination procedure.
+   --  @param X Cartesian X component. Float32 or Float64, matching Y.
+   --  @param Y Cartesian Y component. Same dimensions, depth, and channels
+   --  as X.
+   --  @param Destination Caller-owned Magnitude and Angle fields. Each field
+   --  independently reuses compatible storage or detaches when mismatched.
+   --  @param Units Angle unit: radians by default, or degrees.
    procedure Cart_To_Polar
      (X, Y        : Mat;
       Destination : in out Polar_Coordinates;
@@ -990,18 +996,30 @@ package OpenCV.Core is
    --  storage may detach or reallocate independently. Empty Magnitude, and
    --  the angle-only overload, still mean unit magnitude. Validation and the
    --  native transform are the same as the individual-destination procedures.
+   --  @param Magnitude Non-empty polar magnitude matching Angle, or empty
+   --  to mean unit magnitude for every Angle element.
+   --  @param Angle Authoritative polar angle. Float32 or Float64.
+   --  @param Destination Caller-owned X and Y fields. Each field independently
+   --  reuses compatible storage or detaches when mismatched.
+   --  @param Units Angle unit of Angle: radians by default, or degrees.
    procedure Polar_To_Cart
      (Magnitude, Angle : Mat;
       Destination      : in out Cartesian_Coordinates;
       Units            : Angle_Unit := Radians);
+   --  Angle-only record destination. Empty magnitude is implied, so every
+   --  Angle element has unit magnitude. Each Destination field independently
+   --  owns its Mat header; the record is not a transactional update.
+   --  Compatible whole or Region storage is reused; mismatched storage may
+   --  detach. The pre-4.10 Float64 correction writes compatible Region
+   --  storage, and empty-magnitude N-D Angle support follows the function.
+   --  @param Angle Authoritative polar angle. Float32 or Float64.
+   --  @param Destination Caller-owned X and Y fields written as cosine and
+   --  sine of Angle. Compatible storage is reused independently per field.
+   --  @param Units Angle unit of Angle: radians by default, or degrees.
    procedure Polar_To_Cart
      (Angle       : Mat;
       Destination : in out Cartesian_Coordinates;
       Units       : Angle_Unit := Radians);
-   --  Same paired destination/alias rules as Cart_To_Polar. Empty Magnitude
-   --  means unit magnitude, including the angle-only procedure. The existing
-   --  pre-4.10 Float64 correction also writes compatible Region storage.
-   --  Empty-Magnitude N-D Angle support follows the function's contract.
    --  Returns an independently owned full-complex Discrete Fourier
    --  Transform of Self using OpenCV 4.10 cv::dft. This is not DCT,
    --  a packed CCS spectrum, a batched DFT_ROWS transform, or an
@@ -1518,6 +1536,13 @@ package OpenCV.Core is
    --  change native alias rules. Compatible storage is reused and mismatched
    --  storage may detach or reallocate independently. Validation and the
    --  native transform are the same as the individual-destination procedure.
+   --  @param X Cartesian X component. Float32 or Float64, matching Y.
+   --  @param Y Cartesian Y component. Same dimensions, depth, and channels
+   --  as X.
+   --  @param Destination Caller-owned Magnitude and Angle fields. Each field
+   --  independently reuses compatible UMat storage or detaches when
+   --  mismatched.
+   --  @param Units Angle unit: radians by default, or degrees.
    procedure Cart_To_Polar
      (X, Y        : UMat;
       Destination : in out UMat_Polar_Coordinates;
@@ -1544,16 +1569,30 @@ package OpenCV.Core is
    --  storage may detach or reallocate independently. Empty Magnitude, and
    --  the angle-only overload, still mean unit magnitude. Validation and the
    --  native transform are the same as the individual-destination procedures.
+   --  @param Magnitude Non-empty polar magnitude matching Angle, or empty
+   --  to mean unit magnitude for every Angle element.
+   --  @param Angle Authoritative polar angle. Float32 or Float64.
+   --  @param Destination Caller-owned X and Y fields. Each field independently
+   --  reuses compatible UMat storage or detaches when mismatched.
+   --  @param Units Angle unit of Angle: radians by default, or degrees.
    procedure Polar_To_Cart
      (Magnitude, Angle : UMat;
       Destination      : in out UMat_Cartesian_Coordinates;
       Units            : Angle_Unit := Radians);
+   --  Angle-only UMat record destination. Empty magnitude is implied, so
+   --  every Angle element has unit magnitude. Native UMat residency and the
+   --  existing typed-empty and pre-4.10 Float64 helper behavior are
+   --  preserved.
+   --  Each Destination field independently owns its header.
+   --  @param Angle Authoritative polar angle. Float32 or Float64.
+   --  @param Destination Caller-owned X and Y fields written as cosine and
+   --  sine of Angle. Compatible UMat storage is reused independently
+   --  per field.
+   --  @param Units Angle unit of Angle: radians by default, or degrees.
    procedure Polar_To_Cart
      (Angle       : UMat;
       Destination : in out UMat_Cartesian_Coordinates;
       Units       : Angle_Unit := Radians);
-   --  Empty Magnitude means unit magnitude; native UMat residency and the
-   --  existing typed-empty/legacy Float64 helper behavior are preserved.
 
    function Bitwise_And (Left, Right : Mat) return Mat;
    function Bitwise_And (Left, Right, Mask : Mat) return Mat;
