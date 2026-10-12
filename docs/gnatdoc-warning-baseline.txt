@@ -1,10 +1,3 @@
-opencv-core-fixed_matrices.ads: OpenCV.Core.Fixed_Matrices: package OpenCV.Core.Fixed_Matrices is: warning: entity `OpenCV.Core.Fixed_Matrices` is not documented
-opencv-core-fixed_matrices.ads: generic Element_Type: type Element_Type is private;: warning: generic formal `Element_Type` is not documented
-opencv-core-fixed_matrices.ads: generic Row_Count: Row_Count : Positive;: warning: generic formal `Row_Count` is not documented
-opencv-core-fixed_matrices.ads: generic Column_Count: Column_Count : Positive;: warning: generic formal `Column_Count` is not documented
-opencv-core-fixed_matrices.ads: OpenCV.Core.Fixed_Matrices.Row_Index: subtype Row_Index is Natural range 0 .. Row_Count - 1;: warning: entity `Row_Index` is not documented
-opencv-core-fixed_matrices.ads: OpenCV.Core.Fixed_Matrices.Column_Index: subtype Column_Index is Natural range 0 .. Column_Count - 1;: warning: entity `Column_Index` is not documented
-opencv-core-fixed_matrices.ads: OpenCV.Core.Fixed_Matrices.Matrix: type Matrix is array (Row_Index, Column_Index) of Element_Type;: warning: entity `Matrix` is not documented
 opencv-core-float16_access.ads: OpenCV.Core.Float16_Access: package OpenCV.Core.Float16_Access is: warning: entity `OpenCV.Core.Float16_Access` is not documented
 opencv-core-float16_access.ads: OpenCV.Core.Float16_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Float16_Value;: warning: entity `Get` is not documented
 opencv-core-float16_access.ads: OpenCV.Core.Float16_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Float16_Value;: warning: parameter `Image` is not documented
@@ -3163,11 +3156,6 @@ opencv-core-uint8_vec4_row_access.ads: OpenCV.Core.UInt8_Vec4_Row_Access.With_Wr
 opencv-core-uint8_vec4_row_access.ads: OpenCV.Core.UInt8_Vec4_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Image` is not documented
 opencv-core-uint8_vec4_row_access.ads: OpenCV.Core.UInt8_Vec4_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Row` is not documented
 opencv-core-uint8_vec4_row_access.ads: OpenCV.Core.UInt8_Vec4_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Process` is not documented
-opencv-core-vectors.ads: OpenCV.Core.Vectors: package OpenCV.Core.Vectors is: warning: entity `OpenCV.Core.Vectors` is not documented
-opencv-core-vectors.ads: generic Element_Type: type Element_Type is private;: warning: generic formal `Element_Type` is not documented
-opencv-core-vectors.ads: generic Length: Length : Positive;: warning: generic formal `Length` is not documented
-opencv-core-vectors.ads: OpenCV.Core.Vectors.Component_Index: subtype Component_Index is Natural range 0 .. Length - 1;: warning: entity `Component_Index` is not documented
-opencv-core-vectors.ads: OpenCV.Core.Vectors.Vector: type Vector is array (Component_Index) of Element_Type;: warning: entity `Vector` is not documented
 opencv-core.ads: OpenCV.Core: package OpenCV.Core is: warning: entity `OpenCV.Core` is not documented
 opencv-core.ads: OpenCV.Core.Depth_Type: type Depth_Type is (UInt8, Int8, UInt16, Int16, Int32, Float32, Float64, Float16);: warning: entity `Depth_Type` is not documented
 opencv-core.ads: OpenCV.Core.Depth_Type.UInt8: type Depth_Type is (UInt8, Int8, UInt16, Int16, Int32, Float32, Float64, Float16);: warning: enumeration literal `UInt8` is not documented
@@ -4405,56 +4393,3 @@ opencv-core.ads: OpenCV.Core.Adjust: procedure Adjust (Self : in out Mat);: warn
 opencv-core.ads: OpenCV.Core.Adjust: procedure Adjust (Self : in out Mat);: warning: parameter `Self` is not documented
 opencv-core.ads: OpenCV.Core.Finalize: procedure Finalize (Self : in out Mat);: warning: entity `Finalize` is not documented
 opencv-core.ads: OpenCV.Core.Finalize: procedure Finalize (Self : in out Mat);: warning: parameter `Self` is not documented
-opencv.ads: OpenCV: package OpenCV is: warning: entity `OpenCV` is not documented
-opencv.ads: OpenCV.OpenCV_Error: OpenCV_Error : exception;: warning: entity `OpenCV_Error` is not documented
-opencv.ads: OpenCV.Int8_Value: subtype Int8_Value is Interfaces.Integer_8;: warning: entity `Int8_Value` is not documented
-opencv.ads: OpenCV.UInt16_Value: subtype UInt16_Value is Interfaces.Unsigned_16;: warning: entity `UInt16_Value` is not documented
-opencv.ads: OpenCV.Int16_Value: subtype Int16_Value is Interfaces.Integer_16;: warning: entity `Int16_Value` is not documented
-opencv.ads: OpenCV.Int32_Value: subtype Int32_Value is Interfaces.Integer_32;: warning: entity `Int32_Value` is not documented
-opencv.ads: OpenCV.Float32_Value: subtype Float32_Value is Interfaces.IEEE_Float_32;: warning: entity `Float32_Value` is not documented
-opencv.ads: OpenCV.Float64_Value: subtype Float64_Value is Interfaces.IEEE_Float_64;: warning: entity `Float64_Value` is not documented
-opencv.ads: OpenCV.Size_Coordinate: type Size_Coordinate is new Interfaces.Integer_32 range 0 .. Interfaces.Integer_32'Last;: warning: entity `Size_Coordinate` is not documented
-opencv.ads: OpenCV.Point_Coordinate: type Point_Coordinate is new Interfaces.Integer_32;: warning: entity `Point_Coordinate` is not documented
-opencv.ads: OpenCV.Size: type Size is record: warning: entity `Size` is not documented
-opencv.ads: OpenCV.Size.Width: Width : Size_Coordinate : = 0;: warning: component `Width` is not documented
-opencv.ads: OpenCV.Size.Height: Height : Size_Coordinate : = 0;: warning: component `Height` is not documented
-opencv.ads: OpenCV.Point: type Point is record: warning: entity `Point` is not documented
-opencv.ads: OpenCV.Point.X: X : Point_Coordinate : = 0;: warning: component `X` is not documented
-opencv.ads: OpenCV.Point.Y: Y : Point_Coordinate : = 0;: warning: component `Y` is not documented
-opencv.ads: OpenCV.Point_3D.X: X : Point_Coordinate : = 0;: warning: component `X` is not documented
-opencv.ads: OpenCV.Point_3D.Y: Y : Point_Coordinate : = 0;: warning: component `Y` is not documented
-opencv.ads: OpenCV.Point_3D.Z: Z : Point_Coordinate : = 0;: warning: component `Z` is not documented
-opencv.ads: OpenCV.Rect.X: X : Point_Coordinate : = 0;: warning: component `X` is not documented
-opencv.ads: OpenCV.Rect.Y: Y : Point_Coordinate : = 0;: warning: component `Y` is not documented
-opencv.ads: OpenCV.Rect.Width: Width : Size_Coordinate : = 0;: warning: component `Width` is not documented
-opencv.ads: OpenCV.Rect.Height: Height : Size_Coordinate : = 0;: warning: component `Height` is not documented
-opencv.ads: OpenCV.Float32_Point.X: X : Float32_Value : = 0.0;: warning: component `X` is not documented
-opencv.ads: OpenCV.Float32_Point.Y: Y : Float32_Value : = 0.0;: warning: component `Y` is not documented
-opencv.ads: OpenCV.Float32_Point_3D.X: X : Float32_Value : = 0.0;: warning: component `X` is not documented
-opencv.ads: OpenCV.Float32_Point_3D.Y: Y : Float32_Value : = 0.0;: warning: component `Y` is not documented
-opencv.ads: OpenCV.Float32_Point_3D.Z: Z : Float32_Value : = 0.0;: warning: component `Z` is not documented
-opencv.ads: OpenCV.Float32_Size.Width: Width : Float32_Value : = 0.0;: warning: component `Width` is not documented
-opencv.ads: OpenCV.Float32_Size.Height: Height : Float32_Value : = 0.0;: warning: component `Height` is not documented
-opencv.ads: OpenCV.Rotated_Rect.Center: Center : Float32_Point : = (X => 0.0, Y => 0.0);: warning: component `Center` is not documented
-opencv.ads: OpenCV.Rotated_Rect.Size: Size : Float32_Size : = (Width => 0.0, Height => 0.0);: warning: component `Size` is not documented
-opencv.ads: OpenCV.Rotated_Rect.Angle_Degrees: Angle_Degrees : Float32_Value : = 0.0;: warning: component `Angle_Degrees` is not documented
-opencv.ads: OpenCV.Scalar: type Scalar is record: warning: entity `Scalar` is not documented
-opencv.ads: OpenCV.Scalar.Component_0: Component_0 : Long_Float : = 0.0;: warning: component `Component_0` is not documented
-opencv.ads: OpenCV.Scalar.Component_1: Component_1 : Long_Float : = 0.0;: warning: component `Component_1` is not documented
-opencv.ads: OpenCV.Scalar.Component_2: Component_2 : Long_Float : = 0.0;: warning: component `Component_2` is not documented
-opencv.ads: OpenCV.Scalar.Component_3: Component_3 : Long_Float : = 0.0;: warning: component `Component_3` is not documented
-opencv.ads: OpenCV.Make_Scalar: function Make_Scalar (Component_0 : Long_Float; Component_1 : Long_Float : = 0.0; Component_2 : Long_Float : = 0.0; Component_3 : Long_Float : = 0.0) return Scalar is (Component_0 => Component_0, Component_1 => Component_1, Component_2 => Component_2, Component_3 => Component_3);: warning: entity `Make_Scalar` is not documented
-opencv.ads: OpenCV.Make_Scalar: function Make_Scalar (Component_0 : Long_Float; Component_1 : Long_Float : = 0.0; Component_2 : Long_Float : = 0.0; Component_3 : Long_Float : = 0.0) return Scalar is (Component_0 => Component_0, Component_1 => Component_1, Component_2 => Component_2, Component_3 => Component_3);: warning: parameter `Component_0` is not documented
-opencv.ads: OpenCV.Make_Scalar: function Make_Scalar (Component_0 : Long_Float; Component_1 : Long_Float : = 0.0; Component_2 : Long_Float : = 0.0; Component_3 : Long_Float : = 0.0) return Scalar is (Component_0 => Component_0, Component_1 => Component_1, Component_2 => Component_2, Component_3 => Component_3);: warning: parameter `Component_1` is not documented
-opencv.ads: OpenCV.Make_Scalar: function Make_Scalar (Component_0 : Long_Float; Component_1 : Long_Float : = 0.0; Component_2 : Long_Float : = 0.0; Component_3 : Long_Float : = 0.0) return Scalar is (Component_0 => Component_0, Component_1 => Component_1, Component_2 => Component_2, Component_3 => Component_3);: warning: parameter `Component_2` is not documented
-opencv.ads: OpenCV.Make_Scalar: function Make_Scalar (Component_0 : Long_Float; Component_1 : Long_Float : = 0.0; Component_2 : Long_Float : = 0.0; Component_3 : Long_Float : = 0.0) return Scalar is (Component_0 => Component_0, Component_1 => Component_1, Component_2 => Component_2, Component_3 => Component_3);: warning: parameter `Component_3` is not documented
-opencv.ads: OpenCV.Make_Scalar: function Make_Scalar (Component_0 : Long_Float; Component_1 : Long_Float : = 0.0; Component_2 : Long_Float : = 0.0; Component_3 : Long_Float : = 0.0) return Scalar is (Component_0 => Component_0, Component_1 => Component_1, Component_2 => Component_2, Component_3 => Component_3);: warning: return value is not documented
-opencv.ads: OpenCV.Border_Kind: type Border_Kind is (Constant_Border, Replicate, Reflect, Reflect_101, Wrap);: warning: entity `Border_Kind` is not documented
-opencv.ads: OpenCV.Border_Kind.Constant_Border: type Border_Kind is (Constant_Border, Replicate, Reflect, Reflect_101, Wrap);: warning: enumeration literal `Constant_Border` is not documented
-opencv.ads: OpenCV.Border_Kind.Replicate: type Border_Kind is (Constant_Border, Replicate, Reflect, Reflect_101, Wrap);: warning: enumeration literal `Replicate` is not documented
-opencv.ads: OpenCV.Border_Kind.Reflect: type Border_Kind is (Constant_Border, Replicate, Reflect, Reflect_101, Wrap);: warning: enumeration literal `Reflect` is not documented
-opencv.ads: OpenCV.Border_Kind.Reflect_101: type Border_Kind is (Constant_Border, Replicate, Reflect, Reflect_101, Wrap);: warning: enumeration literal `Reflect_101` is not documented
-opencv.ads: OpenCV.Border_Kind.Wrap: type Border_Kind is (Constant_Border, Replicate, Reflect, Reflect_101, Wrap);: warning: enumeration literal `Wrap` is not documented
-opencv.ads: OpenCV.Angle_Unit: type Angle_Unit is (Radians, Degrees);: warning: entity `Angle_Unit` is not documented
-opencv.ads: OpenCV.Angle_Unit.Radians: type Angle_Unit is (Radians, Degrees);: warning: enumeration literal `Radians` is not documented
-opencv.ads: OpenCV.Angle_Unit.Degrees: type Angle_Unit is (Radians, Degrees);: warning: enumeration literal `Degrees` is not documented
