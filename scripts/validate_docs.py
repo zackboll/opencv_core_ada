@@ -256,6 +256,21 @@ def validate(site):
         "OpenCV.Core.Vectors": (
             "Type of each vector element.", "Number of components. Must be positive.",
             "does not introduce an OpenCV native handle of its own"),
+        # Package-level and ownership documentation added by the GNATdoc
+        # campaign: these phrases must render on the owning package page.
+        "OpenCV.Core.Sparse": (
+            "a missing coordinate is not the same as a stored zero",
+            "Removes every stored node while keeping the shape and element type",
+            "an explicitly stored zero is a candidate"),
+        "OpenCV.Core.Persistence": (
+            "File_Storage is limited, so it cannot be copied or assigned",
+            "Write_Only follows cv::FileStorage WRITE mode"),
+        "OpenCV.Core.Transfers": ("no storage, header or native handle is shared",),
+        "OpenCV.Core.Module_Interop": ("Each handle is valid only during its callback",),
+        "OpenCV.Core.Sparse.Module_Interop": (
+            "There is no temporary external-buffer SparseMat view",),
+        "OpenCV.Core.UInt8_Vec3": ("One complete CV_8UC3 Mat element",),
+        "OpenCV.Core.Float32_Matx3x3": ("Fixed-size 3 x 3 matrix of Float32_Value",),
     }
     for name, phrases in formal_text.items():
         text = " ".join(packages.get(name, (None, ""))[1].split())

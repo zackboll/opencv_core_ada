@@ -76,7 +76,6 @@ opencv-core-float16_row_access.ads: OpenCV.Core.Float16_Row_Access.With_Read_Onl
 opencv-core-float16_row_access.ads: OpenCV.Core.Float16_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Image` is not documented
 opencv-core-float16_row_access.ads: OpenCV.Core.Float16_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Row` is not documented
 opencv-core-float16_row_access.ads: OpenCV.Core.Float16_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Process` is not documented
-opencv-core-float16_vec2.ads: OpenCV.Core.Float16_Vec2: package OpenCV.Core.Float16_Vec2 is new OpenCV.Core.Vectors (Element_Type => Float16_Value, Length => 2);: warning: entity `OpenCV.Core.Float16_Vec2` is not documented
 opencv-core-float16_vec2_access.ads: OpenCV.Core.Float16_Vec2_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Float16_Vec2.Vector;: warning: entity `Get` is not documented
 opencv-core-float16_vec2_access.ads: OpenCV.Core.Float16_Vec2_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Float16_Vec2.Vector;: warning: parameter `Image` is not documented
 opencv-core-float16_vec2_access.ads: OpenCV.Core.Float16_Vec2_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Float16_Vec2.Vector;: warning: parameter `Row` is not documented
@@ -159,7 +158,6 @@ opencv-core-float16_vec2_row_access.ads: OpenCV.Core.Float16_Vec2_Row_Access.Wit
 opencv-core-float16_vec2_row_access.ads: OpenCV.Core.Float16_Vec2_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Image` is not documented
 opencv-core-float16_vec2_row_access.ads: OpenCV.Core.Float16_Vec2_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Row` is not documented
 opencv-core-float16_vec2_row_access.ads: OpenCV.Core.Float16_Vec2_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Process` is not documented
-opencv-core-float16_vec3.ads: OpenCV.Core.Float16_Vec3: package OpenCV.Core.Float16_Vec3 is new OpenCV.Core.Vectors (Element_Type => Float16_Value, Length => 3);: warning: entity `OpenCV.Core.Float16_Vec3` is not documented
 opencv-core-float16_vec3_access.ads: OpenCV.Core.Float16_Vec3_Access: package OpenCV.Core.Float16_Vec3_Access is: warning: entity `OpenCV.Core.Float16_Vec3_Access` is not documented
 opencv-core-float16_vec3_access.ads: OpenCV.Core.Float16_Vec3_Access.Get: function Get (Image : Mat; Row, Column : Integer) return OpenCV.Core.Float16_Vec3.Vector;: warning: entity `Get` is not documented
 opencv-core-float16_vec3_access.ads: OpenCV.Core.Float16_Vec3_Access.Get: function Get (Image : Mat; Row, Column : Integer) return OpenCV.Core.Float16_Vec3.Vector;: warning: parameter `Image` is not documented
@@ -238,7 +236,6 @@ opencv-core-float16_vec3_row_access.ads: OpenCV.Core.Float16_Vec3_Row_Access.Wit
 opencv-core-float16_vec3_row_access.ads: OpenCV.Core.Float16_Vec3_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Image` is not documented
 opencv-core-float16_vec3_row_access.ads: OpenCV.Core.Float16_Vec3_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Row` is not documented
 opencv-core-float16_vec3_row_access.ads: OpenCV.Core.Float16_Vec3_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Process` is not documented
-opencv-core-float16_vec4.ads: OpenCV.Core.Float16_Vec4: package OpenCV.Core.Float16_Vec4 is new OpenCV.Core.Vectors (Element_Type => Float16_Value, Length => 4);: warning: entity `OpenCV.Core.Float16_Vec4` is not documented
 opencv-core-float16_vec4_access.ads: OpenCV.Core.Float16_Vec4_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Float16_Vec4.Vector;: warning: entity `Get` is not documented
 opencv-core-float16_vec4_access.ads: OpenCV.Core.Float16_Vec4_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Float16_Vec4.Vector;: warning: parameter `Image` is not documented
 opencv-core-float16_vec4_access.ads: OpenCV.Core.Float16_Vec4_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Float16_Vec4.Vector;: warning: parameter `Row` is not documented
@@ -391,14 +388,6 @@ opencv-core-float32_mat_view.ads: OpenCV.Core.Float32_Mat_View.With_Read_Only_St
 opencv-core-float32_mat_view.ads: OpenCV.Core.Float32_Mat_View.With_Read_Only_Strided_Mat_View: procedure With_Read_Only_Strided_Mat_View (Data : aliased Buffer_Array; Shape : Dimension_Array; Strides : Dimension_Stride_Array; Process : not null access procedure (Image : Mat));: warning: parameter `Shape` is not documented
 opencv-core-float32_mat_view.ads: OpenCV.Core.Float32_Mat_View.With_Read_Only_Strided_Mat_View: procedure With_Read_Only_Strided_Mat_View (Data : aliased Buffer_Array; Shape : Dimension_Array; Strides : Dimension_Stride_Array; Process : not null access procedure (Image : Mat));: warning: parameter `Strides` is not documented
 opencv-core-float32_mat_view.ads: OpenCV.Core.Float32_Mat_View.With_Read_Only_Strided_Mat_View: procedure With_Read_Only_Strided_Mat_View (Data : aliased Buffer_Array; Shape : Dimension_Array; Strides : Dimension_Stride_Array; Process : not null access procedure (Image : Mat));: warning: parameter `Process` is not documented
-opencv-core-float32_matx3x3.ads: OpenCV.Core.Float32_Matx3x3: package OpenCV.Core.Float32_Matx3x3 is new OpenCV.Core.Fixed_Matrices (Element_Type => Float32_Value, Row_Count => 3, Column_Count => 3);: warning: entity `OpenCV.Core.Float32_Matx3x3` is not documented
-opencv-core-float32_matx3x3_conversions.ads: OpenCV.Core.Float32_Matx3x3_Conversions: package OpenCV.Core.Float32_Matx3x3_Conversions is: warning: entity `OpenCV.Core.Float32_Matx3x3_Conversions` is not documented
-opencv-core-float32_matx3x3_conversions.ads: OpenCV.Core.Float32_Matx3x3_Conversions.To_Mat: function To_Mat (Value : OpenCV.Core.Float32_Matx3x3.Matrix) return Mat;: warning: entity `To_Mat` is not documented
-opencv-core-float32_matx3x3_conversions.ads: OpenCV.Core.Float32_Matx3x3_Conversions.To_Mat: function To_Mat (Value : OpenCV.Core.Float32_Matx3x3.Matrix) return Mat;: warning: parameter `Value` is not documented
-opencv-core-float32_matx3x3_conversions.ads: OpenCV.Core.Float32_Matx3x3_Conversions.To_Mat: function To_Mat (Value : OpenCV.Core.Float32_Matx3x3.Matrix) return Mat;: warning: return value is not documented
-opencv-core-float32_matx3x3_conversions.ads: OpenCV.Core.Float32_Matx3x3_Conversions.To_Matx3x3: function To_Matx3x3 (Image : Mat) return OpenCV.Core.Float32_Matx3x3.Matrix;: warning: entity `To_Matx3x3` is not documented
-opencv-core-float32_matx3x3_conversions.ads: OpenCV.Core.Float32_Matx3x3_Conversions.To_Matx3x3: function To_Matx3x3 (Image : Mat) return OpenCV.Core.Float32_Matx3x3.Matrix;: warning: parameter `Image` is not documented
-opencv-core-float32_matx3x3_conversions.ads: OpenCV.Core.Float32_Matx3x3_Conversions.To_Matx3x3: function To_Matx3x3 (Image : Mat) return OpenCV.Core.Float32_Matx3x3.Matrix;: warning: return value is not documented
 opencv-core-float32_row_access.ads: OpenCV.Core.Float32_Row_Access: package OpenCV.Core.Float32_Row_Access is: warning: entity `OpenCV.Core.Float32_Row_Access` is not documented
 opencv-core-float32_row_access.ads: OpenCV.Core.Float32_Row_Access.Column_Index: subtype Column_Index is Natural;: warning: entity `Column_Index` is not documented
 opencv-core-float32_row_access.ads: OpenCV.Core.Float32_Row_Access.Row_Array: type Row_Array is array (Natural range <>) of Float32_Value;: warning: entity `Row_Array` is not documented
@@ -416,7 +405,6 @@ opencv-core-float32_row_access.ads: OpenCV.Core.Float32_Row_Access.With_Read_Onl
 opencv-core-float32_row_access.ads: OpenCV.Core.Float32_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Image` is not documented
 opencv-core-float32_row_access.ads: OpenCV.Core.Float32_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Row` is not documented
 opencv-core-float32_row_access.ads: OpenCV.Core.Float32_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Process` is not documented
-opencv-core-float32_vec2.ads: OpenCV.Core.Float32_Vec2: package OpenCV.Core.Float32_Vec2 is new OpenCV.Core.Vectors (Element_Type => Float32_Value, Length => 2);: warning: entity `OpenCV.Core.Float32_Vec2` is not documented
 opencv-core-float32_vec2_access.ads: OpenCV.Core.Float32_Vec2_Access: package OpenCV.Core.Float32_Vec2_Access is: warning: entity `OpenCV.Core.Float32_Vec2_Access` is not documented
 opencv-core-float32_vec2_access.ads: OpenCV.Core.Float32_Vec2_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Float32_Vec2.Vector;: warning: entity `Get` is not documented
 opencv-core-float32_vec2_access.ads: OpenCV.Core.Float32_Vec2_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Float32_Vec2.Vector;: warning: parameter `Image` is not documented
@@ -498,7 +486,6 @@ opencv-core-float32_vec2_row_access.ads: OpenCV.Core.Float32_Vec2_Row_Access.Wit
 opencv-core-float32_vec2_row_access.ads: OpenCV.Core.Float32_Vec2_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Image` is not documented
 opencv-core-float32_vec2_row_access.ads: OpenCV.Core.Float32_Vec2_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Row` is not documented
 opencv-core-float32_vec2_row_access.ads: OpenCV.Core.Float32_Vec2_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Process` is not documented
-opencv-core-float32_vec3.ads: OpenCV.Core.Float32_Vec3: package OpenCV.Core.Float32_Vec3 is new OpenCV.Core.Vectors (Element_Type => Float32_Value, Length => 3);: warning: entity `OpenCV.Core.Float32_Vec3` is not documented
 opencv-core-float32_vec3_access.ads: OpenCV.Core.Float32_Vec3_Access: package OpenCV.Core.Float32_Vec3_Access is: warning: entity `OpenCV.Core.Float32_Vec3_Access` is not documented
 opencv-core-float32_vec3_access.ads: OpenCV.Core.Float32_Vec3_Access.Get: function Get (Image : Mat; Row, Column : Integer) return OpenCV.Core.Float32_Vec3.Vector;: warning: entity `Get` is not documented
 opencv-core-float32_vec3_access.ads: OpenCV.Core.Float32_Vec3_Access.Get: function Get (Image : Mat; Row, Column : Integer) return OpenCV.Core.Float32_Vec3.Vector;: warning: parameter `Image` is not documented
@@ -577,7 +564,6 @@ opencv-core-float32_vec3_row_access.ads: OpenCV.Core.Float32_Vec3_Row_Access.Wit
 opencv-core-float32_vec3_row_access.ads: OpenCV.Core.Float32_Vec3_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Image` is not documented
 opencv-core-float32_vec3_row_access.ads: OpenCV.Core.Float32_Vec3_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Row` is not documented
 opencv-core-float32_vec3_row_access.ads: OpenCV.Core.Float32_Vec3_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Process` is not documented
-opencv-core-float32_vec4.ads: OpenCV.Core.Float32_Vec4: package OpenCV.Core.Float32_Vec4 is new OpenCV.Core.Vectors (Element_Type => Float32_Value, Length => 4);: warning: entity `OpenCV.Core.Float32_Vec4` is not documented
 opencv-core-float32_vec4_access.ads: OpenCV.Core.Float32_Vec4_Access: package OpenCV.Core.Float32_Vec4_Access is: warning: entity `OpenCV.Core.Float32_Vec4_Access` is not documented
 opencv-core-float32_vec4_access.ads: OpenCV.Core.Float32_Vec4_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Float32_Vec4.Vector;: warning: entity `Get` is not documented
 opencv-core-float32_vec4_access.ads: OpenCV.Core.Float32_Vec4_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Float32_Vec4.Vector;: warning: parameter `Image` is not documented
@@ -745,7 +731,6 @@ opencv-core-float64_row_access.ads: OpenCV.Core.Float64_Row_Access.With_Read_Onl
 opencv-core-float64_row_access.ads: OpenCV.Core.Float64_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Image` is not documented
 opencv-core-float64_row_access.ads: OpenCV.Core.Float64_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Row` is not documented
 opencv-core-float64_row_access.ads: OpenCV.Core.Float64_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Process` is not documented
-opencv-core-float64_vec2.ads: OpenCV.Core.Float64_Vec2: package OpenCV.Core.Float64_Vec2 is new OpenCV.Core.Vectors (Element_Type => Float64_Value, Length => 2);: warning: entity `OpenCV.Core.Float64_Vec2` is not documented
 opencv-core-float64_vec2_access.ads: OpenCV.Core.Float64_Vec2_Access: package OpenCV.Core.Float64_Vec2_Access is: warning: entity `OpenCV.Core.Float64_Vec2_Access` is not documented
 opencv-core-float64_vec2_access.ads: OpenCV.Core.Float64_Vec2_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Float64_Vec2.Vector;: warning: entity `Get` is not documented
 opencv-core-float64_vec2_access.ads: OpenCV.Core.Float64_Vec2_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Float64_Vec2.Vector;: warning: parameter `Image` is not documented
@@ -827,7 +812,6 @@ opencv-core-float64_vec2_row_access.ads: OpenCV.Core.Float64_Vec2_Row_Access.Wit
 opencv-core-float64_vec2_row_access.ads: OpenCV.Core.Float64_Vec2_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Image` is not documented
 opencv-core-float64_vec2_row_access.ads: OpenCV.Core.Float64_Vec2_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Row` is not documented
 opencv-core-float64_vec2_row_access.ads: OpenCV.Core.Float64_Vec2_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Process` is not documented
-opencv-core-float64_vec3.ads: OpenCV.Core.Float64_Vec3: package OpenCV.Core.Float64_Vec3 is new OpenCV.Core.Vectors (Element_Type => Float64_Value, Length => 3);: warning: entity `OpenCV.Core.Float64_Vec3` is not documented
 opencv-core-float64_vec3_access.ads: OpenCV.Core.Float64_Vec3_Access: package OpenCV.Core.Float64_Vec3_Access is: warning: entity `OpenCV.Core.Float64_Vec3_Access` is not documented
 opencv-core-float64_vec3_access.ads: OpenCV.Core.Float64_Vec3_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Float64_Vec3.Vector;: warning: entity `Get` is not documented
 opencv-core-float64_vec3_access.ads: OpenCV.Core.Float64_Vec3_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Float64_Vec3.Vector;: warning: parameter `Image` is not documented
@@ -908,7 +892,6 @@ opencv-core-float64_vec3_row_access.ads: OpenCV.Core.Float64_Vec3_Row_Access.Wit
 opencv-core-float64_vec3_row_access.ads: OpenCV.Core.Float64_Vec3_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Image` is not documented
 opencv-core-float64_vec3_row_access.ads: OpenCV.Core.Float64_Vec3_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Row` is not documented
 opencv-core-float64_vec3_row_access.ads: OpenCV.Core.Float64_Vec3_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Process` is not documented
-opencv-core-float64_vec4.ads: OpenCV.Core.Float64_Vec4: package OpenCV.Core.Float64_Vec4 is new OpenCV.Core.Vectors (Element_Type => Float64_Value, Length => 4);: warning: entity `OpenCV.Core.Float64_Vec4` is not documented
 opencv-core-float64_vec4_access.ads: OpenCV.Core.Float64_Vec4_Access: package OpenCV.Core.Float64_Vec4_Access is: warning: entity `OpenCV.Core.Float64_Vec4_Access` is not documented
 opencv-core-float64_vec4_access.ads: OpenCV.Core.Float64_Vec4_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Float64_Vec4.Vector;: warning: entity `Get` is not documented
 opencv-core-float64_vec4_access.ads: OpenCV.Core.Float64_Vec4_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Float64_Vec4.Vector;: warning: parameter `Image` is not documented
@@ -1067,7 +1050,6 @@ opencv-core-int16_row_access.ads: OpenCV.Core.Int16_Row_Access.With_Read_Only_Ro
 opencv-core-int16_row_access.ads: OpenCV.Core.Int16_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Image` is not documented
 opencv-core-int16_row_access.ads: OpenCV.Core.Int16_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Row` is not documented
 opencv-core-int16_row_access.ads: OpenCV.Core.Int16_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Process` is not documented
-opencv-core-int16_vec2.ads: OpenCV.Core.Int16_Vec2: package OpenCV.Core.Int16_Vec2 is new OpenCV.Core.Vectors (Element_Type => Int16_Value, Length => 2);: warning: entity `OpenCV.Core.Int16_Vec2` is not documented
 opencv-core-int16_vec2_access.ads: OpenCV.Core.Int16_Vec2_Access: package OpenCV.Core.Int16_Vec2_Access is: warning: entity `OpenCV.Core.Int16_Vec2_Access` is not documented
 opencv-core-int16_vec2_access.ads: OpenCV.Core.Int16_Vec2_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Int16_Vec2.Vector;: warning: entity `Get` is not documented
 opencv-core-int16_vec2_access.ads: OpenCV.Core.Int16_Vec2_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Int16_Vec2.Vector;: warning: parameter `Image` is not documented
@@ -1153,7 +1135,6 @@ opencv-core-int16_vec2_row_access.ads: OpenCV.Core.Int16_Vec2_Row_Access.With_Wr
 opencv-core-int16_vec2_row_access.ads: OpenCV.Core.Int16_Vec2_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Image` is not documented
 opencv-core-int16_vec2_row_access.ads: OpenCV.Core.Int16_Vec2_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Row` is not documented
 opencv-core-int16_vec2_row_access.ads: OpenCV.Core.Int16_Vec2_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Process` is not documented
-opencv-core-int16_vec3.ads: OpenCV.Core.Int16_Vec3: package OpenCV.Core.Int16_Vec3 is new OpenCV.Core.Vectors (Element_Type => Int16_Value, Length => 3);: warning: entity `OpenCV.Core.Int16_Vec3` is not documented
 opencv-core-int16_vec3_access.ads: OpenCV.Core.Int16_Vec3_Access: package OpenCV.Core.Int16_Vec3_Access is: warning: entity `OpenCV.Core.Int16_Vec3_Access` is not documented
 opencv-core-int16_vec3_access.ads: OpenCV.Core.Int16_Vec3_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Int16_Vec3.Vector;: warning: entity `Get` is not documented
 opencv-core-int16_vec3_access.ads: OpenCV.Core.Int16_Vec3_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Int16_Vec3.Vector;: warning: parameter `Image` is not documented
@@ -1239,7 +1220,6 @@ opencv-core-int16_vec3_row_access.ads: OpenCV.Core.Int16_Vec3_Row_Access.With_Wr
 opencv-core-int16_vec3_row_access.ads: OpenCV.Core.Int16_Vec3_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Image` is not documented
 opencv-core-int16_vec3_row_access.ads: OpenCV.Core.Int16_Vec3_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Row` is not documented
 opencv-core-int16_vec3_row_access.ads: OpenCV.Core.Int16_Vec3_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Process` is not documented
-opencv-core-int16_vec4.ads: OpenCV.Core.Int16_Vec4: package OpenCV.Core.Int16_Vec4 is new OpenCV.Core.Vectors (Element_Type => Int16_Value, Length => 4);: warning: entity `OpenCV.Core.Int16_Vec4` is not documented
 opencv-core-int16_vec4_access.ads: OpenCV.Core.Int16_Vec4_Access: package OpenCV.Core.Int16_Vec4_Access is: warning: entity `OpenCV.Core.Int16_Vec4_Access` is not documented
 opencv-core-int16_vec4_access.ads: OpenCV.Core.Int16_Vec4_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Int16_Vec4.Vector;: warning: entity `Get` is not documented
 opencv-core-int16_vec4_access.ads: OpenCV.Core.Int16_Vec4_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Int16_Vec4.Vector;: warning: parameter `Image` is not documented
@@ -1403,7 +1383,6 @@ opencv-core-int32_row_access.ads: OpenCV.Core.Int32_Row_Access.With_Read_Only_Ro
 opencv-core-int32_row_access.ads: OpenCV.Core.Int32_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Image` is not documented
 opencv-core-int32_row_access.ads: OpenCV.Core.Int32_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Row` is not documented
 opencv-core-int32_row_access.ads: OpenCV.Core.Int32_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Process` is not documented
-opencv-core-int32_vec2.ads: OpenCV.Core.Int32_Vec2: package OpenCV.Core.Int32_Vec2 is new OpenCV.Core.Vectors (Element_Type => Int32_Value, Length => 2);: warning: entity `OpenCV.Core.Int32_Vec2` is not documented
 opencv-core-int32_vec2_access.ads: OpenCV.Core.Int32_Vec2_Access: package OpenCV.Core.Int32_Vec2_Access is: warning: entity `OpenCV.Core.Int32_Vec2_Access` is not documented
 opencv-core-int32_vec2_access.ads: OpenCV.Core.Int32_Vec2_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Int32_Vec2.Vector;: warning: entity `Get` is not documented
 opencv-core-int32_vec2_access.ads: OpenCV.Core.Int32_Vec2_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Int32_Vec2.Vector;: warning: parameter `Image` is not documented
@@ -1489,7 +1468,6 @@ opencv-core-int32_vec2_row_access.ads: OpenCV.Core.Int32_Vec2_Row_Access.With_Wr
 opencv-core-int32_vec2_row_access.ads: OpenCV.Core.Int32_Vec2_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Image` is not documented
 opencv-core-int32_vec2_row_access.ads: OpenCV.Core.Int32_Vec2_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Row` is not documented
 opencv-core-int32_vec2_row_access.ads: OpenCV.Core.Int32_Vec2_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Process` is not documented
-opencv-core-int32_vec3.ads: OpenCV.Core.Int32_Vec3: package OpenCV.Core.Int32_Vec3 is new OpenCV.Core.Vectors (Element_Type => Int32_Value, Length => 3);: warning: entity `OpenCV.Core.Int32_Vec3` is not documented
 opencv-core-int32_vec3_access.ads: OpenCV.Core.Int32_Vec3_Access: package OpenCV.Core.Int32_Vec3_Access is: warning: entity `OpenCV.Core.Int32_Vec3_Access` is not documented
 opencv-core-int32_vec3_access.ads: OpenCV.Core.Int32_Vec3_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Int32_Vec3.Vector;: warning: entity `Get` is not documented
 opencv-core-int32_vec3_access.ads: OpenCV.Core.Int32_Vec3_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Int32_Vec3.Vector;: warning: parameter `Image` is not documented
@@ -1575,7 +1553,6 @@ opencv-core-int32_vec3_row_access.ads: OpenCV.Core.Int32_Vec3_Row_Access.With_Wr
 opencv-core-int32_vec3_row_access.ads: OpenCV.Core.Int32_Vec3_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Image` is not documented
 opencv-core-int32_vec3_row_access.ads: OpenCV.Core.Int32_Vec3_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Row` is not documented
 opencv-core-int32_vec3_row_access.ads: OpenCV.Core.Int32_Vec3_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Process` is not documented
-opencv-core-int32_vec4.ads: OpenCV.Core.Int32_Vec4: package OpenCV.Core.Int32_Vec4 is new OpenCV.Core.Vectors (Element_Type => Int32_Value, Length => 4);: warning: entity `OpenCV.Core.Int32_Vec4` is not documented
 opencv-core-int32_vec4_access.ads: OpenCV.Core.Int32_Vec4_Access: package OpenCV.Core.Int32_Vec4_Access is: warning: entity `OpenCV.Core.Int32_Vec4_Access` is not documented
 opencv-core-int32_vec4_access.ads: OpenCV.Core.Int32_Vec4_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Int32_Vec4.Vector;: warning: entity `Get` is not documented
 opencv-core-int32_vec4_access.ads: OpenCV.Core.Int32_Vec4_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Int32_Vec4.Vector;: warning: parameter `Image` is not documented
@@ -1739,7 +1716,6 @@ opencv-core-int8_row_access.ads: OpenCV.Core.Int8_Row_Access.With_Read_Only_Row:
 opencv-core-int8_row_access.ads: OpenCV.Core.Int8_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Image` is not documented
 opencv-core-int8_row_access.ads: OpenCV.Core.Int8_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Row` is not documented
 opencv-core-int8_row_access.ads: OpenCV.Core.Int8_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Process` is not documented
-opencv-core-int8_vec2.ads: OpenCV.Core.Int8_Vec2: package OpenCV.Core.Int8_Vec2 is new OpenCV.Core.Vectors (Element_Type => Int8_Value, Length => 2);: warning: entity `OpenCV.Core.Int8_Vec2` is not documented
 opencv-core-int8_vec2_access.ads: OpenCV.Core.Int8_Vec2_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Int8_Vec2.Vector;: warning: entity `Get` is not documented
 opencv-core-int8_vec2_access.ads: OpenCV.Core.Int8_Vec2_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Int8_Vec2.Vector;: warning: parameter `Image` is not documented
 opencv-core-int8_vec2_access.ads: OpenCV.Core.Int8_Vec2_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Int8_Vec2.Vector;: warning: parameter `Row` is not documented
@@ -1822,7 +1798,6 @@ opencv-core-int8_vec2_row_access.ads: OpenCV.Core.Int8_Vec2_Row_Access.With_Writ
 opencv-core-int8_vec2_row_access.ads: OpenCV.Core.Int8_Vec2_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Image` is not documented
 opencv-core-int8_vec2_row_access.ads: OpenCV.Core.Int8_Vec2_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Row` is not documented
 opencv-core-int8_vec2_row_access.ads: OpenCV.Core.Int8_Vec2_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Process` is not documented
-opencv-core-int8_vec3.ads: OpenCV.Core.Int8_Vec3: package OpenCV.Core.Int8_Vec3 is new OpenCV.Core.Vectors (Element_Type => Int8_Value, Length => 3);: warning: entity `OpenCV.Core.Int8_Vec3` is not documented
 opencv-core-int8_vec3_access.ads: OpenCV.Core.Int8_Vec3_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Int8_Vec3.Vector;: warning: entity `Get` is not documented
 opencv-core-int8_vec3_access.ads: OpenCV.Core.Int8_Vec3_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Int8_Vec3.Vector;: warning: parameter `Image` is not documented
 opencv-core-int8_vec3_access.ads: OpenCV.Core.Int8_Vec3_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Int8_Vec3.Vector;: warning: parameter `Row` is not documented
@@ -1905,7 +1880,6 @@ opencv-core-int8_vec3_row_access.ads: OpenCV.Core.Int8_Vec3_Row_Access.With_Writ
 opencv-core-int8_vec3_row_access.ads: OpenCV.Core.Int8_Vec3_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Image` is not documented
 opencv-core-int8_vec3_row_access.ads: OpenCV.Core.Int8_Vec3_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Row` is not documented
 opencv-core-int8_vec3_row_access.ads: OpenCV.Core.Int8_Vec3_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Process` is not documented
-opencv-core-int8_vec4.ads: OpenCV.Core.Int8_Vec4: package OpenCV.Core.Int8_Vec4 is new OpenCV.Core.Vectors (Element_Type => Int8_Value, Length => 4);: warning: entity `OpenCV.Core.Int8_Vec4` is not documented
 opencv-core-int8_vec4_access.ads: OpenCV.Core.Int8_Vec4_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Int8_Vec4.Vector;: warning: entity `Get` is not documented
 opencv-core-int8_vec4_access.ads: OpenCV.Core.Int8_Vec4_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Int8_Vec4.Vector;: warning: parameter `Image` is not documented
 opencv-core-int8_vec4_access.ads: OpenCV.Core.Int8_Vec4_Access.Get: function Get (Image : Mat; Row, Column : Integer) return Int8_Vec4.Vector;: warning: parameter `Row` is not documented
@@ -1988,121 +1962,6 @@ opencv-core-int8_vec4_row_access.ads: OpenCV.Core.Int8_Vec4_Row_Access.With_Writ
 opencv-core-int8_vec4_row_access.ads: OpenCV.Core.Int8_Vec4_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Image` is not documented
 opencv-core-int8_vec4_row_access.ads: OpenCV.Core.Int8_Vec4_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Row` is not documented
 opencv-core-int8_vec4_row_access.ads: OpenCV.Core.Int8_Vec4_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Process` is not documented
-opencv-core-module_interop.ads: OpenCV.Core.Module_Interop: package OpenCV.Core.Module_Interop is: warning: entity `OpenCV.Core.Module_Interop` is not documented
-opencv-core-module_interop.ads: OpenCV.Core.Module_Interop.Output_Mat_Handle: type Output_Mat_Handle is private;: warning: entity `Output_Mat_Handle` is not documented
-opencv-core-module_interop.ads: OpenCV.Core.Module_Interop.With_Input_Handle: procedure With_Input_Handle (Image : Mat; Process : not null access procedure (Handle : Input_Mat_Handle));: warning: entity `With_Input_Handle` is not documented
-opencv-core-module_interop.ads: OpenCV.Core.Module_Interop.With_Input_Handle: procedure With_Input_Handle (Image : Mat; Process : not null access procedure (Handle : Input_Mat_Handle));: warning: parameter `Image` is not documented
-opencv-core-module_interop.ads: OpenCV.Core.Module_Interop.With_Input_Handle: procedure With_Input_Handle (Image : Mat; Process : not null access procedure (Handle : Input_Mat_Handle));: warning: parameter `Process` is not documented
-opencv-core-module_interop.ads: OpenCV.Core.Module_Interop.With_Output_Handle: procedure With_Output_Handle (Image : in out Mat; Process : not null access procedure (Handle : Output_Mat_Handle));: warning: entity `With_Output_Handle` is not documented
-opencv-core-module_interop.ads: OpenCV.Core.Module_Interop.With_Output_Handle: procedure With_Output_Handle (Image : in out Mat; Process : not null access procedure (Handle : Output_Mat_Handle));: warning: parameter `Image` is not documented
-opencv-core-module_interop.ads: OpenCV.Core.Module_Interop.With_Output_Handle: procedure With_Output_Handle (Image : in out Mat; Process : not null access procedure (Handle : Output_Mat_Handle));: warning: parameter `Process` is not documented
-opencv-core-module_interop.ads: OpenCV.Core.Module_Interop.Output_UMat_Handle: type Output_UMat_Handle is private;: warning: entity `Output_UMat_Handle` is not documented
-opencv-core-module_interop.ads: OpenCV.Core.Module_Interop.With_Input_Handle: procedure With_Input_Handle (Image : UMat; Process : not null access procedure (Handle : Input_UMat_Handle));: warning: entity `With_Input_Handle` is not documented
-opencv-core-module_interop.ads: OpenCV.Core.Module_Interop.With_Input_Handle: procedure With_Input_Handle (Image : UMat; Process : not null access procedure (Handle : Input_UMat_Handle));: warning: parameter `Image` is not documented
-opencv-core-module_interop.ads: OpenCV.Core.Module_Interop.With_Input_Handle: procedure With_Input_Handle (Image : UMat; Process : not null access procedure (Handle : Input_UMat_Handle));: warning: parameter `Process` is not documented
-opencv-core-module_interop.ads: OpenCV.Core.Module_Interop.With_Output_Handle: procedure With_Output_Handle (Image : in out UMat; Process : not null access procedure (Handle : Output_UMat_Handle));: warning: entity `With_Output_Handle` is not documented
-opencv-core-module_interop.ads: OpenCV.Core.Module_Interop.With_Output_Handle: procedure With_Output_Handle (Image : in out UMat; Process : not null access procedure (Handle : Output_UMat_Handle));: warning: parameter `Image` is not documented
-opencv-core-module_interop.ads: OpenCV.Core.Module_Interop.With_Output_Handle: procedure With_Output_Handle (Image : in out UMat; Process : not null access procedure (Handle : Output_UMat_Handle));: warning: parameter `Process` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Node_Kind.Integer_Node: type Node_Kind is (Integer_Node, Real_Node, String_Node, Sequence_Node, Mapping_Node);: warning: enumeration literal `Integer_Node` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Node_Kind.Real_Node: type Node_Kind is (Integer_Node, Real_Node, String_Node, Sequence_Node, Mapping_Node);: warning: enumeration literal `Real_Node` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Node_Kind.String_Node: type Node_Kind is (Integer_Node, Real_Node, String_Node, Sequence_Node, Mapping_Node);: warning: enumeration literal `String_Node` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Node_Kind.Sequence_Node: type Node_Kind is (Integer_Node, Real_Node, String_Node, Sequence_Node, Mapping_Node);: warning: enumeration literal `Sequence_Node` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Node_Kind.Mapping_Node: type Node_Kind is (Integer_Node, Real_Node, String_Node, Sequence_Node, Mapping_Node);: warning: enumeration literal `Mapping_Node` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Storage_Mode: type Storage_Mode is (Read_Only, Write_Only);: warning: entity `Storage_Mode` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Storage_Mode.Read_Only: type Storage_Mode is (Read_Only, Write_Only);: warning: enumeration literal `Read_Only` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Storage_Mode.Write_Only: type Storage_Mode is (Read_Only, Write_Only);: warning: enumeration literal `Write_Only` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Storage_Format: type Storage_Format is (XML, YAML, JSON);: warning: entity `Storage_Format` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Storage_Format.XML: type Storage_Format is (XML, YAML, JSON);: warning: enumeration literal `XML` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Storage_Format.YAML: type Storage_Format is (XML, YAML, JSON);: warning: enumeration literal `YAML` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Storage_Format.JSON: type Storage_Format is (XML, YAML, JSON);: warning: enumeration literal `JSON` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.File_Storage: type File_Storage is new Ada.Finalization.Limited_Controlled with private;: warning: entity `File_Storage` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Open: function Open (Filename : String; Mode : Storage_Mode) return File_Storage;: warning: parameter `Filename` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Open: function Open (Filename : String; Mode : Storage_Mode) return File_Storage;: warning: parameter `Mode` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Open: function Open (Filename : String; Mode : Storage_Mode) return File_Storage;: warning: return value is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Create_Memory: function Create_Memory (Format : Storage_Format) return File_Storage;: warning: parameter `Format` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Create_Memory: function Create_Memory (Format : Storage_Format) return File_Storage;: warning: return value is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Open_Memory: function Open_Memory (Text : String) return File_Storage;: warning: parameter `Text` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Open_Memory: function Open_Memory (Text : String) return File_Storage;: warning: return value is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Close_And_Get_Text: function Close_And_Get_Text (Self : in out File_Storage) return String;: warning: entity `Close_And_Get_Text` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Close_And_Get_Text: function Close_And_Get_Text (Self : in out File_Storage) return String;: warning: parameter `Self` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Close_And_Get_Text: function Close_And_Get_Text (Self : in out File_Storage) return String;: warning: return value is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Write: procedure Write (Self : in out File_Storage; Name : String; Value : Mat);: warning: parameter `Self` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Write: procedure Write (Self : in out File_Storage; Name : String; Value : Mat);: warning: parameter `Name` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Write: procedure Write (Self : in out File_Storage; Name : String; Value : Mat);: warning: parameter `Value` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Write: procedure Write (Self : in out File_Storage; Name : String; Value : Integer);: warning: parameter `Self` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Write: procedure Write (Self : in out File_Storage; Name : String; Value : Integer);: warning: parameter `Name` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Write: procedure Write (Self : in out File_Storage; Name : String; Value : Integer);: warning: parameter `Value` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Write: procedure Write (Self : in out File_Storage; Name : String; Value : Long_Float);: warning: parameter `Self` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Write: procedure Write (Self : in out File_Storage; Name : String; Value : Long_Float);: warning: parameter `Name` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Write: procedure Write (Self : in out File_Storage; Name : String; Value : Long_Float);: warning: parameter `Value` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Write: procedure Write (Self : in out File_Storage; Name : String; Value : String);: warning: parameter `Self` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Write: procedure Write (Self : in out File_Storage; Name : String; Value : String);: warning: parameter `Name` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Write: procedure Write (Self : in out File_Storage; Name : String; Value : String);: warning: parameter `Value` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Begin_Map: procedure Begin_Map (Self : in out File_Storage; Name : String);: warning: parameter `Self` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Begin_Map: procedure Begin_Map (Self : in out File_Storage; Name : String);: warning: parameter `Name` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Begin_Map: procedure Begin_Map (Self : in out File_Storage);: warning: parameter `Self` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Begin_Sequence: procedure Begin_Sequence (Self : in out File_Storage; Name : String);: warning: parameter `Self` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Begin_Sequence: procedure Begin_Sequence (Self : in out File_Storage; Name : String);: warning: parameter `Name` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Begin_Sequence: procedure Begin_Sequence (Self : in out File_Storage);: warning: parameter `Self` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.End_Structure: procedure End_Structure (Self : in out File_Storage);: warning: parameter `Self` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Append: procedure Append (Self : in out File_Storage; Value : Mat);: warning: parameter `Self` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Append: procedure Append (Self : in out File_Storage; Value : Mat);: warning: parameter `Value` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Append: procedure Append (Self : in out File_Storage; Value : Integer);: warning: entity `Append` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Append: procedure Append (Self : in out File_Storage; Value : Integer);: warning: parameter `Self` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Append: procedure Append (Self : in out File_Storage; Value : Integer);: warning: parameter `Value` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Append: procedure Append (Self : in out File_Storage; Value : Long_Float);: warning: entity `Append` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Append: procedure Append (Self : in out File_Storage; Value : Long_Float);: warning: parameter `Self` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Append: procedure Append (Self : in out File_Storage; Value : Long_Float);: warning: parameter `Value` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Append: procedure Append (Self : in out File_Storage; Value : String);: warning: parameter `Self` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Append: procedure Append (Self : in out File_Storage; Value : String);: warning: parameter `Value` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Enter_Map: procedure Enter_Map (Self : in out File_Storage; Name : String);: warning: parameter `Self` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Enter_Map: procedure Enter_Map (Self : in out File_Storage; Name : String);: warning: parameter `Name` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Enter_Map: procedure Enter_Map (Self : in out File_Storage; Index : Natural);: warning: parameter `Self` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Enter_Map: procedure Enter_Map (Self : in out File_Storage; Index : Natural);: warning: parameter `Index` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Enter_Sequence: procedure Enter_Sequence (Self : in out File_Storage; Name : String);: warning: parameter `Self` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Enter_Sequence: procedure Enter_Sequence (Self : in out File_Storage; Name : String);: warning: parameter `Name` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Enter_Sequence: procedure Enter_Sequence (Self : in out File_Storage; Index : Natural);: warning: parameter `Self` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Enter_Sequence: procedure Enter_Sequence (Self : in out File_Storage; Index : Natural);: warning: parameter `Index` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Leave_Structure: procedure Leave_Structure (Self : in out File_Storage);: warning: parameter `Self` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Sequence_Length: function Sequence_Length (Self : File_Storage) return Natural;: warning: parameter `Self` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Sequence_Length: function Sequence_Length (Self : File_Storage) return Natural;: warning: return value is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Map_Length: function Map_Length (Self : File_Storage) return Natural;: warning: parameter `Self` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Map_Length: function Map_Length (Self : File_Storage) return Natural;: warning: return value is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Map_Key: function Map_Key (Self : File_Storage; Index : Natural) return String;: warning: parameter `Self` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Map_Key: function Map_Key (Self : File_Storage; Index : Natural) return String;: warning: parameter `Index` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Map_Key: function Map_Key (Self : File_Storage; Index : Natural) return String;: warning: return value is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Kind: function Kind (Self : File_Storage; Name : String) return Node_Kind;: warning: parameter `Self` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Kind: function Kind (Self : File_Storage; Name : String) return Node_Kind;: warning: parameter `Name` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Kind: function Kind (Self : File_Storage; Name : String) return Node_Kind;: warning: return value is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Kind: function Kind (Self : File_Storage; Index : Natural) return Node_Kind;: warning: parameter `Self` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Kind: function Kind (Self : File_Storage; Index : Natural) return Node_Kind;: warning: parameter `Index` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Kind: function Kind (Self : File_Storage; Index : Natural) return Node_Kind;: warning: return value is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Read_Mat: function Read_Mat (Self : File_Storage; Name : String) return Mat;: warning: parameter `Self` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Read_Mat: function Read_Mat (Self : File_Storage; Name : String) return Mat;: warning: parameter `Name` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Read_Mat: function Read_Mat (Self : File_Storage; Name : String) return Mat;: warning: return value is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Read_Integer: function Read_Integer (Self : File_Storage; Name : String) return Integer;: warning: parameter `Self` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Read_Integer: function Read_Integer (Self : File_Storage; Name : String) return Integer;: warning: parameter `Name` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Read_Integer: function Read_Integer (Self : File_Storage; Name : String) return Integer;: warning: return value is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Read_Real: function Read_Real (Self : File_Storage; Name : String) return Long_Float;: warning: parameter `Self` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Read_Real: function Read_Real (Self : File_Storage; Name : String) return Long_Float;: warning: parameter `Name` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Read_Real: function Read_Real (Self : File_Storage; Name : String) return Long_Float;: warning: return value is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Read_String: function Read_String (Self : File_Storage; Name : String) return String;: warning: parameter `Self` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Read_String: function Read_String (Self : File_Storage; Name : String) return String;: warning: parameter `Name` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Read_String: function Read_String (Self : File_Storage; Name : String) return String;: warning: return value is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Read_Mat: function Read_Mat (Self : File_Storage; Index : Natural) return Mat;: warning: parameter `Self` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Read_Mat: function Read_Mat (Self : File_Storage; Index : Natural) return Mat;: warning: parameter `Index` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Read_Mat: function Read_Mat (Self : File_Storage; Index : Natural) return Mat;: warning: return value is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Read_Integer: function Read_Integer (Self : File_Storage; Index : Natural) return Integer;: warning: parameter `Self` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Read_Integer: function Read_Integer (Self : File_Storage; Index : Natural) return Integer;: warning: parameter `Index` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Read_Integer: function Read_Integer (Self : File_Storage; Index : Natural) return Integer;: warning: return value is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Read_Real: function Read_Real (Self : File_Storage; Index : Natural) return Long_Float;: warning: parameter `Self` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Read_Real: function Read_Real (Self : File_Storage; Index : Natural) return Long_Float;: warning: parameter `Index` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Read_Real: function Read_Real (Self : File_Storage; Index : Natural) return Long_Float;: warning: return value is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Read_String: function Read_String (Self : File_Storage; Index : Natural) return String;: warning: parameter `Self` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Read_String: function Read_String (Self : File_Storage; Index : Natural) return String;: warning: parameter `Index` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Read_String: function Read_String (Self : File_Storage; Index : Natural) return String;: warning: return value is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Finalize: procedure Finalize (Self : in out File_Storage);: warning: entity `Finalize` is not documented
-opencv-core-persistence.ads: OpenCV.Core.Persistence.Finalize: procedure Finalize (Self : in out File_Storage);: warning: parameter `Self` is not documented
 opencv-core-sparse-float16_access.ads: OpenCV.Core.Sparse.Float16_Access: package OpenCV.Core.Sparse.Float16_Access is: warning: entity `OpenCV.Core.Sparse.Float16_Access` is not documented
 opencv-core-sparse-float16_access.ads: OpenCV.Core.Sparse.Float16_Access.Get: function Get (Image : Sparse_Mat; Indices : Index_Array) return Float16_Value;: warning: entity `Get` is not documented
 opencv-core-sparse-float16_access.ads: OpenCV.Core.Sparse.Float16_Access.Get: function Get (Image : Sparse_Mat; Indices : Index_Array) return Float16_Value;: warning: parameter `Image` is not documented
@@ -2313,14 +2172,6 @@ opencv-core-sparse-int8_vec4_access.ads: OpenCV.Core.Sparse.Int8_Vec4_Access.Set
 opencv-core-sparse-int8_vec4_access.ads: OpenCV.Core.Sparse.Int8_Vec4_Access.Set: procedure Set (Image : in out Sparse_Mat; Indices : Index_Array; Value : OpenCV.Core.Int8_Vec4.Vector);: warning: parameter `Value` is not documented
 opencv-core-sparse-int8_vec4_access.ads: OpenCV.Core.Sparse.Int8_Vec4_Access.For_Each_Stored: procedure For_Each_Stored (Image : Sparse_Mat; Process : not null access procedure (Indices : Index_Array; Value : OpenCV.Core.Int8_Vec4.Vector));: warning: parameter `Image` is not documented
 opencv-core-sparse-int8_vec4_access.ads: OpenCV.Core.Sparse.Int8_Vec4_Access.For_Each_Stored: procedure For_Each_Stored (Image : Sparse_Mat; Process : not null access procedure (Indices : Index_Array; Value : OpenCV.Core.Int8_Vec4.Vector));: warning: parameter `Process` is not documented
-opencv-core-sparse-module_interop.ads: OpenCV.Core.Sparse.Module_Interop: package OpenCV.Core.Sparse.Module_Interop is: warning: entity `OpenCV.Core.Sparse.Module_Interop` is not documented
-opencv-core-sparse-module_interop.ads: OpenCV.Core.Sparse.Module_Interop.Output_Sparse_Mat_Handle: type Output_Sparse_Mat_Handle is private;: warning: entity `Output_Sparse_Mat_Handle` is not documented
-opencv-core-sparse-module_interop.ads: OpenCV.Core.Sparse.Module_Interop.With_Input_Handle: procedure With_Input_Handle (Image : Sparse_Mat; Process : not null access procedure (Handle : Input_Sparse_Mat_Handle));: warning: entity `With_Input_Handle` is not documented
-opencv-core-sparse-module_interop.ads: OpenCV.Core.Sparse.Module_Interop.With_Input_Handle: procedure With_Input_Handle (Image : Sparse_Mat; Process : not null access procedure (Handle : Input_Sparse_Mat_Handle));: warning: parameter `Image` is not documented
-opencv-core-sparse-module_interop.ads: OpenCV.Core.Sparse.Module_Interop.With_Input_Handle: procedure With_Input_Handle (Image : Sparse_Mat; Process : not null access procedure (Handle : Input_Sparse_Mat_Handle));: warning: parameter `Process` is not documented
-opencv-core-sparse-module_interop.ads: OpenCV.Core.Sparse.Module_Interop.With_Output_Handle: procedure With_Output_Handle (Image : in out Sparse_Mat; Process : not null access procedure (Handle : Output_Sparse_Mat_Handle));: warning: entity `With_Output_Handle` is not documented
-opencv-core-sparse-module_interop.ads: OpenCV.Core.Sparse.Module_Interop.With_Output_Handle: procedure With_Output_Handle (Image : in out Sparse_Mat; Process : not null access procedure (Handle : Output_Sparse_Mat_Handle));: warning: parameter `Image` is not documented
-opencv-core-sparse-module_interop.ads: OpenCV.Core.Sparse.Module_Interop.With_Output_Handle: procedure With_Output_Handle (Image : in out Sparse_Mat; Process : not null access procedure (Handle : Output_Sparse_Mat_Handle));: warning: parameter `Process` is not documented
 opencv-core-sparse-uint16_access.ads: OpenCV.Core.Sparse.UInt16_Access: package OpenCV.Core.Sparse.UInt16_Access is: warning: entity `OpenCV.Core.Sparse.UInt16_Access` is not documented
 opencv-core-sparse-uint16_access.ads: OpenCV.Core.Sparse.UInt16_Access.Get: function Get (Image : Sparse_Mat; Indices : Index_Array) return UInt16_Value;: warning: entity `Get` is not documented
 opencv-core-sparse-uint16_access.ads: OpenCV.Core.Sparse.UInt16_Access.Get: function Get (Image : Sparse_Mat; Indices : Index_Array) return UInt16_Value;: warning: parameter `Image` is not documented
@@ -2391,112 +2242,6 @@ opencv-core-sparse-uint8_vec4_access.ads: OpenCV.Core.Sparse.UInt8_Vec4_Access.S
 opencv-core-sparse-uint8_vec4_access.ads: OpenCV.Core.Sparse.UInt8_Vec4_Access.Set: procedure Set (Image : in out Sparse_Mat; Indices : Index_Array; Value : OpenCV.Core.UInt8_Vec4.Vector);: warning: parameter `Value` is not documented
 opencv-core-sparse-uint8_vec4_access.ads: OpenCV.Core.Sparse.UInt8_Vec4_Access.For_Each_Stored: procedure For_Each_Stored (Image : Sparse_Mat; Process : not null access procedure (Indices : Index_Array; Value : OpenCV.Core.UInt8_Vec4.Vector));: warning: parameter `Image` is not documented
 opencv-core-sparse-uint8_vec4_access.ads: OpenCV.Core.Sparse.UInt8_Vec4_Access.For_Each_Stored: procedure For_Each_Stored (Image : Sparse_Mat; Process : not null access procedure (Indices : Index_Array; Value : OpenCV.Core.UInt8_Vec4.Vector));: warning: parameter `Process` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse: package OpenCV.Core.Sparse is: warning: entity `OpenCV.Core.Sparse` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Sparse_Mat: type Sparse_Mat is tagged private;: warning: entity `Sparse_Mat` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Create: function Create (Shape : Dimension_Array; Element_Type : Mat_Type) return Sparse_Mat;: warning: entity `Create` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Create: function Create (Shape : Dimension_Array; Element_Type : Mat_Type) return Sparse_Mat;: warning: parameter `Shape` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Create: function Create (Shape : Dimension_Array; Element_Type : Mat_Type) return Sparse_Mat;: warning: parameter `Element_Type` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Create: function Create (Shape : Dimension_Array; Element_Type : Mat_Type) return Sparse_Mat;: warning: return value is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.From_Dense: function From_Dense (Source : Mat) return Sparse_Mat;: warning: entity `From_Dense` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.From_Dense: function From_Dense (Source : Mat) return Sparse_Mat;: warning: parameter `Source` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.From_Dense: function From_Dense (Source : Mat) return Sparse_Mat;: warning: return value is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.To_Dense: function To_Dense (Self : Sparse_Mat) return Mat;: warning: entity `To_Dense` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.To_Dense: function To_Dense (Self : Sparse_Mat) return Mat;: warning: parameter `Self` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.To_Dense: function To_Dense (Self : Sparse_Mat) return Mat;: warning: return value is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Convert_To: function Convert_To (Self : Sparse_Mat; Depth : Depth_Type; Scale : Long_Float : = 1.0) return Sparse_Mat;: warning: parameter `Self` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Convert_To: function Convert_To (Self : Sparse_Mat; Depth : Depth_Type; Scale : Long_Float : = 1.0) return Sparse_Mat;: warning: parameter `Depth` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Convert_To: function Convert_To (Self : Sparse_Mat; Depth : Depth_Type; Scale : Long_Float : = 1.0) return Sparse_Mat;: warning: parameter `Scale` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Convert_To: function Convert_To (Self : Sparse_Mat; Depth : Depth_Type; Scale : Long_Float : = 1.0) return Sparse_Mat;: warning: return value is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.To_Dense: function To_Dense (Self : Sparse_Mat; Depth : Depth_Type; Scale : Long_Float : = 1.0; Offset : Long_Float : = 0.0) return Mat;: warning: parameter `Self` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.To_Dense: function To_Dense (Self : Sparse_Mat; Depth : Depth_Type; Scale : Long_Float : = 1.0; Offset : Long_Float : = 0.0) return Mat;: warning: parameter `Depth` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.To_Dense: function To_Dense (Self : Sparse_Mat; Depth : Depth_Type; Scale : Long_Float : = 1.0; Offset : Long_Float : = 0.0) return Mat;: warning: parameter `Scale` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.To_Dense: function To_Dense (Self : Sparse_Mat; Depth : Depth_Type; Scale : Long_Float : = 1.0; Offset : Long_Float : = 0.0) return Mat;: warning: parameter `Offset` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.To_Dense: function To_Dense (Self : Sparse_Mat; Depth : Depth_Type; Scale : Long_Float : = 1.0; Offset : Long_Float : = 0.0) return Mat;: warning: return value is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Norm: function Norm (Self : Sparse_Mat; Kind : Norm_Kind : = L2) return Long_Float;: warning: parameter `Self` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Norm: function Norm (Self : Sparse_Mat; Kind : Norm_Kind : = L2) return Long_Float;: warning: parameter `Kind` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Norm: function Norm (Self : Sparse_Mat; Kind : Norm_Kind : = L2) return Long_Float;: warning: return value is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Normalize: function Normalize (Self : Sparse_Mat; Target_Norm : Long_Float : = 1.0; Kind : Norm_Kind : = L2) return Sparse_Mat;: warning: parameter `Self` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Normalize: function Normalize (Self : Sparse_Mat; Target_Norm : Long_Float : = 1.0; Kind : Norm_Kind : = L2) return Sparse_Mat;: warning: parameter `Target_Norm` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Normalize: function Normalize (Self : Sparse_Mat; Target_Norm : Long_Float : = 1.0; Kind : Norm_Kind : = L2) return Sparse_Mat;: warning: parameter `Kind` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Normalize: function Normalize (Self : Sparse_Mat; Target_Norm : Long_Float : = 1.0; Kind : Norm_Kind : = L2) return Sparse_Mat;: warning: return value is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Sparse_Extrema.Has_Minimum: Has_Minimum : Boolean : = False;: warning: component `Has_Minimum` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Sparse_Extrema.Has_Maximum: Has_Maximum : Boolean : = False;: warning: component `Has_Maximum` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Sparse_Extrema.Minimum: Minimum : Long_Float : = 0.0;: warning: component `Minimum` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Sparse_Extrema.Maximum: Maximum : Long_Float : = 0.0;: warning: component `Maximum` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Sparse_Extrema.Minimum_Location: Minimum_Location : Index_Array (1 .. 32) : = (others => 0);: warning: component `Minimum_Location` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Sparse_Extrema.Maximum_Location: Maximum_Location : Index_Array (1 .. 32) : = (others => 0);: warning: component `Maximum_Location` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Sparse_Extrema.Dimensions: Dimensions : Natural : = 0;: warning: component `Dimensions` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Min_Max_Loc: function Min_Max_Loc (Self : Sparse_Mat) return Sparse_Extrema;: warning: entity `Min_Max_Loc` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Min_Max_Loc: function Min_Max_Loc (Self : Sparse_Mat) return Sparse_Extrema;: warning: parameter `Self` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Min_Max_Loc: function Min_Max_Loc (Self : Sparse_Mat) return Sparse_Extrema;: warning: return value is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Clone: function Clone (Self : Sparse_Mat) return Sparse_Mat;: warning: entity `Clone` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Clone: function Clone (Self : Sparse_Mat) return Sparse_Mat;: warning: parameter `Self` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Clone: function Clone (Self : Sparse_Mat) return Sparse_Mat;: warning: return value is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Clear: procedure Clear (Self : in out Sparse_Mat);: warning: entity `Clear` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Clear: procedure Clear (Self : in out Sparse_Mat);: warning: parameter `Self` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Is_Allocated: function Is_Allocated (Self : Sparse_Mat) return Boolean;: warning: entity `Is_Allocated` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Is_Allocated: function Is_Allocated (Self : Sparse_Mat) return Boolean;: warning: parameter `Self` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Is_Allocated: function Is_Allocated (Self : Sparse_Mat) return Boolean;: warning: return value is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Dimension_Count: function Dimension_Count (Self : Sparse_Mat) return Natural;: warning: entity `Dimension_Count` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Dimension_Count: function Dimension_Count (Self : Sparse_Mat) return Natural;: warning: parameter `Self` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Dimension_Count: function Dimension_Count (Self : Sparse_Mat) return Natural;: warning: return value is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Shape: function Shape (Self : Sparse_Mat) return Dimension_Array;: warning: entity `Shape` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Shape: function Shape (Self : Sparse_Mat) return Dimension_Array;: warning: parameter `Self` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Shape: function Shape (Self : Sparse_Mat) return Dimension_Array;: warning: return value is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Extent: function Extent (Self : Sparse_Mat; Axis : Positive) return Size_Coordinate;: warning: entity `Extent` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Extent: function Extent (Self : Sparse_Mat; Axis : Positive) return Size_Coordinate;: warning: parameter `Self` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Extent: function Extent (Self : Sparse_Mat; Axis : Positive) return Size_Coordinate;: warning: parameter `Axis` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Extent: function Extent (Self : Sparse_Mat; Axis : Positive) return Size_Coordinate;: warning: return value is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Depth: function Depth (Self : Sparse_Mat) return Depth_Type;: warning: entity `Depth` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Depth: function Depth (Self : Sparse_Mat) return Depth_Type;: warning: parameter `Self` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Depth: function Depth (Self : Sparse_Mat) return Depth_Type;: warning: return value is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Channels: function Channels (Self : Sparse_Mat) return Channel_Count;: warning: entity `Channels` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Channels: function Channels (Self : Sparse_Mat) return Channel_Count;: warning: parameter `Self` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Channels: function Channels (Self : Sparse_Mat) return Channel_Count;: warning: return value is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Element_Size: function Element_Size (Self : Sparse_Mat) return Mat_Size;: warning: entity `Element_Size` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Element_Size: function Element_Size (Self : Sparse_Mat) return Mat_Size;: warning: parameter `Self` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Element_Size: function Element_Size (Self : Sparse_Mat) return Mat_Size;: warning: return value is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Channel_Size: function Channel_Size (Self : Sparse_Mat) return Mat_Size;: warning: entity `Channel_Size` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Channel_Size: function Channel_Size (Self : Sparse_Mat) return Mat_Size;: warning: parameter `Self` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Channel_Size: function Channel_Size (Self : Sparse_Mat) return Mat_Size;: warning: return value is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Stored_Element_Count: function Stored_Element_Count (Self : Sparse_Mat) return Mat_Size;: warning: entity `Stored_Element_Count` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Stored_Element_Count: function Stored_Element_Count (Self : Sparse_Mat) return Mat_Size;: warning: parameter `Self` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Stored_Element_Count: function Stored_Element_Count (Self : Sparse_Mat) return Mat_Size;: warning: return value is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Contains: function Contains (Self : Sparse_Mat; Indices : Index_Array) return Boolean;: warning: entity `Contains` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Contains: function Contains (Self : Sparse_Mat; Indices : Index_Array) return Boolean;: warning: parameter `Self` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Contains: function Contains (Self : Sparse_Mat; Indices : Index_Array) return Boolean;: warning: parameter `Indices` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Contains: function Contains (Self : Sparse_Mat; Indices : Index_Array) return Boolean;: warning: return value is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Erase: procedure Erase (Self : in out Sparse_Mat; Indices : Index_Array);: warning: entity `Erase` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Erase: procedure Erase (Self : in out Sparse_Mat; Indices : Index_Array);: warning: parameter `Self` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Erase: procedure Erase (Self : in out Sparse_Mat; Indices : Index_Array);: warning: parameter `Indices` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Initialize: procedure Initialize (Self : in out Sparse_Mat);: warning: entity `Initialize` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Initialize: procedure Initialize (Self : in out Sparse_Mat);: warning: parameter `Self` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Adjust: procedure Adjust (Self : in out Sparse_Mat);: warning: entity `Adjust` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Adjust: procedure Adjust (Self : in out Sparse_Mat);: warning: parameter `Self` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Finalize: procedure Finalize (Self : in out Sparse_Mat);: warning: entity `Finalize` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Finalize: procedure Finalize (Self : in out Sparse_Mat);: warning: parameter `Self` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Check_Indices: procedure Check_Indices (Self : Sparse_Mat; Indices : Index_Array);: warning: entity `Check_Indices` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Check_Indices: procedure Check_Indices (Self : Sparse_Mat; Indices : Index_Array);: warning: parameter `Self` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Check_Indices: procedure Check_Indices (Self : Sparse_Mat; Indices : Index_Array);: warning: parameter `Indices` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Check_Layout: procedure Check_Layout (Self : Sparse_Mat; Indices : Index_Array; Expected : Depth_Type; Expected_Channels : Channel_Count : = 1);: warning: parameter `Self` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Check_Layout: procedure Check_Layout (Self : Sparse_Mat; Indices : Index_Array; Expected : Depth_Type; Expected_Channels : Channel_Count : = 1);: warning: parameter `Indices` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Check_Layout: procedure Check_Layout (Self : Sparse_Mat; Indices : Index_Array; Expected : Depth_Type; Expected_Channels : Channel_Count : = 1);: warning: parameter `Expected` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Check_Layout: procedure Check_Layout (Self : Sparse_Mat; Indices : Index_Array; Expected : Depth_Type; Expected_Channels : Channel_Count : = 1);: warning: parameter `Expected_Channels` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Check_Layout: procedure Check_Layout (Self : Sparse_Mat; Expected : Depth_Type; Expected_Channels : Channel_Count : = 1);: warning: entity `Check_Layout` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Check_Layout: procedure Check_Layout (Self : Sparse_Mat; Expected : Depth_Type; Expected_Channels : Channel_Count : = 1);: warning: parameter `Self` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Check_Layout: procedure Check_Layout (Self : Sparse_Mat; Expected : Depth_Type; Expected_Channels : Channel_Count : = 1);: warning: parameter `Expected` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Check_Layout: procedure Check_Layout (Self : Sparse_Mat; Expected : Depth_Type; Expected_Channels : Channel_Count : = 1);: warning: parameter `Expected_Channels` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.C_Indices: function C_Indices (Indices : Index_Array) return OpenCV.Internal.C_API.C_Int32_Array;: warning: entity `C_Indices` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.C_Indices: function C_Indices (Indices : Index_Array) return OpenCV.Internal.C_API.C_Int32_Array;: warning: parameter `Indices` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.C_Indices: function C_Indices (Indices : Index_Array) return OpenCV.Internal.C_API.C_Int32_Array;: warning: return value is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Check: procedure Check (Status : OpenCV.Internal.C_API.Status; Operation : String);: warning: entity `Check` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Check: procedure Check (Status : OpenCV.Internal.C_API.Status; Operation : String);: warning: parameter `Status` is not documented
-opencv-core-sparse.ads: OpenCV.Core.Sparse.Check: procedure Check (Status : OpenCV.Internal.C_API.Status; Operation : String);: warning: parameter `Operation` is not documented
-opencv-core-transfers.ads: OpenCV.Core.Transfers.To_UMat: function To_UMat (Self : Mat) return UMat;: warning: parameter `Self` is not documented
-opencv-core-transfers.ads: OpenCV.Core.Transfers.To_UMat: function To_UMat (Self : Mat) return UMat;: warning: return value is not documented
-opencv-core-transfers.ads: OpenCV.Core.Transfers.To_Mat: function To_Mat (Self : UMat) return Mat;: warning: entity `To_Mat` is not documented
-opencv-core-transfers.ads: OpenCV.Core.Transfers.To_Mat: function To_Mat (Self : UMat) return Mat;: warning: parameter `Self` is not documented
-opencv-core-transfers.ads: OpenCV.Core.Transfers.To_Mat: function To_Mat (Self : UMat) return Mat;: warning: return value is not documented
 opencv-core-uint16_access.ads: OpenCV.Core.UInt16_Access: package OpenCV.Core.UInt16_Access is: warning: entity `OpenCV.Core.UInt16_Access` is not documented
 opencv-core-uint16_access.ads: OpenCV.Core.UInt16_Access.Get: function Get (Image : Mat; Row, Column : Integer) return UInt16_Value;: warning: entity `Get` is not documented
 opencv-core-uint16_access.ads: OpenCV.Core.UInt16_Access.Get: function Get (Image : Mat; Row, Column : Integer) return UInt16_Value;: warning: parameter `Image` is not documented
@@ -2575,7 +2320,6 @@ opencv-core-uint16_row_access.ads: OpenCV.Core.UInt16_Row_Access.With_Read_Only_
 opencv-core-uint16_row_access.ads: OpenCV.Core.UInt16_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Image` is not documented
 opencv-core-uint16_row_access.ads: OpenCV.Core.UInt16_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Row` is not documented
 opencv-core-uint16_row_access.ads: OpenCV.Core.UInt16_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Process` is not documented
-opencv-core-uint16_vec2.ads: OpenCV.Core.UInt16_Vec2: package OpenCV.Core.UInt16_Vec2 is new OpenCV.Core.Vectors (Element_Type => UInt16_Value, Length => 2);: warning: entity `OpenCV.Core.UInt16_Vec2` is not documented
 opencv-core-uint16_vec2_access.ads: OpenCV.Core.UInt16_Vec2_Access: package OpenCV.Core.UInt16_Vec2_Access is: warning: entity `OpenCV.Core.UInt16_Vec2_Access` is not documented
 opencv-core-uint16_vec2_access.ads: OpenCV.Core.UInt16_Vec2_Access.Get: function Get (Image : Mat; Row, Column : Integer) return UInt16_Vec2.Vector;: warning: entity `Get` is not documented
 opencv-core-uint16_vec2_access.ads: OpenCV.Core.UInt16_Vec2_Access.Get: function Get (Image : Mat; Row, Column : Integer) return UInt16_Vec2.Vector;: warning: parameter `Image` is not documented
@@ -2661,7 +2405,6 @@ opencv-core-uint16_vec2_row_access.ads: OpenCV.Core.UInt16_Vec2_Row_Access.With_
 opencv-core-uint16_vec2_row_access.ads: OpenCV.Core.UInt16_Vec2_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Image` is not documented
 opencv-core-uint16_vec2_row_access.ads: OpenCV.Core.UInt16_Vec2_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Row` is not documented
 opencv-core-uint16_vec2_row_access.ads: OpenCV.Core.UInt16_Vec2_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Process` is not documented
-opencv-core-uint16_vec3.ads: OpenCV.Core.UInt16_Vec3: package OpenCV.Core.UInt16_Vec3 is new OpenCV.Core.Vectors (Element_Type => UInt16_Value, Length => 3);: warning: entity `OpenCV.Core.UInt16_Vec3` is not documented
 opencv-core-uint16_vec3_access.ads: OpenCV.Core.UInt16_Vec3_Access: package OpenCV.Core.UInt16_Vec3_Access is: warning: entity `OpenCV.Core.UInt16_Vec3_Access` is not documented
 opencv-core-uint16_vec3_access.ads: OpenCV.Core.UInt16_Vec3_Access.Get: function Get (Image : Mat; Row, Column : Integer) return UInt16_Vec3.Vector;: warning: entity `Get` is not documented
 opencv-core-uint16_vec3_access.ads: OpenCV.Core.UInt16_Vec3_Access.Get: function Get (Image : Mat; Row, Column : Integer) return UInt16_Vec3.Vector;: warning: parameter `Image` is not documented
@@ -2745,7 +2488,6 @@ opencv-core-uint16_vec3_row_access.ads: OpenCV.Core.UInt16_Vec3_Row_Access.With_
 opencv-core-uint16_vec3_row_access.ads: OpenCV.Core.UInt16_Vec3_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Image` is not documented
 opencv-core-uint16_vec3_row_access.ads: OpenCV.Core.UInt16_Vec3_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Row` is not documented
 opencv-core-uint16_vec3_row_access.ads: OpenCV.Core.UInt16_Vec3_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Process` is not documented
-opencv-core-uint16_vec4.ads: OpenCV.Core.UInt16_Vec4: package OpenCV.Core.UInt16_Vec4 is new OpenCV.Core.Vectors (Element_Type => UInt16_Value, Length => 4);: warning: entity `OpenCV.Core.UInt16_Vec4` is not documented
 opencv-core-uint16_vec4_access.ads: OpenCV.Core.UInt16_Vec4_Access: package OpenCV.Core.UInt16_Vec4_Access is: warning: entity `OpenCV.Core.UInt16_Vec4_Access` is not documented
 opencv-core-uint16_vec4_access.ads: OpenCV.Core.UInt16_Vec4_Access.Get: function Get (Image : Mat; Row, Column : Integer) return UInt16_Vec4.Vector;: warning: entity `Get` is not documented
 opencv-core-uint16_vec4_access.ads: OpenCV.Core.UInt16_Vec4_Access.Get: function Get (Image : Mat; Row, Column : Integer) return UInt16_Vec4.Vector;: warning: parameter `Image` is not documented
@@ -2907,7 +2649,6 @@ opencv-core-uint8_row_access.ads: OpenCV.Core.UInt8_Row_Access.With_Read_Only_Ro
 opencv-core-uint8_row_access.ads: OpenCV.Core.UInt8_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Image` is not documented
 opencv-core-uint8_row_access.ads: OpenCV.Core.UInt8_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Row` is not documented
 opencv-core-uint8_row_access.ads: OpenCV.Core.UInt8_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Process` is not documented
-opencv-core-uint8_vec2.ads: OpenCV.Core.UInt8_Vec2: package OpenCV.Core.UInt8_Vec2 is new OpenCV.Core.Vectors (Element_Type => UInt8_Value, Length => 2);: warning: entity `OpenCV.Core.UInt8_Vec2` is not documented
 opencv-core-uint8_vec2_access.ads: OpenCV.Core.UInt8_Vec2_Access: package OpenCV.Core.UInt8_Vec2_Access is: warning: entity `OpenCV.Core.UInt8_Vec2_Access` is not documented
 opencv-core-uint8_vec2_access.ads: OpenCV.Core.UInt8_Vec2_Access.Get: function Get (Image : Mat; Row, Column : Integer) return UInt8_Vec2.Vector;: warning: entity `Get` is not documented
 opencv-core-uint8_vec2_access.ads: OpenCV.Core.UInt8_Vec2_Access.Get: function Get (Image : Mat; Row, Column : Integer) return UInt8_Vec2.Vector;: warning: parameter `Image` is not documented
@@ -2993,7 +2734,6 @@ opencv-core-uint8_vec2_row_access.ads: OpenCV.Core.UInt8_Vec2_Row_Access.With_Wr
 opencv-core-uint8_vec2_row_access.ads: OpenCV.Core.UInt8_Vec2_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Image` is not documented
 opencv-core-uint8_vec2_row_access.ads: OpenCV.Core.UInt8_Vec2_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Row` is not documented
 opencv-core-uint8_vec2_row_access.ads: OpenCV.Core.UInt8_Vec2_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Process` is not documented
-opencv-core-uint8_vec3.ads: OpenCV.Core.UInt8_Vec3: package OpenCV.Core.UInt8_Vec3 is new OpenCV.Core.Vectors (Element_Type => UInt8_Value, Length => 3);: warning: entity `OpenCV.Core.UInt8_Vec3` is not documented
 opencv-core-uint8_vec3_access.ads: OpenCV.Core.UInt8_Vec3_Access: package OpenCV.Core.UInt8_Vec3_Access is: warning: entity `OpenCV.Core.UInt8_Vec3_Access` is not documented
 opencv-core-uint8_vec3_access.ads: OpenCV.Core.UInt8_Vec3_Access.Get: function Get (Image : Mat; Row, Column : Integer) return OpenCV.Core.UInt8_Vec3.Vector;: warning: entity `Get` is not documented
 opencv-core-uint8_vec3_access.ads: OpenCV.Core.UInt8_Vec3_Access.Get: function Get (Image : Mat; Row, Column : Integer) return OpenCV.Core.UInt8_Vec3.Vector;: warning: parameter `Image` is not documented
@@ -3072,7 +2812,6 @@ opencv-core-uint8_vec3_row_access.ads: OpenCV.Core.UInt8_Vec3_Row_Access.With_Re
 opencv-core-uint8_vec3_row_access.ads: OpenCV.Core.UInt8_Vec3_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Image` is not documented
 opencv-core-uint8_vec3_row_access.ads: OpenCV.Core.UInt8_Vec3_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Row` is not documented
 opencv-core-uint8_vec3_row_access.ads: OpenCV.Core.UInt8_Vec3_Row_Access.With_Writable_Row: procedure With_Writable_Row (Image : in out Mat; Row : Natural; Process : not null access procedure (Data : aliased in out Row_Array));: warning: parameter `Process` is not documented
-opencv-core-uint8_vec4.ads: OpenCV.Core.UInt8_Vec4: package OpenCV.Core.UInt8_Vec4 is new OpenCV.Core.Vectors (Element_Type => UInt8_Value, Length => 4);: warning: entity `OpenCV.Core.UInt8_Vec4` is not documented
 opencv-core-uint8_vec4_access.ads: OpenCV.Core.UInt8_Vec4_Access: package OpenCV.Core.UInt8_Vec4_Access is: warning: entity `OpenCV.Core.UInt8_Vec4_Access` is not documented
 opencv-core-uint8_vec4_access.ads: OpenCV.Core.UInt8_Vec4_Access.Get: function Get (Image : Mat; Row, Column : Integer) return UInt8_Vec4.Vector;: warning: entity `Get` is not documented
 opencv-core-uint8_vec4_access.ads: OpenCV.Core.UInt8_Vec4_Access.Get: function Get (Image : Mat; Row, Column : Integer) return UInt8_Vec4.Vector;: warning: parameter `Image` is not documented
