@@ -5,6 +5,52 @@ for `https://zackboll.github.io/opencv_core_ada/`; its landing page is
 `_site/index.html` and the native GNATdoc reference is `_site/api/index.html`.
 Do not commit generated HTML.
 
+## Generic-instance signature links (CORE-DOC-070B)
+
+Signature type marks now link to the existing explanatory summaries for exactly
+the 25 independently qualified instances: the 24 vector instances and
+Float32_Matx3x3. The enhancement-owned `instance-members-summary` ID belongs to
+the summary section, not an Ada declaration. No native member anchors, h4
+declarations or snippets are fabricated; summary member links still lead to
+the real generic template declarations.
+
+The native target collector previously found only source-backed native h4
+types. Short selected names additionally failed its exact import-owner lookup.
+The negative-first fixture reported no signature links for short and fully
+qualified Vector/Matrix marks. Resolution now requires canonical package
+identity, verified template/member and actual associations, an exact context
+import, lexical ancestor lookup and no local/ancestor prefix blockers. Ada
+identifier case is ignored. Consecutive context with clauses are all collected.
+Unsupported scopes, renamings, unrelated instances and unsupported members
+remain deliberately unlinked; this is not a general Ada semantic engine.
+
+Before adding destinations the linker independently reconstructs and verifies
+the summaries, native introductions and metadata. It discovers generated
+filenames from package headings and never computes or hardcodes their hashes.
+Every final link is recomputed from the original source-matched declaration;
+wrong-but-existing instance destinations, missing links, missing/renamed
+anchors and metadata/source mutations fail validation. Representative dense,
+sparse and matrix links are mandatory in the final validator.
+
+Qualification from main `bb91e81459b3bd446c7e12381783f5153b475d0d` (PR #71):
+
+- 242 additional signature links: ten per vector instance (240), plus two
+  matrix conversion references; total 2,698 on the same 168 enhanced pages.
+- Independent saved-baseline comparison preserved all 2,456 original links
+  and the escaped text of all 1,268 original declaration snippets.
+- 195 public packages / 197 HTML pages; 25 enriched instances / 102 unchanged
+  summary links; zero warnings and zero added/removed warning identities.
+- All 92 documentation tests pass, including visibility negatives and final
+  validator mutations redirecting Float16_Vec2 to Float32_Vec2 or Float16_Vec3.
+- Fresh pinned regeneration and repeat enhancement/linking/highlighting produce
+  byte-identical output. Final HTML validation, shell syntax, actionlint and
+  diff whitespace checks pass.
+- Headless Chrome clicks every instance-type link in the four representative
+  packages in light/dark at 1280/390px, checks package identity and fragment
+  scrolling, and navigates each representative through the native iframe.
+- Executable Ada/C++, ABI, dependencies and manifests are unchanged. The
+  existing PR #71 evidence of 2,025/2,025 AUnit tests is reused, not rerun.
+
 ## Generic instance summaries (CORE-DOC-070A)
 
 GNATdoc 26.0.0's `Process_Generic_Instantiation` records package identity and
