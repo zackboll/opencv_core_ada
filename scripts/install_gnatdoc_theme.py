@@ -40,7 +40,12 @@ def check_theme(api):
     require(hashlib.sha256((api / 'gnatdoc.css').read_bytes()).hexdigest() == manifest['native_css'],
             'native GNATdoc stylesheet changed')
     for name, path in paths.items():
-        require(skeleton(path.read_text(encoding='utf-8')) == themed(manifest['pages'][name]),
+        expected = themed(manifest['pages'][name])
+        if name == 'index.html' and (api / 'gnatdoc-navigation.js').exists():
+            from enhance_gnatdoc_navigation import augmented, check_navigation
+            check_navigation(api)
+            expected = augmented(expected)
+        require(skeleton(path.read_text(encoding='utf-8')) == expected,
                 f'unapproved non-snippet presentation change: {name}')
     print(f'Theme: {len(paths)} API pages verified; asset/metadata errors: 0')
 

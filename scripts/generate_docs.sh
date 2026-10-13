@@ -50,4 +50,5 @@ python3 scripts/enhance_gnatdoc_instances.py _site/api
 python3 scripts/install_gnatdoc_theme.py _site/api
 python3 scripts/link_gnatdoc_types.py _site/api
 python3 scripts/highlight_gnatdoc_ada.py _site/api
+python3 scripts/enhance_gnatdoc_navigation.py _site/api
 python3 scripts/validate_docs.py _site

@@ -16,6 +16,7 @@ from link_gnatdoc_types import process, CrossReferenceError, SECTION, LINK
 from compare_gnatdoc_warnings import WarningComparisonError
 from install_gnatdoc_theme import check_theme
 from enhance_gnatdoc_instances import process as check_instances
+from enhance_gnatdoc_navigation import check_navigation
 
 
 class Page(HTMLParser):
@@ -204,6 +205,7 @@ def validate(site):
     try:
         check_instances(site / "api", root / "src", check=True, expected_count=25)
         check_theme(site / "api")
+        check_navigation(site / "api")
         manifest = json.loads((site / "api/type-crossrefs.json").read_text())
         if manifest.get('highlighting') != 1:
             errors.append("missing final Ada highlighting qualification")

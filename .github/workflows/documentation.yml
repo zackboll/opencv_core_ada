@@ -47,6 +47,8 @@ jobs:
         run: sh scripts/generate_docs.sh
       - name: Qualify generated generic instance pages
         run: python3 -m unittest discover -s scripts -p 'test_gnatdoc_instances.py' -v
+      - name: Qualify native navigation integrity
+        run: python3 -m unittest discover -s scripts -p 'test_gnatdoc_navigation.py' -v
       - name: Upload review artifact
         uses: actions/upload-artifact@v4
         with:
