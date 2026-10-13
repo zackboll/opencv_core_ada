@@ -66,6 +66,87 @@ class InstanceTests(unittest.TestCase):
         self.assertIn(before, text)
         path.write_text(text.replace(before, after, 1))
 
+    def test_instance_type_signatures_link_to_own_summary(self):
+        name = 'OpenCV.Core.Probe'
+        declarations = [
+            'function Get return Float32_Vec3.Vector;',
+            'procedure Set (Value : OpenCV.Core.Float32_Vec3.Vector);',
+            'function Convert return Float32_Matx3x3.Matrix;']
+        (self.src / 'opencv-core-probe.ads').write_text(
+            'with OpenCV.Core.Float32_Vec3;\nwith OpenCV.Core.Float32_Matx3x3;\n'
+            'package ' + name + ' is\n' + '\n'.join(declarations) +
+            '\nend ' + name + ';\n')
+        path = self.api / 'probe.html'
+        path.write_text(PREFIX + '<h1>' + name + '</h1>' + ''.join(
+            f'<h4 id=probe-{i}>{d.split()[1]}</h4>'
+            '<pre class=ada-code-snippet><code>' + d.rstrip(';') + '\n</code></pre>'
+            for i, d in enumerate(declarations)))
+        self.enhance()
+        from link_gnatdoc_types import process as link_types
+        link_types(self.api, self.src)
+        text = path.read_text()
+        for package, member in [('Float32_Vec3', 'vector'), ('Float32_Matx3x3', 'matrix')]:
+            destination = self.page('OpenCV.Core.' + package).name + '#instance-members-summary'
+            self.assertIn('href="' + destination + '" data-type="opencv.core.' +
+                          package.lower() + '.' + member + '"', text)
+        self.assertEqual(text.count('type-reference'), 3)
+
+    def test_instance_visibility_and_case_controls(self):
+        from link_gnatdoc_types import resolve, pages_and_targets, instance_targets
+        self.enhance()
+        source = self.src / 'opencv-core-probe.ads'
+        contexts = [
+            ('with OpenCV.Core.Float32_Vec3;', ''),
+            ('', ''),
+            ('with OpenCV.Core.Float32_Vec3;', 'Float32_Vec3 : Integer;'),
+            ('with OpenCV.Core.Float32_Vec3;', 'OpenCV : Integer;'),
+        ]
+        for context, blocker in contexts:
+            source.write_text(context + '\npackage OpenCV.Core.Probe is\n' + blocker +
+                              '\nfunction Get return fLoAt32_vEc3.vEcToR;\n'
+                              'end OpenCV.Core.Probe;')
+            source_map = sources(self.src)
+            from link_gnatdoc_types import Source
+            consumer = Source(source)
+            # Consumer HTML is irrelevant to resolution; destinations still
+            # undergo the real complete summary qualification.
+            source_map.pop(consumer.package)
+            pages, targets = pages_and_targets(self.api, source_map)
+            instance_targets(self.api, self.src, source_map, pages, targets)
+            source_map[consumer.package] = consumer
+            declaration = consumer.members['get'][0]
+            for mark in ('float32_vec3.vector', 'opencv.core.float32_vec3.vector'):
+                identity, _ = resolve(mark, consumer.package, declaration, source_map, targets)
+                blocked = (blocker.startswith('OpenCV') and mark.startswith('opencv.')) or (
+                    blocker.startswith('Float32') and not mark.startswith('opencv.'))
+                self.assertEqual(identity is not None, bool(context) and not blocked)
+            for mark in ('float32_vec3.matrix', 'float32_vec3.component_index',
+                         'other.float32_vec3.vector', 'float32_vec3.vector.extra'):
+                self.assertIsNone(resolve(mark, consumer.package, declaration, source_map, targets)[0])
+        # Ancestor object names also hide the short selected package name.
+        source.write_text('with OpenCV.Core.Float32_Vec3;\npackage OpenCV.Core.Probe is\n'
+                          'function Get return Float32_Vec3.Vector;\nend OpenCV.Core.Probe;')
+        source_map = sources(self.src)
+        source_map['opencv.core'].members['float32_vec3'] = [{'start': 1}]
+        declaration = source_map['opencv.core.probe'].members['get'][0]
+        self.assertIsNone(resolve('float32_vec3.vector', 'opencv.core.probe', declaration,
+                                  source_map, targets)[0])
+
+    def test_linker_rejects_missing_summary_anchor_and_metadata(self):
+        self.enhance()
+        from link_gnatdoc_types import process as link_types
+        original = self.instance.read_text()
+        for mutated in (original.replace('id="instance-members-summary"', ''),
+                        original.replace('id="instance-members-summary"', 'id="renamed"'),
+                        native_instance(sources(self.src)['opencv.core.uint8_vec4'])):
+            self.instance.write_text(mutated)
+            with self.assertRaises(CrossReferenceError):
+                link_types(self.api, self.src)
+        self.instance.write_text(original)
+        self.mutate(self.api / 'generic-instances.json', '"version": 1', '"version": 2')
+        with self.assertRaises(CrossReferenceError):
+            link_types(self.api, self.src)
+
     def test_positive_members_links_semantics_and_idempotence(self):
         instances, links = self.enhance()
         self.assertEqual(len(instances), 7)
@@ -106,7 +187,8 @@ class InstanceTests(unittest.TestCase):
             ('4 UInt8_Value', '4 Float32_Value'),
             ('#fixture-Vector', '#fixture-Component_Index'),
             ('ordinary Ada array', 'native shared array'),
-            ('<section class="generic-instance-summary">', '<section class="generic-instance-summary"><section class="generic-instance-summary"></section>'),
+            ('id="instance-members-summary"', 'id="renamed-summary"'),
+            ('<h2>Instantiated Members</h2>', '<section class="generic-instance-summary"></section>'),
             ('One complete CV_8UC4', 'One incomplete CV_8UC4'),
             ('<h2>Description</h2>', '<h4 id=unapproved>Vector</h4><h2>Description</h2>'),
             ('href="', 'href="missing.html#'),
@@ -298,9 +380,42 @@ class GeneratedSiteTests(unittest.TestCase):
         self.assertEqual(before, {p.name: p.read_bytes() for p in api.iterdir() if p.is_file()})
         from link_gnatdoc_types import process as check_types
         counts, pages = check_types(api, ROOT / 'src', check=True)
-        self.assertEqual((counts['linked'], pages), (2456, 168))
+        self.assertEqual((counts['linked'], pages), (2698, 168))
         manifest = json.loads((api / 'type-crossrefs.json').read_text())
         self.assertEqual(sum(len(p['snippets']) for p in manifest['pages'].values()), 1268)
+        from link_gnatdoc_types import LINK, SECTION
+        from collections import Counter
+        instances_linked = Counter()
+        for path in api.glob('*.html'):
+            for section in SECTION.finditer(path.read_text()):
+                instances_linked.update(m[2] for m in LINK.finditer(section[3])
+                                        if m[2].endswith(('.vector', '.matrix')))
+        expected = {p + ('.vector' if v[0] == VECTORS else '.matrix'):
+                    (10 if v[0] == VECTORS else 2) for p, v in instances.items()}
+        self.assertEqual(dict(instances_linked), expected)
+
+    @unittest.skipUnless((ROOT / '_site/api/generic-instances.json').exists(),
+                         'full generated-site qualification runs after generation')
+    def test_wrong_but_existing_instance_targets_and_missing_links(self):
+        from validate_docs import validate
+        from link_gnatdoc_types import pages_and_targets, LINK
+        with tempfile.TemporaryDirectory() as directory:
+            site = Path(directory) / 'site'
+            shutil.copytree(ROOT / '_site', site)
+            pages, _ = pages_and_targets(site / 'api', sources(ROOT / 'src'))
+            path = pages['opencv.core.float16_vec2_access'][0]
+            original = path.read_text()
+            link = next(m for m in LINK.finditer(original)
+                        if m[2] == 'opencv.core.float16_vec2.vector')
+            for package in ('opencv.core.float32_vec2', 'opencv.core.float16_vec3'):
+                wrong = pages[package][0].name + '#instance-members-summary'
+                path.write_text(original.replace(link[1], wrong))
+                with self.assertRaises(SystemExit):
+                    validate(site)
+            # Missing links are rejected, not just checked when present.
+            path.write_text(LINK.sub(lambda m: m[3] if m[2].endswith('.vector') else m[0], original))
+            with self.assertRaises(SystemExit):
+                validate(site)
 
     @unittest.skipUnless((ROOT / '_site/api/generic-instances.json').exists(),
                          'full generated-site qualification runs after generation')

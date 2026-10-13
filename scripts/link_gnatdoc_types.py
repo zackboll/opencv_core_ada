@@ -83,7 +83,7 @@ class Source:
         self.imports = set()
         # Only context-clause withs establish external qualified visibility.
         context = self.code[:package.start()]
-        for match in re.finditer(r"(?:^|;)\s*with\s+([^;]+);", context, re.I):
+        for match in re.finditer(r"(?:^|(?<=;))\s*with\s+([^;]+);", context, re.I):
             self.imports.update(n.strip().lower() for n in match[1].split(','))
         self.uses = set()
         for match in re.finditer(r"\buse\s+(?!type\b|all\b)(" + NAME +
@@ -225,6 +225,34 @@ def type_positions(text):
     return [ts[i] for i in sorted(positions)]
 
 
+def instance_targets(api, source_root, source_map, pages, targets):
+    """Verify explanatory destinations independently before using any of them.
+
+    Import lazily: the summary enhancer uses native discovery, never this
+    additional target set. Its complete reconstruction checks metadata, source
+    actuals, template declarations, original introductions and section anchors.
+    """
+    if not (api / 'generic-instances.json').exists():
+        return
+    from enhance_gnatdoc_instances import (process as check_instances,
+                                           qualified_instances, SUMMARY_ANCHOR,
+                                           VECTORS)
+    instances, _ = check_instances(api, source_root, check=True)
+    baseline = qualified_instances()
+    for package, instance in instances.items():
+        if package not in baseline:
+            continue
+        require(instance == baseline[package],
+                f'generic instance source association mismatch: {package}')
+        member = 'vector' if instance[0] == VECTORS else 'matrix'
+        require(instance[0] + '.' + member in targets,
+                f'missing verified template member: {package}.{member}')
+        path, text, _ = pages[package]
+        require(text.count('id="' + SUMMARY_ANCHOR + '"') == 1,
+                f'missing/duplicate instance summary anchor: {package}')
+        targets[package + '.' + member] = (path.name, SUMMARY_ANCHOR)
+
+
 def resolve(name, package, declaration, source_map, targets):
     source = source_map[package]
     if not source.supported or name in source.formals:
@@ -243,12 +271,26 @@ def resolve(name, package, declaration, source_map, targets):
         scope = scope.rpartition('.')[0]
     if '.' in name:
         for scope in scopes:
+            if scope not in source_map or not source_map[scope].supported:
+                return None, 'unsupported'
             if scope in source_map and (
                     name.split('.')[0] in source_map[scope].formals or
                     any(d['start'] < declaration['start'] or scope != package
                         for d in source_map[scope].members.get(name.split('.')[0], []))):
                 return None, 'unsupported'
         owner = name.rpartition('.')[0]
+        # Selected instance names may use the package's directly visible short
+        # name. Resolve in lexical ancestor order and demand the exact with;
+        # a suffix match never establishes visibility. A nearer namesake blocks
+        # outer candidates even if it is not an approved instance.
+        if '.' not in owner:
+            for scope in scopes:
+                candidate = scope + '.' + name
+                candidate_owner = scope + '.' + owner
+                if candidate_owner in source_map and candidate_owner in source.imports:
+                    return ((candidate, 'linked') if source_map[candidate_owner].instance
+                            and candidate in targets
+                            else (None, 'unsupported'))
         if owner not in scopes and owner not in source.imports:
             return None, 'unsupported'
         return (name, 'linked') if name in targets else (None, 'unsupported')
@@ -316,6 +358,7 @@ def process(api, source_root, check=False, minimum_links=0, minimum_pages=0,
     require(api.name == 'api', "cross-references must operate in a generated api directory")
     source_map = sources(source_root)
     pages, targets = pages_and_targets(api, source_map)
+    instance_targets(api, source_root, source_map, pages, targets)
     manifest_path = api / 'type-crossrefs.json'
     existing = manifest_path.exists()
     require(existing or not check, "missing cross-reference integrity manifest")

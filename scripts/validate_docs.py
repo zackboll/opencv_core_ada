@@ -278,7 +278,11 @@ def validate(site):
             "opencv.core.mat", "opencv.core.dimension_array",
             "opencv.core.float32_mat_view.buffer_array", "opencv.float32_value"},
         "OpenCV.Core.UInt8_Vec3_Access": {
-            "opencv.core.mat", "opencv.core.index_array"},
+            "opencv.core.mat", "opencv.core.index_array", "opencv.core.uint8_vec3.vector"},
+        "OpenCV.Core.Float16_Vec2_Access": {"opencv.core.float16_vec2.vector"},
+        "OpenCV.Core.Float32_Vec3_Access": {"opencv.core.float32_vec3.vector"},
+        "OpenCV.Core.Sparse.Float16_Vec2_Access": {"opencv.core.float16_vec2.vector"},
+        "OpenCV.Core.Float32_Matx3x3_Conversions": {"opencv.core.float32_matx3x3.matrix"},
         "OpenCV.Core.Sparse.UInt8_Access": {
             "opencv.core.sparse.sparse_mat", "opencv.core.index_array"},
         "OpenCV": {"opencv.float32_value", "opencv.point_coordinate"},

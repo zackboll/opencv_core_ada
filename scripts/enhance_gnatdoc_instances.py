@@ -46,6 +46,18 @@ ELEMENTS = {
     'Float64_Value': ('opencv', 'subtype Float64_Value is Interfaces.IEEE_Float_64;'),
 }
 PREFIX = ('<!DOCTYPE html>\n<html class=main>\n' + NATIVE + '<body class=content>')
+SUMMARY_ANCHOR = 'instance-members-summary'
+
+
+def qualified_instances():
+    """The independently qualified source identities, not a suffix allowlist."""
+    result = {'opencv.core.' + depth.lower() + '_vec' + str(length):
+              (VECTORS, depth + '_Value', [length])
+              for depth in ('UInt8', 'Int8', 'UInt16', 'Int16', 'Int32',
+                            'Float16', 'Float32', 'Float64')
+              for length in (2, 3, 4)}
+    result['opencv.core.float32_matx3x3'] = (MATRICES, 'Float32_Value', [3, 3])
+    return result
 
 
 def title(source):
@@ -202,7 +214,8 @@ def render(instance, source_map, pages, targets):
         require(identity in targets, f'missing template member anchor: {identity}')
         member_rows.append('<tr><th scope="row">' + link('#'.join(targets[identity]), member)
                            + '</th><td>' + html.escape(meaning) + '</td></tr>')
-    result = ('<section class="generic-instance-summary"><h2>Instantiated Members</h2>'
+    result = ('<section class="generic-instance-summary" id="' + SUMMARY_ANCHOR +
+              '"><h2>Instantiated Members</h2>'
               '<p>Explanatory instantiated equivalents, not additional source declarations.</p>'
               '<p>Generic template: ' + link(template_file, template_title) + '</p>'
               '<h3>Actual generic arguments</h3><table><thead><tr><th scope="col">Formal</th>'
@@ -235,13 +248,8 @@ def process(api, source_root, check=False, expected_count=None):
     if expected_count is not None:
         require(len(instances) == expected_count, 'generic instance source count mismatch')
     if expected_count == 25:
-        baseline = {'opencv.core.' + depth.lower() + '_vec' + str(length):
-                    (VECTORS, depth + '_Value', [length])
-                    for depth in ('UInt8', 'Int8', 'UInt16', 'Int16', 'Int32',
-                                  'Float16', 'Float32', 'Float64')
-                    for length in (2, 3, 4)}
-        baseline['opencv.core.float32_matx3x3'] = (MATRICES, 'Float32_Value', [3, 3])
-        require(instances == baseline, 'generic instance baseline identities/associations mismatch')
+        require(instances == qualified_instances(),
+                'generic instance baseline identities/associations mismatch')
     pages, targets = pages_and_targets(api, source_map)
     metadata = api / 'generic-instances.json'
     existing = metadata.exists()
