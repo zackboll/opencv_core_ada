@@ -13,7 +13,7 @@ only: no executable Ada, C/C++ shim, ABI, manifest or toolchain changes.
   (GNATdoc 26.0.0 (20260415), Alire 2.1.1, GNAT 16.1.0, GPRbuild 26.0.0 /
   Alire 26.0.1).
 
-## Milestones (merge in this order; none merged, auto-merge disabled)
+## Milestones (historical branch bases; current status below)
 
 | # | Branch | PR base | Family | Before | After | PR |
 | --- | --- | --- | --- | ---: | ---: | --- |
@@ -21,7 +21,7 @@ only: no executable Ada, C/C++ shim, ABI, manifest or toolchain changes.
 | 2 | `feature/doc-campaign-02` | `feature/doc-campaign-01` | Phases B, C and non-typed D: Sparse, Persistence, module interop, transfers, Matx3x3, 24 Vec instances | 3158 | 2897 | #66 |
 | 3 | `feature/doc-campaign-03` | `feature/doc-campaign-02` | Phases E-H: typed element, row, buffer, Mat-view and sparse typed access, 8 depths x (C1, C2, C3, C4) | 2897 | 0 | recorded in final report |
 
-Hosted CI: PR #65 had 19 passing, 5 skipped and 18 pending jobs on the
+Historical hosted CI observation: PR #65 had 19 passing, 5 skipped and 18 pending jobs on the
 single inspection made after PR #66 opened (`HOSTED_CI_PENDING`). #66 and
 the milestone 3 PR were not yet inspected.
 
@@ -54,7 +54,7 @@ the formatter inserts a blank line between the leading comment and the
 instantiation, and GNATdoc 26.0.0 then drops the comment. Files are kept in
 the GNATdoc-valid form.
 
-## Audit status (documentation is NOT yet declared complete)
+## Earlier audit (superseded by CORE-DOC-067A audit below)
 
 A zero warning count does not prove accuracy. A read-only audit sub-agent
 re-checked the sparse, Mat-view, row-access and element-access claims against
@@ -69,7 +69,7 @@ on the milestone 3 branch:
   failure can follow earlier callbacks; sparse `Get`/`Set` mention native
   failures.
 
-No discrepancies were found in element access, row access or the sparse
+The earlier audit reported no discrepancies in element access, row access or the sparse
 validation order. Known, accepted omissions: byte-count overflow and
 native-allocation failures are not listed in every exception clause; the
 Vec3 row access also checks a `Natural'Last / 3` length limit that is not
@@ -77,9 +77,128 @@ mentioned. `Float32_Mat_View` names its 2-D strided writable overload
 `With_Writable_Mat_View (Row_Stride_Elements)`, unlike the other 31
 packages; the comments match the code.
 
-Open items:
+Historical open items (superseded below):
 
 1. Decide the generic-instance formatter conflict above.
 2. Hosted CI: #65 and #66 were green on the last inspection (19 and 18
    passing, rest skipped); #67 was pending. Re-inspect once and record.
 3. Independent human review of all three PRs, in order.
+
+## CORE-DOC-067A final qualification and reconciliation
+
+### History and status
+
+- Actual current main: `f580af11369eac91ff0c95f6b32251fcfa12655c`.
+- PR #65 merged at `5496a9f3e6bcf2640484b8f1f647bb34c4c43e0c`;
+  PR #66 merged at current main. Both are contained in main.
+- Main tree equals PR #66 head `dde8bef3` tree:
+  `29c6d4135ac3bcb071fd4d0589a4a1bf91e83e58`.
+- PR #67 is open, non-draft, unmerged, auto-merge disabled, now against
+  `main` on `feature/doc-campaign-03`. Retargeting preserved starting head
+  `e2433accd3c7f45e9ef003744a794da1928e47b9`.
+- The installed `gh pr edit` failed on deprecated classic-project metadata;
+  the same base change succeeded through GitHub's REST API.
+- GitHub reported CLEAN/MERGEABLE. Starting-head prospective merge tree
+  equals source tree `968f1d1045f25bedaadf95353beb236b2c4870d3`.
+- Final corrective head is the ordinary commit containing this reconciliation;
+  resolve its literal SHA with `git rev-parse HEAD`. The final PR report
+  records SHA parity and hosted run IDs: a commit cannot embed its own SHA.
+  Existing commits `0885b028`, `a9c1baa`, `e2433ac` are not rewritten.
+- All extant worktrees were checked before editing and were clean. No separate
+  Claude/Cline process was identified; VS Code extension sessions cannot be
+  excluded solely by process names. No downstream open PR depended on #67.
+  No other worktree was modified; remote head was rechecked before correction.
+
+### Corrected warning accounting
+
+Committed structured baselines, counted without regenerating them:
+
+| Revision | Remaining warnings |
+| --- | ---: |
+| PR #66 head `dde8bef3` | 2897 |
+| Exemplar `0885b028` | 2782 |
+| Main typed-access commit `a9c1baa` | 0 |
+| Previous corrective head `e2433ac` | 0 |
+| CORE-DOC-067A correction | 0 |
+
+Milestone 1 removed 976 (4134 -> 3158); milestone 2 removed 261
+(3158 -> 2897). Milestone 3 removed **115 + 2782 = 2897**.
+The historical `0 added, 2782 removed` delta above was only the subsequent
+batch, not the full milestone. The final baseline has no entries (one newline)
+and is unchanged by this correction. Campaign total removal is **4134**.
+
+### Semantic audit matrix
+
+Scope: UInt8, Int8, UInt16, Int16, Int32, Float16, Float32 and Float64,
+each C1/C2/C3/C4: 32 packages per family, 160 typed packages. Repeated
+behavior was checked using shared helpers and depth/channel/size bindings;
+divergent profiles were inspected separately. Evidence is implementation and
+tests, not formal proof of the foreign ABI.
+
+| Pattern | Verified semantics and evidence | Result |
+| --- | --- | --- |
+| Dense elements | Scalar bodies across all eight depths, vector validation/bindings, `Internal.Typed_Access`, native `validate_typed_at`/`prepare_nd_typed_at`; element and Vec2/Vec3 N-D tests: complete elements, zero-based indices, index counts, bounds, exact layout and shallow-storage writes | Accurate. Some 2-D wrappers delegate explicit dimensionality rejection to the native helper. |
+| Float16 / classification | Scalar and vector bit paths, Float16 tests; Float32/Float64 Classify bodies and native entry points | Binary16 encodings preserved; classification is the scalar 2-D operation, not an invented vector/N-D operation. |
+| Copied rows | Per-depth row bodies and native row calls; integer and Float16 Vec3 row tests: arbitrary array bounds, first element maps column zero, Read owns values, Write changes shared storage, Regions supported | All eight Vec3 specs corrected: Read_Row/Write_Row also reject Data'Length > Natural'Last / 3 for their three-scalar conversion buffer. This limit does not apply to zero-copy callbacks. |
+| Borrowed rows | `Typed_Row_Borrowing`, `Row_Data`, native lease; row and lifetime-probe tests | 2-D/row validation, zero-based logical row excluding padding, immediate writes/no copy-back, unchanged callback exceptions, non-contiguous Regions; lease is lifetime management, not synchronization. |
+| Buffers | `Typed_Continuous_Borrowing`, `Continuous_Data`, depth/channel instantiations, N-D and integer/Float16 buffer tests | Nonempty continuity required, final dimension fastest, vector entries are complete elements, Total counts elements not channels/bytes, Natural'Last limit; correctly typed empty matrices receive null range 1 .. 0. |
+| Packed 2-D views (both modes) | All 32 `Typed_External_Mat_View` instantiations, external constructors and copy rejection; Mat-view/read-only tests | Exact Rows*Columns length, caller ownership, temporary non-owning header, callback scope, shallow escape rejected and Clone independent; read-only is Ada mode-in, not OS protection. |
+| Packed N-D views (both modes) | `Packed_Element_Count`, native capacity guards, all view specs, `nd_mat_view_checks` | Positive shape, exact product, final dimension fastest, lower bounds not geometry; general 2..32 dimensions, at most 10 on OpenCV 5.0, preserved in all 32 contracts. |
+| Strided 2-D views (both modes) | `Create_Strided_2D`, native constructor; gap/read-only tests; Float32 forwarding body | Complete-element/vector stride, >= Columns, capacity includes final padding (Rows*stride), checked products/byte/native extent. Float32 special writable Row_Stride_Elements overload uses the same helper. |
+| Strided N-D views (both modes) | `Strided_Required_Capacity`, native strided helpers, `nd_strided_mat_view_checks` | One positive stride per axis, final stride 1, nested blocks covered, capacity includes complete outer padding (Shape(first)*Strides(first)), checked sums/products, version dimension cap. No blanket operation-safety claim. |
+| Sparse access / iteration | Sparse Check_Layout/Check_Indices, scalar/vector/iteration helpers; native sparse_get/set/iterator_next; sparse vector zero-node and callback tests | Missing Get is zero without insertion, Set zero creates/retains stored node, shape/layout/index validation, stored-node iteration only, callback exceptions propagate; native failure may follow earlier callbacks. Not dense storage/view semantics. |
+
+Authoritative native evidence also includes installed OpenCV 4.x mat.hpp
+external-data declarations and upstream OpenCV 4.6.0 matrix.cpp constructors,
+setSize and finalizeHdr. The 5.0 cap is enforced by the shim's
+MatShape::MAX_DIMS == 10 static assertion and successful prior 5.0 job.
+
+Qualified limitations: callback references must not escape; leases do not
+extend caller-owned external buffer lifetime or provide locks. Read-only
+formals do not protect against unsafe native writes or other writable aliases.
+No concurrency guarantee or certification of every Core/native operation is
+claimed. Temporary views reject shallow aliases/general destination use;
+supported typed writes are immediate and Clone is independent. Resource and
+overflow failures are not exhaustively listed in every exception paragraph.
+Extreme Natural'Last allocations were code-reviewed, not allocated. Sparse
+partial-iteration failure was established by control flow, not injected.
+No new unresolved safety-critical assertion was found.
+
+### Fresh local qualification after comments changed
+
+- Comparator: **26/26 passed**.
+- Pinned GNATdoc 26.0.0 generator (prefix recorded above), successful library
+  build: **0 warnings, 0 added, 0 removed**.
+- **195 public packages, 197 HTML pages**; existing link/anchor/asset,
+  internal/filesystem leakage and overload-specific checks passed.
+- Rendered UInt8 element, Float16 Vec3 element, UInt8 Vec3 row limit,
+  Int16 Vec2 buffer, Float32 special stride and UInt8 Vec4 view text checked.
+- GNATformat applied to eight corrected specs; all milestone-3 changed specs
+  passed checks; git diff --check clean. The accepted PR #66 exception for
+  25 generic-instance specs remains untouched; no configuration changes.
+- All **160** milestone-3 changed specs have identical executable text to
+  current main after stripping comments/whitespace. No executable changes.
+- Fresh `alr -n test`: **2025/2025 passed**, zero failed assertions and
+  unexpected errors. The earlier 2025/2025 result above is historical.
+
+### Hosted evidence and remaining review gate
+
+- Prior push compatibility 38327865539 and PR compatibility 38327869831
+  succeeded at e2433accd3c7f45e9ef003744a794da1928e47b9: nine successful
+  jobs each. Windows MSYS2 and macOS MacPorts were skipped, not passed.
+  These results are historical once the corrective commit changes head.
+- No documentation branch run existed when checked after retargeting. The
+  workflow is to be dispatched once on the pushed corrective branch and
+  inspected once. New documentation/compatibility evidence must identify
+  that exact head; old runs do not qualify the new SHA.
+- Status of this committed record: **HOSTED_CI_PENDING**. Local semantic
+  audit and qualification passed; exact-head hosted evidence remains to be
+  established in the final PR report with run URLs and literal final SHA.
+- Recheck local/remote/PR SHA parity, worktree cleanliness, GitHub mergeability
+  and prospective merge-tree equality after pushing. Then independent review
+  of #67 and maintainer merge decision remain. Leave PR open/non-draft,
+  unmerged, auto-merge disabled. Do not rewrite history or delete branches.
+
+Earlier pending-CI observations are historical, superseded by #65/#66's
+merged status and the exact-head evidence above. Documentation is not declared
+complete pending review until required hosted qualification is established.

@@ -28,6 +28,9 @@ package OpenCV.Core.UInt8_Vec3_Row_Access is
    --  @exception OpenCV_Error Raised when Image is not a UInt8 three-channel
    --  two-dimensional Mat, Row is outside the Mat, or Data'Length differs
    --  from Image.Columns.
+   --  Also raised when Data'Length exceeds Natural'Last / 3: copied rows
+   --  use an intermediate buffer of three scalar channels per vector.
+   --  This limit does not apply to the zero-copy row callbacks.
    procedure Read_Row (Image : Mat; Row : Natural; Data : out Row_Array);
 
    --  Copies Data into one row of Image. Data'Length must equal
@@ -40,6 +43,9 @@ package OpenCV.Core.UInt8_Vec3_Row_Access is
    --  @exception OpenCV_Error Raised when Image is not a UInt8 three-channel
    --  two-dimensional Mat, Row is outside the Mat, or Data'Length differs
    --  from Image.Columns.
+   --  Also raised when Data'Length exceeds Natural'Last / 3: copied rows
+   --  use an intermediate buffer of three scalar channels per vector.
+   --  This limit does not apply to the zero-copy row callbacks.
    procedure Write_Row (Image : in out Mat; Row : Natural; Data : Row_Array);
 
    --  Invokes Process with a zero-copy view of one UInt8 C3 Mat row.
