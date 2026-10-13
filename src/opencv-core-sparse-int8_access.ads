@@ -17,7 +17,7 @@ package OpenCV.Core.Sparse.Int8_Access is
    --  @return The stored value, or zero when no node is stored there.
    --  @exception OpenCV_Error Raised when Image is unallocated or has another
    --  depth or channel count, Indices does not have exactly Dimension_Count
-   --  entries, or an index is out of bounds.
+   --  entries, or an index is out of bounds, or OpenCV reports a failure.
    function Get (Image : Sparse_Mat; Indices : Index_Array) return Int8_Value;
 
    --  Stores Value at Indices, inserting the node if it is absent. A zero
@@ -29,7 +29,7 @@ package OpenCV.Core.Sparse.Int8_Access is
    --  @param Value The element value to store.
    --  @exception OpenCV_Error Raised when Image is unallocated or has another
    --  depth or channel count, Indices does not have exactly Dimension_Count
-   --  entries, or an index is out of bounds.
+   --  entries, or an index is out of bounds, or OpenCV reports a failure.
    procedure Set
      (Image : in out Sparse_Mat; Indices : Index_Array; Value : Int8_Value);
 
@@ -40,9 +40,10 @@ package OpenCV.Core.Sparse.Int8_Access is
    --  @param Image An allocated Int8 Sparse_Mat with exactly one channel.
    --  @param Process Callback invoked once for each stored node, including
    --  explicitly stored zeros, with that node's coordinates and value.
-   --  @exception OpenCV_Error Raised, before any callback, when Image is
-   --  unallocated or has another depth or channel count, or when the native
-   --  iteration fails.
+   --  @exception OpenCV_Error Raised before any callback when Image is
+   --  unallocated or has another depth or channel count, and also raised if
+   --  the native iteration fails, which can happen after earlier callbacks
+   --  have already run.
    procedure For_Each_Stored
      (Image   : Sparse_Mat;
       Process :

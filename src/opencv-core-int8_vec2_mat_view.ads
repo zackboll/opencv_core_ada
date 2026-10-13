@@ -38,13 +38,14 @@ package OpenCV.Core.Int8_Vec2_Mat_View is
    --  fastest.
    --  @param Data The caller-owned packed buffer that Image aliases; its
    --  length must equal the product of Shape.
-   --  @param Shape Extent of each dimension, 2 to 32 positive values, in
-   --  OpenCV dimension order.
+   --  @param Shape Extent of each dimension, 2 to 32 positive values
+   --  (at most 10 on OpenCV 5.0), in OpenCV dimension order.
    --  @param Process Callback that receives the temporary writable Image. It
    --  is valid only during the call and must not be retained.
    --  @exception OpenCV_Error Raised, before Process is invoked, when Shape
-   --  has fewer than 2 or more than 32 dimensions, an extent is zero, or
-   --  Data'Length differs from the product of Shape.
+   --  has fewer than 2 or more than 32 dimensions (more than 10 on OpenCV
+   --  5.0), more dimensions than the linked OpenCV supports, an extent is
+   --  zero, or Data'Length differs from the product of Shape.
    procedure With_Writable_Mat_View
      (Data    : aliased in out Buffer_Array;
       Shape   : Dimension_Array;
@@ -74,15 +75,17 @@ package OpenCV.Core.Int8_Vec2_Mat_View is
    --  two-channel Mat that aliases Data. Strides count vectors, not bytes.
    --  @param Data The caller-owned buffer that Image aliases; its length
    --  must be at least Shape (first) * Strides (first).
-   --  @param Shape Extent of each dimension, 2 to 32 positive values.
+   --  @param Shape Extent of each dimension, 2 to 32 positive values
+   --  (at most 10 on OpenCV 5.0).
    --  @param Strides One stride per dimension, in vectors (not bytes); the
    --  final stride must be 1 and each outer stride must cover its nested
    --  inner block.
    --  @param Process Callback that receives the temporary writable Image. It
    --  is valid only during the call and must not be retained.
    --  @exception OpenCV_Error Raised, before Process is invoked, when Shape
-   --  or Strides violates the rules above, the two arrays differ in length,
-   --  or Data is too short.
+   --  or Strides violates the rules above, Shape has more dimensions than
+   --  the linked OpenCV supports, the two arrays differ in length, or Data
+   --  is too short.
    procedure With_Writable_Strided_Mat_View
      (Data    : aliased in out Buffer_Array;
       Shape   : Dimension_Array;
@@ -114,7 +117,8 @@ package OpenCV.Core.Int8_Vec2_Mat_View is
    --  @param Process Callback that receives the temporary read-only Image.
    --  It is valid only during the call and must not be retained.
    --  @exception OpenCV_Error Raised, before Process is invoked, when Shape
-   --  is invalid or Data'Length differs from the product of Shape.
+   --  is invalid, has more dimensions than the linked OpenCV supports, or
+   --  Data'Length differs from the product of Shape.
    procedure With_Read_Only_Mat_View
      (Data    : aliased Buffer_Array;
       Shape   : Dimension_Array;
@@ -143,13 +147,15 @@ package OpenCV.Core.Int8_Vec2_Mat_View is
    --  @param Data The caller-owned buffer that Image aliases; it may be an
    --  aliased constant. Its length must be at least Shape (first) *
    --  Strides (first).
-   --  @param Shape Extent of each dimension, 2 to 32 positive values.
+   --  @param Shape Extent of each dimension, 2 to 32 positive values
+   --  (at most 10 on OpenCV 5.0).
    --  @param Strides One stride per dimension, in vectors; the final stride
    --  must be 1 and each outer stride must cover its nested inner block.
    --  @param Process Callback that receives the temporary read-only Image.
    --  It is valid only during the call and must not be retained.
    --  @exception OpenCV_Error Raised, before Process is invoked, when Shape
-   --  or Strides violates the rules above or Data is too short.
+   --  or Strides violates the rules above, Shape has more dimensions than
+   --  the linked OpenCV supports, or Data is too short.
    procedure With_Read_Only_Strided_Mat_View
      (Data    : aliased Buffer_Array;
       Shape   : Dimension_Array;

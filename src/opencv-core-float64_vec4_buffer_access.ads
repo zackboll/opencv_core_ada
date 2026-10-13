@@ -28,7 +28,8 @@ package OpenCV.Core.Float64_Vec4_Buffer_Access is
    --  @param Process Callback that receives the borrowed buffer. Data is
    --  valid only during the call and must not be retained.
    --  @exception OpenCV_Error Raised, before Process is invoked, when Image
-   --  is not a Float64 four-channel Mat or is nonempty and not continuous.
+   --  is not a Float64 four-channel Mat or is nonempty and not continuous,
+   --  or has more elements than Natural'Last.
    procedure With_Read_Only_Buffer
      (Image   : Mat;
       Process : not null access procedure (Data : aliased Buffer_Array));
@@ -40,7 +41,8 @@ package OpenCV.Core.Float64_Vec4_Buffer_Access is
    --  and writing. Data is valid only during the call and must not be
    --  retained.
    --  @exception OpenCV_Error Raised, before Process is invoked, when Image
-   --  is not a Float64 four-channel Mat or is nonempty and not continuous.
+   --  is not a Float64 four-channel Mat or is nonempty and not continuous,
+   --  or has more elements than Natural'Last.
    procedure With_Writable_Buffer
      (Image   : in out Mat;
       Process :

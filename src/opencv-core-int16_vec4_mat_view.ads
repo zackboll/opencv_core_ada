@@ -41,16 +41,18 @@ package OpenCV.Core.Int16_Vec4_Mat_View is
 
    --  Writable view of a packed N-dimensional CV_16SC4 Mat that aliases
    --  Data, with the final dimension varying fastest. Shape has 2 to 32
+   --  (at most 10 on OpenCV 5.0)
    --  positive extents and Data'Length must equal their product. Ownership
    --  and escape rules match the Rows/Columns overload.
    --  @param Data The caller-owned packed buffer that Image aliases, passed
    --  by reference; its length must equal the product of Shape.
-   --  @param Shape Extent of each dimension, 2 to 32 positive values, in
-   --  OpenCV dimension order.
+   --  @param Shape Extent of each dimension, 2 to 32 positive values
+   --  (at most 10 on OpenCV 5.0), in OpenCV dimension order.
    --  @param Process Callback that receives the temporary writable Image. It
    --  is valid only during the call and must not be retained.
    --  @exception OpenCV_Error Raised, before Process is invoked, when Shape
-   --  is invalid or Data'Length differs from the product of Shape.
+   --  is invalid, has more dimensions than the linked OpenCV supports, or
+   --  Data'Length differs from the product of Shape.
    procedure With_Writable_Mat_View
      (Data    : aliased in out Buffer_Array;
       Shape   : Dimension_Array;
@@ -84,15 +86,17 @@ package OpenCV.Core.Int16_Vec4_Mat_View is
    --  Shape (first) * Strides (first) elements.
    --  @param Data The caller-owned buffer that Image aliases, passed by
    --  reference; its length must be at least Shape (first) * Strides (first).
-   --  @param Shape Extent of each dimension, 2 to 32 positive values.
+   --  @param Shape Extent of each dimension, 2 to 32 positive values
+   --  (at most 10 on OpenCV 5.0).
    --  @param Strides One stride per dimension, in complete vectors; the
    --  final stride must be 1 and each outer stride must cover its nested
    --  inner block.
    --  @param Process Callback that receives the temporary writable Image. It
    --  is valid only during the call and must not be retained.
    --  @exception OpenCV_Error Raised, before Process is invoked, when Shape
-   --  or Strides violates the rules above, the two arrays differ in length,
-   --  or Data is too short.
+   --  or Strides violates the rules above, Shape has more dimensions than
+   --  the linked OpenCV supports, the two arrays differ in length, or Data
+   --  is too short.
    procedure With_Writable_Strided_Mat_View
      (Data    : aliased in out Buffer_Array;
       Shape   : Dimension_Array;
@@ -124,7 +128,8 @@ package OpenCV.Core.Int16_Vec4_Mat_View is
    --  @param Process Callback that receives the temporary read-only Image.
    --  It is valid only during the call and must not be retained.
    --  @exception OpenCV_Error Raised, before Process is invoked, when Shape
-   --  is invalid or Data'Length differs from the product of Shape.
+   --  is invalid, has more dimensions than the linked OpenCV supports, or
+   --  Data'Length differs from the product of Shape.
    procedure With_Read_Only_Mat_View
      (Data    : aliased Buffer_Array;
       Shape   : Dimension_Array;
@@ -155,14 +160,16 @@ package OpenCV.Core.Int16_Vec4_Mat_View is
    --  @param Data The caller-owned buffer that Image aliases; it may be an
    --  aliased constant. Its length must be at least Shape (first) *
    --  Strides (first).
-   --  @param Shape Extent of each dimension, 2 to 32 positive values.
+   --  @param Shape Extent of each dimension, 2 to 32 positive values
+   --  (at most 10 on OpenCV 5.0).
    --  @param Strides One stride per dimension, in complete vectors; the
    --  final stride must be 1 and each outer stride must cover its nested
    --  inner block.
    --  @param Process Callback that receives the temporary read-only Image.
    --  It is valid only during the call and must not be retained.
    --  @exception OpenCV_Error Raised, before Process is invoked, when Shape
-   --  or Strides violates the rules above or Data is too short.
+   --  or Strides violates the rules above, Shape has more dimensions than
+   --  the linked OpenCV supports, or Data is too short.
    procedure With_Read_Only_Strided_Mat_View
      (Data    : aliased Buffer_Array;
       Shape   : Dimension_Array;

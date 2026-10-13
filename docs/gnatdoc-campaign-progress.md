@@ -54,20 +54,32 @@ the formatter inserts a blank line between the leading comment and the
 instantiation, and GNATdoc 26.0.0 then drops the comment. Files are kept in
 the GNATdoc-valid form.
 
-## Remaining work: final audit (documentation is NOT yet declared complete)
+## Audit status (documentation is NOT yet declared complete)
 
-A zero warning count does not prove accuracy. Open items:
+A zero warning count does not prove accuracy. A read-only audit sub-agent
+re-checked the sparse, Mat-view, row-access and element-access claims against
+the `.adb` files, the shared `Typed_*` helpers and the shim. Findings fixed
+on the milestone 3 branch:
 
-1. Sub-agent claims copied from exemplars and not re-traced per package:
-   Mat-view limits for Vec2/3/4 bodies, sparse `For_Each_Stored` error text,
-   Vec row/buffer exception lists. The helpers they share
-   (`Typed_External_Mat_View`, `Typed_Row_Borrowing`,
-   `Typed_Continuous_Borrowing`, `Sparse.Typed_*_Impl`) were read for the
-   UInt8 exemplars and match.
-2. Buffer-access `@exception` lists omit the case where `Total` exceeds
-   `Natural'Last` (raised by the shared helper).
-3. Some scalar row-access `Read_Row`/`Write_Row` comments (Int8, UInt16)
-   omit "non-contiguous Regions are supported" because it was not verified
-   per package.
-4. Decide the generic-instance formatter conflict above.
-5. Hosted CI for all three PRs must be inspected once and recorded.
+- N-D Mat-view comments said 2 .. 32 dimensions; the shim limits external
+  N-D views to `cv::MatShape::MAX_DIMS` (10) on OpenCV 5.0. All 32 Mat-view
+  specs now qualify this and the exception text.
+- Buffer-access exceptions now include `Total` above `Natural'Last`.
+- Sparse `For_Each_Stored` exception wording now says a native iteration
+  failure can follow earlier callbacks; sparse `Get`/`Set` mention native
+  failures.
+
+No discrepancies were found in element access, row access or the sparse
+validation order. Known, accepted omissions: byte-count overflow and
+native-allocation failures are not listed in every exception clause; the
+Vec3 row access also checks a `Natural'Last / 3` length limit that is not
+mentioned. `Float32_Mat_View` names its 2-D strided writable overload
+`With_Writable_Mat_View (Row_Stride_Elements)`, unlike the other 31
+packages; the comments match the code.
+
+Open items:
+
+1. Decide the generic-instance formatter conflict above.
+2. Hosted CI: #65 and #66 were green on the last inspection (19 and 18
+   passing, rest skipped); #67 was pending. Re-inspect once and record.
+3. Independent human review of all three PRs, in order.
