@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Validate real GNATdoc output, including repository-relative links and anchors.
 
-Uses only Python's standard library; does not fetch external URLs.
+Uses the qualified documentation renderer; does not fetch external URLs.
 """
 
 import html
@@ -17,6 +17,7 @@ from compare_gnatdoc_warnings import WarningComparisonError
 from install_gnatdoc_theme import check_theme
 from enhance_gnatdoc_instances import process as check_instances
 from enhance_gnatdoc_navigation import check_navigation
+from render_gnatdoc_guides import validate as check_guides
 
 
 class Page(HTMLParser):
@@ -203,6 +204,10 @@ def validate(site):
     pages = {p.resolve(): Page(p) for p in site.rglob("*.html")}
     errors = []
     try:
+        check_guides(root, site)
+    except (ValueError, OSError) as error:
+        errors.append(f"guide integrity: {error}")
+    try:
         check_instances(site / "api", root / "src", check=True, expected_count=25)
         check_theme(site / "api")
         check_navigation(site / "api")
@@ -235,12 +240,14 @@ def validate(site):
                 if unquote(url.fragment) not in pages[target].ids:
                     errors.append(f"missing anchor in {path.name}: {link}")
         text = " ".join(page.text)
-        if re.search(r"OpenCV\.Internal|Opencv_Core_Config|/home/|/workspace/|file://", text, re.I):
+        if path.parent == site / "api" and re.search(r"OpenCV\.Internal|Opencv_Core_Config|/home/|/workspace/|file://", text, re.I):
             errors.append(f"internal unit or machine-local path in {path.name}")
     # GNATdoc 26 uses hashed filenames. Resolve package pages from native h1
     # headings instead of inventing filenames or synthesizing API pages.
     packages = {}
     for path, page in pages.items():
+        if path.parent != site / "api":
+            continue
         source = path.read_text(encoding="utf-8")
         match = re.search(r"<h1>([^<]+)</h1>", source)
         if match:
@@ -251,8 +258,12 @@ def validate(site):
         if match:
             expected.add(match[1].lower())
     actual = {name.lower() for name in packages}
-    if len(expected) != 195 or len(pages) != 197 or not expected.issubset(actual):
+    existing_pages = [p for p in pages if p.parent != site / "guides"]
+    guide_pages = [p for p in pages if p.parent == site / "guides"]
+    if len(expected) != 195 or len(existing_pages) != 197 or not expected.issubset(actual):
         errors.append("public package / HTML page baseline mismatch (expected 195 / 197)")
+    if len(guide_pages) != 5 or len(pages) != 202:
+        errors.append("guide / combined HTML page mismatch (expected 5 / 202)")
     for name in sorted(expected - actual):
         errors.append(f"public package missing: {name}")
     probes = {

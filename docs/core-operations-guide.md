@@ -2,8 +2,8 @@
 
 [README](../README.md) · [GNATdoc API Reference](https://zackboll.github.io/opencv_core_ada/api/index.html) · [Building and Contributing](documentation.md)
 
-This guide is hosted in the source repository, not inside the generated
-GNATdoc site. The public Ada specifications are authoritative for exact profiles
+This guide is published as HTML on the documentation site and maintained as
+Markdown in the source repository. The public Ada specifications are authoritative for exact profiles
 and per-overload restrictions. Examples below include both complete programs
 and fragments intended for the surrounding application.
 
