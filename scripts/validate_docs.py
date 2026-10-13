@@ -5,6 +5,7 @@ Uses only Python's standard library; does not fetch external URLs.
 """
 
 import html
+import json
 import re
 import sys
 from html.parser import HTMLParser
@@ -13,6 +14,7 @@ from urllib.parse import unquote, urlsplit
 
 from link_gnatdoc_types import process, CrossReferenceError, SECTION, LINK
 from compare_gnatdoc_warnings import WarningComparisonError
+from install_gnatdoc_theme import check_theme
 
 
 class Page(HTMLParser):
@@ -198,6 +200,13 @@ def validate(site):
     root = Path(__file__).resolve().parent.parent
     pages = {p.resolve(): Page(p) for p in site.rglob("*.html")}
     errors = []
+    try:
+        check_theme(site / "api")
+        manifest = json.loads((site / "api/type-crossrefs.json").read_text())
+        if manifest.get('highlighting') != 1:
+            errors.append("missing final Ada highlighting qualification")
+    except (CrossReferenceError, ValueError, KeyError, OSError) as error:
+        errors.append(f"presentation integrity: {error}")
     try:
         process(site / "api", root / "src", check=True,
                 minimum_links=500, minimum_pages=100)
