@@ -271,6 +271,11 @@ def validate(site):
             "There is no temporary external-buffer SparseMat view",),
         "OpenCV.Core.UInt8_Vec3": ("One complete CV_8UC3 Mat element",),
         "OpenCV.Core.Float32_Matx3x3": ("Fixed-size 3 x 3 matrix of Float32_Value",),
+        # Typed-access families: lifetime and layout restrictions must render.
+        "OpenCV.Core.UInt8_Mat_View": (
+            "cannot be retained, shallow-copied", "Row_Stride"),
+        "OpenCV.Core.UInt8_Buffer_Access": ("continuous",),
+        "OpenCV.Core.Sparse.UInt8_Access": ("Stored nodes only",),
     }
     for name, phrases in formal_text.items():
         text = " ".join(packages.get(name, (None, ""))[1].split())

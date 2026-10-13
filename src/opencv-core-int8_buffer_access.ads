@@ -1,5 +1,15 @@
+--  Zero-copy, callback-scoped access to the complete element buffer of a
+--  continuous single-channel Int8 (CV_8SC1) Mat of any dimension count.
+--  The view aliases native storage and is valid only during the callback.
+--  Every operation validates the Mat's depth, channel count and continuity
+--  and raises OpenCV_Error on any mismatch, before the callback is invoked.
+
 package OpenCV.Core.Int8_Buffer_Access is
 
+   --  The flat element buffer of a Mat: one Int8_Value per Mat element, in
+   --  OpenCV element order with the final dimension varying fastest. The
+   --  callbacks pass arrays whose bounds are 0 .. Natural (Image.Total) - 1
+   --  for a nonempty Mat and the null range 1 .. 0 for an empty one.
    type Buffer_Array is array (Natural range <>) of Int8_Value;
 
    --  Invokes Process with a zero-copy view of a continuous Int8 C1
@@ -31,6 +41,11 @@ package OpenCV.Core.Int8_Buffer_Access is
    --  returns. Read-only access performs no copy; if another alias
    --  mutates the shared storage during the callback, Data observes
    --  those changes according to ordinary aliasing rules.
+   --  @param Image A continuous Int8 Mat with exactly one channel.
+   --  @param Process Callback that receives the borrowed buffer. Data is
+   --  valid only during the call and must not be retained.
+   --  @exception OpenCV_Error Raised, before Process is invoked, when Image
+   --  is not an Int8 single-channel Mat or is nonempty and not continuous.
    procedure With_Read_Only_Buffer
      (Image   : Mat;
       Process : not null access procedure (Data : aliased Buffer_Array));
@@ -44,6 +59,12 @@ package OpenCV.Core.Int8_Buffer_Access is
    --  a write through another alias is immediately visible through
    --  Data. Exceptions raised by Process propagate unchanged; any
    --  writes completed before the exception remain visible.
+   --  @param Image A continuous Int8 Mat with exactly one channel.
+   --  @param Process Callback that receives the borrowed buffer for reading
+   --  and writing. Data is valid only during the call and must not be
+   --  retained.
+   --  @exception OpenCV_Error Raised, before Process is invoked, when Image
+   --  is not an Int8 single-channel Mat or is nonempty and not continuous.
    procedure With_Writable_Buffer
      (Image   : in out Mat;
       Process :

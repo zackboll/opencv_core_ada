@@ -1,7 +1,19 @@
 with OpenCV.Core.Float16_Vec4;
 
+--  Zero-copy, callback-scoped access to the complete element buffer of a
+--  continuous four-channel Float16 (CV_16FC4) Mat of any dimension count.
+--  Each element is one complete four-channel pixel whose components are the
+--  exact stored IEEE-754 binary16 encodings. The view aliases native storage
+--  and is valid only during the callback. Every operation validates the
+--  Mat's depth, channel count and continuity and raises OpenCV_Error on any
+--  mismatch, before the callback is invoked.
+
 package OpenCV.Core.Float16_Vec4_Buffer_Access is
 
+   --  The flat pixel buffer of a Mat: one Vector (four interleaved channel
+   --  values) per Mat element, in OpenCV element order with the final
+   --  dimension varying fastest. The callbacks pass arrays whose bounds are
+   --  0 .. Natural (Image.Total) - 1.
    type Buffer_Array is array (Natural range <>) of Float16_Vec4.Vector;
 
    --  Invokes Process with a zero-copy view of a continuous Float16 C4 Mat
@@ -18,6 +30,11 @@ package OpenCV.Core.Float16_Vec4_Buffer_Access is
    --  keeps storage alive for the callback (memory management, not thread
    --  synchronization). Do not retain a reference or address of Data after
    --  Process returns.
+   --  @param Image A continuous Float16 Mat with exactly four channels.
+   --  @param Process Callback that receives the borrowed buffer. Data is
+   --  valid only during the call and must not be retained.
+   --  @exception OpenCV_Error Raised, before Process is invoked, when Image
+   --  is not a Float16 four-channel Mat or is nonempty and not continuous.
    procedure With_Read_Only_Buffer
      (Image   : Mat;
       Process : not null access procedure (Data : aliased Buffer_Array));
@@ -25,6 +42,12 @@ package OpenCV.Core.Float16_Vec4_Buffer_Access is
    --  As With_Read_Only_Buffer, except writes through Data mutate the Mat
    --  storage immediately. Exceptions raised by Process propagate unchanged;
    --  completed writes remain visible.
+   --  @param Image A continuous Float16 Mat with exactly four channels.
+   --  @param Process Callback that receives the borrowed buffer for reading
+   --  and writing. Data is valid only during the call and must not be
+   --  retained.
+   --  @exception OpenCV_Error Raised, before Process is invoked, when Image
+   --  is not a Float16 four-channel Mat or is nonempty and not continuous.
    procedure With_Writable_Buffer
      (Image   : in out Mat;
       Process :

@@ -18,57 +18,56 @@ only: no executable Ada, C/C++ shim, ABI, manifest or toolchain changes.
 | # | Branch | PR base | Family | Before | After | PR |
 | --- | --- | --- | --- | ---: | ---: | --- |
 | 1 | `feature/doc-campaign-01` | `main` | Phase A: all of `src/opencv-core.ads` | 4134 | 3158 | #65 |
-| 2 | `feature/doc-campaign-02` | `feature/doc-campaign-01` | Phases B, C and the non-typed part of D: `OpenCV.Core.Sparse`, `Sparse.Module_Interop`, `Persistence`, `Module_Interop`, `Transfers`, `Float32_Matx3x3` and conversions, 24 `*_VecN` instances | 3158 | 2897 | recorded below |
+| 2 | `feature/doc-campaign-02` | `feature/doc-campaign-01` | Phases B, C and non-typed D: Sparse, Persistence, module interop, transfers, Matx3x3, 24 Vec instances | 3158 | 2897 | #66 |
+| 3 | `feature/doc-campaign-03` | `feature/doc-campaign-02` | Phases E-H: typed element, row, buffer, Mat-view and sparse typed access, 8 depths x (C1, C2, C3, C4) | 2897 | 0 | recorded in final report |
 
-Hosted CI for milestone 1 (PR #65) was `HOSTED_CI_PENDING` when last
-inspected (workflow runs 38324552788 and 38324565816).
+Hosted CI: PR #65 had 19 passing, 5 skipped and 18 pending jobs on the
+single inspection made after PR #66 opened (`HOSTED_CI_PENDING`). #66 and
+the milestone 3 PR were not yet inspected.
 
 ## Warning totals
 
-| Point | Total |
-| --- | ---: |
-| Initial baseline | 4134 |
-| After milestone 1 | 3158 |
-| After milestone 2 | 2897 |
+GNATdoc warnings: 4134 -> 3158 -> 2897 -> **0**. The structured baseline
+`docs/gnatdoc-warning-baseline.txt` is empty (no entries).
 
-Remaining 2897 warnings are all in the typed access families:
-element access (`*_access`), row access (`*_row_access`), buffer access
-(`*_buffer_access`) and Mat views (`*_mat_view`), including the typed
-Sparse children (`opencv-core-sparse-*_access`).
+## Qualification of milestone 3
 
-## Qualification of milestone 2
-
-- Executable-token check on all 31 changed sources: comment/blank-stripped
-  files identical to the parent commit.
-- `scripts/generate_docs.sh`: 2897 warnings, `0 added, 261 removed`;
-  195 public packages, 197 HTML pages valid.
-- Baseline regenerated; rerun `0 added, 0 removed`.
+- Executable-token check on all 153 changed `.ads` files: comment/blank
+  stripped files identical to the parent commit.
+- Line-length check (max 79), `gnatformat --check` on all changed files
+  except the 25 known generic-instance conflicts: clean.
+- `scripts/generate_docs.sh`: 0 warnings, `0 added, 2782 removed`; 195
+  public packages, 197 HTML pages valid.
+- Baseline rewritten (0 identities); rerun `0 added, 0 removed`.
 - Comparator unit tests: 26 passed.
 - `alr -n test`: 2025 run, 2025 successful, 0 failed.
 - `git diff --check`: clean.
-- New HTML checks: package-level phrases for Sparse, Persistence, Transfers,
-  both Module_Interop packages, a Vec instance and the Matx3x3 instance.
+- Eight sub-agents wrote the per-depth typed-access comments from four
+  lead-written exemplars; each agent reported its token-identity and format
+  checks and its unverified points (see below).
 
-## Known tool conflict (needs a decision)
+## Known tool conflict
 
 `gnatformat --check` fails on 25 generic-instance specs
-(`opencv-core-<type>_vec{2,3,4}.ads` and `opencv-core-float32_matx3x3.ads`).
-For a generic instantiation `gnatformat` inserts a blank line between the
-leading comment and the `package ... is new` line, and GNATdoc 26.0.0 then
-does not attach the comment to the package (the "entity not documented"
-warning returns). Alternatives tried (comment before `with`, comment inside
-the instantiation, trailing comment) also leave the warning. The files are
-kept in the GNATdoc-valid form. All other changed sources are
-`gnatformat --check` clean. Revisit if GNATdoc or GNATformat changes.
+(`opencv-core-<type>_vec{2,3,4}.ads`, `opencv-core-float32_matx3x3.ads`):
+the formatter inserts a blank line between the leading comment and the
+instantiation, and GNATdoc 26.0.0 then drops the comment. Files are kept in
+the GNATdoc-valid form.
 
-## Next
+## Remaining work: final audit (documentation is NOT yet declared complete)
 
-Milestone 3 (`feature/doc-campaign-03`, from milestone 2's head, PR base
-`feature/doc-campaign-02`): typed element access (`*_access` packages,
-including `opencv-core-sparse-*_access`). Inspect the package pattern
-first (`opencv-core-uint8_access.ads`), then document one depth family at a
-time. Target list:
-`grep '_access\.ads' docs/gnatdoc-warning-baseline.txt`.
-Later milestones: row access, buffer access, then Mat views (the
-safety-sensitive family; verify each view contract against its package and
-`tests/` before writing).
+A zero warning count does not prove accuracy. Open items:
+
+1. Sub-agent claims copied from exemplars and not re-traced per package:
+   Mat-view limits for Vec2/3/4 bodies, sparse `For_Each_Stored` error text,
+   Vec row/buffer exception lists. The helpers they share
+   (`Typed_External_Mat_View`, `Typed_Row_Borrowing`,
+   `Typed_Continuous_Borrowing`, `Sparse.Typed_*_Impl`) were read for the
+   UInt8 exemplars and match.
+2. Buffer-access `@exception` lists omit the case where `Total` exceeds
+   `Natural'Last` (raised by the shared helper).
+3. Some scalar row-access `Read_Row`/`Write_Row` comments (Int8, UInt16)
+   omit "non-contiguous Regions are supported" because it was not verified
+   per package.
+4. Decide the generic-instance formatter conflict above.
+5. Hosted CI for all three PRs must be inspected once and recorded.

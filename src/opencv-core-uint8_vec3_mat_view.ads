@@ -1,7 +1,24 @@
 with OpenCV.Core.UInt8_Vec3;
 
+--  Callback-scoped Mat views over caller-owned three-channel UInt8
+--  (CV_8UC3) buffers. A view never copies or owns the caller's Data: the
+--  temporary Mat handed to the callback aliases Data directly and is valid
+--  only during the callback. Each Data entry is one complete
+--  OpenCV.Core.UInt8_Vec3.Vector (one pixel). The writable forms let the
+--  callback modify Data through the Mat; the read-only forms pass the Mat in
+--  mode and accept constant Data. Packed forms describe contiguous row-major
+--  or N-D storage; strided forms add row or per-dimension strides counted in
+--  complete pixels (not scalar channels or bytes). Shape, size and stride
+--  violations raise OpenCV_Error before the callback is invoked. A temporary
+--  view cannot be retained, shallow-copied, sliced, reshaped or used as a
+--  destination; use Clone to keep independent values.
+
 package OpenCV.Core.UInt8_Vec3_Mat_View is
 
+   --  A flat buffer of UInt8_Vec3.Vector pixels supplied by the caller. Its
+   --  index bounds are the caller's choice: only Data'First (the first
+   --  pixel) and Data'Length (the capacity, counted in pixels) are used, and
+   --  the lower bound is not exposed through the Mat.
    type Buffer_Array is
      array (Natural range <>) of OpenCV.Core.UInt8_Vec3.Vector;
 
@@ -12,6 +29,17 @@ package OpenCV.Core.UInt8_Vec3_Mat_View is
    --  only during Process and must not be retained.  Clone is the supported
    --  way to keep an independent Mat.  The aliased formal passes Data by
    --  reference, so Image denotes caller-owned storage without copying it.
+   --  @param Data The caller-owned buffer that Image aliases, passed by
+   --  reference; its length must be Rows * Columns pixels.
+   --  @param Rows Positive row count of Image, within the native signed
+   --  32-bit range.
+   --  @param Columns Positive column count of Image, within the native
+   --  signed 32-bit range.
+   --  @param Process Callback that receives the temporary writable Image. It
+   --  is valid only during the call and must not be retained.
+   --  @exception OpenCV_Error Raised, before Process is invoked, when
+   --  Data'Length differs from Rows * Columns or a dimension exceeds the
+   --  native range.
    procedure With_Writable_Mat_View
      (Data    : aliased in out Buffer_Array;
       Rows    : Positive;
@@ -33,6 +61,15 @@ package OpenCV.Core.UInt8_Vec3_Mat_View is
    --  copies, Slice, and Reshape are rejected; Clone is the independent
    --  escape path. Gapped N-D storage uses With_Writable_Strided_Mat_View
    --  (Shape, Strides).
+   --  @param Data The caller-owned packed buffer that Image aliases, passed
+   --  by reference; its length must equal the product of Shape, in pixels.
+   --  @param Shape Extent of each dimension, 2 to 32 positive values, in
+   --  OpenCV dimension order.
+   --  @param Process Callback that receives the temporary writable Image. It
+   --  is valid only during the call and must not be retained.
+   --  @exception OpenCV_Error Raised, before Process is invoked, when Shape
+   --  has fewer than 2 or more than 32 dimensions, an extent is zero, or
+   --  Data'Length differs from the product of Shape.
    procedure With_Writable_Mat_View
      (Data    : aliased in out Buffer_Array;
       Shape   : Dimension_Array;
@@ -47,6 +84,17 @@ package OpenCV.Core.UInt8_Vec3_Mat_View is
    --  logical row. Padding and extra trailing pixels are outside the logical
    --  Mat. No data is copied. Ownership, callback lifetime, and escape rules
    --  are identical to With_Writable_Mat_View; Clone is the safe escape path.
+   --  @param Data The caller-owned buffer that Image aliases, passed by
+   --  reference; its length must be at least Rows * Row_Stride pixels.
+   --  @param Rows Positive row count of Image.
+   --  @param Columns Positive column count of Image.
+   --  @param Row_Stride Distance, in pixels, between the starts of
+   --  consecutive rows; at least Columns.
+   --  @param Process Callback that receives the temporary writable Image. It
+   --  is valid only during the call and must not be retained.
+   --  @exception OpenCV_Error Raised, before Process is invoked, when
+   --  Row_Stride is less than Columns, Data is shorter than Rows *
+   --  Row_Stride, or a dimension exceeds the native range.
    procedure With_Writable_Strided_Mat_View
      (Data       : aliased in out Buffer_Array;
       Rows       : Positive;
@@ -69,6 +117,18 @@ package OpenCV.Core.UInt8_Vec3_Mat_View is
    --  Is_Continuous reports the actual layout. No data is copied and the
    --  caller retains ownership. Shallow copies, Slice, Reshape, and output
    --  handles are rejected; Clone is the independent escape path.
+   --  @param Data The caller-owned buffer that Image aliases, passed by
+   --  reference; its length must be at least Shape (first) * Strides (first)
+   --  pixels.
+   --  @param Shape Extent of each dimension, 2 to 32 positive values.
+   --  @param Strides One stride per dimension, in pixels (not scalar
+   --  channels or bytes); the final stride must be 1 and each outer stride
+   --  must cover its nested inner block.
+   --  @param Process Callback that receives the temporary writable Image. It
+   --  is valid only during the call and must not be retained.
+   --  @exception OpenCV_Error Raised, before Process is invoked, when Shape
+   --  or Strides violates the rules above, the two arrays differ in length,
+   --  or Data is too short.
    procedure With_Writable_Strided_Mat_View
      (Data    : aliased in out Buffer_Array;
       Shape   : Dimension_Array;
@@ -80,18 +140,74 @@ package OpenCV.Core.UInt8_Vec3_Mat_View is
    --  of the corresponding writable overloads. Mode-in Image prevents normal
    --  Ada mutation, not OS/page writes. Shallow escape is rejected; Clone
    --  owns independent pixels and Module_Interop input is allowed.
+   --  This overload views a packed row-major buffer; Data'Length must equal
+   --  Rows * Columns.
+   --  @param Data The caller-owned buffer that Image aliases; it may be an
+   --  aliased constant. Its length must be Rows * Columns pixels.
+   --  @param Rows Positive row count of Image.
+   --  @param Columns Positive column count of Image.
+   --  @param Process Callback that receives the temporary read-only Image.
+   --  It is valid only during the call and must not be retained.
+   --  @exception OpenCV_Error Raised, before Process is invoked, when
+   --  Data'Length differs from Rows * Columns or a dimension exceeds the
+   --  native range.
    procedure With_Read_Only_Mat_View
      (Data          : aliased Buffer_Array;
       Rows, Columns : Positive;
       Process       : not null access procedure (Image : Mat));
+
+   --  Read-only view of a packed N-dimensional buffer, with the geometry
+   --  rules of the writable N-dimensional overload: Shape has 2 to 32
+   --  positive extents and Data'Length equals their product. The temporary
+   --  Image is valid only during the callback.
+   --  @param Data The caller-owned packed buffer that Image aliases; it may
+   --  be an aliased constant.
+   --  @param Shape Extent of each dimension, in OpenCV dimension order.
+   --  @param Process Callback that receives the temporary read-only Image.
+   --  It is valid only during the call and must not be retained.
+   --  @exception OpenCV_Error Raised, before Process is invoked, when Shape
+   --  is invalid or Data'Length differs from the product of Shape.
    procedure With_Read_Only_Mat_View
      (Data    : aliased Buffer_Array;
       Shape   : Dimension_Array;
       Process : not null access procedure (Image : Mat));
+
+   --  Read-only view of a two-dimensional buffer with Row_Stride pixels
+   --  between row starts, following the geometry and capacity rules of the
+   --  writable strided overload. Padding between rows is not part of the
+   --  logical Mat. The temporary Image is valid only during the callback.
+   --  @param Data The caller-owned buffer that Image aliases; it may be an
+   --  aliased constant. Its length must be at least Rows * Row_Stride
+   --  pixels.
+   --  @param Rows Positive row count of Image.
+   --  @param Columns Positive column count of Image.
+   --  @param Row_Stride Distance, in pixels, between row starts; at least
+   --  Columns.
+   --  @param Process Callback that receives the temporary read-only Image.
+   --  It is valid only during the call and must not be retained.
+   --  @exception OpenCV_Error Raised, before Process is invoked, when
+   --  Row_Stride is less than Columns, Data is too short, or a dimension
+   --  exceeds the native range.
    procedure With_Read_Only_Strided_Mat_View
      (Data                      : aliased Buffer_Array;
       Rows, Columns, Row_Stride : Positive;
       Process                   : not null access procedure (Image : Mat));
+
+   --  Read-only view of a strided N-dimensional buffer, following the
+   --  geometry, stride and capacity rules of the writable strided
+   --  N-dimensional overload. Strides count complete pixels, not scalar
+   --  channels or bytes. The temporary Image is valid only during the
+   --  callback.
+   --  @param Data The caller-owned buffer that Image aliases; it may be an
+   --  aliased constant. Its length must be at least Shape (first) *
+   --  Strides (first) pixels.
+   --  @param Shape Extent of each dimension, 2 to 32 positive values.
+   --  @param Strides One stride per dimension, in pixels; the final stride
+   --  must be 1 and each outer stride must cover its nested inner block.
+   --  @param Process Callback that receives the temporary read-only Image.
+   --  It is valid only during the call and must not be retained.
+   --  @exception OpenCV_Error Raised, before Process is invoked, when Shape
+   --  or Strides violates the rules above or Data is too short.
    procedure With_Read_Only_Strided_Mat_View
      (Data    : aliased Buffer_Array;
       Shape   : Dimension_Array;

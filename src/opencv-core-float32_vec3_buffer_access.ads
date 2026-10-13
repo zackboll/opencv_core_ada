@@ -1,7 +1,17 @@
 with OpenCV.Core.Float32_Vec3;
 
+--  Zero-copy, callback-scoped access to the complete pixel buffer of a
+--  continuous three-channel Float32 (CV_32FC3) Mat of any dimension count.
+--  The view aliases native storage and is valid only during the callback.
+--  Every operation validates the Mat's depth, channel count and continuity
+--  and raises OpenCV_Error on any mismatch, before the callback is invoked.
+
 package OpenCV.Core.Float32_Vec3_Buffer_Access is
 
+   --  The flat pixel buffer of a Mat: one Float32_Vec3.Vector per Mat
+   --  element, in OpenCV element order with the final dimension varying
+   --  fastest. The callbacks pass arrays whose bounds are
+   --  0 .. Natural (Image.Total) - 1.
    type Buffer_Array is
      array (Natural range <>) of OpenCV.Core.Float32_Vec3.Vector;
 
@@ -34,6 +44,11 @@ package OpenCV.Core.Float32_Vec3_Buffer_Access is
    --  returns. Read-only access performs no copy; if another alias
    --  mutates the shared storage during the callback, Data observes
    --  those changes according to ordinary aliasing rules.
+   --  @param Image A continuous Float32 Mat with exactly three channels.
+   --  @param Process Callback that receives the borrowed buffer. Data is
+   --  valid only during the call and must not be retained.
+   --  @exception OpenCV_Error Raised, before Process is invoked, when Image
+   --  is not a Float32 three-channel Mat or is nonempty and not continuous.
    procedure With_Read_Only_Buffer
      (Image   : Mat;
       Process : not null access procedure (Data : aliased Buffer_Array));
@@ -45,6 +60,12 @@ package OpenCV.Core.Float32_Vec3_Buffer_Access is
    --  a write through another alias is immediately visible through
    --  Data. Exceptions raised by Process propagate unchanged; any
    --  writes completed before the exception remain visible.
+   --  @param Image A continuous Float32 Mat with exactly three channels.
+   --  @param Process Callback that receives the borrowed buffer for reading
+   --  and writing. Data is valid only during the call and must not be
+   --  retained.
+   --  @exception OpenCV_Error Raised, before Process is invoked, when Image
+   --  is not a Float32 three-channel Mat or is nonempty and not continuous.
    procedure With_Writable_Buffer
      (Image   : in out Mat;
       Process :
