@@ -5,7 +5,113 @@ for `https://zackboll.github.io/opencv_core_ada/`; its landing page is
 `_site/index.html` and the native GNATdoc reference is `_site/api/index.html`.
 Do not commit generated HTML.
 
-## Reproduce on Linux
+## Automatic declaration type cross-references (CORE-DOC-069)
+
+The existing GNATdoc package/entity navigation is unchanged. A separate,
+standard-library Python enhancement adds ordinary, keyboard-accessible,
+underlined HTML links **inside Ada declaration snippets**, not comments or
+prose. It runs automatically after warning-baseline comparison and landing-page
+installation, before final site validation. Failure prevents artifact upload
+and Pages publication; the existing main-only deployment restrictions remain.
+
+### Research gate and native output contract
+
+Inspection of the installed GNATdoc **26.0.0 (20260415)** executable and its
+bundled source established that its CLI offers HTML, ODF and RST, not an XML
+backend. The HTML backend's only extra CLI option is OOP grouping. Its entity
+proxy's `code` value is a string from `Get_Ada_Code_Snippet`, not a token stream
+with reference identities. `Resources_Dir` permits template customization but
+does not add semantic information to that string. Libadalang is used internally
+by GNATdoc; its Python binding is not supplied in this documentation environment.
+Using a locally cached Ada library would not make that binding available in CI
+without an additional dependency. The publication pipeline and templates have
+therefore not been replaced or patched.
+
+Actual output has one native `<h1>` package heading and adjacent
+`<h4 id=...>Name</h4><pre class=ada-code-snippet><code>...</code></pre>`
+sections. Types, subtypes, records, arrays and access types retain their source
+declaration text and terminating semicolon. Subprogram snippets omit the final
+semicolon and aspects; overloads have distinct native anchors. Generic formal
+types have sections but are not ordinary public type targets. Generic instances
+(for example `OpenCV.Core.UInt8_Vec3`) have package pages with no independently
+rendered `Vector` declaration anchor. Those instance references remain unlinked;
+linking them to the generic foundation's `Vector` would be misleading.
+
+### Bounded source-backed resolution
+
+`scripts/link_gnatdoc_types.py` discovers filenames and anchors from actual
+generated HTML, indexes type **and subtype** declarations by complete,
+case-insensitive package identity, and matches every rendered profile to a
+unique declaration in the current public specification. Hashed filenames and
+native anchors must **never** be synthesized or hardcoded. Source files are
+read-only inputs; no Ada source, installed template or generated file outside
+the API site is modified.
+
+Eligible positions include function/procedure parameters (multiple names, modes,
+aliased and anonymous access forms), nested access-to-subprogram profiles,
+function results, array element types, subtype bases, derived bases and named
+access designated types. Record component type marks also qualify. Original
+identifier spelling, whitespace, punctuation and entity escaping are retained.
+
+Resolution checks the current package's earlier declarations, then lexical
+parent packages, then unambiguous context-clause `with`/`use` visibility. A
+non-type declaration or generic formal blocks lookup rather than falling through
+to a namesake in a parent. Parameter/discriminant names conservatively block
+potentially shadowed references, including nested profiles. Full qualified names
+are eligible only when their owning package is a lexical scope or an explicit
+context import. There is no global short-name replacement dictionary.
+
+This is intentionally **not a complete Ada semantic resolver**. Generic formal
+types, generic instance members without native anchors, external language/library
+types, unknown names, ambiguous imports, attributes and constraint/default
+expressions remain plain text. Nested packages, package renamings, task/protected
+scopes and local package-use clauses disable resolution for the affected package;
+they require a fuller semantic model. Unqualified imported types are linked only
+when exactly one explicitly imported, published package supplies the declaration.
+Comments, string literals, subprogram/parameter names, enumeration literals and
+ordinary prose are not link opportunities. Internal packages are forbidden.
+
+### Integrity and reproduction
+
+The generated `api/type-crossrefs.json` records original snippet HTML and hashes
+of all non-snippet HTML. It contains no filesystem paths or private source text.
+The enhancer validates every input and planned replacement before writing.
+Validation independently rediscovers native type targets and recomputes expected
+links from source profiles, not from the link's `data-type` assertion. Thus
+redirecting `Mat` to the real anchor for `UMat` fails even though both anchors
+exist. Original snippets must strip back to byte-identical HTML, stronger than
+visible-text equivalence. All headings, anchors, prose and navigation outside
+snippets must hash identically. Exact markup comparison rejects nested/duplicate
+links, malformed links, non-relative destinations and missing links. Existing
+site link/asset and full-profile overload checks still run.
+
+```sh
+python3 -m unittest discover -s scripts -p 'test_link_gnatdoc_types.py' -v
+python3 -m unittest discover -s scripts -p 'test_compare_gnatdoc_warnings.py' -v
+sh scripts/generate_docs.sh
+python3 scripts/link_gnatdoc_types.py _site/api --check
+python3 scripts/link_gnatdoc_types.py _site/api  # idempotent second pass
+python3 scripts/validate_docs.py _site
+```
+
+The scripts print linked, ambiguous and unsupported opportunity counts plus
+counts by type family. Qualification enforces at least 500 verified links across
+100 public package pages; it does not count all textual identifier occurrences
+as opportunities. CORE-DOC-069's inspected output contains 1,268 snippets across
+195 public package pages (197 HTML pages including indexes/landing page).
+Local qualification produced **2,456 links on 168 pages**: Mat 969, UMat 159,
+Index_Array 166, Buffer_Array 320, Dimension_Array 136 and Float16_Value 20.
+Three conservatively shadow-blocked and 822 unsupported candidates remained
+unlinked. All 21 cross-reference tests and 26 existing comparator tests passed,
+including wrong-real-anchor and nonexistent-page/anchor negative controls.
+The full generator reported zero warnings and a zero added/removed baseline
+delta. A second enhancement pass preserved every site file's SHA-256 exactly.
+Unexpected GNATdoc structure, conflicting type identities, duplicate anchors,
+unmatched source profiles or integrity failures stop generation explicitly.
+After a GNATdoc format change, update and requalify the parser and realistic
+fixtures; do not bypass the failure or silently choose a package-level target.
+
+## Reproduce on Linux — pinned generation environment
 
 Required qualification versions:
 

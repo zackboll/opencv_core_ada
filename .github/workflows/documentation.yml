@@ -35,6 +35,8 @@ jobs:
           alr toolchain
       - name: Test warning comparison
         run: python3 -m unittest discover -s scripts -p 'test_compare_gnatdoc_warnings.py' -v
+      - name: Test type cross-references
+        run: python3 -m unittest discover -s scripts -p 'test_link_gnatdoc_types.py' -v
       - name: Generate and validate public API
         run: sh scripts/generate_docs.sh
       - name: Upload review artifact

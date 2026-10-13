@@ -11,6 +11,9 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
+from link_gnatdoc_types import process, CrossReferenceError, SECTION, LINK
+from compare_gnatdoc_warnings import WarningComparisonError
+
 
 class Page(HTMLParser):
     def __init__(self, path):
@@ -195,6 +198,11 @@ def validate(site):
     root = Path(__file__).resolve().parent.parent
     pages = {p.resolve(): Page(p) for p in site.rglob("*.html")}
     errors = []
+    try:
+        process(site / "api", root / "src", check=True,
+                minimum_links=500, minimum_pages=100)
+    except (CrossReferenceError, ValueError, KeyError, WarningComparisonError) as error:
+        errors.append(f"type cross-reference integrity: {error}")
     for required in (site / "index.html", site / "api/index.html",
                      site / "api/gnatdoc.css"):
         if not required.is_file() or required.stat().st_size == 0:
@@ -248,6 +256,29 @@ def validate(site):
         for declaration in declarations:
             if declaration not in text:
                 errors.append(f"missing representative declaration: {name}.{declaration}")
+    # Exact entity assertions supplement site-wide recomputation. A package
+    # navigation link cannot satisfy these snippet-only cross-reference probes.
+    type_probes = {
+        "OpenCV.Core.UInt8_Access": {
+            "opencv.core.mat", "opencv.core.index_array", "opencv.uint8_value"},
+        "OpenCV.Core.Float32_Mat_View": {
+            "opencv.core.mat", "opencv.core.dimension_array",
+            "opencv.core.float32_mat_view.buffer_array", "opencv.float32_value"},
+        "OpenCV.Core.UInt8_Vec3_Access": {
+            "opencv.core.mat", "opencv.core.index_array"},
+        "OpenCV.Core.Sparse.UInt8_Access": {
+            "opencv.core.sparse.sparse_mat", "opencv.core.index_array"},
+        "OpenCV": {"opencv.float32_value", "opencv.point_coordinate"},
+        "OpenCV.Core": {"opencv.core.mat", "opencv.core.umat", "opencv.core.mat_type"},
+    }
+    for name, identities in type_probes.items():
+        path = packages.get(name, (None, ""))[0]
+        linked = set()
+        if path:
+            for section in SECTION.finditer(path.read_text(encoding="utf-8")):
+                linked.update(link[2] for link in LINK.finditer(section[3]))
+        for identity in sorted(identities - linked):
+            errors.append(f"missing representative type cross-reference: {name}: {identity}")
     formal_text = {
         "OpenCV.Core.Fixed_Matrices": (
             "Type of each matrix element.", "Number of rows. Must be positive.",
@@ -294,7 +325,7 @@ def validate(site):
         for match in re.finditer(
                 r"<h4 id=[^ >]+>([^<]+)</h4><pre class=ada-code-snippet><code>"
                 r"(.*?)</code></pre>(.*?)(?=<h4 id=|$)", core_html, re.S):
-            code = " ".join(match[2].split())
+            code = " ".join(html.unescape(re.sub(r"<[^>]+>", "", match[2])).split())
             sections[code.split(" is")[0].split(" (")[0]] = (
                 " ".join(re.sub(r"<[^>]+>", " ", match[3]).split()))
         core_docs = {
