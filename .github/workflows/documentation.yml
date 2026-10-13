@@ -41,8 +41,12 @@ jobs:
         run: python3 -m unittest discover -s scripts -p 'test_link_gnatdoc_types.py' -v
       - name: Test theme and Ada highlighting integrity
         run: python3 -m unittest discover -s scripts -p 'test_highlight_gnatdoc_ada.py' -v
+      - name: Test generic instance integrity
+        run: python3 -m unittest discover -s scripts -p 'test_gnatdoc_instances.py' -v
       - name: Generate and validate public API
         run: sh scripts/generate_docs.sh
+      - name: Qualify generated generic instance pages
+        run: python3 -m unittest discover -s scripts -p 'test_gnatdoc_instances.py' -v
       - name: Upload review artifact
         uses: actions/upload-artifact@v4
         with:

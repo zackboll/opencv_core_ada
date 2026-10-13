@@ -5,6 +5,73 @@ for `https://zackboll.github.io/opencv_core_ada/`; its landing page is
 `_site/index.html` and the native GNATdoc reference is `_site/api/index.html`.
 Do not commit generated HTML.
 
+## Generic instance summaries (CORE-DOC-070A)
+
+GNATdoc 26.0.0's `Process_Generic_Instantiation` records package identity and
+documentation, but does not populate instantiated members. The HTML backend
+renders those empty collections; no supported CLI option expands them. The
+pinned installed frontend/backend sources and native output were inspected.
+No generator, installed template, or public Ada declaration is changed.
+
+`scripts/enhance_gnatdoc_instances.py` discovers public instantiations from their
+specifications. Support is limited to `OpenCV.Core.Vectors` (Element_Type,
+Length) and `OpenCV.Core.Fixed_Matrices` (Element_Type, Row_Count, Column_Count).
+Every named association must resolve exactly once; dimensions must be positive
+decimal literals. Complete template declaration tokens must match the verified
+private formal type, positive dimensions, zero-based subtypes and arrays.
+Actual numeric source declarations are checked, including Float16's private
+stored representation. Unknown actuals, positional/duplicate associations,
+ambiguous visibility, changed templates and unsupported targeted vector/matrix
+templates fail closed. Unrelated existing generic families are not enriched.
+
+The baseline has 24 vector instances: UInt8, Int8, UInt16, Int16, Int32, Float16,
+Float32 and Float64, each with lengths 2, 3 and 4; plus Float32_Matx3x3. Summaries
+describe ordinary Ada arrays, actual element types, value semantics and zero-based
+bounds. Float16 encodings are distinguished from numerical conversion. Vectors
+receive no channel names. The fixed matrix links to its separate copying Mat
+conversion package, without implying shared native storage.
+
+Enrichment runs after diagnostics, zero-warning comparison and landing-page copy,
+**before** theme installation, type linking and highlighting. Enhancement-owned
+`section.generic-instance-summary` markup is inserted before native Description.
+It creates no native `h4` sections, declaration snippets or instance-member
+anchors. Member links explicitly lead to **generic template declarations**.
+Package filenames and member/type anchors come from actual headings and
+source-matched native declarations, never hardcoded hashes. The 102 new links
+comprise 25 template-page, 51 template-member, 25 actual-type and one conversion
+package link. Existing signature cross-references to instance members are deferred.
+
+`generic-instances.json` records original instance HTML and package/file identity,
+but is not the authority for facts or native content. Validation reparses sources,
+recomputes bounds and targets, independently reconstructs the pinned native
+empty-page serialization from each plain-text source introduction, and reproduces
+the exact summary. Both published HTML and metadata must match. Unsupported
+introduction markup and insertion layouts fail closed. Modified introductions
+cannot qualify even if presentation and instance metadata are altered together.
+Exactly 25 pages must qualify at the unchanged baseline.
+
+The presentation manifest covers approved enriched non-snippet HTML; the separate
+source-backed checker prevents it from blessing incorrect summaries. CORE-DOC-069
+resolution is unchanged: 2,456 existing type links on 168 pages and 1,268 original
+declarations remain protected by their existing link/highlighting contracts.
+
+To extend support, establish authoritative semantics, association visibility and
+native targets first; then add a narrow template contract, derivation and positive
+and mutation fixtures. Never copy raw template HTML or invent native anchors.
+Update exact baseline counts only after reviewed public source changes.
+
+```sh
+python3 -m unittest discover -s scripts -p 'test_gnatdoc_instances.py' -v
+sh scripts/generate_docs.sh
+python3 -m unittest discover -s scripts -p 'test_gnatdoc_instances.py' -v
+python3 scripts/validate_docs.py _site
+```
+
+The first invocation uses realistic synthetic native HTML and real Ada fixtures.
+The post-generation invocation additionally qualifies all 25 final pages,
+existing type-link/snippet counts and idempotence. CI runs both. Metadata and HTML
+are deterministic build artifacts and must not be committed.
+
 ## Modern presentation and Ada coloring (CORE-DOC-070)
 
 GNATdoc remains pinned to 26.0.0. The generator first checks diagnostics and
@@ -364,8 +431,9 @@ on the page; adjacent leading comments on the individual formals alone render
 under each formal's heading but leave the warning; both together clear the
 warning and render under each formal. The generic units therefore use both, and
 `validate_docs.py` checks the formal descriptions on the intended package
-pages. Overloads have distinct native anchors. Generic instantiations link to their
-generic template rather than duplicating every instantiated declaration.
+pages. Overloads have distinct native anchors. Native GNATdoc generic-instance
+pages contain introductions but no instantiated members or template links;
+CORE-DOC-070A adds explicitly labeled source-backed summaries.
 The native index provides a flat, fully qualified compilation-unit list and
 tagged-type links, not a collapsible hierarchy. Package filenames are native
 hashes; do not depend on handwritten package filenames. Package coverage is

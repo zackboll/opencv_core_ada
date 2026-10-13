@@ -46,6 +46,7 @@ echo "GNATdoc: $warnings documentation warnings (see obj/docs/gnatdoc.log)"
 python3 scripts/compare_gnatdoc_warnings.py \
     docs/gnatdoc-warning-baseline.txt obj/docs/gnatdoc.log
 cp docs/index.html _site/index.html
+python3 scripts/enhance_gnatdoc_instances.py _site/api
 python3 scripts/install_gnatdoc_theme.py _site/api
 python3 scripts/link_gnatdoc_types.py _site/api
 python3 scripts/highlight_gnatdoc_ada.py _site/api

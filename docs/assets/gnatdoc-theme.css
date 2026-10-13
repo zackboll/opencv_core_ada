@@ -39,6 +39,11 @@ body.content { max-width: 76rem; padding: 2rem clamp(1rem, 4vw, 3rem) 4rem; over
 pre, code { font-family: var(--mono); }
 pre, .ada-code-snippet { background: var(--code); border: 1px solid var(--border); border-radius: .6rem; padding: 1rem 1.2rem; margin: .75rem 0 1.5rem; overflow-x: auto; max-width: 100%; font-size: .875rem; line-height: 1.7; white-space: pre; overflow-wrap: normal; tab-size: 3; }
 code { font-size: .9em; }
+.generic-instance-summary { border: 1px solid var(--border); border-radius: .6rem; padding: 1rem; margin: 1.5rem 0; }
+.generic-instance-summary h2 { margin-top: 0; }
+.generic-instance-summary table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.generic-instance-summary th, .generic-instance-summary td { text-align: left; vertical-align: top; padding: .6rem; border: 1px solid var(--border); overflow-wrap: anywhere; }
+.generic-instance-summary th { background: var(--code); }
 pre code { font-size: inherit; }
 .ada-keyword { color: var(--keyword); font-weight: 650; }
 .ada-string, .ada-character { color: var(--string); }
