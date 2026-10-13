@@ -67,3 +67,34 @@ Ada, SPARK code, or API documentation changed. Other platform compatibility
 remains subject to existing hosted CI. Yocto, cross-compilation, different GNAT
 major interoperability, and alternate OpenCV/C++ runtime ABIs remain
 unqualified. Version remains 0.5.0-dev; no release tag or Alire index submission.
+
+## R1: hosted evidence publication correction
+
+The original Debian qualification job completed all consumers and relocation,
+then upload-artifact failed with `EACCES: permission denied, scandir` on the
+root-owned `core-installed-consumer.MUs5k6Pl` directory. Recursive artifact
+globs also risked traversing copied compiler toolchains.
+
+The driver now captures preparation and consumption transcripts and stages
+evidence in a separate `CORE_CONSUMER_ARTIFACTS` directory on EXIT. A privileged
+container reads the private evidence without changing its permissions and
+copies an explicit allowlist of 29 logs/GPR files. The staging directory is
+0755 and files are 0644; no toolchain binaries, runtime files, binding sources,
+or archives are copied. CI uploads only that directory, with
+`if-no-files-found: error`, still using `if: always()`.
+
+Partial evidence is collected and missing entries reported after failures.
+The primary qualification exit status is retained even if staging fails;
+successful qualification requires complete mandatory evidence and successful
+staging. The existing qualification commands and validator are unchanged.
+
+Local R1 qualification passed all four consumer executions and ELF/ldd checks.
+The staged inventory contained 29 files, 658,637 bytes in this local run.
+The independent expected list in `tests/debian12_evidence_expected.txt` matched;
+all staged files compared byte-for-byte with their originals. A container-root
+0700 fixture was inaccessible to `nobody`, while `nobody` read every staged
+file. Missing mandatory evidence failed successful staging, and partial/early
+failure staging retained available logs. A simulated preparation exit 37
+remained exit 37 with its transcript published. Shell syntax and whitespace
+checks passed. Docker is unavailable locally: these tests used Podman with
+root inside the container; actual Docker publication is subject to fresh CI.

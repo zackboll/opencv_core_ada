@@ -133,6 +133,7 @@ jobs:
       - name: Qualify install, direct GPR consumers, ELF and relocation
         env:
           CORE_CONSUMER_EVIDENCE: ${{ runner.temp }}/core-consumer-evidence
+          CORE_CONSUMER_ARTIFACTS: ${{ runner.temp }}/core-consumer-artifacts
         run: |
           git rev-parse HEAD
           sh scripts/qualify_debian12_consumer.sh
@@ -141,10 +142,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: debian12-independent-consumer
-          path: |
-            ${{ runner.temp }}/core-consumer-evidence/**/*.log
-            ${{ runner.temp }}/core-consumer-evidence/**/*.gpr
-            ${{ runner.temp }}/core-consumer-evidence/**/*.txt
+          path: ${{ runner.temp }}/core-consumer-artifacts/
+          if-no-files-found: error
 
   release-entry-point:
     name: Release entry point
