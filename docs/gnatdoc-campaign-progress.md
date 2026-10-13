@@ -13,11 +13,15 @@ only: no executable Ada, C/C++ shim, ABI, manifest or toolchain changes.
   (GNATdoc 26.0.0 (20260415), Alire 2.1.1, GNAT 16.1.0, GPRbuild 26.0.0 /
   Alire 26.0.1).
 
-## Milestones
+## Milestones (merge in this order; none merged, auto-merge disabled)
 
-| # | Branch | Parent | Family | Warnings before | After | Status |
+| # | Branch | PR base | Family | Before | After | PR |
 | --- | --- | --- | --- | ---: | ---: | --- |
-| 1 | `feature/doc-campaign-01` | `main` | Phase A: all of `src/opencv-core.ads` | 4134 | 3158 | locally qualified; PR in review |
+| 1 | `feature/doc-campaign-01` | `main` | Phase A: all of `src/opencv-core.ads` | 4134 | 3158 | #65 |
+| 2 | `feature/doc-campaign-02` | `feature/doc-campaign-01` | Phases B, C and the non-typed part of D: `OpenCV.Core.Sparse`, `Sparse.Module_Interop`, `Persistence`, `Module_Interop`, `Transfers`, `Float32_Matx3x3` and conversions, 24 `*_VecN` instances | 3158 | 2897 | recorded below |
+
+Hosted CI for milestone 1 (PR #65) was `HOSTED_CI_PENDING` when last
+inspected (workflow runs 38324552788 and 38324565816).
 
 ## Warning totals
 
@@ -25,42 +29,46 @@ only: no executable Ada, C/C++ shim, ABI, manifest or toolchain changes.
 | --- | ---: |
 | Initial baseline | 4134 |
 | After milestone 1 | 3158 |
+| After milestone 2 | 2897 |
 
-Remaining by family (from `docs/gnatdoc-warning-baseline.txt`):
-`opencv-core.ads` 0 (was 976); the other 3158 are in Phases B-H.
+Remaining 2897 warnings are all in the typed access families:
+element access (`*_access`), row access (`*_row_access`), buffer access
+(`*_buffer_access`) and Mat views (`*_mat_view`), including the typed
+Sparse children (`opencv-core-sparse-*_access`).
 
-## Milestone 1 qualification (Phase A)
+## Qualification of milestone 2
 
-- Executable-token check: comment/blank-stripped `src/opencv-core.ads`
-  identical to the starting file.
-- `gnatformat --check -P opencv_core.gpr src/opencv-core.ads`: pass.
-- `scripts/generate_docs.sh`: `3158` warnings, `0 added, 976 removed`
-  against the previous baseline; 195 public packages, 197 HTML pages;
-  links, anchors and assets valid.
-- Baseline regenerated with `--write-baseline`; rerun reports
-  `0 added, 0 removed`.
+- Executable-token check on all 31 changed sources: comment/blank-stripped
+  files identical to the parent commit.
+- `scripts/generate_docs.sh`: 2897 warnings, `0 added, 261 removed`;
+  195 public packages, 197 HTML pages valid.
+- Baseline regenerated; rerun `0 added, 0 removed`.
 - Comparator unit tests: 26 passed.
-- `alr -n test` (AUnit): 2025 run, 2025 successful, 0 failed assertions.
+- `alr -n test`: 2025 run, 2025 successful, 0 failed.
 - `git diff --check`: clean.
-- New narrow HTML check: `OPERATION_DOCS` in `scripts/validate_docs.py`
-  (overload-keyed checks for Sqrt destination forms, `With_Selected_View`,
-  `Mix_Channels`, and Mat/UMat `Polar_To_Cart` destination forms).
+- New HTML checks: package-level phrases for Sparse, Persistence, Transfers,
+  both Module_Interop packages, a Vec instance and the Matx3x3 instance.
 
-## Pending
+## Known tool conflict (needs a decision)
 
-- Hosted CI: see the PR record below once opened (`HOSTED_CI_PENDING` until
-  inspected).
-- Open campaign PRs: recorded in the PR table below.
-- Blockers: none.
-
-## PRs (merge in this order; none merged, auto-merge disabled)
-
-See the final report for URLs and head SHAs.
+`gnatformat --check` fails on 25 generic-instance specs
+(`opencv-core-<type>_vec{2,3,4}.ads` and `opencv-core-float32_matx3x3.ads`).
+For a generic instantiation `gnatformat` inserts a blank line between the
+leading comment and the `package ... is new` line, and GNATdoc 26.0.0 then
+does not attach the comment to the package (the "entity not documented"
+warning returns). Alternatives tried (comment before `with`, comment inside
+the instantiation, trailing comment) also leave the warning. The files are
+kept in the GNATdoc-valid form. All other changed sources are
+`gnatformat --check` clean. Revisit if GNATdoc or GNATformat changes.
 
 ## Next
 
-Milestone 2 (`feature/doc-campaign-02`, branched from milestone 1's head,
-PR targets `feature/doc-campaign-01`): Phase B (`OpenCV.Core.Sparse` and
-typed Sparse children) and Phase C (`OpenCV.Core.Persistence`).
-List targets with
-`grep '^opencv-core-sparse.ads\|^opencv-core-persistence' docs/gnatdoc-warning-baseline.txt`.
+Milestone 3 (`feature/doc-campaign-03`, from milestone 2's head, PR base
+`feature/doc-campaign-02`): typed element access (`*_access` packages,
+including `opencv-core-sparse-*_access`). Inspect the package pattern
+first (`opencv-core-uint8_access.ads`), then document one depth family at a
+time. Target list:
+`grep '_access\.ads' docs/gnatdoc-warning-baseline.txt`.
+Later milestones: row access, buffer access, then Mat views (the
+safety-sensitive family; verify each view contract against its package and
+`tests/` before writing).
