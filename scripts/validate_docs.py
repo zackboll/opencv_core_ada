@@ -15,6 +15,7 @@ from urllib.parse import unquote, urlsplit
 from link_gnatdoc_types import process, CrossReferenceError, SECTION, LINK
 from compare_gnatdoc_warnings import WarningComparisonError
 from install_gnatdoc_theme import check_theme
+from enhance_gnatdoc_instances import process as check_instances
 
 
 class Page(HTMLParser):
@@ -201,6 +202,7 @@ def validate(site):
     pages = {p.resolve(): Page(p) for p in site.rglob("*.html")}
     errors = []
     try:
+        check_instances(site / "api", root / "src", check=True, expected_count=25)
         check_theme(site / "api")
         manifest = json.loads((site / "api/type-crossrefs.json").read_text())
         if manifest.get('highlighting') != 1:
@@ -247,6 +249,8 @@ def validate(site):
         if match:
             expected.add(match[1].lower())
     actual = {name.lower() for name in packages}
+    if len(expected) != 195 or len(pages) != 197 or not expected.issubset(actual):
+        errors.append("public package / HTML page baseline mismatch (expected 195 / 197)")
     for name in sorted(expected - actual):
         errors.append(f"public package missing: {name}")
     probes = {
