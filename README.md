@@ -245,6 +245,7 @@ example above writes the element before reading it.
 | [Core operations guide](docs/core-operations-guide.md) | Destination reuse and overlap rules, numerical caveats, masks, algebra, transforms and clustering |
 | [Sparse matrices and persistence](docs/sparse-and-persistence-guide.md) | Sparse nodes, dense conversion, nested FileStorage examples and type policy |
 | [Interoperability and compatibility](docs/interop-and-compatibility.md) | Module bridge, version/platform policy, full limitations, architecture, build and contributor details |
+| [Non-Alire GPR consumers](docs/non-alire-gpr-consumers.md) | Installed Core, direct GPRbuild, Debian 12 qualification, mixed Ada/C++ linkage and relocation |
 | [Building and Contributing](docs/documentation.md) | Reproducing GNATdoc, comment policy, comparator and Pages review gate |
 | [Changelog](CHANGELOG.md) | Release history and unreleased changes |
 

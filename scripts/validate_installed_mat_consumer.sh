@@ -2,6 +2,10 @@
 # Recursive GPRinstall, then fresh prefix-only Mat consumers before/after moving.
 # Run directly, not inside alr exec. Keep the evidence directory on failure.
 set -eu
+if [ "${1:-}" = --consume ]; then
+    work=$2
+    root=$3
+else
 root=$(CDPATH= cd -- "${1:-$(dirname -- "$0")/..}" && pwd)
 work=$(mktemp -d "${TMPDIR:-/tmp}/core-installed-consumer.XXXXXXXX")
 work=$(CDPATH= cd -- "$work" && pwd -P)
@@ -19,6 +23,17 @@ alr -n exec -- sh -c '
         printf "%s\n" "$PATH"
     fi
 ' > "$work/toolchain-path.txt"
+cp tests/installed_mat_consumer.adb tests/installed_mixed_consumer.adb \
+    tests/installed_application.cpp tests/installed_mixed_consumer.gpr "$work/"
+cp scripts/validate_installed_mat_consumer.sh "$work/consume.sh"
+cp config/opencv_core_install.gpr "$work/build-install.gpr"
+if [ "${CORE_INSTALLED_PREPARE_ONLY:-False}" = True ]; then
+    printf '%s\n' "$work" > "$TMPDIR/prepared-work.txt"
+    exit 0
+fi
+fi
+unset GPR_PROJECT_PATH ADA_PROJECT_PATH CPATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH
+unset LIBRARY_PATH GCC_EXEC_PREFIX COMPILER_PATH LD_LIBRARY_PATH DYLD_LIBRARY_PATH
 tr ':' '\n' < "$work/toolchain-path.txt" | while IFS= read -r directory; do
     case "$directory" in
         "$root"|"$root"/*) ;;
@@ -27,7 +42,21 @@ tr ':' '\n' < "$work/toolchain-path.txt" | while IFS= read -r directory; do
 done > "$work/sanitized-path.txt"
 PATH=$(paste -sd ':' "$work/sanitized-path.txt"); export PATH
 unset OPENCV_CORE_ALIRE_PREFIX ALIRE
-driver=$(sed -n 's/.*Cxx_Driver := "\(.*\)";/\1/p' config/opencv_core_install.gpr)
+driver=$(sed -n 's/.*Cxx_Driver := "\(.*\)";/\1/p' "$work/build-install.gpr")
+{
+    command -v gcc gnat gprbuild gprinstall
+    gcc --version
+    gnat --version
+    gprbuild --version
+    gprinstall --version
+    gcc -print-file-name=adalib
+    if [ "$(uname -s)" = Linux ]; then
+        /usr/bin/g++ --version
+        pkg-config --modversion opencv4 2>/dev/null || true
+        dpkg-query -W libopencv-core406 libstdc++6 libc6 2>/dev/null || true
+    fi
+} > "$work/toolchain-identities.log" 2>&1
+cat "$work/toolchain-identities.log"
 native_bin=
 case "$(uname -s)" in
     MINGW*|MSYS*)
@@ -52,13 +81,14 @@ for mode in installed relocated; do
     fi
     consumer="$work/$mode"
     mkdir -p "$consumer"
-    cp tests/installed_mat_consumer.adb "$consumer/"
+    cp "$work/installed_mat_consumer.adb" "$consumer/"
     cat > "$consumer/consumer.gpr" <<'GPR'
 with "opencv_core";
 project Consumer is
    for Source_Dirs use (".");
    for Object_Dir use "obj";
    for Exec_Dir use "bin";
+   for Create_Missing_Dirs use "True";
    for Main use ("installed_mat_consumer.adb");
    type Static_Runtime_Kind is ("False", "True");
    Static_Runtime : Static_Runtime_Kind :=
@@ -98,7 +128,13 @@ GPR
         esac
         export GPR_PROJECT_PATH
         cd "$consumer"
-        gprbuild -p -v -P consumer.gpr > "$work/$mode-build.log" 2>&1 || {
+        test ! -e alire.toml
+        test -f "$prefix/lib/opencv_core/opencv-core.ali"
+        test -f "$prefix/lib/opencv_core/libopencv_core_ada.a"
+        if [ "${CORE_DEBIAN_QUALIFICATION:-False}" = True ]; then
+            test -f "$prefix/lib/opencv_core_shim/libopencv_core_shim.a"
+        fi
+        gprbuild -P consumer.gpr -v > "$work/$mode-build.log" 2>&1 || {
             cat "$work/$mode-build.log"; exit 1;
         }
         # Portable source/object resolution trace: Windows GPRbuild 26 rejects
@@ -117,10 +153,10 @@ GPR
             echo 'error: installed Core library absent from link trace' >&2
             cat "$work/$mode-build.log"; exit 1;
         }
-        if grep -F "$trace_root/lib" "$work/$mode-build-paths.log"; then
+        if grep -F "$trace_root/" "$work/$mode-build-paths.log" "$work/$mode-resolution-paths.log"; then
             echo 'error: installed consumer used source library path' >&2; exit 1
         fi
-        if [ "$mode" = relocated ] && grep -F 'prefix-a/' "$work/$mode-build-paths.log"; then
+        if [ "$mode" = relocated ] && grep -F 'prefix-a/' "$work/$mode-build-paths.log" "$work/$mode-resolution-paths.log"; then
             echo 'error: relocated consumer used original prefix' >&2; exit 1
         fi
         runtime_dirs=$(find "$prefix/lib" "$prefix/bin" -type d 2>/dev/null | paste -sd ':' -)
@@ -139,6 +175,35 @@ GPR
         }
         cat "$work/$mode-run.log"
         grep -Fx 'opencv_core installed Mat consumer ok' "$work/$mode-run.log"
+        if [ "${CORE_DEBIAN_QUALIFICATION:-False}" = True ]; then
+            cp "$work/installed_mixed_consumer.adb" "$work/installed_application.cpp" \
+                "$work/installed_mixed_consumer.gpr" .
+            gprbuild -P installed_mixed_consumer.gpr -v > "$work/$mode-mixed-build.log" 2>&1 || {
+                cat "$work/$mode-mixed-build.log"; exit 1;
+            }
+            bin/installed_mixed_consumer > "$work/$mode-mixed-run.log" 2>&1
+            grep -Fx 'opencv_core installed mixed consumer ok' "$work/$mode-mixed-run.log"
+            if [ "$mode" = relocated ] && grep -F 'prefix-a/' "$work/$mode-mixed-build.log"; then
+                echo 'error: mixed consumer used original prefix' >&2; exit 1
+            fi
+            for executable in "$binary" bin/installed_mixed_consumer; do
+                name=$(basename "$executable")
+                readelf -d "$executable" > "$work/$mode-$name-elf.log"
+                ldd -r "$executable" > "$work/$mode-$name-ldd.log" 2>&1
+                cat "$work/$mode-$name-ldd.log"
+                grep 'libopencv_core.so.406' "$work/$mode-$name-ldd.log"
+                grep 'libstdc++.so.6' "$work/$mode-$name-ldd.log"
+                if grep -E 'not found|undefined symbol|prefix-a/' "$work/$mode-$name-ldd.log" "$work/$mode-$name-elf.log"; then
+                    # prefix-a is valid only before relocation.
+                    if [ "$mode" = relocated ] || grep -E 'not found|undefined symbol' "$work/$mode-$name-ldd.log"; then
+                        exit 1
+                    fi
+                fi
+                if grep -F "$trace_root/" "$work/$mode-$name-elf.log" "$work/$mode-mixed-build.log"; then
+                    echo 'error: checkout referenced by consumer' >&2; exit 1
+                fi
+            done
+        fi
     )
     echo "Core $mode consumer PASS"
 done
