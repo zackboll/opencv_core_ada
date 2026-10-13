@@ -5,6 +5,91 @@ for `https://zackboll.github.io/opencv_core_ada/`; its landing page is
 `_site/index.html` and the native GNATdoc reference is `_site/api/index.html`.
 Do not commit generated HTML.
 
+## Searchable, bookmarkable native navigation (CORE-DOC-071)
+
+The native API browser now offers local, case-insensitive substring search over
+fully qualified package names. Clear restores the original order; no results is
+announced through a labelled live status. Filtering never navigates the document
+frame or filters the separate tagged-type list. The active package has both a
+persistent visual indicator and `aria-current="page"`, independently of focus.
+
+Share package URLs such as `api/index.html?package=OpenCV.Core.Sparse`.
+Ada identifier case is ignored and the outer URL is canonicalized. Unknown,
+duplicate, path-like or external package requests deterministically select
+OpenCV.Core. Destinations come only from the verified native anchors, never
+from query text. Initial selection uses frame location replacement once; sidebar
+selection records outer history and replaces frame history. Same-origin iframe
+loads reconcile package identity without changing declaration fragments. Back,
+Forward and reload restore package selection. Declaration-level bookmarks and
+foreign-origin iframe synchronization are explicitly outside this contract.
+
+Without JavaScript, the search controls remain hidden and all 195 native package
+links, four tagged-type links, and both fragment-based tabs remain functional.
+No declaration page receives JavaScript. Native hrefs, target attributes, iframe,
+declaration anchors and GNATdoc CSS are not rewritten.
+
+### Qualified GNATdoc 26.0.0 shell and safety gate
+
+The native `index.html` contains a `.side-navigation` with `.tab-bar` links to
+`#compilation-units` and `#tagged-types`. Its `.content-column` contains two h2
+headings followed by ul lists: 195 compilation units in case-insensitive lexical
+order, then Mat, File_Storage, Sparse_Mat and UMat. All 199 native anchors target
+`document-content`; tagged destinations include native type fragments. There is
+one iframe named `document-content`, with no id or initial src. Native tabs
+scroll the sidebar to headings; they are not JavaScript tab panels.
+
+`enhance_gnatdoc_navigation.py` independently reconstructs this exact pinned
+serialization from authoritative public source names, actual generated h1
+headings and source-matched tagged declarations. It checks complete unique
+coverage and discovers, rather than computes, the 64-hex filenames. An unknown
+layout, swapped real destinations or altered target stops generation before
+augmentation. The presentation manifest still protects all non-snippet HTML;
+it cannot authorize an incorrect navigation shell. Only one hidden control
+group and one deferred repository-owned script are permitted. The final
+validator independently repeats reconstruction and compares shipped script
+bytes. Exact serialization also rejects duplicate IDs, inline handlers and
+unapproved scripts. Repeat installation is byte-idempotent.
+
+### Local qualification
+
+Starting main: `662e320201807e743072b3ed71c938fcd6227c9c`; PRs #71/#72 merged,
+canonical worktree clean, no overlapping open PR. An isolated worktree was used;
+CORE-DOC-070A/B worktrees were not modified. The negative-first test file failed
+before the implementation module existed. The actual final validator rejects
+duplicate/missing identities, wrong and swapped existing destinations, changed
+iframe targets, missing/duplicate scripts, tampered assets, missing tagged
+links, unsupported structure, duplicate controls, inline script/handlers,
+external destinations and traversal. All 95 Python documentation tests pass.
+
+Pinned generation retains 195 packages / 197 HTML pages, 25 enriched instances,
+102 summary links, 2,698 type links on 168 pages, and 1,268 original snippets.
+Warnings and added/removed warning identities remain zero. Saved-baseline byte
+comparison finds every declaration page unchanged, including Float16 exact
+encoding prose and syntax highlighting. Only the browser index and theme asset
+change, with one new local script. Fresh regeneration and repeated navigation,
+theme and highlighting installation are byte-identical. Final validation,
+shell syntax, actionlint and whitespace checks pass.
+
+Real headless Chrome over local HTTP exercises 1280px and 390px in light/dark:
+default selection, filtering/clear/no-match/order, sidebar selection, copied
+bookmark in a fresh context, reload, Back/Forward, iframe cross-package links,
+Vector/Matrix summary links, tagged anchors, focus and page overflow. Native
+navigation also passes with JavaScript disabled at both widths. Representative
+screenshots were captured and visually inspected. Browser tooling is optional,
+installed separately, and not a site runtime or library dependency:
+
+```sh
+python3 -m http.server 8071 --bind 127.0.0.1 --directory _site
+# In another terminal, use an existing external Playwright installation:
+PLAYWRIGHT_MODULE=/absolute/path/to/playwright node scripts/test_gnatdoc_navigation_browser.cjs
+```
+
+No executable Ada/C++, ABI, dispatch, dependency manifest or library behavior
+changed. AUnit was not rerun; the previously recorded 2,025/2,025 evidence is
+reused. Documentation CI runs the generated-site navigation mutation tests;
+the optional browser harness is a local qualification tool. Pages deployment
+remains restricted to main. This work stops at an open, unmerged review PR.
+
 ## Generic-instance signature links (CORE-DOC-070B)
 
 Signature type marks now link to the existing explanatory summaries for exactly
