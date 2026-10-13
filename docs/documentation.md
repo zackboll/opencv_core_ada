@@ -288,8 +288,9 @@ insertion/section contracts and fixtures deliberately, retain semantic negative
 tests, and regenerate/compare the original snippets and navigation. Never bypass
 a format mismatch by accepting arbitrary HTML or regenerating native anchors.
 The documentation workflow runs all three suites before publication; existing
-artifact uploads and main-only Pages permissions are unchanged. Repository
-Markdown guides remain links to GitHub, not locally published Pages content.
+artifact uploads and main-only Pages permissions are unchanged.
+At DOC-070, Markdown guides remained links to GitHub. DOC-072 adds the five
+published guide pages described below without changing native API pages.
 
 ### Local DOC-070 qualification
 
@@ -650,8 +651,41 @@ Actions**, with the `github-pages` environment allowing **main only**. The site
 was deployed after PR #67. CORE-DOC-068 checked the direct API URL and received
 HTTP 200; `docs/index.html` links to `api/index.html` and the workflow publishes
 `_site/` at the repository-relative `/opencv_core_ada/` route. Feature-branch
-qualification is not evidence of a new public deployment. Repository Markdown
-guides are not copied into `_site/` by this workflow.
+qualification is not evidence of a new public deployment. The five approved
+developer guides are rendered into `_site/guides/`; other repository Markdown
+documents remain source links on GitHub.
+
+### Published developer guides (DOC-072)
+
+The authoritative sources are `ownership-and-views.md`, `typed-access-guide.md`,
+`core-operations-guide.md`, `sparse-and-persistence-guide.md`, and
+`interop-and-compatibility.md`. Their HTML pages augment the 197 existing pages,
+giving 202 total; all 195 native package pages remain unchanged.
+
+Install the documentation-only renderer in an isolated environment:
+
+```sh
+python3 -m venv .doc-tools/markdown
+.doc-tools/markdown/bin/pip install -r docs/requirements.txt
+export DOC_PYTHON="$PWD/.doc-tools/markdown/bin/python"
+sh scripts/generate_docs.sh
+"$DOC_PYTHON" -m unittest discover -s scripts -p 'test_*.py' -v
+"$DOC_PYTHON" scripts/validate_docs.py _site
+```
+
+`markdown-it-py==3.0.0` and `mdurl==0.1.2` are exact documentation-only pins;
+they are not Alire dependencies or browser runtime dependencies. The generator
+rejects raw HTML, malformed fences, unsafe schemes, missing source destinations,
+and invalid fragments. Native package destinations are discovered from generated
+headings and checked against public Ada specifications. Duplicate source headings
+receive stable GitHub-style suffixed identities; generated IDs remain unique.
+
+The final validator independently reconstructs expected pages from Markdown and
+checks exact HTML and stylesheet bytes. It does not trust a generated manifest.
+All fenced code remains escaped with original indentation and newlines. Wide
+tables and code scroll locally; guide navigation needs no JavaScript. Optional
+Chrome qualification uses `scripts/test_gnatdoc_guides_browser.cjs` with an
+externally installed Playwright module specified by `PLAYWRIGHT_MODULE`.
 
 ## Building, testing and contributing
 

@@ -10,7 +10,12 @@ C++ ABI out of normal application code.
 
 - [GNATdoc API Reference](https://zackboll.github.io/opencv_core_ada/api/index.html)
 - [Documentation Home](https://zackboll.github.io/opencv_core_ada/)
+- [Published Developer Guides](https://zackboll.github.io/opencv_core_ada/#developer-guides)
 - [Building and Contributing](docs/documentation.md)
+
+The documentation site publishes styled HTML versions of the five developer
+guides. Repository-relative guide links below remain links to their authoritative
+Markdown sources on GitHub.
 
 > **Development version:** `0.5.0-dev` (current `alire.toml`).
 > **Published version:** `0.4.0` is available in the Alire index; it is not

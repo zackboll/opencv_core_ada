@@ -30,6 +30,16 @@ begin
    pragma Assert (Copy.Rows = 2 and then Copy.Columns = 3);
 end Example;</pre>
 <p>Assignment shares OpenCV storage; <code>Clone</code> makes a deep copy.</p>
+<section aria-labelledby="developer-guides">
+<h2 id="developer-guides">Developer Guides</h2>
+<ul>
+<li><a href="guides/ownership-and-views.html">Ownership and views</a> — shared storage, lifetimes, and zero-copy access.</li>
+<li><a href="guides/typed-access-guide.html">Typed access</a> — supported layouts and exact Float16 encodings.</li>
+<li><a href="guides/core-operations-guide.html">Core operations</a> — mathematics, reusable destinations, and operation contracts.</li>
+<li><a href="guides/sparse-and-persistence-guide.html">Sparse matrices and persistence</a> — stored nodes and structured file storage.</li>
+<li><a href="guides/interop-and-compatibility.html">Interoperability and compatibility</a> — module boundaries, supported versions, and contributor architecture.</li>
+</ul>
+</section>
 <nav>
 <a href="https://github.com/zackboll/opencv_core_ada">Source repository</a> ·
 <a href="https://github.com/zackboll/opencv_core_ada/releases">Releases</a> ·
