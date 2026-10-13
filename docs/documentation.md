@@ -86,16 +86,28 @@ the comparison. Ordinary non-warning log text is ignored. Removed warnings are
 printed and do not fail the build. Do not silence a warning with `@exclude`,
 an empty comment, or a changed generator invocation.
 
-The current baseline contains 4,134 identities. It was 4,484 raw warnings on
-main `53c14c469b22ba1c608836d9a16c0947e2c80323`, 4,460 after documenting the
-six polar record-destination overloads, 4,395 after documenting the shared
-`OpenCV` value types and the `Fixed_Matrices` and `Vectors` generic foundations
-(65 warnings removed, none added), 4,299 after documenting the foundational
-`OpenCV.Core` types on main `73bf27f7c04fc650fbfcecf175517c2487e9af24`
-(96 removed, none added), and 4,134 after documenting the Mat and UMat
-lifecycle, metadata and region APIs on main
-`4b0a4dcdeb6f068b2293ac8871ac5b8a1ddf8614` (165 removed, none added).
-Regenerate it only from a complete pinned
+## Current documentation status
+
+Milestone PRs [#65](https://github.com/zackboll/opencv_core_ada/pull/65),
+[#66](https://github.com/zackboll/opencv_core_ada/pull/66) and
+[#67](https://github.com/zackboll/opencv_core_ada/pull/67) are merged and complete
+the public API documentation campaign:
+
+- **Zero GNATdoc warnings**, with `--warnings` enabled.
+- **Empty structured warning baseline**; qualification reports zero added and
+  zero removed warning identities.
+- **195 public packages**, **197 generated HTML pages**, including the API index
+  and documentation landing page, with validated local links and assets.
+- [Published API reference](https://zackboll.github.io/opencv_core_ada/api/index.html)
+  and [Documentation Home](https://zackboll.github.io/opencv_core_ada/).
+
+Historical inventories, qualification details and obsolete cleanup plans are
+retained in [the campaign record](gnatdoc-campaign-progress.md), not as current
+instructions. A zero warning count is not a proof of semantic correctness.
+
+The empty baseline is a regression gate, not permission to accept new warnings.
+Do not rewrite it to bless a documentation regression. When an intentional,
+reviewed baseline change is needed, derive identities from a complete pinned
 GNATdoc 26.0.0 log and the sources of that same revision:
 
 ```sh
@@ -103,38 +115,23 @@ python3 scripts/compare_gnatdoc_warnings.py --write-baseline \
     docs/gnatdoc-warning-baseline.txt obj/docs/gnatdoc.log
 ```
 
-Do not replace the baseline with a raw copy of the log. Old line numbers do
-not remain attached to the same declaration after later comment edits.
+Do not replace the baseline with a raw log: source line numbers do not remain
+attached to the same declaration after comment edits.
 
-### Remaining warning backlog
+### GNATformat and generic-instance comments
 
-Counts below are the 4,134 baseline warnings, grouped by GNATdoc category:
+The approved PR #66 interaction affects **25 generic-instance specifications**:
+the 24 `opencv-core-<type>_vec{2,3,4}.ads` files and
+`opencv-core-float32_matx3x3.ads`. GNATformat inserts a blank line between the
+leading package comment and instantiation; GNATdoc 26.0.0 then drops the comment.
+Those specifications retain the GNATdoc-valid adjacent leading comment form.
+This is a narrow, documented formatting conflict, not a general formatter
+exemption. Keep normal GNATformat checks for other specifications, review these
+25 explicitly, and continue running GNATdoc with warnings and the unchanged
+structured comparator. Do not weaken either tool or change generator options
+to hide the conflict.
 
-| Category | Warnings |
-| --- | ---: |
-| Undocumented parameter | 2,900 |
-| Undocumented entity | 836 |
-| Undocumented return | 312 |
-| Undocumented component | 49 |
-| Undocumented enumeration literal | 37 |
-
-The Mat/UMat lifecycle task (DOC-005) removed 165 warnings: 33 undocumented
-entities, 88 undocumented parameters and 44 undocumented return values; none
-were added. By family: lifecycle and conversion 55 (`Create` 12,
-`Create_UMat` 7, `Clone` 6, `Copy_To` 8, `Convert_To` 22), metadata 82 and
-regions and slicing 28 (`Region`, `Slice`, `Locate_Region` and
-`Adjust_Region`, Mat and UMat). Every overload was documented
-individually. `Dimensions` is documented for Mat only, and the UMat
-`Copy_To` function is documented as the only UMat form, so the Mat and UMat
-`Copy_To` overload sets are explicitly not symmetrical. `Set_To`,
-`Reshape`, `Row_View`, `Column_View`, `Diagonal_View`, arithmetic and the private
-controlled-type hooks were deliberately left alone. All 165 targeted warnings were
-eliminated, and no targeted warning remains. Decisions: the two stale
-trailing UMat comments were replaced by leading blocks, because leading
-style would otherwise attach them to the next declaration; `Rows`, `Columns`
-and `Dimensions` raise only for Mats of more than two dimensions (a default
-Mat reports 0 x 0), and no cross-version claim about empty headers was made
-beyond what the existing contracts already state.
+### Rendering and overload checks
 
 `validate_docs.py` now checks these APIs per overload. Sections are keyed by
 the complete normalized declaration and by native GNATdoc anchor, never by
@@ -143,20 +140,6 @@ check; the leading prose, `Parameters` and `Return Value` text are each
 required inside the correct section. The older simplified section key used
 for type declarations is unchanged and is not used for overloaded operations.
 
-The Core type task (DOC-004) removed 96 warnings: 18 undocumented entities,
-52 enumeration literals and 26 record components. It covered the
-`OpenCV.Core` package itself; `Mat` and `UMat`; `Depth_Type`, `Norm_Kind`,
-`Normalize_Kind`, `Comparison_Kind`, `Flip_Kind`, `Rotation_Kind`,
-`Reduction_Axis`, `Reduction_Kind`, `Extremum_Occurrence`, `Sort_Axis`,
-`Sort_Order`, `Transposed_Product_Order`, `Symmetry_Source`,
-`Sample_Orientation`, `Covariance_Scaling`, `Spectrum_Multiplication_Kind` and
-`Dimension_Selection_Kind`; `Channel_Count`, `Mat_Size`, `Region_Location`,
-`Border_Interpolation_Result`, `Index_Range` and `Dimension_Selection`; and
-`Mat_Type`, `Min_Max_Result`, `ND_Min_Max_Result`, `Mean_Std_Dev_Result` and
-`Range_Check_Result`. All 96 targeted warnings were eliminated; none remain in
-that scope. Of the 49 remaining component and 37 remaining enumeration-literal
-warnings, none belong to those types.
-
 GNATdoc 26.0.0 limitation observed: enumeration literals and record
 components are documented from the type's leading block with `@enum` and
 `@field`. The same block documents discriminants and variant components of a
@@ -164,40 +147,9 @@ discriminated record; each appears under "Record fields" and the prose must
 state which variant component exists, because GNATdoc does not render the
 variant condition beside the field.
 
-By public package family:
-
-| Family | Warnings |
-| --- | ---: |
-| `OpenCV.Core` typed `*_mat_view` packages | 1,245 |
-| `OpenCV.Core` (`opencv-core.ads`) | 976 |
-| `OpenCV.Core` typed `*_access` packages | 890 |
-| `OpenCV.Core` typed `*_row_access` packages | 554 |
-| `OpenCV.Core` typed `*_buffer_access` packages | 208 |
-| `OpenCV.Core.Sparse` | 101 |
-| `OpenCV.Core.Persistence` | 100 |
-| Fixed-size value instances | 25 |
-| `OpenCV.Core.Module_Interop` | 15 |
-| `OpenCV.Core.Sparse` typed children | 8 |
-| Typed conversions | 7 |
-| `OpenCV.Core.Transfers` | 5 |
-
-Recommended cleanup order, one family per review:
-
-1. `OpenCV`, `OpenCV.Core.Fixed_Matrices` and `OpenCV.Core.Vectors` (done).
-2. `OpenCV.Core` foundational types, enumerations and result records (done).
-3. `Mat`/`UMat` lifecycle, metadata and region APIs in `opencv-core.ads`
-   (done, DOC-005). Next: Mat/UMat mutation (`Set_To`), `Reshape`, and the
-   remaining view APIs (`Row_View`, `Column_View`, `Diagonal_View`), then the
-   arithmetic and destination-operation families.
-4. `Persistence`, `Sparse`, `Transfers`, and `Module_Interop`.
-5. One typed-access generic pattern (`Get`/`Set`, row, buffer, then mat view),
-   applied consistently to its instances rather than documented one depth at a
-   time with copied text.
-
-
 ## Coverage and qualified limitations
 
-The initial build documents all 195 public specification packages, including
+The current build documents all 195 public specification packages, including
 `OpenCV`, `OpenCV.Core`, `Transfers`, `Persistence`, `Sparse`, typed scalar/vector
 access, row/buffer access and scoped views, and the fixed-matrix/vector generic
 foundations and instances. `Mat`, `UMat`, `Sparse_Mat`, arithmetic and matrix
@@ -223,14 +175,11 @@ tagged-type links, not a collapsible hierarchy. Package filenames are native
 hashes; do not depend on handwritten package filenames. Package coverage is
 checked against actual specifications, not a fixed count.
 
-Existing comments mix leading and trailing styles. Generation uses **leading**
-because most long public policy comments precede declarations. Some historical
-trailing comments therefore do not attach to the intended entity. No comments
-are deleted or mass-migrated. The current run has 4,134 documentation
-warnings. This is not evidence that declarations are missing: validation checks
-the pages and representative declarations separately. No unsupported public
-declaration was identified in the inspected representative pages; this is not
-a claim that every comment or cross-reference is semantically perfect.
+Generation uses **leading** comments. The completed campaign documents the
+public declarations in that style; comments must remain adjacent to the intended
+entity. Validation checks package coverage and representative rendering separately
+from warning identities. Neither zero warnings nor those checks prove that every
+comment or cross-reference is semantically perfect.
 
 GNATdoc `--version` prints to stderr and exits 1 in this exact release; version
 checking handles that quirk explicitly. Generator execution must still succeed.
@@ -280,15 +229,40 @@ share a cancel-in-progress concurrency group so superseded publication runs
 are cancelled. Manual runs on other branches can validate but cannot publish.
 No PAT or `gh-pages` branch is needed.
 
-Repository owner prerequisite: **Settings → Pages → Build and deployment →
-Source: GitHub Actions**. Configure the `github-pages` environment's deployment
-branch policy to allow **main only**. These settings are intentionally left to
-the owner. The Pages API returned 404 during qualification; no existing Pages
-configuration or public deployment was assumed. After merge, verify the successful
-deployment and the live URL, including navigation and CSS under
-`/opencv_core_ada/`. Feature-branch qualification is not public deployment evidence.
+Pages must use **Settings → Pages → Build and deployment → Source: GitHub
+Actions**, with the `github-pages` environment allowing **main only**. The site
+was deployed after PR #67. CORE-DOC-068 checked the direct API URL and received
+HTTP 200; `docs/index.html` links to `api/index.html` and the workflow publishes
+`_site/` at the repository-relative `/opencv_core_ada/` route. Feature-branch
+qualification is not evidence of a new public deployment. Repository Markdown
+guides are not copied into `_site/` by this workflow.
 
-## Local qualification record
+## Building, testing and contributing
+
+For native prerequisites, library kinds, platform-specific C++ toolchains and
+installed consumers, see the
+[build guide](interop-and-compatibility.md#building). To qualify the public API:
+
+```sh
+alr build
+alr test
+python3 -m unittest discover -s scripts -p 'test_compare_gnatdoc_warnings.py' -v
+sh scripts/generate_docs.sh
+alr exec -- gprbuild -P docs/example.gpr
+obj/docs-example/example
+git diff --check
+```
+
+Tests and verification tools remain owned by the separate `tests` crate. Work on
+a feature/corrective branch, keep each change cohesive, qualify the exact head,
+and open an unmerged PR against `main` with auto-merge disabled. Follow
+[the contribution policy](interop-and-compatibility.md#contributing) and the
+repository `.clinerules`. Do not commit generated HTML or add development-only
+dependencies to the public library.
+
+## Historical DOC-001 qualification
+
+This initial record predates the completed campaign above.
 
 Starting main: `e0d505103fd69a16b863f409c7c451ac5bce993c` (PR #57 merge).
 The existing compatibility workflow succeeded on that exact SHA.
