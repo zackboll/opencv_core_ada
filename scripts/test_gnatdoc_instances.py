@@ -7,8 +7,9 @@ import unittest
 from pathlib import Path
 
 from enhance_gnatdoc_instances import (MEMBERS, VECTORS, MATRICES, ELEMENTS,
-                                       PREFIX, native_instance, process)
+                                       PREFIX, native_instance, process, discover)
 from link_gnatdoc_types import sources, CrossReferenceError
+from compare_gnatdoc_warnings import WarningComparisonError
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -169,6 +170,108 @@ class InstanceTests(unittest.TestCase):
                     'with OpenCV.Core.Vectors; use OpenCV.Core.Vectors;')
         with self.assertRaises(CrossReferenceError):
             self.enhance()
+
+    def test_public_ancestor_shadowing_regression(self):
+        self.mutate(self.src / 'opencv-core.ads', 'package OpenCV.Core is',
+                    'package OpenCV.Core is\n   subtype UInt8_Value is Interfaces.Unsigned_16;')
+        # Discovery alone must reject this, before HTML matching can mask the
+        # resolver defect by noticing an unrelated missing native declaration.
+        with self.assertRaisesRegex(CrossReferenceError, 'ancestor'):
+            discover(sources(self.src))
+
+    def test_ancestor_private_and_renamed_blockers(self):
+        path = self.src / 'opencv-core.ads'
+        original = path.read_text()
+        mutations = [
+            ('package OpenCV.Core is', 'package OpenCV.Core is\n   type uInT8_vAlUe is range 0 .. 255;'),
+            ('private\n', 'private\n   subtype UInt8_Value is Interfaces.Unsigned_16;\n'),
+            ('package OpenCV.Core is', 'package OpenCV.Core is\n   UInt8_Value : Integer renames Some_Value;'),
+            ('private\n', 'private\n   package Hidden renames Interfaces;\n'),
+            ('package OpenCV.Core is', 'package OpenCV.Core is\n   use Interfaces;'),
+        ]
+        for before, after in mutations:
+            with self.subTest(mutation=after):
+                self.assertIn(before, original)
+                path.write_text(original.replace(before, after, 1))
+                with self.assertRaises((CrossReferenceError, WarningComparisonError)):
+                    discover(sources(self.src))
+        path.write_text(original)
+
+    def test_private_descendant_cannot_bypass_ancestor_blocker(self):
+        self.mutate(self.src / 'opencv-core-uint8_vec4.ads',
+                    'package OpenCV.Core.UInt8_Vec4 is', 'private package OpenCV.Core.UInt8_Vec4 is')
+        self.mutate(self.src / 'opencv-core.ads', 'private\n',
+                    'private\n   subtype UInt8_Value is Interfaces.Unsigned_16;\n')
+        with self.assertRaisesRegex(CrossReferenceError, 'ancestor'):
+            discover(sources(self.src))
+
+    def test_every_intervening_parent_is_checked(self):
+        (self.src / 'opencv-core-nested.ads').write_text(
+            'package OpenCV.Core.Nested is\n'
+            '   subtype UInt8_Value is Interfaces.Unsigned_16;\n'
+            'end OpenCV.Core.Nested;\n')
+        (self.src / 'opencv-core-nested-uint8_vec2.ads').write_text(
+            'with OpenCV.Core.Vectors;\n'
+            'package OpenCV.Core.Nested.UInt8_Vec2 is new OpenCV.Core.Vectors\n'
+            '(Element_Type => UInt8_Value, Length => 2);\n')
+        with self.assertRaisesRegex(CrossReferenceError, 'ancestor'):
+            discover(sources(self.src))
+
+    def test_existing_metadata_cannot_bless_ancestor_shadowing(self):
+        self.enhance()
+        self.mutate(self.src / 'opencv-core.ads', 'package OpenCV.Core is',
+                    'package OpenCV.Core is\n   subtype Float32_Value is Interfaces.IEEE_Float_64;')
+        with self.assertRaisesRegex(CrossReferenceError, 'ancestor'):
+            self.check()
+
+    def test_valid_actuals_case_insensitive(self):
+        self.mutate(self.src / 'opencv-core-uint8_vec4.ads',
+                    'Element_Type => UInt8_Value', 'element_type => uInT8_vAlUe')
+        found = discover(sources(self.src))
+        self.assertEqual(found['opencv.core.uint8_vec4'], (VECTORS, 'UInt8_Value', [4]))
+        self.assertEqual(found['opencv.core.float32_vec3'], (VECTORS, 'Float32_Value', [3]))
+        self.assertEqual(found['opencv.core.float16_vec4'], (VECTORS, 'Float16_Value', [4]))
+
+    def test_rectangular_matrix_independent_facts_and_mutations(self):
+        source = self.src / 'opencv-core-float32_matx2x4.ads'
+        source.write_text('with OpenCV.Core.Fixed_Matrices;\n\n'
+                          '--  Synthetic rectangular Ada matrix.\n'
+                          'package OpenCV.Core.Float32_Matx2x4 is new\n'
+                          'OpenCV.Core.Fixed_Matrices (Element_Type => Float32_Value,\n'
+                          'Row_Count => 2, Column_Count => 4);\n')
+        path = self.api / 'rectangular.html'
+        # Independent pinned native fixture, not native_instance()/render().
+        path.write_text(PREFIX + '<h1>OpenCV.Core.Float32_Matx2x4</h1>'
+                        '<h2>Entities</h2><h2>Description</h2>'
+                        '<p>Synthetic rectangular Ada matrix.')
+        process(self.api, self.src, expected_count=8)
+        original = path.read_text()
+        template = self.page('OpenCV.Core.Fixed_Matrices').name
+        root = self.page('OpenCV').name
+        for expected in [
+            f'href="{root}#fixture-Float32_Value">OpenCV.Float32_Value</a>',
+            f'href="{template}#fixture-Row_Index">Row_Index</a></th><td>Natural range 0 .. 1',
+            f'href="{template}#fixture-Column_Index">Column_Index</a></th><td>Natural range 0 .. 3',
+            f'href="{template}#fixture-Matrix">Matrix</a></th><td>2 × 4 array of Float32_Value',
+            '<th scope="row">Row_Count</th><td>2',
+            '<th scope="row">Column_Count</th><td>4',
+        ]:
+            self.assertIn(expected, original)
+        before = {p.name: p.read_bytes() for p in self.api.iterdir()}
+        process(self.api, self.src, expected_count=8)
+        self.assertEqual(before, {p.name: p.read_bytes() for p in self.api.iterdir()})
+        for before, after in [
+            ('Natural range 0 .. 1', 'Natural range 0 .. 3'),
+            ('Natural range 0 .. 3', 'Natural range 0 .. 1'),
+            ('2 × 4 array', '4 × 2 array'),
+            ('<th scope="row">Column_Count</th><td>4', '<th scope="row">Column_Count</th><td>2'),
+            ('#fixture-Matrix', '#fixture-Row_Index'),
+        ]:
+            with self.subTest(mutation=after):
+                path.write_text(original.replace(before, after, 1))
+                with self.assertRaises(CrossReferenceError):
+                    process(self.api, self.src, check=True, expected_count=8)
+        path.write_text(original)
 
     def test_metadata_only_tampering(self):
         self.enhance()

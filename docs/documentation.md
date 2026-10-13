@@ -24,6 +24,27 @@ stored representation. Unknown actuals, positional/duplicate associations,
 ambiguous visibility, changed templates and unsupported targeted vector/matrix
 templates fail closed. Unrelated existing generic families are not enriched.
 
+CORE-DOC-070A-R1 closes an ancestor-shadowing gap: finding the expected root
+declaration does not establish that an unqualified actual denotes it. Resolution
+now walks every parent scope through the expected owner, requires a single public
+owner declaration, and rejects same-named intervening declarations regardless of
+identifier case. It uses the full declaration index, not the public-only member
+index. Renamings, use clauses, generics and other unsupported ancestor scopes fail
+closed. Public child visible parts do not generally see ancestor private parts;
+private descendants can. The bounded resolver deliberately rejects private
+blockers too rather than guessing placement-dependent visibility. Float16's
+private completion in its expected owner is not treated as a new declaration.
+
+The public ancestor subtype regression was run before correcting production code
+and failed with `CrossReferenceError not raised`, establishing that discovery had
+accepted the shadowed actual. Tests now cover public/private ancestor blockers,
+renamings, private descendants and mixed-case valid actuals. An isolated 2 × 4
+matrix fixture independently asserts row bounds 0 .. 1, column bounds 0 .. 3,
+dimensions and real template/type targets, then rejects exchanged bounds, wrong
+dimensions and wrong-but-existing member anchors. It does not alter the 25-page
+production baseline. Combined HTML/metadata tampering and byte-identical repeat
+invocation remain qualified.
+
 The baseline has 24 vector instances: UInt8, Int8, UInt16, Int16, Int32, Float16,
 Float32 and Float64, each with lengths 2, 3 and 4; plus Float32_Matx3x3. Summaries
 describe ordinary Ada arrays, actual element types, value semantics and zero-based

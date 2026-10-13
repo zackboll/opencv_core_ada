@@ -15,6 +15,7 @@ from pathlib import Path
 from link_gnatdoc_types import (NAME, sources, pages_and_targets, require, words,
                                CrossReferenceError)
 from install_gnatdoc_theme import NATIVE, METADATA
+from compare_gnatdoc_warnings import declaration_index, WarningComparisonError
 
 
 VECTORS = 'opencv.core.vectors'
@@ -74,6 +75,35 @@ def native_instance(source):
             '<h2>Description</h2>' + ''.join('<p>' + p for p in paragraphs))
 
 
+def check_ancestor_visibility(package, owner, element, source_map):
+    """Conservative parent lookup, not a general Ada visibility resolver.
+
+    Public child visible parts do not generally see ancestor private parts;
+    private descendants can. We deliberately reject private blockers too rather
+    than model placement-dependent visibility. Do not use Source.members here:
+    it omits private declarations for native public type-link generation.
+    """
+    scope = package.rpartition('.')[0]
+    while True:
+        require(scope in source_map, f'missing ancestor scope: {scope}')
+        ancestor = source_map[scope]
+        require(ancestor.supported and not ancestor.instance and
+                not ancestor.uses and not ancestor.formals and
+                not re.search(r'\b(generic|renames|use)\b', ancestor.code, re.I),
+                f'unsupported ancestor visibility: {scope}')
+        if scope == owner:
+            # Public expected declaration is separately matched below. Private
+            # completions (notably Float16_Value) do not denote a new type.
+            require(len(ancestor.members.get(element.lower(), [])) == 1,
+                    f'ambiguous ancestor owner declaration: {scope}.{element}')
+            break
+        indexed = declaration_index(ancestor.lines)
+        require(not any(d['name'].lower() == element.lower()
+                        for entries in indexed.values() for d in entries),
+                f'potentially shadowing ancestor declaration: {scope}.{element}')
+        scope = scope.rpartition('.')[0]
+
+
 def discover(source_map):
     instances = {}
     for package, source in source_map.items():
@@ -114,6 +144,7 @@ def discover(source_map):
                 f'changed actual type declaration: {element}')
         # Unqualified actual visibility comes only from the parent hierarchy.
         require(package.startswith(owner + '.'), f'actual not parent-visible: {package}')
+        check_ancestor_visibility(package, owner, element, source_map)
         require(not source.uses and element.lower() not in source.members,
                 f'ambiguous actual visibility: {package}')
         # Instantiation-only compilation units may not introduce local aliases,
@@ -259,5 +290,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
     try:
         process(args.api, args.sources, args.check, expected_count=25)
-    except (CrossReferenceError, ValueError, KeyError) as error:
+    except (CrossReferenceError, ValueError, KeyError, WarningComparisonError) as error:
         raise SystemExit(f'error: generic instances: {error}') from error
