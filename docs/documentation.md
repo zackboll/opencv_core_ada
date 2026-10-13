@@ -5,6 +5,96 @@ for `https://zackboll.github.io/opencv_core_ada/`; its landing page is
 `_site/index.html` and the native GNATdoc reference is `_site/api/index.html`.
 Do not commit generated HTML.
 
+## Modern presentation and Ada coloring (CORE-DOC-070)
+
+GNATdoc remains pinned to 26.0.0. The generator first checks diagnostics and
+the warning baseline, installs presentation metadata, resolves CORE-DOC-069
+type links, colors declarations, and validates **final published HTML**.
+No installed generator templates or native stylesheet are modified.
+
+`docs/assets/gnatdoc-theme.css` is copied to `_site/api/gnatdoc-theme.css`.
+`scripts/install_gnatdoc_theme.py` inserts its relative stylesheet link after
+the exact native `gnatdoc.css` link and adds a mobile viewport to every API
+page (including iframe documents). The landing page uses the same stylesheet.
+System UI and monospace fonts require no external font service. Semantic CSS
+variables provide light appearance by default and a separately selected dark
+palette through `prefers-color-scheme`. Links are underlined, focus outlines
+are explicit, and declaration targets have a border and background indication.
+There are no added animations, runtime scripts, CDNs or theme-toggle scripts.
+
+The sidebar scrolls independently on desktop. At widths of 800px and below,
+navigation occupies the upper 30% of the viewport and the native iframe the
+remaining space; long names wrap and declarations scroll horizontally inside
+their panels. Native compilation-unit/tagged-type tabs remain anchor links.
+The native browser does not track the selected package or select an initial
+iframe document; CSS cannot provide persistent selected-package state. Hover,
+keyboard focus and tab anchor targets are indicated instead. Search is out of
+scope. Native links and declaration fragments are never rewritten.
+
+`scripts/highlight_gnatdoc_ada.py` recognizes case-insensitive Ada 2022 reserved
+words (including modes), decimal/based/exponent numbers with underscores,
+strings with doubled quotes, characters, attributes, comments, and punctuation
+and operators. It is lexical coloring, not parsing or semantic classification;
+ordinary identifiers and uncertain input remain uncolored. Existing
+`a.type-reference` elements are atomic and never receive nested spans. Original
+entity spelling and declaration whitespace are preserved using decoded offsets.
+
+The combined checker reconstructs type links from the trusted original snippets
+and current public sources, then reconstructs syntax spans. It compares the
+complete final markup exactly, not just whether destinations exist. Only flat
+approved `span.ada-*` classes and the existing exact type-link format qualify.
+Wrong-but-existing destinations, valid-HTML token mutations, unsupported tags,
+extra attributes, nested anchors and incorrect token classes fail closed.
+Removing approved markup must reproduce the original escaped Ada text exactly.
+The existing non-snippet hashes remain enforced. `presentation.json` additionally
+stores native non-snippet HTML for every API page, including the browser index;
+validation reconstructs only the two approved metadata insertions and verifies
+both the unchanged native CSS and the exact repository theme bytes. Both
+transformations are deterministic and idempotent. Generated manifests are build
+artifacts, not files to edit to accommodate an integrity failure.
+
+Local qualification:
+
+```sh
+python3 -m unittest discover -s scripts -p 'test_highlight_gnatdoc_ada.py' -v
+python3 -m unittest discover -s scripts -p 'test_link_gnatdoc_types.py' -v
+python3 -m unittest discover -s scripts -p 'test_compare_gnatdoc_warnings.py' -v
+sh scripts/generate_docs.sh
+python3 scripts/validate_docs.py _site
+git diff --check
+```
+
+When upgrading GNATdoc, inspect real native HTML/CSS first. Update the exact
+insertion/section contracts and fixtures deliberately, retain semantic negative
+tests, and regenerate/compare the original snippets and navigation. Never bypass
+a format mismatch by accepting arbitrary HTML or regenerating native anchors.
+The documentation workflow runs all three suites before publication; existing
+artifact uploads and main-only Pages permissions are unchanged. Repository
+Markdown guides remain links to GitHub, not locally published Pages content.
+
+### Local DOC-070 qualification
+
+Starting main was `a56231a3f4179c210f0e8cce55ec574f356d9800` (PR #69 merge).
+Pinned generation built the unchanged library and produced zero warnings,
+zero added/removed warning identities, 195 packages and 197 HTML pages.
+All 1,268 original declaration snippets retained byte-exact escaped text, and
+all 2,456 links on 168 pages retained exact markup and ordering against a saved
+baseline. The final validator found no broken local links/anchors/assets or
+highlighting errors. Repeated theme/highlighting processing preserved hashes of
+every generated file. Fresh fixture generation was also byte-identical.
+The 21 new tests, 21 original cross-reference tests and 26 warning tests passed.
+Executable library/test inputs did not change; existing AUnit evidence is reused.
+
+Firefox 153.4.0esr headless screenshots were captured and inspected: landing at
+1440px; native browser at 1440/768/375px; Core at 1024px light and 375px dark;
+all nine requested representative packages at 768px dark. The UInt8_Access
+declaration shows colored keywords, underlined atomic type links and parameter
+spacing; target borders/backgrounds are visible. These are static screenshots,
+not automated interaction qualification: keyboard focus, actual clicking within
+the iframe and horizontal scrolling were structurally checked, not exercised
+with browser input. Some long pages' screenshots show only their initial entity
+lists. The final semantic/link validator covers all their declarations and anchors.
+
 ## Automatic declaration type cross-references (CORE-DOC-069)
 
 The existing GNATdoc package/entity navigation is unchanged. A separate,

@@ -155,6 +155,7 @@ def sources(root):
 
 
 def pages_and_targets(api, source_map):
+    from highlight_gnatdoc_ada import strip_highlighting
     pages, targets = {}, {}
     for path in sorted(api.glob('*.html')):
         text = path.read_text(encoding="utf-8")
@@ -174,7 +175,7 @@ def pages_and_targets(api, source_map):
         source = source_map[package]
         pages[package] = (path, text, sections)
         for section in sections:
-            raw = plain(section[3])
+            raw = plain(strip_highlighting(section[3]))
             declaration = source.match(raw)
             type_header = re.match(r"\s*(type|subtype)\s+(" + IDENT + r")\b",
                                    html.unescape(raw), re.I)
@@ -308,7 +309,9 @@ def outside_hash(text):
                           .encode('utf-8')).hexdigest()
 
 
-def process(api, source_root, check=False, minimum_links=0, minimum_pages=0):
+def process(api, source_root, check=False, minimum_links=0, minimum_pages=0,
+            highlight=False):
+    from highlight_gnatdoc_ada import highlight as color, strip_highlighting
     api = api.resolve()
     require(api.name == 'api', "cross-references must operate in a generated api directory")
     source_map = sources(source_root)
@@ -319,6 +322,9 @@ def process(api, source_root, check=False, minimum_links=0, minimum_pages=0):
     manifest = json.loads(manifest_path.read_text()) if existing else {
         'version': 1, 'pages': {}}
     require(manifest.get('version') == 1, "unexpected cross-reference manifest version")
+    colored = manifest.get('highlighting', 0)
+    require(colored in (0, 1), "unexpected highlighting contract version")
+    require(not highlight or existing, "highlighting requires qualified type links")
     if existing:
         require(set(manifest['pages']) == set(pages), "manifest package coverage mismatch")
     require(set(pages) == set(source_map), "public source/page coverage mismatch")
@@ -339,15 +345,18 @@ def process(api, source_root, check=False, minimum_links=0, minimum_pages=0):
         for i, section in enumerate(sections):
             snippets += 1
             raw = entry['snippets'][i] if existing else section[3]
-            require(plain(section[3]) == raw, "original Ada declaration text changed")
+            current = strip_highlighting(section[3]) if colored else section[3]
+            require(plain(current) == raw, "original Ada declaration text changed")
             declaration = source_map[package].match(raw)
             expected = render(raw, package, declaration, source_map, targets,
                               path.name, counts, families)
             if existing:
-                require(section[3] == expected,
+                require(section[3] == (color(expected) if colored else expected),
                         f"type identity/destination/markup mismatch: {package}.{section[2]}")
             else:
                 entry['snippets'].append(raw)
+            if colored or highlight:
+                expected = color(expected)
             replacements.append((section.start(3), section.end(3), expected))
         enhanced += counts['linked'] > before
         result = text
@@ -359,7 +368,9 @@ def process(api, source_root, check=False, minimum_links=0, minimum_pages=0):
     require(counts['linked'] >= minimum_links and enhanced >= minimum_pages,
             f"insufficient safe coverage: {counts['linked']} links on {enhanced} pages")
     # All input and output integrity checks complete before any site writes.
-    if not check and not existing:
+    if not check and (not existing or (highlight and not colored)):
+        if highlight:
+            manifest['highlighting'] = 1
         for path, result in changed.items():
             path.write_text(result, encoding="utf-8")
         manifest_path.write_text(json.dumps(manifest, sort_keys=True, indent=2) + '\n',
@@ -375,6 +386,8 @@ def process(api, source_root, check=False, minimum_links=0, minimum_pages=0):
             ('Invalid targets', 0), ('Structural errors', 0)):
         print(f'  {label}: {value}')
     print('  Links by type family: ' + ', '.join(f'{k}={v}' for k, v in sorted(families.items())))
+    if colored or highlight:
+        print(f'  Highlighted snippets verified: {snippets}; Ada text/markup errors: 0')
     return counts, enhanced
 
 
