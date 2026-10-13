@@ -161,6 +161,35 @@ METADATA_REGION_DOCS = {
 }
 
 
+# Safety-sensitive operations documented by the GNATdoc campaign. Each
+# complete signature identifies one overload; the phrases must render inside
+# that overload's own section rather than elsewhere on the page.
+OPERATION_DOCS = {
+    "procedure Sqrt (Self : Mat; Destination : in out Mat)": (
+        "temporary view cannot be a Destination",
+        "Destination The caller-owned Mat that receives the result."),
+    "procedure Sqrt (Self : UMat; Destination : in out UMat)": (
+        "reuse and alias boundaries of the Mat Sqrt destination form",
+        "Destination The caller-owned UMat that receives the result."),
+    "procedure With_Selected_View (Self : in out Mat; Selections : "
+    "Dimension_Selection_Array; Process : not null access procedure "
+    "(View : in out Mat))": (
+        "must not be retained", "Process Callback that receives the temporary View"),
+    "procedure Mix_Channels (Sources : Mat_Array; Destinations : in out Mat_Array; "
+    "Routes : Channel_Route_Array)": (
+        "two routes target the same destination channel",
+        "Routes Channel copies and zero fills to perform."),
+    "procedure Polar_To_Cart (Magnitude, Angle : Mat; X, Y : in out Mat; "
+    "Units : Angle_Unit := Radians)": (
+        "Temporary Mat views cannot be outputs",
+        "X The caller-owned Mat that receives Magnitude * cos (Angle)."),
+    "procedure Polar_To_Cart (Magnitude, Angle : UMat; X, Y : in out UMat; "
+    "Units : Angle_Unit := Radians)": (
+        "overlapping storage is unsupported",
+        "X The caller-owned UMat that receives Magnitude * cos (Angle)."),
+}
+
+
 def validate(site):
     site = site.resolve()
     root = Path(__file__).resolve().parent.parent
@@ -283,7 +312,7 @@ def validate(site):
         # overload's text can never satisfy a different overload's check.
         overloads, overload_errors = overload_sections(core_html)
         errors.extend(overload_errors)
-        for table in (LIFECYCLE_DOCS, METADATA_REGION_DOCS):
+        for table in (LIFECYCLE_DOCS, METADATA_REGION_DOCS, OPERATION_DOCS):
             for signature, phrases in table.items():
                 if signature not in overloads:
                     errors.append(f"OpenCV.Core overload section missing: {signature}")
