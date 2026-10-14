@@ -17,18 +17,12 @@ package body OpenCV.Core.Int8_Vec2_Buffer_Access is
      Compile_Time_Error
        (Int8_Vec2.Vector'Size /= 16,
         "Int8 Vec2 Vector must be exactly 16 bits for zero-copy buffers");
-   pragma
-     Compile_Time_Error
-       (Int8_Vec2.Vector'Object_Size /= 16,
-        "Int8 Vec2 Vector must have no hidden padding");
+   --  Borrowing verifies Object_Size before native lease entry (GNAT 12).
    pragma
      Compile_Time_Error
        (Buffer_Array'Component_Size /= 16,
         "Int8 Vec2 Buffer_Array must be tightly packed 16-bit elements");
-   pragma
-     Compile_Time_Error
-       (Int8_Vec2.Vector'Alignment > 1,
-        "Int8 Vec2 Vector alignment is stricter than CV_8SC2 guarantees");
+   --  Borrowing verifies alignment before lease entry and typed conversion.
    pragma
      Compile_Time_Error
        (Int8_Vec2.Component_Index'First /= 0

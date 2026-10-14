@@ -7,8 +7,7 @@ package body OpenCV.Core.UInt8_Vec4_Buffer_Access is
        (UInt8_Vec4.Vector'Component_Size /= 8, "Vec4 scalar size");
    pragma
      Compile_Time_Error (Buffer_Array'Component_Size /= 32, "Vec4 packing");
-   pragma
-     Compile_Time_Error (UInt8_Vec4.Vector'Alignment > 1, "Vec4 alignment");
+   --  Borrowing verifies alignment before lease entry and typed conversion.
    pragma
      Compile_Time_Error
        (UInt8_Vec4.Component_Index'First /= 0

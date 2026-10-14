@@ -8,8 +8,7 @@ package body OpenCV.Core.UInt16_Vec2_Buffer_Access is
    pragma
      Compile_Time_Error
        (Buffer_Array'Component_Size /= 32, "Vec2 buffer packing");
-   pragma
-     Compile_Time_Error (UInt16_Vec2.Vector'Alignment > 2, "Vec2 alignment");
+   --  Borrowing verifies alignment before lease entry and typed conversion.
    pragma
      Compile_Time_Error
        (UInt16_Vec2.Component_Index'First /= 0

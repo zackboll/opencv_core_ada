@@ -10,8 +10,7 @@ package body OpenCV.Core.Float32_Vec4_Row_Access is
        (Float32_Vec4.Vector'Component_Size /= 32, "Vec4 scalar size");
    pragma
      Compile_Time_Error (Row_Array'Component_Size /= 128, "Vec4 row packing");
-   pragma
-     Compile_Time_Error (Float32_Vec4.Vector'Alignment > 4, "Vec4 alignment");
+   --  Borrowing verifies alignment before lease entry and typed conversion.
    pragma
      Compile_Time_Error
        (Float32_Vec4.Component_Index'First /= 0

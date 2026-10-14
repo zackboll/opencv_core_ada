@@ -10,8 +10,7 @@ package body OpenCV.Core.Int32_Vec3_Row_Access is
        (Int32_Vec3.Vector'Component_Size /= 32, "Vec3 scalar size");
    pragma
      Compile_Time_Error (Row_Array'Component_Size /= 96, "Vec3 row packing");
-   pragma
-     Compile_Time_Error (Int32_Vec3.Vector'Alignment > 4, "Vec3 alignment");
+   --  Borrowing verifies alignment before lease entry and typed conversion.
    pragma
      Compile_Time_Error
        (Int32_Vec3.Component_Index'First /= 0

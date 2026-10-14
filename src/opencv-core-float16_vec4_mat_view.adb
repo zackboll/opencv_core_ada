@@ -17,18 +17,13 @@ package body OpenCV.Core.Float16_Vec4_Mat_View is
      Compile_Time_Error
        (Float16_Vec4.Vector'Size /= 64,
         "Float16 Vec4 Vector must be exactly 64 bits for zero-copy views");
-   pragma
-     Compile_Time_Error
-       (Float16_Vec4.Vector'Object_Size /= 64,
-        "Float16 Vec4 Vector must have no hidden padding");
+   --  Viewing checks Object_Size before native construction; GNAT 12 cannot
+   --  evaluate this generic vector attribute in Compile_Time_Error.
    pragma
      Compile_Time_Error
        (Buffer_Array'Component_Size /= 64,
         "Float16 Vec4 Buffer_Array must be tightly packed 64-bit elements");
-   pragma
-     Compile_Time_Error
-       (Float16_Vec4.Vector'Alignment > 2,
-        "Float16 Vec4 Vector alignment is stricter than CV_16FC4 guarantees");
+   --  Viewing checks element and backing alignment before construction.
    pragma
      Compile_Time_Error
        (Float16_Vec4.Component_Index'First /= 0

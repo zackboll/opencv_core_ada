@@ -16,18 +16,12 @@ package body OpenCV.Core.Int8_Vec2_Mat_View is
      Compile_Time_Error
        (Int8_Vec2.Vector'Size /= 16,
         "Int8 Vec2 Vector must be exactly 16 bits for zero-copy views");
-   pragma
-     Compile_Time_Error
-       (Int8_Vec2.Vector'Object_Size /= 16,
-        "Int8 Vec2 Vector must have no hidden padding");
+   --  Viewing verifies Object_Size before native construction (GNAT 12).
    pragma
      Compile_Time_Error
        (Buffer_Array'Component_Size /= 16,
         "Int8 Vec2 Buffer_Array must be tightly packed 16-bit elements");
-   pragma
-     Compile_Time_Error
-       (Int8_Vec2.Vector'Alignment > 1,
-        "Int8 Vec2 Vector alignment is stricter than CV_8SC2 guarantees");
+   --  Viewing verifies element and backing-address alignment.
    pragma
      Compile_Time_Error
        (Int8_Vec2.Component_Index'First /= 0

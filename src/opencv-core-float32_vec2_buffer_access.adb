@@ -1,15 +1,19 @@
 with OpenCV.Core.Internal.Typed_Continuous_Borrowing;
 
 package body OpenCV.Core.Float32_Vec2_Buffer_Access is
+   --  Borrowing verifies alignment before lease entry and typed conversion.
+   pragma Compile_Time_Error (Float32_Vec2.Vector'Size /= 64, "Vec2 size");
    pragma
      Compile_Time_Error
-       (Float32_Vec2.Vector'Size /= 64
-          or else Float32_Vec2.Vector'Component_Size /= 32
-          or else Buffer_Array'Component_Size /= 64
-          or else Float32_Vec2.Vector'Alignment > 4
-          or else Float32_Vec2.Component_Index'First /= 0
+       (Float32_Vec2.Vector'Component_Size /= 32, "Vec2 scalar size");
+   pragma
+     Compile_Time_Error
+       (Buffer_Array'Component_Size /= 64, "Vec2 buffer packing");
+   pragma
+     Compile_Time_Error
+       (Float32_Vec2.Component_Index'First /= 0
           or else Float32_Vec2.Component_Index'Last /= 1,
-        "Float32 Vec2 overlay must be two packed native Float32 channels");
+        "Vec2 indices");
    package Borrowing is new
      Internal.Typed_Continuous_Borrowing
        (Element_Type             => Float32_Vec2.Vector,

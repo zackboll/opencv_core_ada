@@ -7,8 +7,7 @@ package body OpenCV.Core.Float32_Vec4_Mat_View is
        (Float32_Vec4.Vector'Component_Size /= 32, "Vec4 scalar size");
    pragma
      Compile_Time_Error (Buffer_Array'Component_Size /= 128, "Vec4 packing");
-   pragma
-     Compile_Time_Error (Float32_Vec4.Vector'Alignment > 4, "Vec4 alignment");
+   --  Viewing verifies alignment before native construction (GNAT 12).
    pragma
      Compile_Time_Error
        (Float32_Vec4.Component_Index'First /= 0

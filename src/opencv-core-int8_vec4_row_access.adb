@@ -19,18 +19,12 @@ package body OpenCV.Core.Int8_Vec4_Row_Access is
      Compile_Time_Error
        (Int8_Vec4.Vector'Size /= 32,
         "Int8 Vec4 Vector must be exactly 32 bits for zero-copy C4 rows");
-   pragma
-     Compile_Time_Error
-       (Int8_Vec4.Vector'Object_Size /= 32,
-        "Int8 Vec4 Vector must have no hidden padding");
+   --  Borrowing verifies Object_Size before native lease entry (GNAT 12).
    pragma
      Compile_Time_Error
        (Row_Array'Component_Size /= 32,
         "Int8 Vec4 Row_Array must be tightly packed 32-bit elements");
-   pragma
-     Compile_Time_Error
-       (Int8_Vec4.Vector'Alignment > 1,
-        "Int8 Vec4 Vector alignment is stricter than CV_8SC4 guarantees");
+   --  Borrowing verifies alignment before lease entry and typed conversion.
    pragma
      Compile_Time_Error
        (Int8_Vec4.Component_Index'First /= 0

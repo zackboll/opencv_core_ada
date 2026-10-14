@@ -3,11 +3,16 @@ with Interfaces;
 with Interfaces.C;
 with OpenCV.Core.Float16_Vec2;
 with OpenCV.Core.Internal.Object_Storage;
+with OpenCV.Core.Internal.External_View_Alignment;
 with OpenCV.Core.Internal.Typed_Row_Borrowing;
 with OpenCV.Core.Internal.Typed_Continuous_Borrowing;
+with System;
+with System.Storage_Elements;
 
 procedure OpenCV.Core.Internal.Layout_Guard_Controls is
    use type Interfaces.C.unsigned;
+   use System.Storage_Elements;
+   use type System.Address;
    pragma Warnings (Off, "32 bits of * unused");
    type Padded is record
       A, B : Interfaces.Unsigned_16;
@@ -49,6 +54,14 @@ procedure OpenCV.Core.Internal.Layout_Guard_Controls is
    Callbacks : Natural := 0;
    function Leases return Interfaces.C.unsigned
    with Import, Convention => C, External_Name => "r3g_lease_count";
+   type Bytes is array (Natural range <>) of aliased Interfaces.Unsigned_8;
+   Untyped   : aliased Bytes (7 .. 38) := (others => 16#A5#);
+   procedure Snapshot (Address : System.Address; Size : Interfaces.C.size_t)
+   with Import, Convention => C, External_Name => "r3c_snapshot";
+   function Unchanged
+     (Address : System.Address; Size : Interfaces.C.size_t)
+      return Interfaces.C.unsigned
+   with Import, Convention => C, External_Name => "r3c_bytes_unchanged";
    procedure Read (Data : aliased Ordinary_Buffer) is
       pragma Unreferenced (Data);
    begin
@@ -59,6 +72,40 @@ procedure OpenCV.Core.Internal.Layout_Guard_Controls is
       Read (Data);
    end Write;
 begin
+   --  Only untyped bytes are used: no misaligned typed object is manufactured.
+   declare
+      Base    : constant System.Address := Untyped (Untyped'First)'Address;
+      Offset  : constant Storage_Offset :=
+        (if To_Integer (Base) rem 2 = 0 then 0 else 1);
+      Aligned : constant System.Address := Base + Offset;
+   begin
+      Snapshot (Base, 32);
+      if External_View_Alignment.Verified_Address (Aligned, 2) /= Aligned then
+         raise Program_Error with "alignment positive control changed address";
+      end if;
+      for Null_Address in Boolean loop
+         begin
+            declare
+               Address : constant System.Address :=
+                 External_View_Alignment.Verified_Address
+                   ((if Null_Address
+                     then System.Null_Address
+                     else Aligned + 1),
+                    2);
+               pragma Unreferenced (Address);
+            begin
+               raise Program_Error with "invalid untyped address accepted";
+            end;
+         exception
+            when OpenCV_Error =>
+               null;
+         end;
+      end loop;
+      if Unchanged (Base, 32) /= 1 or else Leases /= 0 then
+         raise Program_Error
+           with "address rejection modified storage or leased";
+      end if;
+   end;
    if Padded'Size /= 32 or else Padded'Object_Size /= 64 then
       raise Program_Error with "padded fixture does not isolate Object_Size";
    end if;

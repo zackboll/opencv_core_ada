@@ -8,8 +8,7 @@ package body OpenCV.Core.Int32_Vec3_Mat_View is
    pragma
      Compile_Time_Error
        (Buffer_Array'Component_Size /= 96, "Vec3 view packing");
-   pragma
-     Compile_Time_Error (Int32_Vec3.Vector'Alignment > 4, "Vec3 alignment");
+   --  Viewing verifies alignment before native construction (GNAT 12).
    pragma
      Compile_Time_Error
        (Int32_Vec3.Component_Index'First /= 0
