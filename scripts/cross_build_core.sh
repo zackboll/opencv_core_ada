@@ -39,7 +39,10 @@ mkdir -p config
 sh scripts/configure_opencv.sh
 profile=${OPENCV_CROSS_PROFILE:-development}
 case "$profile" in development|release|validation) ;; *) fail 'invalid build profile' ;; esac
-printf 'abstract project OpenCV_Core_Config is\n   Build_Profile := "%s";\n   Ada_Compiler_Switches := ("-gnat2022", "-gnatwa", "-gnatwe");\nend OpenCV_Core_Config;\n' "$profile" > config/opencv_core_config.gpr
+# Match the native project's per-unit language policy. The typed-access body
+# selects Ada 2022 in opencv_core.gpr; forcing it here changes warning semantics
+# for unrelated units and makes their Ada 2012 array aggregates obsolescent.
+printf 'abstract project OpenCV_Core_Config is\n   Build_Profile := "%s";\n   Ada_Compiler_Switches := ("-gnatwa", "-gnatwe");\nend OpenCV_Core_Config;\n' "$profile" > config/opencv_core_config.gpr
 cp "$OPENCV_CROSS_GPR_CONFIG" config/target.cgpr
 # GPR output directories belong to these physically exported projects, not an
 # extending project in the native checkout. Prove the foreign boundary first.
