@@ -1,4 +1,6 @@
 with Ada.Exceptions;
+with OpenCV.Core.Internal.Object_Storage;
+with OpenCV.Core.Internal.External_View_Alignment;
 with OpenCV.Core.Internal.Row_Data;
 with OpenCV.Internal.C_API;
 with System;
@@ -21,11 +23,21 @@ package body OpenCV.Core.Internal.Typed_Row_Borrowing is
      Compile_Time_Error
        (Row_Array'Component_Size /= Expected_Element_Bits,
         "typed row array component size does not match Expected_Element_Bits");
-   pragma
-     Compile_Time_Error
-       (Element_Type'Alignment > Native_Element_Alignment,
-        "typed row element requires stricter alignment than native Mat "
-          & "storage guarantees");
+   package Storage is new
+     Object_Storage
+       (Element_Type,
+        Expected_Element_Bits,
+        Row_Array'Component_Size,
+        Native_Element_Alignment,
+        (case Required_Depth is
+           when UInt8 | Int8             => 1,
+           when UInt16 | Int16 | Float16 => 2,
+           when Int32 | Float32          => 4,
+           when Float64                  => 8));
+   procedure Verify_Representation is
+   begin
+      Storage.Verify;
+   end Verify_Representation;
 
    Element_Bytes : constant OpenCV.Internal.C_API.C_UInt64 :=
      OpenCV.Internal.C_API.C_UInt64
@@ -111,6 +123,16 @@ package body OpenCV.Core.Internal.Typed_Row_Borrowing is
          Raise_Invalid_Access
            ("borrowed " & Type_Name & " row has no storage");
       end if;
+      if Column_Count /= 0 then
+         declare
+            Verified : constant System.Address :=
+              External_View_Alignment.Verified_Address
+                (Borrowed.Address, Native_Element_Alignment);
+            pragma Unreferenced (Verified);
+         begin
+            null;
+         end;
+      end if;
    end Check_Borrowed_Row;
 
    procedure With_Read_Only_Row
@@ -120,6 +142,7 @@ package body OpenCV.Core.Internal.Typed_Row_Borrowing is
    is
       Lease : Mat;
    begin
+      Verify_Representation;
       Acquire_Borrow_Lease (Image, Lease);
       Validate_Borrow (Lease, Row);
 
@@ -172,6 +195,7 @@ package body OpenCV.Core.Internal.Typed_Row_Borrowing is
    is
       Lease : Mat;
    begin
+      Verify_Representation;
       Acquire_Borrow_Lease (Image, Lease);
       Validate_Borrow (Lease, Row);
 

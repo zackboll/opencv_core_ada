@@ -21,18 +21,13 @@ package body OpenCV.Core.Float16_Vec2_Row_Access is
      Compile_Time_Error
        (Float16_Vec2.Vector'Size /= 32,
         "Float16 Vec2 Vector must be exactly 32 bits for zero-copy C2 rows");
-   pragma
-     Compile_Time_Error
-       (Float16_Vec2.Vector'Object_Size /= 32,
-        "Float16 Vec2 Vector must have no hidden padding");
+   --  Vector Object_Size and alignment are call-time checks in Borrowing,
+   --  before lease acquisition. GNAT 12 cannot evaluate these statically.
    pragma
      Compile_Time_Error
        (Row_Array'Component_Size /= 32,
         "Float16 Vec2 Row_Array must be tightly packed 32-bit elements");
-   pragma
-     Compile_Time_Error
-       (Float16_Vec2.Vector'Alignment > 2,
-        "Float16 Vec2 Vector alignment is stricter than CV_16FC2 guarantees");
+   --  Borrowing checks the actual address before typed pointer conversion.
    pragma
      Compile_Time_Error
        (Float16_Vec2.Component_Index'First /= 0
