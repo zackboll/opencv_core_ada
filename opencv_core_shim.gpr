@@ -33,7 +33,8 @@ project OpenCV_Core_Shim is
       "-Wextra",
       "-Wpedantic",
       "-Werror",
-      OpenCV_Core_Install.Include_Switch);
+      OpenCV_Core_Install.Include_Switch) &
+      OpenCV_Core_Install.Cross_Compiler_Switches;
 
    package Compiler is
       case OpenCV_Core_Install.Cxx_Toolchain is
@@ -74,7 +75,8 @@ project OpenCV_Core_Shim is
             for Linker_Options use
               (OpenCV_Core_Install.Library_Search_Switch,
                OpenCV_Core_Install.OpenCV_Core_Link_Option,
-               OpenCV_Core_Install.Cxx_Runtime_Switch);
+               OpenCV_Core_Install.Cxx_Runtime_Switch) &
+               OpenCV_Core_Install.Cross_Linker_Switches;
          when "Relocatable" =>
             for Driver use OpenCV_Core_Install.Cxx_Driver;
          when "External_Relocatable" =>

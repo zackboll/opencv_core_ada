@@ -1,0 +1,11 @@
+# Core-only reference metadata for Debian's libopencv-core-dev package, which
+# does not ship opencv4.pc. Not a replacement Alire system dependency identity.
+prefix=/usr
+includedir=${prefix}/include/opencv4
+libdir=${prefix}/lib
+
+Name: OpenCV Core reference
+Description: Public Debian ARM64 Core-only development fixture
+Version: 4.6.0
+Libs: -L${libdir} -lopencv_core
+Cflags: -I${includedir}
