@@ -19,10 +19,14 @@ case "$mode" in --prepare|--build) ;; *) fail 'unknown operation' ;; esac
 case "$work" in /*) ;; *) fail 'workspace must be absolute' ;; esac
 [ ! -e "$work" ] || fail 'workspace must not already exist (stale artifacts)'
 case "$work/" in "$root/"*) fail 'workspace must be outside the source checkout' ;; esac
-[ -z "$(git -C "$root" status --porcelain)" ] || fail 'source revision must be clean before export'
+status=$(git -C "$root" status --porcelain) || fail 'source Git metadata is inaccessible'
+[ -z "$status" ] || fail 'source revision must be clean before export'
+revision=$(git -C "$root" rev-parse HEAD) || fail 'cannot resolve source revision'
 mkdir -p "$work"
-git -C "$root" rev-parse HEAD > "$work/source-revision.txt"
-git -C "$root" archive HEAD | tar -x -C "$work"
+printf '%s\n' "$revision" > "$work/source-revision.txt"
+git -C "$root" archive --output="$work/source.tar" "$revision"
+tar -xf "$work/source.tar" -C "$work"
+rm "$work/source.tar"
 cd "$work"
 mkdir -p config
 sh scripts/configure_opencv.sh

@@ -123,6 +123,18 @@ The fixtures use disposable fake tool outputs to test rejection logic; they
 are not architecture evidence. Actual ELF evidence comes from the public
 reference probe and shim object.
 
+The exact-revision wrapper was also exercised at commit
+`a14757564f74650cae0f4c9404426ef9e91f43f3`. Both `--prepare` runs succeeded
+with deletion/recreation of `/reference/recreated-workspace`; the source
+repository retained no `config`, `obj`, or `lib` directory and stayed clean.
+The reference script's `--build` run failed nonzero at the existing GNAT 12
+representation assertion. Its trace and shim object were inspected inside
+`/reference/exact-revision/workspace`. The final revision repeats these checks.
+
+A bind-mounted Git worktree also needs access to its canonical Git metadata.
+An inaccessible `.git` pointer is an export prerequisite failure, not a reason
+to copy unverified sources or accept an empty export.
+
 Native Debian 12/OpenCV 4.6 `alr -n build`, three external-shim GPRinstall
 tests, and the installed Mat consumer passed. The installed Mat and mixed
 Ada/C++ consumers also passed with `CORE_DEBIAN_QUALIFICATION=True`, including
