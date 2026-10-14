@@ -38,6 +38,10 @@ project OpenCV_Core is
    package Compiler is
       for Default_Switches ("Ada") use
          OpenCV_Core_Config.Ada_Compiler_Switches & ("-Werror");
+      --  This unit uses Ada 2022 bracket array aggregates. Keep the language
+      --  selection local rather than changing unrelated units' warning sets.
+      for Switches ("opencv-core-internal-typed_access.adb") use
+         OpenCV_Core_Config.Ada_Compiler_Switches & ("-gnat2022", "-Werror");
    end Compiler;
 
    package Binder is
