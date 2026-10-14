@@ -2704,6 +2704,9 @@ package body OpenCV.Core is
       Criteria      : K_Means_Criteria;
       Attempts      : Positive)
    is
+      --  Positive enforces the public attempt-count constraint. Each overload
+      --  forwards the count directly to the native call.
+      pragma Unreferenced (Attempts);
       Sample_Count  : Natural;
       Feature_Count : Mat_Size;
    begin
