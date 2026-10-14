@@ -1,0 +1,23 @@
+name: GNAT 12 aggregate source-unit controls
+on:
+  push:
+    branches: [main, 'feature/**', 'corrective/**']
+  pull_request:
+jobs:
+  source-units:
+    runs-on: ubuntu-24.04
+    container: debian:12
+    steps:
+      - name: Install public Debian compiler and test runner
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git python3 gnat-12 gnat-12-aarch64-linux-gnu
+      - uses: actions/checkout@v4
+      - name: Native GNAT 12 source-unit controls (not a production build)
+        run: |
+          gcc-12 --version
+          ADA_COMPILER=gcc-12 python3 -m unittest discover -s tests -p 'test_gnat12_*.py' -v
+      - name: AArch64 GNAT 12 source-unit controls (compile only)
+        run: |
+          test "$(aarch64-linux-gnu-gcc -dumpmachine)" = aarch64-linux-gnu
+          ADA_COMPILER=aarch64-linux-gnu-gcc python3 -m unittest discover -s tests -p 'test_gnat12_*.py' -v
