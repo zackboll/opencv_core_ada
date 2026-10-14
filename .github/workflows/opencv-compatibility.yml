@@ -99,6 +99,9 @@ jobs:
               echo "=== Nested test suite ==="
               alr -C tests run
 
+               echo "=== Float16 Vec2 layout boundary controls ==="
+               sh tests/layout/run_controls.sh
+
               echo "=== OpenCV after Alire resolution ==="
               opencv_version=$(pkg-config --modversion opencv5 2>/dev/null || \
                 pkg-config --modversion opencv4 2>/dev/null || \

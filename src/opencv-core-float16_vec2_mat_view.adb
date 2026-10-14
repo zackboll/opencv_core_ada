@@ -17,18 +17,14 @@ package body OpenCV.Core.Float16_Vec2_Mat_View is
      Compile_Time_Error
        (Float16_Vec2.Vector'Size /= 32,
         "Float16 Vec2 Vector must be exactly 32 bits for zero-copy views");
-   pragma
-     Compile_Time_Error
-       (Float16_Vec2.Vector'Object_Size /= 32,
-        "Float16 Vec2 Vector must have no hidden padding");
+   --  Vector Object_Size and alignment are call-time checks in Viewing;
+   --  GNAT 12 cannot evaluate them in Compile_Time_Error. Scalar storage,
+   --  value size, component stride and index checks remain static.
    pragma
      Compile_Time_Error
        (Buffer_Array'Component_Size /= 32,
         "Float16 Vec2 Buffer_Array must be tightly packed 32-bit elements");
-   pragma
-     Compile_Time_Error
-       (Float16_Vec2.Vector'Alignment > 2,
-        "Float16 Vec2 Vector alignment is stricter than CV_16FC2 guarantees");
+   --  Viewing also verifies the actual backing address before construction.
    pragma
      Compile_Time_Error
        (Float16_Vec2.Component_Index'First /= 0

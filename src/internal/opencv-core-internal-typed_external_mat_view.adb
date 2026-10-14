@@ -1,4 +1,6 @@
 with Ada.Exceptions;
+with OpenCV.Core.Internal.Object_Storage;
+with OpenCV.Core.Internal.External_View_Alignment;
 with OpenCV.Internal.C_API;
 with OpenCV.Internal.Safe_Arithmetic;
 with System;
@@ -23,20 +25,39 @@ package body OpenCV.Core.Internal.Typed_External_Mat_View is
        (Buffer_Array'Component_Size /= Expected_Element_Bits,
         "typed external-view array component size does not match"
           & " Expected_Element_Bits");
-   pragma
-     Compile_Time_Error
-       (Element_Type'Alignment > Native_Element_Alignment,
-        "typed external-view element requires stricter alignment than"
-          & " native Mat storage guarantees");
 
    Element_Bytes : constant OpenCV.Internal.C_API.C_UInt64 :=
      OpenCV.Internal.C_API.C_UInt64
        (Expected_Element_Bits / System.Storage_Unit);
 
+   package Storage is new
+     Object_Storage
+       (Element_Type,
+        Expected_Element_Bits,
+        Buffer_Array'Component_Size,
+        Native_Element_Alignment,
+        (case Required_Depth is
+           when UInt8 | Int8             => 1,
+           when UInt16 | Int16 | Float16 => 2,
+           when Int32 | Float32          => 4,
+           when Float64                  => 8));
+
    procedure Raise_Invalid_View (Message : String) is
    begin
       Ada.Exceptions.Raise_Exception (OpenCV_Error'Identity, Message);
    end Raise_Invalid_View;
+
+   function Verified_Data_Address
+     (Data : aliased Buffer_Array) return System.Address is
+   begin
+      Storage.Verify;
+      if Data'Length = 0 then
+         Raise_Invalid_View (Type_Name & " external Mat view buffer is empty");
+      end if;
+      return
+        External_View_Alignment.Verified_Address
+          (Data (Data'First)'Address, Native_Element_Alignment);
+   end Verified_Data_Address;
 
    procedure Raise_On_Error
      (Status : OpenCV.Internal.C_API.Status; Operation : String)
@@ -127,6 +148,7 @@ package body OpenCV.Core.Internal.Typed_External_Mat_View is
       New_Handle    : aliased OpenCV.Internal.C_API.Mat_Handle :=
         OpenCV.Internal.C_API.Null_Mat_Handle;
       Status        : OpenCV.Internal.C_API.Status;
+      Data_Address  : System.Address;
    begin
       if Data'Length /= Element_Count then
          Raise_Invalid_View
@@ -135,6 +157,7 @@ package body OpenCV.Core.Internal.Typed_External_Mat_View is
       end if;
 
       Byte_Count := Expected_Byte_Count (Element_Count);
+      Data_Address := Verified_Data_Address (Data);
 
       Status :=
         OpenCV.Internal.C_API.Mat_Create_External_2D
@@ -142,7 +165,7 @@ package body OpenCV.Core.Internal.Typed_External_Mat_View is
            Columns    => OpenCV.Internal.C_API.C_Int32 (Columns),
            Depth      => To_C_Depth (Required_Depth),
            Channels   => OpenCV.Internal.C_API.C_Int32 (Required_Channels),
-           Data       => Data (Data'First)'Address,
+           Data       => Data_Address,
            Byte_Count => Byte_Count,
            Result     => New_Handle'Access);
       Raise_On_Error (Status, Type_Name & " external Mat view construction");
@@ -232,6 +255,7 @@ package body OpenCV.Core.Internal.Typed_External_Mat_View is
       New_Handle    : aliased OpenCV.Internal.C_API.Mat_Handle :=
         OpenCV.Internal.C_API.Null_Mat_Handle;
       Status        : OpenCV.Internal.C_API.Status;
+      Data_Address  : System.Address;
    begin
       if Data'Length /= Element_Count then
          Raise_Invalid_View
@@ -246,6 +270,7 @@ package body OpenCV.Core.Internal.Typed_External_Mat_View is
       end loop;
 
       Byte_Count := Expected_Byte_Count (Element_Count);
+      Data_Address := Verified_Data_Address (Data);
 
       Status :=
         OpenCV.Internal.C_API.Mat_Create_External_ND
@@ -254,7 +279,7 @@ package body OpenCV.Core.Internal.Typed_External_Mat_View is
            Depth           => To_C_Depth (Required_Depth),
            Channels        =>
              OpenCV.Internal.C_API.C_Int32 (Required_Channels),
-           Data            => Data (Data'First)'Address,
+           Data            => Data_Address,
            Byte_Count      => Byte_Count,
            Result          => New_Handle'Access);
       Raise_On_Error
@@ -302,6 +327,7 @@ package body OpenCV.Core.Internal.Typed_External_Mat_View is
       New_Handle                : aliased OpenCV.Internal.C_API.Mat_Handle :=
         OpenCV.Internal.C_API.Null_Mat_Handle;
       Status                    : OpenCV.Internal.C_API.Status;
+      Data_Address              : System.Address;
    begin
       --  Also validates that Rows and Columns fit the native signed range.
       declare
@@ -339,6 +365,7 @@ package body OpenCV.Core.Internal.Typed_External_Mat_View is
 
       Row_Stride_Bytes := Expected_Byte_Count (Row_Stride_Elements);
       Byte_Count := Expected_Byte_Count (Data'Length);
+      Data_Address := Verified_Data_Address (Data);
 
       Status :=
         OpenCV.Internal.C_API.Mat_Create_External_2D_Strided
@@ -347,7 +374,7 @@ package body OpenCV.Core.Internal.Typed_External_Mat_View is
            Depth            => To_C_Depth (Required_Depth),
            Channels         =>
              OpenCV.Internal.C_API.C_Int32 (Required_Channels),
-           Data             => Data (Data'First)'Address,
+           Data             => Data_Address,
            Byte_Count       => Byte_Count,
            Row_Stride_Bytes => Row_Stride_Bytes,
            Result           => New_Handle'Access);
@@ -512,6 +539,7 @@ package body OpenCV.Core.Internal.Typed_External_Mat_View is
       New_Handle        : aliased OpenCV.Internal.C_API.Mat_Handle :=
         OpenCV.Internal.C_API.Null_Mat_Handle;
       Status            : OpenCV.Internal.C_API.Status;
+      Data_Address      : System.Address;
    begin
       if Data'Length < Required_Capacity then
          Raise_Invalid_View
@@ -527,6 +555,7 @@ package body OpenCV.Core.Internal.Typed_External_Mat_View is
       end loop;
 
       Byte_Count := Expected_Byte_Count (Data'Length);
+      Data_Address := Verified_Data_Address (Data);
 
       Status :=
         OpenCV.Internal.C_API.Mat_Create_External_ND_Strided
@@ -536,7 +565,7 @@ package body OpenCV.Core.Internal.Typed_External_Mat_View is
            Depth           => To_C_Depth (Required_Depth),
            Channels        =>
              OpenCV.Internal.C_API.C_Int32 (Required_Channels),
-           Data            => Data (Data'First)'Address,
+           Data            => Data_Address,
            Byte_Count      => Byte_Count,
            Result          => New_Handle'Access);
       Raise_On_Error

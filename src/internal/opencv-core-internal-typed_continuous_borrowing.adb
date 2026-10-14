@@ -1,4 +1,6 @@
 with Ada.Exceptions;
+with OpenCV.Core.Internal.Object_Storage;
+with OpenCV.Core.Internal.External_View_Alignment;
 with OpenCV.Core.Internal.Continuous_Data;
 with OpenCV.Internal.C_API;
 with System;
@@ -23,11 +25,21 @@ package body OpenCV.Core.Internal.Typed_Continuous_Borrowing is
        (Buffer_Array'Component_Size /= Expected_Element_Bits,
         "typed buffer array component size does not match"
           & " Expected_Element_Bits");
-   pragma
-     Compile_Time_Error
-       (Element_Type'Alignment > Native_Element_Alignment,
-        "typed buffer element requires stricter alignment than native Mat "
-          & "storage guarantees");
+   package Storage is new
+     Object_Storage
+       (Element_Type,
+        Expected_Element_Bits,
+        Buffer_Array'Component_Size,
+        Native_Element_Alignment,
+        (case Required_Depth is
+           when UInt8 | Int8             => 1,
+           when UInt16 | Int16 | Float16 => 2,
+           when Int32 | Float32          => 4,
+           when Float64                  => 8));
+   procedure Verify_Representation is
+   begin
+      Storage.Verify;
+   end Verify_Representation;
 
    Element_Bytes : constant OpenCV.Internal.C_API.C_UInt64 :=
      OpenCV.Internal.C_API.C_UInt64
@@ -133,7 +145,9 @@ package body OpenCV.Core.Internal.Typed_Continuous_Borrowing is
            ("borrowed " & Type_Name & " buffer has no storage");
       end if;
 
-      return Borrowed.Address;
+      return
+        External_View_Alignment.Verified_Address
+          (Borrowed.Address, Native_Element_Alignment);
    end Borrow_Storage;
 
    procedure With_Read_Only_Buffer
@@ -142,6 +156,7 @@ package body OpenCV.Core.Internal.Typed_Continuous_Borrowing is
    is
       Lease : Mat;
    begin
+      Verify_Representation;
       Acquire_Borrow_Lease (Image, Lease);
       Validate_Borrow (Lease);
 
@@ -189,6 +204,7 @@ package body OpenCV.Core.Internal.Typed_Continuous_Borrowing is
    is
       Lease : Mat;
    begin
+      Verify_Representation;
       Acquire_Borrow_Lease (Image, Lease);
       Validate_Borrow (Lease);
 
