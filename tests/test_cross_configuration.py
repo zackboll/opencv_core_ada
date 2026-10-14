@@ -2,6 +2,7 @@
 import os
 from pathlib import Path
 import subprocess
+import shutil
 import tempfile
 import unittest
 
@@ -219,6 +220,98 @@ class CrossConfigurationTests(unittest.TestCase):
                                 text=True, capture_output=True)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("stale artifacts", result.stderr)
+
+    def test_workspace_canonical_controls(self):
+        base, _, _, _, _ = self.fixture()
+        checkout = base / "checkout"
+        shutil.copytree(ROOT / "scripts", checkout / "scripts")
+        alias = base / "checkout-alias"
+        alias.symlink_to(checkout, target_is_directory=True)
+        sysroot = Path(self.env["ENV_PREFIX"])
+        sdk_alias = base / "sdk-alias"
+        sdk_alias.symlink_to(sysroot, target_is_directory=True)
+        sibling = base / "sibling"
+        sibling.mkdir()
+        stale = base / "stale"
+        stale.symlink_to(base / "absent")
+        # A sentinel proves destination rejection occurs before Git/export.
+        tools = base / "tools"
+        tools.mkdir()
+        git = tools / "git"
+        git.write_text("#!/bin/sh\necho export-sentinel >&2\nexit 1\n")
+        git.chmod(0o755)
+        self.env["PATH"] = str(tools) + os.pathsep + self.env["PATH"]
+        cases = [alias / "output", sibling / ".." / "checkout" / "output",
+                 sysroot / "output", sdk_alias / "output", checkout, stale,
+                 sibling]
+        before = sorted(str(p.relative_to(base)) for p in base.rglob("*"))
+        for destination in cases:
+            with self.subTest(destination=destination):
+                result = subprocess.run(
+                    ["sh", str(checkout / "scripts/cross_build_core.sh"),
+                     "--prepare", str(destination)], env=self.env,
+                    text=True, capture_output=True)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertNotIn("export-sentinel", result.stderr)
+                self.assertRegex(result.stderr, "workspace.*(outside|overlap|stale)")
+        self.assertEqual(before, sorted(str(p.relative_to(base)) for p in base.rglob("*")))
+        for destination in [base / "ordinary-new", sibling / ".." / "ordinary-new"]:
+            result = subprocess.run(
+                ["sh", str(checkout / "scripts/cross_build_core.sh"),
+                 "--prepare", str(destination)], env=self.env,
+                text=True, capture_output=True)
+            self.assertIn("export-sentinel", result.stderr)
+            self.assertFalse(destination.exists())
+
+    def test_header_and_flag_symlink_controls(self):
+        for kind in ["directory", "required", "nested", "broken", "local",
+                     "local-directory", "cycle", "include-flag", "library-flag",
+                     "local-include-flag", "local-library-flag"]:
+            with self.subTest(kind=kind), tempfile.TemporaryDirectory() as temp:
+                original = self.temp
+                self.temp = type("Fixture", (), {"name": temp})()
+                try:
+                    base, include, _, _, _ = self.fixture()
+                    host = base / "host"
+                    host.mkdir()
+                    (host / "core.hpp").touch()
+                    if kind == "directory":
+                        shutil.rmtree(include / "opencv2")
+                        (include / "opencv2").symlink_to(host)
+                    elif kind in ["required", "broken", "local"]:
+                        header = include / "opencv2/core.hpp"
+                        header.unlink()
+                        target = host / "core.hpp"
+                        if kind == "broken":
+                            target = include / "absent.hpp"
+                        if kind == "local":
+                            target = include / "actual.hpp"
+                            target.touch()
+                        header.symlink_to(target)
+                    elif kind == "nested":
+                        (include / "opencv2/nested").mkdir()
+                        (include / "opencv2/nested/detail.hpp").symlink_to(host / "core.hpp")
+                    elif kind == "local-directory":
+                        (include / "opencv2").rename(include / "actual")
+                        (include / "opencv2").symlink_to(include / "actual")
+                    elif kind == "cycle":
+                        (include / "opencv2/loop").symlink_to(include / "opencv2")
+                    else:
+                        alias = include / "flags"
+                        alias.symlink_to(include / "opencv2" if kind.startswith("local-") else host)
+                        pkg = Path(self.env["OPENCV_CROSS_PKG_CONFIG"])
+                        flag = "-I" if "include-flag" in kind else "-L"
+                        pkg.write_text(pkg.read_text().replace('--cflags) exit 0',
+                                                               f'--cflags) echo {flag}{alias}'))
+                    before = sorted(str(p.relative_to(base)) for p in base.rglob("*"))
+                    result = self.check()
+                    if kind.startswith("local"):
+                        self.assertEqual(result.returncode, 0, result.stderr)
+                    else:
+                        self.assertNotEqual(result.returncode, 0, "escaping headers/flags accepted")
+                    self.assertEqual(before, sorted(str(p.relative_to(base)) for p in base.rglob("*")))
+                finally:
+                    self.temp = original
 
 
 if __name__ == "__main__":

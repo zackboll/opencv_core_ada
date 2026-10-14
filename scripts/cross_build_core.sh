@@ -17,8 +17,16 @@ mode=$1
 work=$2
 case "$mode" in --prepare|--build) ;; *) fail 'unknown operation' ;; esac
 case "$work" in /*) ;; *) fail 'workspace must be absolute' ;; esac
-[ ! -e "$work" ] || fail 'workspace must not already exist (stale artifacts)'
-case "$work/" in "$root/"*) fail 'workspace must be outside the source checkout' ;; esac
+[ ! -e "$work" ] && [ ! -L "$work" ] || fail 'workspace must not already exist (stale artifacts)'
+# GNU realpath -m resolves parent symlinks and .. even for a new destination.
+# Check both containment directions: an ancestor also overlaps protected data.
+work=$(realpath -m -- "$work") || fail 'cannot canonicalize workspace'
+sysroot=$(realpath -e -- "$ENV_PREFIX") || fail 'cannot canonicalize sysroot'
+[ ! -e "$work" ] && [ ! -L "$work" ] || fail 'workspace must not already exist (stale artifacts)'
+for protected in "$root" "$sysroot"; do
+    case "$work/" in "$protected/"*) fail 'workspace must be outside protected checkout and sysroot' ;; esac
+    case "$protected/" in "$work/"*) fail 'workspace overlaps protected checkout or sysroot' ;; esac
+done
 status=$(git -C "$root" status --porcelain) || fail 'source Git metadata is inaccessible'
 [ -z "$status" ] || fail 'source revision must be clean before export'
 revision=$(git -C "$root" rev-parse HEAD) || fail 'cannot resolve source revision'

@@ -113,6 +113,31 @@ replacement compiler was selected, and no Alire cross-build success is claimed.
 
 ## Verification and remaining work
 
+### R1 canonical-path correction
+
+At the reviewed head, synthetic controls demonstrated that workspace aliases
+through parent symlinks and `..`, destinations inside the sysroot, and dangling
+workspace symlinks reached the export stage. Escaping `opencv2`, `core.hpp`,
+nested header links, and pkg-config directory aliases were accepted.
+
+Workspace validation now uses GNU `realpath -m` before creating output and
+rejects canonical overlap in either direction with the source checkout or
+sysroot. Existing destinations, including dangling links, are never reused.
+GNU coreutils realpath was exercised on host 9.7 and reference Debian 9.1.
+Header-tree traversal follows target-local aliases, checks each entry using
+`realpath -e`, and rejects escaped/broken links and directory-link cycles.
+All `-I` trees and `-L` directories are checked against their physical sysroot
+locations. Valid target-local file, directory, include-flag and library-flag
+aliases pass the controls. Inputs must remain stable while validation/build
+runs; this is not a sandbox against concurrent hostile filesystem mutation.
+
+The suite now has 28 tests, including parameterized destination/header cases.
+They assert rejected destinations never reach Git export or create output and
+fixture inventories remain unchanged. Ordinary external new destinations pass
+the destination gate. Public Debian reference preflight still passes; native
+Core build, three GPRinstall tests, and Mat/mixed installed and relocated
+consumer regressions pass. No compiler/runtime checks or ABI assertions changed.
+
 Successfully executed synthetic tests:
 
 ```sh

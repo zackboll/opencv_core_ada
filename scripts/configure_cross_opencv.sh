@@ -70,9 +70,28 @@ case "$version" in 4.[1-9]|4.[1-9].*|4.[1-9][0-9]*|5.0|5.0.*) ;; *) fail "unsupp
 # Reject dependency flags that escape the target filesystem. Only the Core
 # dependency is linked below; all metadata is nevertheless checked for leakage.
 flags=$("$pkg" --cflags --libs "$package")
+header_tree() {
+    # Follow local directory aliases and reject broken links, escapes and cycles.
+    find -L "$1" -exec sh -c '
+        sysroot=$1; shift
+        for entry do
+            canonical=$(realpath -e -- "$entry") || exit 1
+            case "$canonical/" in "$sysroot/"*) ;; *)
+                printf "error: OpenCV header path escapes sysroot: %s\n" "$entry" >&2
+                exit 1 ;;
+            esac
+        done
+    ' sh "$sysroot" {} + || fail 'invalid or escaping target OpenCV header tree'
+}
+contained_directory() {
+    [ -d "$1" ] || fail 'missing pkg-config dependency directory'
+    canonical=$(realpath -e -- "$1") || fail 'invalid pkg-config dependency directory'
+    case "$canonical/" in "$sysroot/"*) ;; *) fail 'host pkg-config dependency path' ;; esac
+}
 for flag in $flags; do
     case "$flag" in
-        -I*|-L*) path=${flag#??}; case "$path" in "$sysroot"/*) ;; *) fail 'host pkg-config dependency path' ;; esac ;;
+        -I*) path=${flag#??}; contained_directory "$path"; header_tree "$path" ;;
+        -L*) path=${flag#??}; contained_directory "$path" ;;
         /*) case "$flag" in "$sysroot"/*) ;; *) fail 'host pkg-config dependency library' ;; esac ;;
         -D*|-l*|-pthread) ;;
         *) fail "unsupported target pkg-config flag: $flag" ;;
@@ -93,6 +112,11 @@ resolve() {
 include=$(resolve "$("$pkg" --variable=includedir "$package")")
 library=$(resolve "$("$pkg" --variable=libdir "$package")")
 [ -f "$include/opencv2/core.hpp" ] || fail 'missing target OpenCV headers'
+# Follow target-local directory aliases, inspecting every reachable entry.
+# realpath -e rejects dangling links; find -L rejects directory-link cycles.
+# Validate the whole include tree, since nested headers can escape independently
+# of core.hpp. Batch arguments preserve filenames without line-based parsing.
+header_tree "$include"
 opencv=$library/libopencv_core.so
 [ -f "$opencv" ] || opencv=$library/libopencv_core.a
 resolved=$(realpath "$opencv") || fail 'missing target OpenCV libraries'
