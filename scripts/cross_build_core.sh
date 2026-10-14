@@ -3,8 +3,7 @@
 set -eu
 fail() { printf 'error: %s\n' "$*" >&2; exit 1; }
 target=${OPENCV_CROSS_TARGET:-}
-[ -n "$target" ] || fail 'OPENCV_CROSS_TARGET is required'
-case "$target" in aarch64*-linux-*) ;; *) fail 'only AArch64 Linux targets are supported' ;; esac
+sh "$(dirname -- "$0")/validate_cross_target.sh" "$target"
 [ -n "${ENV_PREFIX:-}" ] || fail 'ENV_PREFIX is required'
 [ -d "$ENV_PREFIX" ] || fail 'target sysroot does not exist'
 [ "$ENV_PREFIX" != / ] || fail 'a dedicated target sysroot is required'

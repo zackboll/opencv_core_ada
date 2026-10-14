@@ -180,11 +180,69 @@ class CrossConfigurationTests(unittest.TestCase):
         self.reject("Ada runtime differs")
 
     def test_host_dependency_flags(self):
-        self.fixture()
+        base, _, _, _, _ = self.fixture()
+        outside = base / "outside-sysroot"
+        outside.mkdir()
         pkg = Path(self.env["OPENCV_CROSS_PKG_CONFIG"])
-        pkg.write_text(pkg.read_text().replace('--cflags) exit 0',
-                                              '--cflags) echo -I/usr/include/opencv4'))
-        self.reject("host pkg-config dependency path")
+        original = pkg.read_text()
+        for flag in ["-I", "-L"]:
+            with self.subTest(flag=flag):
+                pkg.write_text(original.replace('--cflags) exit 0',
+                                                f'--cflags) echo {flag}{outside}'))
+                self.reject("host pkg-config dependency path")
+
+    def test_missing_dependency_directories(self):
+        base, _, _, _, _ = self.fixture()
+        missing = base / "sysroot/absent"
+        pkg = Path(self.env["OPENCV_CROSS_PKG_CONFIG"])
+        original = pkg.read_text()
+        for flag in ["-I", "-L"]:
+            with self.subTest(flag=flag):
+                pkg.write_text(original.replace('--cflags) exit 0',
+                                                f'--cflags) echo {flag}{missing}'))
+                self.reject("missing pkg-config dependency directory")
+
+    def test_linux_target_names(self):
+        self.fixture()
+        original = "aarch64-linux-gnu"
+        templates = {key: Path(self.env[key]).read_text() for key in
+                     ["OPENCV_CROSS_ADA", "OPENCV_CROSS_CXX", "OPENCV_CROSS_GPR_CONFIG"]}
+        for target in [original, "aarch64-unknown-linux-gnu", "aarch64-poky-linux",
+                       "aarch64-oe-linux", "aarch64-poky-linux-gnu"]:
+            with self.subTest(target=target):
+                self.env["OPENCV_CROSS_TARGET"] = target
+                for key in ["OPENCV_CROSS_ADA", "OPENCV_CROSS_CXX", "OPENCV_CROSS_GPR_CONFIG"]:
+                    path = Path(self.env[key])
+                    path.write_text(templates[key].replace(original, target))
+                result = self.check()
+                self.assertEqual(result.returncode, 0, result.stderr)
+                # Wrapper must use the same naming contract before sysroot checks.
+                env = self.env.copy()
+                del env["ENV_PREFIX"]
+                result = subprocess.run(["sh", str(ROOT / "scripts/cross_build_core.sh")],
+                                        env=env, text=True, capture_output=True)
+                self.assertIn("ENV_PREFIX is required", result.stderr)
+                for key, diagnostic in [("OPENCV_CROSS_ADA", "Ada compiler target mismatch"),
+                                        ("OPENCV_CROSS_CXX", "C++ compiler target mismatch"),
+                                        ("OPENCV_CROSS_GPR_CONFIG", "GPR target mismatch")]:
+                    path = Path(self.env[key])
+                    contents = path.read_text()
+                    path.write_text(contents.replace(target, "aarch64-other-linux"))
+                    result = self.check()
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn(diagnostic, result.stderr)
+                    path.write_text(contents)
+
+    def test_rejected_target_names(self):
+        self.fixture()
+        for target in ["x86_64-linux-gnu", "arm-linux-gnueabihf", "aarch64-none-elf",
+                       "", "aarch64", "aarch64--linux", "aarch64-linux-",
+                       "aarch64-linux/gnu", "aarch64-linux gnu", "aarch64evil-linux-gnu"]:
+            with self.subTest(target=target):
+                self.env["OPENCV_CROSS_TARGET"] = target
+                self.reject("OPENCV_CROSS_TARGET" if not target else "AArch64 Linux")
+                result = self.check()
+                self.assertNotEqual(result.returncode, 0)
 
     def test_generated_configuration_is_idempotent(self):
         self.fixture()

@@ -113,6 +113,27 @@ replacement compiler was selected, and no Alire cross-build success is claimed.
 
 ## Verification and remaining work
 
+### R2 deterministic controls and Linux naming
+
+Hosted run `38491300687` failed because the host-dependency fixture referenced
+`/usr/include/opencv4`: without that directory, preflight correctly rejected
+a missing directory rather than an existing escaping path. The original failure
+was reproduced in a clean Debian 13 container with Python/GCC but no OpenCV
+headers. The corrected 31-test suite passes both there and on the development
+host. Existing outside-sysroot and missing-directory controls now use disposable
+paths, independently for `-I` and `-L`, with distinct required diagnostics.
+
+Both entry scripts use the shared `validate_cross_target.sh` naming contract:
+exact `aarch64`, optional vendor, explicit `linux`, and optional nonempty ABI
+components. Tested names include `aarch64-linux-gnu`,
+`aarch64-unknown-linux-gnu`, `aarch64-poky-linux`, `aarch64-oe-linux`, and
+`aarch64-poky-linux-gnu`. Non-AArch64, non-Linux, empty, malformed, and
+architecture-prefix impostors are rejected. Every accepted name is still checked
+for exact Ada/C++ `-dumpmachine` and GPR target agreement; naming coverage does
+not identify or qualify an unavailable Yocto toolchain. R1 containment controls
+remain unchanged and pass the full suite. Public Debian reference preflight and
+native Mat/mixed installed-consumer relocation checks pass.
+
 ### R1 canonical-path correction
 
 At the reviewed head, synthetic controls demonstrated that workspace aliases

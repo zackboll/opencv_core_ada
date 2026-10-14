@@ -7,8 +7,7 @@ tool() {
     command -v "$2" || fail "$1 executable is unavailable: $2"
 }
 target=${OPENCV_CROSS_TARGET:-}
-[ -n "$target" ] || fail 'OPENCV_CROSS_TARGET is required'
-case "$target" in aarch64*-linux-*) ;; *) fail 'only AArch64 Linux targets are supported' ;; esac
+sh "$(dirname -- "$0")/validate_cross_target.sh" "$target"
 [ -n "${ENV_PREFIX:-}" ] || fail 'ENV_PREFIX is required'
 [ -d "$ENV_PREFIX" ] || fail 'target sysroot does not exist'
 sysroot=$(CDPATH= cd -- "$ENV_PREFIX" && pwd -P)

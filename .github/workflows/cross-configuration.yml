@@ -11,4 +11,4 @@ jobs:
       - name: Fail-closed synthetic configuration tests (not a cross-build)
         run: python3 -m unittest discover -s tests -p test_cross_configuration.py -v
       - name: Shell syntax
-        run: sh -n scripts/cross_build_core.sh scripts/configure_cross_opencv.sh scripts/configure_opencv.sh
+        run: sh -n scripts/cross_build_core.sh scripts/configure_cross_opencv.sh scripts/configure_opencv.sh scripts/validate_cross_target.sh
