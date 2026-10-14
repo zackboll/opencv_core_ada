@@ -11,9 +11,10 @@ for profile in o0 o2; do
     alr -n exec -- gprbuild -P tests/layout/layout_controls.gpr -p \
         "-XLAYOUT_PROFILE=$profile" \
         "-XLAYOUT_SHIM=$root/lib/libopencv_core_shim.a" -cargs:Ada "$@"
-    for main in float16_boundary_controls \
+    for main in production_negative_controls \
         opencv-core-internal-object_size_negative \
-        opencv-core-internal-layout_guard_controls; do
+        opencv-core-internal-layout_guard_controls \
+        representation_measurements float16_boundary_controls; do
         "tests/layout/bin-$profile/$main"
     done
 done

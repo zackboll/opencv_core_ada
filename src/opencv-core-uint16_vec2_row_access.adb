@@ -10,8 +10,7 @@ package body OpenCV.Core.UInt16_Vec2_Row_Access is
        (UInt16_Vec2.Vector'Component_Size /= 16, "Vec2 scalar size");
    pragma
      Compile_Time_Error (Row_Array'Component_Size /= 32, "Vec2 row packing");
-   pragma
-     Compile_Time_Error (UInt16_Vec2.Vector'Alignment > 2, "Vec2 alignment");
+   --  Borrowing verifies alignment before lease entry and typed conversion.
    pragma
      Compile_Time_Error
        (UInt16_Vec2.Component_Index'First /= 0

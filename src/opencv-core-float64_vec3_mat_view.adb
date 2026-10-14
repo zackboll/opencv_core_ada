@@ -12,10 +12,7 @@ package body OpenCV.Core.Float64_Vec3_Mat_View is
      Compile_Time_Error
        (Buffer_Array'Component_Size /= 192,
         "Float64 Vec3 buffer must be tightly packed");
-   pragma
-     Compile_Time_Error
-       (Float64_Vec3.Vector'Alignment > 8,
-        "Float64 Vec3 alignment exceeds native alignment");
+   --  Viewing verifies alignment before native construction (GNAT 12).
    pragma
      Compile_Time_Error
        (Float64_Vec3.Component_Index'First /= 0

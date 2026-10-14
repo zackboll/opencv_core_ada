@@ -99,8 +99,16 @@ jobs:
               echo "=== Nested test suite ==="
               alr -C tests run
 
-               echo "=== Float16 Vec2 layout boundary controls ==="
-               sh tests/layout/run_controls.sh
+              echo "=== Scalar/vector layout boundary controls ==="
+              sh tests/layout/run_controls.sh
+              echo "=== Instrumented all-family public API suite ==="
+              include=$(pkg-config --cflags-only-I opencv5 2>/dev/null || \
+                pkg-config --cflags-only-I opencv4)
+              include=$(printf "%s\n" "$include" | tr " " "\n" | grep "^\-I" | tail -1)
+              test -n "$include"
+              alr -C tests -n exec -- gprbuild -P layout/all_family_controls.gpr -p \
+                "-XLAYOUT_OPENCV_INCLUDE=$include"
+              tests/layout/bin-family/all_family_controls
 
               echo "=== OpenCV after Alire resolution ==="
               opencv_version=$(pkg-config --modversion opencv5 2>/dev/null || \

@@ -5,6 +5,8 @@ project Layout_Controls is
    for Create_Missing_Dirs use "True";
    for Languages use ("Ada", "C");
    for Main use ("float16_boundary_controls.adb",
+                  "representation_measurements.adb",
+                  "production_negative_controls.adb",
                  "opencv-core-internal-object_size_negative.adb",
                  "opencv-core-internal-layout_guard_controls.adb");
    package Compiler is

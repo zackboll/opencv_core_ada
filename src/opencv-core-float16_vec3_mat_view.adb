@@ -19,18 +19,13 @@ package body OpenCV.Core.Float16_Vec3_Mat_View is
        (OpenCV.Core.Float16_Vec3.Vector'Size /= 48,
         "Float16 Vec3 Vector must be exactly 48 bits for zero-copy C3"
           & " views");
-   pragma
-     Compile_Time_Error
-       (OpenCV.Core.Float16_Vec3.Vector'Object_Size /= 48,
-        "Float16 Vec3 Vector must have no hidden padding");
+   --  Viewing checks Object_Size before native construction; GNAT 12 cannot
+   --  evaluate this generic vector attribute in Compile_Time_Error.
    pragma
      Compile_Time_Error
        (Buffer_Array'Component_Size /= 48,
         "Float16 Vec3 Buffer_Array must be tightly packed 48-bit pixels");
-   pragma
-     Compile_Time_Error
-       (OpenCV.Core.Float16_Vec3.Vector'Alignment > 2,
-        "Float16 Vec3 Vector alignment is stricter than CV_16FC3 guarantees");
+   --  Viewing checks element and backing alignment before construction.
    pragma
      Compile_Time_Error
        (OpenCV.Core.Float16_Vec3.Component_Index'First /= 0

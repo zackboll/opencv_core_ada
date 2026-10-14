@@ -17,10 +17,7 @@ package body OpenCV.Core.Float32_Vec3_Row_Access is
      Compile_Time_Error
        (Row_Array'Component_Size /= 96,
         "Float32 Vec3 Row_Array must be tightly packed 96-bit pixels");
-   pragma
-     Compile_Time_Error
-       (OpenCV.Core.Float32_Vec3.Vector'Alignment > 4,
-        "Float32 Vec3 Vector alignment is stricter than CV_32FC3 guarantees");
+   --  Borrowing verifies alignment before lease entry and typed conversion.
    pragma
      Compile_Time_Error
        (OpenCV.Core.Float32_Vec3.Component_Index'First /= 0

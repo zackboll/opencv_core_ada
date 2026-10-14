@@ -14,10 +14,7 @@ package body OpenCV.Core.UInt8_Vec3_Buffer_Access is
      Compile_Time_Error
        (Buffer_Array'Component_Size /= 24,
         "UInt8 Vec3 Buffer_Array must be tightly packed 24-bit pixels");
-   pragma
-     Compile_Time_Error
-       (OpenCV.Core.UInt8_Vec3.Vector'Alignment > 1,
-        "UInt8 Vec3 Vector alignment is stricter than CV_8UC3 guarantees");
+   --  Borrowing verifies alignment before lease entry and typed conversion.
    pragma
      Compile_Time_Error
        (OpenCV.Core.UInt8_Vec3.Component_Index'First /= 0

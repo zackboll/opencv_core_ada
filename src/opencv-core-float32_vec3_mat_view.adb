@@ -14,10 +14,7 @@ package body OpenCV.Core.Float32_Vec3_Mat_View is
      Compile_Time_Error
        (Buffer_Array'Component_Size /= 96,
         "Float32 Vec3 Buffer_Array must be tightly packed 96-bit pixels");
-   pragma
-     Compile_Time_Error
-       (OpenCV.Core.Float32_Vec3.Vector'Alignment > 4,
-        "Float32 Vec3 Vector alignment is stricter than CV_32FC3 guarantees");
+   --  Viewing verifies alignment before native construction (GNAT 12).
    pragma
      Compile_Time_Error
        (OpenCV.Core.Float32_Vec3.Component_Index'First /= 0

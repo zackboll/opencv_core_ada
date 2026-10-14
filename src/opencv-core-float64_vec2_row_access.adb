@@ -15,10 +15,7 @@ package body OpenCV.Core.Float64_Vec2_Row_Access is
      Compile_Time_Error
        (Row_Array'Component_Size /= 128,
         "Float64 Vec2 row elements must occupy 128 bits");
-   pragma
-     Compile_Time_Error
-       (Float64_Vec2.Vector'Alignment > 8,
-        "Float64 Vec2 alignment exceeds native scalar");
+   --  Borrowing verifies alignment before lease entry and typed conversion.
    pragma
      Compile_Time_Error
        (Float64_Vec2.Component_Index'First /= 0
