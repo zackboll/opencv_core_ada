@@ -24,7 +24,7 @@ package body OpenCV.Core.Internal.Typed_Access is
            V'Access);
    begin
       Raise_On_Error (S, "UInt8 Vec2 read");
-      return (UInt8_Value (V.Component_0), UInt8_Value (V.Component_1));
+      return [UInt8_Value (V.Component_0), UInt8_Value (V.Component_1)];
    end Get_UInt8_Vec2;
 
    procedure Set_UInt8_Vec2
@@ -68,7 +68,7 @@ package body OpenCV.Core.Internal.Typed_Access is
          end;
       end if;
       Raise_On_Error (S, "UInt8 Vec2 N-D read");
-      return (UInt8_Value (V.Component_0), UInt8_Value (V.Component_1));
+      return [UInt8_Value (V.Component_0), UInt8_Value (V.Component_1)];
    end Get_UInt8_Vec2;
 
    procedure Set_UInt8_Vec2
@@ -112,7 +112,7 @@ package body OpenCV.Core.Internal.Typed_Access is
            V'Access);
    begin
       Raise_On_Error (S, "UInt16 Vec2 read");
-      return (UInt16_Value (V.Component_0), UInt16_Value (V.Component_1));
+      return [UInt16_Value (V.Component_0), UInt16_Value (V.Component_1)];
    end Get_UInt16_Vec2;
 
    procedure Set_UInt16_Vec2
@@ -156,7 +156,7 @@ package body OpenCV.Core.Internal.Typed_Access is
          end;
       end if;
       Raise_On_Error (S, "UInt16 Vec2 N-D read");
-      return (UInt16_Value (V.Component_0), UInt16_Value (V.Component_1));
+      return [UInt16_Value (V.Component_0), UInt16_Value (V.Component_1)];
    end Get_UInt16_Vec2;
 
    procedure Set_UInt16_Vec2
@@ -265,10 +265,10 @@ package body OpenCV.Core.Internal.Typed_Access is
    begin
       Raise_On_Error (S, "UInt8 Vec4 read");
       return
-        (UInt8_Value (V.Component_0),
+        [UInt8_Value (V.Component_0),
          UInt8_Value (V.Component_1),
          UInt8_Value (V.Component_2),
-         UInt8_Value (V.Component_3));
+         UInt8_Value (V.Component_3)];
    end Get_UInt8_Vec4;
 
    procedure Set_UInt8_Vec4
@@ -315,10 +315,10 @@ package body OpenCV.Core.Internal.Typed_Access is
       end if;
       Raise_On_Error (S, "UInt8 Vec4 N-D read");
       return
-        (UInt8_Value (V.Component_0),
+        [UInt8_Value (V.Component_0),
          UInt8_Value (V.Component_1),
          UInt8_Value (V.Component_2),
-         UInt8_Value (V.Component_3));
+         UInt8_Value (V.Component_3)];
    end Get_UInt8_Vec4;
 
    procedure Set_UInt8_Vec4
@@ -365,10 +365,10 @@ package body OpenCV.Core.Internal.Typed_Access is
    begin
       Raise_On_Error (S, "UInt16 Vec4 read");
       return
-        (UInt16_Value (V.Component_0),
+        [UInt16_Value (V.Component_0),
          UInt16_Value (V.Component_1),
          UInt16_Value (V.Component_2),
-         UInt16_Value (V.Component_3));
+         UInt16_Value (V.Component_3)];
    end Get_UInt16_Vec4;
 
    procedure Set_UInt16_Vec4
@@ -415,10 +415,10 @@ package body OpenCV.Core.Internal.Typed_Access is
       end if;
       Raise_On_Error (S, "UInt16 Vec4 N-D read");
       return
-        (UInt16_Value (V.Component_0),
+        [UInt16_Value (V.Component_0),
          UInt16_Value (V.Component_1),
          UInt16_Value (V.Component_2),
-         UInt16_Value (V.Component_3));
+         UInt16_Value (V.Component_3)];
    end Get_UInt16_Vec4;
 
    procedure Set_UInt16_Vec4
@@ -465,10 +465,10 @@ package body OpenCV.Core.Internal.Typed_Access is
    begin
       Raise_On_Error (S, "Float32 Vec4 read");
       return
-        (Float32_Value (V.Component_0),
+        [Float32_Value (V.Component_0),
          Float32_Value (V.Component_1),
          Float32_Value (V.Component_2),
-         Float32_Value (V.Component_3));
+         Float32_Value (V.Component_3)];
    end Get_Float32_Vec4;
 
    procedure Set_Float32_Vec4
@@ -515,10 +515,10 @@ package body OpenCV.Core.Internal.Typed_Access is
       end if;
       Raise_On_Error (S, "Float32 Vec4 N-D read");
       return
-        (Float32_Value (V.Component_0),
+        [Float32_Value (V.Component_0),
          Float32_Value (V.Component_1),
          Float32_Value (V.Component_2),
-         Float32_Value (V.Component_3));
+         Float32_Value (V.Component_3)];
    end Get_Float32_Vec4;
 
    procedure Set_Float32_Vec4
@@ -564,7 +564,7 @@ package body OpenCV.Core.Internal.Typed_Access is
            V'Access);
    begin
       Raise_On_Error (S, "Float64 Vec4 read");
-      return (V.Component_0, V.Component_1, V.Component_2, V.Component_3);
+      return [V.Component_0, V.Component_1, V.Component_2, V.Component_3];
    end Get_Float64_Vec4;
 
    procedure Set_Float64_Vec4
@@ -610,7 +610,7 @@ package body OpenCV.Core.Internal.Typed_Access is
          end;
       end if;
       Raise_On_Error (S, "Float64 Vec4 N-D read");
-      return (V.Component_0, V.Component_1, V.Component_2, V.Component_3);
+      return [V.Component_0, V.Component_1, V.Component_2, V.Component_3];
    end Get_Float64_Vec4;
 
    procedure Set_Float64_Vec4
@@ -657,9 +657,9 @@ package body OpenCV.Core.Internal.Typed_Access is
    begin
       Raise_On_Error (S, "Float64 Vec3 read");
       return
-        (0 => Float64_Value (V.Component_0),
+        [0 => Float64_Value (V.Component_0),
          1 => Float64_Value (V.Component_1),
-         2 => Float64_Value (V.Component_2));
+         2 => Float64_Value (V.Component_2)];
    end Get_Float64_Vec3;
 
    procedure Set_Float64_Vec3
@@ -705,9 +705,9 @@ package body OpenCV.Core.Internal.Typed_Access is
       end if;
       Raise_On_Error (S, "Float64 Vec3 N-D read");
       return
-        (0 => Float64_Value (V.Component_0),
+        [0 => Float64_Value (V.Component_0),
          1 => Float64_Value (V.Component_1),
-         2 => Float64_Value (V.Component_2));
+         2 => Float64_Value (V.Component_2)];
    end Get_Float64_Vec3;
 
    procedure Set_Float64_Vec3
@@ -753,8 +753,8 @@ package body OpenCV.Core.Internal.Typed_Access is
    begin
       Raise_On_Error (S, "Float32 Vec2 read");
       return
-        (0 => Float32_Value (V.Component_0),
-         1 => Float32_Value (V.Component_1));
+        [0 => Float32_Value (V.Component_0),
+         1 => Float32_Value (V.Component_1)];
    end Get_Float32_Vec2;
 
    procedure Set_Float32_Vec2
@@ -799,8 +799,8 @@ package body OpenCV.Core.Internal.Typed_Access is
       end if;
       Raise_On_Error (S, "Float32 Vec2 N-D read");
       return
-        (0 => Float32_Value (V.Component_0),
-         1 => Float32_Value (V.Component_1));
+        [0 => Float32_Value (V.Component_0),
+         1 => Float32_Value (V.Component_1)];
    end Get_Float32_Vec2;
 
    procedure Set_Float32_Vec2
@@ -845,8 +845,8 @@ package body OpenCV.Core.Internal.Typed_Access is
    begin
       Raise_On_Error (S, "Float64 Vec2 read");
       return
-        (0 => Float64_Value (V.Component_0),
-         1 => Float64_Value (V.Component_1));
+        [0 => Float64_Value (V.Component_0),
+         1 => Float64_Value (V.Component_1)];
    end Get_Float64_Vec2;
 
    procedure Set_Float64_Vec2
@@ -891,8 +891,8 @@ package body OpenCV.Core.Internal.Typed_Access is
       end if;
       Raise_On_Error (S, "Float64 Vec2 N-D read");
       return
-        (0 => Float64_Value (V.Component_0),
-         1 => Float64_Value (V.Component_1));
+        [0 => Float64_Value (V.Component_0),
+         1 => Float64_Value (V.Component_1)];
    end Get_Float64_Vec2;
 
    procedure Set_Float64_Vec2
@@ -2370,9 +2370,9 @@ package body OpenCV.Core.Internal.Typed_Access is
    begin
       Raise_On_Error (Status, "UInt8 Vec3 typed Mat read");
       return
-        (0 => UInt8_Value (Result.Component_0),
+        [0 => UInt8_Value (Result.Component_0),
          1 => UInt8_Value (Result.Component_1),
-         2 => UInt8_Value (Result.Component_2));
+         2 => UInt8_Value (Result.Component_2)];
    end Get_UInt8_Vec3;
 
    procedure Set_UInt8_Vec3
@@ -2426,9 +2426,9 @@ package body OpenCV.Core.Internal.Typed_Access is
 
       Raise_On_Error (Status, "UInt8 Vec3 typed Mat N-dimensional read");
       return
-        (0 => UInt8_Value (Result.Component_0),
+        [0 => UInt8_Value (Result.Component_0),
          1 => UInt8_Value (Result.Component_1),
-         2 => UInt8_Value (Result.Component_2));
+         2 => UInt8_Value (Result.Component_2)];
    end Get_UInt8_Vec3;
 
    procedure Set_UInt8_Vec3
@@ -2482,9 +2482,9 @@ package body OpenCV.Core.Internal.Typed_Access is
    begin
       Raise_On_Error (Status, "Float32 Vec3 typed Mat read");
       return
-        (0 => Float32_Value (Result.Component_0),
+        [0 => Float32_Value (Result.Component_0),
          1 => Float32_Value (Result.Component_1),
-         2 => Float32_Value (Result.Component_2));
+         2 => Float32_Value (Result.Component_2)];
    end Get_Float32_Vec3;
 
    procedure Set_Float32_Vec3
@@ -2539,9 +2539,9 @@ package body OpenCV.Core.Internal.Typed_Access is
 
       Raise_On_Error (Status, "Float32 Vec3 typed Mat N-dimensional read");
       return
-        (0 => Float32_Value (Result.Component_0),
+        [0 => Float32_Value (Result.Component_0),
          1 => Float32_Value (Result.Component_1),
-         2 => Float32_Value (Result.Component_2));
+         2 => Float32_Value (Result.Component_2)];
    end Get_Float32_Vec3;
 
    procedure Set_Float32_Vec3
@@ -2595,9 +2595,9 @@ package body OpenCV.Core.Internal.Typed_Access is
    begin
       Raise_On_Error (Status, "Float16 Vec3 typed Mat read");
       return
-        (0 => Float16_From_Bits (Interfaces.Unsigned_16 (Result.Component_0)),
+        [0 => Float16_From_Bits (Interfaces.Unsigned_16 (Result.Component_0)),
          1 => Float16_From_Bits (Interfaces.Unsigned_16 (Result.Component_1)),
-         2 => Float16_From_Bits (Interfaces.Unsigned_16 (Result.Component_2)));
+         2 => Float16_From_Bits (Interfaces.Unsigned_16 (Result.Component_2))];
    end Get_Float16_Vec3;
 
    procedure Set_Float16_Vec3
@@ -2655,9 +2655,9 @@ package body OpenCV.Core.Internal.Typed_Access is
 
       Raise_On_Error (Status, "Float16 Vec3 typed Mat N-dimensional read");
       return
-        (0 => Float16_From_Bits (Interfaces.Unsigned_16 (Result.Component_0)),
+        [0 => Float16_From_Bits (Interfaces.Unsigned_16 (Result.Component_0)),
          1 => Float16_From_Bits (Interfaces.Unsigned_16 (Result.Component_1)),
-         2 => Float16_From_Bits (Interfaces.Unsigned_16 (Result.Component_2)));
+         2 => Float16_From_Bits (Interfaces.Unsigned_16 (Result.Component_2))];
    end Get_Float16_Vec3;
 
    procedure Set_Float16_Vec3
@@ -2713,9 +2713,9 @@ package body OpenCV.Core.Internal.Typed_Access is
    begin
       Raise_On_Error (S, "UInt16 Vec3 read");
       return
-        (UInt16_Value (V.Component_0),
+        [UInt16_Value (V.Component_0),
          UInt16_Value (V.Component_1),
-         UInt16_Value (V.Component_2));
+         UInt16_Value (V.Component_2)];
    end Get_UInt16_Vec3;
 
    procedure Set_UInt16_Vec3
@@ -2761,9 +2761,9 @@ package body OpenCV.Core.Internal.Typed_Access is
       end if;
       Raise_On_Error (S, "UInt16 Vec3 N-D read");
       return
-        (UInt16_Value (V.Component_0),
+        [UInt16_Value (V.Component_0),
          UInt16_Value (V.Component_1),
-         UInt16_Value (V.Component_2));
+         UInt16_Value (V.Component_2)];
    end Get_UInt16_Vec3;
 
    procedure Set_UInt16_Vec3
@@ -2841,7 +2841,7 @@ package body OpenCV.Core.Internal.Typed_Access is
            V'Access);
    begin
       Raise_On_Error (S, "Int16 Vec2 read");
-      return (Int16_Value (V.Component_0), Int16_Value (V.Component_1));
+      return [Int16_Value (V.Component_0), Int16_Value (V.Component_1)];
    end Get_Int16_Vec2;
 
    procedure Set_Int16_Vec2
@@ -2885,7 +2885,7 @@ package body OpenCV.Core.Internal.Typed_Access is
          end;
       end if;
       Raise_On_Error (S, "Int16 Vec2 N-D read");
-      return (Int16_Value (V.Component_0), Int16_Value (V.Component_1));
+      return [Int16_Value (V.Component_0), Int16_Value (V.Component_1)];
    end Get_Int16_Vec2;
 
    procedure Set_Int16_Vec2
@@ -2963,9 +2963,9 @@ package body OpenCV.Core.Internal.Typed_Access is
    begin
       Raise_On_Error (S, "Int16 Vec3 read");
       return
-        (Int16_Value (V.Component_0),
+        [Int16_Value (V.Component_0),
          Int16_Value (V.Component_1),
-         Int16_Value (V.Component_2));
+         Int16_Value (V.Component_2)];
    end Get_Int16_Vec3;
 
    procedure Set_Int16_Vec3
@@ -3011,9 +3011,9 @@ package body OpenCV.Core.Internal.Typed_Access is
       end if;
       Raise_On_Error (S, "Int16 Vec3 N-D read");
       return
-        (Int16_Value (V.Component_0),
+        [Int16_Value (V.Component_0),
          Int16_Value (V.Component_1),
-         Int16_Value (V.Component_2));
+         Int16_Value (V.Component_2)];
    end Get_Int16_Vec3;
 
    procedure Set_Int16_Vec3
@@ -3092,10 +3092,10 @@ package body OpenCV.Core.Internal.Typed_Access is
    begin
       Raise_On_Error (S, "Int16 Vec4 read");
       return
-        (Int16_Value (V.Component_0),
+        [Int16_Value (V.Component_0),
          Int16_Value (V.Component_1),
          Int16_Value (V.Component_2),
-         Int16_Value (V.Component_3));
+         Int16_Value (V.Component_3)];
    end Get_Int16_Vec4;
 
    procedure Set_Int16_Vec4
@@ -3142,10 +3142,10 @@ package body OpenCV.Core.Internal.Typed_Access is
       end if;
       Raise_On_Error (S, "Int16 Vec4 N-D read");
       return
-        (Int16_Value (V.Component_0),
+        [Int16_Value (V.Component_0),
          Int16_Value (V.Component_1),
          Int16_Value (V.Component_2),
-         Int16_Value (V.Component_3));
+         Int16_Value (V.Component_3)];
    end Get_Int16_Vec4;
 
    procedure Set_Int16_Vec4
@@ -3223,7 +3223,7 @@ package body OpenCV.Core.Internal.Typed_Access is
            V'Access);
    begin
       Raise_On_Error (S, "Int32 Vec2 read");
-      return (Int32_Value (V.Component_0), Int32_Value (V.Component_1));
+      return [Int32_Value (V.Component_0), Int32_Value (V.Component_1)];
    end Get_Int32_Vec2;
 
    procedure Set_Int32_Vec2
@@ -3267,7 +3267,7 @@ package body OpenCV.Core.Internal.Typed_Access is
          end;
       end if;
       Raise_On_Error (S, "Int32 Vec2 N-D read");
-      return (Int32_Value (V.Component_0), Int32_Value (V.Component_1));
+      return [Int32_Value (V.Component_0), Int32_Value (V.Component_1)];
    end Get_Int32_Vec2;
 
    procedure Set_Int32_Vec2
@@ -3344,9 +3344,9 @@ package body OpenCV.Core.Internal.Typed_Access is
    begin
       Raise_On_Error (S, "Int32 Vec3 read");
       return
-        (Int32_Value (V.Component_0),
+        [Int32_Value (V.Component_0),
          Int32_Value (V.Component_1),
-         Int32_Value (V.Component_2));
+         Int32_Value (V.Component_2)];
    end Get_Int32_Vec3;
 
    procedure Set_Int32_Vec3
@@ -3392,9 +3392,9 @@ package body OpenCV.Core.Internal.Typed_Access is
       end if;
       Raise_On_Error (S, "Int32 Vec3 N-D read");
       return
-        (Int32_Value (V.Component_0),
+        [Int32_Value (V.Component_0),
          Int32_Value (V.Component_1),
-         Int32_Value (V.Component_2));
+         Int32_Value (V.Component_2)];
    end Get_Int32_Vec3;
 
    procedure Set_Int32_Vec3
@@ -3472,10 +3472,10 @@ package body OpenCV.Core.Internal.Typed_Access is
    begin
       Raise_On_Error (S, "Int32 Vec4 read");
       return
-        (Int32_Value (V.Component_0),
+        [Int32_Value (V.Component_0),
          Int32_Value (V.Component_1),
          Int32_Value (V.Component_2),
-         Int32_Value (V.Component_3));
+         Int32_Value (V.Component_3)];
    end Get_Int32_Vec4;
 
    procedure Set_Int32_Vec4
@@ -3522,10 +3522,10 @@ package body OpenCV.Core.Internal.Typed_Access is
       end if;
       Raise_On_Error (S, "Int32 Vec4 N-D read");
       return
-        (Int32_Value (V.Component_0),
+        [Int32_Value (V.Component_0),
          Int32_Value (V.Component_1),
          Int32_Value (V.Component_2),
-         Int32_Value (V.Component_3));
+         Int32_Value (V.Component_3)];
    end Get_Int32_Vec4;
 
    procedure Set_Int32_Vec4
@@ -3613,7 +3613,7 @@ package body OpenCV.Core.Internal.Typed_Access is
            V'Access);
    begin
       Raise_On_Error (S, "Int8 Vec2 read");
-      return (From_C (V.Component_0), From_C (V.Component_1));
+      return [From_C (V.Component_0), From_C (V.Component_1)];
    end Get_Int8_Vec2;
 
    procedure Set_Int8_Vec2
@@ -3656,7 +3656,7 @@ package body OpenCV.Core.Internal.Typed_Access is
          end;
       end if;
       Raise_On_Error (S, "Int8 Vec2 N-D read");
-      return (From_C (V.Component_0), From_C (V.Component_1));
+      return [From_C (V.Component_0), From_C (V.Component_1)];
    end Get_Int8_Vec2;
 
    procedure Set_Int8_Vec2
@@ -3700,9 +3700,9 @@ package body OpenCV.Core.Internal.Typed_Access is
    begin
       Raise_On_Error (S, "Int8 Vec3 read");
       return
-        (From_C (V.Component_0),
+        [From_C (V.Component_0),
          From_C (V.Component_1),
-         From_C (V.Component_2));
+         From_C (V.Component_2)];
    end Get_Int8_Vec3;
 
    procedure Set_Int8_Vec3
@@ -3746,9 +3746,9 @@ package body OpenCV.Core.Internal.Typed_Access is
       end if;
       Raise_On_Error (S, "Int8 Vec3 N-D read");
       return
-        (From_C (V.Component_0),
+        [From_C (V.Component_0),
          From_C (V.Component_1),
-         From_C (V.Component_2));
+         From_C (V.Component_2)];
    end Get_Int8_Vec3;
 
    procedure Set_Int8_Vec3
@@ -3792,10 +3792,10 @@ package body OpenCV.Core.Internal.Typed_Access is
    begin
       Raise_On_Error (S, "Int8 Vec4 read");
       return
-        (From_C (V.Component_0),
+        [From_C (V.Component_0),
          From_C (V.Component_1),
          From_C (V.Component_2),
-         From_C (V.Component_3));
+         From_C (V.Component_3)];
    end Get_Int8_Vec4;
 
    procedure Set_Int8_Vec4
@@ -3842,10 +3842,10 @@ package body OpenCV.Core.Internal.Typed_Access is
       end if;
       Raise_On_Error (S, "Int8 Vec4 N-D read");
       return
-        (From_C (V.Component_0),
+        [From_C (V.Component_0),
          From_C (V.Component_1),
          From_C (V.Component_2),
-         From_C (V.Component_3));
+         From_C (V.Component_3)];
    end Get_Int8_Vec4;
 
    procedure Set_Int8_Vec4
@@ -3997,7 +3997,7 @@ package body OpenCV.Core.Internal.Typed_Access is
            V'Access);
    begin
       Raise_On_Error (S, "Float16 Vec2 read");
-      return (From (V.Component_0), From (V.Component_1));
+      return [From (V.Component_0), From (V.Component_1)];
    end Get_Float16_Vec2;
 
    procedure Set_Float16_Vec2
@@ -4040,7 +4040,7 @@ package body OpenCV.Core.Internal.Typed_Access is
          end;
       end if;
       Raise_On_Error (S, "Float16 Vec2 N-D read");
-      return (From (V.Component_0), From (V.Component_1));
+      return [From (V.Component_0), From (V.Component_1)];
    end Get_Float16_Vec2;
 
    procedure Set_Float16_Vec2
@@ -4116,10 +4116,10 @@ package body OpenCV.Core.Internal.Typed_Access is
    begin
       Raise_On_Error (S, "Float16 Vec4 read");
       return
-        (From (V.Component_0),
+        [From (V.Component_0),
          From (V.Component_1),
          From (V.Component_2),
-         From (V.Component_3));
+         From (V.Component_3)];
    end Get_Float16_Vec4;
 
    procedure Set_Float16_Vec4
@@ -4166,10 +4166,10 @@ package body OpenCV.Core.Internal.Typed_Access is
       end if;
       Raise_On_Error (S, "Float16 Vec4 N-D read");
       return
-        (From (V.Component_0),
+        [From (V.Component_0),
          From (V.Component_1),
          From (V.Component_2),
-         From (V.Component_3));
+         From (V.Component_3)];
    end Get_Float16_Vec4;
 
    procedure Set_Float16_Vec4
