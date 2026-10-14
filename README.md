@@ -17,9 +17,10 @@ The documentation site publishes styled HTML versions of the five developer
 guides. Repository-relative guide links below remain links to their authoritative
 Markdown sources on GitHub.
 
-> **Development version:** `0.5.0-dev` (current `alire.toml`).
-> **Published version:** `0.4.0` is available in the Alire index; it is not
-> interchangeable with the current development tree.
+> **Prepared release candidate:** `0.5.0` (current `alire.toml`), not yet
+> published. Release preparation is based on PR #81 pending integration.
+> **Latest indexed release:** [`0.4.1`](https://github.com/alire-project/alire-index/blob/stable-1.4.0/index/op/opencv_core/opencv_core-0.4.1.toml).
+> `alr with opencv_core` selects an indexed release, not this candidate.
 >
 > **Compatibility:** OpenCV **4.1 through 5.0**, inclusive, with one public Ada
 > API. Not every intermediate release is explicitly tested.
@@ -287,7 +288,7 @@ shared-storage destinations are safe from ordinary assignment semantics.
 `Border_Kind` and `Angle_Unit`. `OpenCV.Core` owns matrix-specific types.
 There are no Core compatibility aliases for relocated root types.
 See [Shared value types](docs/typed-access-guide.md#shared-value-types) for the
-migration table and 3-D value families introduced in `0.5.0-dev`.
+migration table and 3-D value families included in the prepared `0.5.0` candidate.
 
 ## Typed access matrix
 
@@ -387,6 +388,32 @@ macOS MacPorts jobs that are skipped are **not passes**. Detailed platform,
 constructor and compatibility information is in
 [OpenCV compatibility](docs/interop-and-compatibility.md#opencv-compatibility).
 
+### GNAT 12 and generic AArch64 qualification
+
+Debian 12 native GCC/GNAT **12.2.0**, its matching runtime, and OpenCV 4.6
+qualify the complete production binding, all **2,025 AUnit tests** with
+release-profile production, and installed/relocated Ada-only and mixed Ada/C++
+consumers. Select the compiler explicitly; GNAT 12 and GNAT 16 ALIs/runtimes
+are not interchangeable. See the [GNAT 12 integration record](docs/gnat12-completion.md#native-gnat-12-and-consumers).
+
+The local generic Linux AArch64 qualification uses public Debian GCC/GNAT/G++
+12.2.0 and a target OpenCV 4.6 sysroot. The entire library and shim compile,
+install, and cross-link independent Ada and mixed consumers; ELF inspection
+confirms AArch64 objects and target dependencies. **Target executables were
+not run**; neither hardware/QEMU execution nor proprietary **Yocto Scarthgap**
+support is claimed. See the [cross qualification record](docs/gnat12-completion.md#full-aarch64-cross-qualification)
+and [generic cross-build inputs](docs/generic-aarch64-cross-build.md).
+
+Alire's default root development profile enables `-gnatVa`, which rejects IEEE
+NaN/infinity in eight existing tests. Release-profile production passes those
+tests without weakening their checks. On fresh sources, root `alr test` passes: its
+second action builds Core as a release-profile dependency of the checked tests
+crate, after the first action's development build. Explicitly forcing Core's
+development profile during test execution still fails those eight IEEE tests,
+and a saved override can also make subsequent root test actions fail. Use a
+fresh deployment for publication qualification, not a diagnostic workspace.
+See [release preflight](docs/release-0.5.0-preparation.md).
+
 ## Known limitations
 
 - Many algorithms remain 2-D even though N-D storage, access, slices and views
@@ -421,12 +448,19 @@ alr -C tests build
 alr -C tests run
 ```
 
-The crate also defines a root test action, which is the release
-entry-point gate:
+The crate also defines root test actions:
 
 ```sh
 alr test
 ```
+
+Both the root actions and the separate release-profile suite are qualified;
+their profiles differ from explicitly forcing development-profile production.
+Release qualification explicitly uses
+`alr build --release` in the root and
+`alr -C tests build --profiles=opencv_core=release`, followed by
+`alr -C tests run`; the checked test harness is retained. Publication-profile
+checks are tracked separately in the [release preflight](docs/release-0.5.0-preparation.md).
 
 The test crate carries development-only dependencies such as AUnit, GNATprove,
 and GNATcov. They are intentionally not dependencies of the public library
@@ -545,12 +579,13 @@ partially integrated batches.
 
 ## Versioning
 
-The current development manifest is `0.5.0-dev`. The Alire index includes
-published `opencv_core=0.4.0`; its immutable release does not contain all current
-development additions. A Git tag alone is not evidence of Alire publication.
+The prepared manifest is `0.5.0`; this is a release candidate, not a publication
+claim. The latest indexed release is `opencv_core=0.4.1`; its immutable source
+does not contain all candidate additions. A Git tag alone is not evidence of
+Alire publication.
 See [CHANGELOG.md](CHANGELOG.md) for UMat additions in 0.4.0, typed Mat/SparseMat
 additions in 0.3.0, the source-breaking shared-value relocation in 0.2.0, and
-unreleased changes. The API remains experimental until 1.0.
+the prepared 0.5.0 notes. The API remains experimental until 1.0.
 
 ## License
 

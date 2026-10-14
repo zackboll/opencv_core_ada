@@ -8,6 +8,12 @@ The installed GPR project, not repository-relative source directories, is the
 integration boundary. This guide qualifies native Debian 12 x86_64 with distro
 OpenCV 4.6; it does not establish cross-compilation or Yocto support.
 
+The commands and evidence below describe the original GNAT 16 qualification.
+Independent GNAT 12 native and generic AArch64 qualification is recorded in
+[GNAT 12 completion](gnat12-completion.md). Always rebuild Core and consumers
+with the same compiler/runtime; that later evidence does not make GNAT 16
+installed ALIs compatible with GNAT 12.
+
 ## Build and install Core
 
 Install Debian's `build-essential`, `libopencv-dev`, `pkg-config`, and Alire.

@@ -40,8 +40,8 @@ represent NaN and infinities; each consuming operation defines its own
 finiteness policy. Root ownership follows native OpenCV's Core `Point3`
 value concept, allowing Geometry, Calib3D, and future 3-D module bindings
 to reuse these shared coordinates rather than redeclare them. These
-additive types belong to the `0.5.0-dev` development line, not the immutable
-`0.4.0` release.
+additive types are included in the prepared `0.5.0` candidate, not the latest
+indexed `0.4.1` release. Candidate preparation is not Alire publication.
 
 The earlier relocation of existing values to the root was source-breaking.
 Callers that previously wrote

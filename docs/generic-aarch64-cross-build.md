@@ -1,5 +1,12 @@
 # Generic Linux AArch64 cross-build investigation
 
+**Historical investigation:** the initial production blockers below were
+subsequently resolved and the full public Debian GNAT 12 cross-build,
+installation and consumer cross-links qualified in the
+[GNAT 12 completion record](gnat12-completion.md#full-aarch64-cross-qualification).
+The original findings are retained as evidence, not current release blockers.
+Target execution and Yocto Scarthgap support remain unclaimed.
+
 This work is **not Yocto Scarthgap qualification**. The proprietary container
 remains inaccessible. The public Debian reference can compile and link a small
 Ada probe, but GNAT 12 fails the production binding's existing representation
