@@ -11,7 +11,8 @@ jobs:
       - name: Install public Debian compiler and test runner
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends git python3 gnat-12 gnat-12-aarch64-linux-gnu
+          apt-get install -y --no-install-recommends ca-certificates git python3 gnat-12 gnat-12-aarch64-linux-gnu gcc-aarch64-linux-gnu
+          test -s /etc/ssl/certs/ca-certificates.crt
       - uses: actions/checkout@v4
       - name: Native GNAT 12 source-unit controls (not a production build)
         run: |
