@@ -1,6 +1,63 @@
 # Changelog
 
-## Unreleased
+## 0.5.0 — prepared, not yet published
+
+This release candidate is prepared from PR #81. Publication and final
+merged-source qualification are pending; the latest indexed release is 0.4.1.
+
+### Public APIs and reusable destinations
+
+- Shared 3-D integer and Float32 point/array values under `OpenCV`, dense N-D
+  `Min_Max_Indices`, and Mat/UMat retained-parent geometry with `Locate_Region`
+  and `Adjust_Region`.
+- Destination-taking Mat/UMat conversion, normalization, arithmetic, extrema,
+  weighted arithmetic, bitwise/mask operations, unary math, magnitude/phase,
+  and paired polar operations. Compatible destinations reuse storage; native
+  reallocation detaches mismatched outputs. Existing depth, empty, alias,
+  temporary-view and partial-overlap restrictions remain operation-specific.
+
+### Typed Mat, SparseMat, zero-copy views and borrowing
+
+- Retain the complete eight-depth C1–C4 typed Mat and SparseMat surface from
+  earlier releases, including exact binary16 access, stored-node traversal,
+  numeric sparse conversion and scoped module interoperability. These are not
+  newly introduced in 0.5.0; the GNAT 12 work extends compiler qualification
+  without changing the public API or storage semantics.
+- Complete GNAT 12-compatible representation enforcement across all 96
+  concrete scalar/vector view, row-borrowing and continuous-buffer bodies.
+  Object storage, native alignment, actual backing addresses, and typed stride
+  remain checked, including optimized production builds. Caller-owned and
+  selected views remain callback-scoped; borrowing leases preserve ownership.
+
+### Compiler, installation and platform qualification
+
+- Debian 12 native GCC/GNAT 12.2.0 with matching runtime and OpenCV 4.6:
+  full production build, 2,025 passing AUnit tests with release-profile
+  production, and installed/relocated Ada and mixed Ada/C++ consumers.
+- Generic Linux AArch64 with public Debian GCC/GNAT/G++ 12.2.0 and target
+  OpenCV 4.6: full library/shim build, installation, independent consumer
+  cross-links, target ABI controls and AArch64 ELF inspection. No target
+  execution, hosted full cross-link CI, or Yocto Scarthgap support is claimed.
+- Preserve OpenCV 4.1–5.0 compatibility. The GNAT 16 regression matrix qualifies
+  4.1, 4.6, 4.10 and 5.0 with 2,025 tests each, layout controls and relocated
+  consumers; not every intermediate OpenCV release is individually tested.
+- Correct Windows external shim installation and qualify native non-Alire GPR
+  consumers without changing the C ABI or production ownership model.
+
+### Documentation and release caveats
+
+- Modern GNATdoc API generation, generic-instance/type cross-links, searchable
+  navigation and published HTML developer guides; expanded lifecycle, typed
+  access, borrowing, interoperability and compatibility documentation.
+- Alire dependencies and test actions are unchanged. The default production
+  development profile's `-gnatVa` rejects IEEE NaN/infinity in eight existing
+  tests when explicitly selected for test execution. On fresh sources, root
+  `alr test` passes because the tests crate builds Core as a release-profile
+  dependency; a persisted diagnostic override can change that behavior.
+  See [release preparation](docs/release-0.5.0-preparation.md) for publication
+  preflight and final release gates.
+
+### Detailed API and compatibility changes
 
 - Complete paired polar destination qualification: disjoint common-Parent
   Regions, raw selected output rejection and alias preservation, reverse polar
@@ -70,7 +127,7 @@
   remain prohibited, temporary sources permitted, partial overlap unsupported.
   Add shared public/raw tests and exact four-version source/helper probes.
 
-- Begin `0.5.0-dev` with shared root `OpenCV.Point_3D`, `Point_3D_Array`,
+- Add shared root `OpenCV.Point_3D`, `Point_3D_Array`,
   `Float32_Point_3D`, and `Float32_Point_3D_Array` value types. Coordinates
   default to zero; arrays preserve arbitrary Natural bounds and null ranges.
   Float32 finiteness remains operation-specific. The immutable Core `0.4.0`
