@@ -2,6 +2,12 @@
 
 set -eu
 
+case "${OPENCV_CORE_CROSS:-False}" in
+    True) exec sh scripts/configure_cross_opencv.sh ;;
+    False) ;;
+    *) echo 'error: OPENCV_CORE_CROSS must be True or False' >&2; exit 1 ;;
+esac
+
 output=config/opencv_core_install.gpr
 sysname=$(uname -s)
 
@@ -173,6 +179,8 @@ abstract project OpenCV_Core_Install is
    Cxx_Runtime_Switch := "${cxx_runtime_switch}";
    Cxx_Driver := "${cxx_driver}";
    Cxx_Sysroot := "${cxx_sysroot}";
+    Cross_Compiler_Switches := ();
+    Cross_Linker_Switches := ();
 end OpenCV_Core_Install;
 EOF
 
