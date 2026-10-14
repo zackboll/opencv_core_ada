@@ -13,6 +13,13 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class LanguagePolicyTests(unittest.TestCase):
+    def test_core_dependency_with_fatal_warnings(self):
+        # Compile the full production body, including its unchanged C_API
+        # representation assertions. No diagnostic suppression is permitted.
+        result = self.compile("src/opencv-core.adb")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(result.stderr, "")
+
     def compile(self, unit, mode=None):
         with tempfile.TemporaryDirectory(prefix="core-language-policy.") as output:
             command = [os.environ.get("ADA_COMPILER", "gcc-12"), "-c",
