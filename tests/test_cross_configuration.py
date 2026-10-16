@@ -1,6 +1,7 @@
 """Fail-closed cross preflight controls; no real SDK is modified."""
 import os
 from pathlib import Path
+import shlex
 import subprocess
 import shutil
 import tempfile
@@ -75,7 +76,7 @@ class CrossConfigurationTests(unittest.TestCase):
             path.write_text("#!/bin/sh\n" + body)
             path.chmod(0o755)
             return str(path)
-        ada = executable("ada", f'case "$1" in -print-file-name=adalib) echo "{runtime}/adalib" ;; *) echo aarch64-linux-gnu ;; esac\n')
+        ada = executable("gcc", f'case "$1" in -print-file-name=adalib) echo "{runtime}/adalib" ;; *) echo aarch64-linux-gnu ;; esac\n')
         cxx = executable("cxx", "printf '%s\\n' aarch64-linux-gnu\n")
         elf = executable("readelf", "printf '%s\\n' 'Class: ELF64' 'Machine: AArch64'\n")
         pkg = executable("pkg-config", "case \"$1\" in\n"
@@ -106,6 +107,171 @@ class CrossConfigurationTests(unittest.TestCase):
         self.assertEqual(first.returncode, 0, first.stderr)
         self.assertEqual(second.returncode, 0, second.stderr)
         self.assertEqual(first.stdout, second.stdout)
+
+    def runtime_fallback(self):
+        base, _, _, runtime, _ = self.fixture()
+        compiler = Path(self.env["OPENCV_CROSS_ADA"])
+        self.compiler_script = compiler.read_text()
+        compiler.write_text(self.compiler_script.replace(f"{runtime}/adalib", "adalib"))
+        self.gnatls = base / "gnatls"
+        self.search_paths = (
+            "GNATLS Pro 25.0w\n\nSource Search Path:\n"
+            f"   <Current_Directory>\n   {runtime}/adainclude\n\n"
+            f"Object Search Path:\n   <Current_Directory>\n   {runtime}/adalib\n\n"
+            "Project Search Path:\n   <Current_Directory>\n   /unused/project/path\n")
+        self.write_gnatls(self.search_paths)
+        return base, runtime
+
+    def write_gnatls(self, output, status=0):
+        # A --RTS argument would make this mock fail, even with matching output.
+        self.gnatls.write_text(
+            '#!/bin/sh\n[ "$#" = 1 ] && [ "$1" = -v ] || exit 99\n'
+            f"printf '%s\\n' {shlex.quote(output)}\nexit {status}\n")
+        self.gnatls.chmod(0o755)
+
+    def test_gnatls_fallback_matching_runtime(self):
+        self.runtime_fallback()
+        result = self.check()
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_gnatls_prefixed_versioned_and_compiler_alias(self):
+        base, _ = self.runtime_fallback()
+        compiler = Path(self.env["OPENCV_CROSS_ADA"])
+        config = Path(self.env["OPENCV_CROSS_GPR_CONFIG"])
+        original_config = config.read_text()
+        for name in ["aarch64-linux-gnu-gcc", "aarch64-linux-gnu-gcc-12", "gcc-12"]:
+            with self.subTest(name=name):
+                actual = base / name
+                actual.write_text(compiler.read_text())
+                actual.chmod(0o755)
+                matching = base / name.replace("gcc", "gnatls")
+                matching.write_text(self.gnatls.read_text())
+                matching.chmod(0o755)
+                alias = base / "compiler-alias"
+                alias.symlink_to(actual)
+                self.env["OPENCV_CROSS_ADA"] = str(alias)
+                config.write_text(original_config.replace(str(compiler), str(alias)))
+                result = self.check()
+                self.assertEqual(result.returncode, 0, result.stderr)
+                alias.unlink()
+
+    def test_gnatls_format_and_canonical_aliases(self):
+        base, runtime = self.runtime_fallback()
+        alias = base / "runtime-alias"
+        alias.symlink_to(runtime, target_is_directory=True)
+        for replacement in [str(runtime) + "/", str(alias), str(runtime) + "/../runtime"]:
+            for crlf in [False, True]:
+                with self.subTest(replacement=replacement, crlf=crlf):
+                    output = self.search_paths.replace(str(runtime), replacement)
+                    output = output.replace("/adalib\n", "/adalib/\n")
+                    output = output.replace("/adainclude\n", "/adainclude/\n")
+                    output = output.replace("Path:", "Path \t:").replace("   ", "\t")
+                    if crlf:
+                        output = output.replace("\n", "\r\n")
+                    self.write_gnatls(output)
+                    result = self.check()
+                    self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_gnatls_selected_runtime_symlink(self):
+        base, runtime = self.runtime_fallback()
+        alias = base / "selected-runtime"
+        alias.symlink_to(runtime, target_is_directory=True)
+        self.env["OPENCV_CROSS_RUNTIME"] = str(alias)
+        config = Path(self.env["OPENCV_CROSS_GPR_CONFIG"])
+        config.write_text(config.read_text().replace(str(runtime), str(alias)))
+        self.write_gnatls(self.search_paths.replace("\n\n", "\n"))
+        result = self.check()
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_gcc_unusable_runtime_results(self):
+        base, runtime = self.runtime_fallback()
+        relative = os.path.relpath(runtime / "adalib", ROOT)
+        for value in ["adalib", "relative/adalib", relative, str(base / "missing"),
+                      str(runtime / "adalib/libgnat.a"), ""]:
+            with self.subTest(value=value):
+                Path(self.env["OPENCV_CROSS_ADA"]).write_text(
+                    self.compiler_script.replace(f"{runtime}/adalib", value))
+                result = self.check()
+                self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_gnatls_missing_does_not_use_path(self):
+        base, _ = self.runtime_fallback()
+        host = base / "host"
+        host.mkdir()
+        self.gnatls.rename(host / self.gnatls.name)
+        self.env["PATH"] = str(host) + os.pathsep + self.env["PATH"]
+        self.reject("matching GNATLS is unavailable")
+
+    def test_gnatls_nonzero_with_valid_output(self):
+        self.runtime_fallback()
+        self.write_gnatls(self.search_paths, status=1)
+        self.reject("GNATLS execution failed")
+
+    def test_gnatls_malformed_paths(self):
+        _, runtime = self.runtime_fallback()
+        for output in ["", "GNATLS Pro 25.0w\n", "Object Search Path:\n",
+                       self.search_paths.replace("Object Search Path:", "Objects:"),
+                       self.search_paths.replace(f"{runtime}/adalib", "relative/adalib"),
+                       self.search_paths.replace(f"   {runtime}/adalib\n", ""),
+                       self.search_paths + "Object Search Path:\n",
+                       self.search_paths.replace("Object Search Path:", "Object Search Path: garbage")]:
+            with self.subTest(output=output):
+                self.write_gnatls(output)
+                self.reject("malformed GNATLS search paths")
+
+    def test_gnatls_runtime_mismatch_and_precedence(self):
+        base, runtime = self.runtime_fallback()
+        other = base / "other-runtime"
+        (other / "adalib").mkdir(parents=True)
+        (other / "adainclude").mkdir()
+        for output in [self.search_paths.replace(str(runtime), str(other)),
+                       self.search_paths.replace(f"{runtime}/adainclude", f"{other}/adainclude"),
+                       self.search_paths.replace(f"{runtime}/adalib", f"{other}/adalib\n   {runtime}/adalib"),
+                       self.search_paths.replace(f"{runtime}/adalib", f"{runtime}/adalib\n   {other}/adalib")]:
+            with self.subTest(output=output):
+                self.write_gnatls(output)
+                self.reject("Ada runtime differs")
+
+    def test_gnatls_missing_search_directory(self):
+        base, runtime = self.runtime_fallback()
+        self.write_gnatls(self.search_paths.replace(f"{runtime}/adalib", str(base / "missing")))
+        self.reject("GNATLS search directory is unavailable")
+
+    def test_gnatls_from_another_toolchain(self):
+        base, _ = self.runtime_fallback()
+        other = base / "other-toolchain"
+        other.mkdir()
+        destination = other / self.gnatls.name
+        self.gnatls.rename(destination)
+        self.gnatls.symlink_to(destination)
+        self.reject("GNATLS belongs to another toolchain")
+
+    def test_ada_search_path_contamination(self):
+        _, runtime = self.runtime_fallback()
+        for key in ["ADA_INCLUDE_PATH", "ADA_OBJECTS_PATH",
+                    "ADA_PRJ_INCLUDE_FILE", "ADA_PRJ_OBJECTS_FILE"]:
+            for fallback in [False, True]:
+                with self.subTest(key=key, fallback=fallback):
+                    compiler = Path(self.env["OPENCV_CROSS_ADA"])
+                    compiler.write_text(self.compiler_script.replace(
+                        f"{runtime}/adalib", "adalib") if fallback else self.compiler_script)
+                    self.env[key] = "/host/runtime"
+                    self.reject(f"cross mode requires empty {key}")
+                    del self.env[key]
+
+    def test_absolute_gcc_runtime_mismatch_does_not_fallback(self):
+        base, runtime = self.runtime_fallback()
+        other = base / "other-adalib"
+        other.mkdir()
+        Path(self.env["OPENCV_CROSS_ADA"]).write_text(
+            self.compiler_script.replace(f"{runtime}/adalib", str(other)))
+        self.reject("Ada runtime differs")
+
+    def test_gcc_runtime_query_failure_does_not_fallback(self):
+        self.runtime_fallback()
+        compiler = Path(self.env["OPENCV_CROSS_ADA"])
+        compiler.write_text(compiler.read_text().replace('echo "adalib"', 'exit 1'))
+        self.reject("Ada compiler runtime query failed")
 
     def test_target_mismatch(self):
         self.fixture()
