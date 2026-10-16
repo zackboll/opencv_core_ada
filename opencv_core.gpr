@@ -29,7 +29,15 @@ project OpenCV_Core is
                   "-static-libgcc",
                   "-static-libstdc++");
             when "Default" =>
-               null;
+               case OpenCV_Core_Install.Cxx_Toolchain is
+                  when "Apple_Clang" =>
+                     --  GNAT's linker otherwise uses the independent CLT SDK,
+                     --  which can be newer than its supported TBD format.
+                     for Library_Options use
+                       ("--sysroot=" & OpenCV_Core_Install.Cxx_Sysroot);
+                  when "GNU" =>
+                     null;
+               end case;
          end case;
       when "static" | "static-pic" =>
          null;
@@ -56,7 +64,16 @@ project OpenCV_Core is
             for Linker_Options use
               ("-lopencv_core_shim", "-static-libgcc", "-static-libstdc++");
          when "Default" =>
-            null;
+            case OpenCV_Core_Install.Cxx_Toolchain is
+               when "Apple_Clang" =>
+                  --  Propagate to native Ada executables, including consumers
+                  --  of the installed and relocated project. Do not rely on
+                  --  SDKROOT overriding the GNAT GCC driver's built-in specs.
+                  for Linker_Options use
+                    ("--sysroot=" & OpenCV_Core_Install.Cxx_Sysroot);
+               when "GNU" =>
+                  null;
+            end case;
       end case;
    end Linker;
 
