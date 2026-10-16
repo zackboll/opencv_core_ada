@@ -588,6 +588,9 @@ jobs:
           xcrun --find clang++ || true
           xcrun clang++ --version || true
 
+      - name: Probe native GNAT linker and Apple SDK selection
+        run: alr -n exec -- sh scripts/probe_macos_native_link.sh
+
       - name: Install Homebrew OpenCV
         run: |
           set -eu
