@@ -18,7 +18,7 @@ ada=$(tool OPENCV_CROSS_ADA "${OPENCV_CROSS_ADA:-}")
 cxx=$(tool OPENCV_CROSS_CXX "${OPENCV_CROSS_CXX:-}")
 [ "$("$cxx" -dumpmachine)" = "$target" ] || fail 'C++ compiler target mismatch'
 # Compiler search-path variables can bypass --sysroot and project settings.
-for variable in CPATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH LIBRARY_PATH GCC_EXEC_PREFIX COMPILER_PATH; do
+for variable in CPATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH LIBRARY_PATH GCC_EXEC_PREFIX COMPILER_PATH ADA_INCLUDE_PATH ADA_OBJECTS_PATH ADA_PRJ_INCLUDE_FILE ADA_PRJ_OBJECTS_FILE; do
     eval "value=\${$variable:-}"
     [ -z "$value" ] || fail "cross mode requires empty $variable"
 done
@@ -35,11 +35,66 @@ elf() {
     printf '%s\n' "$details" | grep -q 'Class:.*ELF64' || fail "not ELF64: $1"
 }
 elf "$runtime/adalib/libgnat.a"
-compiler_runtime=$("$ada" -print-file-name=adalib)
-[ -d "$compiler_runtime" ] || fail 'Ada compiler runtime is unavailable'
-compiler_runtime=$(CDPATH= cd -- "$compiler_runtime" && pwd -P)
 selected_runtime=$(CDPATH= cd -- "$runtime/adalib" && pwd -P)
-[ "$compiler_runtime" = "$selected_runtime" ] || fail 'Ada runtime differs from supplied compiler runtime'
+compiler_runtime=$("$ada" -print-file-name=adalib) || fail 'Ada compiler runtime query failed'
+case "$compiler_runtime" in
+    /*) [ -d "$compiler_runtime" ] || compiler_runtime= ;;
+    *) compiler_runtime= ;;
+esac
+if [ -n "$compiler_runtime" ]; then
+    compiler_runtime=$(CDPATH= cd -- "$compiler_runtime" && pwd -P)
+    [ "$compiler_runtime" = "$selected_runtime" ] || fail 'Ada runtime differs from supplied compiler runtime'
+else
+    # Some GNAT Pro GCC drivers return the unresolved literal "adalib".
+    # Never search PATH for a host gnatls, nor force the requested --RTS.
+    compiler=$(realpath -e -- "$ada") || fail 'cannot resolve Ada compiler'
+    compiler_directory=$(dirname -- "$compiler")
+    compiler_name=$(basename -- "$compiler")
+    case "$compiler_name" in
+        gcc|gcc-[0-9]*|*-gcc|*-gcc-[0-9]*) ;;
+        *) fail 'cannot derive matching GNATLS name from Ada compiler' ;;
+    esac
+    prefix=${compiler_name%%gcc*}
+    suffix=${compiler_name#*gcc}
+    gnatls=$compiler_directory/${prefix}gnatls${suffix}
+    [ -x "$gnatls" ] || fail "matching GNATLS is unavailable: $gnatls"
+    gnatls=$(realpath -e -- "$gnatls") || fail 'cannot resolve matching GNATLS'
+    [ "$(dirname -- "$gnatls")" = "$compiler_directory" ] || fail 'GNATLS belongs to another toolchain directory'
+    # Capture status before filtering: a failing gnatls may still print paths.
+    search_paths=$(LC_ALL=C "$gnatls" -v 2>&1) || fail 'matching GNATLS execution failed'
+    # Accept whitespace/CRLF variations and optional blank lines, but require
+    # both complete sections. Every explicit path must identify this runtime;
+    # accepting just one matching entry could hide a higher-priority runtime.
+    paths=$(printf '%s\n' "$search_paths" | awk '
+        { sub(/\r$/, ""); sub(/^[ \t]+/, ""); sub(/[ \t]+$/, "") }
+        /^Source Search Path[ \t]*:/ {
+            if ($0 !~ /^Source Search Path[ \t]*:$/ || source++) exit 1
+            section = "source"; next
+        }
+        /^Object Search Path[ \t]*:/ {
+            if ($0 !~ /^Object Search Path[ \t]*:$/ || object++) exit 1
+            section = "object"; next
+        }
+        /^[A-Za-z].*Search Path[ \t]*:/ { section = ""; next }
+        section && NF {
+            if ($0 == "<Current_Directory>") next
+            if ($0 !~ /^\//) exit 1
+            print section " " $0
+            if (section == "source") sources++; else objects++
+        }
+        END { if (source != 1 || object != 1 || !sources || !objects) exit 1 }
+    ') || fail 'missing or malformed GNATLS search paths'
+    selected_source=$(CDPATH= cd -- "$runtime/adainclude" && pwd -P)
+    printf '%s\n' "$paths" | while IFS=' ' read -r kind directory; do
+        [ -d "$directory" ] || fail "GNATLS search directory is unavailable: $directory"
+        physical=$(CDPATH= cd -- "$directory" && pwd -P) || fail 'cannot resolve GNATLS search directory'
+        case "$kind" in
+            source) expected=$selected_source ;;
+            object) expected=$selected_runtime ;;
+        esac
+        [ "$physical" = "$expected" ] || fail "Ada runtime differs from supplied compiler runtime (GNATLS $kind: $directory)"
+    done
+fi
 config=${OPENCV_CROSS_GPR_CONFIG:-}
 [ -f "$config" ] || fail 'OPENCV_CROSS_GPR_CONFIG is required'
 grep -F "for Target use \"$target\";" "$config" >/dev/null || fail 'GPR target mismatch'

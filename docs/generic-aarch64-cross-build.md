@@ -46,6 +46,55 @@ target validator instead of generating host settings. Default native behavior
 is retained. The current cross wrapper deliberately uses direct GPRbuild, not
 Alire. It does not advertise safe Alire system-dependency resolution.
 
+## Compiler default-runtime detection (CORE-CROSS-RTS-001)
+
+GCC's `-print-file-name=adalib` is a search query, not a guarantee that the
+result is a directory. AdaCore GNAT Pro 25.0w (GCC 12.3.1), for example, can
+return the unresolved literal `adalib`. A usable **absolute** directory is
+still canonicalized and compared directly with `OPENCV_CROSS_RUNTIME/adalib`;
+an absolute runtime mismatch is never retried as a fallback.
+
+For a successful GCC query returning a relative path or a non-directory,
+preflight instead runs the matching `gnatls -v` beside the physically resolved
+Ada compiler. It derives the name from `gcc`, preserving any target prefix and
+version suffix (for example, `aarch64-linux-gnu-gcc-12` pairs with
+`aarch64-linux-gnu-gnatls-12`). It does not search host `PATH` for GNATLS, accept
+a GNATLS symlink into another toolchain directory, or pass `--RTS` to force the
+answer. GNATLS must independently describe the compiler's **default** runtime.
+
+The GNATLS exit status is checked before parsing its captured output in the C
+locale. Both `Source Search Path` and `Object Search Path` must be present and
+nonempty. Whitespace, blank-line and CRLF variations are supported. Apart from
+the standard `<Current_Directory>` marker, every entry must be an existing
+absolute directory whose physical path matches the selected `adainclude` or
+`adalib`, respectively. Trailing slashes, `..`, and symlink aliases are resolved
+physically. Extra competing directories are rejected, even if one entry
+matches: an earlier runtime must not silently take precedence. Missing,
+malformed or failed GNATLS evidence fails closed.
+
+`ADA_INCLUDE_PATH`, `ADA_OBJECTS_PATH`, `ADA_PRJ_INCLUDE_FILE`, and
+`ADA_PRJ_OBJECTS_FILE` must be empty, as must the existing compiler search-path
+overrides. They cannot inject the requested runtime into GNATLS output to mask
+a mismatch. Run configuration/builds from a trusted directory; the GNATLS
+current-directory marker does not attest to arbitrary local Ada sources/ALIs.
+
+On failure, inspect the supplied compiler's resolved executable and target,
+its `-print-file-name=adalib` output and exit status, the adjacent matching
+GNATLS executable, and its unmodified `LC_ALL=C ... -v` output. Compare **all**
+object/source entries with the physical selected runtime directories and
+remove injected Ada search-path variables. Do not resolve a mismatch by adding
+`--RTS` to GNATLS or substituting host tools. Install/select a coherent SDK
+compiler/runtime pair and regenerate the matching GPR configuration instead.
+
+This evidence complements, and never replaces, the existing actual GPR Ada/C++
+compile/link probe and AArch64 ELF inspection in `scripts/cross_build_core.sh`.
+Target, sysroot, linker and OpenCV dependency validation remain mandatory.
+Disposable synthetic tests cover both detection paths and rejection controls;
+they do **not** qualify the proprietary GNAT Pro 12 / Yocto Scarthgap platform.
+Public Debian cross-qualification and actual AdaCore/Yocto qualification remain
+separate evidence. Vendor-platform qualification for this correction is pending
+until the actual SDK/sysroot preflight and cross-build probe have been run.
+
 ## Public reference evidence
 
 Reference: a separate x86_64 Debian 12 container derived from the existing
