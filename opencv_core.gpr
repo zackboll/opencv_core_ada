@@ -67,8 +67,8 @@ project OpenCV_Core is
             case OpenCV_Core_Install.Cxx_Toolchain is
                when "Apple_Clang" =>
                   --  Propagate to native Ada executables, including consumers
-                  --  of the installed and relocated project. SDKROOT alone is
-                  --  not sufficient for the GNAT GCC driver.
+                  --  of the installed and relocated project. Do not rely on
+                  --  SDKROOT overriding the GNAT GCC driver's built-in specs.
                   for Linker_Options use
                     ("-Wl,-syslibroot," & OpenCV_Core_Install.Cxx_Sysroot);
                when "GNU" =>
