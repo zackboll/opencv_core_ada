@@ -37,8 +37,16 @@ else
     cat "$work/sdkroot.log"
     echo 'SDKROOT-only link: FAIL'
 fi
+if g++ -v "$root/tests/macos_native_link_probe.cpp" \
+    "-Wl,-syslibroot,$sdk" -o "$work/linker-only" > "$work/linker-only.log" 2>&1; then
+    "$work/linker-only"
+    echo 'Linker-only syslibroot: PASS'
+else
+    cat "$work/linker-only.log"
+    echo 'Linker-only syslibroot: FAIL'
+fi
 g++ -v "$root/tests/macos_native_link_probe.cpp" \
-    "-Wl,-syslibroot,$sdk" -o "$work/explicit"
+    "--sysroot=$sdk" -o "$work/explicit"
 "$work/explicit"
 file "$work/explicit"
 otool -L "$work/explicit"
