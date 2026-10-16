@@ -21,8 +21,8 @@ echo "GNAT g++ linker: $linker"
 "$linker" -v 2>&1
 g++ -### "$root/tests/macos_native_link_probe.cpp" -o "$work/default" 2>&1
 
-# These two comparisons are diagnostic, not qualification. Preserve failures
-# visibly; the explicit-syslibroot link and execution below must succeed.
+# These comparisons are diagnostic, not qualification. Preserve failures
+# visibly; the explicit driver-sysroot link and execution below must succeed.
 if g++ -v "$root/tests/macos_native_link_probe.cpp" -o "$work/default" > "$work/default.log" 2>&1; then
     "$work/default"
     echo 'Default SDK link: PASS'

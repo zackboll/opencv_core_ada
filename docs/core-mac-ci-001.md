@@ -27,7 +27,7 @@ project consequently inherited GNAT's compiled-in Command Line Tools SDK.
 ## Correction and repeatable diagnostics
 
 For `Apple_Clang` configuration only, Core now supplies
-`-Wl,-syslibroot,<Cxx_Sysroot>` in both places:
+`--sysroot=<Cxx_Sysroot>` in both places:
 
 * `Linker.Linker_Options`, propagated to AUnit and installed/relocated consumers;
 * `Library_Options` for the relocatable Ada library build.
@@ -57,3 +57,14 @@ landed on the September image. Its observed configuration was:
 The expanded explicit link contains a trailing Xcode `-syslibroot` after
 the GCC-generated CLT `-syslibroot`. All three probes passed on that older
 image; qualification of the October image requires separate evidence.
+
+The subsequent [October-image probe](https://github.com/zackboll/opencv_core_ada/actions/runs/38838788006/job/116773808100)
+on `22c82932ddbff7d60b262260a56bb2aee3f80c70` reproduced the native failure
+without OpenCV. The developer directory, Xcode SDK and bundled linker were
+unchanged, but the CLT symlink targeted `MacOSX27.0.sdk` and the package
+version was `27.0.0.0.1788430756`. Default linking failed, `SDKROOT`-only
+linking passed, and appending linker-only `-syslibroot` still failed.
+Consequently the initial linker-only production candidate is insufficient.
+GCC's configured specs explicitly recognize `--sysroot=...` as an override
+for the compiled-in default. The follow-up mandatory probe passed before
+changing production configuration to that driver option.

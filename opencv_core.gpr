@@ -34,7 +34,7 @@ project OpenCV_Core is
                      --  GNAT's linker otherwise uses the independent CLT SDK,
                      --  which can be newer than its supported TBD format.
                      for Library_Options use
-                       ("-Wl,-syslibroot," & OpenCV_Core_Install.Cxx_Sysroot);
+                       ("--sysroot=" & OpenCV_Core_Install.Cxx_Sysroot);
                   when "GNU" =>
                      null;
                end case;
@@ -70,7 +70,7 @@ project OpenCV_Core is
                   --  of the installed and relocated project. Do not rely on
                   --  SDKROOT overriding the GNAT GCC driver's built-in specs.
                   for Linker_Options use
-                    ("-Wl,-syslibroot," & OpenCV_Core_Install.Cxx_Sysroot);
+                    ("--sysroot=" & OpenCV_Core_Install.Cxx_Sysroot);
                when "GNU" =>
                   null;
             end case;
