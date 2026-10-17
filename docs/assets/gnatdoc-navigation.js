@@ -68,6 +68,21 @@
     }
     return {item: values.length === 1 ? byName.get(values[0].toLowerCase()) || fallback : fallback};
   }
+  function revealSymbol() {
+    // A restored frame can already have the right fragment but the wrong
+    // scroll offset. Run after the traversal's native scroll restoration,
+    // and recheck the destination in case another navigation has started.
+    requestAnimationFrame(() => {
+      const {symbol} = requested();
+      if (!symbol) return;
+      try {
+        if (frame.contentWindow.location.href !== symbol.url.href ||
+            frame.contentDocument.readyState !== "complete") return;
+        frame.contentDocument.getElementById(symbol.url.hash.slice(1))
+          ?.scrollIntoView({block: "start"});
+      } catch (_) { /* Unsupported foreign navigation is never selected. */ }
+    });
+  }
   function restore() {
     const {item, symbol} = requested();
     mark(item);
@@ -76,6 +91,7 @@
     const url = (symbol || item).url;
     if (frame.contentWindow.location.href !== url.href)
       frame.contentWindow.location.replace(url.href);
+    else revealSymbol();
   }
   function navigate(url) {
     const item = url.origin === location.origin && byPath.get(url.pathname);
@@ -103,6 +119,7 @@
       mark(item);
       outer(item, "pushState", symbol);
       frame.contentDocument.addEventListener('click', click);
+      revealSymbol();
     } catch (_) { /* Unsupported foreign navigation is never selected. */ }
   });
   document.querySelector(".side-navigation").addEventListener("click", click);
@@ -123,6 +140,7 @@
     search.focus();
   });
   window.addEventListener("popstate", restore);
+  window.addEventListener("pageshow", restore);
   filter();
   restore();
   controls.hidden = false;
