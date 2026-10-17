@@ -2,7 +2,7 @@
 
 set -eu
 
-script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 crate_root=$(dirname "$script_dir")
 config="$crate_root/config/opencv_core_install.gpr"
 
@@ -226,16 +226,29 @@ case "$probe_kind" in
             "$opencv_core_link_option" "$cxx_runtime_switch"
         ;;
     static)
+        # Native GNU configurations have an empty Cxx_Sysroot. Cross
+        # configurations must use it for every external compilation, just
+        # as the production GPR project does. Keep the native command intact.
+        set --
+        archive_driver='ar'
+        if [ -n "$cxx_sysroot" ]; then
+            set -- "--sysroot=$cxx_sysroot"
+            archive_driver=$("$cxx_driver" -print-prog-name=ar)
+            if [ ! -x "$archive_driver" ]; then
+                echo "error: configured C++ compiler did not resolve its archiver: $archive_driver" >&2
+                exit 1
+            fi
+        fi
         env -u CPATH -u C_INCLUDE_PATH -u CPLUS_INCLUDE_PATH \
             -u LIBRARY_PATH -u GCC_EXEC_PREFIX -u COMPILER_PATH \
             "$cxx_driver" -c -std=c++17 -Wall -Wextra -Wpedantic -Werror \
-            -fPIC "$include_switch" -o "$umat_object" "$umat_source"
+            "$@" -fPIC "$include_switch" -o "$umat_object" "$umat_source"
         env -u CPATH -u C_INCLUDE_PATH -u CPLUS_INCLUDE_PATH \
             -u LIBRARY_PATH -u GCC_EXEC_PREFIX -u COMPILER_PATH \
             "$cxx_driver" -c -std=c++17 -Wall -Wextra -Wpedantic -Werror \
-            -fPIC "-I$bridge_include" "$include_switch" \
+            "$@" -fPIC "-I$bridge_include" "$include_switch" \
             -o "$lifetime_object" "$lifetime_source"
         rm -f "$lifetime_library"
-        ar rcs "$lifetime_library" "$lifetime_object" "$umat_object"
+        "$archive_driver" rcs "$lifetime_library" "$lifetime_object" "$umat_object"
         ;;
 esac
