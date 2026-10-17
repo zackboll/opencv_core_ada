@@ -63,6 +63,19 @@ jobs:
         run: '"$DOC_PYTHON" -m unittest discover -s scripts -p ''test_gnatdoc_instances.py'' -v'
       - name: Qualify native navigation integrity
         run: '"$DOC_PYTHON" -m unittest discover -s scripts -p ''test_gnatdoc_navigation.py'' -v'
+      - name: Qualify real-browser package and declaration navigation
+        run: |
+          npm install --prefix /tmp/doc-browser --no-package-lock playwright@1.64.1
+          /tmp/doc-browser/node_modules/.bin/playwright install --with-deps chromium
+          export PLAYWRIGHT_MODULE=/tmp/doc-browser/node_modules/playwright
+          export CHROME=$(node -e 'console.log(require(process.env.PLAYWRIGHT_MODULE).chromium.executablePath())')
+          export DOC_URL=http://127.0.0.1:8071/api/index.html
+          python3 -m http.server 8071 --bind 127.0.0.1 --directory _site &
+          server=$!
+          trap 'kill "$server"' EXIT
+          curl --fail --retry 10 --retry-connrefused --retry-delay 1 "$DOC_URL" --output /dev/null
+          node scripts/test_gnatdoc_navigation_browser.cjs
+          node scripts/test_gnatdoc_symbols_browser.cjs
       - name: Upload review artifact
         uses: actions/upload-artifact@v4
         with:

@@ -66,6 +66,25 @@ class NavigationTests(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()), self.assertRaises(SystemExit):
             validate(self.site)
 
+    def test_symbol_destinations_are_independently_reconstructed(self):
+        path = self.api / 'index.html'
+        original = path.read_text()
+        symbols = re.findall(r'<a href="([^"]+)" data-symbol="([^"]+)"></a>', original)
+        self.assertGreater(len(symbols), 50)
+        for name in ('OpenCV.Rect', 'OpenCV.Size', 'OpenCV.Angle_Unit',
+                     'OpenCV.Core.Mat', 'OpenCV.Float64_Value'):
+            self.assertEqual(sum(n == name for _, n in symbols), 1)
+        first, second = symbols[:2]
+        for text in (
+                original.replace('data-symbol="OpenCV.Rect"', 'data-symbol="OpenCV.Size"'),
+                original.replace(f'<a href="{first[0]}" data-symbol="{first[1]}"></a>', ''),
+                original.replace(f'href="{first[0]}"', f'href="{second[0]}"', 1),
+                original.replace('data-symbol="OpenCV.Rect"', 'data-symbol="OpenCV.Absent"')):
+            path.write_text(text)
+            with contextlib.redirect_stdout(io.StringIO()), self.assertRaises(SystemExit):
+                validate(self.site)
+        path.write_text(original)
+
 
 if __name__ == '__main__':
     unittest.main()

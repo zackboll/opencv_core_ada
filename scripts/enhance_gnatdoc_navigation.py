@@ -59,16 +59,45 @@ def native_index(api):
     return START + anchors + MIDDLE + ''.join(tagged) + END, inventory
 
 
-def augmented(text):
+def symbol_navigation(api):
+    """Publish only unique, public, source-matched native type destinations."""
+    source_map = sources(ROOT / 'src')
+    pages, targets = pages_and_targets(api, source_map)
+    expected = [d['scope'].lower() for source in source_map.values()
+                for d in source.declarations
+                if d['scope'].lower().rpartition('.')[0] == source.package
+                and d['signature'].split()[0].lower() in ('type', 'subtype')]
+    require(len(expected) == len(set(expected)), 'ambiguous public symbol inventory')
+    require(set(targets) == set(expected), 'incomplete public symbol inventory')
+    links = []
+    for identity, (filename, anchor) in sorted(targets.items()):
+        owner, _, simple = identity.rpartition('.')
+        source = source_map[owner]
+        declarations = [d for d in source.declarations
+                        if d['scope'].lower() == identity and
+                        d['signature'].split()[0].lower() in ('type', 'subtype')]
+        require(len(declarations) == 1, f'ambiguous public symbol: {identity}')
+        name = re.search(r'\bpackage\s+([\w.]+)\s+is\b', source.code, re.I)[1]
+        section = next(s for s in pages[owner][2] if s[1] == anchor)
+        require(section[2].lower() == simple, 'symbol heading mismatch')
+        qualified = name + '.' + declarations[0]['name']
+        links.append(f'<a href="{filename}#{anchor}" '
+                     f'data-symbol="{qualified}"></a>')
+    require(bool(links), 'empty public symbol inventory')
+    return '<div id="type-navigation" hidden>' + ''.join(links) + '</div>'
+
+
+def augmented(text, api):
     return text.replace('<h2 id=compilation-units>',
                         CONTROL + '<h2 id=compilation-units>', 1).replace(
-                            '<body class=main>', SCRIPT + '<body class=main>', 1)
+                            '<body class=main>', SCRIPT + '<body class=main>' +
+                            symbol_navigation(api), 1)
 
 
 def check_navigation(api):
     from install_gnatdoc_theme import themed
     native, inventory = native_index(api)
-    require((api / 'index.html').read_text() == augmented(themed(native)),
+    require((api / 'index.html').read_text() == augmented(themed(native), api),
             'unapproved navigation shell, links, controls or scripts')
     require((api / 'gnatdoc-navigation.js').read_bytes() == ASSET.read_bytes(),
             'navigation asset differs from repository script')
@@ -79,11 +108,12 @@ def enhance(api):
     from install_gnatdoc_theme import themed
     native, _ = native_index(api)
     path = api / 'index.html'
-    if path.read_text() == augmented(themed(native)):
+    expected = augmented(themed(native), api)
+    if path.read_text() == expected:
         check_navigation(api)
         return
     require(path.read_text() == themed(native), 'unsupported native index structure')
-    path.write_text(augmented(themed(native)))
+    path.write_text(expected)
     (api / 'gnatdoc-navigation.js').write_bytes(ASSET.read_bytes())
     check_navigation(api)
 

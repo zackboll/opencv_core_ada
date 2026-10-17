@@ -21,55 +21,91 @@
   }
   const fallback = byName.get("opencv.core");
   if (links.length !== 195 || !fallback) return;
+  const symbols = new Map(), destinations = new Map();
+  for (const link of document.querySelectorAll('#type-navigation a')) {
+    const name = link.dataset.symbol;
+    const owner = name.slice(0, name.lastIndexOf('.'));
+    const item = byName.get(owner.toLowerCase());
+    const url = new URL(link.getAttribute('href'), location.href);
+    const key = url.pathname + url.hash;
+    if (!item || !/^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/.test(name) ||
+        url.origin !== location.origin || url.pathname !== item.url.pathname ||
+        url.search || !url.hash || symbols.has(name.toLowerCase()) ||
+        destinations.has(key)) return;
+    const symbol = {name, item, url};
+    symbols.set(name.toLowerCase(), symbol);
+    destinations.set(key, symbol);
+  }
+  if (!symbols.size) return;
   controls.dataset.ready = "true";
   const search = document.getElementById("package-search");
   const status = document.getElementById("package-results");
-  let active = null;
   function mark(item) {
     for (const link of links) link.removeAttribute("aria-current");
     item.link.setAttribute("aria-current", "page");
-    active = item;
   }
-  function outer(item, method) {
+  function outer(item, method, symbol = null) {
     const url = new URL(location.href);
     if (url.searchParams.getAll("package").length === 1 &&
-        url.searchParams.get("package") === item.name) return;
+        url.searchParams.get("package") === item.name &&
+        url.searchParams.getAll("symbol").length === (symbol ? 1 : 0) &&
+        (!symbol || url.searchParams.get("symbol") === symbol.name)) return;
     url.searchParams.set("package", item.name);
-    history[method]({package: item.name}, "", url);
+    url.searchParams.delete("symbol");
+    if (symbol) url.searchParams.set("symbol", symbol.name);
+    history[method]({package: item.name, symbol: symbol?.name}, "", url);
   }
   function requested() {
-    const values = new URL(location.href).searchParams.getAll("package");
-    return values.length === 1 ? byName.get(values[0].toLowerCase()) || fallback : fallback;
+    const params = new URL(location.href).searchParams;
+    const values = params.getAll("package");
+    const names = params.getAll("symbol");
+    if (names.length) {
+      const symbol = names.length === 1 && symbols.get(names[0].toLowerCase());
+      if (symbol && values.length <= 1 &&
+          (!values.length || values[0].toLowerCase() === symbol.item.name.toLowerCase()))
+        return {item: symbol.item, symbol};
+      return {item: fallback};
+    }
+    return {item: values.length === 1 ? byName.get(values[0].toLowerCase()) || fallback : fallback};
   }
   function restore() {
-    const item = requested();
+    const {item, symbol} = requested();
     mark(item);
-    outer(item, "replaceState");
-    // Replace the frame's history entry: outer package history is authoritative.
-    // Native declaration fragments are untouched when already on this package.
-    if (frame.contentWindow.location.pathname !== item.url.pathname)
-      frame.contentWindow.location.replace(item.url.href);
+    outer(item, "replaceState", symbol);
+    // Outer package/symbol history is authoritative; never add frame entries.
+    const url = (symbol || item).url;
+    if (frame.contentWindow.location.href !== url.href)
+      frame.contentWindow.location.replace(url.href);
+  }
+  function navigate(url) {
+    const item = url.origin === location.origin && byPath.get(url.pathname);
+    if (!item || url.search) return false;
+    const symbol = destinations.get(url.pathname + url.hash);
+    mark(item);
+    outer(item, "pushState", symbol);
+    frame.contentWindow.location.replace(url.href);
+    return true;
+  }
+  function click(event) {
+    const link = event.target.closest("a");
+    if (!link || event.button !== 0 || event.ctrlKey || event.metaKey ||
+        event.shiftKey || event.altKey || link.hasAttribute('download')) return;
+    if (link.ownerDocument === document ? link.target !== frame.name :
+        link.target && link.target !== frame.name && link.target !== '_self') return;
+    if (navigate(new URL(link.href))) event.preventDefault();
   }
   frame.addEventListener("load", () => {
     try {
       const url = new URL(frame.contentWindow.location.href);
       const item = url.origin === location.origin && byPath.get(url.pathname);
       if (!item) return;
-      if (item !== active) { mark(item); outer(item, "pushState"); }
+      const symbol = destinations.get(url.pathname + url.hash);
+      mark(item);
+      outer(item, "pushState", symbol);
+      frame.contentDocument.addEventListener('click', click);
     } catch (_) { /* Unsupported foreign navigation is never selected. */ }
   });
-  document.querySelector(".side-navigation").addEventListener("click", event => {
-    const link = event.target.closest("a");
-    if (!link || link.target !== frame.name || event.button !== 0 ||
-        event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
-    const url = new URL(link.href);
-    const item = url.origin === location.origin && byPath.get(url.pathname);
-    if (!item) return;
-    event.preventDefault();
-    mark(item);
-    outer(item, "pushState");
-    frame.contentWindow.location.replace(url.href);
-  });
+  document.querySelector(".side-navigation").addEventListener("click", click);
   function filter() {
     const query = search.value.toLowerCase();
     let count = 0;
