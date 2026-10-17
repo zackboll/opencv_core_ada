@@ -168,9 +168,11 @@ installed GPR metadata as artifacts; existing compatibility jobs remain intact.
   and rebuild. This qualifies rebuilding against a relocated install, not
   moving an already-linked executable without considering its RPATH.
 
-Future Yocto Scarthgap AArch64 integration will reuse this installed-GPR model,
+Separately qualified [GNAT Pro 25.2 / Scarthgap integration](adacore25-scarthgap-core-aunit.md)
+uses the target toolchain and sysroot; this native guide is not its evidence.
+Any Yocto Scarthgap AArch64 integration must use this installed-GPR model,
 but must independently qualify the existing consumer cross-toolchain,
 `ENV_PREFIX`, target Ada runtime, OpenCV headers/libraries in the target
 sysroot, and C++ runtime. The native generated `/usr/lib/x86_64-linux-gnu`
-options must not be reused as a target configuration. No Yocto support or
-cross-compilation readiness is claimed here.
+options must not be reused as a target configuration. Native results here do
+not establish target execution; hardware remains NOT TESTED.

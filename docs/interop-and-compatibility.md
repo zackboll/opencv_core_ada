@@ -130,6 +130,16 @@ These are **validation points, not an exhaustive list of supported releases**.
 Intermediate releases within the supported range are not all individually run
 in CI.
 
+Separate from that hosted matrix, the
+[GNAT Pro 25.2 / Scarthgap record](adacore25-scarthgap-core-aunit.md) qualifies
+OpenCV **4.9.0**, GCC 13.3.1 and the Scarthgap 5.0 target sysroot under explicit
+AArch64 QEMU, including 2,025 Core tests and additional safety controls.
+Target hardware is **NOT TESTED**. The
+[0.5.1 preparation record](release-0.5.1-preparation.md) requires fresh execution
+on the exact candidate, not reuse of those historical runtime results.
+Windows/MSYS2 and macOS/MacPorts run on main pushes or manual dispatch under
+existing workflow policy; PR skips are not passes.
+
 Row-strided external views use the longstanding
 `cv::Mat(rows, cols, type, data, step)` constructor. The OpenCV 4.1.0 and 5.0.0
 headers both declare this overload with `size_t step`; both document `step` in
