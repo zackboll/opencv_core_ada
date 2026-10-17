@@ -5,10 +5,14 @@ subsequently resolved and the full public Debian GNAT 12 cross-build,
 installation and consumer cross-links qualified in the
 [GNAT 12 completion record](gnat12-completion.md#full-aarch64-cross-qualification).
 The original findings are retained as evidence, not current release blockers.
-Target execution and Yocto Scarthgap support remain unclaimed.
+Target execution was not performed in that Debian campaign. Separately,
+[GNAT Pro 25.2 / Scarthgap](adacore25-scarthgap-core-aunit.md) records the later
+full Core QEMU qualification with OpenCV 4.9.0. Hardware remains NOT TESTED.
+See [0.5.1 preparation](release-0.5.1-preparation.md) for candidate gates.
 
-This work is **not Yocto Scarthgap qualification**. The proprietary container
-remains inaccessible. The public Debian reference can compile and link a small
+This historical investigation was **not Yocto Scarthgap qualification**. At
+that time the proprietary container was inaccessible. The original findings
+below describe that earlier state: the public Debian reference can compile and link a small
 Ada probe, but GNAT 12 fails the production binding's existing representation
 checks. No production cross-build, installed consumer, or target runtime PASS
 is claimed.

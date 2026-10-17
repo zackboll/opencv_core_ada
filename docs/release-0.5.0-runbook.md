@@ -1,5 +1,11 @@
 # Final 0.5.0 publication runbook (later task only)
 
+**Historical runbook, not current pending work.** PR #81 is merged and 0.5.0
+is indexed. Do not rerun these commands or change immutable 0.5.0 artifacts.
+The [0.5.1 preparation record](release-0.5.1-preparation.md) defines the current
+source-review boundary; its publication needs a later, separate authorization.
+The original instructions are retained below for provenance only.
+
 **STOP: these commands are instructions, not publication authorization.**
 First require PR #81 successful and merged, and independent authorization for
 source publication, tagging and index submission. Do not push the preparatory

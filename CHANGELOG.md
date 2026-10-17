@@ -1,9 +1,35 @@
 # Changelog
 
-## 0.5.0 — prepared, not yet published
+## 0.5.1 — release candidate, not published
 
-This release candidate is prepared from PR #81. Publication and final
-merged-source qualification are pending; the latest indexed release is 0.4.1.
+Compatibility-preserving tooling and platform qualification patch, based on
+merged PR #87. The latest indexed release remains **0.5.0**.
+
+- Discover GNAT Pro's runtime using the matching sibling GNATLS when its GCC
+  driver returns unresolved `adalib`; reject mismatched or ambiguous runtimes.
+- Compile cross-test C++ probes with the configured target sysroot and select
+  the archiver from the target C++ compiler rather than the host PATH.
+- Add opt-in GNAT Pro 25.2 / GCC 13.3.1 / Yocto Scarthgap 5.0 / OpenCV 4.9.0
+  Core qualification tooling: full 2,025-test AUnit QEMU execution, instrumented
+  all-family tests, Float16/representation/negative controls, and target-only
+  ELF, ALI, compiler and dynamic dependency verification. Hardware is NOT TESTED.
+- Correct macOS GNAT linking to use the configured Xcode SDK via the proven
+  GCC `--sysroot` override, including installed and relocated consumers.
+- Correct source-verified GNATdoc type bookmarks and visible declaration
+  restoration across reload and browser history traversal.
+- Refresh release status and platform documentation; independently qualify
+  the committed candidate as specified in the
+  [0.5.1 preparation record](docs/release-0.5.1-preparation.md).
+
+Production `src/` and `cpp/` trees are identical to 0.5.0. No new algorithms,
+public Ada API, private C ABI, ownership, exception policy, supported OpenCV
+range, dependency constraints or Alire actions are introduced by this patch.
+
+## 0.5.0 — published and indexed
+
+Released source: `f8aef00c5366b4275ccd3d934f9c73ea5b83cd4f`.
+PR #81 is merged; the preparation records below retain their original test
+sources and historical limitations rather than claiming newer qualification.
 
 ### Public APIs and reusable destinations
 

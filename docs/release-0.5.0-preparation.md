@@ -1,9 +1,10 @@
 # CORE-REL-005-PREP: OpenCV Core 0.5.0 preparation
 
-**Prepared candidate, not published.** Latest indexed version: **0.4.1**.
-No release tag, GitHub release, source push, main PR or index PR is part of this
-task. Follow [the final publication runbook](release-0.5.0-runbook.md) only in
-the later authorized publication task.
+**Historical preparation record.** 0.5.0 is now published and indexed at
+`f8aef00c5366b4275ccd3d934f9c73ea5b83cd4f`; PR #81 is merged. At the time of
+this preparation campaign, 0.4.1 was the latest indexed release and publication
+was a later gate. The source identities and results below remain historical;
+they do not qualify 0.5.1. See [current preparation](release-0.5.1-preparation.md).
 
 ## Source and isolation
 
