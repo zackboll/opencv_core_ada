@@ -7,7 +7,7 @@ const base = process.env.DOC_URL || 'http://127.0.0.1:8071/api/index.html';
 const evidence = process.env.DOC_EVIDENCE || '/tmp/core-doc-071-screenshots';
 fs.mkdirSync(evidence, {recursive: true});
 (async () => {
-  const browser = await chromium.launch({executablePath: '/usr/bin/google-chrome', headless: true});
+  const browser = await chromium.launch({executablePath: process.env.CHROME || '/usr/bin/google-chrome', headless: true});
   try {
     for (const width of [1280, 390]) for (const colorScheme of ['light', 'dark']) {
       const context = await browser.newContext({viewport: {width, height: 900}, colorScheme});

@@ -20,8 +20,36 @@ OpenCV.Core. Destinations come only from the verified native anchors, never
 from query text. Initial selection uses frame location replacement once; sidebar
 selection records outer history and replaces frame history. Same-origin iframe
 loads reconcile package identity without changing declaration fragments. Back,
-Forward and reload restore package selection. Declaration-level bookmarks and
-foreign-origin iframe synchronization are explicitly outside this contract.
+Forward and reload restore package selection. Foreign-origin iframe
+synchronization is outside this contract.
+
+### Stable public type and subtype links
+
+Share `api/index.html?symbol=OpenCV.Rect` (also `OpenCV.Size`,
+`OpenCV.Angle_Unit`, `OpenCV.Core.Mat`, or any indexed public type/subtype).
+Symbols are fully qualified Ada identities, case-insensitive on input and
+canonicalized using source spelling. The router resolves the actual generated
+filename and native declaration anchor from a hidden, source-verified index;
+neither is part of the stable URL contract. Package bookmarks remain supported.
+A symbol URL may also contain its matching `package`; a conflicting package,
+duplicate parameter, unknown/private/subprogram symbol, unqualified name or
+path-like reference is rejected and selects the default OpenCV.Core package.
+
+Direct links, reloads, fresh tabs, Back/Forward, tagged sidebar links and native
+type-reference clicks preserve declaration destinations. Package selection
+clears the symbol. Package search remains independent. No scripts are injected
+into declaration pages. Both inventories and every symbol destination are
+independently reconstructed by the final validator; changing a destination to
+another existing declaration still fails validation. Native declaration types
+in generic templates are supported, but formal types and instance-summary
+pseudo-declarations are deliberately not public symbol destinations.
+
+`scripts/test_gnatdoc_symbols_browser.cjs` qualifies direct type/subtype links,
+actual target declarations and scroll position, reload/fresh tabs/history and
+invalid requests at desktop/mobile sizes. The documentation CI runs this and
+the existing package browser tests using a separately installed Playwright
+1.64.1 and Chromium; these are not production or documentation runtime
+dependencies.
 
 Without JavaScript, the search controls remain hidden and all 195 native package
 links, four tagged-type links, and both fragment-based tabs remain functional.
