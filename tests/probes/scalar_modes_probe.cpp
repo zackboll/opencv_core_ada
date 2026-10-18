@@ -28,7 +28,11 @@ int main() {
                 cv::Scalar scalar(2,3,4,5);
                 cv::Mat expected;
                 apply(source,scalar,expected,operation);
-                cv::Mat exact=source.clone();
+                // Keep source row layout identical: cloning only the Region
+                // makes it continuous and changes native work-block/tail
+                // partitioning (including half-tie rounding on OpenCV 4.6).
+                cv::Mat exact_parent=parent.clone();
+                cv::Mat exact=exact_parent(cv::Rect(2,1,257,3));
                 auto* exact_data=exact.data;
                 apply(exact,scalar,exact,operation);
                 if (cv::norm(exact,expected,cv::NORM_INF)!=0) {
@@ -52,7 +56,8 @@ int main() {
                 }
                 check(exact.data==exact_data && cv::norm(exact,expected,cv::NORM_INF)==0,
                       "exact arithmetic alias");
-                cv::Mat shallow=source.clone(), alias=shallow;
+                cv::Mat shallow_parent=parent.clone();
+                cv::Mat shallow=shallow_parent(cv::Rect(2,1,257,3)), alias=shallow;
                 apply(shallow,scalar,alias,operation);
                 check(alias.data==shallow.data && cv::norm(alias,expected,cv::NORM_INF)==0,
                       "same-layout shallow alias");
@@ -67,6 +72,16 @@ int main() {
                 apply(source,scalar,wrong,operation);
                 check(wrong.type()==source.type() && cv::norm(wrong,expected,cv::NORM_INF)==0
                       && retained.at<float>(0,0)==19, "incompatible output detaches");
+                // Also test continuous exact/shallow aliases against a native
+                // reference with that same layout, not the strided reference.
+                cv::Mat continuous=source.clone(), continuous_expected;
+                apply(continuous,scalar,continuous_expected,operation);
+                cv::Mat continuous_alias=continuous;
+                auto* continuous_data=continuous.data;
+                apply(continuous,scalar,continuous_alias,operation);
+                check(continuous_alias.data==continuous_data &&
+                      cv::norm(continuous_alias,continuous_expected,cv::NORM_INF)==0,
+                      "continuous same-layout alias");
             }
     for (int depth : {CV_8U,CV_8S,CV_16U,CV_16S,CV_32S,CV_32F,CV_64F}) {
         for (double coefficient : {-2.5,-1.5,-0.5,0.5,1.5,2.5}) {

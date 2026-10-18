@@ -8,8 +8,9 @@ release, tag or publication. Version remains 0.5.1. Starting feature commit
 `229f86ae14c017f84f793192ef63fde7596fed7b`; refreshed main
 `64d8a60b59acfe4334045280e430c4774b5cad89`. Audit PR #89 remains untouched.
 
-R2 changes only this evidence report and the existing Ubuntu ARM64 CI job.
-Production Ada, production C++ shim, ABI, public API, native probes, assertions,
+R2 changes this evidence report, the existing Ubuntu ARM64 CI job and the
+standalone native probe's layout-matched alias oracle (explained below).
+Production Ada, production C++ shim, ABI, public API, actual-shim probe,
 2,025 original plus twelve scalar AUnit registrations and documentation of
 numerical/zero-denominator policy are unchanged. Baseline production and target
 qualification therefore remain evidence for these identical source inputs;
@@ -52,6 +53,33 @@ The ordinary execution must pass before a second native loader-traced run.
 No emulator is invoked. Leak detection is not disabled. The new job result and
 final commit/tree must be read from the final PR head and recorded in PR #90;
 adding this step by itself is **not** evidence of a native ARM64 sanitizer pass.
+
+### Native-only precheck oracle correction
+
+The first hosted attempt (93aa8a9, run 39164977599/job 117785912598) failed
+before sanitizer compilation, in standalone native `exact arithmetic alias`.
+It was not a sanitizer diagnostic. An instrumented diagnostic probe reproduced
+on independent Debian AArch64 OpenCV 4.6.0: UInt8 C4, reverse division, row 0,
+component 1026, continuous clone actual 1 versus strided reference 0 (4/8 tie).
+
+The probe cloned the Region, stripping its row gaps, but compared the result
+against a different, non-contiguous layout. Pinned OpenCV 4.6 source
+`matrix_iterator.cpp:73-100` sets plane size from continuity;
+`arithm.cpp:805-850` partitions scalar work by those planes/block sizes;
+`convert.simd.hpp:108-127` uses vector conversion versus scalar tail; NEON
+`intrin_neon.hpp:1976-1985` uses ties-away double vector rounding while scalar
+cvRound uses lrint. Different work partitions can therefore select different
+rounding at a tie. This was an invalid cross-layout parity expectation, not
+evidence of binding failure.
+
+The correction clones the parent and selects the same Region for strided
+exact/shallow aliases, retaining identical-layout numerical and pointer checks.
+It additionally tests a continuous alias against its own continuous native
+reference. Fractional, tail, Region, parent guards and detachment tests remain;
+no tolerance increase, coefficient removal or architecture special case.
+The corrected native probe passes on independent AArch64 OpenCV 4.6.0 and
+local x86_64 OpenCV 4.10. Actual-shim assertions remain unchanged. Final native
+hosted execution is still required. This adds no AUnit registrations.
 
 ## Independent Scarthgap failure reproduction
 
@@ -147,7 +175,7 @@ out of scope for this bounded campaign.
 Keep these statements separate:
 
 * **NATIVE_X86_64_ASAN_PASS**: R1 actual shim and instrumented OpenCV versions
-  4.1.0/4.6.0/4.10.0/5.0.0 passed; production/probe sources unchanged. R2 local
+  4.1.0/4.6.0/4.10.0/5.0.0 passed; production/actual-shim sources unchanged. R2 local
   OpenCV 4.10 ASan/UBSan run also passes with leak detection enabled.
 * **NATIVE_ARM64_ASAN_PASS**: requires the newly added hosted final-head step;
   do not infer it from prior AUnit or QEMU execution.
