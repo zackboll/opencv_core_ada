@@ -1,0 +1,22 @@
+name: Core API audit evidence
+
+on:
+  pull_request:
+  push:
+    branches: [main, 'audit/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  evidence:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Validate committed offline evidence (not completion acceptance)
+        run: python3 scripts/audit_core_api.py --allow-incomplete
+      - name: Test evidence validator and negative acceptance gates
+        run: python3 -m unittest discover -s tests/coverage -v
