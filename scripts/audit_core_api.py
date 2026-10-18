@@ -446,10 +446,68 @@ def main():
                         help="explicitly regenerate evidence from pinned official worktrees")
     parser.add_argument("--compare", type=Path, metavar="OLD_INVENTORY",
                         help="print semantic added/changed/removed IDs")
+    parser.add_argument("--refresh-discovery", type=Path, metavar="UPSTREAM_PARENT",
+                        help="enumerate all pinned header paths and parse all in-scope source branches")
+    parser.add_argument("--check-discovery", action="store_true",
+                        help="require independent native discovery closure, not Ada coverage closure")
+    parser.add_argument("--discovery-diagnostics", action="store_true",
+                        help="list exact unresolved native source paths and representative syntax")
+    parser.add_argument("--lock-discovery-snapshot", action="store_true",
+                        help="explicitly update discovery integrity lock, without granting review/closure")
+    parser.add_argument("--refresh-compiler", type=Path, metavar="UPSTREAM_PARENT",
+                        help="record independent active-configuration libclang census")
+    parser.add_argument("--libclang", type=Path,
+                        help="explicit libclang 19 library path for optional compiler refresh")
+    parser.add_argument("--reconcile-compiler", action="store_true",
+                        help="compare independent compiler declarations with source census candidates")
+    parser.add_argument("--integrate-discovery-metadata", action="store_true",
+                        help="link census fingerprints and provisional IDs without changing seed records")
+    parser.add_argument("--write-discovery-report", action="store_true",
+                        help="record all unresolved header paths and version-specific counts")
+    parser.add_argument("--verify-discovery-checkout", type=Path, metavar="UPSTREAM_PARENT",
+                        help="independently reproduce complete header paths/tree/blob proofs")
     args = parser.parse_args()
     try:
         if args.refresh:
             refresh(args.root, args.refresh)
+        if args.refresh_discovery:
+            import core_api_discovery
+            core_api_discovery.refresh(args.root, args.refresh_discovery,
+                                       sys.modules[__name__])
+        if args.refresh_compiler:
+            import core_api_discovery
+            if not args.libclang:
+                fail("--refresh-compiler requires explicit --libclang path")
+            core_api_discovery.refresh_compiler(args.root, args.refresh_compiler,
+                                                args.libclang, sys.modules[__name__])
+        if args.reconcile_compiler:
+            import core_api_discovery
+            core_api_discovery.reconcile_compiler(args.root, sys.modules[__name__])
+        if args.lock_discovery_snapshot:
+            import core_api_discovery
+            core_api_discovery.lock_snapshot(args.root, sys.modules[__name__])
+        if args.integrate_discovery_metadata:
+            import core_api_discovery
+            core_api_discovery.integrate_metadata(args.root, sys.modules[__name__])
+        if args.write_discovery_report:
+            import core_api_discovery
+            core_api_discovery.report(args.root, sys.modules[__name__])
+        if args.verify_discovery_checkout:
+            import core_api_discovery
+            core_api_discovery.verify_checkout(args.root, args.verify_discovery_checkout,
+                                               sys.modules[__name__])
+        if (args.root / "docs/core-api-header-scope.json").exists():
+            import core_api_discovery
+            scope, native, blockers = core_api_discovery.validate(
+                args.root, sys.modules[__name__], complete=args.check_discovery)
+            core_api_discovery.validate_links(args.root, sys.modules[__name__])
+            core_api_discovery.summary(scope, native)
+            if args.discovery_diagnostics:
+                core_api_discovery.diagnostics(args.root, sys.modules[__name__])
+        elif args.check_discovery:
+            fail("UPSTREAM_DISCOVERY_BLOCKED: header/declaration census missing")
+        if args.check_discovery:
+            return 0
         snapshot = validate(args.root, complete=not args.allow_incomplete)
         if args.compare:
             old = {item["id"]: item for item in load(args.compare)["capabilities"]}

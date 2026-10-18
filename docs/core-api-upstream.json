@@ -438,5 +438,12 @@
       }
     }
   },
-  "declaration_manifest_sha256": "1559daf5e29055da80e3e8c18c70e09e549b1a244753d14f40594f2104ed4aa2"
+  "declaration_manifest_sha256": "1559daf5e29055da80e3e8c18c70e09e549b1a244753d14f40594f2104ed4aa2",
+  "discovery_snapshot": {
+    "header_scope_sha256": "9a7e9e1b1a544975934744b505e65992d8a4d7eaadb592038d280c6a3dc01013",
+    "native_declarations_sha256": "beecb537e1bc8ed62f2b8d7c41048a7ff543694a96e4861f2d8c52df8ba0391a",
+    "manifest_sha256": "be352dc92533d5e8c4308a04488738c621d0e338d2d0b7bcc73a8e21e8559671",
+    "review_sha256": "89157cf3551c489ced2ecb3b7d7e5001bbf5669fa8484a3d2322c496b8adb459",
+    "compiler_evidence_sha256": "24ec27b0792962a3fedce4d916ac3c72835745c28b41f1040b91dc1c6121fd4f"
+  }
 }

@@ -20,3 +20,9 @@ jobs:
         run: python3 scripts/audit_core_api.py --allow-incomplete
       - name: Test evidence validator and negative acceptance gates
         run: python3 -m unittest discover -s tests/coverage -v
+      - name: Install pinned refresh-parser dependencies for syntax fixtures
+        run: |
+          python3 -m venv /tmp/core-census-parser
+          /tmp/core-census-parser/bin/pip install -r tests/coverage/parser-requirements.txt
+      - name: Test discovery syntax fixtures and closure rejection
+        run: /tmp/core-census-parser/bin/python -m unittest discover -s tests/coverage -p test_core_api_discovery.py -v

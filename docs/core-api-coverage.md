@@ -1,5 +1,170 @@
 # CORE-CLOSE-001: Core API coverage evidence — INCOMPLETE
 
+## CORE-CLOSE-001A continuation — UPSTREAM_DISCOVERY_BLOCKED
+
+This continuation enumerates **every tracked path** under the exact pinned
+`modules/core/include/opencv2/` subtree, not merely the original 21 selected
+headers. It does **not close native declaration discovery**: header dispositions,
+conditional/macro declaration extraction and semantic reconciliation remain
+unreviewed. No `BOUND_FULL` status or global `discovery_complete` promotion occurs.
+The original 26 capability records and their evidence remain unchanged; only
+their top-level reference/provenance fingerprints are relinked.
+
+### Reproducible header enumeration and declaration counts
+
+| Reference | Tracked headers | Provisionally in scope | Provisionally excluded | Scope dispositions reviewed | CST declaration occurrences | Distinct source IDs | CST blockers | Clang active declarations | Unmatched Clang occurrences |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 4.1.0 | 113 | 88 | 25 | 0 | 9,023 | 8,143 | 644 | 5,910 | 2,262 |
+| 4.6.0 | 141 | 104 | 37 | 0 | 9,783 | 8,871 | 697 | 6,541 | 2,468 |
+| 4.10.0 | 149 | 105 | 44 | 0 | 9,861 | 8,964 | 676 | 6,630 | 2,513 |
+| 5.0.0 | 145 | 106 | 39 | 0 | 10,261 | 9,320 | 698 | 6,984 | 2,297 |
+
+All source-CST records have a **provisional** family or exclusion: respectively
+8,734/289, 9,401/382, 9,493/368 and 9,875/386. Thus zero *emitted records* lack a
+bucket, but this is emphatically **not zero genuinely unclassified native APIs**.
+Unparsed regions, unmatched compiler declarations and unreviewed mappings block
+that conclusion. The 129 provisional native buckets comprise 16 existing seed IDs
+and **113 new discovery IDs**, not 129 independently reconciled semantic families.
+The other ten seed records are preserved; the census does not remove them.
+Exact new IDs are listed in the reference's `upstream_discovery` section.
+
+Scope category counts (provisional; exclusions require explicit review):
+
+| Reference | Portable public | Template/inline | Backend public | Platform/external | Internal excluded | HAL/low-level excluded | Legacy excluded |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 4.1.0 | 21 | 6 | 57 | 4 | 7 | 15 | 3 |
+| 4.6.0 | 30 | 9 | 60 | 5 | 11 | 23 | 3 |
+| 4.10.0 | 30 | 10 | 60 | 5 | 11 | 30 | 3 |
+| 5.0.0 | 32 | 10 | 59 | 5 | 12 | 26 | 1 |
+
+These are **source census counts**, never Ada coverage percentages. Public
+constructors, methods, operators, templates, types, enums/enumerators, fields,
+aliases, constants/macros and inline definitions are retained. Duplicate
+signature IDs may occur at distinct declaration/definition locations; duplicate
+*occurrence identities* are rejected. Signature identities are syntactic, not
+canonical compiler overload identities: parameter names/defaults and annotations
+can affect them. Clang USRs/type signatures provide a separate cross-check.
+
+### Discovery artifacts and affirmative gates
+
+- [Header manifest](core-api-header-manifest.json): full tracked path/blob list
+  plus Git tree objects and ancestor sibling entries. Offline validation
+  recomputes actual Git tree hashes, rooted at each pinned upstream tree SHA.
+  Deleting a header and rehashing our JSON cannot make the authenticated subtree
+  complete. No network or upstream checkout is required for this check.
+- [Header scope](core-api-header-scope.json): every path has version, blob,
+  SHA-256, category, rationale/exclusion reason, source excerpt, feature directive
+  observations, source link, provisional families and explicit review state.
+- [Native source census](core-api-native-declarations.json): all in-scope source
+  files are traversed, including preprocessor branches. Records include owner,
+  signature/overload identity, kind, source ranges/link, access, guards, mapping,
+  confidence and review state. Syntax accounting records and exact blocking
+  cases prevent a limited extraction from simply declaring itself complete.
+- [Compiler evidence](core-api-compiler-evidence.json): independent libclang
+  19.1.7 C++17 active-configuration census with **zero compiler errors** on each
+  version. This uses pinned headers first and the installed Linux standard
+  library/config header environment; it is not a clean target qualification.
+  It records the exact arguments, diagnostics, include roots, USRs and
+  source-candidate matches. It does not prove inactive branch completeness.
+- [Review lock](core-api-discovery-review.json): fingerprints and separate
+  reviewed-header, reviewed-exclusion and independent-reconciliation lists.
+  Refresh never grants approval. These review lists remain empty.
+- [Exact blocker report](core-api-discovery-blockers.json): per-version counts
+  and every unresolved header path, including unmatched compiler counts and
+  evidence required. Source-level uncertainties retain exact ranges and text in
+  the native census, rather than a sampled list presented as exhaustive.
+
+`UPSTREAM_DISCOVERY_COMPLETE` and `ADA_COVERAGE_AUDIT_COMPLETE` are **independent**
+and both remain false. The legacy coverage JSON `discovery_complete=false`
+continues to block overall Core coverage acceptance. The native gate requires
+reviewed scope/exclusions, all syntax/macro/guard cases reconciled, every
+applicable declaration mapped to a reviewed semantic family or explicit
+exclusion, and affirmative independent reconciliation evidence. A parser's own
+empty error list or emitted-record bucket count cannot satisfy it.
+
+### Known unresolved declarations and exact evidence needed
+
+Representative blockers (the linked JSON is the complete location list):
+
+- `core/mat.hpp`: `CV_ENUM_FLAGS(AccessFlag)`, `_InputArray::KindFlag` flag
+  operators and `CV__DEBUG_NS_BEGIN/END` expansion; reconcile generated
+  operators/debug owners and every Mat/UMat/SparseMat overload against compiler
+  USRs and inactive configurations.
+- `core/affine.hpp`: conditional `DataType<Affine3<...>>` members and templated
+  conversion operator `Affine3<T>::operator Affine3<Y>()`; resolve source identity
+  and guarded signatures, not merely class name.
+- `core/saturate.hpp`: explicit conversion specializations; `core/mat.inl.hpp`,
+  `matx.inl.hpp`, `types.hpp`, `operations.hpp`, `softfloat.hpp`, `traits.hpp`:
+  overload/template/inline cases and multiple declarators must be reconciled.
+- `core/cvdef.h` and `cvstd_wrapper.hpp`: compiler-feature branches, annotation
+  macro definitions and wrapper templates; account for generated syntax without
+  stripping API-generating macros as though they were visibility annotations.
+- `core/cuda/color.hpp`, `functional.hpp`, `saturate_cast.hpp`, `vec_math.hpp`,
+  `vec_traits.hpp`, `datamov_utils.hpp`: device compiler/macros generate APIs;
+  either independently enumerate them or explicitly review a justified scope
+  exclusion. Backend status alone is not permission to drop them silently.
+- OpenCL runtime/autogenerated headers: clAMD/clBLAS/clFFT declarations and SVM
+  extension branches need backend/exclusion review and guard-aware identity.
+- `core/utils/logger.hpp`, `utils/tls.hpp`, `parallel/parallel_backend.hpp`,
+  `async.hpp`, `detail/async_promise.hpp`: friend declarations and utility methods
+  still require scope/semantic review. In particular **AsyncPromise is a public
+  documented API despite the `detail/` path**; no blanket detail exclusion.
+
+Known candidate availability remains pinned-source qualified: transposeND is
+absent in 4.1; flipND/broadcast absent in 4.1/4.6; finiteMask/divSpectrums occur
+only in 5.0 among references; Quat/DualQuat/Async headers absent in 4.1; MatShape
+and new 5.0 depth macros occur in their exact source files. Native census
+`version_differences`, `header_differences` and `declaration_availability` record
+source-ID additions/removals/changed overload sets between reference tags.
+These are **observed reference differences**, not exact release-introduction
+dates, canonical ABI diffs or proof all depth/channel combinations work.
+
+### Reproduction and validation
+
+Normal offline integrity validation remains standard-library-only:
+
+```sh
+python3 scripts/audit_core_api.py --allow-incomplete
+python3 scripts/audit_core_api.py --check-discovery  # expected BLOCKED / exit 1
+python3 scripts/audit_core_api.py --allow-incomplete --discovery-diagnostics
+python3 -m unittest discover -s tests/coverage -v
+```
+
+Optional full source refresh uses the pinned parser requirements under tests,
+not production dependencies. From a local environment with those requirements:
+
+```sh
+python3 scripts/audit_core_api.py --refresh-discovery /absolute/upstream-parent --allow-incomplete
+python3 scripts/audit_core_api.py --refresh-compiler /absolute/upstream-parent --libclang /absolute/libclang-19.so.1 --allow-incomplete
+python3 scripts/audit_core_api.py --reconcile-compiler --lock-discovery-snapshot --integrate-discovery-metadata --write-discovery-report --allow-incomplete
+python3 scripts/audit_core_api.py --verify-discovery-checkout /absolute/upstream-parent --allow-incomplete
+```
+
+Refresh intentionally leaves a stale review lock until explicitly updated; an
+integrity-lock update is **not** reviewer approval. Compiler refresh currently
+records this Linux development environment; portable compiler-argument discovery
+and cross-target/inactive-branch verification remain work. The source parser is
+tree-sitter 0.25.2 / tree-sitter-cpp 0.23.4, not the original seed-name regex.
+Its annotation blanking preserves byte offsets, but macro spelling inside
+definitions and multiple-declarator/operator/template canonicalization remain
+limitations. The compiler-to-source matching is a candidate finder, not a proof.
+
+Remaining Ada implementation/mode/test audit work is unchanged in
+`unreviewed_scope`. Header-path authentication is complete; **reviewed header
+scope, declaration closure and semantic reconciliation are not**.
+
+Continuation verification: **69 audit tests passed** with the pinned refresh
+parser environment (36 original plus 33 new discovery/fixture tests). Standard-
+library-only runs explicitly skip the four optional parser fixture methods;
+hosted audit CI installs the pinned requirements and exercises them separately.
+The offline manifest/tree/blob check was independently reproduced against all
+four clean source worktrees. The native discovery gate correctly exits 1.
+Public documentation generation validated **195 packages / 202 HTML pages**;
+all **117 existing documentation-tool tests passed**. `git diff --check` and
+protected production-tree comparisons passed. Applicable hosted results are
+reported on PR #89 for the pushed continuation HEAD, not inferred from the
+previous successful HEAD. No proprietary Scarthgap campaign was rerun.
+
 **Disposition: COVERAGE_AUDIT_BLOCKED. This is an initial evidence snapshot,
 not the exhaustive coverage audit requested by CORE-CLOSE-001.**
 

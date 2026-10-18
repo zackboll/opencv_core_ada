@@ -5,6 +5,35 @@ The [coverage audit](core-api-coverage.md) has not established discovery closure
 Therefore no claim is made that implementing the candidate backlog below would
 complete portable Core. No production implementation is part of this PR.
 
+## CORE-CLOSE-001A status: upstream discovery still blocked
+
+The full tracked header-path census now has offline Git tree proofs rooted at
+all four pinned upstream trees: 113 / 141 / 149 / 145 paths. The separate source
+CST and active-configuration Clang censuses expose, rather than hide, unresolved
+macro/conditional/overload cases. All header scope dispositions and new native
+owner/header buckets remain provisional. The 26 original Ada-coverage records
+are preserved. This does **not** complete AUD-01 or AUD-07 below.
+
+Next finite discovery steps, before resuming broad Ada mode qualification:
+
+1. Review every entry and proposed exclusion in the header-scope JSON. Retain
+   public APIs such as `detail/async_promise.hpp` and depth macros in
+   `hal/interface.h`; distinguish true dispatch/private implementation from
+   installed-but-optional backend API.
+2. Resolve every source uncertainty and unmatched Clang occurrence using the
+   exact paths/ranges in the blocker report, including macro-generated enum
+   operators, conversion templates, multiple declarators and CUDA/OpenCL helpers.
+3. Review semantic grouping beyond provisional header/owner buckets and reconcile
+   renamed Ada equivalents; record no new `BOUND_FULL` result without mode and
+   implementation evidence. Independently canonicalize version overload diffs.
+4. Record independent coverage of every in-scope file and guarded branch in the
+   review lock; only then permit `UPSTREAM_DISCOVERY_COMPLETE`. Keep
+   `ADA_COVERAGE_AUDIT_COMPLETE` and legacy global acceptance false until the
+   remaining Ada work is independently qualified.
+
+Exact per-version unresolved paths and evidence requirements are in
+`docs/core-api-discovery-blockers.json`; counts are in the coverage report.
+
 ## 1. First finish the audit, in a finite sequence
 
 These are evidence tasks, not feature work. Each slice must add stable semantic

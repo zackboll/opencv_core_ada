@@ -15,315 +15,1385 @@
   ],
   "capabilities": [
     {
-      "id": "core.layout.transpose-nd", "domain": "B", "native_family": "cv::transposeND",
-      "native_selectors": {"modules/core/include/opencv2/core.hpp": ["transposeND"]},
-      "availability": {"4.1.0": "ABSENT", "4.6.0": "PRESENT", "4.10.0": "PRESENT", "5.0.0": "PRESENT"},
-      "ada_selectors": [], "implementation_selectors": [], "test_selectors": [], "c_abi": [],
+      "id": "core.layout.transpose-nd",
+      "domain": "B",
+      "native_family": "cv::transposeND",
+      "native_selectors": {
+        "modules/core/include/opencv2/core.hpp": [
+          "transposeND"
+        ]
+      },
+      "availability": {
+        "4.1.0": "ABSENT",
+        "4.6.0": "PRESENT",
+        "4.10.0": "PRESENT",
+        "5.0.0": "PRESENT"
+      },
+      "ada_selectors": [],
+      "implementation_selectors": [],
+      "test_selectors": [],
+      "c_abi": [],
       "variants": "Native axis permutation; no Ada N-D transpose equivalent established. Ordinary Transpose is a separate 2-D operation.",
       "ownership": "Proposed result should be Ada-owned Mat; continuity, permutation and alias rules need implementation review.",
-      "classification": "VERSION_GATED", "concerns": ["No 4.1 native entry; compatibility algorithm not proven"], "exclusion_reason": "",
-      "priority": "P1", "downstream": "Tensor layout consumers", "complexity": "Medium if gated; large if backported", "maintenance": "Version branch and permutation safety tests",
-      "review_complete": false, "qualification_gaps": ["Native implementation and safe 4.1 disposition not reviewed"],
-      "mode_matrix": [{"name": "N-D permutation", "state": "MISSING", "evidence": "Only 2-D Transpose in current public Core spec"}]
+      "classification": "VERSION_GATED",
+      "concerns": [
+        "No 4.1 native entry; compatibility algorithm not proven"
+      ],
+      "exclusion_reason": "",
+      "priority": "P1",
+      "downstream": "Tensor layout consumers",
+      "complexity": "Medium if gated; large if backported",
+      "maintenance": "Version branch and permutation safety tests",
+      "review_complete": false,
+      "qualification_gaps": [
+        "Native implementation and safe 4.1 disposition not reviewed"
+      ],
+      "mode_matrix": [
+        {
+          "name": "N-D permutation",
+          "state": "MISSING",
+          "evidence": "Only 2-D Transpose in current public Core spec"
+        }
+      ]
     },
     {
-      "id": "core.layout.flip-nd", "domain": "B", "native_family": "cv::flipND",
-      "native_selectors": {"modules/core/include/opencv2/core.hpp": ["flipND"]},
-      "availability": {"4.1.0": "ABSENT", "4.6.0": "ABSENT", "4.10.0": "PRESENT", "5.0.0": "PRESENT"},
-      "ada_selectors": [], "implementation_selectors": [], "test_selectors": [], "c_abi": [],
+      "id": "core.layout.flip-nd",
+      "domain": "B",
+      "native_family": "cv::flipND",
+      "native_selectors": {
+        "modules/core/include/opencv2/core.hpp": [
+          "flipND"
+        ]
+      },
+      "availability": {
+        "4.1.0": "ABSENT",
+        "4.6.0": "ABSENT",
+        "4.10.0": "PRESENT",
+        "5.0.0": "PRESENT"
+      },
+      "ada_selectors": [],
+      "implementation_selectors": [],
+      "test_selectors": [],
+      "c_abi": [],
       "variants": "Axis-selected N-D flip; existing Flip_Kind only covers 2-D axes.",
       "ownership": "Prefer independent Mat result; require strided and in-place native investigation.",
-      "classification": "VERSION_GATED", "concerns": ["4.1 and 4.6 need explicit exclusion or independently qualified fallback"], "exclusion_reason": "",
-      "priority": "P1", "downstream": "Tensor reordering", "complexity": "Medium", "maintenance": "Two historical versions lack entry",
-      "review_complete": false, "qualification_gaps": ["Depth/channel/strided behavior unreviewed"], "mode_matrix": []
+      "classification": "VERSION_GATED",
+      "concerns": [
+        "4.1 and 4.6 need explicit exclusion or independently qualified fallback"
+      ],
+      "exclusion_reason": "",
+      "priority": "P1",
+      "downstream": "Tensor reordering",
+      "complexity": "Medium",
+      "maintenance": "Two historical versions lack entry",
+      "review_complete": false,
+      "qualification_gaps": [
+        "Depth/channel/strided behavior unreviewed"
+      ],
+      "mode_matrix": []
     },
     {
-      "id": "core.layout.broadcast", "domain": "B", "native_family": "cv::broadcast",
-      "native_selectors": {"modules/core/include/opencv2/core.hpp": ["broadcast"]},
-      "availability": {"4.1.0": "ABSENT", "4.6.0": "ABSENT", "4.10.0": "PRESENT", "5.0.0": "PRESENT"},
-      "ada_selectors": [], "implementation_selectors": [], "test_selectors": [], "c_abi": [],
+      "id": "core.layout.broadcast",
+      "domain": "B",
+      "native_family": "cv::broadcast",
+      "native_selectors": {
+        "modules/core/include/opencv2/core.hpp": [
+          "broadcast"
+        ]
+      },
+      "availability": {
+        "4.1.0": "ABSENT",
+        "4.6.0": "ABSENT",
+        "4.10.0": "PRESENT",
+        "5.0.0": "PRESENT"
+      },
+      "ada_selectors": [],
+      "implementation_selectors": [],
+      "test_selectors": [],
+      "c_abi": [],
       "variants": "4.10 InputArray shape; 5.0 additionally MatShape overload. Repeat is not general broadcasting.",
       "ownership": "Output ownership, expansion sizes and integer multiplication bounds need proof.",
-      "classification": "VERSION_GATED", "concerns": ["Do not conflate explicit broadcast with implicit arithmetic broadcasting", "No proven historical fallback"], "exclusion_reason": "",
-      "priority": "P1", "downstream": "N-D numerical consumers", "complexity": "Medium-large", "maintenance": "Shape ABI changes in 5.0",
-      "review_complete": false, "qualification_gaps": ["Broadcast implementation, size overflow and aliasing not reviewed"], "mode_matrix": []
+      "classification": "VERSION_GATED",
+      "concerns": [
+        "Do not conflate explicit broadcast with implicit arithmetic broadcasting",
+        "No proven historical fallback"
+      ],
+      "exclusion_reason": "",
+      "priority": "P1",
+      "downstream": "N-D numerical consumers",
+      "complexity": "Medium-large",
+      "maintenance": "Shape ABI changes in 5.0",
+      "review_complete": false,
+      "qualification_gaps": [
+        "Broadcast implementation, size overflow and aliasing not reviewed"
+      ],
+      "mode_matrix": []
     },
     {
-      "id": "core.numeric.general-norm", "domain": "E", "native_family": "cv::norm dense single/pairwise/masked/relative/Hamming",
-      "native_selectors": {"modules/core/include/opencv2/core.hpp": ["norm"]},
-      "availability": {"4.1.0": "PRESENT", "4.6.0": "PRESENT", "4.10.0": "PRESENT", "5.0.0": "PRESENT"},
-      "ada_selectors": [{"path": "src/opencv-core.ads", "name": "Norm"}, {"path": "src/opencv-core.ads", "name": "Norm_Kind"}],
-      "implementation_selectors": [{"path": "src/opencv-core.adb", "pattern": "^   function Norm", "lines": 16}, {"path": "cpp/opencv_core_shim.cpp", "pattern": "^opencv_core_mat_norm\\(", "lines": 25}, {"path": "cpp/opencv_core_shim.cpp", "pattern": "^opencv_core_mat_norm_masked\\(", "lines": 28}],
-      "test_selectors": [{"path": "tests/src/mat_reduction_tests.adb", "pattern": "Norm"}],
-      "c_abi": ["opencv_core_mat_norm", "opencv_core_mat_norm_masked"],
+      "id": "core.numeric.general-norm",
+      "domain": "E",
+      "native_family": "cv::norm dense single/pairwise/masked/relative/Hamming",
+      "native_selectors": {
+        "modules/core/include/opencv2/core.hpp": [
+          "norm"
+        ]
+      },
+      "availability": {
+        "4.1.0": "PRESENT",
+        "4.6.0": "PRESENT",
+        "4.10.0": "PRESENT",
+        "5.0.0": "PRESENT"
+      },
+      "ada_selectors": [
+        {
+          "path": "src/opencv-core.ads",
+          "name": "Norm"
+        },
+        {
+          "path": "src/opencv-core.ads",
+          "name": "Norm_Kind"
+        }
+      ],
+      "implementation_selectors": [
+        {
+          "path": "src/opencv-core.adb",
+          "pattern": "^   function Norm",
+          "lines": 16
+        },
+        {
+          "path": "cpp/opencv_core_shim.cpp",
+          "pattern": "^opencv_core_mat_norm\\(",
+          "lines": 25
+        },
+        {
+          "path": "cpp/opencv_core_shim.cpp",
+          "pattern": "^opencv_core_mat_norm_masked\\(",
+          "lines": 28
+        }
+      ],
+      "test_selectors": [
+        {
+          "path": "tests/src/mat_reduction_tests.adb",
+          "pattern": "Norm"
+        }
+      ],
+      "c_abi": [
+        "opencv_core_mat_norm",
+        "opencv_core_mat_norm_masked"
+      ],
       "variants": "Ada unary/masked L1/L2/Infinity. Pairwise norms, relative flag, squared L2 and Hamming/Hamming2 absent from this API, although batch distances support some of them. Exact depth/channel/N-D set needs source_for_norm review.",
       "ownership": "Scalar result; reads inputs. Pairwise must not be emulated by saturating integer Abs_Diff followed by unary Norm.",
-      "classification": "BOUND_PARTIAL", "concerns": ["Relative zero denominator and Hamming mask semantics require native source review"], "exclusion_reason": "",
-      "priority": "P0", "downstream": "Descriptor matching and numeric error measurement", "complexity": "Medium", "maintenance": "Low with explicit strong options and mode tests",
-      "review_complete": false, "qualification_gaps": ["Cross-version mode/depth/channel/NaN/Inf and ABI tests not inventoried"],
-      "mode_matrix": [{"name": "Unary and masked L1/L2/Infinity", "state": "VERIFIED", "evidence": "Exact declarations, bodies, imports and two native shim definitions recorded"}, {"name": "Pairwise/relative/squared/Hamming", "state": "MISSING", "evidence": "Norm_Kind is L1/L2/Infinity; both public profiles are unary with optional mask"}]
+      "classification": "BOUND_PARTIAL",
+      "concerns": [
+        "Relative zero denominator and Hamming mask semantics require native source review"
+      ],
+      "exclusion_reason": "",
+      "priority": "P0",
+      "downstream": "Descriptor matching and numeric error measurement",
+      "complexity": "Medium",
+      "maintenance": "Low with explicit strong options and mode tests",
+      "review_complete": false,
+      "qualification_gaps": [
+        "Cross-version mode/depth/channel/NaN/Inf and ABI tests not inventoried"
+      ],
+      "mode_matrix": [
+        {
+          "name": "Unary and masked L1/L2/Infinity",
+          "state": "VERIFIED",
+          "evidence": "Exact declarations, bodies, imports and two native shim definitions recorded"
+        },
+        {
+          "name": "Pairwise/relative/squared/Hamming",
+          "state": "MISSING",
+          "evidence": "Norm_Kind is L1/L2/Infinity; both public profiles are unary with optional mask"
+        }
+      ]
     },
     {
-      "id": "core.numeric.batch-distance", "domain": "E", "native_family": "cv::batchDistance / K_Nearest_Neighbors",
-      "native_selectors": {"modules/core/include/opencv2/core.hpp": ["batchDistance"]},
-      "availability": {"4.1.0": "PRESENT", "4.6.0": "PRESENT", "4.10.0": "PRESENT", "5.0.0": "PRESENT"},
-      "ada_selectors": [{"path": "src/opencv-core.ads", "name": "K_Nearest_Neighbors"}],
-      "implementation_selectors": [{"path": "src/opencv-core.adb", "pattern": "^   function K_Nearest_Neighbors", "lines": 31}, {"path": "cpp/opencv_core_shim.cpp", "pattern": "^opencv_core_mat_batch_distance\\(", "lines": 12}],
-      "test_selectors": [{"path": "tests/src/k_nearest_neighbor_tests.adb", "pattern": "Hamming"}], "c_abi": ["opencv_core_mat_batch_distance"],
+      "id": "core.numeric.batch-distance",
+      "domain": "E",
+      "native_family": "cv::batchDistance / K_Nearest_Neighbors",
+      "native_selectors": {
+        "modules/core/include/opencv2/core.hpp": [
+          "batchDistance"
+        ]
+      },
+      "availability": {
+        "4.1.0": "PRESENT",
+        "4.6.0": "PRESENT",
+        "4.10.0": "PRESENT",
+        "5.0.0": "PRESENT"
+      },
+      "ada_selectors": [
+        {
+          "path": "src/opencv-core.ads",
+          "name": "K_Nearest_Neighbors"
+        }
+      ],
+      "implementation_selectors": [
+        {
+          "path": "src/opencv-core.adb",
+          "pattern": "^   function K_Nearest_Neighbors",
+          "lines": 31
+        },
+        {
+          "path": "cpp/opencv_core_shim.cpp",
+          "pattern": "^opencv_core_mat_batch_distance\\(",
+          "lines": 12
+        }
+      ],
+      "test_selectors": [
+        {
+          "path": "tests/src/k_nearest_neighbor_tests.adb",
+          "pattern": "Hamming"
+        }
+      ],
+      "c_abi": [
+        "opencv_core_mat_batch_distance"
+      ],
       "variants": "Nonempty UInt8/Float32 C1 2-D row vectors. L1/L2/L2 squared; UInt8 also Hamming/Hamming2. Top-K only. Masks/update/crosscheck/all-pairs not exposed. Float32 distances except Int32 Hamming; Int32 indices.",
       "ownership": "Independent distance and index Mats. Inputs and non-contiguous Regions accepted read-only. Tie ordering native-defined.",
-      "classification": "BOUND_PARTIAL", "concerns": ["All-pairs and masks may matter more than convenience overloads"], "exclusion_reason": "",
-      "priority": "P1", "downstream": "Features descriptor matching", "complexity": "Medium", "maintenance": "Low-medium; keep distinct from general norm API",
-      "review_complete": false, "qualification_gaps": ["Every registered test and compatibility edge not mapped"], "mode_matrix": []
+      "classification": "BOUND_PARTIAL",
+      "concerns": [
+        "All-pairs and masks may matter more than convenience overloads"
+      ],
+      "exclusion_reason": "",
+      "priority": "P1",
+      "downstream": "Features descriptor matching",
+      "complexity": "Medium",
+      "maintenance": "Low-medium; keep distinct from general norm API",
+      "review_complete": false,
+      "qualification_gaps": [
+        "Every registered test and compatibility edge not mapped"
+      ],
+      "mode_matrix": []
     },
     {
-      "id": "core.arithmetic.scalar", "domain": "B", "native_family": "cv::add/subtract/multiply/divide scalar InputArray modes",
-      "native_selectors": {"modules/core/include/opencv2/core.hpp": ["add", "subtract", "multiply", "divide"]},
-      "availability": {"4.1.0": "PRESENT", "4.6.0": "PRESENT", "4.10.0": "PRESENT", "5.0.0": "PRESENT"},
-      "ada_selectors": [{"path": "src/opencv-core.ads", "name": "Add"}, {"path": "src/opencv-core.ads", "name": "Subtract"}, {"path": "src/opencv-core.ads", "name": "Multiply"}, {"path": "src/opencv-core.ads", "name": "Divide"}],
-      "implementation_selectors": [{"path": "src/opencv-core.adb", "pattern": "^   function Add \\(Left, Right : Mat", "lines": 18}, {"path": "cpp/opencv_core_shim.cpp", "pattern": "^opencv_core_mat_add\\(", "lines": 15}],
-      "test_selectors": [{"path": "tests/src/mat_arithmetic_tests.adb", "pattern": "Add"}], "c_abi": ["opencv_core_mat_add"],
+      "id": "core.arithmetic.scalar",
+      "domain": "B",
+      "native_family": "cv::add/subtract/multiply/divide scalar InputArray modes",
+      "native_selectors": {
+        "modules/core/include/opencv2/core.hpp": [
+          "add",
+          "subtract",
+          "multiply",
+          "divide"
+        ]
+      },
+      "availability": {
+        "4.1.0": "PRESENT",
+        "4.6.0": "PRESENT",
+        "4.10.0": "PRESENT",
+        "5.0.0": "PRESENT"
+      },
+      "ada_selectors": [
+        {
+          "path": "src/opencv-core.ads",
+          "name": "Add"
+        },
+        {
+          "path": "src/opencv-core.ads",
+          "name": "Subtract"
+        },
+        {
+          "path": "src/opencv-core.ads",
+          "name": "Multiply"
+        },
+        {
+          "path": "src/opencv-core.ads",
+          "name": "Divide"
+        }
+      ],
+      "implementation_selectors": [
+        {
+          "path": "src/opencv-core.adb",
+          "pattern": "^   function Add \\(Left, Right : Mat",
+          "lines": 18
+        },
+        {
+          "path": "cpp/opencv_core_shim.cpp",
+          "pattern": "^opencv_core_mat_add\\(",
+          "lines": 15
+        }
+      ],
+      "test_selectors": [
+        {
+          "path": "tests/src/mat_arithmetic_tests.adb",
+          "pattern": "Add"
+        }
+      ],
+      "c_abi": [
+        "opencv_core_mat_add"
+      ],
       "variants": "Bound functions/procedures require same-type 2-D Mat/Mat or UMat/UMat. Scalar arithmetic modes are not present in these public profiles; mask and dtype choices also need separate mode review.",
       "ownership": "Functions allocate independent results; destination forms reuse/rebind storage. Arbitrary partial overlap is unsupported; per-operation contract applies.",
-      "classification": "BOUND_PARTIAL", "concerns": ["Reverse subtract/divide and 1..4 scalar channels need deliberate API design", "Native saturation and Int32 overflow must be preserved"], "exclusion_reason": "",
-      "priority": "P0", "downstream": "Imgproc/calibration and ordinary numeric consumers", "complexity": "Medium-large", "maintenance": "Low if shared validated scalar policy; avoid overload explosion",
-      "review_complete": false, "qualification_gaps": ["All arithmetic mode/depth/channel qualification incomplete"], "mode_matrix": []
+      "classification": "BOUND_PARTIAL",
+      "concerns": [
+        "Reverse subtract/divide and 1..4 scalar channels need deliberate API design",
+        "Native saturation and Int32 overflow must be preserved"
+      ],
+      "exclusion_reason": "",
+      "priority": "P0",
+      "downstream": "Imgproc/calibration and ordinary numeric consumers",
+      "complexity": "Medium-large",
+      "maintenance": "Low if shared validated scalar policy; avoid overload explosion",
+      "review_complete": false,
+      "qualification_gaps": [
+        "All arithmetic mode/depth/channel qualification incomplete"
+      ],
+      "mode_matrix": []
     },
     {
-      "id": "core.comparison.scalar", "domain": "B", "native_family": "cv::compare scalar modes",
-      "native_selectors": {"modules/core/include/opencv2/core.hpp": ["compare"]},
-      "availability": {"4.1.0": "PRESENT", "4.6.0": "PRESENT", "4.10.0": "PRESENT", "5.0.0": "PRESENT"},
-      "ada_selectors": [{"path": "src/opencv-core.ads", "name": "Compare"}],
-      "implementation_selectors": [{"path": "src/opencv-core.adb", "pattern": "^   function Compare", "lines": 14}],
-      "test_selectors": [{"path": "tests/src/mat_mask_tests.adb", "pattern": "Compare"}], "c_abi": [],
+      "id": "core.comparison.scalar",
+      "domain": "B",
+      "native_family": "cv::compare scalar modes",
+      "native_selectors": {
+        "modules/core/include/opencv2/core.hpp": [
+          "compare"
+        ]
+      },
+      "availability": {
+        "4.1.0": "PRESENT",
+        "4.6.0": "PRESENT",
+        "4.10.0": "PRESENT",
+        "5.0.0": "PRESENT"
+      },
+      "ada_selectors": [
+        {
+          "path": "src/opencv-core.ads",
+          "name": "Compare"
+        }
+      ],
+      "implementation_selectors": [
+        {
+          "path": "src/opencv-core.adb",
+          "pattern": "^   function Compare",
+          "lines": 14
+        }
+      ],
+      "test_selectors": [
+        {
+          "path": "tests/src/mat_mask_tests.adb",
+          "pattern": "Compare"
+        }
+      ],
+      "c_abi": [],
       "variants": "Mat/Mat and UMat/UMat comparisons with strong Comparison_Kind; scalar comparison is absent. Scalar In_Range is already a different bound capability.",
       "ownership": "UInt8 mask output; independent result and reusable destinations exist. Destination overlap policy requires full review.",
-      "classification": "BOUND_PARTIAL", "concerns": ["Scalar rounding/out-of-range and NaN behavior need native tests", "C ABI full comparison mapping still to inventory"], "exclusion_reason": "",
-      "priority": "P0", "downstream": "Threshold and selection consumers", "complexity": "Medium", "maintenance": "Low with direct native compare",
-      "review_complete": false, "qualification_gaps": ["C ABI mapping and depth/channel mode audit incomplete"], "mode_matrix": []
+      "classification": "BOUND_PARTIAL",
+      "concerns": [
+        "Scalar rounding/out-of-range and NaN behavior need native tests",
+        "C ABI full comparison mapping still to inventory"
+      ],
+      "exclusion_reason": "",
+      "priority": "P0",
+      "downstream": "Threshold and selection consumers",
+      "complexity": "Medium",
+      "maintenance": "Low with direct native compare",
+      "review_complete": false,
+      "qualification_gaps": [
+        "C ABI mapping and depth/channel mode audit incomplete"
+      ],
+      "mode_matrix": []
     },
     {
-      "id": "core.umat.masked-set", "domain": "J", "native_family": "cv::UMat::setTo",
-      "native_selectors": {"modules/core/include/opencv2/core/mat.hpp": ["setTo"]},
-      "availability": {"4.1.0": "PRESENT", "4.6.0": "PRESENT", "4.10.0": "PRESENT", "5.0.0": "PRESENT"},
-      "ada_selectors": [{"path": "src/opencv-core.ads", "name": "Set_To", "profile": "UMat"}],
-      "implementation_selectors": [{"path": "src/opencv-core.adb", "pattern": "^   procedure Set_To \\(Self : in out UMat", "lines": 12}, {"path": "cpp/opencv_core_shim.cpp", "pattern": "^opencv_core_status opencv_core_umat_set_to", "lines": 9}],
-      "test_selectors": [{"path": "tests/src/umat_tests.adb", "pattern": "Set_To"}], "c_abi": ["opencv_core_umat_set_to"],
+      "id": "core.umat.masked-set",
+      "domain": "J",
+      "native_family": "cv::UMat::setTo",
+      "native_selectors": {
+        "modules/core/include/opencv2/core/mat.hpp": [
+          "setTo"
+        ]
+      },
+      "availability": {
+        "4.1.0": "PRESENT",
+        "4.6.0": "PRESENT",
+        "4.10.0": "PRESENT",
+        "5.0.0": "PRESENT"
+      },
+      "ada_selectors": [
+        {
+          "path": "src/opencv-core.ads",
+          "name": "Set_To",
+          "profile": "UMat"
+        }
+      ],
+      "implementation_selectors": [
+        {
+          "path": "src/opencv-core.adb",
+          "pattern": "^   procedure Set_To \\(Self : in out UMat",
+          "lines": 12
+        },
+        {
+          "path": "cpp/opencv_core_shim.cpp",
+          "pattern": "^opencv_core_status opencv_core_umat_set_to",
+          "lines": 9
+        }
+      ],
+      "test_selectors": [
+        {
+          "path": "tests/src/umat_tests.adb",
+          "pattern": "Set_To"
+        }
+      ],
+      "c_abi": [
+        "opencv_core_umat_set_to"
+      ],
       "variants": "Only unmasked scalar UMat Set_To. Native accepts optional mask. Representative mat.hpp extraction includes Mat methods too; UMat class scope must be checked manually.",
       "ownership": "Mutates shared storage; no binding-level host mapping should be introduced.",
-      "classification": "BOUND_PARTIAL", "concerns": ["UMat mask must be same installation/backend-compatible", "CPU fallback is not GPU execution guarantee"], "exclusion_reason": "",
-      "priority": "P1", "downstream": "UMat pipeline users", "complexity": "Small-medium", "maintenance": "Low with native overload",
-      "review_complete": false, "qualification_gaps": ["Native class scope and complete masked mode safety review"], "mode_matrix": []
+      "classification": "BOUND_PARTIAL",
+      "concerns": [
+        "UMat mask must be same installation/backend-compatible",
+        "CPU fallback is not GPU execution guarantee"
+      ],
+      "exclusion_reason": "",
+      "priority": "P1",
+      "downstream": "UMat pipeline users",
+      "complexity": "Small-medium",
+      "maintenance": "Low with native overload",
+      "review_complete": false,
+      "qualification_gaps": [
+        "Native class scope and complete masked mode safety review"
+      ],
+      "mode_matrix": []
     },
     {
-      "id": "core.umat.copy-destination", "domain": "J", "native_family": "cv::UMat::copyTo masked and caller-owned output",
-      "native_selectors": {"modules/core/include/opencv2/core/mat.hpp": ["copyTo"]},
-      "availability": {"4.1.0": "PRESENT", "4.6.0": "PRESENT", "4.10.0": "PRESENT", "5.0.0": "PRESENT"},
-      "ada_selectors": [{"path": "src/opencv-core.ads", "name": "Copy_To", "profile": "UMat"}],
-      "implementation_selectors": [{"path": "src/opencv-core.adb", "pattern": "^   function Copy_To \\(Self : UMat", "lines": 16}, {"path": "cpp/opencv_core_shim.cpp", "pattern": "^opencv_core_status opencv_core_umat_copy_to", "lines": 12}],
-      "test_selectors": [{"path": "tests/src/umat_tests.adb", "pattern": "Copy_To"}], "c_abi": ["opencv_core_umat_copy_to"],
+      "id": "core.umat.copy-destination",
+      "domain": "J",
+      "native_family": "cv::UMat::copyTo masked and caller-owned output",
+      "native_selectors": {
+        "modules/core/include/opencv2/core/mat.hpp": [
+          "copyTo"
+        ]
+      },
+      "availability": {
+        "4.1.0": "PRESENT",
+        "4.6.0": "PRESENT",
+        "4.10.0": "PRESENT",
+        "5.0.0": "PRESENT"
+      },
+      "ada_selectors": [
+        {
+          "path": "src/opencv-core.ads",
+          "name": "Copy_To",
+          "profile": "UMat"
+        }
+      ],
+      "implementation_selectors": [
+        {
+          "path": "src/opencv-core.adb",
+          "pattern": "^   function Copy_To \\(Self : UMat",
+          "lines": 16
+        },
+        {
+          "path": "cpp/opencv_core_shim.cpp",
+          "pattern": "^opencv_core_status opencv_core_umat_copy_to",
+          "lines": 12
+        }
+      ],
+      "test_selectors": [
+        {
+          "path": "tests/src/umat_tests.adb",
+          "pattern": "Copy_To"
+        }
+      ],
+      "c_abi": [
+        "opencv_core_umat_copy_to"
+      ],
       "variants": "Ada Copy_To returns newly allocated UMat. No caller-owned or masked UMat destination overload; Mat has both. Native mat.hpp representatives need UMat scope review.",
       "ownership": "Current result is independent. Future destination must preserve native reuse/rebind and retained alias semantics, not assignment from a temporary.",
-      "classification": "BOUND_PARTIAL", "concerns": ["Masked fresh output initialization versus reused unselected values", "Exact and partial overlap policies"], "exclusion_reason": "",
-      "priority": "P1", "downstream": "Allocation-stable UMat pipelines", "complexity": "Medium", "maintenance": "Low if destination rules match Mat",
-      "review_complete": false, "qualification_gaps": ["All version/mask/ROI/rebind/empty cases not inventoried"], "mode_matrix": []
+      "classification": "BOUND_PARTIAL",
+      "concerns": [
+        "Masked fresh output initialization versus reused unselected values",
+        "Exact and partial overlap policies"
+      ],
+      "exclusion_reason": "",
+      "priority": "P1",
+      "downstream": "Allocation-stable UMat pipelines",
+      "complexity": "Medium",
+      "maintenance": "Low if destination rules match Mat",
+      "review_complete": false,
+      "qualification_gaps": [
+        "All version/mask/ROI/rebind/empty cases not inventoried"
+      ],
+      "mode_matrix": []
     },
     {
-      "id": "core.umat.reshape", "domain": "J", "native_family": "cv::UMat::reshape",
-      "native_selectors": {"modules/core/include/opencv2/core/mat.hpp": ["reshape"]},
-      "availability": {"4.1.0": "PRESENT", "4.6.0": "PRESENT", "4.10.0": "PRESENT", "5.0.0": "PRESENT"},
-      "ada_selectors": [], "implementation_selectors": [], "test_selectors": [], "c_abi": [],
+      "id": "core.umat.reshape",
+      "domain": "J",
+      "native_family": "cv::UMat::reshape",
+      "native_selectors": {
+        "modules/core/include/opencv2/core/mat.hpp": [
+          "reshape"
+        ]
+      },
+      "availability": {
+        "4.1.0": "PRESENT",
+        "4.6.0": "PRESENT",
+        "4.10.0": "PRESENT",
+        "5.0.0": "PRESENT"
+      },
+      "ada_selectors": [],
+      "implementation_selectors": [],
+      "test_selectors": [],
+      "c_abi": [],
       "variants": "Current Reshape overloads return Mat only; UMat reshape unsupported by published ownership guide. Native overload parity and 5.0 MatShape changes not yet reviewed.",
       "ownership": "Zero-copy shared header; continuity and dimensionality restrictions essential.",
-      "classification": "RESEARCH_REQUIRED", "concerns": ["Need exact UMat declaration scope and all-version reshape implementation evidence"], "exclusion_reason": "",
-      "priority": "RESEARCH", "downstream": "UMat tensor and channel views", "complexity": "Medium", "maintenance": "Shape/version conditions",
-      "review_complete": false, "qualification_gaps": ["N-D overload availability and shape contracts unresolved"], "mode_matrix": []
+      "classification": "RESEARCH_REQUIRED",
+      "concerns": [
+        "Need exact UMat declaration scope and all-version reshape implementation evidence"
+      ],
+      "exclusion_reason": "",
+      "priority": "RESEARCH",
+      "downstream": "UMat tensor and channel views",
+      "complexity": "Medium",
+      "maintenance": "Shape/version conditions",
+      "review_complete": false,
+      "qualification_gaps": [
+        "N-D overload availability and shape contracts unresolved"
+      ],
+      "mode_matrix": []
     },
     {
-      "id": "core.spectral.dft-dct", "domain": "D", "native_family": "cv::dft/idft/dct/idct",
-      "native_selectors": {"modules/core/include/opencv2/core.hpp": ["dft", "idft", "dct", "idct"]},
-      "availability": {"4.1.0": "PRESENT", "4.6.0": "PRESENT", "4.10.0": "PRESENT", "5.0.0": "PRESENT"},
-      "ada_selectors": [{"path": "src/opencv-core.ads", "name": "Discrete_Fourier_Transform"}, {"path": "src/opencv-core.ads", "name": "Packed_Discrete_Fourier_Transform"}, {"path": "src/opencv-core.ads", "name": "Discrete_Cosine_Transform"}, {"path": "src/opencv-core.ads", "name": "Discrete_Fourier_Transform_Rows"}, {"path": "src/opencv-core.ads", "name": "Discrete_Cosine_Transform_Rows"}],
-      "implementation_selectors": [{"path": "src/opencv-core.adb", "pattern": "^   function Discrete_(Fourier|Cosine)_Transform", "lines": 9}, {"path": "cpp/opencv_core_shim.cpp", "pattern": "^opencv_core_mat_d(ft|ct)\\(", "lines": 10}],
-      "test_selectors": [{"path": "tests/src/mat_transform_tests.adb", "pattern": "Packed_Discrete_Fourier_Transform"}, {"path": "tests/src/mat_transform_tests.adb", "pattern": "Discrete_Cosine_Transform_Rows"}], "c_abi": ["opencv_core_mat_dft", "opencv_core_mat_dct"],
+      "id": "core.spectral.dft-dct",
+      "domain": "D",
+      "native_family": "cv::dft/idft/dct/idct",
+      "native_selectors": {
+        "modules/core/include/opencv2/core.hpp": [
+          "dft",
+          "idft",
+          "dct",
+          "idct"
+        ]
+      },
+      "availability": {
+        "4.1.0": "PRESENT",
+        "4.6.0": "PRESENT",
+        "4.10.0": "PRESENT",
+        "5.0.0": "PRESENT"
+      },
+      "ada_selectors": [
+        {
+          "path": "src/opencv-core.ads",
+          "name": "Discrete_Fourier_Transform"
+        },
+        {
+          "path": "src/opencv-core.ads",
+          "name": "Packed_Discrete_Fourier_Transform"
+        },
+        {
+          "path": "src/opencv-core.ads",
+          "name": "Discrete_Cosine_Transform"
+        },
+        {
+          "path": "src/opencv-core.ads",
+          "name": "Discrete_Fourier_Transform_Rows"
+        },
+        {
+          "path": "src/opencv-core.ads",
+          "name": "Discrete_Cosine_Transform_Rows"
+        }
+      ],
+      "implementation_selectors": [
+        {
+          "path": "src/opencv-core.adb",
+          "pattern": "^   function Discrete_(Fourier|Cosine)_Transform",
+          "lines": 9
+        },
+        {
+          "path": "cpp/opencv_core_shim.cpp",
+          "pattern": "^opencv_core_mat_d(ft|ct)\\(",
+          "lines": 10
+        }
+      ],
+      "test_selectors": [
+        {
+          "path": "tests/src/mat_transform_tests.adb",
+          "pattern": "Packed_Discrete_Fourier_Transform"
+        },
+        {
+          "path": "tests/src/mat_transform_tests.adb",
+          "pattern": "Discrete_Cosine_Transform_Rows"
+        }
+      ],
+      "c_abi": [
+        "opencv_core_mat_dft",
+        "opencv_core_mat_dct"
+      ],
       "variants": "Mat Float32/Float64 2-D, full C2 complex and packed C1 CCS, inverse real and row-wise functions exist. DCT C1 with even transformed lengths except identity. No UMat or in-place/destination procedures.",
       "ownership": "Independent Mat outputs, non-contiguous input Regions accepted. Transform buffer arithmetic safety limits documented in public spec; complete per-mode checks not reviewed here.",
-      "classification": "BOUND_PARTIAL", "concerns": ["nonzeroRows and selectable scaling modes not fully mapped", "CCS access/conversion is separate from arithmetic Divide"], "exclusion_reason": "",
-      "priority": "P1", "downstream": "Spectral consumers and allocation-stable pipelines", "complexity": "Medium-large for remaining modes", "maintenance": "Backend alias/sizing regression matrix",
-      "review_complete": false, "qualification_gaps": ["Full native transform and tests mode matrix unfinished"], "mode_matrix": []
+      "classification": "BOUND_PARTIAL",
+      "concerns": [
+        "nonzeroRows and selectable scaling modes not fully mapped",
+        "CCS access/conversion is separate from arithmetic Divide"
+      ],
+      "exclusion_reason": "",
+      "priority": "P1",
+      "downstream": "Spectral consumers and allocation-stable pipelines",
+      "complexity": "Medium-large for remaining modes",
+      "maintenance": "Backend alias/sizing regression matrix",
+      "review_complete": false,
+      "qualification_gaps": [
+        "Full native transform and tests mode matrix unfinished"
+      ],
+      "mode_matrix": []
     },
     {
-      "id": "core.spectral.multiply", "domain": "D", "native_family": "cv::mulSpectrums",
-      "native_selectors": {"modules/core/include/opencv2/core.hpp": ["mulSpectrums"]},
-      "availability": {"4.1.0": "PRESENT", "4.6.0": "PRESENT", "4.10.0": "PRESENT", "5.0.0": "PRESENT"},
-      "ada_selectors": [{"path": "src/opencv-core.ads", "name": "Multiply_Spectra"}, {"path": "src/opencv-core.ads", "name": "Multiply_Packed_Spectra"}, {"path": "src/opencv-core.ads", "name": "Multiply_Packed_Spectra_Rows"}],
-      "implementation_selectors": [{"path": "src/opencv-core.adb", "pattern": "^   function Multiply_(Spectra|Packed_Spectra)", "lines": 12}, {"path": "cpp/opencv_core_shim.cpp", "pattern": "^opencv_core_mat_multiply_spectra\\(", "lines": 12}],
-      "test_selectors": [{"path": "tests/src/mat_transform_tests.adb", "pattern": "Multiply_Packed_Spectra_Rows"}], "c_abi": ["opencv_core_mat_multiply_spectra"],
+      "id": "core.spectral.multiply",
+      "domain": "D",
+      "native_family": "cv::mulSpectrums",
+      "native_selectors": {
+        "modules/core/include/opencv2/core.hpp": [
+          "mulSpectrums"
+        ]
+      },
+      "availability": {
+        "4.1.0": "PRESENT",
+        "4.6.0": "PRESENT",
+        "4.10.0": "PRESENT",
+        "5.0.0": "PRESENT"
+      },
+      "ada_selectors": [
+        {
+          "path": "src/opencv-core.ads",
+          "name": "Multiply_Spectra"
+        },
+        {
+          "path": "src/opencv-core.ads",
+          "name": "Multiply_Packed_Spectra"
+        },
+        {
+          "path": "src/opencv-core.ads",
+          "name": "Multiply_Packed_Spectra_Rows"
+        }
+      ],
+      "implementation_selectors": [
+        {
+          "path": "src/opencv-core.adb",
+          "pattern": "^   function Multiply_(Spectra|Packed_Spectra)",
+          "lines": 12
+        },
+        {
+          "path": "cpp/opencv_core_shim.cpp",
+          "pattern": "^opencv_core_mat_multiply_spectra\\(",
+          "lines": 12
+        }
+      ],
+      "test_selectors": [
+        {
+          "path": "tests/src/mat_transform_tests.adb",
+          "pattern": "Multiply_Packed_Spectra_Rows"
+        }
+      ],
+      "c_abi": [
+        "opencv_core_mat_multiply_spectra"
+      ],
       "variants": "Full complex C2, packed C1 and row-wise packed spectrum multiplication; direct versus conjugated second operand. Float32/Float64 Mat only. No reusable/in-place/UMat form.",
       "ownership": "Independent output; sources unchanged. CCS layout is not ordinary elementwise multiplication.",
-      "classification": "BOUND_PARTIAL", "concerns": ["Complex row flag and destination alias semantics need full audit"], "exclusion_reason": "",
-      "priority": "P1", "downstream": "Convolution/correlation consumers", "complexity": "Medium", "maintenance": "Low for current functional form",
-      "review_complete": false, "qualification_gaps": ["Complete native modes, dimensions and tests review pending"], "mode_matrix": []
+      "classification": "BOUND_PARTIAL",
+      "concerns": [
+        "Complex row flag and destination alias semantics need full audit"
+      ],
+      "exclusion_reason": "",
+      "priority": "P1",
+      "downstream": "Convolution/correlation consumers",
+      "complexity": "Medium",
+      "maintenance": "Low for current functional form",
+      "review_complete": false,
+      "qualification_gaps": [
+        "Complete native modes, dimensions and tests review pending"
+      ],
+      "mode_matrix": []
     },
     {
-      "id": "core.spectral.divide", "domain": "D", "native_family": "cv::divSpectrums",
-      "native_selectors": {"modules/core/include/opencv2/core.hpp": ["divSpectrums"]},
-      "availability": {"4.1.0": "ABSENT", "4.6.0": "ABSENT", "4.10.0": "ABSENT", "5.0.0": "PRESENT"},
-      "ada_selectors": [], "implementation_selectors": [], "test_selectors": [], "c_abi": [],
+      "id": "core.spectral.divide",
+      "domain": "D",
+      "native_family": "cv::divSpectrums",
+      "native_selectors": {
+        "modules/core/include/opencv2/core.hpp": [
+          "divSpectrums"
+        ]
+      },
+      "availability": {
+        "4.1.0": "ABSENT",
+        "4.6.0": "ABSENT",
+        "4.10.0": "ABSENT",
+        "5.0.0": "PRESENT"
+      },
+      "ada_selectors": [],
+      "implementation_selectors": [],
+      "test_selectors": [],
+      "c_abi": [],
       "variants": "5.0 Core declares packed or complex division with DFT_ROWS and conjB. Earlier Imgproc-local/internal helpers are not portable Core API.",
       "ownership": "Prefer independent result initially. Zero-denominator, Hermitian and packed edge behavior need numerical investigation.",
-      "classification": "VERSION_GATED", "concerns": ["Mat Divide is real elementwise division, not spectrum division", "No proven portable CCS division fallback"], "exclusion_reason": "",
-      "priority": "RESEARCH", "downstream": "Deconvolution and spectral filtering", "complexity": "Medium gated; large numerical fallback", "maintenance": "High if historical compatibility algorithm added",
-      "review_complete": false, "qualification_gaps": ["5.0 implementation and historical fallback unqualified"], "mode_matrix": []
+      "classification": "VERSION_GATED",
+      "concerns": [
+        "Mat Divide is real elementwise division, not spectrum division",
+        "No proven portable CCS division fallback"
+      ],
+      "exclusion_reason": "",
+      "priority": "RESEARCH",
+      "downstream": "Deconvolution and spectral filtering",
+      "complexity": "Medium gated; large numerical fallback",
+      "maintenance": "High if historical compatibility algorithm added",
+      "review_complete": false,
+      "qualification_gaps": [
+        "5.0 implementation and historical fallback unqualified"
+      ],
+      "mode_matrix": []
     },
     {
-      "id": "core.numeric.finite-mask", "domain": "E", "native_family": "cv::finiteMask",
-      "native_selectors": {"modules/core/include/opencv2/core.hpp": ["finiteMask"]},
-      "availability": {"4.1.0": "ABSENT", "4.6.0": "ABSENT", "4.10.0": "ABSENT", "5.0.0": "PRESENT"},
-      "ada_selectors": [], "implementation_selectors": [], "test_selectors": [], "c_abi": [],
+      "id": "core.numeric.finite-mask",
+      "domain": "E",
+      "native_family": "cv::finiteMask",
+      "native_selectors": {
+        "modules/core/include/opencv2/core.hpp": [
+          "finiteMask"
+        ]
+      },
+      "availability": {
+        "4.1.0": "ABSENT",
+        "4.6.0": "ABSENT",
+        "4.10.0": "ABSENT",
+        "5.0.0": "PRESENT"
+      },
+      "ada_selectors": [],
+      "implementation_selectors": [],
+      "test_selectors": [],
+      "c_abi": [],
       "variants": "5.0 per-element finite mask; scalar Float16 Is_Finite and Mat Check_Range do not provide the same capability.",
       "ownership": "Owned mask output; exact output channel/depth/shape behavior requires implementation review.",
-      "classification": "VERSION_GATED", "concerns": ["Ada non-finite validity checks and callback borrowed access must not leak Constraint_Error", "Cannot assume compare(X,X) detects infinities"], "exclusion_reason": "",
-      "priority": "P1", "downstream": "Robust numerical validation", "complexity": "Medium", "maintenance": "Low gated; medium for bitwise historical fallback",
-      "review_complete": false, "qualification_gaps": ["Native implementation and historical IEEE fallback not proven"], "mode_matrix": []
+      "classification": "VERSION_GATED",
+      "concerns": [
+        "Ada non-finite validity checks and callback borrowed access must not leak Constraint_Error",
+        "Cannot assume compare(X,X) detects infinities"
+      ],
+      "exclusion_reason": "",
+      "priority": "P1",
+      "downstream": "Robust numerical validation",
+      "complexity": "Medium",
+      "maintenance": "Low gated; medium for bitwise historical fallback",
+      "review_complete": false,
+      "qualification_gaps": [
+        "Native implementation and historical IEEE fallback not proven"
+      ],
+      "mode_matrix": []
     },
     {
-      "id": "core.runtime.version-build", "domain": "H", "native_family": "cv::getVersionString/getBuildInformation",
-      "native_selectors": {"modules/core/include/opencv2/core/utility.hpp": ["getVersionString", "getBuildInformation"]},
-      "availability": {"4.1.0": "PRESENT", "4.6.0": "PRESENT", "4.10.0": "PRESENT", "5.0.0": "PRESENT"},
-      "ada_selectors": [], "implementation_selectors": [], "test_selectors": [], "c_abi": [],
+      "id": "core.runtime.version-build",
+      "domain": "H",
+      "native_family": "cv::getVersionString/getBuildInformation",
+      "native_selectors": {
+        "modules/core/include/opencv2/core/utility.hpp": [
+          "getVersionString",
+          "getBuildInformation"
+        ]
+      },
+      "availability": {
+        "4.1.0": "PRESENT",
+        "4.6.0": "PRESENT",
+        "4.10.0": "PRESENT",
+        "5.0.0": "PRESENT"
+      },
+      "ada_selectors": [],
+      "implementation_selectors": [],
+      "test_selectors": [],
+      "c_abi": [],
       "variants": "Portable native version and build description queries; no public Ada equivalents found in public spec search.",
       "ownership": "Copy native strings into Ada-owned String; never transfer std::string or borrowed mutable storage.",
-      "classification": "MISSING_PORTABLE", "concerns": ["Build string content is installation-dependent, not a stable parseable schema"], "exclusion_reason": "",
-      "priority": "P0", "downstream": "All module diagnostics and support reports", "complexity": "Small", "maintenance": "Low",
-      "review_complete": false, "qualification_gaps": ["Full public package declaration review still required to close negative finding"], "mode_matrix": []
+      "classification": "MISSING_PORTABLE",
+      "concerns": [
+        "Build string content is installation-dependent, not a stable parseable schema"
+      ],
+      "exclusion_reason": "",
+      "priority": "P0",
+      "downstream": "All module diagnostics and support reports",
+      "complexity": "Small",
+      "maintenance": "Low",
+      "review_complete": false,
+      "qualification_gaps": [
+        "Full public package declaration review still required to close negative finding"
+      ],
+      "mode_matrix": []
     },
     {
-      "id": "core.runtime.threading", "domain": "H", "native_family": "cv::getNumThreads/setNumThreads",
-      "native_selectors": {"modules/core/include/opencv2/core/utility.hpp": ["getNumThreads", "setNumThreads"]},
-      "availability": {"4.1.0": "PRESENT", "4.6.0": "PRESENT", "4.10.0": "PRESENT", "5.0.0": "PRESENT"},
-      "ada_selectors": [], "implementation_selectors": [], "test_selectors": [], "c_abi": [],
+      "id": "core.runtime.threading",
+      "domain": "H",
+      "native_family": "cv::getNumThreads/setNumThreads",
+      "native_selectors": {
+        "modules/core/include/opencv2/core/utility.hpp": [
+          "getNumThreads",
+          "setNumThreads"
+        ]
+      },
+      "availability": {
+        "4.1.0": "PRESENT",
+        "4.6.0": "PRESENT",
+        "4.10.0": "PRESENT",
+        "5.0.0": "PRESENT"
+      },
+      "ada_selectors": [],
+      "implementation_selectors": [],
+      "test_selectors": [],
+      "c_abi": [],
       "variants": "Portable entry points, backend-dependent thread behavior. No public Ada equivalents found.",
       "ownership": "Process-global native state; do not promise thread-local isolation or safe concurrent mutation.",
-      "classification": "MISSING_PORTABLE", "concerns": ["Native reset/default/disable semantics and parallel-region restrictions need explicit design"], "exclusion_reason": "",
-      "priority": "P1", "downstream": "Ada tasking and oversubscription control", "complexity": "Small-medium", "maintenance": "Low API, backend-sensitive tests",
-      "review_complete": false, "qualification_gaps": ["Native backend semantics and test-state restoration review incomplete"], "mode_matrix": []
+      "classification": "MISSING_PORTABLE",
+      "concerns": [
+        "Native reset/default/disable semantics and parallel-region restrictions need explicit design"
+      ],
+      "exclusion_reason": "",
+      "priority": "P1",
+      "downstream": "Ada tasking and oversubscription control",
+      "complexity": "Small-medium",
+      "maintenance": "Low API, backend-sensitive tests",
+      "review_complete": false,
+      "qualification_gaps": [
+        "Native backend semantics and test-state restoration review incomplete"
+      ],
+      "mode_matrix": []
     },
     {
-      "id": "core.runtime.optimization", "domain": "H", "native_family": "cv::useOptimized/setUseOptimized",
-      "native_selectors": {"modules/core/include/opencv2/core/utility.hpp": ["useOptimized", "setUseOptimized"]},
-      "availability": {"4.1.0": "PRESENT", "4.6.0": "PRESENT", "4.10.0": "PRESENT", "5.0.0": "PRESENT"},
-      "ada_selectors": [], "implementation_selectors": [], "test_selectors": [], "c_abi": [],
+      "id": "core.runtime.optimization",
+      "domain": "H",
+      "native_family": "cv::useOptimized/setUseOptimized",
+      "native_selectors": {
+        "modules/core/include/opencv2/core/utility.hpp": [
+          "useOptimized",
+          "setUseOptimized"
+        ]
+      },
+      "availability": {
+        "4.1.0": "PRESENT",
+        "4.6.0": "PRESENT",
+        "4.10.0": "PRESENT",
+        "5.0.0": "PRESENT"
+      },
+      "ada_selectors": [],
+      "implementation_selectors": [],
+      "test_selectors": [],
+      "c_abi": [],
       "variants": "Global native optimization switch/query; no public Ada equivalent found.",
       "ownership": "Global state, configure outside concurrent active OpenCV calls; restore state in tests.",
-      "classification": "MISSING_PORTABLE", "concerns": ["Not a guarantee of deterministic numeric bits or a universal backend-disable switch"], "exclusion_reason": "",
-      "priority": "P1", "downstream": "Diagnostics and reproducibility investigations", "complexity": "Small", "maintenance": "Low",
-      "review_complete": false, "qualification_gaps": ["Global-state native implementation safety review pending"], "mode_matrix": []
+      "classification": "MISSING_PORTABLE",
+      "concerns": [
+        "Not a guarantee of deterministic numeric bits or a universal backend-disable switch"
+      ],
+      "exclusion_reason": "",
+      "priority": "P1",
+      "downstream": "Diagnostics and reproducibility investigations",
+      "complexity": "Small",
+      "maintenance": "Low",
+      "review_complete": false,
+      "qualification_gaps": [
+        "Global-state native implementation safety review pending"
+      ],
+      "mode_matrix": []
     },
     {
-      "id": "core.runtime.timing", "domain": "H", "native_family": "cv::getTickCount/getTickFrequency",
-      "native_selectors": {"modules/core/include/opencv2/core/utility.hpp": ["getTickCount", "getTickFrequency"]},
-      "availability": {"4.1.0": "PRESENT", "4.6.0": "PRESENT", "4.10.0": "PRESENT", "5.0.0": "PRESENT"},
-      "ada_selectors": [], "implementation_selectors": [], "test_selectors": [], "c_abi": [],
+      "id": "core.runtime.timing",
+      "domain": "H",
+      "native_family": "cv::getTickCount/getTickFrequency",
+      "native_selectors": {
+        "modules/core/include/opencv2/core/utility.hpp": [
+          "getTickCount",
+          "getTickFrequency"
+        ]
+      },
+      "availability": {
+        "4.1.0": "PRESENT",
+        "4.6.0": "PRESENT",
+        "4.10.0": "PRESENT",
+        "5.0.0": "PRESENT"
+      },
+      "ada_selectors": [],
+      "implementation_selectors": [],
+      "test_selectors": [],
+      "c_abi": [],
       "variants": "Portable native wall-clock tick/frequency pair; Ada.Real_Time may be a deliberate alternative but is not an existing Core binding.",
       "ownership": "Value results; preserve signed 64-bit tick width and double frequency.",
-      "classification": "MISSING_PORTABLE", "concerns": ["Do not substitute getCPUTickCount; epoch and cross-machine comparability not guaranteed"], "exclusion_reason": "",
-      "priority": "P2", "downstream": "Profiling and native benchmark parity", "complexity": "Small", "maintenance": "Low",
-      "review_complete": false, "qualification_gaps": ["Timer semantics and independent Ada equivalent disposition pending"], "mode_matrix": []
+      "classification": "MISSING_PORTABLE",
+      "concerns": [
+        "Do not substitute getCPUTickCount; epoch and cross-machine comparability not guaranteed"
+      ],
+      "exclusion_reason": "",
+      "priority": "P2",
+      "downstream": "Profiling and native benchmark parity",
+      "complexity": "Small",
+      "maintenance": "Low",
+      "review_complete": false,
+      "qualification_gaps": [
+        "Timer semantics and independent Ada equivalent disposition pending"
+      ],
+      "mode_matrix": []
     },
     {
-      "id": "core.persistence.append-base64", "domain": "G", "native_family": "cv::FileStorage APPEND/BASE64",
-      "native_selectors": {"modules/core/include/opencv2/core/persistence.hpp": ["open"]},
-      "availability": {"4.1.0": "PRESENT", "4.6.0": "PRESENT", "4.10.0": "PRESENT", "5.0.0": "PRESENT"},
-      "ada_selectors": [{"path": "src/opencv-core-persistence.ads", "name": "Open"}, {"path": "src/opencv-core-persistence.ads", "name": "Storage_Mode"}],
-      "implementation_selectors": [{"path": "src/opencv-core-persistence.adb", "pattern": "^   function Open", "lines": 10}],
-      "test_selectors": [{"path": "tests/src/persistence_tests.adb", "pattern": "Write_Only"}], "c_abi": [],
+      "id": "core.persistence.append-base64",
+      "domain": "G",
+      "native_family": "cv::FileStorage APPEND/BASE64",
+      "native_selectors": {
+        "modules/core/include/opencv2/core/persistence.hpp": [
+          "open"
+        ]
+      },
+      "availability": {
+        "4.1.0": "PRESENT",
+        "4.6.0": "PRESENT",
+        "4.10.0": "PRESENT",
+        "5.0.0": "PRESENT"
+      },
+      "ada_selectors": [
+        {
+          "path": "src/opencv-core-persistence.ads",
+          "name": "Open"
+        },
+        {
+          "path": "src/opencv-core-persistence.ads",
+          "name": "Storage_Mode"
+        }
+      ],
+      "implementation_selectors": [
+        {
+          "path": "src/opencv-core-persistence.adb",
+          "pattern": "^   function Open",
+          "lines": 10
+        }
+      ],
+      "test_selectors": [
+        {
+          "path": "tests/src/persistence_tests.adb",
+          "pattern": "Write_Only"
+        }
+      ],
+      "c_abi": [],
       "variants": "Current Read_Only/Write_Only disk API and memory helpers; append/Base64 flags absent. Native APPEND and BASE64 enum constants are present in all four headers; representative open signature alone does not prove flags.",
       "ownership": "Limited File_Storage owns native lifetime; retain existing safe navigation and copied read results.",
-      "classification": "BOUND_PARTIAL", "concerns": ["Append is incompatible with native MEMORY mode", "Need loss/failure and duplicate-key policies; no silent flag pass-through"], "exclusion_reason": "",
-      "priority": "P1", "downstream": "Configuration/model persistence", "complexity": "Medium", "maintenance": "Format-dependent regression tests",
-      "review_complete": false, "qualification_gaps": ["Pin enum constant evidence and complete implementation/C ABI mappings"], "mode_matrix": []
+      "classification": "BOUND_PARTIAL",
+      "concerns": [
+        "Append is incompatible with native MEMORY mode",
+        "Need loss/failure and duplicate-key policies; no silent flag pass-through"
+      ],
+      "exclusion_reason": "",
+      "priority": "P1",
+      "downstream": "Configuration/model persistence",
+      "complexity": "Medium",
+      "maintenance": "Format-dependent regression tests",
+      "review_complete": false,
+      "qualification_gaps": [
+        "Pin enum constant evidence and complete implementation/C ABI mappings"
+      ],
+      "mode_matrix": []
     },
     {
-      "id": "core.persistence.gzip", "domain": "G", "native_family": "cv::FileStorage compressed files",
-      "native_selectors": {"modules/core/include/opencv2/core/persistence.hpp": ["open"]},
-      "availability": {"4.1.0": "PRESENT", "4.6.0": "PRESENT", "4.10.0": "PRESENT", "5.0.0": "PRESENT"},
-      "ada_selectors": [], "implementation_selectors": [], "test_selectors": [], "c_abi": [],
+      "id": "core.persistence.gzip",
+      "domain": "G",
+      "native_family": "cv::FileStorage compressed files",
+      "native_selectors": {
+        "modules/core/include/opencv2/core/persistence.hpp": [
+          "open"
+        ]
+      },
+      "availability": {
+        "4.1.0": "PRESENT",
+        "4.6.0": "PRESENT",
+        "4.10.0": "PRESENT",
+        "5.0.0": "PRESENT"
+      },
+      "ada_selectors": [],
+      "implementation_selectors": [],
+      "test_selectors": [],
+      "c_abi": [],
       "variants": "Headers document .gz. Public Ada spec explicitly excludes gzip; actual extension validation and build feature guards require review. 5.0 documents compression-level suffixes too.",
       "ownership": "Disk ownership follows File_Storage; compressed stream error/close behavior matters.",
-      "classification": "RESEARCH_REQUIRED", "concerns": ["Zlib availability is a native build feature, not universal portable execution", "No claim current Open already supports gzip"], "exclusion_reason": "",
-      "priority": "RESEARCH", "downstream": "Large model storage", "complexity": "Medium", "maintenance": "Optional backend and format cases",
-      "review_complete": false, "qualification_gaps": ["Exact zlib feature guards and current Ada validation not mapped"], "mode_matrix": []
+      "classification": "RESEARCH_REQUIRED",
+      "concerns": [
+        "Zlib availability is a native build feature, not universal portable execution",
+        "No claim current Open already supports gzip"
+      ],
+      "exclusion_reason": "",
+      "priority": "RESEARCH",
+      "downstream": "Large model storage",
+      "complexity": "Medium",
+      "maintenance": "Optional backend and format cases",
+      "review_complete": false,
+      "qualification_gaps": [
+        "Exact zlib feature guards and current Ada validation not mapped"
+      ],
+      "mode_matrix": []
     },
     {
-      "id": "core.persistence.file-node-iterators", "domain": "G", "native_family": "cv::FileNode::begin/end and FileNodeIterator",
-      "native_selectors": {"modules/core/include/opencv2/core/persistence.hpp": ["begin", "end"]},
-      "availability": {"4.1.0": "PRESENT", "4.6.0": "PRESENT", "4.10.0": "PRESENT", "5.0.0": "PRESENT"},
-      "ada_selectors": [], "implementation_selectors": [], "test_selectors": [], "c_abi": [],
+      "id": "core.persistence.file-node-iterators",
+      "domain": "G",
+      "native_family": "cv::FileNode::begin/end and FileNodeIterator",
+      "native_selectors": {
+        "modules/core/include/opencv2/core/persistence.hpp": [
+          "begin",
+          "end"
+        ]
+      },
+      "availability": {
+        "4.1.0": "PRESENT",
+        "4.6.0": "PRESENT",
+        "4.10.0": "PRESENT",
+        "5.0.0": "PRESENT"
+      },
+      "ada_selectors": [],
+      "implementation_selectors": [],
+      "test_selectors": [],
+      "c_abi": [],
       "variants": "Public Ada uses storage-scoped navigation, Sequence_Length/indexed reads and Map_Length/Map_Key, not exposed FileNode iterators.",
       "ownership": "Native iterator/node borrows FileStorage; exposing it would add lifetime coupling.",
-      "classification": "INTENTIONALLY_EXCLUDED", "concerns": ["Semantic iteration capability still needs complete mapping; exclusion applies to escaping native iterator abstraction, not sequence/map iteration"],
+      "classification": "INTENTIONALLY_EXCLUDED",
+      "concerns": [
+        "Semantic iteration capability still needs complete mapping; exclusion applies to escaping native iterator abstraction, not sequence/map iteration"
+      ],
       "exclusion_reason": "Retain limited owning File_Storage and copied values; raw FileNode/iterator lifetime protocol adds risk with little consumer value. This is a proposed audit exclusion for review, not a new API promise.",
-      "priority": "EXCLUDED", "downstream": "Existing map/sequence navigation preferred", "complexity": "Large for safe escaping nodes", "maintenance": "Avoided lifetime framework",
-      "review_complete": false, "qualification_gaps": ["Advanced node capabilities and safe callback alternative not fully reviewed"], "mode_matrix": []
+      "priority": "EXCLUDED",
+      "downstream": "Existing map/sequence navigation preferred",
+      "complexity": "Large for safe escaping nodes",
+      "maintenance": "Avoided lifetime framework",
+      "review_complete": false,
+      "qualification_gaps": [
+        "Advanced node capabilities and safe callback alternative not fully reviewed"
+      ],
+      "mode_matrix": []
     },
     {
-      "id": "core.sparse.minmax-normalization", "domain": "F", "native_family": "cv::normalize SparseMat with NORM_MINMAX",
-      "native_selectors": {"modules/core/include/opencv2/core.hpp": ["normalize"]},
-      "availability": {"4.1.0": "PRESENT", "4.6.0": "PRESENT", "4.10.0": "PRESENT", "5.0.0": "PRESENT"},
-      "ada_selectors": [], "implementation_selectors": [], "test_selectors": [], "c_abi": [],
+      "id": "core.sparse.minmax-normalization",
+      "domain": "F",
+      "native_family": "cv::normalize SparseMat with NORM_MINMAX",
+      "native_selectors": {
+        "modules/core/include/opencv2/core.hpp": [
+          "normalize"
+        ]
+      },
+      "availability": {
+        "4.1.0": "PRESENT",
+        "4.6.0": "PRESENT",
+        "4.10.0": "PRESENT",
+        "5.0.0": "PRESENT"
+      },
+      "ada_selectors": [],
+      "implementation_selectors": [],
+      "test_selectors": [],
+      "c_abi": [],
       "variants": "The sparse normalization family exists, but MINMAX is expressly prohibited by native docs because shifting implicit zero changes sparsity. Not a native-supported missing mode.",
       "ownership": "Keep implicit zero semantics; caller may explicitly densify then normalize.",
-      "classification": "INTENTIONALLY_EXCLUDED", "concerns": ["Availability refers to normalize family, not support for MINMAX"],
+      "classification": "INTENTIONALLY_EXCLUDED",
+      "concerns": [
+        "Availability refers to normalize family, not support for MINMAX"
+      ],
       "exclusion_reason": "Native SparseMat normalization excludes range shift of implicit zeros. Do not invent a silently densifying sparse operation.",
-      "priority": "EXCLUDED", "downstream": "Explicit dense conversion is the coherent alternative", "complexity": "Not applicable", "maintenance": "Avoid semantic divergence",
-      "review_complete": false, "qualification_gaps": ["Pin explanatory native comment and sparse-specific implementation guard as structured evidence"], "mode_matrix": []
+      "priority": "EXCLUDED",
+      "downstream": "Explicit dense conversion is the coherent alternative",
+      "complexity": "Not applicable",
+      "maintenance": "Avoid semantic divergence",
+      "review_complete": false,
+      "qualification_gaps": [
+        "Pin explanatory native comment and sparse-specific implementation guard as structured evidence"
+      ],
+      "mode_matrix": []
     },
     {
-      "id": "core.types.quaternion", "domain": "I", "native_family": "cv::Quat",
-      "native_selectors": {"modules/core/include/opencv2/core/quaternion.hpp": ["Quat"]},
-      "availability": {"4.1.0": "ABSENT", "4.6.0": "PRESENT", "4.10.0": "PRESENT", "5.0.0": "PRESENT"},
-      "ada_selectors": [], "implementation_selectors": [], "test_selectors": [], "c_abi": [],
+      "id": "core.types.quaternion",
+      "domain": "I",
+      "native_family": "cv::Quat",
+      "native_selectors": {
+        "modules/core/include/opencv2/core/quaternion.hpp": [
+          "Quat"
+        ]
+      },
+      "availability": {
+        "4.1.0": "ABSENT",
+        "4.6.0": "PRESENT",
+        "4.10.0": "PRESENT",
+        "5.0.0": "PRESENT"
+      },
+      "ada_selectors": [],
+      "implementation_selectors": [],
+      "test_selectors": [],
+      "c_abi": [],
       "variants": "Quaternion native template math, interpolation, rotations and fixed-type integration. No Ada Quat package found; overload family not yet audited.",
       "ownership": "Prefer ordinary Ada value records if adopted; no native object identity needed.",
-      "classification": "VERSION_GATED", "concerns": ["Unit/non-unit assumptions, singularities and interpolation conventions", "Do not casually reimplement for 4.1"], "exclusion_reason": "",
-      "priority": "P2", "downstream": "Pose/calibration consumers", "complexity": "Large coherent math surface", "maintenance": "Medium; many numerical edge modes",
-      "review_complete": false, "qualification_gaps": ["No numerical, overload or fixed-matrix integration review"], "mode_matrix": []
+      "classification": "VERSION_GATED",
+      "concerns": [
+        "Unit/non-unit assumptions, singularities and interpolation conventions",
+        "Do not casually reimplement for 4.1"
+      ],
+      "exclusion_reason": "",
+      "priority": "P2",
+      "downstream": "Pose/calibration consumers",
+      "complexity": "Large coherent math surface",
+      "maintenance": "Medium; many numerical edge modes",
+      "review_complete": false,
+      "qualification_gaps": [
+        "No numerical, overload or fixed-matrix integration review"
+      ],
+      "mode_matrix": []
     },
     {
-      "id": "core.types.dual-quaternion", "domain": "I", "native_family": "cv::DualQuat",
-      "native_selectors": {"modules/core/include/opencv2/core/dualquaternion.hpp": ["DualQuat"]},
-      "availability": {"4.1.0": "ABSENT", "4.6.0": "PRESENT", "4.10.0": "PRESENT", "5.0.0": "PRESENT"},
-      "ada_selectors": [], "implementation_selectors": [], "test_selectors": [], "c_abi": [],
+      "id": "core.types.dual-quaternion",
+      "domain": "I",
+      "native_family": "cv::DualQuat",
+      "native_selectors": {
+        "modules/core/include/opencv2/core/dualquaternion.hpp": [
+          "DualQuat"
+        ]
+      },
+      "availability": {
+        "4.1.0": "ABSENT",
+        "4.6.0": "PRESENT",
+        "4.10.0": "PRESENT",
+        "5.0.0": "PRESENT"
+      },
+      "ada_selectors": [],
+      "implementation_selectors": [],
+      "test_selectors": [],
+      "c_abi": [],
       "variants": "Dual quaternion rigid-transform/interpolation family; no public Ada equivalent established.",
       "ownership": "Value semantics; dependency on quaternion conventions and affine conversion design.",
-      "classification": "VERSION_GATED", "concerns": ["Header changes in 5.0 need overload comparison", "4.1 compatibility not qualified"], "exclusion_reason": "",
-      "priority": "P2", "downstream": "Rigid pose interpolation", "complexity": "Large; depends on quaternion audit", "maintenance": "Medium-high for marginal baseline consumer value",
-      "review_complete": false, "qualification_gaps": ["Exact overload, numerical and Affine3 integration research missing"], "mode_matrix": []
+      "classification": "VERSION_GATED",
+      "concerns": [
+        "Header changes in 5.0 need overload comparison",
+        "4.1 compatibility not qualified"
+      ],
+      "exclusion_reason": "",
+      "priority": "P2",
+      "downstream": "Rigid pose interpolation",
+      "complexity": "Large; depends on quaternion audit",
+      "maintenance": "Medium-high for marginal baseline consumer value",
+      "review_complete": false,
+      "qualification_gaps": [
+        "Exact overload, numerical and Affine3 integration research missing"
+      ],
+      "mode_matrix": []
     },
     {
-      "id": "core.accelerator.async", "domain": "J", "native_family": "cv::AsyncArray",
-      "native_selectors": {"modules/core/include/opencv2/core/async.hpp": ["get", "wait_for", "valid"]},
-      "availability": {"4.1.0": "ABSENT", "4.6.0": "PRESENT", "4.10.0": "PRESENT", "5.0.0": "PRESENT"},
-      "ada_selectors": [], "implementation_selectors": [], "test_selectors": [], "c_abi": [],
+      "id": "core.accelerator.async",
+      "domain": "J",
+      "native_family": "cv::AsyncArray",
+      "native_selectors": {
+        "modules/core/include/opencv2/core/async.hpp": [
+          "get",
+          "wait_for",
+          "valid"
+        ]
+      },
+      "availability": {
+        "4.1.0": "ABSENT",
+        "4.6.0": "PRESENT",
+        "4.10.0": "PRESENT",
+        "5.0.0": "PRESENT"
+      },
+      "ada_selectors": [],
+      "implementation_selectors": [],
+      "test_selectors": [],
+      "c_abi": [],
       "variants": "Async result/wait/get interface; no Ada API or current portable producer identified.",
       "ownership": "Outstanding operation, task cancellation, exception transport and finalization need an explicit model.",
-      "classification": "RESEARCH_REQUIRED", "concerns": ["Presence of header does not demonstrate portable execution backend", "Do not equate Ada tasking with native AsyncArray behavior"], "exclusion_reason": "",
-      "priority": "RESEARCH", "downstream": "Optional async module consumers", "complexity": "Large lifetime design", "maintenance": "Potentially high",
-      "review_complete": false, "qualification_gaps": ["Producer/backend/lifetime and timeout semantics unresolved"], "mode_matrix": []
+      "classification": "RESEARCH_REQUIRED",
+      "concerns": [
+        "Presence of header does not demonstrate portable execution backend",
+        "Do not equate Ada tasking with native AsyncArray behavior"
+      ],
+      "exclusion_reason": "",
+      "priority": "RESEARCH",
+      "downstream": "Optional async module consumers",
+      "complexity": "Large lifetime design",
+      "maintenance": "Potentially high",
+      "review_complete": false,
+      "qualification_gaps": [
+        "Producer/backend/lifetime and timeout semantics unresolved"
+      ],
+      "mode_matrix": []
     },
     {
-      "id": "core.linear.gemm", "domain": "C", "native_family": "cv::gemm / Matrix_Multiply / Matrix_Multiply_Add",
-      "native_selectors": {"modules/core/include/opencv2/core.hpp": ["gemm"]},
-      "availability": {"4.1.0": "PRESENT", "4.6.0": "PRESENT", "4.10.0": "PRESENT", "5.0.0": "PRESENT"},
-      "ada_selectors": [{"path": "src/opencv-core.ads", "name": "Matrix_Multiply"}, {"path": "src/opencv-core.ads", "name": "Matrix_Multiply_Add"}],
-      "implementation_selectors": [{"path": "src/opencv-core.adb", "pattern": "^   function Matrix_Multiply", "lines": 18}, {"path": "cpp/opencv_core_shim.cpp", "pattern": "^opencv_core_mat_matrix_multiply", "lines": 12}],
-      "test_selectors": [{"path": "tests/src/mat_reduction_tests.adb", "pattern": "Matrix_Multiply"}], "c_abi": ["opencv_core_mat_matrix_multiply", "opencv_core_mat_matrix_multiply_add"],
+      "id": "core.linear.gemm",
+      "domain": "C",
+      "native_family": "cv::gemm / Matrix_Multiply / Matrix_Multiply_Add",
+      "native_selectors": {
+        "modules/core/include/opencv2/core.hpp": [
+          "gemm"
+        ]
+      },
+      "availability": {
+        "4.1.0": "PRESENT",
+        "4.6.0": "PRESENT",
+        "4.10.0": "PRESENT",
+        "5.0.0": "PRESENT"
+      },
+      "ada_selectors": [
+        {
+          "path": "src/opencv-core.ads",
+          "name": "Matrix_Multiply"
+        },
+        {
+          "path": "src/opencv-core.ads",
+          "name": "Matrix_Multiply_Add"
+        }
+      ],
+      "implementation_selectors": [
+        {
+          "path": "src/opencv-core.adb",
+          "pattern": "^   function Matrix_Multiply",
+          "lines": 18
+        },
+        {
+          "path": "cpp/opencv_core_shim.cpp",
+          "pattern": "^opencv_core_mat_matrix_multiply",
+          "lines": 12
+        }
+      ],
+      "test_selectors": [
+        {
+          "path": "tests/src/mat_reduction_tests.adb",
+          "pattern": "Matrix_Multiply"
+        }
+      ],
+      "c_abi": [
+        "opencv_core_mat_matrix_multiply",
+        "opencv_core_mat_matrix_multiply_add"
+      ],
       "variants": "Mat Float32/Float64 C1/C2 2-D algebraic multiplication; weighted/addend and transpose modes require exact profile audit. Not elementwise Multiply. No complete UMat/output-mode coverage established.",
       "ownership": "Independent Mat outputs; inspect native transpose/conjugation and result dimensions before declaring full.",
-      "classification": "BOUND_PARTIAL", "concerns": ["Matching renamed Ada operations are real implementations, not missing gemm"], "exclusion_reason": "",
-      "priority": "P1", "downstream": "Calibration/features/numerical modules", "complexity": "Medium for qualification; scope of missing modes unresolved", "maintenance": "Low for existing functions",
-      "review_complete": false, "qualification_gaps": ["Full transpose flags, UMat and destination mode audit pending"], "mode_matrix": []
+      "classification": "BOUND_PARTIAL",
+      "concerns": [
+        "Matching renamed Ada operations are real implementations, not missing gemm"
+      ],
+      "exclusion_reason": "",
+      "priority": "P1",
+      "downstream": "Calibration/features/numerical modules",
+      "complexity": "Medium for qualification; scope of missing modes unresolved",
+      "maintenance": "Low for existing functions",
+      "review_complete": false,
+      "qualification_gaps": [
+        "Full transpose flags, UMat and destination mode audit pending"
+      ],
+      "mode_matrix": []
     }
-  ]
+  ],
+  "upstream_discovery": {
+    "header_scope": "docs/core-api-header-scope.json",
+    "native_declarations": "docs/core-api-native-declarations.json",
+    "manifest": "docs/core-api-header-manifest.json",
+    "review": "docs/core-api-discovery-review.json",
+    "native_complete": false,
+    "ada_complete": false,
+    "new_native_family_ids": [
+      "core.native.algorithm-infrastructure",
+      "core.native.async",
+      "core.native.dense-expressions",
+      "core.native.dense-storage",
+      "core.native.header-core",
+      "core.native.header-core-affine",
+      "core.native.header-core-base",
+      "core.native.header-core-bindings-utils",
+      "core.native.header-core-bufferpool",
+      "core.native.header-core-check",
+      "core.native.header-core-cuda",
+      "core.native.header-core-cuda-block",
+      "core.native.header-core-cuda-border-interpolate",
+      "core.native.header-core-cuda-common",
+      "core.native.header-core-cuda-cuda-compat",
+      "core.native.header-core-cuda-datamov-utils",
+      "core.native.header-core-cuda-detail-color-detail",
+      "core.native.header-core-cuda-detail-reduce",
+      "core.native.header-core-cuda-detail-reduce-key-val",
+      "core.native.header-core-cuda-detail-transform-detail",
+      "core.native.header-core-cuda-detail-type-traits-detail",
+      "core.native.header-core-cuda-detail-vec-distance-detail",
+      "core.native.header-core-cuda-dynamic-smem",
+      "core.native.header-core-cuda-emulation",
+      "core.native.header-core-cuda-filters",
+      "core.native.header-core-cuda-funcattrib",
+      "core.native.header-core-cuda-functional",
+      "core.native.header-core-cuda-inl",
+      "core.native.header-core-cuda-limits",
+      "core.native.header-core-cuda-reduce",
+      "core.native.header-core-cuda-saturate-cast",
+      "core.native.header-core-cuda-scan",
+      "core.native.header-core-cuda-simd-functions",
+      "core.native.header-core-cuda-stream-accessor",
+      "core.native.header-core-cuda-transform",
+      "core.native.header-core-cuda-type-traits",
+      "core.native.header-core-cuda-types",
+      "core.native.header-core-cuda-utility",
+      "core.native.header-core-cuda-vec-distance",
+      "core.native.header-core-cuda-vec-math",
+      "core.native.header-core-cuda-vec-traits",
+      "core.native.header-core-cuda-warp",
+      "core.native.header-core-cuda-warp-reduce",
+      "core.native.header-core-cuda-warp-shuffle",
+      "core.native.header-core-cvdef",
+      "core.native.header-core-cvstd",
+      "core.native.header-core-cvstd-inl",
+      "core.native.header-core-cvstd-wrapper",
+      "core.native.header-core-directx",
+      "core.native.header-core-dualquaternion",
+      "core.native.header-core-dualquaternion-inl",
+      "core.native.header-core-eigen",
+      "core.native.header-core-exception",
+      "core.native.header-core-fast-math",
+      "core.native.header-core-fwddecl",
+      "core.native.header-core-hal-interface",
+      "core.native.header-core-mat",
+      "core.native.header-core-mat-inl",
+      "core.native.header-core-matx",
+      "core.native.header-core-matx-inl",
+      "core.native.header-core-ocl",
+      "core.native.header-core-ocl-genbase",
+      "core.native.header-core-opencl-ocl-defs",
+      "core.native.header-core-opencl-opencl-info",
+      "core.native.header-core-opencl-opencl-svm",
+      "core.native.header-core-opencl-runtime-autogenerated-opencl-clamdblas",
+      "core.native.header-core-opencl-runtime-autogenerated-opencl-clamdfft",
+      "core.native.header-core-opencl-runtime-autogenerated-opencl-clblas",
+      "core.native.header-core-opencl-runtime-autogenerated-opencl-clfft",
+      "core.native.header-core-opencl-runtime-autogenerated-opencl-core",
+      "core.native.header-core-opencl-runtime-autogenerated-opencl-core-wrappers",
+      "core.native.header-core-opencl-runtime-autogenerated-opencl-gl",
+      "core.native.header-core-opencl-runtime-autogenerated-opencl-gl-wrappers",
+      "core.native.header-core-opencl-runtime-opencl-core",
+      "core.native.header-core-opencl-runtime-opencl-svm-20",
+      "core.native.header-core-opencl-runtime-opencl-svm-definitions",
+      "core.native.header-core-opencl-runtime-opencl-svm-hsa-extension",
+      "core.native.header-core-opengl",
+      "core.native.header-core-openvx-ovx-defs",
+      "core.native.header-core-operations",
+      "core.native.header-core-optim",
+      "core.native.header-core-ovx",
+      "core.native.header-core-parallel-backend-parallel-for-openmp",
+      "core.native.header-core-parallel-backend-parallel-for-tbb",
+      "core.native.header-core-parallel-parallel-backend",
+      "core.native.header-core-persistence",
+      "core.native.header-core-quaternion",
+      "core.native.header-core-quaternion-inl",
+      "core.native.header-core-saturate",
+      "core.native.header-core-softfloat",
+      "core.native.header-core-traits",
+      "core.native.header-core-types",
+      "core.native.header-core-utility",
+      "core.native.header-core-utils-allocator-stats",
+      "core.native.header-core-utils-allocator-stats-impl",
+      "core.native.header-core-utils-filesystem",
+      "core.native.header-core-utils-fp-control-utils",
+      "core.native.header-core-utils-instrumentation",
+      "core.native.header-core-utils-logger",
+      "core.native.header-core-utils-logger-defines",
+      "core.native.header-core-utils-logtag",
+      "core.native.header-core-utils-tls",
+      "core.native.header-core-utils-trace",
+      "core.native.header-core-va-intel",
+      "core.native.header-core-version",
+      "core.native.lda",
+      "core.native.pca",
+      "core.native.persistence-nodes",
+      "core.native.persistence-storage",
+      "core.native.random",
+      "core.native.sparse-storage",
+      "core.native.svd",
+      "core.native.umat-storage"
+    ],
+    "meaning": "Provisional native owner/header buckets; not completed semantic reconciliation or Ada missing-feature classifications"
+  }
 }
