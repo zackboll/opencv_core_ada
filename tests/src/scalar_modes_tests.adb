@@ -2,6 +2,7 @@ with AUnit.Assertions; use AUnit.Assertions;
 with AUnit.Test_Caller;
 with Ada.Unchecked_Conversion;
 with Interfaces;
+with Interfaces.C;
 with Mat_Test_Support; use Mat_Test_Support;
 with OpenCV;           use OpenCV;
 with OpenCV.Core;      use OpenCV.Core;
@@ -20,6 +21,15 @@ package body Scalar_Modes_Tests is
    type Depth_List is array (Positive range <>) of Depth_Type;
    Depths : constant Depth_List :=
      (UInt8, Int8, UInt16, Int16, Int32, Float32, Float64);
+
+   function Native_Reference
+     (Depth, Channels, Op, Channel, Row, Column : Interfaces.C.int;
+      Actual, Destination, Intermediate, Oracle : Interfaces.C.double)
+      return Interfaces.C.double
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_scalar_numeric_reference";
 
    function Calculate (A : Mat; V : Scalar; Op : Operation) return Mat is
    begin
@@ -130,6 +140,28 @@ package body Scalar_Modes_Tests is
                            end case;
                            Float64_Access.Set
                              (Reference, 0, 0, Float64_Value (Expected));
+                           declare
+                              Native : constant Long_Float :=
+                                Long_Float
+                                  (Native_Reference
+                                     (Interfaces.C.int
+                                        (Depth_Type'Pos (Depth)),
+                                      Interfaces.C.int (Channels),
+                                      Interfaces.C.int (Operation'Pos (Op)),
+                                      Interfaces.C.int (Channel),
+                                      0,
+                                      0,
+                                      Interfaces.C.double (Pixel (F, Channel)),
+                                      Interfaces.C.double (Pixel (D, Channel)),
+                                      Interfaces.C.double (Expected),
+                                      Interfaces.C.double
+                                        (Pixel
+                                           (Reference.Convert_To (Depth)))));
+                           begin
+                              Assert
+                                (abs (Pixel (F, Channel) - Native) < 0.001,
+                                 "independent native scalar result");
+                           end;
                            Assert
                              (abs (Pixel (F, Channel)
                                    - Pixel (Reference.Convert_To (Depth)))
