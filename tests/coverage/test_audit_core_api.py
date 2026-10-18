@@ -97,9 +97,8 @@ class InventoryTests(unittest.TestCase):
             self.validate()
 
     def test_path_escape(self):
-        self.bound()["implementation"][0]["path"] = "../core-close-001/alire.toml"
-        # Path is inside root after resolution, but cannot satisfy the mapping.
-        with self.assertRaisesRegex(audit.AuditError, "invalid source line range"):
+        self.bound()["implementation"][0]["path"] = "../outside-audit-root.ads"
+        with self.assertRaisesRegex(audit.AuditError, "missing or unsafe local"):
             self.validate()
         with self.assertRaisesRegex(audit.AuditError, "missing or unsafe local"):
             audit.local_path(ROOT, "../../../../../../etc/passwd")

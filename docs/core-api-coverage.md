@@ -281,6 +281,8 @@ GNAT 16.1.0, GPRbuild selected crate 26.0.1 and native OpenCV 4.10.0 on Linux:
   repository's pinned documentation renderer: successful; **195 public packages,
   202 HTML pages** validated, all local links/anchors/assets resolve. Existing
   warning baseline remains unchanged.
+- Existing documentation-tool test discovery (`test_*.py` under the scripts
+  directory): **117 tests passed**, using the qualified renderer environment.
 - `git diff --check`: successful; protected production/public manifests and
   existing test-registration paths have no baseline diff.
 
