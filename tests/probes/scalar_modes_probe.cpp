@@ -31,6 +31,25 @@ int main() {
                 cv::Mat exact=source.clone();
                 auto* exact_data=exact.data;
                 apply(exact,scalar,exact,operation);
+                if (cv::norm(exact,expected,cv::NORM_INF)!=0) {
+                    cv::Mat actual64, expected64;
+                    exact.convertTo(actual64,CV_64F);
+                    expected.convertTo(expected64,CV_64F);
+                    for (int row=0;row<exact.rows;++row)
+                        for (int component=0;component<exact.cols*channels;++component)
+                            if (actual64.ptr<double>(row)[component] !=
+                                expected64.ptr<double>(row)[component]) {
+                                std::cerr << "Native alias mismatch OpenCV=" << CV_VERSION
+                                          << " depth=" << depth << " channels=" << channels
+                                          << " op=" << operation << " row=" << row
+                                          << " component=" << component
+                                          << " actual=" << actual64.ptr<double>(row)[component]
+                                          << " expected=" << expected64.ptr<double>(row)[component]
+                                          << '\n';
+                                row=exact.rows;
+                                break;
+                            }
+                }
                 check(exact.data==exact_data && cv::norm(exact,expected,cv::NORM_INF)==0,
                       "exact arithmetic alias");
                 cv::Mat shallow=source.clone(), alias=shallow;
