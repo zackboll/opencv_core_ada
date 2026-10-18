@@ -202,6 +202,31 @@ typedef struct opencv_core_scalar {
     double component_3;
 } opencv_core_scalar;
 
+/* Scalar arithmetic selectors: source op scalar, then scalar op source. */
+#define OPENCV_CORE_SCALAR_ADD ((int32_t)0)
+#define OPENCV_CORE_SCALAR_SUBTRACT ((int32_t)1)
+#define OPENCV_CORE_SCALAR_MULTIPLY ((int32_t)2)
+#define OPENCV_CORE_SCALAR_DIVIDE ((int32_t)3)
+#define OPENCV_CORE_SCALAR_SUBTRACT_FROM ((int32_t)4)
+#define OPENCV_CORE_SCALAR_DIVIDE_INTO ((int32_t)5)
+/* relation: 0 disjoint byte spans; 1 identical layout; 2 possible overlap.
+ * Conservative observation only; public alias policy belongs to Ada. */
+opencv_core_status opencv_core_mat_storage_relation(
+    const opencv_core_mat_handle *source,
+    const opencv_core_mat_handle *destination, int32_t *relation);
+opencv_core_status opencv_core_mat_scalar_arithmetic(
+    const opencv_core_mat_handle *source, const opencv_core_scalar *scalar,
+    int32_t operation, opencv_core_mat_handle **out);
+opencv_core_status opencv_core_mat_scalar_arithmetic_into(
+    const opencv_core_mat_handle *source, const opencv_core_scalar *scalar,
+    int32_t operation, opencv_core_mat_handle *destination);
+opencv_core_status opencv_core_mat_compare_scalar(
+    const opencv_core_mat_handle *source, double scalar, int32_t comparison,
+    opencv_core_mat_handle **out);
+opencv_core_status opencv_core_mat_compare_scalar_into(
+    const opencv_core_mat_handle *source, double scalar, int32_t comparison,
+    opencv_core_mat_handle *destination);
+
 /*
  * Sets the calling thread's OpenCV default RNG state.  The state is owned by
  * OpenCV and is consumed by subsequent random operations on that thread.

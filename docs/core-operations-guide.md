@@ -1,5 +1,54 @@
 # Core operations guide
 
+## Mat/scalar modes (CORE-FIN-01)
+
+`Add`, `Subtract`, `Multiply` and `Divide` accept `(Self : Mat; Value : Scalar)`
+with owned-result and actual caller-owned destination forms. `Subtract_From
+(Value, Self)` means **Value - Self**; `Divide_Into (Value, Self)` means
+**Value / Self**. `Compare (Self, Value : Float64_Value, Kind)` supports all six
+relations, returning/writing UInt8 C1 zero/255 without first narrowing Value.
+
+The bounded input is nonempty exactly 2-D, UInt8/Int8/UInt16/Int16/Int32/
+Float32/Float64; arithmetic C1..C4, Compare C1. Float16, C5+, comparison C2+,
+N-D and default/typed-empty sources raise OpenCV_Error before mutation.
+`Scalar.Component_0` applies to channel 0, etc. `Make_Scalar (5.0)` leaves the
+other components zero: coefficients are **not repeated**. Uniform C4 requires
+all four components explicitly.
+
+Native conversion/rounding and saturation apply. Int32 overflow is not portable
+mathematical arithmetic. Add/subtract/reverse-subtract coefficients must be
+finite and have absolute value at most INT32_MAX; integer multiply/divide uses
+the same coefficient bound. Floating multiply/divide permit NaN/Inf; source
+floating pixels retain native special-value behavior. Compare coefficients must
+be finite, but fractional and out-of-integer-range values are passed as double
+and handled natively. No cross-version/SIMD bit, NaN payload or signed-zero
+guarantee is made. Scalar integer zero division needs careful distinction from
+array/array division: observed signed conversion results are backend-dependent;
+see the [source findings](../tests/probes/scalar_modes_source_findings.md).
+
+Functions return independent storage. Procedures pass the actual native output:
+compatible whole/Region storage and shallow aliases are retained; mismatch
+detaches and keeps old parents/aliases alive. Exact/same-layout arithmetic
+source aliases are supported. Compare overlap requires identical-layout UInt8
+C1; depth-changing exact aliases and any other possible overlap are rejected.
+The conservative byte-span check may reject apparently disjoint Regions in a
+shared allocation. No general partial-overlap support or hidden copy is added.
+Scoped external/selected inputs are allowed; temporary destinations are rejected.
+Pre-native rejection preserves values; arbitrary native failure has no rollback
+guarantee. No UMat, masks, N-D, mixed-depth or selectable-dtype modes are added.
+
+Compile-tested example in `tests/probes/scalar_modes_example.adb`
+and `tests/probes/scalar_modes_example.gpr`:
+
+```ada
+Image.Set_To (Make_Scalar (8.0));
+Add (Image, Make_Scalar (2.0), Shifted);
+Compare (Shifted, 9.5, Greater_Than, Mask);
+```
+
+The native implementation and probe identities for 4.1.0/4.6.0/4.10.0/5.0.0
+are recorded in the focused source findings, not the unmerged audit snapshots.
+
 [README](../README.md) · [GNATdoc API Reference](https://zackboll.github.io/opencv_core_ada/api/index.html) · [Building and Contributing](documentation.md)
 
 This guide is published as HTML on the documentation site and maintained as

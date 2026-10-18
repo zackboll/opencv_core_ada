@@ -99,6 +99,9 @@ jobs:
               echo "=== Nested test suite ==="
               alr -C tests run
 
+              echo "=== Scalar native and sanitized shim probes ==="
+              sh scripts/run_scalar_modes_probes.sh
+
               echo "=== Scalar/vector layout boundary controls ==="
               sh tests/layout/run_controls.sh
               echo "=== Instrumented all-family public API suite ==="
