@@ -67,6 +67,39 @@ opencv_core_status read_sparse_node(const cv::SparseMat *mat, int32_t index_coun
 
 extern "C" {
 
+// IEEE fixtures/classification use integer object representations so GNAT
+// validity checks never have to transport a nonfinite typed-access result.
+OPENCV_CORE_MODULE_PROBE_EXPORT uint64_t opencv_core_scalar_read_bits(
+    const opencv_core_mat_handle* handle) {
+    try {
+        const cv::Mat* mat = nullptr;
+        if (opencv_core_module_input_mat(handle, &mat) != OPENCV_CORE_OK ||
+            !mat || mat->empty() || mat->channels() != 1)
+            return UINT64_MAX;
+        uint64_t bits = 0;
+        if (mat->depth() == CV_64F) std::memcpy(&bits, mat->data, 8);
+        else if (mat->depth() == CV_32F) std::memcpy(&bits, mat->data, 4);
+        else return UINT64_MAX;
+        return bits;
+    } catch (...) { return UINT64_MAX; }
+}
+
+OPENCV_CORE_MODULE_PROBE_EXPORT int32_t opencv_core_scalar_write_bits(
+    opencv_core_mat_handle* handle, uint64_t bits) {
+    try {
+        cv::Mat* mat = nullptr;
+        if (opencv_core_module_output_mat(handle, &mat) != OPENCV_CORE_OK ||
+            !mat || mat->empty() || mat->channels() != 1)
+            return -1;
+        if (mat->depth() == CV_64F) std::memcpy(mat->data, &bits, 8);
+        else if (mat->depth() == CV_32F) {
+            const uint32_t narrow = static_cast<uint32_t>(bits);
+            std::memcpy(mat->data, &narrow, 4);
+        } else return -1;
+        return 0;
+    } catch (...) { return -1; }
+}
+
 // Test-only independent oracle: deliberately calls native OpenCV, not shim
 // arithmetic helpers. Keep the exact failing shape and coefficients visible.
 OPENCV_CORE_MODULE_PROBE_EXPORT double opencv_core_scalar_numeric_reference(

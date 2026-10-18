@@ -62,4 +62,4 @@ printf '%s\n' "$result" > "$evidence/aunit-qemu.exit"
 test "$result" -eq 0
 python3 "$root/tests/adacore25/verify_outputs.py" --summary \
     "$evidence/logs/aunit-qemu.log" > "$evidence/logs/aunit-summary.json"
-echo 'PASS Core AUnit 2025/2025 (QEMU, not hardware)'
+echo 'PASS Core AUnit 2037/2037 (QEMU, not hardware)'

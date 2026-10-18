@@ -8,6 +8,7 @@ with OpenCV;           use OpenCV;
 with OpenCV.Core;      use OpenCV.Core;
 with OpenCV.Core.Float64_Access;
 with OpenCV.Core.UInt8_Mat_View;
+with OpenCV.Core.Module_Interop;
 with Scalar_Modes_Tests.Raw_ABI;
 
 package body Scalar_Modes_Tests is
@@ -77,12 +78,17 @@ package body Scalar_Modes_Tests is
       end case;
    end Apply;
 
-   function Pixel (A : Mat; Channel : Natural := 0) return Long_Float is
+   function Pixel
+     (A       : Mat;
+      Channel : Natural := 0;
+      Row     : Natural := 0;
+      Column  : Natural := 0) return Long_Float
+   is
       Single : constant Mat :=
         (if A.Channels = 1 then A else A.Extract_Channel (Channel));
       Values : constant Mat := Single.Convert_To (Float64);
    begin
-      return Long_Float (Float64_Access.Get (Values, 0, 0));
+      return Long_Float (Float64_Access.Get (Values, Row, Column));
    end Pixel;
 
    procedure Same (A, B : Mat; Message : String) is
@@ -162,11 +168,41 @@ package body Scalar_Modes_Tests is
                                 (abs (Pixel (F, Channel) - Native) < 0.001,
                                  "independent native scalar result");
                            end;
-                           Assert
-                             (abs (Pixel (F, Channel)
-                                   - Pixel (Reference.Convert_To (Depth)))
-                              < 0.001,
-                              "channel and direction");
+                           --  Conversion of a one-pixel double is not an
+                           --  oracle for arithmetic SIMD rounding at ties.
+                           --  Keep mathematical checks at integral results.
+                           if Expected = Long_Float'Floor (Expected) then
+                              Assert
+                                (abs (Pixel (F, Channel)
+                                      - Pixel (Reference.Convert_To (Depth)))
+                                 < 0.001,
+                                 "integral channel and direction");
+                           end if;
+                           declare
+                              Native_Tail : constant Long_Float :=
+                                Long_Float
+                                  (Native_Reference
+                                     (Interfaces.C.int
+                                        (Depth_Type'Pos (Depth)),
+                                      Interfaces.C.int (Channels),
+                                      Interfaces.C.int (Operation'Pos (Op)),
+                                      Interfaces.C.int (Channel),
+                                      1,
+                                      256,
+                                      Interfaces.C.double
+                                        (Pixel (F, Channel, 1, 256)),
+                                      Interfaces.C.double
+                                        (Pixel (D, Channel, 1, 256)),
+                                      Interfaces.C.double (Expected),
+                                      Interfaces.C.double
+                                        (Pixel
+                                           (Reference.Convert_To (Depth)))));
+                           begin
+                              Assert
+                                (abs (Pixel (F, Channel, 1, 256) - Native_Tail)
+                                 < 0.001,
+                                 "independent native SIMD tail");
+                           end;
                         end;
                      end loop;
                      Assert (Pixel (A) = 8.0, "source unchanged");
@@ -307,6 +343,35 @@ package body Scalar_Modes_Tests is
                     (D.Count_Non_Zero = (if Selected then 514 else 0),
                      "scalar relations fraction/range");
                   Same (D, Compare (A, Value, Kind), "mask forms");
+                  declare
+                     Parent : Mat := Create (4, 263, (UInt8, 1));
+                     Region : Mat := Parent.Region ((2, 1, 257, 2));
+                     Alias  : constant Mat := Region;
+                  begin
+                     Parent.Set_To (Make_Scalar (91.0));
+                     Compare (A, Value, Kind, Region);
+                     Same (Region, D, "comparison Region values");
+                     Same (Alias, D, "comparison retained shallow sharing");
+                     Assert
+                       (Pixel (Parent) = 91.0
+                        and then Pixel (Parent, 0, 1, 2)
+                                 = (if Selected then 255.0 else 0.0),
+                        "comparison writes parent logical Region only");
+                     if Depth = UInt8 then
+                        declare
+                           Source : Mat := Create (2, 257, (UInt8, 1));
+                           Shared : Mat := Source;
+                        begin
+                           Source.Set_To (Make_Scalar (2.0));
+                           Compare (Source, Value, Kind, Shared);
+                           Same (Source, D, "comparison shallow alias values");
+                           Shared.Set_To (Make_Scalar (17.0));
+                           Assert
+                             (Pixel (Source) = 17.0,
+                              "comparison retains same-layout allocation");
+                        end;
+                     end if;
+                  end;
                end;
             end loop;
          end loop;
@@ -400,17 +465,58 @@ package body Scalar_Modes_Tests is
         (Pixel (Subtract_From (Make_Scalar (2.0), A)) = 5.0,
          "negative reverse subtraction");
       for Depth of Depths loop
-         if Depth in UInt8 | UInt16 then
+         if Depth not in Float32 | Float64 then
             declare
-               I    : constant Mat := A.Convert_To (Depth);
-               D    : constant Mat := Divide (I, Make_Scalar (0.0));
-               Zero : Mat := Create (1, 257, (Depth, 1));
+               P     : Mat := Create (4, 263, (Depth, 4));
+               I     : constant Mat := P.Region ((2, 1, 257, 2));
+               D     : Mat := Create (2, 257, (Depth, 4));
+               Alias : constant Mat := D;
+               V     : constant Scalar := Make_Scalar (2.0, 4.0, 8.0, 0.0);
+               procedure Scalar_Zero is
+               begin
+                  Divide (I, V, D);
+               end Scalar_Zero;
+               procedure Mat_Zero is
+               begin
+                  Divide_Into (Make_Scalar (2.0, 4.0, 8.0, 16.0), I, D);
+               end Mat_Zero;
+               procedure Function_Scalar_Zero is
+                  F : constant Mat := Divide (I, V);
+                  pragma Unreferenced (F);
+               begin
+                  null;
+               end Function_Scalar_Zero;
+               procedure Function_Mat_Zero is
+                  F : constant Mat :=
+                    Divide_Into (Make_Scalar (2.0, 4.0, 8.0, 16.0), I);
+                  pragma Unreferenced (F);
+               begin
+                  null;
+               end Function_Mat_Zero;
             begin
-               Zero.Set_To (Make_Scalar (0.0));
-               Assert (Pixel (D) = 0.0, "integer zero denominator");
+               P.Set_To (Make_Scalar (8.0, 8.0, 8.0, 8.0));
+               D.Set_To (Make_Scalar (91.0, 91.0, 91.0, 91.0));
+               Assert_Raises_OpenCV_Error
+                 (Scalar_Zero'Access, "C4 zero scalar");
+               Assert_Raises_OpenCV_Error
+                 (Function_Scalar_Zero'Access, "function zero scalar");
+               --  Only the last channel of the last logical ROI pixel is zero.
+               declare
+                  Last : Mat := I.Region ((256, 1, 1, 1));
+               begin
+                  Last.Set_To (Make_Scalar (8.0, 8.0, 8.0, 0.0));
+               end;
+               Assert_Raises_OpenCV_Error
+                 (Mat_Zero'Access, "strided Mat zero");
+               Assert_Raises_OpenCV_Error
+                 (Function_Mat_Zero'Access, "function Mat zero");
                Assert
-                 (Pixel (Divide_Into (Make_Scalar (3.0), Zero)) = 0.0,
-                  "integer reverse zero denominator");
+                 (Pixel (D) = 91.0
+                  and then Pixel (Alias, 3) = 91.0
+                  and then Pixel (I) = 8.0,
+                  "preflight preserves values and shallow storage");
+               D.Set_To (Make_Scalar (90.0));
+               Assert (Pixel (Alias) = 90.0, "preflight retains sharing");
             end;
          end if;
       end loop;
@@ -433,49 +539,92 @@ package body Scalar_Modes_Tests is
 
    procedure Specials (Test : in out Fixture) is
       pragma Unreferenced (Test);
+      --  Only the NaN coefficient fixture crosses an Ada floating boundary.
+      --  Classify native results as IEEE bits, never via typed Get/conversion.
       pragma Suppress (Validity_Check);
       function From_Bits is new
-        Ada.Unchecked_Conversion (Interfaces.Unsigned_64, Float64_Value);
-      function Bits is new
-        Ada.Unchecked_Conversion (Float64_Value, Interfaces.Unsigned_64);
+        Ada.Unchecked_Conversion (Interfaces.Unsigned_64, Long_Float);
       use type Interfaces.Unsigned_64;
-      Inf : constant Float64_Value := From_Bits (16#7FF0_0000_0000_0000#);
-      NaN : constant Float64_Value := From_Bits (16#7FF8_0000_0000_0001#);
+      use type Interfaces.C.int;
+      package M renames OpenCV.Core.Module_Interop;
+      function Read_Bits
+        (Handle : M.Input_Mat_Handle) return Interfaces.Unsigned_64
+      with
+        Import,
+        Convention    => C,
+        External_Name => "opencv_core_scalar_read_bits";
+      function Write_Bits
+        (Handle : M.Output_Mat_Handle; Bits : Interfaces.Unsigned_64)
+         return Interfaces.C.int
+      with
+        Import,
+        Convention    => C,
+        External_Name => "opencv_core_scalar_write_bits";
+      function Bits (Image : Mat) return Interfaces.Unsigned_64 is
+         Value : Interfaces.Unsigned_64 := 0;
+         procedure Read (Handle : M.Input_Mat_Handle) is
+         begin
+            Value := Read_Bits (Handle);
+         end Read;
+      begin
+         M.With_Input_Handle (Image, Read'Access);
+         return Value;
+      end Bits;
+      procedure Set_Bits (Image : in out Mat; Value : Interfaces.Unsigned_64)
+      is
+         procedure Write (Handle : M.Output_Mat_Handle) is
+         begin
+            Assert (Write_Bits (Handle, Value) = 0, "IEEE fixture write");
+         end Write;
+      begin
+         M.With_Output_Handle (Image, Write'Access);
+      end Set_Bits;
+      NaN : constant Long_Float := From_Bits (16#7FF8_0000_0000_0001#);
       A   : Mat := Create (1, 1, (Float64, 1));
       procedure Reject_Add is
       begin
-         Add (A, (Long_Float (NaN), 0.0, 0.0, 0.0), A);
+         Add (A, (NaN, 0.0, 0.0, 0.0), A);
       end Reject_Add;
    begin
-      Float64_Access.Set (A, 0, 0, 2.0);
-      declare
-         D : constant Mat := Divide (A, Make_Scalar (0.0));
-         V : constant Float64_Value := Float64_Access.Get (D, 0, 0);
-      begin
-         Assert (V > Float64_Value'Last, "float division produces infinity");
-      end;
-      declare
-         D : constant Mat := Multiply (A, (Long_Float (NaN), 0.0, 0.0, 0.0));
-         V : constant Float64_Value := Float64_Access.Get (D, 0, 0);
-      begin
-         Assert (V /= V, "floating NaN coefficient");
-      end;
-      Assert_Raises_OpenCV_Error (Reject_Add'Access, "unsafe NaN rounding");
-      Float64_Access.Set (A, 0, 0, Inf);
-      declare
-         D : constant Mat := Add (A, Make_Scalar (1.0));
-      begin
-         Assert (Float64_Access.Get (D, 0, 0) = Inf, "nonfinite source");
-      end;
-      Float64_Access.Set (A, 0, 0, From_Bits (16#8000_0000_0000_0000#));
-      declare
-         D : constant Mat := Multiply (A, Make_Scalar (2.0));
-      begin
-         Assert
-           ((Bits (Float64_Access.Get (D, 0, 0)) and 16#7FFF_FFFF_FFFF_FFFF#)
-            = 0,
-            "signed zero magnitude");
-      end;
+      for Depth in Depth_Type range Float32 .. Float64 loop
+         A := Create (1, 1, (Depth, 1));
+         declare
+            Inf      : constant Interfaces.Unsigned_64 :=
+              (if Depth = Float64
+               then 16#7FF0_0000_0000_0000#
+               else 16#7F80_0000#);
+            Sign     : constant Interfaces.Unsigned_64 :=
+              (if Depth = Float64
+               then 16#8000_0000_0000_0000#
+               else 16#8000_0000#);
+            Fraction : constant Interfaces.Unsigned_64 :=
+              (if Depth = Float64
+               then 16#000F_FFFF_FFFF_FFFF#
+               else 16#007F_FFFF#);
+         begin
+            A.Set_To (Make_Scalar (2.0));
+            Assert
+              (Bits (Divide (A, Make_Scalar (0.0))) = Inf,
+               "float division produces infinity");
+            declare
+               D : constant Mat := Multiply (A, (NaN, 0.0, 0.0, 0.0));
+               B : constant Interfaces.Unsigned_64 := Bits (D);
+            begin
+               Assert
+                 ((B and Inf) = Inf and then (B and Fraction) /= 0,
+                  "floating NaN coefficient");
+            end;
+            Assert_Raises_OpenCV_Error
+              (Reject_Add'Access, "unsafe NaN rounding");
+            Set_Bits (A, Inf);
+            Assert
+              (Bits (Add (A, Make_Scalar (1.0))) = Inf, "nonfinite source");
+            Set_Bits (A, Sign);
+            Assert
+              ((Bits (Multiply (A, Make_Scalar (2.0))) and not Sign) = 0,
+               "signed zero magnitude");
+         end;
+      end loop;
    end Specials;
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite is

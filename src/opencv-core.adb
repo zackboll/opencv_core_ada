@@ -770,6 +770,26 @@ package body OpenCV.Core is
          Value.Component_3);
    begin
       for Channel in 0 .. Natural (Self.Channels) - 1 loop
+         if Self.Depth not in Float32 | Float64 then
+            if Operation = 3 and then Components (Channel) = 0.0 then
+               raise OpenCV_Error
+                 with "integer scalar division requires nonzero denominators";
+            elsif Operation = 5 then
+               declare
+                  Plane : constant Mat := Self.Extract_Channel (Channel);
+                  Zeros : constant Mat := Compare (Plane, 0.0, Equal);
+               begin
+                  --  Norm avoids a potentially overflowing element count and
+                  --  visits logical pixels, including every strided ROI row.
+                  if Zeros.Norm (Infinity) /= 0.0 then
+                     raise OpenCV_Error
+                       with
+                         "integer reverse scalar division requires nonzero Mat"
+                         & " denominator components";
+                  end if;
+               end;
+            end if;
+         end if;
          if (Operation = 0
              or else Operation = 1
              or else Operation = 4

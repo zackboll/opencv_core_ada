@@ -2364,17 +2364,19 @@ package OpenCV.Core is
    procedure Multiply (Self : Mat; Value : Scalar; Destination : in out Mat);
 
    --  Returns Self / Value, channel by channel. Input rules match scalar Add.
-   --  Scalar integer zero division is native/backend-dependent (unlike the
-   --  array/array zero rule); no signed result is promised. Floating zeros and
+   --  For all five integer depths, every active scalar denominator must be
+   --  nonzero; otherwise OpenCV_Error is raised before native execution,
+   --  preserving source and destination storage. Floating zeros and
    --  nonfinite source values retain native version/backend behavior; no NaN
    --  payload, signed-zero or cross-version bit guarantee is made.
    --  @param Self Source numerator Mat.
-   --  @param Value Channel-ordered denominators, finite including zero.
+   --  @param Value Channel-ordered denominators; nonzero for integer results.
    --  @return Independent Mat preserving Self's shape and type.
    --  @exception OpenCV_Error Raised for unsupported input or native failure.
    function Divide (Self : Mat; Value : Scalar) return Mat;
 
    --  Writes Self / Value under scalar Add's destination/alias rules.
+   --  Integer zero denominators are rejected before any destination mutation.
    --  @param Self Source numerator Mat.
    --  @param Value Channel-ordered denominators.
    --  @param Destination Caller-owned Mat receiving the quotients.
@@ -2398,7 +2400,11 @@ package OpenCV.Core is
      (Value : Scalar; Self : Mat; Destination : in out Mat);
 
    --  Reverse division: returns Value / Self, not Self / Value.
-   --  Input/ownership rules match scalar Add; zero division follows Divide.
+   --  Input/ownership rules match scalar Add. For all five integer depths,
+   --  any zero denominator component anywhere in Self raises OpenCV_Error
+   --  before native execution. Every channel and logical Region row is
+   --  inspected; rejection preserves source and destination storage.
+   --  Floating zero/nonfinite behavior follows native Divide.
    --  @param Value Channel-ordered numerators.
    --  @param Self Source denominator Mat.
    --  @return Independent Mat preserving Self's shape and type.
@@ -2406,6 +2412,7 @@ package OpenCV.Core is
    function Divide_Into (Value : Scalar; Self : Mat) return Mat;
 
    --  Writes Value / Self under scalar Add's destination/alias rules.
+   --  Integer zero Mat components are rejected before destination mutation.
    --  @param Value Channel-ordered numerators.
    --  @param Self Source denominator Mat.
    --  @param Destination Caller-owned Mat receiving Value / Self.

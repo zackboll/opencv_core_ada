@@ -1,5 +1,14 @@
 # CORE-FIN-01 focused native evidence
 
+> R1 correction: the historical checkpoint blockers below are superseded where
+> explicitly resolved in [the corrective qualification log](../../docs/core-fin-01-r1-qualification.md).
+> All integer result depths now reject zero denominators before mutation,
+> including raw-ABI conversion-safety protection. The real Ubuntu ARM64
+> mismatch was reproduced and independently identified as a Convert_To oracle
+> rounding error. Corrected validation has exactly main's eight baseline
+> failures, with no additional unexpected errors. Remaining qualification must
+> still be checked on the final source head; this is not a readiness claim.
+
 Official sources inspected at exact commits (no audit snapshot imported):
 
 | Tag | Commit | Scalar implementation |

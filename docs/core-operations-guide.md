@@ -22,9 +22,18 @@ the same coefficient bound. Floating multiply/divide permit NaN/Inf; source
 floating pixels retain native special-value behavior. Compare coefficients must
 be finite, but fractional and out-of-integer-range values are passed as double
 and handled natively. No cross-version/SIMD bit, NaN payload or signed-zero
-guarantee is made. Scalar integer zero division needs careful distinction from
-array/array division: observed signed conversion results are backend-dependent;
-see the [source findings](../tests/probes/scalar_modes_source_findings.md).
+guarantee is made.
+
+For **all five integer result depths**, `Divide` rejects any active zero scalar
+denominator, and `Divide_Into` rejects any zero Mat denominator component.
+Both function and destination forms raise `OpenCV_Error` before native execution
+and leave source/destination storage and sharing unchanged. Every logical row
+and channel is inspected, including non-contiguous Regions; padding is not part
+of the denominator. Nonzero denominators remain valid. Floating zero division
+retains native behavior. No signed-minimum-to-zero mapping is performed.
+This conservative policy avoids nonportable native Inf/NaN-to-integer paths;
+the raw ABI has the corresponding conversion-safety checks. See the
+[source findings](../tests/probes/scalar_modes_source_findings.md).
 
 Functions return independent storage. Procedures pass the actual native output:
 compatible whole/Region storage and shallow aliases are retained; mismatch

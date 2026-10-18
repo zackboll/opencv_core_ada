@@ -5783,6 +5783,25 @@ static void scalar_dispatch(const cv::Mat& source, const cv::Scalar& scalar,
             if (!std::isfinite(scalar[i]) || std::abs(scalar[i]) > INT_MAX)
                 CV_Error(cv::Error::StsBadArg, "unsafe scalar integer conversion");
     }
+    // ABI safety: scalar arithmetic uses floating working-depth division even
+    // for integer outputs. Zero denominators can therefore produce Inf/NaN
+    // followed by an out-of-range float-to-integer conversion in native code.
+    // Reject before destination creation or writes, including for raw callers.
+    if (source.depth() < CV_32F) {
+        if (operation == OPENCV_CORE_SCALAR_DIVIDE) {
+            for (int i = 0; i < std::min(source.channels(), 4); ++i)
+                if (scalar[i] == 0)
+                    CV_Error(cv::Error::StsBadArg, "zero integer scalar denominator");
+        } else if (operation == OPENCV_CORE_SCALAR_DIVIDE_INTO && !source.empty()) {
+            cv::Mat zeros;
+            // No row-count change: reshape preserves non-contiguous row strides.
+            // The checked columns*channels bound above prevents signed overflow.
+            cv::compare(source.reshape(1), 0, zeros, cv::CMP_EQ);
+            // Norm has no signed-int total count (unlike countNonZero).
+            if (cv::norm(zeros, cv::NORM_INF) != 0)
+                CV_Error(cv::Error::StsBadArg, "zero integer Mat denominator");
+        }
+    }
     // Explicit dtype avoids selecting a byte subtraction kernel using the
     // OLD destination depth (the existing matrix subtraction workaround).
     switch (operation) {
