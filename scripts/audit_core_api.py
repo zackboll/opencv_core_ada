@@ -496,8 +496,10 @@ def main():
             import core_api_discovery
             core_api_discovery.verify_checkout(args.root, args.verify_discovery_checkout,
                                                sys.modules[__name__])
-        if (args.root / "docs/core-api-header-scope.json").exists():
+        discovery_expected = "discovery_snapshot" in load(args.root / "docs/core-api-upstream.json")
+        if discovery_expected or (args.root / "docs/core-api-header-scope.json").exists():
             import core_api_discovery
+            core_api_discovery.require_artifacts(args.root, sys.modules[__name__])
             scope, native, blockers = core_api_discovery.validate(
                 args.root, sys.modules[__name__], complete=args.check_discovery)
             core_api_discovery.validate_links(args.root, sys.modules[__name__])

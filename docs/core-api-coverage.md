@@ -153,8 +153,8 @@ Remaining Ada implementation/mode/test audit work is unchanged in
 `unreviewed_scope`. Header-path authentication is complete; **reviewed header
 scope, declaration closure and semantic reconciliation are not**.
 
-Continuation verification: **69 audit tests passed** with the pinned refresh
-parser environment (36 original plus 33 new discovery/fixture tests). Standard-
+Continuation verification: **71 audit tests passed** with the pinned refresh
+parser environment (36 original plus 35 new discovery/fixture tests). Standard-
 library-only runs explicitly skip the four optional parser fixture methods;
 hosted audit CI installs the pinned requirements and exercises them separately.
 The offline manifest/tree/blob check was independently reproduced against all

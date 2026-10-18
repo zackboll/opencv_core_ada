@@ -4,6 +4,7 @@ import copy
 import hashlib
 from pathlib import Path
 import sys
+import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -16,6 +17,11 @@ class GitTreeProofTests(unittest.TestCase):
     def test_known_git_empty_tree(self):
         self.assertEqual(discovery.git_tree_hash([]),
                          "4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+
+    def test_missing_entire_scope_file_cannot_disable_discovery_checks(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(api.AuditError, "missing required discovery artifact"):
+                discovery.require_artifacts(Path(directory), api)
 
     def test_tree_payload_uses_git_not_json_hashing(self):
         blob = hashlib.sha1(b"blob 1\0x").hexdigest()
@@ -157,6 +163,10 @@ class SnapshotTests(unittest.TestCase):
     def test_native_cannot_certify_ada(self):
         self.mutate("native", lambda value: value.update(ada_coverage_audit_complete=True),
                     "cannot certify Ada coverage")
+
+    def test_completion_flag_is_required(self):
+        self.mutate("native", lambda value: value.pop("upstream_discovery_complete"),
+                    "missing explicit native discovery")
 
     def test_parser_cannot_grant_itself_independent_review(self):
         self.mutate("review", lambda value: value.update(

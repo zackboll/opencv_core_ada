@@ -19,6 +19,8 @@ SCOPE_FILE = "docs/core-api-header-scope.json"
 NATIVE_FILE = "docs/core-api-native-declarations.json"
 REVIEW_FILE = "docs/core-api-discovery-review.json"
 MANIFEST_FILE = "docs/core-api-header-manifest.json"
+REQUIRED_FILES = (SCOPE_FILE, NATIVE_FILE, REVIEW_FILE, MANIFEST_FILE,
+                  "docs/core-api-compiler-evidence.json", "docs/core-api-discovery-blockers.json")
 CATEGORIES = {"PORTABLE_PUBLIC", "TEMPLATE_INLINE", "BACKEND_PUBLIC",
               "PLATFORM_PUBLIC", "INTERNAL_IMPLEMENTATION", "HAL_IMPLEMENTATION",
               "LEGACY_COMPATIBILITY"}
@@ -45,6 +47,12 @@ ANNOTATIONS = (
 def digest(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True,
                                     separators=(",", ":")).encode()).hexdigest()
+
+
+def require_artifacts(root, api):
+    for name in REQUIRED_FILES:
+        if not (root / name).is_file():
+            api.fail(f"missing required discovery artifact: {name}")
 
 
 def write(root, name, data):
@@ -719,6 +727,7 @@ def lock_snapshot(root, api):
 
 
 def validate_links(root, api):
+    require_artifacts(root, api)
     upstream = api.load(root / "docs/core-api-upstream.json")
     scope = api.load(root / SCOPE_FILE)
     native = api.load(root / NATIVE_FILE)
@@ -845,6 +854,8 @@ def validate(root, api, complete=False, scope=None, native=None, manifest=None, 
     for value in (scope, native, manifest, review):
         if value.get("schema_version") != 1:
             api.fail("invalid discovery schema_version")
+    if type(native.get("upstream_discovery_complete")) is not bool:
+        api.fail("missing explicit native discovery completion state")
     if scope.get("manifest_sha256") != digest(manifest):
         api.fail("stale pinned header manifest fingerprint")
     if native.get("header_scope_sha256") != digest(scope):
