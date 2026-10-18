@@ -18,6 +18,8 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Validate committed offline evidence (not completion acceptance)
         run: python3 scripts/audit_core_api.py --allow-incomplete
+      - name: Validate practical scope and independent feature backlog
+        run: python3 scripts/check_core_portable_scope.py
       - name: Test evidence validator and negative acceptance gates
         run: python3 -m unittest discover -s tests/coverage -v
       - name: Install pinned refresh-parser dependencies for syntax fixtures

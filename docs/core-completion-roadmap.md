@@ -1,5 +1,27 @@
 # Core completion and freeze roadmap — provisional, audit blocked
 
+## CORE-CLOSE-001B: practical execution supersedes audit-first ordering
+
+The [portable capability scope](core-portable-capabilities.md) and
+[finite feature backlog](core-finish-backlog.md) are the current proposal for
+implementation sequencing. **CORE-FIN-01 scalar modes, CORE-FIN-02 general norms,
+and CORE-FIN-03 native runtime identity may start independently on main without
+waiting for AUD-01..AUD-07 or merging raw discovery data.** They require their
+own focused source/ABI/mode tests, not reconciliation of every C++ occurrence.
+
+The original sections below are retained as audit history. Their blanket
+“all tasks depend on AUD-07” and audit-first wording is **superseded**, as are
+their earlier P0/P1/P2 priorities where the new matrix differs. In particular
+tensor additions, UMat extensions, global controls and advanced persistence
+are optional/consumer-backed, not automatic stabilization requirements.
+`UPSTREAM_DISCOVERY_BLOCKED` and `COVERAGE_AUDIT_BLOCKED` remain unchanged;
+planning readiness does not certify either forensic gate.
+
+The [artifact retention proposal](core-audit-artifact-policy.md) preserves every
+existing raw artifact and recommends an approved lightweight successor PR rather
+than importing large raw-history commits into main. No successor is created and
+no artifact is removed by CORE-CLOSE-001B. Original 26 semantic records are intact.
+
 This is a proposal for independent review, **not** an approved release promise.
 The [coverage audit](core-api-coverage.md) has not established discovery closure.
 Therefore no claim is made that implementing the candidate backlog below would

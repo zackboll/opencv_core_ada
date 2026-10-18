@@ -1,5 +1,22 @@
 # CORE-CLOSE-001: Core API coverage evidence — INCOMPLETE
 
+## CORE-CLOSE-001B: practical portable scope, separate from forensic acceptance
+
+See the [portable capability matrix](core-portable-capabilities.md),
+[implementation-ready finite backlog](core-finish-backlog.md), and
+[artifact retention proposal](core-audit-artifact-policy.md). These separate
+portable semantics, optional/version-specific capabilities and the native C++
+implementation surface. The first three bounded implementation tasks can start
+without waiting for the full raw census. They do not certify `BOUND_FULL`,
+clear any blocker, or publish an exhaustive coverage percentage.
+
+All nine forensic JSON files, including the complete header/Clang/census data,
+original 26 records and unresolved review lists, are preserved byte-for-byte.
+The new planning ledger/evidence/checker operates separately. Header-family
+binding-target decisions in the matrix are not per-declaration review approvals.
+Overall dispositions below remain accurate: `UPSTREAM_DISCOVERY_BLOCKED` and
+`COVERAGE_AUDIT_BLOCKED`. Practical-scope acceptance is a distinct review gate.
+
 ## CORE-CLOSE-001A continuation — UPSTREAM_DISCOVERY_BLOCKED
 
 This continuation enumerates **every tracked path** under the exact pinned
