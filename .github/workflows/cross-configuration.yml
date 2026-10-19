@@ -8,6 +8,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Fail-closed synthetic configuration tests (not a cross-build)
         run: python3 -m unittest discover -s tests -p test_cross_configuration.py -v
       - name: Target test-probe and GNAT Pro evidence regressions (synthetic)

@@ -1,0 +1,26 @@
+name: Core Portable Scope
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, docs/core-close-001c-lightweight-roadmap]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Validate standalone ledger and local documentation links
+        run: python3 -I scripts/check_core_portable_scope.py
+      - name: Run offline positive and negative tests
+        run: python3 -m unittest discover -s scripts -p 'test_core_portable_scope.py' -v
+      - name: Check whitespace
+        run: git diff --check 26bf5e2e8151cb0545b928b72d3d87677543c1ae HEAD

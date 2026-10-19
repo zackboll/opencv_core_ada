@@ -12,6 +12,7 @@ C++ ABI out of normal application code.
 - [Documentation Home](https://zackboll.github.io/opencv_core_ada/)
 - [Published Developer Guides](https://zackboll.github.io/opencv_core_ada/#developer-guides)
 - [Building and Contributing](docs/documentation.md)
+- [Practical Core completion roadmap](docs/core-portable-capabilities.md)
 
 The documentation site publishes styled HTML versions of the five developer
 guides. Repository-relative guide links below remain links to their authoritative
@@ -26,9 +27,11 @@ Markdown sources on GitHub.
 > **Compatibility:** OpenCV **4.1 through 5.0**, inclusive, with one public Ada
 > API. Not every intermediate release is explicitly tested.
 >
-> **Status:** active, pre-1.0 API. Latest local campaign qualification:
-> **2,025 passing AUnit tests**, zero failed assertions or unexpected errors.
-> See the [qualification record](docs/gnatdoc-campaign-progress.md#fresh-local-qualification-after-comments-changed).
+> **Status:** active, pre-1.0 API. Merged CORE-FIN-01 has **2,037 registered
+> AUnit tests**; see its [qualification and remaining profile/platform limits](docs/core-finish-backlog.md#core-fin-01--implemented_in_main).
+> This is not whole-Core qualification. The earlier
+> [local campaign record](docs/gnatdoc-campaign-progress.md#fresh-local-qualification-after-comments-changed)
+> remains historical evidence at its recorded source state.
 >
 > **Scope:** Core only. Image processing, codecs, GUI, video, feature detection,
 > calibration and neural-network modules belong in separate dependent crates.
