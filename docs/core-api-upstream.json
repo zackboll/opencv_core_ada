@@ -1,0 +1,449 @@
+{
+  "official_remote": "https://github.com/opencv/opencv.git",
+  "versions": {
+    "4.1.0": {
+      "tag_object": "03994356b99ec36829269fe4e7887ab66fb2bc0c",
+      "commit": "371bba8f54560b374fbcd47e7e02f015ac4969ad",
+      "tree": "b1b20ff9642c0dff4e1788fc6b0148afa06d335f",
+      "headers": {
+        "modules/core/include/opencv2/core.hpp": {
+          "blob": "1cdb470b584ae8b71e3009517606609d4dcbeefa",
+          "sha256": "868394d31bb3f47ccfe64d8f57822aabb69cec005e59276e9a915555933ec2f4",
+          "url": "https://github.com/opencv/opencv/blob/371bba8f54560b374fbcd47e7e02f015ac4969ad/modules/core/include/opencv2/core.hpp"
+        },
+        "modules/core/include/opencv2/core/mat.hpp": {
+          "blob": "703c27858bb6fbd4e043ee57237c34d30f20f533",
+          "sha256": "f00d03a4f02bcddf7107dbaf7cf9114058d0e256e17346b652cecc1f4c74a694",
+          "url": "https://github.com/opencv/opencv/blob/371bba8f54560b374fbcd47e7e02f015ac4969ad/modules/core/include/opencv2/core/mat.hpp"
+        },
+        "modules/core/include/opencv2/core/matx.hpp": {
+          "blob": "320a6fef7ee0b108d9f7b56f2a3278b964668efd",
+          "sha256": "7dac9ab4042f21756d580d0860bc3fbe612efa5fde8af00966a32f48a8e6c8fb",
+          "url": "https://github.com/opencv/opencv/blob/371bba8f54560b374fbcd47e7e02f015ac4969ad/modules/core/include/opencv2/core/matx.hpp"
+        },
+        "modules/core/include/opencv2/core/types.hpp": {
+          "blob": "b1fa676e5ed3d2473f01e96e5f1ad5e1bbed5b8e",
+          "sha256": "8798da3931c223a0068ed64270e9382267fc9d493b9c800adf5e77ada3c3b566",
+          "url": "https://github.com/opencv/opencv/blob/371bba8f54560b374fbcd47e7e02f015ac4969ad/modules/core/include/opencv2/core/types.hpp"
+        },
+        "modules/core/include/opencv2/core/base.hpp": {
+          "blob": "f484e9e1081bf2f86ea833cf8b056ef609a26e96",
+          "sha256": "a034aa476924cdf4b93c86cee8e2aa3d402c73bbe97e17d575a90fed0497927b",
+          "url": "https://github.com/opencv/opencv/blob/371bba8f54560b374fbcd47e7e02f015ac4969ad/modules/core/include/opencv2/core/base.hpp"
+        },
+        "modules/core/include/opencv2/core/operations.hpp": {
+          "blob": "0e0db4072f9abf53f4286aef82d27e53e072b010",
+          "sha256": "47836a1be89c761224ae0789669197c94f1a03f4fa6fd8bcec25dd4d488ebb14",
+          "url": "https://github.com/opencv/opencv/blob/371bba8f54560b374fbcd47e7e02f015ac4969ad/modules/core/include/opencv2/core/operations.hpp"
+        },
+        "modules/core/include/opencv2/core/persistence.hpp": {
+          "blob": "ba02d698f4d92b6a48afcea94081304f9a20b5f5",
+          "sha256": "036074d5c43b1271f4583c4d36df808d2b50872a2d2032f69d80809937c9079c",
+          "url": "https://github.com/opencv/opencv/blob/371bba8f54560b374fbcd47e7e02f015ac4969ad/modules/core/include/opencv2/core/persistence.hpp"
+        },
+        "modules/core/include/opencv2/core/utility.hpp": {
+          "blob": "29dd8fb2c2b2b67fd97074cf2e4e62919bd2f49e",
+          "sha256": "94a363fe7ecef94f6e20787d415b94d6ccbdaec3b9ee42eb282f568ef96cb600",
+          "url": "https://github.com/opencv/opencv/blob/371bba8f54560b374fbcd47e7e02f015ac4969ad/modules/core/include/opencv2/core/utility.hpp"
+        },
+        "modules/core/include/opencv2/core/affine.hpp": {
+          "blob": "7e2ed307858323ffbb4fa95c7c1275b9932c0574",
+          "sha256": "c982210cdc2abc555d9abe696dce11a2acafc29a9fe45282dbaa0d17e001a678",
+          "url": "https://github.com/opencv/opencv/blob/371bba8f54560b374fbcd47e7e02f015ac4969ad/modules/core/include/opencv2/core/affine.hpp"
+        },
+        "modules/core/include/opencv2/core/quaternion.hpp": null,
+        "modules/core/include/opencv2/core/dualquaternion.hpp": null,
+        "modules/core/include/opencv2/core/async.hpp": null,
+        "modules/core/include/opencv2/core/version.hpp": {
+          "blob": "1dbe223893555c58d05ec777b513451ea1e0dd55",
+          "sha256": "5b38dc5b08360b6349eb87d7553dfd1510e3517ad43c133e6435972d9713ec2f",
+          "url": "https://github.com/opencv/opencv/blob/371bba8f54560b374fbcd47e7e02f015ac4969ad/modules/core/include/opencv2/core/version.hpp"
+        },
+        "modules/core/include/opencv2/core/optim.hpp": {
+          "blob": "36c798a5fab68c6bc4ed3df2f8f4bb6f28ce7b2c",
+          "sha256": "4ab5c16f3388c5a89eda06f9a31d734faa928f5f94175ff16da6f6032a3a1f32",
+          "url": "https://github.com/opencv/opencv/blob/371bba8f54560b374fbcd47e7e02f015ac4969ad/modules/core/include/opencv2/core/optim.hpp"
+        },
+        "modules/core/include/opencv2/core/ocl.hpp": {
+          "blob": "95f0fcdd66987fb97b75905c8a4f0716e338ac2b",
+          "sha256": "d5f92cbe6e8139978c3c8dcea2052b34e93ba63ca0556e5b25099c4dd315f70e",
+          "url": "https://github.com/opencv/opencv/blob/371bba8f54560b374fbcd47e7e02f015ac4969ad/modules/core/include/opencv2/core/ocl.hpp"
+        },
+        "modules/core/include/opencv2/core/cuda.hpp": {
+          "blob": "b49e75dc5fa9f1baa0a5f1d68f2a551f3532e62f",
+          "sha256": "d3cdb0fd444ede3a88ebb61357ee6335461754e6ed99a993fc8ad1167d6c5d8f",
+          "url": "https://github.com/opencv/opencv/blob/371bba8f54560b374fbcd47e7e02f015ac4969ad/modules/core/include/opencv2/core/cuda.hpp"
+        },
+        "modules/core/include/opencv2/core/hal/interface.h": {
+          "blob": "6f0a83d35928bc035e1807f82a261c844beddc33",
+          "sha256": "bd11814cfd2c331eaa93b42d80a0911a4916f6afa99907f332fe8f641098eb43",
+          "url": "https://github.com/opencv/opencv/blob/371bba8f54560b374fbcd47e7e02f015ac4969ad/modules/core/include/opencv2/core/hal/interface.h"
+        },
+        "modules/core/include/opencv2/core/cvstd.hpp": {
+          "blob": "6ce9e4b06024c066d1d72d033406a69c2c014fa3",
+          "sha256": "3021d6a142e970f139567e9fa3621d44919fd3f300b677dd58399e84fc266fee",
+          "url": "https://github.com/opencv/opencv/blob/371bba8f54560b374fbcd47e7e02f015ac4969ad/modules/core/include/opencv2/core/cvstd.hpp"
+        },
+        "modules/core/include/opencv2/core/softfloat.hpp": {
+          "blob": "547098038d8349ce3a23f72829875030b44a02e6",
+          "sha256": "a95e8dafcfdabd23365d7f3ba144a80629b9c4aca4d3e5a8c768353403bd74cc",
+          "url": "https://github.com/opencv/opencv/blob/371bba8f54560b374fbcd47e7e02f015ac4969ad/modules/core/include/opencv2/core/softfloat.hpp"
+        },
+        "modules/core/include/opencv2/core/utils/logger.hpp": {
+          "blob": "47094f994d09e21c50611f6629f45a7ced042082",
+          "sha256": "da5312138f539a24c82206f73f22cf5ec5485fb84e87e7cd27160879cb9f05bd",
+          "url": "https://github.com/opencv/opencv/blob/371bba8f54560b374fbcd47e7e02f015ac4969ad/modules/core/include/opencv2/core/utils/logger.hpp"
+        },
+        "modules/core/include/opencv2/core/utils/filesystem.hpp": {
+          "blob": "9f043bef5072d2b7fa018b6a9121a265c55a3ea1",
+          "sha256": "109979b7456ea26b441e0ffa034ade6363820dcfcd1b9dd4db8235b97411ae2c",
+          "url": "https://github.com/opencv/opencv/blob/371bba8f54560b374fbcd47e7e02f015ac4969ad/modules/core/include/opencv2/core/utils/filesystem.hpp"
+        }
+      }
+    },
+    "4.6.0": {
+      "tag_object": "8a185195fd3b092d8b48859b5656f3b207a9e99f",
+      "commit": "b0dc474160e389b9c9045da5db49d03ae17c6a6b",
+      "tree": "5f35a9f8f563ec920e2bc1a531f6158fd70f679c",
+      "headers": {
+        "modules/core/include/opencv2/core.hpp": {
+          "blob": "f7807e37ec07a6d0dc409569ef6e9075a572cfcb",
+          "sha256": "91fe9b03422caaf9ebe5ba35d40838ce9d69c9f87db1cabd764b77e58e0ad803",
+          "url": "https://github.com/opencv/opencv/blob/b0dc474160e389b9c9045da5db49d03ae17c6a6b/modules/core/include/opencv2/core.hpp"
+        },
+        "modules/core/include/opencv2/core/mat.hpp": {
+          "blob": "2aba15c4b917b70738ac86bd32f6a08d1a471a57",
+          "sha256": "57d703890e1a30b5318310b83e78b5d2468619f17f30df995c9b20b935f73e7e",
+          "url": "https://github.com/opencv/opencv/blob/b0dc474160e389b9c9045da5db49d03ae17c6a6b/modules/core/include/opencv2/core/mat.hpp"
+        },
+        "modules/core/include/opencv2/core/matx.hpp": {
+          "blob": "162ce6e7f82c34a39a83dbad7d0d5d775bac6816",
+          "sha256": "5c27b767a6ee8f4505515461ac66aa2252068614f3dd9fa8a00ae3a75191799d",
+          "url": "https://github.com/opencv/opencv/blob/b0dc474160e389b9c9045da5db49d03ae17c6a6b/modules/core/include/opencv2/core/matx.hpp"
+        },
+        "modules/core/include/opencv2/core/types.hpp": {
+          "blob": "28675203617f3e78d822a9069cb747918b4086e4",
+          "sha256": "e01ebc61983631d4dd7f840dbf87d125650e98d759ed389bbe24c02969bd1b01",
+          "url": "https://github.com/opencv/opencv/blob/b0dc474160e389b9c9045da5db49d03ae17c6a6b/modules/core/include/opencv2/core/types.hpp"
+        },
+        "modules/core/include/opencv2/core/base.hpp": {
+          "blob": "21a61a4e53c8ffb25d4432006182a72ac97dc7dd",
+          "sha256": "31560c66dfdc85c81438a226d3d8265e8501dc207b4a259d12bf5863e82b9bf1",
+          "url": "https://github.com/opencv/opencv/blob/b0dc474160e389b9c9045da5db49d03ae17c6a6b/modules/core/include/opencv2/core/base.hpp"
+        },
+        "modules/core/include/opencv2/core/operations.hpp": {
+          "blob": "43a9eb8603b183bded1639740c3481cb132a557c",
+          "sha256": "09491beb0acd616f21fe021f4e1587f0c8a7e0fcdf70e3893fb5320307da66d0",
+          "url": "https://github.com/opencv/opencv/blob/b0dc474160e389b9c9045da5db49d03ae17c6a6b/modules/core/include/opencv2/core/operations.hpp"
+        },
+        "modules/core/include/opencv2/core/persistence.hpp": {
+          "blob": "8e135d1a110998537b7ce627345616f8370ca017",
+          "sha256": "6e67061742fa8f46abc2cff22f42b2be3325b22ad51c10beb6007dc6244da53a",
+          "url": "https://github.com/opencv/opencv/blob/b0dc474160e389b9c9045da5db49d03ae17c6a6b/modules/core/include/opencv2/core/persistence.hpp"
+        },
+        "modules/core/include/opencv2/core/utility.hpp": {
+          "blob": "108c0d93e749595333a8cb03fda203c6c7418ed6",
+          "sha256": "2270a008a149e21c73b440602e9a792499d343e8c31fa7169d725fadb659154e",
+          "url": "https://github.com/opencv/opencv/blob/b0dc474160e389b9c9045da5db49d03ae17c6a6b/modules/core/include/opencv2/core/utility.hpp"
+        },
+        "modules/core/include/opencv2/core/affine.hpp": {
+          "blob": "1806382e99ae26be034c3d576299e9a17da10981",
+          "sha256": "2bb08c58a49aff38d5bf35e99612fb0d24f0bb1991ddf33b70ffc923393a8870",
+          "url": "https://github.com/opencv/opencv/blob/b0dc474160e389b9c9045da5db49d03ae17c6a6b/modules/core/include/opencv2/core/affine.hpp"
+        },
+        "modules/core/include/opencv2/core/quaternion.hpp": {
+          "blob": "8c21501e3f08ce8a6ffbf098640bf70372475f30",
+          "sha256": "5be7ecd41c9861a5d7d0bb162411915b93ebaf51687d9b0f384afa39c2bb5747",
+          "url": "https://github.com/opencv/opencv/blob/b0dc474160e389b9c9045da5db49d03ae17c6a6b/modules/core/include/opencv2/core/quaternion.hpp"
+        },
+        "modules/core/include/opencv2/core/dualquaternion.hpp": {
+          "blob": "1f644e9dc83b20fe8d5e9d6b85e45cca1137b14c",
+          "sha256": "47ea8b7e561c68ef848f99639070c7db1c753d24a6a1e86f61823a85680182e6",
+          "url": "https://github.com/opencv/opencv/blob/b0dc474160e389b9c9045da5db49d03ae17c6a6b/modules/core/include/opencv2/core/dualquaternion.hpp"
+        },
+        "modules/core/include/opencv2/core/async.hpp": {
+          "blob": "54560c7d001aec72de74f3596402e639786364f8",
+          "sha256": "06b3e977168204f5c329ae60c9c4d4af1e7fe82ed7da130a5fcf7bbc2f4ee427",
+          "url": "https://github.com/opencv/opencv/blob/b0dc474160e389b9c9045da5db49d03ae17c6a6b/modules/core/include/opencv2/core/async.hpp"
+        },
+        "modules/core/include/opencv2/core/version.hpp": {
+          "blob": "7b129b6dd306b06f7dc6e3b0003a1cd6e7daea8f",
+          "sha256": "964f798fcf7523be30ab63ff2dc752962df93260ab6c1da23eec843fa97a1234",
+          "url": "https://github.com/opencv/opencv/blob/b0dc474160e389b9c9045da5db49d03ae17c6a6b/modules/core/include/opencv2/core/version.hpp"
+        },
+        "modules/core/include/opencv2/core/optim.hpp": {
+          "blob": "f61a2b940716a56c425e465b97550c4c1f8b7db8",
+          "sha256": "a3c8eb7f4927f8e74aa9d54f190f7bda1cd32f1ff608d9a338ba29683b98c009",
+          "url": "https://github.com/opencv/opencv/blob/b0dc474160e389b9c9045da5db49d03ae17c6a6b/modules/core/include/opencv2/core/optim.hpp"
+        },
+        "modules/core/include/opencv2/core/ocl.hpp": {
+          "blob": "4503fa00ddaad3ccc5fe6232040dabec22b4145d",
+          "sha256": "60a459ffd5fbc37124ea6f14732b60b3daa71ce98998755e0e49693bad332942",
+          "url": "https://github.com/opencv/opencv/blob/b0dc474160e389b9c9045da5db49d03ae17c6a6b/modules/core/include/opencv2/core/ocl.hpp"
+        },
+        "modules/core/include/opencv2/core/cuda.hpp": {
+          "blob": "1ebea07c0d8d6c80e3b48dbc207be637fade05e5",
+          "sha256": "6b6a245e3e3b07c6fbc72f1a55df21bcec178cbe64852d871eb2b7f346e3812e",
+          "url": "https://github.com/opencv/opencv/blob/b0dc474160e389b9c9045da5db49d03ae17c6a6b/modules/core/include/opencv2/core/cuda.hpp"
+        },
+        "modules/core/include/opencv2/core/hal/interface.h": {
+          "blob": "6f0a83d35928bc035e1807f82a261c844beddc33",
+          "sha256": "bd11814cfd2c331eaa93b42d80a0911a4916f6afa99907f332fe8f641098eb43",
+          "url": "https://github.com/opencv/opencv/blob/b0dc474160e389b9c9045da5db49d03ae17c6a6b/modules/core/include/opencv2/core/hal/interface.h"
+        },
+        "modules/core/include/opencv2/core/cvstd.hpp": {
+          "blob": "6ce9e4b06024c066d1d72d033406a69c2c014fa3",
+          "sha256": "3021d6a142e970f139567e9fa3621d44919fd3f300b677dd58399e84fc266fee",
+          "url": "https://github.com/opencv/opencv/blob/b0dc474160e389b9c9045da5db49d03ae17c6a6b/modules/core/include/opencv2/core/cvstd.hpp"
+        },
+        "modules/core/include/opencv2/core/softfloat.hpp": {
+          "blob": "485e15c4732608f8522603df512eaaf832b9f957",
+          "sha256": "43c01ea3c1b3f99352437dddaca1b9b862e9d9b734c7a901f63abad5b28e3412",
+          "url": "https://github.com/opencv/opencv/blob/b0dc474160e389b9c9045da5db49d03ae17c6a6b/modules/core/include/opencv2/core/softfloat.hpp"
+        },
+        "modules/core/include/opencv2/core/utils/logger.hpp": {
+          "blob": "accb860ada8e3197f34e1226f1097784c8046ea2",
+          "sha256": "4ead3a377c11c77bfe9832511b69ba41baac88dbe10989cbaff376ff47a6fc6f",
+          "url": "https://github.com/opencv/opencv/blob/b0dc474160e389b9c9045da5db49d03ae17c6a6b/modules/core/include/opencv2/core/utils/logger.hpp"
+        },
+        "modules/core/include/opencv2/core/utils/filesystem.hpp": {
+          "blob": "a98d2202fc5091b72994f1d262e1607a57dda277",
+          "sha256": "5fee092db474aa653bcbe2a323e575ad15ee37c40d16d6ce84392c3eed158080",
+          "url": "https://github.com/opencv/opencv/blob/b0dc474160e389b9c9045da5db49d03ae17c6a6b/modules/core/include/opencv2/core/utils/filesystem.hpp"
+        }
+      }
+    },
+    "4.10.0": {
+      "tag_object": "67f3511f2354ebfb5f98045ee6153345f632aadd",
+      "commit": "71d3237a093b60a27601c20e9ee6c3e52154e8b1",
+      "tree": "1f7a0c7fcc20571cab11da4c86ae1e796979df5b",
+      "headers": {
+        "modules/core/include/opencv2/core.hpp": {
+          "blob": "b58a3a6ccbbec5901644fbb1a46fd64bebdec23a",
+          "sha256": "ac5e6329f120d4fba86d5cc6a5e954246ea225ba5ac8e25c145c0dd48fd7af74",
+          "url": "https://github.com/opencv/opencv/blob/71d3237a093b60a27601c20e9ee6c3e52154e8b1/modules/core/include/opencv2/core.hpp"
+        },
+        "modules/core/include/opencv2/core/mat.hpp": {
+          "blob": "2bfb0966c2a2174ed18c56f6ba929c9539289cbe",
+          "sha256": "5a1bfa94bd8e34e677938c89b48f8331892984a0887eaa69f233105c7252967c",
+          "url": "https://github.com/opencv/opencv/blob/71d3237a093b60a27601c20e9ee6c3e52154e8b1/modules/core/include/opencv2/core/mat.hpp"
+        },
+        "modules/core/include/opencv2/core/matx.hpp": {
+          "blob": "ad13797da3a86b54c2b6fb97622f29c23249ece9",
+          "sha256": "086ceebe87ed54c98155bfff778f02305697dc7cd9d10449f2f21a482023872b",
+          "url": "https://github.com/opencv/opencv/blob/71d3237a093b60a27601c20e9ee6c3e52154e8b1/modules/core/include/opencv2/core/matx.hpp"
+        },
+        "modules/core/include/opencv2/core/types.hpp": {
+          "blob": "8e56d5dd93a7d6e93ce35f5bb7f50f261e0b0767",
+          "sha256": "36492d4be823d05803afa52aa0645adecb28a1bead2e63d6957bf14dee1ec872",
+          "url": "https://github.com/opencv/opencv/blob/71d3237a093b60a27601c20e9ee6c3e52154e8b1/modules/core/include/opencv2/core/types.hpp"
+        },
+        "modules/core/include/opencv2/core/base.hpp": {
+          "blob": "cc4cc0ddd25cfed89e4194644d9010e2d2db0add",
+          "sha256": "4d56e771eab917a467ae075e21cc8554a55724779a5d1f4aa984d520c3f1aaab",
+          "url": "https://github.com/opencv/opencv/blob/71d3237a093b60a27601c20e9ee6c3e52154e8b1/modules/core/include/opencv2/core/base.hpp"
+        },
+        "modules/core/include/opencv2/core/operations.hpp": {
+          "blob": "ab7d4297822bb889fbb6312fe896418effc10640",
+          "sha256": "0f04addaf6a9bc14a13d1e842a3b949c3b9a1e7da0468878d388a072993d418f",
+          "url": "https://github.com/opencv/opencv/blob/71d3237a093b60a27601c20e9ee6c3e52154e8b1/modules/core/include/opencv2/core/operations.hpp"
+        },
+        "modules/core/include/opencv2/core/persistence.hpp": {
+          "blob": "9c4f33fb1457bcbe33454106c6656e8b458c8c7b",
+          "sha256": "7572e56657805107176621e576f736a3e3342756cc2d9232822b804d0e9909bc",
+          "url": "https://github.com/opencv/opencv/blob/71d3237a093b60a27601c20e9ee6c3e52154e8b1/modules/core/include/opencv2/core/persistence.hpp"
+        },
+        "modules/core/include/opencv2/core/utility.hpp": {
+          "blob": "e491352bcf6cc24a808860b34102435a8d325a2b",
+          "sha256": "fa80240d2406a7b2a3581195b22c521c58aa47a7299c03a2682274d1d831d961",
+          "url": "https://github.com/opencv/opencv/blob/71d3237a093b60a27601c20e9ee6c3e52154e8b1/modules/core/include/opencv2/core/utility.hpp"
+        },
+        "modules/core/include/opencv2/core/affine.hpp": {
+          "blob": "1806382e99ae26be034c3d576299e9a17da10981",
+          "sha256": "2bb08c58a49aff38d5bf35e99612fb0d24f0bb1991ddf33b70ffc923393a8870",
+          "url": "https://github.com/opencv/opencv/blob/71d3237a093b60a27601c20e9ee6c3e52154e8b1/modules/core/include/opencv2/core/affine.hpp"
+        },
+        "modules/core/include/opencv2/core/quaternion.hpp": {
+          "blob": "9e3e44332f60c584035431a3c3dbd184df5ac30e",
+          "sha256": "6f2e1ebe44bc17edd4359772260606708f5ab3d74e1bac61bab947c8270aa470",
+          "url": "https://github.com/opencv/opencv/blob/71d3237a093b60a27601c20e9ee6c3e52154e8b1/modules/core/include/opencv2/core/quaternion.hpp"
+        },
+        "modules/core/include/opencv2/core/dualquaternion.hpp": {
+          "blob": "1f644e9dc83b20fe8d5e9d6b85e45cca1137b14c",
+          "sha256": "47ea8b7e561c68ef848f99639070c7db1c753d24a6a1e86f61823a85680182e6",
+          "url": "https://github.com/opencv/opencv/blob/71d3237a093b60a27601c20e9ee6c3e52154e8b1/modules/core/include/opencv2/core/dualquaternion.hpp"
+        },
+        "modules/core/include/opencv2/core/async.hpp": {
+          "blob": "98868a130b23d041250bc66badf2a134b9489b72",
+          "sha256": "4ebd7dec356441c35e53447f548cb4c1074d93109a92716ab570d40469992313",
+          "url": "https://github.com/opencv/opencv/blob/71d3237a093b60a27601c20e9ee6c3e52154e8b1/modules/core/include/opencv2/core/async.hpp"
+        },
+        "modules/core/include/opencv2/core/version.hpp": {
+          "blob": "80e3dc32bcde5a7c4ba930dae158cbf7ed7ec854",
+          "sha256": "733d79f53c95f5d04a78faae8ce0dc58d1362d88bf404d832654feb9fce0845b",
+          "url": "https://github.com/opencv/opencv/blob/71d3237a093b60a27601c20e9ee6c3e52154e8b1/modules/core/include/opencv2/core/version.hpp"
+        },
+        "modules/core/include/opencv2/core/optim.hpp": {
+          "blob": "59fe978c2600173ea94fae48da33c7477fbcf6b6",
+          "sha256": "acfc26fa3409d2c7dc897fc816a6eab67554414a514a1a062de68a68cb351e80",
+          "url": "https://github.com/opencv/opencv/blob/71d3237a093b60a27601c20e9ee6c3e52154e8b1/modules/core/include/opencv2/core/optim.hpp"
+        },
+        "modules/core/include/opencv2/core/ocl.hpp": {
+          "blob": "891fd678b74fbba6d4a16c3f5e00cf0a658b1278",
+          "sha256": "28eb3a7a8d1cc542dd5b76360a732d918dca89048c015b140f6067310229222b",
+          "url": "https://github.com/opencv/opencv/blob/71d3237a093b60a27601c20e9ee6c3e52154e8b1/modules/core/include/opencv2/core/ocl.hpp"
+        },
+        "modules/core/include/opencv2/core/cuda.hpp": {
+          "blob": "9d210ed7b55b852737720a8b2288a5b85415f2ce",
+          "sha256": "cf40cdd785de588f59ea8af6393aa17a820c72618d677957a2b022e5360b0ccc",
+          "url": "https://github.com/opencv/opencv/blob/71d3237a093b60a27601c20e9ee6c3e52154e8b1/modules/core/include/opencv2/core/cuda.hpp"
+        },
+        "modules/core/include/opencv2/core/hal/interface.h": {
+          "blob": "6f0a83d35928bc035e1807f82a261c844beddc33",
+          "sha256": "bd11814cfd2c331eaa93b42d80a0911a4916f6afa99907f332fe8f641098eb43",
+          "url": "https://github.com/opencv/opencv/blob/71d3237a093b60a27601c20e9ee6c3e52154e8b1/modules/core/include/opencv2/core/hal/interface.h"
+        },
+        "modules/core/include/opencv2/core/cvstd.hpp": {
+          "blob": "d216d267ef062a23d8125c24e08b8f47936c13b2",
+          "sha256": "96a1ddefb0539061389be0704b554e5ab30f20132944485f4c70644ceeb4a0d2",
+          "url": "https://github.com/opencv/opencv/blob/71d3237a093b60a27601c20e9ee6c3e52154e8b1/modules/core/include/opencv2/core/cvstd.hpp"
+        },
+        "modules/core/include/opencv2/core/softfloat.hpp": {
+          "blob": "485e15c4732608f8522603df512eaaf832b9f957",
+          "sha256": "43c01ea3c1b3f99352437dddaca1b9b862e9d9b734c7a901f63abad5b28e3412",
+          "url": "https://github.com/opencv/opencv/blob/71d3237a093b60a27601c20e9ee6c3e52154e8b1/modules/core/include/opencv2/core/softfloat.hpp"
+        },
+        "modules/core/include/opencv2/core/utils/logger.hpp": {
+          "blob": "accb860ada8e3197f34e1226f1097784c8046ea2",
+          "sha256": "4ead3a377c11c77bfe9832511b69ba41baac88dbe10989cbaff376ff47a6fc6f",
+          "url": "https://github.com/opencv/opencv/blob/71d3237a093b60a27601c20e9ee6c3e52154e8b1/modules/core/include/opencv2/core/utils/logger.hpp"
+        },
+        "modules/core/include/opencv2/core/utils/filesystem.hpp": {
+          "blob": "8619ae4d1a75d3391d9aae27d44ec71af3b89fcf",
+          "sha256": "584606928e15cdfa0846f97a4f1922860b6f193e0bc3e9f15bd58796edb10b86",
+          "url": "https://github.com/opencv/opencv/blob/71d3237a093b60a27601c20e9ee6c3e52154e8b1/modules/core/include/opencv2/core/utils/filesystem.hpp"
+        }
+      }
+    },
+    "5.0.0": {
+      "tag_object": "9e2ede9628a55ec2742a1b180d3e69b0322281b9",
+      "commit": "40738fb16ceddb5fb3fea747585f7ce6abb0605b",
+      "tree": "d24a3787c9a5a37a4167d1f506e447c7f385d88a",
+      "headers": {
+        "modules/core/include/opencv2/core.hpp": {
+          "blob": "d096625e08f71cba8bec275c4128fe0fca6d1dc5",
+          "sha256": "41b7e60b713682e39d5792af1ebb6ea13ec4bba54120c9592d50927791c52f20",
+          "url": "https://github.com/opencv/opencv/blob/40738fb16ceddb5fb3fea747585f7ce6abb0605b/modules/core/include/opencv2/core.hpp"
+        },
+        "modules/core/include/opencv2/core/mat.hpp": {
+          "blob": "f1afcd9843df42cbd0c6bb05e7b8fc4364e01bae",
+          "sha256": "a306292be2a45e70d8a5991a86b8602169eaac27ce6916bcb6c3b4f2805a7459",
+          "url": "https://github.com/opencv/opencv/blob/40738fb16ceddb5fb3fea747585f7ce6abb0605b/modules/core/include/opencv2/core/mat.hpp"
+        },
+        "modules/core/include/opencv2/core/matx.hpp": {
+          "blob": "ad25c64e9984f71ca832744ca8ccb821629a9d5e",
+          "sha256": "35d8721c2d8c5b23b41d14c7d19ea1e2ff46f610d09594986b011783c950ad44",
+          "url": "https://github.com/opencv/opencv/blob/40738fb16ceddb5fb3fea747585f7ce6abb0605b/modules/core/include/opencv2/core/matx.hpp"
+        },
+        "modules/core/include/opencv2/core/types.hpp": {
+          "blob": "214f7ae906e2966bb66c5b794518f684bb5fb375",
+          "sha256": "56d6a25199c7fa166aa20e8102c3f3c78e7c53f462184b2f22005810af405db2",
+          "url": "https://github.com/opencv/opencv/blob/40738fb16ceddb5fb3fea747585f7ce6abb0605b/modules/core/include/opencv2/core/types.hpp"
+        },
+        "modules/core/include/opencv2/core/base.hpp": {
+          "blob": "b9cb9a3f3030a609ed0742173ea31e231a3fcd2b",
+          "sha256": "9e2623e6114b66874e31d45acc6f58c313c45fab38dc9538ebaca435d5a8ebb8",
+          "url": "https://github.com/opencv/opencv/blob/40738fb16ceddb5fb3fea747585f7ce6abb0605b/modules/core/include/opencv2/core/base.hpp"
+        },
+        "modules/core/include/opencv2/core/operations.hpp": {
+          "blob": "bd6736399d5a4e0e5ecfb71033832c7f7d058178",
+          "sha256": "43b94b3cfd74d1e3a38b8daa4b9f99ec6476b1e0420bfd33b74f3ce60c73b849",
+          "url": "https://github.com/opencv/opencv/blob/40738fb16ceddb5fb3fea747585f7ce6abb0605b/modules/core/include/opencv2/core/operations.hpp"
+        },
+        "modules/core/include/opencv2/core/persistence.hpp": {
+          "blob": "232dc3add447f71c28cb49a7e340bcc86575468d",
+          "sha256": "4416e51a1f49c85490a5633e3e1b0bd5aa726680594dcfa9c10819053ebc7b0b",
+          "url": "https://github.com/opencv/opencv/blob/40738fb16ceddb5fb3fea747585f7ce6abb0605b/modules/core/include/opencv2/core/persistence.hpp"
+        },
+        "modules/core/include/opencv2/core/utility.hpp": {
+          "blob": "f7873d03315f93ac2f436b6b66630588bcfb93db",
+          "sha256": "83c323b9f2007e38ba3a5fa5db7add6c5044600bcec095983937fdb789b2a56f",
+          "url": "https://github.com/opencv/opencv/blob/40738fb16ceddb5fb3fea747585f7ce6abb0605b/modules/core/include/opencv2/core/utility.hpp"
+        },
+        "modules/core/include/opencv2/core/affine.hpp": {
+          "blob": "1aebf2b5071a6a8169385bac8cc3e9c005980283",
+          "sha256": "f67b0e1a0d51ed1a0cb0f0010568a3c3649aa99ab51a0183e092858be6b00da4",
+          "url": "https://github.com/opencv/opencv/blob/40738fb16ceddb5fb3fea747585f7ce6abb0605b/modules/core/include/opencv2/core/affine.hpp"
+        },
+        "modules/core/include/opencv2/core/quaternion.hpp": {
+          "blob": "d8882f6a54e7679af456b8da5a76d75fe79c1f58",
+          "sha256": "571ed73ee3df3066b74bdfb18c4420baadbed598ba215132390ba86cf52f62be",
+          "url": "https://github.com/opencv/opencv/blob/40738fb16ceddb5fb3fea747585f7ce6abb0605b/modules/core/include/opencv2/core/quaternion.hpp"
+        },
+        "modules/core/include/opencv2/core/dualquaternion.hpp": {
+          "blob": "4fec990461c3880c4242a931e8fc8d6206449b85",
+          "sha256": "ed725cacbb20ca9b17c72256504ec74d270bcf44559952508392d7b69764f1ad",
+          "url": "https://github.com/opencv/opencv/blob/40738fb16ceddb5fb3fea747585f7ce6abb0605b/modules/core/include/opencv2/core/dualquaternion.hpp"
+        },
+        "modules/core/include/opencv2/core/async.hpp": {
+          "blob": "98868a130b23d041250bc66badf2a134b9489b72",
+          "sha256": "4ebd7dec356441c35e53447f548cb4c1074d93109a92716ab570d40469992313",
+          "url": "https://github.com/opencv/opencv/blob/40738fb16ceddb5fb3fea747585f7ce6abb0605b/modules/core/include/opencv2/core/async.hpp"
+        },
+        "modules/core/include/opencv2/core/version.hpp": {
+          "blob": "1fdd1b14f15fefb9247b6336fdf4f8205c62052f",
+          "sha256": "514354c56047bb529e81c3075890f86e1a594fb58645b7847ce1fd668be60e0f",
+          "url": "https://github.com/opencv/opencv/blob/40738fb16ceddb5fb3fea747585f7ce6abb0605b/modules/core/include/opencv2/core/version.hpp"
+        },
+        "modules/core/include/opencv2/core/optim.hpp": {
+          "blob": "59fe978c2600173ea94fae48da33c7477fbcf6b6",
+          "sha256": "acfc26fa3409d2c7dc897fc816a6eab67554414a514a1a062de68a68cb351e80",
+          "url": "https://github.com/opencv/opencv/blob/40738fb16ceddb5fb3fea747585f7ce6abb0605b/modules/core/include/opencv2/core/optim.hpp"
+        },
+        "modules/core/include/opencv2/core/ocl.hpp": {
+          "blob": "dd7955d13859023f71ad5bf3ca353525054b17f1",
+          "sha256": "59e46aee2e6cea16be8003199dc325956c22c34b1638ec879310af108ff656a0",
+          "url": "https://github.com/opencv/opencv/blob/40738fb16ceddb5fb3fea747585f7ce6abb0605b/modules/core/include/opencv2/core/ocl.hpp"
+        },
+        "modules/core/include/opencv2/core/cuda.hpp": {
+          "blob": "acb1730bd90c3f751c53e5eb7ebcb676a6f4c6c1",
+          "sha256": "69b3ca356293b4c5cb79530f6af7db49e81f90cbd5a341ef7c876d79d0979732",
+          "url": "https://github.com/opencv/opencv/blob/40738fb16ceddb5fb3fea747585f7ce6abb0605b/modules/core/include/opencv2/core/cuda.hpp"
+        },
+        "modules/core/include/opencv2/core/hal/interface.h": {
+          "blob": "c6d42b036931d5697d0440a893de4a904e70d1a1",
+          "sha256": "7841da2c1570234886d1ad7c03306343e46b7d63db12d5da54b3fe5ead04fbb7",
+          "url": "https://github.com/opencv/opencv/blob/40738fb16ceddb5fb3fea747585f7ce6abb0605b/modules/core/include/opencv2/core/hal/interface.h"
+        },
+        "modules/core/include/opencv2/core/cvstd.hpp": {
+          "blob": "d216d267ef062a23d8125c24e08b8f47936c13b2",
+          "sha256": "96a1ddefb0539061389be0704b554e5ab30f20132944485f4c70644ceeb4a0d2",
+          "url": "https://github.com/opencv/opencv/blob/40738fb16ceddb5fb3fea747585f7ce6abb0605b/modules/core/include/opencv2/core/cvstd.hpp"
+        },
+        "modules/core/include/opencv2/core/softfloat.hpp": {
+          "blob": "485e15c4732608f8522603df512eaaf832b9f957",
+          "sha256": "43c01ea3c1b3f99352437dddaca1b9b862e9d9b734c7a901f63abad5b28e3412",
+          "url": "https://github.com/opencv/opencv/blob/40738fb16ceddb5fb3fea747585f7ce6abb0605b/modules/core/include/opencv2/core/softfloat.hpp"
+        },
+        "modules/core/include/opencv2/core/utils/logger.hpp": {
+          "blob": "6c33d6d248277eb9779f954af832671f883d5d2a",
+          "sha256": "de05bb88ce641de6e1fb8b21b61cc5c4e5f3652937273a9b4697878f10ad5827",
+          "url": "https://github.com/opencv/opencv/blob/40738fb16ceddb5fb3fea747585f7ce6abb0605b/modules/core/include/opencv2/core/utils/logger.hpp"
+        },
+        "modules/core/include/opencv2/core/utils/filesystem.hpp": {
+          "blob": "8619ae4d1a75d3391d9aae27d44ec71af3b89fcf",
+          "sha256": "584606928e15cdfa0846f97a4f1922860b6f193e0bc3e9f15bd58796edb10b86",
+          "url": "https://github.com/opencv/opencv/blob/40738fb16ceddb5fb3fea747585f7ce6abb0605b/modules/core/include/opencv2/core/utils/filesystem.hpp"
+        }
+      }
+    }
+  },
+  "declaration_manifest_sha256": "1559daf5e29055da80e3e8c18c70e09e549b1a244753d14f40594f2104ed4aa2",
+  "discovery_snapshot": {
+    "header_scope_sha256": "9a7e9e1b1a544975934744b505e65992d8a4d7eaadb592038d280c6a3dc01013",
+    "native_declarations_sha256": "beecb537e1bc8ed62f2b8d7c41048a7ff543694a96e4861f2d8c52df8ba0391a",
+    "manifest_sha256": "be352dc92533d5e8c4308a04488738c621d0e338d2d0b7bcc73a8e21e8559671",
+    "review_sha256": "89157cf3551c489ced2ecb3b7d7e5001bbf5669fa8484a3d2322c496b8adb459",
+    "compiler_evidence_sha256": "24ec27b0792962a3fedce4d916ac3c72835745c28b41f1040b91dc1c6121fd4f"
+  }
+}

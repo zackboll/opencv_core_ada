@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/zackboll/opencv_core_ada/core-api-coverage.schema.json",
+  "title": "CORE-CLOSE-001 evidence snapshot, schema version 1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "baseline", "reference_sha256", "provenance_sha256", "discovery_complete", "unreviewed_scope", "capabilities"],
+  "properties": {
+    "schema_version": {"type": "integer", "enum": [1]},
+    "baseline": {"$ref": "#/$defs/sha1"},
+    "reference_sha256": {"$ref": "#/$defs/sha256"},
+    "provenance_sha256": {"$ref": "#/$defs/sha256"},
+    "discovery_complete": {"type": "boolean"},
+    "unreviewed_scope": {"type": "array", "items": {"$ref": "#/$defs/text"}},
+    "capabilities": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/capability"}}
+  },
+  "$defs": {
+    "text": {"type": "string", "minLength": 1},
+    "sha1": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "strings": {"type": "array", "items": {"$ref": "#/$defs/text"}},
+    "availability": {
+      "type": "object", "additionalProperties": false,
+      "required": ["4.1.0", "4.6.0", "4.10.0", "5.0.0"],
+      "properties": {
+        "4.1.0": {"enum": ["PRESENT", "ABSENT", "RESEARCH_REQUIRED"]},
+        "4.6.0": {"enum": ["PRESENT", "ABSENT", "RESEARCH_REQUIRED"]},
+        "4.10.0": {"enum": ["PRESENT", "ABSENT", "RESEARCH_REQUIRED"]},
+        "5.0.0": {"enum": ["PRESENT", "ABSENT", "RESEARCH_REQUIRED"]}
+      }
+    },
+    "source": {
+      "type": "object", "additionalProperties": false,
+      "required": ["path", "start", "end", "text", "sha256"],
+      "properties": {
+        "path": {"$ref": "#/$defs/text"}, "start": {"type": "integer"},
+        "end": {"type": "integer"}, "text": {"$ref": "#/$defs/text"},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "ada": {
+      "type": "object", "additionalProperties": false,
+      "required": ["identity", "signature", "source"],
+      "properties": {
+        "identity": {"$ref": "#/$defs/text"}, "signature": {"$ref": "#/$defs/text"},
+        "source": {"$ref": "#/$defs/source"}
+      }
+    },
+    "selector": {
+      "type": "object", "additionalProperties": false,
+      "required": ["path", "pattern"],
+      "properties": {
+        "path": {"$ref": "#/$defs/text"}, "pattern": {"$ref": "#/$defs/text"},
+        "lines": {"type": "integer"}
+      }
+    },
+    "ada_selector": {
+      "type": "object", "additionalProperties": false,
+      "required": ["path", "name"],
+      "properties": {
+        "path": {"$ref": "#/$defs/text"}, "name": {"$ref": "#/$defs/text"},
+        "profile": {"$ref": "#/$defs/text"}
+      }
+    },
+    "declaration": {
+      "type": "object", "additionalProperties": false,
+      "required": ["start", "end", "signature", "guards", "parse", "path", "name", "url"],
+      "properties": {
+        "start": {"type": "integer"}, "end": {"type": "integer"},
+        "signature": {"$ref": "#/$defs/text"}, "guards": {"$ref": "#/$defs/strings"},
+        "parse": {"$ref": "#/$defs/text"}, "path": {"$ref": "#/$defs/text"},
+        "name": {"$ref": "#/$defs/text"}, "url": {"$ref": "#/$defs/text"}
+      }
+    },
+    "version_evidence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["availability", "declarations"],
+      "properties": {
+        "availability": {"enum": ["PRESENT", "ABSENT", "RESEARCH_REQUIRED"]},
+        "declarations": {"type": "array", "items": {"$ref": "#/$defs/declaration"}}
+      }
+    },
+    "upstream": {
+      "type": "object", "additionalProperties": false,
+      "required": ["4.1.0", "4.6.0", "4.10.0", "5.0.0"],
+      "properties": {
+        "4.1.0": {"$ref": "#/$defs/version_evidence"},
+        "4.6.0": {"$ref": "#/$defs/version_evidence"},
+        "4.10.0": {"$ref": "#/$defs/version_evidence"},
+        "5.0.0": {"$ref": "#/$defs/version_evidence"}
+      }
+    },
+    "mode": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "state", "evidence"],
+      "properties": {
+        "name": {"$ref": "#/$defs/text"},
+        "state": {"enum": ["VERIFIED", "MISSING", "RESEARCH_REQUIRED", "EXCLUDED"]},
+        "evidence": {"$ref": "#/$defs/text"}
+      }
+    },
+    "capability": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "domain", "native_family", "native_selectors", "availability", "ada_selectors", "implementation_selectors", "test_selectors", "c_abi", "variants", "ownership", "classification", "concerns", "exclusion_reason", "priority", "downstream", "complexity", "maintenance", "review_complete", "qualification_gaps", "mode_matrix", "upstream", "ada", "implementation", "tests"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^core[.][a-z0-9.-]+$"},
+        "domain": {"enum": ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]},
+        "native_family": {"$ref": "#/$defs/text"},
+        "native_selectors": {"type": "object", "additionalProperties": {"$ref": "#/$defs/strings"}},
+        "availability": {"$ref": "#/$defs/availability"},
+        "ada_selectors": {"type": "array", "items": {"$ref": "#/$defs/ada_selector"}},
+        "implementation_selectors": {"type": "array", "items": {"$ref": "#/$defs/selector"}},
+        "test_selectors": {"type": "array", "items": {"$ref": "#/$defs/selector"}},
+        "c_abi": {"$ref": "#/$defs/strings"},
+        "variants": {"$ref": "#/$defs/text"}, "ownership": {"$ref": "#/$defs/text"},
+        "classification": {"enum": ["BOUND_FULL", "BOUND_PARTIAL", "MISSING_PORTABLE", "VERSION_GATED", "INTENTIONALLY_EXCLUDED", "RESEARCH_REQUIRED"]},
+        "concerns": {"$ref": "#/$defs/strings"},
+        "exclusion_reason": {"type": "string"},
+        "priority": {"enum": ["P0", "P1", "P2", "EXCLUDED", "RESEARCH"]},
+        "downstream": {"$ref": "#/$defs/text"}, "complexity": {"$ref": "#/$defs/text"},
+        "maintenance": {"$ref": "#/$defs/text"}, "review_complete": {"type": "boolean"},
+        "qualification_gaps": {"$ref": "#/$defs/strings"},
+        "mode_matrix": {"type": "array", "items": {"$ref": "#/$defs/mode"}},
+        "upstream": {"$ref": "#/$defs/upstream"},
+        "ada": {"type": "array", "items": {"$ref": "#/$defs/ada"}},
+        "implementation": {"type": "array", "items": {"$ref": "#/$defs/source"}},
+        "tests": {"type": "array", "items": {"$ref": "#/$defs/source"}}
+      }
+    }
+  }
+}

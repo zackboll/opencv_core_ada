@@ -1,0 +1,30 @@
+name: Core API audit evidence
+
+on:
+  pull_request:
+  push:
+    branches: [main, 'audit/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  evidence:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Validate committed offline evidence (not completion acceptance)
+        run: python3 scripts/audit_core_api.py --allow-incomplete
+      - name: Validate practical scope and independent feature backlog
+        run: python3 scripts/check_core_portable_scope.py
+      - name: Test evidence validator and negative acceptance gates
+        run: python3 -m unittest discover -s tests/coverage -v
+      - name: Install pinned refresh-parser dependencies for syntax fixtures
+        run: |
+          python3 -m venv /tmp/core-census-parser
+          /tmp/core-census-parser/bin/pip install -r tests/coverage/parser-requirements.txt
+      - name: Test discovery syntax fixtures and closure rejection
+        run: /tmp/core-census-parser/bin/python -m unittest discover -s tests/coverage -p test_core_api_discovery.py -v
