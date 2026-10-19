@@ -99,6 +99,9 @@ jobs:
               echo "=== Nested test suite ==="
               alr -C tests run
 
+              echo "=== Scalar native and sanitized shim probes ==="
+              sh scripts/run_scalar_modes_probes.sh
+
               echo "=== Scalar/vector layout boundary controls ==="
               sh tests/layout/run_controls.sh
               echo "=== Instrumented all-family public API suite ==="
@@ -247,6 +250,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Install OpenCV Core and build tools
         run: |
@@ -291,6 +296,59 @@ jobs:
 
       - name: Run test suite
         run: alr -C tests run
+
+      - name: Native ARM64 actual-shim ASan and UBSan
+        env:
+          ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/scalar-sanitizers"
+          mkdir -p "$evidence"
+          {
+            git rev-parse HEAD HEAD^{tree}
+            uname -a
+            test "$(uname -m)" = aarch64
+            /usr/bin/g++ --version
+            /usr/bin/g++ -dumpmachine
+            pkg-config --modversion opencv4
+            ldd --version
+            dpkg-query -W gcc g++ libasan8 libubsan1 libc6 libopencv-core-dev
+            printf 'ASAN_OPTIONS=%s\nUBSAN_OPTIONS=%s\n' "$ASAN_OPTIONS" "$UBSAN_OPTIONS"
+            printf 'LD_LIBRARY_PATH=%s\nLD_PRELOAD=%s\n' "${LD_LIBRARY_PATH-}" "${LD_PRELOAD-}"
+            printf 'libasan=%s\nlibubsan=%s\n' \
+              "$(/usr/bin/g++ -print-file-name=libasan.so)" \
+              "$(/usr/bin/g++ -print-file-name=libubsan.so)"
+            # This compiles tests/probes/scalar_modes_shim_probe.cpp, which
+            # includes the real cpp/opencv_core_shim.cpp, not a mock shim.
+            # System OpenCV is linked normally; it is NOT sanitizer-built.
+            CXX=/usr/bin/g++ sh -x scripts/run_scalar_modes_probes.sh
+            probe=tests/probes/obj-scalar-native/shim
+            file "$probe"
+            readelf -h -d "$probe"
+            readelf -h "$probe" | grep 'Machine:.*AArch64'
+            nm -D "$probe" > "$evidence/symbols.log"
+            grep '__asan_init' "$evidence/symbols.log"
+            grep '__ubsan_handle_' "$evidence/symbols.log"
+            ldd "$probe" | tee "$evidence/libraries.log"
+            grep 'libasan.so' "$evidence/libraries.log"
+            grep 'libubsan.so' "$evidence/libraries.log"
+            # Execute natively again, retaining loader evidence that both
+            # sanitizer runtimes initialize. No QEMU or sanitizer suppression.
+            LD_DEBUG=libs "$probe" > "$evidence/runtime.log" 2>&1
+            cat "$evidence/runtime.log"
+            grep 'calling init:.*libasan.so' "$evidence/runtime.log"
+            grep 'calling init:.*libubsan.so' "$evidence/runtime.log"
+            echo 'PASS native AArch64 actual-shim ASan/UBSan; exit 0; leak detection enabled'
+          } 2>&1 | tee "$evidence/qualification.log"
+
+      - name: Retain native ARM64 sanitizer evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-arm64-scalar-sanitizers-${{ github.run_id }}
+          path: ${{ runner.temp }}/scalar-sanitizers/
+          if-no-files-found: error
 
       - name: Recursive installed and relocated Core Mat consumer
         run: sh scripts/validate_installed_mat_consumer.sh

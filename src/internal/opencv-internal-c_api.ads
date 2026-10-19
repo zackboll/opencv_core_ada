@@ -1311,6 +1311,54 @@ package OpenCV.Internal.C_API is
    Normalize_Inf     : constant C_Int32 := 3;
    Normalize_Min_Max : constant C_Int32 := 4;
 
+   function Mat_Storage_Relation
+     (Source, Destination : Mat_Handle; Relation : access C_Int32)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_storage_relation";
+
+   function Mat_Scalar_Arithmetic
+     (Source    : Mat_Handle;
+      Value     : access constant Scalar;
+      Operation : C_Int32;
+      Result    : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_scalar_arithmetic";
+
+   function Mat_Scalar_Arithmetic_Into
+     (Source      : Mat_Handle;
+      Value       : access constant Scalar;
+      Operation   : C_Int32;
+      Destination : Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_scalar_arithmetic_into";
+
+   function Mat_Compare_Scalar
+     (Source : Mat_Handle;
+      Value  : C_Double;
+      Kind   : C_Int32;
+      Result : access Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_compare_scalar";
+
+   function Mat_Compare_Scalar_Into
+     (Source      : Mat_Handle;
+      Value       : C_Double;
+      Kind        : C_Int32;
+      Destination : Mat_Handle) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_compare_scalar_into";
+
    Compare_Equal            : constant C_Int32 := 0;
    Compare_Not_Equal        : constant C_Int32 := 1;
    Compare_Less_Than        : constant C_Int32 := 2;

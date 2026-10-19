@@ -747,6 +747,252 @@ package body OpenCV.Core is
       end if;
    end Validate_Compare_Compatibility;
 
+   procedure Validate_Scalar_Source (Self : Mat; Comparison : Boolean) is
+   begin
+      if Self.Is_Empty or else Self.Dimension_Count /= 2 then
+         raise OpenCV_Error with "scalar modes require nonempty 2-D Mat";
+      end if;
+      if Self.Depth = Float16
+        or else Self.Channels > (if Comparison then 1 else 4)
+      then
+         raise OpenCV_Error with "unsupported scalar depth or channel count";
+      end if;
+   end Validate_Scalar_Source;
+
+   procedure Validate_Scalar_Value
+     (Self : Mat; Value : Scalar; Operation : Integer)
+   is
+      pragma Suppress (Validity_Check);
+      Components : constant array (Natural range 0 .. 3) of Long_Float :=
+        (Value.Component_0,
+         Value.Component_1,
+         Value.Component_2,
+         Value.Component_3);
+   begin
+      for Channel in 0 .. Natural (Self.Channels) - 1 loop
+         if Self.Depth not in Float32 | Float64 then
+            if Operation = 3 and then Components (Channel) = 0.0 then
+               raise OpenCV_Error
+                 with "integer scalar division requires nonzero denominators";
+            elsif Operation = 5 then
+               declare
+                  Plane : constant Mat := Self.Extract_Channel (Channel);
+                  Zeros : constant Mat := Compare (Plane, 0.0, Equal);
+               begin
+                  --  Norm avoids a potentially overflowing element count and
+                  --  visits logical pixels, including every strided ROI row.
+                  if Zeros.Norm (Infinity) /= 0.0 then
+                     raise OpenCV_Error
+                       with
+                         "integer reverse scalar division requires nonzero Mat"
+                         & " denominator components";
+                  end if;
+               end;
+            end if;
+         end if;
+         if (Operation = 0
+             or else Operation = 1
+             or else Operation = 4
+             or else Self.Depth not in Float32 | Float64)
+           and then (Components (Channel) /= Components (Channel)
+                     or else abs Components (Channel) > Long_Float'Last)
+         then
+            raise OpenCV_Error with "scalar coefficients must be finite";
+         end if;
+         --  Legacy actualScalarDepth invokes cvRound before type selection.
+         --  Integer results also enter native signed-32 conversion paths.
+         if (Operation = 0
+             or else Operation = 1
+             or else Operation = 4
+             or else Self.Depth not in Float32 | Float64)
+           and then abs Components (Channel) > 2_147_483_647.0
+         then
+            raise OpenCV_Error with "scalar exceeds safe native conversion";
+         end if;
+      end loop;
+   end Validate_Scalar_Value;
+
+   procedure Validate_Scalar_Destination
+     (Self : Mat; Destination : Mat; Comparison : Boolean)
+   is
+      Relation : aliased OpenCV.Internal.C_API.C_Int32 := 0;
+   begin
+      if Destination.Temporary_View then
+         raise OpenCV_Error with "temporary Mat cannot be a destination";
+      end if;
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Storage_Relation
+           (Self.Handle, Destination.Handle, Relation'Access),
+         "scalar storage relation");
+      if Relation = 2
+        or else (Relation = 1 and then Comparison and then Self.Depth /= UInt8)
+      then
+         raise OpenCV_Error with "unsupported scalar source/output overlap";
+      end if;
+   end Validate_Scalar_Destination;
+
+   function Scalar_Arithmetic
+     (Self : Mat; Value : Scalar; Operation : Integer) return Mat
+   is
+      pragma Suppress (Validity_Check);
+      Result : Mat;
+      Native : aliased OpenCV.Internal.C_API.Scalar;
+      Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=
+        OpenCV.Internal.C_API.Null_Mat_Handle;
+   begin
+      Validate_Scalar_Source (Self, False);
+      Validate_Scalar_Value (Self, Value, Operation);
+      Native :=
+        (Component_0 => Interfaces.C.double (Value.Component_0),
+         Component_1 => Interfaces.C.double (Value.Component_1),
+         Component_2 => Interfaces.C.double (Value.Component_2),
+         Component_3 => Interfaces.C.double (Value.Component_3));
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Scalar_Arithmetic
+           (Self.Handle,
+            Native'Access,
+            OpenCV.Internal.C_API.C_Int32 (Operation),
+            Handle'Access),
+         "Mat scalar arithmetic");
+      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);
+      Result.Handle := Handle;
+      return Result;
+   end Scalar_Arithmetic;
+
+   procedure Scalar_Arithmetic
+     (Self        : Mat;
+      Value       : Scalar;
+      Operation   : Integer;
+      Destination : in out Mat)
+   is
+      pragma Suppress (Validity_Check);
+      Native : aliased OpenCV.Internal.C_API.Scalar;
+   begin
+      Validate_Scalar_Source (Self, False);
+      Validate_Scalar_Value (Self, Value, Operation);
+      Validate_Scalar_Destination (Self, Destination, False);
+      Native :=
+        (Component_0 => Interfaces.C.double (Value.Component_0),
+         Component_1 => Interfaces.C.double (Value.Component_1),
+         Component_2 => Interfaces.C.double (Value.Component_2),
+         Component_3 => Interfaces.C.double (Value.Component_3));
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Scalar_Arithmetic_Into
+           (Self.Handle,
+            Native'Access,
+            OpenCV.Internal.C_API.C_Int32 (Operation),
+            Destination.Handle),
+         "Mat destination scalar arithmetic");
+   end Scalar_Arithmetic;
+
+   function Add (Self : Mat; Value : Scalar) return Mat is
+      pragma Suppress (Validity_Check);
+   begin
+      return Scalar_Arithmetic (Self, Value, 0);
+   end Add;
+
+   procedure Add (Self : Mat; Value : Scalar; Destination : in out Mat) is
+      pragma Suppress (Validity_Check);
+   begin
+      Scalar_Arithmetic (Self, Value, 0, Destination);
+   end Add;
+
+   function Subtract (Self : Mat; Value : Scalar) return Mat is
+      pragma Suppress (Validity_Check);
+   begin
+      return Scalar_Arithmetic (Self, Value, 1);
+   end Subtract;
+
+   procedure Subtract (Self : Mat; Value : Scalar; Destination : in out Mat) is
+      pragma Suppress (Validity_Check);
+   begin
+      Scalar_Arithmetic (Self, Value, 1, Destination);
+   end Subtract;
+
+   function Multiply (Self : Mat; Value : Scalar) return Mat is
+      pragma Suppress (Validity_Check);
+   begin
+      return Scalar_Arithmetic (Self, Value, 2);
+   end Multiply;
+
+   procedure Multiply (Self : Mat; Value : Scalar; Destination : in out Mat) is
+      pragma Suppress (Validity_Check);
+   begin
+      Scalar_Arithmetic (Self, Value, 2, Destination);
+   end Multiply;
+
+   function Divide (Self : Mat; Value : Scalar) return Mat is
+      pragma Suppress (Validity_Check);
+   begin
+      return Scalar_Arithmetic (Self, Value, 3);
+   end Divide;
+
+   procedure Divide (Self : Mat; Value : Scalar; Destination : in out Mat) is
+      pragma Suppress (Validity_Check);
+   begin
+      Scalar_Arithmetic (Self, Value, 3, Destination);
+   end Divide;
+
+   function Subtract_From (Value : Scalar; Self : Mat) return Mat is
+      pragma Suppress (Validity_Check);
+   begin
+      return Scalar_Arithmetic (Self, Value, 4);
+   end Subtract_From;
+
+   procedure Subtract_From
+     (Value : Scalar; Self : Mat; Destination : in out Mat)
+   is
+      pragma Suppress (Validity_Check);
+   begin
+      Scalar_Arithmetic (Self, Value, 4, Destination);
+   end Subtract_From;
+
+   function Divide_Into (Value : Scalar; Self : Mat) return Mat is
+      pragma Suppress (Validity_Check);
+   begin
+      return Scalar_Arithmetic (Self, Value, 5);
+   end Divide_Into;
+
+   procedure Divide_Into (Value : Scalar; Self : Mat; Destination : in out Mat)
+   is
+      pragma Suppress (Validity_Check);
+   begin
+      Scalar_Arithmetic (Self, Value, 5, Destination);
+   end Divide_Into;
+
+   function Compare
+     (Self : Mat; Value : Float64_Value; Kind : Comparison_Kind) return Mat
+   is
+      pragma Suppress (Validity_Check);
+      Result : Mat;
+   begin
+      Compare (Self, Value, Kind, Result);
+      return Result;
+   end Compare;
+
+   procedure Compare
+     (Self        : Mat;
+      Value       : Float64_Value;
+      Kind        : Comparison_Kind;
+      Destination : in out Mat)
+   is
+      pragma Suppress (Validity_Check);
+      use type Float64_Value;
+   begin
+      Validate_Scalar_Source (Self, True);
+      if Value /= Value or else abs Value > Float64_Value'Last then
+         raise OpenCV_Error with "comparison scalar must be finite";
+      end if;
+      Validate_Scalar_Destination (Self, Destination, True);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Compare_Scalar_Into
+           (Self.Handle,
+            Interfaces.C.double (Value),
+            To_C_Comparison_Kind (Kind),
+            Destination.Handle),
+         "Mat scalar comparison");
+   end Compare;
+
    function Add (Left, Right : Mat) return Mat is
       Result     : Mat;
       New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=

@@ -2306,6 +2306,147 @@ package OpenCV.Core is
       Alpha       : Long_Float := 1.0;
       Beta        : Long_Float := 0.0);
 
+   --  Adds channel-ordered Value to Self using native scalar arithmetic.
+   --  Requires nonempty exactly 2-D C1..C4 storage, UInt8, Int8, UInt16,
+   --  Int16, Int32, Float32 or Float64. Float16 is rejected. Scalar components
+   --  are not repeated: Make_Scalar (5.0) leaves channels 1..3 zero.
+   --  Native work-depth conversion, rounding and saturation apply;
+   --  Int32 overflow is not portable mathematical arithmetic. Coefficients
+   --  must be finite; see the operations guide for conversion limits.
+   --  @param Self Source Mat, including a valid strided Region or scoped view.
+   --  @param Value Component 0 applies to channel 0, and so on.
+   --  @return Independently owned Mat with Self's shape and element type.
+   --  @exception OpenCV_Error Raised for unsupported input or native failure.
+   function Add (Self : Mat; Value : Scalar) return Mat;
+
+   --  Writes Self + Value into the actual caller-owned Destination. Compatible
+   --  Region storage is reused; mismatches detach, retaining old aliases.
+   --  Exact and same-layout shallow aliases are supported. Other possibly
+   --  overlapping byte spans are rejected conservatively before mutation.
+   --  Temporary external/selected outputs are rejected; scoped inputs
+   --  are allowed. Preflight failures preserve Destination, but arbitrary
+   --  native failures do not promise rollback. Input rules match scalar Add.
+   --  @param Self Source Mat.
+   --  @param Value Channel-ordered scalar, not implicitly repeated.
+   --  @param Destination Caller-owned Mat receiving Self + Value.
+   --  @exception OpenCV_Error Raised for unsupported input/alias or failure.
+   procedure Add (Self : Mat; Value : Scalar; Destination : in out Mat);
+
+   --  Returns Self - Value with the input and numerical rules of scalar Add.
+   --  @param Self Source Mat.
+   --  @param Value Channel-ordered subtrahend.
+   --  @return Independent Mat preserving Self's shape and type.
+   --  @exception OpenCV_Error Raised for unsupported input or native failure.
+   function Subtract (Self : Mat; Value : Scalar) return Mat;
+
+   --  Writes Self - Value under scalar Add's destination/alias rules.
+   --  @param Self Source Mat.
+   --  @param Value Channel-ordered subtrahend.
+   --  @param Destination Caller-owned Mat receiving Self - Value.
+   --  @exception OpenCV_Error Raised for unsupported input/alias or failure.
+   procedure Subtract (Self : Mat; Value : Scalar; Destination : in out Mat);
+
+   --  Returns Self * Value; input/ownership rules match scalar Add.
+   --  Native multiplication uses its own working-depth conversion, not scalar
+   --  pre-rounding to Self's type. Floating multiply/divide permit nonfinite
+   --  coefficients; integer coefficients must be finite and within Int32 max.
+   --  @param Self Source Mat.
+   --  @param Value Channel-ordered factors.
+   --  @return Independent Mat preserving Self's shape and type.
+   --  @exception OpenCV_Error Raised for unsupported input or native failure.
+   function Multiply (Self : Mat; Value : Scalar) return Mat;
+
+   --  Writes Self * Value under scalar Add's destination/alias rules.
+   --  @param Self Source Mat.
+   --  @param Value Channel-ordered factors.
+   --  @param Destination Caller-owned Mat receiving the products.
+   --  @exception OpenCV_Error Raised for unsupported input/alias or failure.
+   procedure Multiply (Self : Mat; Value : Scalar; Destination : in out Mat);
+
+   --  Returns Self / Value, channel by channel. Input rules match scalar Add.
+   --  For all five integer depths, every active scalar denominator must be
+   --  nonzero; otherwise OpenCV_Error is raised before native execution,
+   --  preserving source and destination storage. Floating zeros and
+   --  nonfinite source values retain native version/backend behavior; no NaN
+   --  payload, signed-zero or cross-version bit guarantee is made.
+   --  @param Self Source numerator Mat.
+   --  @param Value Channel-ordered denominators; nonzero for integer results.
+   --  @return Independent Mat preserving Self's shape and type.
+   --  @exception OpenCV_Error Raised for unsupported input or native failure.
+   function Divide (Self : Mat; Value : Scalar) return Mat;
+
+   --  Writes Self / Value under scalar Add's destination/alias rules.
+   --  Integer zero denominators are rejected before any destination mutation.
+   --  @param Self Source numerator Mat.
+   --  @param Value Channel-ordered denominators.
+   --  @param Destination Caller-owned Mat receiving the quotients.
+   --  @exception OpenCV_Error Raised for unsupported input/alias or failure.
+   procedure Divide (Self : Mat; Value : Scalar; Destination : in out Mat);
+
+   --  Reverse subtraction: returns Value - Self, not Self - Value.
+   --  Input, numeric and ownership rules match scalar Add.
+   --  @param Value Channel-ordered minuend.
+   --  @param Self Source subtrahend Mat.
+   --  @return Independent Mat preserving Self's shape and type.
+   --  @exception OpenCV_Error Raised for unsupported input or native failure.
+   function Subtract_From (Value : Scalar; Self : Mat) return Mat;
+
+   --  Writes Value - Self under scalar Add's destination/alias rules.
+   --  @param Value Channel-ordered minuend.
+   --  @param Self Source subtrahend Mat.
+   --  @param Destination Caller-owned Mat receiving Value - Self.
+   --  @exception OpenCV_Error Raised for unsupported input/alias or failure.
+   procedure Subtract_From
+     (Value : Scalar; Self : Mat; Destination : in out Mat);
+
+   --  Reverse division: returns Value / Self, not Self / Value.
+   --  Input/ownership rules match scalar Add. For all five integer depths,
+   --  any zero denominator component anywhere in Self raises OpenCV_Error
+   --  before native execution. Every channel and logical Region row is
+   --  inspected; rejection preserves source and destination storage.
+   --  Floating zero/nonfinite behavior follows native Divide.
+   --  @param Value Channel-ordered numerators.
+   --  @param Self Source denominator Mat.
+   --  @return Independent Mat preserving Self's shape and type.
+   --  @exception OpenCV_Error Raised for unsupported input or native failure.
+   function Divide_Into (Value : Scalar; Self : Mat) return Mat;
+
+   --  Writes Value / Self under scalar Add's destination/alias rules.
+   --  Integer zero Mat components are rejected before destination mutation.
+   --  @param Value Channel-ordered numerators.
+   --  @param Self Source denominator Mat.
+   --  @param Destination Caller-owned Mat receiving Value / Self.
+   --  @exception OpenCV_Error Raised for unsupported input/alias or failure.
+   procedure Divide_Into
+     (Value : Scalar; Self : Mat; Destination : in out Mat);
+
+   --  Compares Self relation Value without narrowing Value to Self's depth.
+   --  Requires nonempty exactly 2-D C1, one of the seven scalar Add depths.
+   --  Fractional and out-of-integer-range finite values retain native compare
+   --  behavior. Value must be finite. Nonfinite source pixels remain native.
+   --  @param Self Single-channel source Mat.
+   --  @param Value Finite Float64 comparison value.
+   --  @param Kind Relation read as Self relation Value.
+   --  @return Independent UInt8 C1 Mat containing only zero or 255.
+   --  @exception OpenCV_Error Raised for unsupported input or native failure.
+   function Compare
+     (Self : Mat; Value : Float64_Value; Kind : Comparison_Kind) return Mat;
+
+   --  Writes the scalar comparison mask into the actual Destination.
+   --  Reuse/detachment/temporary rules match scalar Add. Overlapping inputs
+   --  are allowed only for identical-layout UInt8 C1 source/destination;
+   --  other overlap, including depth-changing exact alias, is rejected.
+   --  @param Self Single-channel source Mat.
+   --  @param Value Finite Float64 comparison value, not prematurely narrowed.
+   --  @param Kind Relation read as Self relation Value.
+   --  @param Destination Caller-owned Mat receiving the UInt8 C1 mask.
+   --  @exception OpenCV_Error Raised for unsupported input/alias or failure.
+   procedure Compare
+     (Self        : Mat;
+      Value       : Float64_Value;
+      Kind        : Comparison_Kind;
+      Destination : in out Mat);
+
    --  Adds corresponding elements of two Mats. Both operands must have
    --  identical 2-D shape and element type. The result owns independent
    --  storage and preserves that element type; saturation and overflow

@@ -380,9 +380,9 @@ class GeneratedSiteTests(unittest.TestCase):
         self.assertEqual(before, {p.name: p.read_bytes() for p in api.iterdir() if p.is_file()})
         from link_gnatdoc_types import process as check_types
         counts, pages = check_types(api, ROOT / 'src', check=True)
-        self.assertEqual((counts['linked'], pages), (2698, 168))
+        self.assertEqual((counts['linked'], pages), (2742, 168))
         manifest = json.loads((api / 'type-crossrefs.json').read_text())
-        self.assertEqual(sum(len(p['snippets']) for p in manifest['pages'].values()), 1268)
+        self.assertEqual(sum(len(p['snippets']) for p in manifest['pages'].values()), 1282)
         from link_gnatdoc_types import LINK, SECTION
         from collections import Counter
         instances_linked = Counter()

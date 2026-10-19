@@ -67,18 +67,18 @@ class OutputVerificationTests(unittest.TestCase):
             self.assertEqual(VERIFY.versions("program"), {"libc.so.6": {"GLIBC_2.34"}})
 
     def test_complete_unfiltered_execution_is_required(self):
-        good = ("Registered tests: 2025\n"
-                + "".join(f"RUN {index}/2025: test\n" for index in range(1, 2026))
-                + "Total Tests Run:   2025\nSuccessful Tests:  2025\n"
+        good = ("Registered tests: 2037\n"
+                + "".join(f"RUN {index}/2037: test\n" for index in range(1, 2038))
+                + "Total Tests Run:   2037\nSuccessful Tests:  2037\n"
                   "Failed Assertions: 0\nUnexpected Errors: 0\n")
         with tempfile.TemporaryDirectory() as temp:
             path = Path(temp) / "run.log"
             path.write_text(good)
-            self.assertEqual(VERIFY.check_summary(path)["executed"], 2025)
-            for text in (good.replace("RUN 1/2025: test\n", ""),
-                         good.replace("RUN 1/2025", "RUN 2/2025"),
+            self.assertEqual(VERIFY.check_summary(path)["executed"], 2037)
+            for text in (good.replace("RUN 1/2037: test\n", ""),
+                         good.replace("RUN 1/2037", "RUN 2/2037"),
                          good.replace("Unexpected Errors: 0", "Unexpected Errors: 1"),
-                         good + "Registered tests: 2025\n", good + "FAIL test\n"):
+                         good + "Registered tests: 2037\n", good + "FAIL test\n"):
                 path.write_text(text)
                 with self.subTest(text=text[:40]), self.assertRaises(ValueError):
                     VERIFY.check_summary(path)

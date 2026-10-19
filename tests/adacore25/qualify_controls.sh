@@ -59,8 +59,8 @@ build all-family tests/layout/all_family_controls.gpr \
     "-XLAYOUT_OPENCV_INCLUDE=-I$ENV_PREFIX/usr/include/opencv4"
 verify "$work/tests/layout" all-family "$work/tests/layout/bin-family/all_family_controls"
 execute all-family "$work/tests/layout/bin-family/all_family_controls"
-grep -qx 'Total Tests Run:   2025' "$evidence/logs/all-family-qemu.log"
-grep -qx 'Successful Tests:  2025' "$evidence/logs/all-family-qemu.log"
+grep -qx 'Total Tests Run:   2037' "$evidence/logs/all-family-qemu.log"
+grep -qx 'Successful Tests:  2037' "$evidence/logs/all-family-qemu.log"
 grep -qx 'Failed Assertions: 0' "$evidence/logs/all-family-qemu.log"
 grep -qx 'Unexpected Errors: 0' "$evidence/logs/all-family-qemu.log"
 grep -qx 'PASS all-family public API suite with live constructor/lease controls' \

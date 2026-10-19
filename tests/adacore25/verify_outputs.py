@@ -83,15 +83,15 @@ def check_trace(path, ada, cxx, sysroot):
 
 def check_summary(path):
     text = path.read_text()
-    for line in ("Registered tests: 2025", "Total Tests Run:   2025",
-                 "Successful Tests:  2025", "Failed Assertions: 0",
+    for line in ("Registered tests: 2037", "Total Tests Run:   2037",
+                 "Successful Tests:  2037", "Failed Assertions: 0",
                  "Unexpected Errors: 0"):
         require(text.splitlines().count(line) == 1, f"missing/duplicate summary: {line}")
-    sequence = re.findall(r"^RUN ([0-9]+)/2025: .+$", text, re.M)
-    require(sequence == [str(index) for index in range(1, 2026)],
+    sequence = re.findall(r"^RUN ([0-9]+)/2037: .+$", text, re.M)
+    require(sequence == [str(index) for index in range(1, 2038)],
             "missing, duplicate or reordered test execution records")
     require(not re.search(r"^(?:FAIL|ERROR) ", text, re.M), "test failure record")
-    return dict(registered=2025, executed=2025, successful=2025,
+    return dict(registered=2037, executed=2037, successful=2037,
                 failed_assertions=0, unexpected_errors=0)
 
 

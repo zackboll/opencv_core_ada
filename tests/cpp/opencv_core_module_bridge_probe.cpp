@@ -4,6 +4,9 @@
 
 #include <exception>
 #include <cstdint>
+#include <cstdio>
+#include <cmath>
+#include <cstring>
 
 #if defined(_WIN32)
 #define OPENCV_CORE_MODULE_PROBE_EXPORT __declspec(dllexport)
@@ -63,6 +66,85 @@ opencv_core_status read_sparse_node(const cv::SparseMat *mat, int32_t index_coun
 } // namespace
 
 extern "C" {
+
+// IEEE fixtures/classification use integer object representations so GNAT
+// validity checks never have to transport a nonfinite typed-access result.
+OPENCV_CORE_MODULE_PROBE_EXPORT uint64_t opencv_core_scalar_read_bits(
+    const opencv_core_mat_handle* handle) {
+    try {
+        const cv::Mat* mat = nullptr;
+        if (opencv_core_module_input_mat(handle, &mat) != OPENCV_CORE_OK ||
+            !mat || mat->empty() || mat->channels() != 1)
+            return UINT64_MAX;
+        uint64_t bits = 0;
+        if (mat->depth() == CV_64F) std::memcpy(&bits, mat->data, 8);
+        else if (mat->depth() == CV_32F) std::memcpy(&bits, mat->data, 4);
+        else return UINT64_MAX;
+        return bits;
+    } catch (...) { return UINT64_MAX; }
+}
+
+OPENCV_CORE_MODULE_PROBE_EXPORT int32_t opencv_core_scalar_write_bits(
+    opencv_core_mat_handle* handle, uint64_t bits) {
+    try {
+        cv::Mat* mat = nullptr;
+        if (opencv_core_module_output_mat(handle, &mat) != OPENCV_CORE_OK ||
+            !mat || mat->empty() || mat->channels() != 1)
+            return -1;
+        if (mat->depth() == CV_64F) std::memcpy(mat->data, &bits, 8);
+        else if (mat->depth() == CV_32F) {
+            const uint32_t narrow = static_cast<uint32_t>(bits);
+            std::memcpy(mat->data, &narrow, 4);
+        } else return -1;
+        return 0;
+    } catch (...) { return -1; }
+}
+
+// Test-only independent oracle: deliberately calls native OpenCV, not shim
+// arithmetic helpers. Keep the exact failing shape and coefficients visible.
+OPENCV_CORE_MODULE_PROBE_EXPORT double opencv_core_scalar_numeric_reference(
+    int depth, int channels, int operation, int channel, int row, int column,
+    double actual, double destination, double intermediate, double oracle) {
+    try {
+        cv::Mat source(2, 257, CV_MAKETYPE(depth, channels), cv::Scalar::all(8));
+        const cv::Scalar scalar(2, 4, 8, 16);
+        cv::Mat result, wide;
+        switch (operation) {
+        case 0: cv::add(source, scalar, result, cv::noArray(), depth); break;
+        case 1: cv::subtract(source, scalar, result, cv::noArray(), depth); break;
+        case 2: cv::multiply(source, scalar, result, 1, depth); break;
+        case 3: cv::divide(source, scalar, result, 1, depth); break;
+        case 4: cv::subtract(scalar, source, result, cv::noArray(), depth); break;
+        case 5: cv::divide(scalar, source, result, 1, depth); break;
+        default: return NAN;
+        }
+        result.convertTo(wide, CV_64F);
+        const double native = wide.ptr<double>(row)[column * channels + channel];
+        if (std::abs(actual - oracle) >= .001 ||
+            std::abs(actual - native) >= .001) {
+#if defined(__aarch64__)
+            const char* arch = "aarch64";
+#elif defined(__x86_64__)
+            const char* arch = "x86_64";
+#else
+            const char* arch = "other";
+#endif
+            uint64_t bits = 0;
+            std::memcpy(&bits, &actual, sizeof(bits));
+            std::printf("SCALAR NUMERIC OpenCV=%s arch=%s depth=%d C%d op=%d "
+                        "channel=%d row=%d col=%d actual=%.17g "
+                        "actual_float64_bits=%016llx expected=%.17g "
+                        "mathematical=%.17g destination=%.17g native=%.17g\n",
+                        CV_VERSION, arch, depth, channels, operation, channel,
+                        row, column, actual, static_cast<unsigned long long>(bits),
+                        oracle, intermediate, destination, native);
+            std::fflush(stdout);
+        }
+        return native;
+    } catch (...) {
+        return NAN;
+    }
+}
 
 OPENCV_CORE_MODULE_PROBE_EXPORT int32_t opencv_core_module_probe_version_major(
     void) {

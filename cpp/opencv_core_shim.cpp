@@ -5767,6 +5767,166 @@ static void dense_add_or_subtract(const Dense &left, const Dense &right,
 }
 }
 
+extern "C++" {
+static void scalar_dispatch(const cv::Mat& source, const cv::Scalar& scalar,
+                            int32_t operation, cv::Mat& destination) {
+    // ABI safety: legacy arithmetic dispatch tables contain null Float16
+    // entries, and flattening a row evaluates columns * channels in int.
+    if (source.depth() == CV_16F || source.channels() > INT_MAX /
+            std::max(source.cols, 1))
+        CV_Error(cv::Error::StsBadArg, "unsafe scalar arithmetic dispatch");
+    // ABI safety: actualScalarDepth/cvRound and integer conversion may cast
+    // nonfinite/out-of-range doubles to int before OpenCV validates them.
+    if (operation == 0 || operation == 1 || operation == 4 ||
+        (source.depth() != CV_32F && source.depth() != CV_64F)) {
+        for (int i=0; i<std::min(source.channels(), 4); ++i)
+            if (!std::isfinite(scalar[i]) || std::abs(scalar[i]) > INT_MAX)
+                CV_Error(cv::Error::StsBadArg, "unsafe scalar integer conversion");
+    }
+    // ABI safety: scalar arithmetic uses floating working-depth division even
+    // for integer outputs. Zero denominators can therefore produce Inf/NaN
+    // followed by an out-of-range float-to-integer conversion in native code.
+    // Reject before destination creation or writes, including for raw callers.
+    if (source.depth() < CV_32F) {
+        if (operation == OPENCV_CORE_SCALAR_DIVIDE) {
+            for (int i = 0; i < std::min(source.channels(), 4); ++i)
+                if (scalar[i] == 0)
+                    CV_Error(cv::Error::StsBadArg, "zero integer scalar denominator");
+        } else if (operation == OPENCV_CORE_SCALAR_DIVIDE_INTO && !source.empty()) {
+            cv::Mat zeros;
+            // No row-count change: reshape preserves non-contiguous row strides.
+            // The checked columns*channels bound above prevents signed overflow.
+            cv::compare(source.reshape(1), 0, zeros, cv::CMP_EQ);
+            // Norm has no signed-int total count (unlike countNonZero).
+            if (cv::norm(zeros, cv::NORM_INF) != 0)
+                CV_Error(cv::Error::StsBadArg, "zero integer Mat denominator");
+        }
+    }
+    // Explicit dtype avoids selecting a byte subtraction kernel using the
+    // OLD destination depth (the existing matrix subtraction workaround).
+    switch (operation) {
+    case OPENCV_CORE_SCALAR_ADD:
+        cv::add(source, scalar, destination, cv::noArray(), source.depth()); break;
+    case OPENCV_CORE_SCALAR_SUBTRACT:
+        cv::subtract(source, scalar, destination, cv::noArray(), source.depth()); break;
+    case OPENCV_CORE_SCALAR_MULTIPLY:
+        cv::multiply(source, scalar, destination, 1.0, source.depth()); break;
+    case OPENCV_CORE_SCALAR_DIVIDE:
+        cv::divide(source, scalar, destination, 1.0, source.depth()); break;
+    case OPENCV_CORE_SCALAR_SUBTRACT_FROM:
+        cv::subtract(scalar, source, destination, cv::noArray(), source.depth()); break;
+    case OPENCV_CORE_SCALAR_DIVIDE_INTO:
+        cv::divide(scalar, source, destination, 1.0, source.depth()); break;
+    default: CV_Error(cv::Error::StsBadArg, "invalid scalar operation");
+    }
+}
+static bool scalar_operation_valid(int32_t operation) {
+    return operation >= OPENCV_CORE_SCALAR_ADD &&
+           operation <= OPENCV_CORE_SCALAR_DIVIDE_INTO;
+}
+static int scalar_storage_relation(const cv::Mat& a, const cv::Mat& b) {
+    if (a.empty() || b.empty()) return 0;
+    bool same = a.data == b.data && a.type() == b.type() && a.dims == b.dims;
+    for (int axis=0; same && axis<a.dims; ++axis)
+        same = a.size[axis] == b.size[axis] && a.step[axis] == b.step[axis];
+    if (same) return 1;
+    // Integer address comparisons avoid ordering pointers to unrelated objects.
+    const uintptr_t ab = reinterpret_cast<uintptr_t>(a.data);
+    const uintptr_t ae = reinterpret_cast<uintptr_t>(a.dataend);
+    const uintptr_t bb = reinterpret_cast<uintptr_t>(b.data);
+    const uintptr_t be = reinterpret_cast<uintptr_t>(b.dataend);
+    return ab < be && bb < ae ? 2 : 0;
+}
+static void scalar_compare_dispatch(const cv::Mat& source, double scalar,
+                                    int comparison, cv::Mat& destination) {
+    // ABI safety: OpenCV 4.1 dereferences a null compare dispatch entry for
+    // Float16; row flattening performs signed int multiplication.
+    if (source.depth() == CV_16F || source.channels() > INT_MAX /
+            std::max(source.cols, 1))
+        CV_Error(cv::Error::StsBadArg, "unsafe scalar comparison dispatch");
+    // ABI safety: legacy integer scalar comparison rounds nonfinite values
+    // to int. A finite out-of-range scalar is handled natively before rounding.
+    if (!std::isfinite(scalar) && source.depth() < CV_32F)
+        CV_Error(cv::Error::StsBadArg, "unsafe comparison scalar conversion");
+    cv::compare(source, scalar, destination, comparison);
+}
+}
+
+opencv_core_status opencv_core_mat_storage_relation(
+    const opencv_core_mat_handle* source,
+    const opencv_core_mat_handle* destination, int32_t* relation) {
+    clear_error();
+    if (relation) *relation = 0;
+    if (!source || !destination || !relation)
+        return invalid_argument("null storage relation argument");
+    try {
+        *relation = scalar_storage_relation(source->value, destination->value);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_mat_scalar_arithmetic(
+    const opencv_core_mat_handle* source, const opencv_core_scalar* scalar,
+    int32_t operation, opencv_core_mat_handle** out) {
+    clear_error();
+    if (out) *out = nullptr;
+    if (!source || !scalar || !out || !scalar_operation_valid(operation))
+        return invalid_argument("invalid scalar arithmetic argument");
+    try {
+        auto result = std::make_unique<opencv_core_mat_handle>();
+        scalar_dispatch(source->value, to_opencv_scalar(*scalar), operation, result->value);
+        *out = result.release();
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_mat_scalar_arithmetic_into(
+    const opencv_core_mat_handle* source, const opencv_core_scalar* scalar,
+    int32_t operation, opencv_core_mat_handle* destination) {
+    clear_error();
+    if (!source || !scalar || !destination || !scalar_operation_valid(operation))
+        return invalid_argument("invalid scalar destination argument");
+    // ABI safety: rebind would sever the callback-scoped external capability.
+    if (destination->temporary_external_view)
+        return invalid_argument("temporary scalar destination");
+    try {
+        scalar_dispatch(source->value, to_opencv_scalar(*scalar), operation, destination->value);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_mat_compare_scalar(
+    const opencv_core_mat_handle* source, double scalar, int32_t comparison,
+    opencv_core_mat_handle** out) {
+    clear_error();
+    if (out) *out = nullptr;
+    int kind = 0;
+    if (!source || !out || !to_opencv_compare_kind(comparison, kind))
+        return invalid_argument("invalid scalar comparison argument");
+    try {
+        auto result = std::make_unique<opencv_core_mat_handle>();
+        scalar_compare_dispatch(source->value, scalar, kind, result->value);
+        *out = result.release();
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_mat_compare_scalar_into(
+    const opencv_core_mat_handle* source, double scalar, int32_t comparison,
+    opencv_core_mat_handle* destination) {
+    clear_error();
+    int kind = 0;
+    if (!source || !destination || !to_opencv_compare_kind(comparison, kind))
+        return invalid_argument("invalid scalar comparison destination");
+    // ABI safety: rebind would sever the callback-scoped external capability.
+    if (destination->temporary_external_view)
+        return invalid_argument("temporary scalar comparison destination");
+    try {
+        scalar_compare_dispatch(source->value, scalar, kind, destination->value);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
 opencv_core_status opencv_core_mat_add_into(
     const opencv_core_mat_handle *left, const opencv_core_mat_handle *right,
     opencv_core_mat_handle *destination) {
