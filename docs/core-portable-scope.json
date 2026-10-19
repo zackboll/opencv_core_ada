@@ -1,0 +1,232 @@
+{
+  "schema_version": 1,
+  "baseline": "26bf5e2e8151cb0545b928b72d3d87677543c1ae",
+  "audit_commit": "a87e9ab241703ce4262dbcd637ab9192536aebe8",
+  "crate_version": "0.5.1",
+  "discovery_status": "UPSTREAM_DISCOVERY_BLOCKED",
+  "coverage_status": "COVERAGE_AUDIT_BLOCKED",
+  "supported_versions": ["4.1.0", "4.6.0", "4.10.0", "5.0.0"],
+  "upstream": {
+    "4.1.0": "371bba8f54560b374fbcd47e7e02f015ac4969ad",
+    "4.6.0": "b0dc474160e389b9c9045da5db49d03ae17c6a6b",
+    "4.10.0": "71d3237a093b60a27601c20e9ee6c3e52154e8b1",
+    "5.0.0": "40738fb16ceddb5fb3fea747585f7ce6abb0605b"
+  },
+  "documents": ["docs/core-portable-capabilities.md", "docs/core-finish-backlog.md", "docs/core-audit-provenance.md", "docs/core-portable-scope-schema.md"],
+  "observations": [
+    {"id": "norm-41", "version": "4.1.0", "path": "modules/core/src/norm.cpp", "start": 1014, "end": 1111, "blob": "d3eec98e385dc809add29bf44ca22d2a61186b81", "excerpt_sha256": "093044d20943b219ecb21ac7fe2c405e2b216ad11619927c753674106be72994", "url": "https://github.com/opencv/opencv/blob/371bba8f54560b374fbcd47e7e02f015ac4969ad/modules/core/src/norm.cpp#L1014"},
+    {"id": "norm-int32-safety-41", "version": "4.1.0", "path": "modules/core/src/norm.cpp", "start": 218, "end": 279, "blob": "d3eec98e385dc809add29bf44ca22d2a61186b81", "excerpt_sha256": "679c7d71e1dacb5c31c552f9b23462dff0eb5161126304fdc4ce5704723ba96e", "url": "https://github.com/opencv/opencv/blob/371bba8f54560b374fbcd47e7e02f015ac4969ad/modules/core/src/norm.cpp#L218"},
+    {"id": "norm-46", "version": "4.6.0", "path": "modules/core/src/norm.cpp", "start": 1077, "end": 1175, "blob": "4df25f495722987ba1b0952d0bfebcd31f90324b", "excerpt_sha256": "58c5e68f0609c8756ff9d0fa7574cd38ea077d360ddf9043de7ef186309af306", "url": "https://github.com/opencv/opencv/blob/b0dc474160e389b9c9045da5db49d03ae17c6a6b/modules/core/src/norm.cpp#L1077"},
+    {"id": "norm-410", "version": "4.10.0", "path": "modules/core/src/norm.cpp", "start": 1073, "end": 1171, "blob": "f2f84c35b84e0f4e6fc5e54303b538305983b432", "excerpt_sha256": "58c5e68f0609c8756ff9d0fa7574cd38ea077d360ddf9043de7ef186309af306", "url": "https://github.com/opencv/opencv/blob/71d3237a093b60a27601c20e9ee6c3e52154e8b1/modules/core/src/norm.cpp#L1073"},
+    {"id": "norm-50", "version": "5.0.0", "path": "modules/core/src/norm.dispatch.cpp", "start": 521, "end": 616, "blob": "930c3b758a99ac8dfd9471d353e3847a5216f2ec", "excerpt_sha256": "ef9d3f8d66e0f7742030b941e799aee9c4b0af30e50053f53970533dd58b22f5", "url": "https://github.com/opencv/opencv/blob/40738fb16ceddb5fb3fea747585f7ce6abb0605b/modules/core/src/norm.dispatch.cpp#L521"},
+    {"id": "runtime-41", "version": "4.1.0", "path": "modules/core/src/system.cpp", "start": 806, "end": 820, "blob": "1cc2dcdca19ca4f011d8a101ca841c8dc25241f1", "excerpt_sha256": "9469d655988a24e46494c62f7c7aeed9da8f623f145d31a21754dc8227e2af6c", "url": "https://github.com/opencv/opencv/blob/371bba8f54560b374fbcd47e7e02f015ac4969ad/modules/core/src/system.cpp#L806"},
+    {"id": "runtime-46", "version": "4.6.0", "path": "modules/core/src/system.cpp", "start": 998, "end": 1012, "blob": "d2231fe952eea71670538ac134313f1dea9c18ae", "excerpt_sha256": "9469d655988a24e46494c62f7c7aeed9da8f623f145d31a21754dc8227e2af6c", "url": "https://github.com/opencv/opencv/blob/b0dc474160e389b9c9045da5db49d03ae17c6a6b/modules/core/src/system.cpp#L998"},
+    {"id": "runtime-410", "version": "4.10.0", "path": "modules/core/src/system.cpp", "start": 1031, "end": 1045, "blob": "c02944079e4c3b43ba2da9e3e6da6362449c225a", "excerpt_sha256": "9469d655988a24e46494c62f7c7aeed9da8f623f145d31a21754dc8227e2af6c", "url": "https://github.com/opencv/opencv/blob/71d3237a093b60a27601c20e9ee6c3e52154e8b1/modules/core/src/system.cpp#L1031"},
+    {"id": "runtime-50", "version": "5.0.0", "path": "modules/core/src/system.cpp", "start": 1099, "end": 1113, "blob": "a52946b46a4172b0da25f2130c72188f8ff4943b", "excerpt_sha256": "9469d655988a24e46494c62f7c7aeed9da8f623f145d31a21754dc8227e2af6c", "url": "https://github.com/opencv/opencv/blob/40738fb16ceddb5fb3fea747585f7ce6abb0605b/modules/core/src/system.cpp#L1099"}
+  ],
+  "tasks": [
+    {"id": "CORE-FIN-01", "implementation_status": "IMPLEMENTED_IN_MAIN", "depends_on": [], "versions": ["4.1.0", "4.6.0", "4.10.0", "5.0.0"], "observations": [], "document": "docs/core-finish-backlog.md#core-fin-01--implemented_in_main"},
+    {"id": "CORE-FIN-02", "implementation_status": "PLANNED_REQUIRED", "depends_on": [], "versions": ["4.1.0", "4.6.0", "4.10.0", "5.0.0"], "observations": ["norm-41", "norm-int32-safety-41", "norm-46", "norm-410", "norm-50"], "document": "docs/core-finish-backlog.md#core-fin-02--general-numerical-norms-and-binary-distances"},
+    {"id": "CORE-FIN-03", "implementation_status": "PLANNED_REQUIRED", "depends_on": [], "versions": ["4.1.0", "4.6.0", "4.10.0", "5.0.0"], "observations": ["runtime-41", "runtime-46", "runtime-410", "runtime-50"], "document": "docs/core-finish-backlog.md#core-fin-03--native-opencv-runtime-identity"},
+    {"id": "CORE-OPT-01", "implementation_status": "OPTIONAL", "depends_on": [], "versions": ["4.6.0", "4.10.0", "5.0.0"], "observations": [], "document": "docs/core-finish-backlog.md#finite-optional-queue--not-required-completion-blockers"},
+    {"id": "CORE-OPT-02", "implementation_status": "OPTIONAL", "depends_on": [], "versions": ["4.1.0", "4.6.0", "4.10.0", "5.0.0"], "observations": [], "document": "docs/core-finish-backlog.md#finite-optional-queue--not-required-completion-blockers"},
+    {"id": "CORE-OPT-03", "implementation_status": "OPTIONAL", "depends_on": [], "versions": ["4.1.0", "4.6.0", "4.10.0", "5.0.0"], "observations": [], "document": "docs/core-finish-backlog.md#finite-optional-queue--not-required-completion-blockers"},
+    {"id": "CORE-OPT-04", "implementation_status": "OPTIONAL", "depends_on": [], "versions": ["4.1.0", "4.6.0", "4.10.0", "5.0.0"], "observations": [], "document": "docs/core-finish-backlog.md#finite-optional-queue--not-required-completion-blockers"}
+  ],
+  "capabilities": [
+    {
+      "id": "scalar-modes", "description": "Mat/Scalar arithmetic, reverse subtraction/division and C1 scalar comparison; 14 owned/destination overloads",
+      "category": "PORTABLE", "decision": "REQUIRED", "implementation_status": "IMPLEMENTED_IN_MAIN",
+      "versions": ["4.1.0", "4.6.0", "4.10.0", "5.0.0"],
+      "ada": ["src/opencv-core.ads#Add", "src/opencv-core.ads#Subtract", "src/opencv-core.ads#Multiply", "src/opencv-core.ads#Divide", "src/opencv-core.ads#Subtract_From", "src/opencv-core.ads#Divide_Into", "src/opencv-core.ads#Compare"],
+      "consumer_value": "Imgproc/Video scaling and offsets, Features threshold masks, navigation residuals without full constant matrices",
+      "restrictions": "Nonempty 2-D; seven non-Float16 depths; arithmetic C1..C4, comparison C1; source-depth unmasked output; merged coefficient, zero-denominator and alias policies; not whole-Core qualification",
+      "provenance": ["https://github.com/zackboll/opencv_core_ada/pull/90", "docs/core-finish-backlog.md#core-fin-01--implemented_in_main", "docs/core-fin-01-r3-target-sanitizers.md"], "tasks": ["CORE-FIN-01"]
+    },
+    {
+      "id": "general-norms", "description": "Pairwise and relative numeric norms, squared-L2 helpers, UInt8 Hamming/Hamming2",
+      "category": "PORTABLE", "decision": "REQUIRED", "implementation_status": "PLANNED_REQUIRED",
+      "versions": ["4.1.0", "4.6.0", "4.10.0", "5.0.0"], "ada": ["src/opencv-core.ads#Norm", "src/opencv-core.ads#Norm_Kind", "src/opencv-core.ads#K_Nearest_Neighbors"],
+      "consumer_value": "Features descriptor distances and Calib3D/navigation error/convergence checks",
+      "restrictions": "Difference_Norm distinct from masked unary Norm; new functions exclude Int32/Float16; numeric selectors differ from binary bit masks; signed native accumulation bounds; no UMat or binary mask/relative modes",
+      "provenance": ["docs/core-finish-backlog.md#core-fin-02--general-numerical-norms-and-binary-distances", "docs/core-audit-provenance.md"], "tasks": ["CORE-FIN-02"]
+    },
+    {
+      "id": "runtime-identity", "description": "Actually linked native OpenCV version and build information as owned Ada Strings",
+      "category": "PORTABLE", "decision": "REQUIRED", "implementation_status": "PLANNED_REQUIRED",
+      "versions": ["4.1.0", "4.6.0", "4.10.0", "5.0.0"], "ada": [],
+      "consumer_value": "Every downstream module's support and qualification reports",
+      "restrictions": "Native_Version_String and Native_Build_Information only; explicit caller-buffer ABI; no escaping std::string/pointer, build parser, threading or optimization setter",
+      "provenance": ["docs/core-finish-backlog.md#core-fin-03--native-opencv-runtime-identity", "docs/core-audit-provenance.md"], "tasks": ["CORE-FIN-03"]
+    },
+    {
+      "id": "transpose-nd", "description": "Native N-D tensor transpose",
+      "category": "OPTIONAL", "decision": "OPTIONAL_LATER", "implementation_status": "OPTIONAL",
+      "versions": ["4.6.0", "4.10.0", "5.0.0"], "ada": [],
+      "consumer_value": "Tensor consumers with a demonstrated permutation need",
+      "restrictions": "No native 4.1 entry/backport; continuous C1, no same-data output; rank/permutation/count safety and version gate required",
+      "provenance": ["docs/core-portable-capabilities.md", "docs/core-audit-provenance.md"], "tasks": ["CORE-OPT-01"]
+    },
+    {
+      "id": "flip-broadcast-nd", "description": "Native N-D tensor flip and broadcast",
+      "category": "OPTIONAL", "decision": "OPTIONAL_LATER", "implementation_status": "OPTIONAL",
+      "versions": ["4.10.0", "5.0.0"], "ada": [],
+      "consumer_value": "Consumer-backed tensor layout pipelines",
+      "restrictions": "Absent earlier reference entries; explicit axis/shape/overflow review, native gate, no speculative fallback",
+      "provenance": ["docs/core-portable-capabilities.md", "docs/core-audit-provenance.md"], "tasks": ["CORE-OPT-01"]
+    },
+    {
+      "id": "runtime-timing", "description": "Native tick and frequency queries",
+      "category": "OPTIONAL", "decision": "OPTIONAL_LATER", "implementation_status": "OPTIONAL",
+      "versions": ["4.1.0", "4.6.0", "4.10.0", "5.0.0"], "ada": [],
+      "consumer_value": "Benchmark parity where Ada.Real_Time is insufficient",
+      "restrictions": "Exact-width ticks, positive frequency/progression, no timing threshold guarantee or timer framework",
+      "provenance": ["docs/core-portable-capabilities.md", "docs/core-finish-backlog.md"], "tasks": ["CORE-OPT-02"]
+    },
+    {
+      "id": "runtime-optimization", "description": "Explicit native optimization/thread controls",
+      "category": "OPTIONAL", "decision": "OPTIONAL_LATER", "implementation_status": "OPTIONAL",
+      "versions": ["4.1.0", "4.6.0", "4.10.0", "5.0.0"], "ada": [],
+      "consumer_value": "Ada task oversubscription management for a named consumer",
+      "restrictions": "Process-global mutation; no concurrent setter safety or exact worker counts; state restoration; independent of required runtime identity",
+      "provenance": ["docs/core-portable-capabilities.md", "docs/core-finish-backlog.md"], "tasks": ["CORE-OPT-02"]
+    },
+    {
+      "id": "umat-copy-set", "description": "Selected UMat actual-destination copy and masked set parity",
+      "category": "OPTIONAL", "decision": "OPTIONAL_LATER", "implementation_status": "OPTIONAL",
+      "versions": ["4.1.0", "4.6.0", "4.10.0", "5.0.0"], "ada": ["src/opencv-core.ads#Create_UMat"],
+      "consumer_value": "Allocation-stable UMat pipelines, not mandatory for CPU Mat users",
+      "restrictions": "Destination/masked subset confirmed missing; no mapping/host staging/mixed operands/GPU promise; fresh mask zeroing vs reuse, ROI/alias/rebind/temporary policy",
+      "provenance": ["docs/core-portable-capabilities.md", "docs/core-finish-backlog.md"], "tasks": ["CORE-OPT-03"]
+    },
+    {
+      "id": "umat-reshape-transforms", "description": "UMat shared-storage reshape and spectral transform modes",
+      "category": "OPTIONAL", "decision": "DEFERRED_RESEARCH", "implementation_status": "RESEARCH_REQUIRED",
+      "versions": ["4.1.0", "4.6.0", "4.10.0", "5.0.0"], "ada": ["src/opencv-core.ads#Create_UMat"],
+      "consumer_value": "Possible accelerator tensor/spectral consumers",
+      "restrictions": "Shared lifetime/alias/backend modes need native probes; existing Mat DFT/DCT not reopened; no direct mapping contract",
+      "provenance": ["docs/core-portable-capabilities.md", "docs/core-audit-provenance.md"], "tasks": []
+    },
+    {
+      "id": "spectral-division", "description": "Native spectral division including packed CCS modes",
+      "category": "OPTIONAL", "decision": "DEFERRED_RESEARCH", "implementation_status": "RESEARCH_REQUIRED",
+      "versions": ["5.0.0"], "ada": [],
+      "consumer_value": "Specialized spectral consumers if demonstrated",
+      "restrictions": "5.0-only Core entry among references; CCS/zero-denominator review, no unproved pre-5 numerical backport; multiplication already exists",
+      "provenance": ["docs/core-portable-capabilities.md", "docs/core-audit-provenance.md"], "tasks": []
+    },
+    {
+      "id": "finite-mask", "description": "Native finite-value mask",
+      "category": "OPTIONAL", "decision": "OPTIONAL_LATER", "implementation_status": "OPTIONAL",
+      "versions": ["5.0.0"], "ada": ["src/opencv-core.ads#Check_Range"],
+      "consumer_value": "Robust numerical pipelines beyond existing Check_Range diagnostics",
+      "restrictions": "5.0 Float32/64 C1..C4 to UInt8 C1; X=X is not an infinity fallback; consumer/version/NaN/Inf review first",
+      "provenance": ["docs/core-portable-capabilities.md", "docs/core-finish-backlog.md"], "tasks": ["CORE-OPT-01"]
+    },
+    {
+      "id": "sparse-baseline", "description": "Owned N-D sparse storage, typed traversal, conversion/scaling and limited norms/extrema",
+      "category": "PORTABLE", "decision": "ALREADY_SUFFICIENT", "implementation_status": "EXISTING_LIMITED",
+      "versions": ["4.1.0", "4.6.0", "4.10.0", "5.0.0"], "ada": ["src/opencv-core-sparse.ads#From_Dense", "src/opencv-core-sparse.ads#Norm", "src/opencv-core-sparse.ads#Normalize"],
+      "consumer_value": "Practical sparse module data without a new numerical library",
+      "restrictions": "32 typed layouts/traversal; Float32/64 C1 norm/extrema subset; scope sufficiency is not full member/mode coverage",
+      "provenance": ["docs/sparse-and-persistence-guide.md", "docs/core-audit-provenance.md"], "tasks": []
+    },
+    {
+      "id": "sparse-extra-arithmetic", "description": "Research possible additional native sparse arithmetic",
+      "category": "OPTIONAL", "decision": "DEFERRED_RESEARCH", "implementation_status": "RESEARCH_REQUIRED",
+      "versions": ["4.1.0", "4.6.0", "4.10.0", "5.0.0"], "ada": [],
+      "consumer_value": "Unestablished until a consumer and exact native family are identified",
+      "restrictions": "No evidence for general native SparseMat add/subtract; do not invent algorithms or label this confirmed missing",
+      "provenance": ["docs/core-portable-capabilities.md", "docs/core-audit-provenance.md"], "tasks": []
+    },
+    {
+      "id": "sparse-minmax", "description": "Sparse range-shifting min-max normalization boundary",
+      "category": "NATIVE_SURFACE", "decision": "INTENTIONALLY_EXCLUDED", "implementation_status": "INTENTIONALLY_EXCLUDED",
+      "versions": ["4.1.0", "4.6.0", "4.10.0", "5.0.0"], "ada": ["src/opencv-core-sparse.ads#To_Dense"],
+      "consumer_value": "Explicit dense conversion provides a valid alternative",
+      "restrictions": "Native sparse normalize forbids shifts changing implicit zeros; not a missing overload",
+      "provenance": ["docs/core-portable-capabilities.md", "docs/sparse-and-persistence-guide.md"], "tasks": []
+    },
+    {
+      "id": "persistence-baseline", "description": "XML/YAML/JSON file/memory typed and Mat storage with scoped navigation",
+      "category": "PORTABLE", "decision": "ALREADY_SUFFICIENT", "implementation_status": "EXISTING_LIMITED",
+      "versions": ["4.1.0", "4.6.0", "4.10.0", "5.0.0"], "ada": ["src/opencv-core-persistence.ads#Open", "src/opencv-core-persistence.ads#Create_Memory", "src/opencv-core-persistence.ads#Map_Key", "src/opencv-core-persistence.ads#Storage_Mode"],
+      "consumer_value": "Ordinary model/calibration/configuration persistence",
+      "restrictions": "Limited owner, copied reads, strict integer/string rules, scoped map/sequence navigation; no all-mode or borrowed-node promise",
+      "provenance": ["docs/sparse-and-persistence-guide.md", "docs/core-audit-provenance.md"], "tasks": []
+    },
+    {
+      "id": "persistence-append-base64", "description": "File-open append and Base64 options",
+      "category": "OPTIONAL", "decision": "OPTIONAL_LATER", "implementation_status": "OPTIONAL",
+      "versions": ["4.1.0", "4.6.0", "4.10.0", "5.0.0"], "ada": ["src/opencv-core-persistence.ads#Storage_Mode"],
+      "consumer_value": "Large model/calibration/log records after demonstrated demand",
+      "restrictions": "Public options confirmed missing; sequence Append is not file APPEND; native MEMORY+APPEND incompatible; separate PRs, no gzip assumption",
+      "provenance": ["docs/core-portable-capabilities.md", "docs/core-finish-backlog.md"], "tasks": ["CORE-OPT-04"]
+    },
+    {
+      "id": "persistence-gzip", "description": "Research native compressed persistence availability and public contract",
+      "category": "OPTIONAL", "decision": "DEFERRED_RESEARCH", "implementation_status": "RESEARCH_REQUIRED",
+      "versions": ["4.1.0", "4.6.0", "4.10.0", "5.0.0"], "ada": ["src/opencv-core-persistence.ads#Open"],
+      "consumer_value": "Potential compressed configuration/model storage",
+      "restrictions": "Public spec excludes gzip, filename validator only empty/NUL; zlib/build/close/5.0 suffix behavior unresolved; no universal runtime-absence or qualification claim",
+      "provenance": ["docs/core-portable-capabilities.md", "docs/core-audit-provenance.md"], "tasks": []
+    },
+    {
+      "id": "escaping-file-nodes", "description": "Exclude escaping borrowed FileNode and iterator ownership abstractions",
+      "category": "OPTIONAL", "decision": "INTENTIONALLY_EXCLUDED", "implementation_status": "INTENTIONALLY_EXCLUDED",
+      "versions": ["4.1.0", "4.6.0", "4.10.0", "5.0.0"], "ada": ["src/opencv-core-persistence.ads#Map_Key"],
+      "consumer_value": "Existing copied/indexed/map-key traversal avoids native lifetime coupling",
+      "restrictions": "Not missing semantic iteration; no escaping nodes; safe callback proposal requires separate review",
+      "provenance": ["docs/core-portable-capabilities.md", "docs/sparse-and-persistence-guide.md"], "tasks": []
+    },
+    {
+      "id": "quaternion-affine", "description": "Consumer-backed quaternion/dual-quaternion and affine value utilities",
+      "category": "OPTIONAL", "decision": "OPTIONAL_LATER", "implementation_status": "OPTIONAL",
+      "versions": ["4.1.0", "4.6.0", "4.10.0", "5.0.0"], "ada": [],
+      "consumer_value": "Pose/navigation consumers with agreed shared conventions",
+      "restrictions": "Affine3 all references; Quat/DualQuat absent 4.1; unit, singularity/interpolation/conversion review; no 4.1 reimplementation; no ready task without consumer",
+      "provenance": ["docs/core-portable-capabilities.md", "docs/core-audit-provenance.md"], "tasks": []
+    },
+    {
+      "id": "async-promise", "description": "Research public native AsyncArray/AsyncPromise producer/result model",
+      "category": "OPTIONAL", "decision": "DEFERRED_RESEARCH", "implementation_status": "RESEARCH_REQUIRED",
+      "versions": ["4.6.0", "4.10.0", "5.0.0"], "ada": [],
+      "consumer_value": "Potential asynchronous consumers, not established mandatory",
+      "restrictions": "Public despite detail/ path; absent 4.1 headers; Ada cancellation, finalization, outstanding results and exception transport unresolved",
+      "provenance": ["docs/core-portable-capabilities.md", "docs/core-audit-provenance.md"], "tasks": []
+    },
+    {
+      "id": "new-depths-shape", "description": "Optional OpenCV 5 BF16/Bool/UInt32/UInt64/Int64 extensions and shape constraints",
+      "category": "OPTIONAL", "decision": "OPTIONAL_LATER", "implementation_status": "OPTIONAL",
+      "versions": ["5.0.0"], "ada": ["src/opencv-core.ads#Depth_Type", "src/opencv-core.ads#Channel_Count"],
+      "consumer_value": "Future tensor/numerical consumers beyond existing eight depths",
+      "restrictions": "Existing 5.0 shape adaptation credited; native rank 10 and channels 128 vs 4.x 512; existing conversion safety mandatory; operation support per depth, new types optional",
+      "provenance": ["docs/core-portable-capabilities.md", "docs/core-audit-provenance.md"], "tasks": []
+    },
+    {
+      "id": "device-backends", "description": "Device/context/allocator and external-backend parity outside mandatory portable scope",
+      "category": "OPTIONAL", "decision": "INTENTIONALLY_EXCLUDED", "implementation_status": "INTENTIONALLY_EXCLUDED",
+      "versions": ["4.1.0", "4.6.0", "4.10.0", "5.0.0"], "ada": ["src/opencv-core.ads#Create_UMat"],
+      "consumer_value": "Specialized device consumers only; ordinary CPU baseline retained",
+      "restrictions": "CUDA/OpenCL/OpenGL/DirectX/VA and allocator interop remain real optional APIs; header/backend dependent, no GPU portability/execution promise or direct mapping lifetime contract",
+      "provenance": ["docs/core-portable-capabilities.md", "docs/core-audit-provenance.md"], "tasks": []
+    },
+    {
+      "id": "cpp-machinery", "description": "No direct Ada parity for exact C++ templates/operators/HAL/dispatch/STL/legacy syntax",
+      "category": "NATIVE_SURFACE", "decision": "INTENTIONALLY_EXCLUDED", "implementation_status": "INTENTIONALLY_EXCLUDED",
+      "versions": ["4.1.0", "4.6.0", "4.10.0", "5.0.0"], "ada": ["src/opencv.ads#Scalar", "src/opencv-core.ads#Mat"],
+      "consumer_value": "Idiomatic Ada value/ownership operations instead of syntax duplication",
+      "restrictions": "Not absent upstream; public depth/channel macros and value semantics remain constraints; unreviewed headers are not silently classified complete",
+      "provenance": ["docs/core-portable-capabilities.md", "docs/core-audit-provenance.md"], "tasks": []
+    },
+    {
+      "id": "renamed-numerics", "description": "Existing GEMM, transposed product, SVD/PCA/covariance, extrema, spectra and batch distance",
+      "category": "PORTABLE", "decision": "ALREADY_SUFFICIENT", "implementation_status": "EXISTING_LIMITED",
+      "versions": ["4.1.0", "4.6.0", "4.10.0", "5.0.0"],
+      "ada": ["src/opencv-core.ads#Matrix_Multiply", "src/opencv-core.ads#Matrix_Multiply_Add", "src/opencv-core.ads#Transposed_Product", "src/opencv-core.ads#Singular_Value_Decomposition", "src/opencv-core.ads#Principal_Component_Analysis", "src/opencv-core.ads#Covariance", "src/opencv-core.ads#Min_Max_Indices", "src/opencv-core.ads#Multiply_Packed_Spectra", "src/opencv-core.ads#K_Nearest_Neighbors"],
+      "consumer_value": "Existing linear/spectral/descriptor functionality already supports downstream modules",
+      "restrictions": "No duplicate wrappers based on C++ spelling; retain documented mode/depth/flag limitations and outstanding broad qualification; no full-family coverage claim",
+      "provenance": ["docs/core-operations-guide.md", "docs/core-audit-provenance.md"], "tasks": []
+    }
+  ]
+}
