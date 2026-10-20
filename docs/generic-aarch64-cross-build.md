@@ -1,5 +1,11 @@
 # Generic Linux AArch64 cross-build investigation
 
+**Current short entry point:** see [AArch64 build and install](cross-install-core.md)
+for `scripts/cross_install_core.sh`, automatic GPRconfig bootstrap, Git/archive
+sources, explicit installation prefixes and durable consumer configuration.
+The GNAT Pro 25.0w / GCC 12.3.1 vendor qualification is a separate pending gate,
+not the GNAT Pro 25.2 profile described below.
+
 **Historical investigation:** the initial production blockers below were
 subsequently resolved and the full public Debian GNAT 12 cross-build,
 installation and consumer cross-links qualified in the
@@ -42,8 +48,11 @@ Required environment inputs:
 match the resolved sysroot. `OPENCV_CROSS_PKG_CONFIG`,
 `OPENCV_CROSS_READELF`, `OPENCV_CROSS_GPRBUILD`, and
 `OPENCV_CROSS_GPRINSTALL` select external tools; none are installed by the
-wrapper. `OPENCV_CROSS_PROFILE` defaults to `development`. Installation stays
-under the workspace; a successful installation can subsequently be moved.
+wrapper. `OPENCV_CROSS_PROFILE` defaults to `development` in the legacy wrapper.
+Installation defaults to the workspace's `install` directory;
+`OPENCV_CROSS_INSTALL_PREFIX` selects an external absolute destination.
+`OPENCV_CROSS_SOURCE_ROOT` selects a clean Git or unpacked source root. See the
+current workflow above for source identity, cleanup and retained configuration.
 
 `OPENCV_CORE_CROSS=True` dispatches Alire's existing pre-build action to the
 target validator instead of generating host settings. Default native behavior

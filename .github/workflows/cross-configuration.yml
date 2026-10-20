@@ -8,8 +8,10 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Fail-closed synthetic configuration tests (not a cross-build)
-        run: python3 -m unittest discover -s tests -p test_cross_configuration.py -v
+        run: python3 -m unittest discover -s tests -p 'test_cross_*.py' -v
       - name: Target test-probe and GNAT Pro evidence regressions (synthetic)
         run: |
           python3 -m unittest discover -s tests -p test_module_bridge_cross.py -v
@@ -17,5 +19,7 @@ jobs:
       - name: Shell syntax
         run: |
           sh -n scripts/cross_build_core.sh scripts/configure_cross_opencv.sh scripts/configure_opencv.sh scripts/validate_cross_target.sh
+          sh -n scripts/cross_install_core.sh scripts/cross_elf.sh
+          sh -n tests/qualify_cross_install.sh
           sh -n scripts/build_module_bridge_probe.sh tests/adacore25/qualify_aunit.sh
           bash -n tests/adacore25/qualify_controls.sh

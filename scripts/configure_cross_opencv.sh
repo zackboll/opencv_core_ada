@@ -25,16 +25,8 @@ done
 runtime=${OPENCV_CROSS_RUNTIME:-}
 [ -d "$runtime/adalib" ] && [ -d "$runtime/adainclude" ] || fail 'OPENCV_CROSS_RUNTIME must contain adalib and adainclude'
 readelf=$(tool OPENCV_CROSS_READELF "${OPENCV_CROSS_READELF:-readelf}")
-elf() {
-    [ -f "$1" ] || fail "missing target library: $1"
-    details=$("$readelf" -h "$1") || fail "cannot inspect ELF: $1"
-    printf '%s\n' "$details" | grep -q 'Machine:.*AArch64' || fail "not AArch64 ELF: $1"
-    if printf '%s\n' "$details" | grep 'Machine:' | grep -v 'AArch64' >/dev/null; then
-        fail "mixed architecture archive: $1"
-    fi
-    printf '%s\n' "$details" | grep -q 'Class:.*ELF64' || fail "not ELF64: $1"
-}
-elf "$runtime/adalib/libgnat.a"
+. "$(dirname -- "$0")/cross_elf.sh"
+cross_elf "$runtime/adalib/libgnat.a"
 selected_runtime=$(CDPATH= cd -- "$runtime/adalib" && pwd -P)
 compiler_runtime=$("$ada" -print-file-name=adalib) || fail 'Ada compiler runtime query failed'
 case "$compiler_runtime" in
@@ -175,7 +167,7 @@ opencv=$library/libopencv_core.so
 [ -f "$opencv" ] || opencv=$library/libopencv_core.a
 resolved=$(realpath "$opencv") || fail 'missing target OpenCV libraries'
 case "$resolved" in "$sysroot"/*) ;; *) fail 'OpenCV library escapes target sysroot' ;; esac
-elf "$resolved"
+cross_elf "$resolved"
 # Inspect concrete target runtime objects; compiler triples alone cannot prove
 # that a development sysroot contains matching libc and C++ libraries.
 for name in libc.so.6 libstdc++.so.6; do
@@ -183,7 +175,7 @@ for name in libc.so.6 libstdc++.so.6; do
     [ -n "$found" ] || fail "missing target runtime library: $name"
     found=$(realpath "$found") || fail "invalid target runtime symlink: $name"
     case "$found" in "$sysroot"/*) ;; *) fail "target runtime escapes sysroot: $name" ;; esac
-    elf "$found"
+    cross_elf "$found"
 done
 case "$ada$cxx$runtime$sysroot$include$library" in *\"*|*'
 '*) fail 'quotes/newlines in cross inputs are unsupported' ;; esac

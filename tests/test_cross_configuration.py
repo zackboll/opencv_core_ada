@@ -449,6 +449,7 @@ class CrossConfigurationTests(unittest.TestCase):
         base, _, _, _, _ = self.fixture()
         checkout = base / "checkout"
         shutil.copytree(ROOT / "scripts", checkout / "scripts")
+        (checkout / ".git").mkdir()
         alias = base / "checkout-alias"
         alias.symlink_to(checkout, target_is_directory=True)
         sysroot = Path(self.env["ENV_PREFIX"])
