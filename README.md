@@ -17,18 +17,22 @@ The documentation site publishes styled HTML versions of the five developer
 guides. Repository-relative guide links below remain links to their authoritative
 Markdown sources on GitHub.
 
-> **Prepared release candidate:** `0.5.1` (current `alire.toml`), not yet
-> published. Tooling/platform patch based on merged PR #87; see the
-> [release preparation record](docs/release-0.5.1-preparation.md).
+> **Source-release candidate:** `0.5.2` (current `alire.toml`), not yet
+> tagged or published; see the
+> [release preparation record](docs/release-0.5.2-preparation.md).
+> **Existing source release:** [`0.5.1`](https://github.com/zackboll/opencv_core_ada/tree/0.5.1)
+> (immutable source tag; no separate GitHub Release object).
 > **Latest indexed release:** [`0.5.0`](https://github.com/alire-project/alire-index/blob/stable-1.4.0/index/op/opencv_core/opencv_core-0.5.0.toml).
+> The separate [0.5.1 Alire submission, PR #2243](https://github.com/alire-project/alire-index/pull/2243),
+> remains pending. There is no 0.5.2 index submission at this preparation stage.
 > `alr with opencv_core` selects an indexed release, not this candidate.
 >
 > **Compatibility:** OpenCV **4.1 through 5.0**, inclusive, with one public Ada
 > API. Not every intermediate release is explicitly tested.
 >
 > **Status:** active, pre-1.0 API. Latest local campaign qualification:
-> **2,025 passing AUnit tests**, zero failed assertions or unexpected errors.
-> See the [qualification record](docs/gnatdoc-campaign-progress.md#fresh-local-qualification-after-comments-changed).
+> **2,037 passing AUnit tests**, zero failed assertions or unexpected errors.
+> See the [release qualification protocol and provenance](docs/release-0.5.2-preparation.md).
 >
 > **Scope:** Core only. Image processing, codecs, GUI, video, feature detection,
 > calibration and neural-network modules belong in separate dependent crates.
@@ -43,6 +47,8 @@ Markdown sources on GitHub.
 - Packed and strided callback-scoped views over caller-owned Ada storage.
 - Arithmetic and reusable destinations, masks, channels, reductions, statistics,
   linear algebra, decompositions, spectral transforms, RNG and clustering.
+- Bounded Mat/scalar arithmetic (including reverse subtraction/division) and
+  single-channel scalar comparison, with allocating and reusable destinations.
 - XML/YAML/JSON persistence on disk and in memory, including nested structures.
 - Callback-scoped interoperability for cooperating OpenCV module bindings.
 
@@ -397,8 +403,8 @@ constructor and compatibility information is in
 
 ### GNAT 12 and AArch64 qualification
 
-Debian 12 native GCC/GNAT **12.2.0**, its matching runtime, and OpenCV 4.6
-qualify the complete production binding, all **2,025 AUnit tests** with
+Historical Debian 12 native GCC/GNAT **12.2.0**, its matching runtime, and
+OpenCV 4.6 qualification covered the production binding and **2,025 AUnit tests** with
 release-profile production, and installed/relocated Ada-only and mixed Ada/C++
 consumers. Select the compiler explicitly; GNAT 12 and GNAT 16 ALIs/runtimes
 are not interchangeable. See the [GNAT 12 integration record](docs/gnat12-completion.md#native-gnat-12-and-consumers).
@@ -415,8 +421,12 @@ records AArch64 QEMU execution with GCC 13.3.1, the Scarthgap 5.0 sysroot and
 OpenCV **4.9.0**: all **2,025 AUnit tests**, the instrumented all-family suite
 and additional safety controls passed. This is not a fifth hosted OpenCV
 matrix entry and does not imply hardware qualification. **Target hardware is
-NOT TESTED.** Exact 0.5.1 candidate evidence is tracked separately in the
-[release preparation record](docs/release-0.5.1-preparation.md) and source PR.
+NOT TESTED.** Later scalar-mode QEMU/sanitizer evidence is recorded separately
+in [CORE-FIN-01-R3](docs/core-fin-01-r3-target-sanitizers.md). Neither campaign
+is the user's GNAT Pro **25.0w / GCC 12.3.1** profile: that profile's automatic
+cross-install and external-consumer cross-link qualification carries forward
+only for identical implementation inputs, as documented in the
+[0.5.2 preparation record](docs/release-0.5.2-preparation.md).
 
 Alire's default root development profile enables `-gnatVa`, which rejects IEEE
 NaN/infinity in eight existing tests. Release-profile production passes those
@@ -426,7 +436,7 @@ crate, after the first action's development build. Explicitly forcing Core's
 development profile during test execution still fails those eight IEEE tests,
 and a saved override can also make subsequent root test actions fail. Use a
 fresh deployment for publication qualification, not a diagnostic workspace.
-See [release preflight](docs/release-0.5.1-preparation.md).
+See [release preflight](docs/release-0.5.2-preparation.md).
 
 ## Known limitations
 
@@ -474,13 +484,13 @@ Release qualification explicitly uses
 `alr build --release` in the root and
 `alr -C tests build --profiles=opencv_core=release`, followed by
 `alr -C tests run`; the checked test harness is retained. Publication-profile
-checks are tracked separately in the [release preflight](docs/release-0.5.1-preparation.md).
+checks are tracked separately in the [release preflight](docs/release-0.5.2-preparation.md).
 
 The test crate carries development-only dependencies such as AUnit, GNATprove,
 and GNATcov. They are intentionally not dependencies of the public library
 crate.
 
-At the time of this README update, the full suite contains **2025 AUnit tests**.
+At the time of this README update, the full suite contains **2037 AUnit tests**.
 Coverage includes ordinary behavior, invalid input, shape/depth/channel
 compatibility, empty Mats, non-contiguous Regions, shallow-versus-independent
 ownership, callback lifetimes, arbitrary Ada array lower bounds, failure
@@ -593,13 +603,19 @@ partially integrated batches.
 
 ## Versioning
 
-The prepared manifest is `0.5.1`; this is a release candidate, not a publication
-claim. The latest indexed release is `opencv_core=0.5.0`. The patch preserves
-its production Ada and C++ source trees and adds tooling/platform corrections.
+The prepared manifest is `0.5.2`; this is a source-release candidate, not a
+publication claim. The existing tagged source is `0.5.1`; the latest accepted
+Alire release is `opencv_core=0.5.0`, with 0.5.1 pending separately in PR #2243.
+Unlike the tooling-only 0.5.1 patch, 0.5.2 includes fourteen additive public
+scalar overloads already merged into main. Existing declarations and ownership
+semantics are preserved, but Ada overload resolution in unusual client code
+may need explicit qualification. This user-selected pre-1.0 patch number is not
+a claim of a frozen, stable-API SemVer patch policy. See the
+[versioning review](docs/release-0.5.2-preparation.md#versioning-and-compatibility-review).
 A Git tag alone is not evidence of Alire publication.
 See [CHANGELOG.md](CHANGELOG.md) for UMat additions in 0.4.0, typed Mat/SparseMat
 additions in 0.3.0, the source-breaking shared-value relocation in 0.2.0, and
-the 0.5.0 release and 0.5.1 candidate notes. The API remains experimental until 1.0.
+the 0.5.0/0.5.1 releases and 0.5.2 candidate notes. The API remains experimental until 1.0.
 
 ## License
 

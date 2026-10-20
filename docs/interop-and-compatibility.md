@@ -135,8 +135,10 @@ Separate from that hosted matrix, the
 OpenCV **4.9.0**, GCC 13.3.1 and the Scarthgap 5.0 target sysroot under explicit
 AArch64 QEMU, including 2,025 Core tests and additional safety controls.
 Target hardware is **NOT TESTED**. The
-[0.5.1 preparation record](release-0.5.1-preparation.md) requires fresh execution
-on the exact candidate, not reuse of those historical runtime results.
+[0.5.2 preparation record](release-0.5.2-preparation.md) distinguishes historical
+25.2 runtime evidence from the user's 25.0w / GCC 12.3.1 automatic cross-install
+qualification and its byte-identical implementation carry-forward. Neither is
+a new exact-candidate proprietary execution.
 Windows/MSYS2 and macOS/MacPorts run on main pushes or manual dispatch under
 existing workflow policy; PR skips are not passes.
 

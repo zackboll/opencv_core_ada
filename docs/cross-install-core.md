@@ -1,6 +1,6 @@
 # AArch64 GNAT Pro / Yocto Core build and install
 
-From a **clean checkout of the implementation candidate** or its unpacked
+From a **clean checkout of the 0.5.2 source-release candidate** or its unpacked
 release/Alire source archive:
 
 ```sh
@@ -171,14 +171,25 @@ libraries used there were built with the original configuration. Neither
 consumer was run. Historical logs remain in the user's container under
 `/tmp/opencv-core-debug.nJZ23C/`; they are not newly executed evidence here.
 
-The GNAT Pro 25.0w / GCC 12.3.1 SDK and Scarthgap sysroot are unavailable in the
-implementation environment. **Clean production build using automatic
-configuration and the complete vendor qualification above remain pending.**
-Synthetic Git/archive/bootstrap/failure controls are workflow tests, not vendor
-architecture evidence. Native regression tests likewise do not qualify this
-proprietary profile. Release/version selection, published-archive verification
-and the alire-index PR follow implementation merge and vendor qualification;
-an older indexed crate must not be assumed to contain these scripts.
+At the original implementation handoff the GNAT Pro 25.0w / GCC 12.3.1 SDK
+and Scarthgap sysroot were unavailable, and automatic-bootstrap qualification
+was pending. Subsequently the user supplied successful complete cross-install
+qualification for implementation `84ab4f2125dd5a18f9801babde8b79b30a4c8827`.
+The [PR #92 corrective provenance record](https://github.com/zackboll/opencv_core_ada/pull/92#issuecomment-6281591577)
+records its carry-forward to `995be0a3e64af97d0ef93f1c06d5e291bf52ff9a` over
+unchanged production, GPR and cross-build/configuration inputs. PR #92 is now
+merged as `2267853c089b4fcbc2c7496ae97f862db9dd1234`.
+
+This is user-supplied vendor evidence, not a new proprietary execution by the
+release agent. It covers automatic bootstrap, production/shim build, recursive
+installation, durable configuration and a fresh installed-only external
+consumer cross-link with ELF64/AArch64 and no inappropriate RPATH/RUNPATH.
+It does **not** demonstrate target execution; hardware remains **NOT TESTED**.
+Synthetic controls and native tests are separate evidence. See the
+[0.5.2 preparation record](release-0.5.2-preparation.md) for the candidate's
+byte-identity checks and limitations. Publication and the separate 0.5.2 index
+submission follow independent source review and merge; an older indexed crate
+must not be assumed to contain these scripts.
 
 Implementation validation on Linux with Alire GNAT 16.1.0, GPRbuild 26.0.0,
 system GNU C++ and native OpenCV 4.10.0:
