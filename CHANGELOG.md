@@ -1,6 +1,55 @@
 # Changelog
 
-## 0.5.1 — release candidate, not published
+## 0.5.2 — source-release candidate, not published or indexed
+
+Based on main `2267853c089b4fcbc2c7496ae97f862db9dd1234`, incorporating merged
+PRs #89, #90 and #92 since the immutable 0.5.1 source tag. See the
+[release preparation record](docs/release-0.5.2-preparation.md) for versioning,
+qualification provenance, exact-head evidence protocol and review checkpoint.
+
+### Public API additions (PR #90)
+
+- Fourteen Mat scalar overloads: allocating functions and destination-taking
+  procedures for `Add`, `Subtract`, `Multiply`, `Divide`, `Subtract_From`,
+  `Divide_Into` and single-channel `Compare` with `Float64_Value`.
+- Bounded nonempty 2-D arithmetic on seven depths (not Float16), C1–C4;
+  channel-ordered Scalars, native rounding/saturation and operation-specific
+  finite/range/zero-denominator checks. Comparison is C1 and returns UInt8 masks.
+- Reusable destinations preserve compatible storage, detach mismatches, allow
+  documented exact aliases and reject unsafe partial overlap/temporary outputs.
+  These are additions, not a claim of complete native scalar/expression support.
+- Twelve additional registered AUnit cases bring the suite to 2,037. Native
+  scalar oracles, raw-ABI probes and ARM64 sanitizer evidence remain distinct
+  from the proprietary cross-install campaign.
+
+### Build, documentation and qualification (PRs #89 and #92)
+
+- One-command AArch64 GNAT Pro / Yocto cross-install with automatic GPRconfig
+  bootstrap; clean Git snapshots or explicitly selected unpacked sources,
+  recursive installation, durable installed configuration and external-consumer
+  qualification without deployment RPATH/RUNPATH. See
+  [the workflow guide](docs/cross-install-core.md).
+- Pinned Core header/API census, offline evidence validation, bounded portable
+  scope and independent feature backlog. Incomplete-audit validation is not
+  exhaustive coverage acceptance; the audit remains explicitly incomplete.
+- Repair inherited scalar-merge source-anchor coordinates without weakening
+  the audit acceptance policy. No new algorithms were introduced by this work.
+- Preserve separate GNAT Pro 25.2 / GCC 13.3.1 QEMU and full-system target
+  sanitizer reports. User-supplied GNAT Pro 25.0w / GCC 12.3.1 cross-install
+  qualification carries forward only over byte-identical implementation inputs.
+  **Target hardware execution remains NOT TESTED.**
+
+The release-preparation delta itself changes metadata, documentation and the
+consumer version assertion only, not production Ada/C++, the private ABI or
+build implementation. Dependencies, platform conditions and Alire actions are
+unchanged. The requested pre-1.0 version is retained with explicit additive-API
+and overload-resolution caveats; it is not described as a tooling-only patch.
+
+## 0.5.1 — tagged source; Alire submission pending (#2243)
+
+The immutable source tag is `0.5.1`; the historical preparation record below
+retains its original qualification scope. No separate GitHub Release object
+was present at the 0.5.2 preparation inspection.
 
 Compatibility-preserving tooling and platform qualification patch, based on
 merged PR #87. The latest indexed release remains **0.5.0**.

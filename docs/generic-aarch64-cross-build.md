@@ -3,8 +3,10 @@
 **Current short entry point:** see [AArch64 build and install](cross-install-core.md)
 for `scripts/cross_install_core.sh`, automatic GPRconfig bootstrap, Git/archive
 sources, explicit installation prefixes and durable consumer configuration.
-The GNAT Pro 25.0w / GCC 12.3.1 vendor qualification is a separate pending gate,
-not the GNAT Pro 25.2 profile described below.
+The GNAT Pro 25.0w / GCC 12.3.1 user-supplied vendor qualification and its
+byte-identical implementation carry-forward are documented in the
+[0.5.2 preparation record](release-0.5.2-preparation.md), separately from the
+GNAT Pro 25.2 profile described below.
 
 **Historical investigation:** the initial production blockers below were
 subsequently resolved and the full public Debian GNAT 12 cross-build,
@@ -14,7 +16,7 @@ The original findings are retained as evidence, not current release blockers.
 Target execution was not performed in that Debian campaign. Separately,
 [GNAT Pro 25.2 / Scarthgap](adacore25-scarthgap-core-aunit.md) records the later
 full Core QEMU qualification with OpenCV 4.9.0. Hardware remains NOT TESTED.
-See [0.5.1 preparation](release-0.5.1-preparation.md) for candidate gates.
+See [0.5.2 preparation](release-0.5.2-preparation.md) for current candidate gates.
 
 This historical investigation was **not Yocto Scarthgap qualification**. At
 that time the proprietary container was inaccessible. The original findings
