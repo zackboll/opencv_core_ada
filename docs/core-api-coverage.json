@@ -550,8 +550,8 @@
           "signature": "function Norm (Self : Mat; Kind : Norm_Kind : = L2) return Long_Float;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 4886,
-            "end": 4886,
+            "start": 5027,
+            "end": 5027,
             "text": "   function Norm (Self : Mat; Kind : Norm_Kind := L2) return Long_Float;",
             "sha256": "55ca59f689ceb85bc9f7ac608037331fb5a8cd9b92dcec319eb1693bdc72235a"
           }
@@ -561,8 +561,8 @@
           "signature": "function Norm (Self : Mat; Mask : Mat; Kind : Norm_Kind : = L2) return Long_Float;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 4898,
-            "end": 4899,
+            "start": 5039,
+            "end": 5040,
             "text": "   function Norm\n     (Self : Mat; Mask : Mat; Kind : Norm_Kind := L2) return Long_Float;",
             "sha256": "b791644c8397a7177876614525306cfc0975e6873462939e8f72ef481609611c"
           }
@@ -582,43 +582,43 @@
       "implementation": [
         {
           "path": "src/opencv-core.adb",
-          "start": 1869,
-          "end": 1884,
+          "start": 2115,
+          "end": 2130,
           "text": "   function Normalize\n     (Self  : Mat;\n      Kind  : Normalize_Kind := L2;\n      Alpha : Long_Float := 1.0;\n      Beta  : Long_Float := 0.0) return Mat\n   is\n      Result     : Mat;\n      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=\n        OpenCV.Internal.C_API.Null_Mat_Handle;\n      Status     : OpenCV.Internal.C_API.Status;\n   begin\n      Status :=\n        OpenCV.Internal.C_API.Mat_Normalize\n          (Source => Self.Handle,\n           Kind   => To_C_Normalize_Kind (Kind),\n           Alpha  => OpenCV.Internal.C_API.C_Double (Alpha),",
           "sha256": "518de94a6121dbf55a4c356819ab7c5bab444922efeceea88fc40f1bcfd7acea"
         },
         {
           "path": "src/opencv-core.adb",
-          "start": 4085,
-          "end": 4100,
+          "start": 4331,
+          "end": 4346,
           "text": "   function Normalize\n     (Self  : UMat;\n      Kind  : Normalize_Kind := L2;\n      Alpha : Long_Float := 1.0;\n      Beta  : Long_Float := 0.0) return UMat\n   is\n      Result : UMat;\n      Handle : aliased OpenCV.Internal.C_API.UMat_Handle :=\n        OpenCV.Internal.C_API.Null_UMat_Handle;\n   begin\n      Raise_On_Error\n        (OpenCV.Internal.C_API.UMat_Normalize\n           (Self.Handle,\n            To_C_Normalize_Kind (Kind),\n            OpenCV.Internal.C_API.C_Double (Alpha),\n            OpenCV.Internal.C_API.C_Double (Beta),",
           "sha256": "259dd2bf3b245a9cf1c5d32e20288688efd17d5125db727d5ceb4e12d78eed0f"
         },
         {
           "path": "src/opencv-core.adb",
-          "start": 9269,
-          "end": 9284,
+          "start": 9515,
+          "end": 9530,
           "text": "   function Norm (Self : Mat; Kind : Norm_Kind := L2) return Long_Float is\n      C_Result : aliased OpenCV.Internal.C_API.C_Double := 0.0;\n      Status   : constant OpenCV.Internal.C_API.Status :=\n        OpenCV.Internal.C_API.Mat_Norm\n          (Self   => Self.Handle,\n           Kind   => To_C_Norm_Kind (Kind),\n           Result => C_Result'Access);\n   begin\n      Raise_On_Error (Status, \"Mat norm operation\");\n      return Long_Float (C_Result);\n   end Norm;\n\n   function Norm\n     (Self : Mat; Mask : Mat; Kind : Norm_Kind := L2) return Long_Float\n   is\n      C_Result : aliased OpenCV.Internal.C_API.C_Double := 0.0;",
           "sha256": "61f918bd03a4e2592e5fca60522773089c14d29669ef3283f0034eede03eed28"
         },
         {
           "path": "src/opencv-core.adb",
-          "start": 9281,
-          "end": 9296,
+          "start": 9527,
+          "end": 9542,
           "text": "   function Norm\n     (Self : Mat; Mask : Mat; Kind : Norm_Kind := L2) return Long_Float\n   is\n      C_Result : aliased OpenCV.Internal.C_API.C_Double := 0.0;\n      Status   : OpenCV.Internal.C_API.Status;\n   begin\n      Validate_Mask (Self, Mask);\n      Status :=\n        OpenCV.Internal.C_API.Mat_Norm_Masked\n          (Self   => Self.Handle,\n           Mask   => Mask.Handle,\n           Kind   => To_C_Norm_Kind (Kind),\n           Result => C_Result'Access);\n      Raise_On_Error (Status, \"Masked Mat norm operation\");\n      return Long_Float (C_Result);\n   end Norm;",
           "sha256": "57dad3d5efeb8b13a13a6b845476b7c081a4cb36f1118c37f4d6a50c87e072f9"
         },
         {
           "path": "cpp/opencv_core_shim.cpp",
-          "start": 14460,
-          "end": 14484,
+          "start": 14620,
+          "end": 14644,
           "text": "opencv_core_mat_norm(const opencv_core_mat_handle *mat, int32_t norm_kind,\n                     double *out_norm) {\n    clear_error();\n\n    if (out_norm == nullptr) {\n        return invalid_argument(\"norm output pointer must not be null\");\n    }\n\n    *out_norm = 0.0;\n\n    if (mat == nullptr) {\n        return invalid_argument(\"Mat handle must not be null\");\n    }\n\n    int opencv_norm = 0;\n    if (!to_opencv_norm(norm_kind, opencv_norm)) {\n        return invalid_argument(\"norm kind is not supported\");\n    }\n\n    try {\n        *out_norm = cv::norm(source_for_norm(mat->value), opencv_norm);\n        return OPENCV_CORE_OK;\n    } catch (...) {\n        return translate_current_exception();\n    }",
           "sha256": "f2374fef51df7e7128a6517e979c91fbbad7ad981f18f6c1968868b95c586207"
         },
         {
           "path": "cpp/opencv_core_shim.cpp",
-          "start": 14488,
-          "end": 14515,
+          "start": 14648,
+          "end": 14675,
           "text": "opencv_core_mat_norm_masked(const opencv_core_mat_handle *mat,\n                            const opencv_core_mat_handle *mask,\n                            int32_t norm_kind, double *out_norm) {\n    clear_error();\n\n    if (out_norm == nullptr) {\n        return invalid_argument(\"norm output pointer must not be null\");\n    }\n\n    *out_norm = 0.0;\n\n    if (mat == nullptr || mask == nullptr) {\n        return invalid_argument(\"Mat and mask handles must not be null\");\n    }\n\n    int opencv_norm = 0;\n    if (!to_opencv_norm(norm_kind, opencv_norm)) {\n        return invalid_argument(\"norm kind is not supported\");\n    }\n\n    try {\n        *out_norm = cv::norm(source_for_norm(mat->value), opencv_norm,\n                             mask->value);\n        return OPENCV_CORE_OK;\n    } catch (...) {\n        return translate_current_exception();\n    }\n}",
           "sha256": "8e70ab2e446b94c227a9544f477573e9b5e3ba1827db9c9911a5c885c3ebacfe"
         }
@@ -777,8 +777,8 @@
       "implementation": [
         {
           "path": "src/opencv-core.adb",
-          "start": 2929,
-          "end": 2959,
+          "start": 3175,
+          "end": 3205,
           "text": "   function K_Nearest_Neighbors\n     (Queries        : Mat;\n      Candidates     : Mat;\n      Neighbor_Count : Positive;\n      Kind           : Batch_Distance_Kind := L2_Distance)\n      return Nearest_Neighbor_Result\n   is\n      Result           : Nearest_Neighbor_Result;\n      Distances_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=\n        OpenCV.Internal.C_API.Null_Mat_Handle;\n      Indices_Handle   : aliased OpenCV.Internal.C_API.Mat_Handle :=\n        OpenCV.Internal.C_API.Null_Mat_Handle;\n      Status           : OpenCV.Internal.C_API.Status;\n   begin\n      Validate_K_Nearest_Neighbors (Queries, Candidates, Neighbor_Count, Kind);\n      Status :=\n        OpenCV.Internal.C_API.Mat_Batch_Distance\n          (Queries        => Queries.Handle,\n           Candidates     => Candidates.Handle,\n           Neighbor_Count => OpenCV.Internal.C_API.C_Int32 (Neighbor_Count),\n           Kind           => To_C_Batch_Distance_Kind (Kind),\n           Distances      => Distances_Handle'Access,\n           Indices        => Indices_Handle'Access);\n      Raise_On_Error (Status, \"K_Nearest_Neighbors\");\n\n      OpenCV.Internal.C_API.Mat_Destroy (Result.Distances.Handle);\n      OpenCV.Internal.C_API.Mat_Destroy (Result.Indices.Handle);\n      Result.Distances.Handle := Distances_Handle;\n      Result.Indices.Handle := Indices_Handle;\n      return Result;\n   end K_Nearest_Neighbors;",
           "sha256": "afbcdc8546541a9f30e1c2b778270c3e57b54446b4e7a8d52604eba3aadb22da"
         },
@@ -1142,8 +1142,8 @@
           "signature": "function Add (Left, Right : Mat) return Mat;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2318,
-            "end": 2318,
+            "start": 2459,
+            "end": 2459,
             "text": "   function Add (Left, Right : Mat) return Mat;",
             "sha256": "d6937b7560ec4698fdfd9abf154d205d109af4ea68b38a6b895da61edb044672"
           }
@@ -1153,8 +1153,8 @@
           "signature": "function Add (Left, Right : UMat) return UMat;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2383,
-            "end": 2383,
+            "start": 2524,
+            "end": 2524,
             "text": "   function Add (Left, Right : UMat) return UMat;",
             "sha256": "6bb921f2360ca7b3ee8be29e5aafd63976c9977757132cc5fb315d893b2e7293"
           }
@@ -1164,8 +1164,8 @@
           "signature": "procedure Add (Left, Right : Mat; Destination : in out Mat);",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2456,
-            "end": 2456,
+            "start": 2597,
+            "end": 2597,
             "text": "   procedure Add (Left, Right : Mat; Destination : in out Mat);",
             "sha256": "d598174c029121348f7a533209bb05c19bdb567d0944f3ee3407a5d7a85676b3"
           }
@@ -1175,8 +1175,8 @@
           "signature": "procedure Add (Left, Right : UMat; Destination : in out UMat);",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2475,
-            "end": 2475,
+            "start": 2616,
+            "end": 2616,
             "text": "   procedure Add (Left, Right : UMat; Destination : in out UMat);",
             "sha256": "ba65255bce896674086be8a072c478842a315fb7d8506a841ef521c3f31de10c"
           }
@@ -1186,8 +1186,8 @@
           "signature": "function Subtract (Left, Right : Mat) return Mat;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2327,
-            "end": 2327,
+            "start": 2468,
+            "end": 2468,
             "text": "   function Subtract (Left, Right : Mat) return Mat;",
             "sha256": "4e090e0c3b49a90ffa3bd23e01bea75decace22b2626a393175bef14edcf972f"
           }
@@ -1197,8 +1197,8 @@
           "signature": "function Subtract (Left, Right : UMat) return UMat;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2392,
-            "end": 2392,
+            "start": 2533,
+            "end": 2533,
             "text": "   function Subtract (Left, Right : UMat) return UMat;",
             "sha256": "21ed385f47b2fe8779296824d9664dd545e3c25459847eddd1e5047cb65d81f1"
           }
@@ -1208,8 +1208,8 @@
           "signature": "procedure Subtract (Left, Right : Mat; Destination : in out Mat);",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2465,
-            "end": 2465,
+            "start": 2606,
+            "end": 2606,
             "text": "   procedure Subtract (Left, Right : Mat; Destination : in out Mat);",
             "sha256": "7e285df72349bf054fea7bc4cb436ff7454e55863542f93b4bc5fa21d00fdcb8"
           }
@@ -1219,8 +1219,8 @@
           "signature": "procedure Subtract (Left, Right : UMat; Destination : in out UMat);",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2484,
-            "end": 2484,
+            "start": 2625,
+            "end": 2625,
             "text": "   procedure Subtract (Left, Right : UMat; Destination : in out UMat);",
             "sha256": "74a165d9da41bb2f20b225124507215596e8796b084fe4a8c1c8c35c30888246"
           }
@@ -1230,8 +1230,8 @@
           "signature": "function Multiply (Left, Right : Mat) return Mat;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2336,
-            "end": 2336,
+            "start": 2477,
+            "end": 2477,
             "text": "   function Multiply (Left, Right : Mat) return Mat;",
             "sha256": "8b235f817900a3b59d37424638dc9c41ff6d08fd08a7a8937f44570bd16a04d8"
           }
@@ -1241,8 +1241,8 @@
           "signature": "function Multiply (Left, Right : UMat) return UMat;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2401,
-            "end": 2401,
+            "start": 2542,
+            "end": 2542,
             "text": "   function Multiply (Left, Right : UMat) return UMat;",
             "sha256": "13cf13d836a7d8e98fbd34286314d0cbd45417e065f9d752155fb8f73d970ad2"
           }
@@ -1252,8 +1252,8 @@
           "signature": "procedure Multiply (Left, Right : Mat; Destination : in out Mat);",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2494,
-            "end": 2494,
+            "start": 2635,
+            "end": 2635,
             "text": "   procedure Multiply (Left, Right : Mat; Destination : in out Mat);",
             "sha256": "364d7d67a1ba73e9c5f3ca381a23b642a74ca23bf97d1bd27b60bd251bb8c053"
           }
@@ -1263,8 +1263,8 @@
           "signature": "procedure Multiply (Left, Right : UMat; Destination : in out UMat);",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2503,
-            "end": 2503,
+            "start": 2644,
+            "end": 2644,
             "text": "   procedure Multiply (Left, Right : UMat; Destination : in out UMat);",
             "sha256": "a0eff8ee8008ca1c8c296a465a410be1ce1ff561fb533d1c174d4007e98d95d8"
           }
@@ -1274,8 +1274,8 @@
           "signature": "function Divide (Left, Right : Mat) return Mat;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2346,
-            "end": 2346,
+            "start": 2487,
+            "end": 2487,
             "text": "   function Divide (Left, Right : Mat) return Mat;",
             "sha256": "d0fa6622164b11618655a0c93e514b1ab4d1dfb209cbb85ca6dc325b08364f6d"
           }
@@ -1285,8 +1285,8 @@
           "signature": "function Divide (Left, Right : UMat) return UMat;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2411,
-            "end": 2411,
+            "start": 2552,
+            "end": 2552,
             "text": "   function Divide (Left, Right : UMat) return UMat;",
             "sha256": "4c0d9dcaea8f72e7ec19530bfffdc4555b3be03aafd281d7048f66410c51489f"
           }
@@ -1296,8 +1296,8 @@
           "signature": "procedure Divide (Left, Right : Mat; Destination : in out Mat);",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2515,
-            "end": 2515,
+            "start": 2656,
+            "end": 2656,
             "text": "   procedure Divide (Left, Right : Mat; Destination : in out Mat);",
             "sha256": "af8be2c50d2c19dad6bd800746a885650e5fe4ef53bf4c0cf749597ed6fe30d9"
           }
@@ -1307,8 +1307,8 @@
           "signature": "procedure Divide (Left, Right : UMat; Destination : in out UMat);",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2524,
-            "end": 2524,
+            "start": 2665,
+            "end": 2665,
             "text": "   procedure Divide (Left, Right : UMat; Destination : in out UMat);",
             "sha256": "d98d1b9cc6e6fc8d334ebdfa7abd875c8ef497ccfa82f48bb8787f83618c8ead"
           }
@@ -1317,15 +1317,15 @@
       "implementation": [
         {
           "path": "src/opencv-core.adb",
-          "start": 750,
-          "end": 767,
+          "start": 996,
+          "end": 1013,
           "text": "   function Add (Left, Right : Mat) return Mat is\n      Result     : Mat;\n      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=\n        OpenCV.Internal.C_API.Null_Mat_Handle;\n      Status     : OpenCV.Internal.C_API.Status;\n   begin\n      Validate_Arithmetic_Compatibility (Left, Right);\n      Status :=\n        OpenCV.Internal.C_API.Mat_Add\n          (Left   => Left.Handle,\n           Right  => Right.Handle,\n           Result => New_Handle'Access);\n      Raise_On_Error (Status, \"Mat addition operation\");\n\n      OpenCV.Internal.C_API.Mat_Destroy (Result.Handle);\n      Result.Handle := New_Handle;\n      return Result;\n   end Add;",
           "sha256": "0674bec291086fed864680c74bdace33439f7ac339359100b56ea531e4c3c1a5"
         },
         {
           "path": "cpp/opencv_core_shim.cpp",
-          "start": 5909,
-          "end": 5923,
+          "start": 6069,
+          "end": 6083,
           "text": "opencv_core_mat_add(const opencv_core_mat_handle *left,\n                    const opencv_core_mat_handle *right,\n                    opencv_core_mat_handle **out_mat) {\n    clear_error();\n\n    if (out_mat == nullptr) {\n        return invalid_argument(\"out_mat must not be null\");\n    }\n\n    *out_mat = nullptr;\n\n    if (left == nullptr || right == nullptr) {\n        return invalid_argument(\"Mat operand handles must not be null\");\n    }\n",
           "sha256": "9a5f05d1c0ac3ef45c8cf910a36c9eb83acf628e3957f61eb9e8dcee3611d3b6"
         }
@@ -1468,8 +1468,8 @@
           "signature": "function Compare (Left, Right : UMat; Kind : Comparison_Kind) return UMat;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2913,
-            "end": 2913,
+            "start": 3054,
+            "end": 3054,
             "text": "   function Compare (Left, Right : UMat; Kind : Comparison_Kind) return UMat;",
             "sha256": "bab931025caea08ddb345dce3eac42c830f2d5b71ba017a0c6e8f9f7a8bd3fe9"
           }
@@ -1479,8 +1479,8 @@
           "signature": "function Compare (Left, Right : Mat; Kind : Comparison_Kind) return Mat;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 3466,
-            "end": 3466,
+            "start": 3607,
+            "end": 3607,
             "text": "   function Compare (Left, Right : Mat; Kind : Comparison_Kind) return Mat;",
             "sha256": "58c806fdf9a97d2b049327e7540f2ffe41e2fc73297a4b50b58679354f52c66a"
           }
@@ -1490,8 +1490,8 @@
           "signature": "procedure Compare (Left, Right : UMat; Kind : Comparison_Kind; Destination : in out UMat);",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2928,
-            "end": 2929,
+            "start": 3069,
+            "end": 3070,
             "text": "   procedure Compare\n     (Left, Right : UMat; Kind : Comparison_Kind; Destination : in out UMat);",
             "sha256": "4939639fc6fb761975597618df1a5aeb4da31dc195fc32b49cddab15927155f2"
           }
@@ -1501,8 +1501,8 @@
           "signature": "procedure Compare (Left, Right : Mat; Kind : Comparison_Kind; Destination : in out Mat);",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 3480,
-            "end": 3481,
+            "start": 3621,
+            "end": 3622,
             "text": "   procedure Compare\n     (Left, Right : Mat; Kind : Comparison_Kind; Destination : in out Mat);",
             "sha256": "8c651a5cafb0bf5ddd0a5a8fa9a01465cf203d453982acd91d4f7000e6177f8c"
           }
@@ -1511,15 +1511,15 @@
       "implementation": [
         {
           "path": "src/opencv-core.adb",
-          "start": 1418,
-          "end": 1431,
+          "start": 1664,
+          "end": 1677,
           "text": "   function Compare (Left, Right : UMat; Kind : Comparison_Kind) return UMat is\n      Result : UMat;\n      Handle : aliased OpenCV.Internal.C_API.UMat_Handle :=\n        OpenCV.Internal.C_API.Null_UMat_Handle;\n   begin\n      Validate_Compare_Compatibility (Left, Right);\n      Raise_On_Error\n        (OpenCV.Internal.C_API.UMat_Compare\n           (Left.Handle,\n            Right.Handle,\n            To_C_Comparison_Kind (Kind),\n            Handle'Access),\n         \"UMat compare\");\n      OpenCV.Internal.C_API.UMat_Destroy (Result.Handle);",
           "sha256": "3bdd8fa13992944771dfd6dfc21059dd87c27a9bba992432c9fdf570b6d55431"
         },
         {
           "path": "src/opencv-core.adb",
-          "start": 1785,
-          "end": 1798,
+          "start": 2031,
+          "end": 2044,
           "text": "   function Compare (Left, Right : Mat; Kind : Comparison_Kind) return Mat is\n      Result     : Mat;\n      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=\n        OpenCV.Internal.C_API.Null_Mat_Handle;\n      Status     : OpenCV.Internal.C_API.Status;\n   begin\n      Validate_Compare_Compatibility (Left, Right);\n      Status :=\n        OpenCV.Internal.C_API.Mat_Compare\n          (Left   => Left.Handle,\n           Right  => Right.Handle,\n           Kind   => To_C_Comparison_Kind (Kind),\n           Result => New_Handle'Access);\n      Raise_On_Error (Status, \"Mat compare operation\");",
           "sha256": "ff05666d7bee5800ba82e96c4a7e5cecc47ea9a44736c43a871a4863e937f8ca"
         }
@@ -1776,8 +1776,8 @@
       "implementation": [
         {
           "path": "src/opencv-core.adb",
-          "start": 2094,
-          "end": 2105,
+          "start": 2340,
+          "end": 2351,
           "text": "   procedure Set_To (Self : in out UMat; Value : Scalar) is\n      Native : aliased OpenCV.Internal.C_API.Scalar := To_C_Scalar (Value);\n   begin\n      if Self.Channels > 4 then\n         Ada.Exceptions.Raise_Exception\n           (OpenCV_Error'Identity,\n            \"UMat Scalar supports at most four channels\");\n      end if;\n      Raise_On_Error\n        (OpenCV.Internal.C_API.UMat_Set_To (Self.Handle, Native'Access),\n         \"UMat set-to\");\n   end Set_To;",
           "sha256": "be89202a636ab5a11a197b4ceaa7411ccce2c24fc8ddc8b98a9165dc18cc946e"
         },
@@ -2281,8 +2281,8 @@
       "implementation": [
         {
           "path": "src/opencv-core.adb",
-          "start": 2041,
-          "end": 2056,
+          "start": 2287,
+          "end": 2302,
           "text": "   function Copy_To (Self : UMat) return UMat is\n      Result : UMat;\n      Handle : aliased OpenCV.Internal.C_API.UMat_Handle :=\n        OpenCV.Internal.C_API.Null_UMat_Handle;\n   begin\n      Raise_On_Error\n        (OpenCV.Internal.C_API.UMat_Copy_To (Self.Handle, Handle'Access),\n         \"UMat independent copy\");\n      OpenCV.Internal.C_API.UMat_Destroy (Result.Handle);\n      Result.Handle := Handle;\n      return Result;\n   end Copy_To;\n\n   function Convert_To\n     (Self   : UMat;\n      Depth  : Depth_Type;",
           "sha256": "606267a126df459a5e6e01dc22cacdf4ceb25e294541d3989898e57f33e3626d"
         },
@@ -2998,43 +2998,43 @@
       "implementation": [
         {
           "path": "src/opencv-core.adb",
-          "start": 4863,
-          "end": 4871,
+          "start": 5109,
+          "end": 5117,
           "text": "   function Discrete_Fourier_Transform (Self : Mat) return Mat is\n   begin\n      return\n        Perform_DFT\n          (Self,\n           \"Discrete_Fourier_Transform\",\n           \"Mat discrete Fourier transform\",\n           OpenCV.Internal.C_API.DFT_Forward_Complex,\n           Requirement => Real_Or_Complex);",
           "sha256": "9d384ef7557916058395dedb32e5a9dc4863e4c47a5443e6f1fb3891a1e6f46d"
         },
         {
           "path": "src/opencv-core.adb",
-          "start": 4919,
-          "end": 4927,
+          "start": 5165,
+          "end": 5173,
           "text": "   function Discrete_Fourier_Transform_Rows (Self : Mat) return Mat is\n   begin\n      return\n        Perform_DFT\n          (Self,\n           \"Discrete_Fourier_Transform_Rows\",\n           \"Mat row-wise discrete Fourier transform\",\n           OpenCV.Internal.C_API.DFT_Rows_Forward_Complex,\n           Requirement => Real_Or_Complex);",
           "sha256": "23dd0e7acdc9e37d01ac953d0cad1a7144cdf45943c12fcb2f69b411b2716764"
         },
         {
           "path": "src/opencv-core.adb",
-          "start": 5077,
-          "end": 5085,
+          "start": 5323,
+          "end": 5331,
           "text": "   function Discrete_Cosine_Transform (Self : Mat) return Mat is\n   begin\n      return\n        Perform_DCT\n          (Self,\n           \"Discrete_Cosine_Transform\",\n           \"Mat discrete cosine transform\",\n           OpenCV.Internal.C_API.DCT_Forward);\n   end Discrete_Cosine_Transform;",
           "sha256": "4754763073fb1f71afbdb00c48f635672c368c9745369b2ce4c3a49bf05e4ab7"
         },
         {
           "path": "src/opencv-core.adb",
-          "start": 5097,
-          "end": 5105,
+          "start": 5343,
+          "end": 5351,
           "text": "   function Discrete_Cosine_Transform_Rows (Self : Mat) return Mat is\n   begin\n      return\n        Perform_DCT\n          (Self,\n           \"Discrete_Cosine_Transform_Rows\",\n           \"Mat row-wise discrete cosine transform\",\n           OpenCV.Internal.C_API.DCT_Rows_Forward,\n           Row_Wise => True);",
           "sha256": "c2849a58b575db43fb4cfdb78bb0d2e5f7a0b34110f167b4762c92b701cc8fef"
         },
         {
           "path": "cpp/opencv_core_shim.cpp",
-          "start": 14081,
-          "end": 14090,
+          "start": 14241,
+          "end": 14250,
           "text": "opencv_core_mat_dft(const opencv_core_mat_handle *source,\n                    int32_t transform_kind,\n                    opencv_core_mat_handle **out_mat) {\n    clear_error();\n\n    if (out_mat != nullptr) {\n        *out_mat = nullptr;\n    }\n\n    if (out_mat == nullptr) {",
           "sha256": "f21cec6bfe64513280faa34dd99a19e8281ad0486b4d129e630b665328ff201a"
         },
         {
           "path": "cpp/opencv_core_shim.cpp",
-          "start": 14176,
-          "end": 14185,
+          "start": 14336,
+          "end": 14345,
           "text": "opencv_core_mat_dct(const opencv_core_mat_handle *source,\n                    int32_t transform_kind,\n                    opencv_core_mat_handle **out_mat) {\n    clear_error();\n\n    if (out_mat != nullptr) {\n        *out_mat = nullptr;\n    }\n\n    if (out_mat == nullptr) {",
           "sha256": "fc136f30e29b2a0f3ab65159ee7203f02e223c481774f97367cdc8a7e1f3852c"
         }
@@ -3230,29 +3230,29 @@
       "implementation": [
         {
           "path": "src/opencv-core.adb",
-          "start": 5217,
-          "end": 5228,
+          "start": 5463,
+          "end": 5474,
           "text": "   function Multiply_Spectra\n     (Left  : Mat;\n      Right : Mat;\n      Kind  : Spectrum_Multiplication_Kind := Ordinary_Spectrum_Product)\n      return Mat is\n   begin\n      return\n        Perform_Spectrum_Multiplication\n          (Left,\n           Right,\n           Kind,\n           \"Multiply_Spectra\",",
           "sha256": "d2c06ec4d4a5922646921f4dcaa4edacba886bf821fb6fe88d978482185e9611"
         },
         {
           "path": "src/opencv-core.adb",
-          "start": 5235,
-          "end": 5246,
+          "start": 5481,
+          "end": 5492,
           "text": "   function Multiply_Packed_Spectra\n     (Left  : Mat;\n      Right : Mat;\n      Kind  : Spectrum_Multiplication_Kind := Ordinary_Spectrum_Product)\n      return Mat is\n   begin\n      return\n        Perform_Spectrum_Multiplication\n          (Left,\n           Right,\n           Kind,\n           \"Multiply_Packed_Spectra\",",
           "sha256": "f786ad71867b04d73355c05a68297ec23dc8612d442b2f9f1ed3fe5bf09374e5"
         },
         {
           "path": "src/opencv-core.adb",
-          "start": 5253,
-          "end": 5264,
+          "start": 5499,
+          "end": 5510,
           "text": "   function Multiply_Packed_Spectra_Rows\n     (Left  : Mat;\n      Right : Mat;\n      Kind  : Spectrum_Multiplication_Kind := Ordinary_Spectrum_Product)\n      return Mat is\n   begin\n      return\n        Perform_Spectrum_Multiplication\n          (Left,\n           Right,\n           Kind,\n           \"Multiply_Packed_Spectra_Rows\",",
           "sha256": "0fd105d633154f3031d52e96fe8d8613bbcc236710894410631671a16c9c73fa"
         },
         {
           "path": "cpp/opencv_core_shim.cpp",
-          "start": 14296,
-          "end": 14307,
+          "start": 14456,
+          "end": 14467,
           "text": "opencv_core_mat_multiply_spectra(const opencv_core_mat_handle *left,\n                                 const opencv_core_mat_handle *right,\n                                 int32_t representation,\n                                 int32_t kind,\n                                 opencv_core_mat_handle **out_mat) {\n    clear_error();\n\n    if (out_mat != nullptr) {\n        *out_mat = nullptr;\n    }\n\n    if (out_mat == nullptr) {",
           "sha256": "dd4547eb1527da66588d7419c03742e16111dad432cb383d149b538dbc67eba8"
         }
@@ -5422,8 +5422,8 @@
           "signature": "function Matrix_Multiply (Left, Right : Mat) return Mat;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 4074,
-            "end": 4074,
+            "start": 4215,
+            "end": 4215,
             "text": "   function Matrix_Multiply (Left, Right : Mat) return Mat;",
             "sha256": "781c3a378099c123f45ddfa5f541c1e00d597544355697c9a0158b7f5d8a49a2"
           }
@@ -5433,8 +5433,8 @@
           "signature": "function Matrix_Multiply_Add (Left, Right : Mat; Addend : Mat; Product_Scale : Long_Float : = 1.0; Addend_Scale : Long_Float : = 1.0) return Mat;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 4103,
-            "end": 4107,
+            "start": 4244,
+            "end": 4248,
             "text": "   function Matrix_Multiply_Add\n     (Left, Right   : Mat;\n      Addend        : Mat;\n      Product_Scale : Long_Float := 1.0;\n      Addend_Scale  : Long_Float := 1.0) return Mat;",
             "sha256": "eea5cd67ba7053e3821b4d6104b112592e6188a4ae0b604964f6b1f3d11d06bc"
           }
@@ -5443,29 +5443,29 @@
       "implementation": [
         {
           "path": "src/opencv-core.adb",
-          "start": 7091,
-          "end": 7108,
+          "start": 7337,
+          "end": 7354,
           "text": "   function Matrix_Multiply (Left, Right : Mat) return Mat is\n      Result     : Mat;\n      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=\n        OpenCV.Internal.C_API.Null_Mat_Handle;\n      Status     : OpenCV.Internal.C_API.Status;\n   begin\n      if Left.Is_Empty then\n         Ada.Exceptions.Raise_Exception\n           (OpenCV_Error'Identity,\n            \"Matrix_Multiply requires a non-empty Left Mat\");\n      end if;\n\n      if Right.Is_Empty then\n         Ada.Exceptions.Raise_Exception\n           (OpenCV_Error'Identity,\n            \"Matrix_Multiply requires a non-empty Right Mat\");\n      end if;\n",
           "sha256": "187e69e509d763f9591393d9fd04d4c41ebc6cecd5f65d55dae84df904815d3a"
         },
         {
           "path": "src/opencv-core.adb",
-          "start": 7152,
-          "end": 7169,
+          "start": 7398,
+          "end": 7415,
           "text": "   function Matrix_Multiply_Add\n     (Left, Right   : Mat;\n      Addend        : Mat;\n      Product_Scale : Long_Float := 1.0;\n      Addend_Scale  : Long_Float := 1.0) return Mat\n   is\n      Result     : Mat;\n      New_Handle : aliased OpenCV.Internal.C_API.Mat_Handle :=\n        OpenCV.Internal.C_API.Null_Mat_Handle;\n      Status     : OpenCV.Internal.C_API.Status;\n   begin\n      if Left.Is_Empty then\n         Ada.Exceptions.Raise_Exception\n           (OpenCV_Error'Identity,\n            \"Matrix_Multiply_Add requires a non-empty Left Mat\");\n      end if;\n\n      if Right.Is_Empty then",
           "sha256": "6ffa97acc2838502c9586a43179a6da18b15600cec1cb214a9d1c67d33e28ee6"
         },
         {
           "path": "cpp/opencv_core_shim.cpp",
-          "start": 12895,
-          "end": 12906,
+          "start": 13055,
+          "end": 13066,
           "text": "opencv_core_mat_matrix_multiply(const opencv_core_mat_handle *left,\n                                const opencv_core_mat_handle *right,\n                                opencv_core_mat_handle **out_mat) {\n    clear_error();\n\n    if (out_mat != nullptr) {\n        *out_mat = nullptr;\n    }\n\n    if (out_mat == nullptr) {\n        return invalid_argument(\"out_mat must not be null\");\n    }",
           "sha256": "bd8850972b8ae46043fc212aac7defe511aafc7fd7fca5d33967544dfd4f1004"
         },
         {
           "path": "cpp/opencv_core_shim.cpp",
-          "start": 12926,
-          "end": 12937,
+          "start": 13086,
+          "end": 13097,
           "text": "opencv_core_mat_matrix_multiply_add(const opencv_core_mat_handle *left,\n                                    const opencv_core_mat_handle *right,\n                                    const opencv_core_mat_handle *addend,\n                                    double product_scale,\n                                    double addend_scale,\n                                    opencv_core_mat_handle **out_mat) {\n    clear_error();\n\n    if (out_mat != nullptr) {\n        *out_mat = nullptr;\n    }\n",
           "sha256": "2cc0fb7cd0ef6f1b6dd08bc3fb6490b6ff0d3e367c0935b4bf9a5dc0c801215b"
         }

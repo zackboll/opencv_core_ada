@@ -205,6 +205,20 @@ class InventoryTests(unittest.TestCase):
         with self.assertRaisesRegex(audit.AuditError, "stale source evidence"):
             self.validate()
 
+    def test_shifted_local_coordinates_with_unchanged_text_and_hash(self):
+        # Reproduce the stale Norm anchor after the scalar-mode merge. A valid
+        # identity/text/hash does not authenticate a different source location.
+        entry = self.bound()["ada"][0]["source"]
+        entry["start"] -= 1
+        entry["end"] -= 1
+        with self.assertRaisesRegex(audit.AuditError, "stale source evidence"):
+            self.validate()
+
+    def test_changed_local_text_with_unchanged_coordinates_and_hash(self):
+        self.bound()["ada"][0]["source"]["text"] += " -- stale"
+        with self.assertRaisesRegex(audit.AuditError, "stale source evidence"):
+            self.validate()
+
     def test_malformed_or_incomplete_json(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "bad.json"

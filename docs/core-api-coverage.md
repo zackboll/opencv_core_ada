@@ -1,5 +1,45 @@
 # CORE-CLOSE-001: Core API coverage evidence — INCOMPLETE
 
+## CORE-CROSS-UX-001-R1: repair inherited local evidence coordinates
+
+PR #92 head `84ab4f2125dd5a18f9801babde8b79b30a4c8827` and its base
+`5aef4d11722aa20b0c8229983afb6d257df5a74f` both failed the unchanged offline
+validator with `stale source evidence: src/opencv-core.ads:4886`. The base had
+merged scalar-mode additions ahead of the original audit's local anchors;
+line 4886 now declares `Transform`, not the recorded `Norm`. This is an
+inherited main/audit inconsistency, not a cross-tooling classification or
+workflow checkout problem. The hosted job checked out the exact PR head.
+
+Of 81 local evidence anchors, 51 moved: later declarations in
+`src/opencv-core.ads` by 141 lines, implementation excerpts in
+`src/opencv-core.adb` by 246, and `cpp/opencv_core_shim.cpp` by 160. Each
+stored excerpt still matches exactly once in its original file. Only their
+`start`/`end` coordinates in `core-api-coverage.json` are corrected. All stored
+text, SHA256 values, identities, signatures, semantic records, upstream
+provenance, review locks and unresolved classifications remain unchanged.
+The raw upstream census is not regenerated. The earlier byte-for-byte retention
+statements below describe the original audit continuation, before this repair.
+The practical-scope checker's one protected coverage-JSON blob is relinked from
+`10ee2d8f8a0cda9aa992357582b59ae6195bd21a` to
+`e114c590c7088b77d55ed01555ccaab372345075` for these coordinate edits; its
+other eight protected blobs remain unchanged. A focused positive/negative test
+confirms that this replacement blob is still protected byte-for-byte.
+
+The existing positive snapshot test checks all corrected anchors; additional
+negative tests reject shifted coordinates and modified text even when the
+stored hash is unchanged. Neither validator logic nor workflow behavior
+(including `--allow-incomplete`) changes. `UPSTREAM_DISCOVERY_BLOCKED` and
+`COVERAGE_AUDIT_BLOCKED` remain in force; this is evidence-integrity repair,
+not exhaustive-coverage acceptance.
+
+The cross-install implementation and all production Ada/C++/GPR/manifest
+inputs remain unchanged from `84ab4f2`. The user's successful GNAT Pro 25.0w /
+GCC 12.3.1 / AArch64 Scarthgap / OpenCV 4.9.0 bootstrap, build, recursive
+install and independent installed-consumer link qualification therefore carries
+forward. That qualification used `gprbuild -R`, produced no RPATH/RUNPATH,
+and did **not** execute the target binary. It is user-supplied vendor evidence,
+not a newly executed SDK test in the repair environment.
+
 ## CORE-CLOSE-001B: practical portable scope, separate from forensic acceptance
 
 See the [portable capability matrix](core-portable-capabilities.md),
