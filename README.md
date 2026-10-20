@@ -89,6 +89,12 @@ On Debian/Ubuntu, the native prerequisites can be installed with:
 sudo apt-get install build-essential libopencv-dev pkg-config
 ```
 
+For an explicit AArch64 GNAT Pro / Yocto SDK, use the opt-in
+[`scripts/cross_install_core.sh` workflow](docs/cross-install-core.md).
+It bootstraps GPRconfig, builds in isolation and recursively installs Core plus
+the C++ shim, retaining a configuration for external cross-consumers. It accepts
+clean Git or unpacked candidate sources; native Alire behavior is unchanged.
+
 ## Requirements
 
 A normal build requires:

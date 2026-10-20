@@ -143,6 +143,21 @@ class PracticalScopeTests(unittest.TestCase):
                 scope.check_preservation(root, {str(path.relative_to(root)):
                                                 scope.PROTECTED[str(path.relative_to(root))]})
 
+    def test_reanchored_coverage_blob_remains_exactly_protected(self):
+        name = "docs/core-api-coverage.json"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / name
+            path.parent.mkdir(parents=True)
+            data = (ROOT / name).read_bytes()
+            path.write_bytes(data)
+            protected = {name: scope.PROTECTED[name]}
+            scope.check_preservation(root, protected)
+            # Even harmless JSON whitespace must fail the explicit blob lock.
+            path.write_bytes(data + b"\n")
+            with self.assertRaisesRegex(audit.AuditError, "forensic evidence changed"):
+                scope.check_preservation(root, protected)
+
 
 if __name__ == "__main__":
     unittest.main()
