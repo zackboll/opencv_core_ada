@@ -112,7 +112,49 @@ waive a failing default configuration. No ASan/UBSan disabling, _Exit, teardown
 skip, or sanitizer-error suppression is used. LeakSanitizer remains unsupported
 by Apple's runtime, as previously documented.
 
-Final corrected SHA/tree, exact-head hosted conclusions and control artifacts
-are recorded in PR #94 after the corrective commit. Until the full macOS
-instrumented process exits normally, the gate is **MACOS_SANITIZER_BLOCKED**.
-Scarthgap and physical target execution remain NOT TESTED.
+### Actual independent-control findings on afaff7e
+
+Run 39543055233, job 119034936948, artifact
+`macos-norm-sanitizer-controls-afaff7ebfbc7e35fea43232f58fa15e37a0a7181`:
+
+| Control | Normal-exit result |
+| --- | --- |
+| Clean ASan/UBSan process | 0 |
+| Direct native norm, same OpenCV/TBB | 134, same TBB destructor SEGV |
+| Unchanged-main actual shim, existing Norm | 134, same TBB destructor SEGV |
+| Full actual-shim feature | 134, same TBB destructor SEGV |
+| Unsanitized direct-native mask campaign | 0 |
+| ASan positive UAF | 134, expected heap-use-after-free diagnostic |
+| UBSan positive signed overflow | 134, expected overflow diagnostic |
+| Full feature with required same allocator dylib | **0**, all assertions pass |
+| Full feature loader-traced repeat, default | 134 |
+| Full feature loader-traced repeat, required allocator | **0** |
+
+Exact environment remains macos26 image 20261013.0424.1, Xcode 26.6 / Apple
+clang 21.0.0, OpenCV 5.0.0_11, TBB 2023.1.0, hwloc 2.15.0. SHA256:
+
+* OpenCV core dylib: `f85b8b33c05b4bb942e4b63f51a1626c11ba275693f2568d32cc94dea6df2674`
+* TBB 12.19 dylib: `e8f5dbb74fed228aca558cb6edab6ade436dd295c724a02e66450522dd85ffb7`
+* TBB allocator 2.19 dylib: `187a62e10d95544f78e4d93744abe3826d638fdb43b6a81a26fd8d68ed4b59b0`
+
+The failure reproduces without the feature or shim. Loader evidence shows the
+allocator loaded dynamically in the failing configuration and loaded as a
+required initial dependency in the successful configuration. This establishes
+a pre-existing OpenCV/TBB/Apple-ASan library-lifetime interaction; it does not
+claim every upstream callback is sanitizer-instrumented or prove an upstream
+patch. The production binding remains unchanged.
+
+Narrow qualification correction: only the Apple/TBB sanitizer executable links
+the **same installed** allocator using
+`-Wl,-needed_library,<brew-tbb>/lib/libtbbmalloc.dylib`. It retains the allocator
+through ordinary dependency teardown rather than loading/unloading it solely
+through TBB callbacks. ASan/UBSan stay enabled, no errors are suppressed, and
+the process returns normally. The failing default controls remain documented
+failures. The full control campaign additionally requires three normally
+exiting native/main-shim/feature repeats plus positive detections under the
+corrected link configuration before declaring that configuration qualified.
+
+Final corrected SHA/tree, exact-head hosted conclusions and artifacts are
+recorded in PR #94 after commit. Until that corrected campaign exits normally,
+the macOS gate remains pending, not waived. Scarthgap and physical target
+execution remain NOT TESTED.

@@ -31,6 +31,9 @@ for library in "$opencv"/lib/libopencv_core*.dylib "$tbb"/lib/libtbb*.dylib; do
 done
 resource=$("$cxx" -print-resource-dir)
 find "$resource/lib/darwin" -name '*asan*' -o -name '*ubsan*'
+shasum -a 256 "$resource/lib/darwin/libclang_rt.asan_osx_dynamic.dylib" \
+    "$resource/lib/darwin/libclang_rt.ubsan_osx_dynamic.dylib"
+otool -tvV "$tbb/lib/libtbb.dylib" > "$out/tbb-disassembly.txt"
 # Actions uses a shallow checkout. Retrieve only the immutable starting-main
 # object needed by control C, without changing the feature checkout or branch.
 baseline=aa8a378ab614e9a5fc4f43765cd3ff1bbcf6a44d
@@ -74,23 +77,43 @@ done
 run native-mask "$out/native-mask"
 run asan-positive "$out/clean" asan-positive
 run ubsan-positive "$out/clean" ubsan-positive
-# Hypothesis control, not a waiver: retaining the actual allocator dependency
-# may prevent a dynamic-unload callback lifetime issue. Only normal exits count.
+# Qualify the demonstrated same-library lifetime correction independently on
+# native, unchanged-main shim and full feature. Default failures above remain
+# recorded as failures, not reclassified as successful sanitizer executions.
+needed="-Wl,-needed_library,$tbb/lib/libtbbmalloc.dylib"
+"$cxx" $common $san $flags -DCONTROL_NATIVE "$source" $libs -lopencv_core \
+    "$needed" -o "$out/native-needed-allocator"
+"$cxx" $common $san $flags \
+    "-DCONTROL_SHIM=\"$out/baseline/cpp/opencv_core_shim.cpp\"" \
+    "$source" $libs -lopencv_core "$needed" -o "$out/baseline-needed-allocator"
 "$cxx" $common $san $flags "$root/tests/probes/numerical_norms_shim_probe.cpp" \
-    $libs -lopencv_core "-Wl,-needed_library,$tbb/lib/libtbbmalloc.dylib" \
+    $libs -lopencv_core "$needed" \
     -o "$out/feature-needed-allocator"
-dsymutil "$out/feature-needed-allocator"
-otool -L "$out/feature-needed-allocator"
-run feature-needed-allocator "$out/feature-needed-allocator"
+for probe in native baseline feature; do
+    dsymutil "$out/$probe-needed-allocator"
+    otool -L "$out/$probe-needed-allocator"
+    for repeat in 1 2 3; do
+        run "$probe-needed-$repeat" "$out/$probe-needed-allocator"
+    done
+done
+run asan-needed-positive "$out/native-needed-allocator" asan-positive
+run ubsan-needed-positive "$out/native-needed-allocator" ubsan-positive
 DYLD_PRINT_LIBRARIES=1 run feature-loader "$out/feature"
 DYLD_PRINT_LIBRARIES=1 run allocator-loader "$out/feature-needed-allocator"
 cat "$out/statuses.txt"
-# A failed default control remains a failed gate, even if the hypothesis works.
+# A compatible configuration must preserve instrumentation AND normal teardown.
 grep -qx 'clean 0' "$out/statuses.txt"
-grep -qx 'native 0' "$out/statuses.txt"
-grep -qx 'baseline-shim 0' "$out/statuses.txt"
-grep -qx 'feature 0' "$out/statuses.txt"
-grep -q 'ERROR: AddressSanitizer: heap-use-after-free' "$out/asan-positive.log"
-grep -q 'runtime error: signed integer overflow' "$out/ubsan-positive.log"
-test "$(awk '$1=="asan-positive" {print $2}' "$out/statuses.txt")" != 0
-test "$(awk '$1=="ubsan-positive" {print $2}' "$out/statuses.txt")" != 0
+grep -qx 'native-mask 0' "$out/statuses.txt"
+grep -qx 'allocator-loader 0' "$out/statuses.txt"
+for probe in native baseline feature; do
+    for repeat in 1 2 3; do
+        grep -qx "$probe-needed-$repeat 0" "$out/statuses.txt"
+    done
+done
+for prefix in '' needed-; do
+    grep -q 'ERROR: AddressSanitizer: heap-use-after-free' "$out/asan-${prefix}positive.log"
+    grep -q 'runtime error: signed integer overflow' "$out/ubsan-${prefix}positive.log"
+    test "$(awk -v n="asan-${prefix}positive" '$1==n {print $2}' "$out/statuses.txt")" != 0
+    test "$(awk -v n="ubsan-${prefix}positive" '$1==n {print $2}' "$out/statuses.txt")" != 0
+done
+echo 'PASS actual-shim ASan/UBSan with required same allocator and normal process exit'
