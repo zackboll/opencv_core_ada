@@ -5078,7 +5078,9 @@ package OpenCV.Core is
    --  shape of Left. Every nonzero mask value selects the entire logical
    --  element and every channel, without scaling; zero excludes it.
    --  Noncontiguous/N-D masks and borrowed aliases are accepted. An all-zero
-   --  mask returns zero for finite operands, including relative mode.
+   --  mask returns zero for absolute norms of finite operands. Relative
+   --  empty selection is backend-defined: IPP can return NaN, while the
+   --  generic Right-norm-plus-epsilon path returns zero. Preserve that result.
    --  @param Left First numeric operand.
    --  @param Right Second numeric operand and relative reference.
    --  @param Mask Numeric selector, not a Hamming bit mask.

@@ -1,5 +1,10 @@
 # CORE-FIN-02 qualification record
 
+The [R1 corrective report](core-fin-02-r1-qualification.md) supersedes initial
+qualification claims where the three exact-head hosted failures differ:
+stale local audit coordinates, IPP zero-mask relative NaN, and macOS sanitizer
+teardown. Earlier local passes do not waive those gates.
+
 Starting main: `aa8a378ab614e9a5fc4f43765cd3ff1bbcf6a44d`, version 0.5.2.
 Fresh worktree: `/home/zboll/git/opencv/core-fin-02-numerical-norms`.
 Branch: `feature/core-fin-02-numerical-norms`. PR #91 was not modified.

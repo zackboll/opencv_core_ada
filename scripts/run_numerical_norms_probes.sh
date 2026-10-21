@@ -15,6 +15,13 @@ case "$(uname -s)" in
     Darwin) flags="$flags -Wno-error=c11-extensions" ;;
 esac
 libs=$(pkg-config --libs-only-L "$package")
+# Independent control records all depths/C1..C4, both orders, empty/partial
+# selection and optimized/IPP-disabled/generic dispatch, before shim testing.
+# shellcheck disable=SC2086
+"$cxx" -std=c++17 -O1 -g -Wall -Wextra -Wpedantic -Werror $flags \
+    "$root/tests/probes/numerical_norms_native_mask.cpp" $libs -lopencv_core \
+    -o "$out/native-mask"
+"$out/native-mask"
 # Intentional splitting of compiler/pkg-config switches.
 # shellcheck disable=SC2086
 "$cxx" -std=c++17 -O1 -g -Wall -Wextra -Wpedantic -Werror $flags \

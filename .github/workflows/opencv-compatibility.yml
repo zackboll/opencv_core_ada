@@ -728,6 +728,20 @@ jobs:
           CXX: /usr/bin/clang++
         run: sh scripts/run_numerical_norms_probes.sh
 
+      - name: Independent macOS sanitizer lifetime controls
+        if: ${{ always() && steps.root-build.outcome == 'success' }}
+        env:
+          NORM_SANITIZER_EVIDENCE: ${{ runner.temp }}/norm-sanitizer-controls
+        run: sh scripts/qualify_macos_norm_sanitizers.sh
+
+      - name: Preserve macOS sanitizer controls
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-norm-sanitizer-controls-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ runner.temp }}/norm-sanitizer-controls/
+          if-no-files-found: error
+
       - name: Verify shim library architecture
         if: ${{ always() && steps.root-build.outcome == 'success' }}
         run: |

@@ -245,6 +245,44 @@ package body Numerical_Norm_Tests is
 
    procedure Masks (Test : in out Fixture) is
       pragma Unreferenced (Test);
+      --  Native IPP relative empty-selection results can be NaN. Keep IEEE
+      --  handling local to this oracle comparison, not a global test option.
+      pragma Suppress (Validity_Check);
+      use OpenCV.Core.Module_Interop;
+      use type Interfaces.C.int;
+      procedure Relative_Matches_Native (A, B, M : Mat; Kind : Norm_Kind) is
+         Expected : aliased Interfaces.C.double := 0.0;
+         procedure LH (Left : Input_Mat_Handle) is
+            procedure RH (Right : Input_Mat_Handle) is
+               procedure MH (Mask : Input_Mat_Handle) is
+               begin
+                  Assert
+                    (Reference
+                       (Left,
+                        Right,
+                        Mask,
+                        Norm_Kind'Pos (Kind) + 1,
+                        1,
+                        Expected'Access)
+                     = 0,
+                     "masked relative native oracle");
+                  Assert
+                    (Native_Same
+                       (Interfaces.C.double
+                          (Difference_Norm (A, B, M, Kind, True)),
+                        Expected)
+                     = 1,
+                     "masked relative finite/nonfinite native parity");
+               end MH;
+            begin
+               With_Input_Handle (M, MH'Access);
+            end RH;
+         begin
+            With_Input_Handle (B, RH'Access);
+         end LH;
+      begin
+         With_Input_Handle (A, LH'Access);
+      end Relative_Matches_Native;
       Values : constant array (Natural range 0 .. 4) of UInt8_Value :=
         (0, 1, 2, 127, 255);
    begin
@@ -273,7 +311,9 @@ package body Numerical_Norm_Tests is
                Close (Squared_L2_Norm (A, M), 0.0);
                Close (Squared_L2_Difference_Norm (A, B, M), 0.0);
                for Kind in Norm_Kind loop
-                  Close (Difference_Norm (A, B, M, Kind, True), 0.0);
+                  Relative_Matches_Native (A, B, M, Kind);
+                  Relative_Matches_Native
+                    (A => B, B => A, M => M, Kind => Kind);
                end loop;
             end;
          end loop;

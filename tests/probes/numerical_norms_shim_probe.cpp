@@ -123,6 +123,23 @@ int main() {
                                                       &result) == 0, "binary pair");
         same(result, cv::norm(left.value, right.value, native));
     }
+    // Finite inputs do not imply a finite relative empty-selection result:
+    // IPP may produce NaN. Preserve and compare with the direct native call.
+    for (int depth : {CV_8U, CV_8S, CV_16U, CV_16S, CV_32F, CV_64F}) {
+        for (int channels = 1; channels <= 4; ++channels) {
+            opencv_core_mat_handle left(cv::Mat(1, 5, CV_MAKETYPE(depth, channels),
+                                                cv::Scalar::all(3)));
+            opencv_core_mat_handle right(cv::Mat(1, 5, left.value.type(),
+                                                 cv::Scalar::all(1)));
+            opencv_core_mat_handle mask(cv::Mat(1, 5, CV_8UC1, cv::Scalar(0)));
+            for (int kind = 1; kind <= 3; ++kind) {
+                require(opencv_core_mat_difference_norm(&left, &right, &mask,
+                    kind, 1, &result) == 0, "zero-mask relative native call");
+                same(result, cv::norm(left.value, right.value,
+                    numeric_norm_selector(kind) | cv::NORM_RELATIVE, mask.value));
+            }
+        }
+    }
     for (double value : {0., 1e-300, static_cast<double>(INFINITY),
                          static_cast<double>(NAN)}) {
         a.value.setTo(value);

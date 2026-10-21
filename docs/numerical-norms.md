@@ -51,7 +51,12 @@ established. Explicit caller conversion is supported:
 Numeric masks must be UInt8 C1 with the operand's complete native shape.
 Every nonzero byte selects the entire logical element and all its channels.
 Values 1, 2, 127 and 255 are equivalent selectors, not weights. All-zero masks
-give zero for finite input. These masks are **not binary bit masks**.
+give zero for absolute norms of finite input. Relative empty selection is
+backend-defined: OpenCV 5.0 with IPP 2026.0 returns NaN for C1 UInt8, UInt16,
+and Float32 L1/L2/Infinity; disabling IPP gives zero through the generic
+epsilon path. C2..C4 and the other supported depths use the finite generic
+result in the tested configuration. The binding preserves native classification,
+without forcing zero or rejecting NaN. These masks are **not binary bit masks**.
 
 Relative L1/L2/Infinity passes `NORM_RELATIVE` to the native two-input overload.
 The generic implementation uses `norm(Left,Right)/(norm(Right)+DBL_EPSILON)`;
