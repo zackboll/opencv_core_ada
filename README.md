@@ -80,6 +80,10 @@ Several related names appear in the repository:
 
 ## Installation
 
+Development API addition: [numerical norms and binary descriptor distances](docs/numerical-norms.md)
+documents `Difference_Norm`, direct squared-L2 reductions and native
+Hamming/Hamming2, with explicit portable depth and count limits.
+
 The Alire crate name is **`opencv_core`**, not `opencv_core_ada`:
 
 ```sh

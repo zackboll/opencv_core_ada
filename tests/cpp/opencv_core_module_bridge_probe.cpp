@@ -146,6 +146,55 @@ OPENCV_CORE_MODULE_PROBE_EXPORT double opencv_core_scalar_numeric_reference(
     }
 }
 
+// Independent direct-native oracle, using the supported borrowed module bridge.
+OPENCV_CORE_MODULE_PROBE_EXPORT int32_t opencv_core_numerical_norm_reference(
+    const opencv_core_mat_handle* left, const opencv_core_mat_handle* right,
+    const opencv_core_mat_handle* mask, int32_t selector, int32_t relative,
+    double* output) {
+    if (output == nullptr) return 4;
+    *output = 0;
+    try {
+        const cv::Mat *a = nullptr, *b = nullptr, *m = nullptr;
+        if (opencv_core_module_input_mat(left, &a) != 0) return 4;
+        if (right && opencv_core_module_input_mat(right, &b) != 0) return 4;
+        if (mask && opencv_core_module_input_mat(mask, &m) != 0) return 4;
+        if (selector < 0) { b = nullptr; selector = -selector; }
+        int flag;
+        switch (selector) {
+        case 1: flag = cv::NORM_L1; break;
+        case 2: flag = cv::NORM_L2; break;
+        case 3: flag = cv::NORM_INF; break;
+        case 4: flag = cv::NORM_L2SQR; break;
+        case 5: flag = cv::NORM_HAMMING; break;
+        case 6: flag = cv::NORM_HAMMING2; break;
+        default: return 4;
+        }
+        if (relative) flag |= cv::NORM_RELATIVE;
+        *output = b ? cv::norm(*a, *b, flag, m ? *m : cv::Mat())
+                    : cv::norm(*a, flag, m ? *m : cv::Mat());
+        return 0;
+    } catch (...) { return 1; }
+}
+
+OPENCV_CORE_MODULE_PROBE_EXPORT int32_t opencv_core_norm_special(
+    opencv_core_mat_handle* handle, int32_t special) {
+    try {
+        cv::Mat* mat = nullptr;
+        if (opencv_core_module_output_mat(handle, &mat) != 0) return 4;
+        const double value = special == 0 ? 0. : special == 1 ? 1e-300 :
+                             special == 2 ? INFINITY : NAN;
+        mat->setTo(value);
+        return 0;
+    } catch (...) { return 1; }
+}
+
+OPENCV_CORE_MODULE_PROBE_EXPORT int32_t opencv_core_norm_same(
+    double actual, double expected) {
+    return (std::isnan(actual) && std::isnan(expected)) || actual == expected ||
+        (std::isfinite(actual) && std::isfinite(expected) &&
+         std::abs(actual - expected) <= 1e-12 * std::max(1., std::abs(expected)));
+}
+
 OPENCV_CORE_MODULE_PROBE_EXPORT int32_t opencv_core_module_probe_version_major(
     void) {
     return CV_VERSION_MAJOR;

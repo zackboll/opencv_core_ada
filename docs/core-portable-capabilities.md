@@ -1,5 +1,10 @@
 # Practical portable Core completion scope — CORE-CLOSE-001B
 
+Current feature note: scalar modes landed in PR #90 (CORE-FIN-01). See
+[numerical norms](numerical-norms.md) for the bounded CORE-FIN-02 API and
+qualification boundary. The historical proposal/JSON ledger below is not a
+current implementation-status certificate; forensic artifacts remain unchanged.
+
 **Proposal for independent review, not API approval or exhaustive coverage.**
 This document and the [finite backlog](core-finish-backlog.md) supersede the
 earlier roadmap's requirement to finish the entire native census **before any

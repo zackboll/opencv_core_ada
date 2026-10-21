@@ -102,6 +102,11 @@ jobs:
               echo "=== Scalar native and sanitized shim probes ==="
               sh scripts/run_scalar_modes_probes.sh
 
+              echo "=== Numerical norms native parity and actual-shim sanitizers ==="
+              sh scripts/run_numerical_norms_probes.sh
+              alr -C tests -n exec -- gprbuild -P probes/numerical_norms_example.gpr -p
+              tests/probes/bin-numerical-example/numerical_norms_example
+
               echo "=== Scalar/vector layout boundary controls ==="
               sh tests/layout/run_controls.sh
               echo "=== Instrumented all-family public API suite ==="
@@ -323,6 +328,7 @@ jobs:
             # includes the real cpp/opencv_core_shim.cpp, not a mock shim.
             # System OpenCV is linked normally; it is NOT sanitizer-built.
             CXX=/usr/bin/g++ sh -x scripts/run_scalar_modes_probes.sh
+            CXX=/usr/bin/g++ sh -x scripts/run_numerical_norms_probes.sh
             probe=tests/probes/obj-scalar-native/shim
             file "$probe"
             readelf -h -d "$probe"
@@ -716,6 +722,11 @@ jobs:
 
       - name: Recursive installed and relocated Core Mat consumer
         run: sh scripts/validate_installed_mat_consumer.sh
+
+      - name: Numerical norms native parity and actual-shim sanitizers
+        env:
+          CXX: /usr/bin/clang++
+        run: sh scripts/run_numerical_norms_probes.sh
 
       - name: Verify shim library architecture
         if: ${{ always() && steps.root-build.outcome == 'success' }}

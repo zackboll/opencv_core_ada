@@ -3172,6 +3172,31 @@ opencv_core_mat_norm_masked(const opencv_core_mat_handle *mat,
  * initialized to zero; it remains zero on failure. Inputs and peak_value are
  * passed directly to OpenCV and the Mats remain borrowed and unmodified.
  */
+/* Additive norms. All Mat handles are borrowed and unchanged; out_norm is
+ * required and initialized to zero, remaining zero on every failure.
+ * Numeric kind: 1=L1, 2=L2, 3=INF, 4=L2SQR (independent of native flags).
+ * Unary numeric entry accepts only 4. Relative is exactly 0 or 1; 1 accepts
+ * kinds 1..3 only. A null mask explicitly means no numeric selector mask.
+ * Binary cell_bits is 1 or 2; no mask/relative mode is exposed.
+ * Native int/count/stride safety is checked before dispatch. Public depth,
+ * matching shape/type and numeric mask policy belong to thick Ada; raw
+ * validation duplicates only conditions necessary for safe native execution
+ * or correct empty-output handling. Int32 pairwise/Float16 unsafe dispatch is
+ * rejected; unary Int32 semantic exclusion is enforced only by Ada.
+ */
+opencv_core_status opencv_core_mat_numeric_norm(
+    const opencv_core_mat_handle *source, const opencv_core_mat_handle *mask,
+    int32_t kind, double *out_norm);
+opencv_core_status opencv_core_mat_difference_norm(
+    const opencv_core_mat_handle *left, const opencv_core_mat_handle *right,
+    const opencv_core_mat_handle *mask, int32_t kind, int32_t relative,
+    double *out_norm);
+opencv_core_status opencv_core_mat_binary_norm(
+    const opencv_core_mat_handle *source, int32_t cell_bits, double *out_norm);
+opencv_core_status opencv_core_mat_binary_difference_norm(
+    const opencv_core_mat_handle *left, const opencv_core_mat_handle *right,
+    int32_t cell_bits, double *out_norm);
+
 opencv_core_status
 opencv_core_mat_psnr(const opencv_core_mat_handle *left,
                      const opencv_core_mat_handle *right, double peak_value,

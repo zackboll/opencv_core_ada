@@ -82,5 +82,24 @@ begin
          end if;
       end;
    end loop;
+   --  CORE-FIN-02: compile and execute new operations using only installed
+   --  projects/sources, including after relocating the installation prefix.
+   declare
+      Left  : Mat := Create (1, 3, (UInt8, 1));
+      Right : Mat := Create (1, 3, (UInt8, 1));
+      Mask  : Mat := Create (1, 3, (UInt8, 1));
+   begin
+      Left.Set_To (OpenCV.Make_Scalar (3.0));
+      Right.Set_To (OpenCV.Make_Scalar (0.0));
+      Mask.Set_To (OpenCV.Make_Scalar (127.0));
+      if Difference_Norm (Left, Right, Kind => L1) /= 9.0
+        or else Squared_L2_Norm (Left, Mask) /= 27.0
+        or else Squared_L2_Difference_Norm (Left, Right, Mask) /= 27.0
+        or else Hamming_Norm (Left) /= 6.0
+        or else Hamming_Pairwise_Norm (Left, Right, Two_Bits) /= 3.0
+      then
+         raise Program_Error with "installed numerical norms failed";
+      end if;
+   end;
    Ada.Text_IO.Put_Line ("opencv_core installed Mat consumer ok");
 end Installed_Mat_Consumer;

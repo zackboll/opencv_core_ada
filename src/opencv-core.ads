@@ -42,6 +42,13 @@ package OpenCV.Core is
    --  components.
    type Norm_Kind is (L1, L2, Infinity);
 
+   --  Native binary reduction cell size for UInt8 single-channel descriptors.
+   --  No numeric selector mask or relative mode is provided for binary norms.
+   --  @enum One_Bit Count set bits (or differing bits for a pair).
+   --  @enum Two_Bits Count nonzero adjacent two-bit cells. A cell 11 counts
+   --  once, not twice; this is not One_Bit divided by two.
+   type Binary_Norm_Kind is (One_Bit, Two_Bits);
+
    --  Min_Max is a normalization mode rather than a Mat.Norm reduction kind.
    --  @enum L1 Scale so that the L1 norm equals the requested target value.
    --  @enum L2 Scale so that the L2 norm equals the requested target value.
@@ -5038,6 +5045,127 @@ package OpenCV.Core is
    --  contract or an OpenCV failure.
    function Norm
      (Self : Mat; Mask : Mat; Kind : Norm_Kind := L2) return Long_Float;
+
+   --  Native two-input numerical norm across all channels. Left and Right
+   --  must have identical native dimensionality, complete shape, depth and
+   --  channels. Supports UInt8, Int8, UInt16, Int16, Float32 and Float64 only;
+   --  Int32 and Float16 are rejected, even when empty. Callers may explicitly
+   --  Convert_To (Float64). Matching N-D and noncontiguous views are accepted.
+   --  Total * Channels must not exceed 268_435_455 (INT32_MAX / 8), with
+   --  checked preflight arithmetic; native row strides must fit signed int.
+   --  Compatible default-empty or typed-empty operands return zero, after
+   --  checking all shape/type contracts. Inputs and shallow aliases are not
+   --  modified. No difference Mat or implicit whole-matrix conversion is used.
+   --  Relative passes NORM_RELATIVE to OpenCV: the generic implementation
+   --  divides by Right's norm plus DBL_EPSILON, including zero/near-zero
+   --  Right.
+   --  Native backends may differ in precision and relative implementation.
+   --  Float32 intermediates can round/overflow before the C double result;
+   --  NaN/Infinity behavior is native-defined, not filtered or normalized.
+   --  @param Left First numeric operand.
+   --  @param Right Second operand and relative reference.
+   --  @param Kind L1, L2 or infinity norm.
+   --  @param Relative Request native relative normalization.
+   --  @return Native C double result converted to Long_Float.
+   --  @exception OpenCV_Error Invalid input, unsafe count/stride or native
+   --  failure. Nonfinite native results are not validation errors.
+   function Difference_Norm
+     (Left, Right : Mat; Kind : Norm_Kind := L2; Relative : Boolean := False)
+      return Long_Float;
+
+   --  Masked Difference_Norm with the same numeric, count, empty and
+   --  exception contract. Mask must be UInt8 C1 with the complete native
+   --  shape of Left. Every nonzero mask value selects the entire logical
+   --  element and every channel, without scaling; zero excludes it.
+   --  Noncontiguous/N-D masks and borrowed aliases are accepted. An all-zero
+   --  mask returns zero for finite operands, including relative mode.
+   --  @param Left First numeric operand.
+   --  @param Right Second numeric operand and relative reference.
+   --  @param Mask Numeric selector, not a Hamming bit mask.
+   --  @param Kind L1, L2 or infinity norm.
+   --  @param Relative Request native relative normalization.
+   --  @return Native masked C double result converted to Long_Float.
+   --  @exception OpenCV_Error Invalid operands/mask, count/stride or native
+   --  failure. Native nonfinite behavior is preserved.
+   function Difference_Norm
+     (Left, Right : Mat;
+      Mask        : Mat;
+      Kind        : Norm_Kind := L2;
+      Relative    : Boolean := False) return Long_Float;
+
+   --  Direct native NORM_L2SQR reduction, not the square of Mat.Norm.
+   --  Supports the six numeric depths, layouts, count/stride bounds and
+   --  nonfinite behavior documented for Difference_Norm. Int32/Float16 are
+   --  rejected; compatible empty input returns zero after type validation.
+   --  @param Self Numeric source; all channels contribute.
+   --  @return Native squared-L2 result converted from C double.
+   --  @exception OpenCV_Error Unsupported depth, unsafe count/stride or native
+   --  failure. No automatic conversion or finite-result guarantee is made.
+   function Squared_L2_Norm (Self : Mat) return Long_Float;
+
+   --  Direct masked NORM_L2SQR with Squared_L2_Norm's numeric/count/empty
+   --  contract and Difference_Norm's numeric mask contract. Nonzero mask
+   --  values select all channels without scaling. Native rounding and
+   --  nonfinite behavior are preserved; finite all-zero selection gives zero.
+   --  @param Self Numeric source, including N-D/noncontiguous views.
+   --  @param Mask UInt8 C1 selector with Self's complete native shape.
+   --  @return Native masked squared-L2 result converted from C double.
+   --  @exception OpenCV_Error Invalid source/mask, count/stride or native
+   --  failure.
+   function Squared_L2_Norm (Self, Mask : Mat) return Long_Float;
+
+   --  Direct native two-input NORM_L2SQR. Same shape, six supported depths,
+   --  channels, count/stride, empty and nonfinite contracts as
+   --  Difference_Norm.
+   --  No saturated subtraction, temporary difference or L2 squaring in Ada.
+   --  @param Left First numeric operand.
+   --  @param Right Matching numeric operand.
+   --  @return Native squared difference norm converted from C double.
+   --  @exception OpenCV_Error Invalid operands, count/stride or native
+   --  failure.
+   function Squared_L2_Difference_Norm (Left, Right : Mat) return Long_Float;
+
+   --  Masked direct native two-input NORM_L2SQR. Same numeric/count/empty
+   --  and nonfinite contracts as Difference_Norm. Mask is a complete-shape
+   --  UInt8 C1 numeric selector; each nonzero byte selects all channels.
+   --  @param Left First numeric operand.
+   --  @param Right Matching numeric operand.
+   --  @param Mask Numeric element selector, never a bitwise mask.
+   --  @return Native masked squared difference norm converted from C double.
+   --  @exception OpenCV_Error Invalid operands/mask, count/stride or native
+   --  failure.
+   function Squared_L2_Difference_Norm
+     (Left, Right, Mask : Mat) return Long_Float;
+
+   --  Native Hamming/Hamming2 count of UInt8 C1 storage. One_Bit counts set
+   --  bits, Two_Bits counts nonzero two-bit cells (11 counts once). No mask,
+   --  relative mode or byte conversion. N-D/noncontiguous views are accepted.
+   --  Total bytes must not exceed INT32_MAX/8 for One_Bit (268_435_455),
+   --  INT32_MAX/4 for Two_Bits (536_870_911); row strides must fit signed int.
+   --  Default-empty and UInt8 C1 typed-empty inputs return zero after type
+   --  validation. Inputs/aliases are unchanged; the bounded count is exact.
+   --  @param Self UInt8 single-channel source.
+   --  @param Kind Strong binary cell-size selector.
+   --  @return Exact native bit/cell count converted from C double.
+   --  @exception OpenCV_Error Invalid type/selector, unsafe count/stride or
+   --  native failure.
+   function Hamming_Norm
+     (Self : Mat; Kind : Binary_Norm_Kind := One_Bit) return Long_Float;
+
+   --  Native binary distance with Hamming_Norm's type/count/empty contract.
+   --  Left and Right must have identical complete native shape and UInt8 C1
+   --  type, including when empty. One_Bit counts differing bits; Two_Bits
+   --  counts nonzero XOR two-bit cells. Inputs and shallow aliases are
+   --  unchanged.
+   --  The distinct name preserves Batch_Distance_Kind.Hamming_Distance calls.
+   --  @param Left First UInt8 C1 descriptor or N-D/strided byte array.
+   --  @param Right Matching UInt8 C1 operand.
+   --  @param Kind Strong binary cell-size selector.
+   --  @return Exact native bit/cell distance converted from C double.
+   --  @exception OpenCV_Error Invalid operands/selector, unsafe count/stride
+   --  or native failure. Masks and relative binary distances are not exposed.
+   function Hamming_Pairwise_Norm
+     (Left, Right : Mat; Kind : Binary_Norm_Kind := One_Bit) return Long_Float;
 
    --  Computes OpenCV 4.10 cv::PSNR in decibels over every scalar channel
    --  component. Left and Right must be non-empty and have identical rows,
