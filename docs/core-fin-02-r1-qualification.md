@@ -62,10 +62,22 @@ zero for relative empty selection. The raw actual-shim probe now covers this
 case too; AUnit registration total remains **2052**.
 
 Local IPP-enabled full run after the mask fix has **no new norm failure** but
-one unrelated existing UMat Float16 extrema assertion in this locally built
-configuration. This is not claimed as a full qualification pass; the exact
+one existing UMat Float16 extrema assertion in this locally built configuration.
+An isolated unchanged-main worktree reproduces the same assertion at
+`umat_tests.adb:992`: main 2036/2037, corrected feature 2051/2052, both zero
+unexpected errors. This is not claimed as a full qualification pass; the exact
 hosted configuration must run the complete 2052 tests. IPP-disabled local
 passes are not substituted for that gate.
+
+Corrective source `99a025182318d299914473d1b3018e3598d5a16c` (tree
+`eb94fe99bd29bde7e44648420feb27b0d6a74116`) passed local full AUnit 2052/2052 on
+4.1/4.6/4.10/5.0 IPP-off, actual-shim native/raw/ASan/UBSan on those versions
+and IPP-enabled 5.0, GNAT 12 production/install/relocated consumers, 95
+coverage/parser controls, 117 documentation regressions and browser navigation/
+symbols. Linux leak detection is enabled. A subsequent tooling-only correction
+fetches the immutable main object for control C in shallow hosted checkouts;
+the previous head's hosted results remain identified separately, not promoted
+to final-head qualification.
 
 ## C — macOS sanitizer teardown investigation (pending controls)
 

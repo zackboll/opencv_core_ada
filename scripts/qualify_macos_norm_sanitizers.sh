@@ -31,6 +31,12 @@ for library in "$opencv"/lib/libopencv_core*.dylib "$tbb"/lib/libtbb*.dylib; do
 done
 resource=$("$cxx" -print-resource-dir)
 find "$resource/lib/darwin" -name '*asan*' -o -name '*ubsan*'
+# Actions uses a shallow checkout. Retrieve only the immutable starting-main
+# object needed by control C, without changing the feature checkout or branch.
+baseline=aa8a378ab614e9a5fc4f43765cd3ff1bbcf6a44d
+if ! git cat-file -e "$baseline^{commit}"; then
+    git fetch --depth=1 origin "$baseline"
+fi
 git archive aa8a378ab614e9a5fc4f43765cd3ff1bbcf6a44d cpp | tar -x -C "$out/baseline"
 shasum -a 256 "$out/baseline/cpp/opencv_core_shim.cpp" cpp/opencv_core_shim.cpp
 common="-std=c++17 -O1 -g -Wall -Wextra -Wpedantic -Werror -Wno-c11-extensions"
