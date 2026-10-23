@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "reconciled_main": "1d5d8e57feb02d91f596725a4988a274bfd2398c",
+  "crate_version": "0.5.2",
+  "discovery_status": "UPSTREAM_DISCOVERY_BLOCKED",
+  "coverage_status": "COVERAGE_AUDIT_BLOCKED",
+  "tasks": [
+    {
+      "id": "CORE-FIN-01",
+      "status": "IMPLEMENTED_IN_MAIN",
+      "source": "365d22dfd76520c85e0c24ea1b228c39a424d57e",
+      "merge": "26bf5e2e8151cb0545b928b72d3d87677543c1ae",
+      "pull_request": 90
+    },
+    {
+      "id": "CORE-FIN-02",
+      "status": "IMPLEMENTED_IN_MAIN",
+      "source": "3b71f0edf96b0adad421caa92173a55bd9f10961",
+      "merge": "1d5d8e57feb02d91f596725a4988a274bfd2398c",
+      "pull_request": 94
+    },
+    {"id": "CORE-FIN-03", "status": "PLANNED_REQUIRED"},
+    {"id": "CORE-OPT-01", "status": "OPTIONAL"},
+    {"id": "CORE-OPT-02", "status": "OPTIONAL"},
+    {"id": "CORE-OPT-03", "status": "OPTIONAL"},
+    {"id": "CORE-OPT-04", "status": "OPTIONAL"}
+  ],
+  "latest_feature_qualification": {
+    "task": "CORE-FIN-02",
+    "source": "3b71f0edf96b0adad421caa92173a55bd9f10961",
+    "tree": "51ad49a7a8518364670a5bf44f4c248cb8a7b010",
+    "successful_registered_tests": 2052,
+    "reference_versions": ["4.1.0", "4.6.0", "4.10.0", "5.0.0"],
+    "report": "https://github.com/zackboll/opencv_core_ada/pull/94#issuecomment-6329500097"
+  }
+}

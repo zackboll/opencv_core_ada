@@ -1,5 +1,20 @@
 # Core audit artifact retention proposal — CORE-CLOSE-001B
 
+## Current retention disposition — CORE-CLOSE-001D
+
+PR #89 **merged** as `5aef4d11722aa20b0c8229983afb6d257df5a74f`.
+Its raw evidence is already part of main's Git history. All sections below are
+the **historical pre-merge archival proposal**, not instructions to leave #89
+open or to remove its evidence. No archival migration, deletion, regeneration,
+history rewrite or change to PR #89 is authorized here. The existing forensic
+validator, nine blob locks and negative tests remain mandatory. The separate
+[current-status reconciliation](core-roadmap-reconciliation.md) replaces stale
+implementation claims without changing historical findings. See the retained
+**Git history** discussion below; a **successor PR** cannot remove history
+already merged into main.
+
+## Historical proposal (superseded where it assumes an unmerged audit)
+
 **No deletion, compression, overwrite, history rewrite or migration is authorized
 by this document.** All existing evidence remains unchanged on PR #89, with
 byte-preservation checks. Independent approval is required before a retention or
