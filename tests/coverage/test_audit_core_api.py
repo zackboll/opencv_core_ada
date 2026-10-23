@@ -52,6 +52,23 @@ class InventoryTests(unittest.TestCase):
     def test_actual_snapshot_evidence(self):
         self.assertEqual(self.validate(), self.data)
 
+    def test_local_declarations_match_unique_original_text_and_signature(self):
+        # Line movement is reconciled by unchanged original declaration text,
+        # never by accepting a guessed offset or weakening the evidence check.
+        for capability in self.data["capabilities"]:
+            for declaration in capability["ada"]:
+                entry = declaration["source"]
+                source = (ROOT / entry["path"]).read_text()
+                with self.subTest(identity=declaration["identity"],
+                                  signature=declaration["signature"]):
+                    self.assertEqual(source.count(entry["text"]), 1)
+                    matches = [item for item in audit.ada_index(ROOT / entry["path"])
+                               if item["scope"] + "." + item["name"] == declaration["identity"]
+                               and item["signature"] == declaration["signature"]]
+                    self.assertEqual(len(matches), 1)
+                    self.assertEqual((matches[0]["start"], matches[0]["end"]),
+                                     (entry["start"], entry["end"]))
+
     def test_actual_snapshot_blocks_completion(self):
         with self.assertRaisesRegex(audit.AuditError, "COVERAGE_AUDIT_BLOCKED"):
             self.validate(complete=True)

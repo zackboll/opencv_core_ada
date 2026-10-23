@@ -4232,6 +4232,40 @@ package OpenCV.Internal.C_API is
      Convention    => C,
      External_Name => "opencv_core_mat_norm_masked";
 
+   --  New selectors are independent of the historical Mat_Norm mapping.
+   function Mat_Numeric_Norm
+     (Self, Mask : Mat_Handle; Kind : C_Int32; Result : access C_Double)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_numeric_norm";
+
+   function Mat_Difference_Norm
+     (Left, Right, Mask : Mat_Handle;
+      Kind, Relative    : C_Int32;
+      Result            : access C_Double) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_difference_norm";
+
+   function Mat_Binary_Norm
+     (Self : Mat_Handle; Cell_Bits : C_Int32; Result : access C_Double)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_binary_norm";
+
+   function Mat_Binary_Difference_Norm
+     (Left, Right : Mat_Handle; Cell_Bits : C_Int32; Result : access C_Double)
+      return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_mat_binary_difference_norm";
+
    function Mat_PSNR
      (Left, Right : Mat_Handle;
       Peak_Value  : C_Double;

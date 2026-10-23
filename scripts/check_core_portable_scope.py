@@ -36,9 +36,9 @@ REQUIRED_CANDIDATES = {
     "cpp-machinery", "renamed-numerics"}
 PROTECTED = {
     "docs/core-api-compiler-evidence.json": "49a81301c0b4391a95ff9b1c52f7d44ad861b15f",
-    # CORE-CROSS-UX-001-R1: only 51 local start/end anchors moved after the
-    # scalar-mode merge; excerpt text/hashes and semantic records are unchanged.
-    "docs/core-api-coverage.json": "e114c590c7088b77d55ed01555ccaab372345075",
+    # CORE-FIN-02-R1: 35 uniquely matched local start/end anchors moved;
+    # excerpt text/hashes, upstream provenance and semantic records unchanged.
+    "docs/core-api-coverage.json": "f2d257c522b554e7fb50b15ac8235e64eac98ea7",
     "docs/core-api-discovery-blockers.json": "47116f1da39c5ea14b8163c4042c80c1ee441a69",
     "docs/core-api-discovery-review.json": "dc208b0ae3965d95203cd6ad0a1973fe209fff98",
     "docs/core-api-header-manifest.json": "eeb25bcc0ddb690b9cba1b0dffee4ba87c6528a5",

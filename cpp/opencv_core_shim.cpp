@@ -14674,6 +14674,167 @@ opencv_core_mat_norm_masked(const opencv_core_mat_handle *mat,
     }
 }
 
+namespace {
+
+static void norm_storage_preflight(const cv::Mat& source, uint64_t scalar_limit) {
+    // ABI safety: native iterator lengths and len*channels use signed int;
+    // bounding the product also leaves headroom for block-loop increments.
+    uint64_t count = source.dims == 0 ? 0 : 1;
+    for (int axis = 0; axis < source.dims; ++axis) {
+        const auto extent = static_cast<uint64_t>(source.size[axis]);
+        if (extent != 0 && count > scalar_limit / extent)
+            CV_Error(cv::Error::StsOutOfRange, "norm element count exceeds native bound");
+        count *= extent;
+    }
+    if (count > scalar_limit / static_cast<uint64_t>(source.channels()))
+        CV_Error(cv::Error::StsOutOfRange, "norm scalar count exceeds native bound");
+    // ABI safety: IPP narrows row strides to int before accessing storage.
+    for (int axis = 0; axis < source.dims; ++axis) {
+        if (source.step[axis] > static_cast<size_t>(INT32_MAX))
+            CV_Error(cv::Error::StsOutOfRange, "norm stride exceeds native int");
+    }
+}
+
+static void norm_numeric_preflight(const cv::Mat& source, bool pairwise) {
+    // ABI safety: historical Float16 kernels construct undersized conversion
+    // buffers for multichannel data; pairwise Int32 subtracts before widening.
+    // Unary Int32 semantic exclusion belongs only to Ada.
+    if (source.depth() == CV_16F || (pairwise && source.depth() == CV_32S))
+        CV_Error(cv::Error::StsUnsupportedFormat, "unsafe portable norm depth");
+    norm_storage_preflight(source, INT32_MAX / 8);
+}
+
+static void norm_mask_preflight(const cv::Mat& source,
+                         const opencv_core_mat_handle* mask) {
+    if (mask == nullptr) return;
+    // ABI safety: OpenCV 5 HAL dispatch precedes generic mask checks and may
+    // read mask bytes using source extents, causing out-of-bounds access.
+    if (mask->value.type() != CV_8UC1 ||
+        mask->value.dims != source.dims || mask->value.size != source.size)
+        CV_Error(cv::Error::StsBadArg, "unsafe norm mask storage");
+    norm_storage_preflight(mask->value, INT32_MAX / 8);
+}
+
+static int numeric_norm_selector(int32_t kind) {
+    switch (kind) {
+    case 1: return cv::NORM_L1;
+    case 2: return cv::NORM_L2;
+    case 3: return cv::NORM_INF;
+    case 4: return cv::NORM_L2SQR;
+    default: return -1;
+    }
+}
+
+static void norm_pair_preflight(const cv::Mat& left, const cv::Mat& right) {
+    // ABI safety: the empty short circuit must not publish a successful zero
+    // for incompatible headers; native type/shape rejection would be bypassed.
+    if (left.type() != right.type() || left.dims != right.dims ||
+        left.size != right.size)
+        CV_Error(cv::Error::StsUnmatchedSizes, "norm inputs must match");
+}
+
+} // namespace
+
+opencv_core_status opencv_core_mat_numeric_norm(
+    const opencv_core_mat_handle* source, const opencv_core_mat_handle* mask,
+    int32_t kind, double* out_norm) {
+    clear_error();
+    if (out_norm == nullptr) return invalid_argument("norm output must not be null");
+    *out_norm = 0;
+    if (source == nullptr) return invalid_argument("norm source must not be null");
+    if (kind != 4) return invalid_argument("unary numeric norm selector must be 4");
+    try {
+        norm_numeric_preflight(source->value, false);
+        norm_mask_preflight(source->value, mask);
+        // ABI safety: do not pass null empty storage into vendor HAL kernels.
+        if (source->value.empty()) return OPENCV_CORE_OK;
+        const double result = mask == nullptr
+            ? cv::norm(source->value, cv::NORM_L2SQR)
+            : cv::norm(source->value, cv::NORM_L2SQR, mask->value);
+        *out_norm = result;
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_mat_difference_norm(
+    const opencv_core_mat_handle* left, const opencv_core_mat_handle* right,
+    const opencv_core_mat_handle* mask, int32_t kind, int32_t relative,
+    double* out_norm) {
+    clear_error();
+    if (out_norm == nullptr) return invalid_argument("norm output must not be null");
+    *out_norm = 0;
+    if (left == nullptr || right == nullptr)
+        return invalid_argument("norm inputs must not be null");
+    int native_kind = numeric_norm_selector(kind);
+    if (native_kind < 0 || (relative != 0 && relative != 1) ||
+        (relative == 1 && kind == 4))
+        return invalid_argument("invalid numerical norm selector");
+    if (relative == 1) native_kind |= cv::NORM_RELATIVE;
+    try {
+        norm_numeric_preflight(left->value, true);
+        norm_numeric_preflight(right->value, true);
+        norm_mask_preflight(left->value, mask);
+        // ABI safety: avoid null storage in vendor HAL, after header checks.
+        if (left->value.empty()) {
+            norm_pair_preflight(left->value, right->value);
+            return OPENCV_CORE_OK;
+        }
+        const double result = mask == nullptr
+            ? cv::norm(left->value, right->value, native_kind)
+            : cv::norm(left->value, right->value, native_kind, mask->value);
+        *out_norm = result;
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_mat_binary_norm(
+    const opencv_core_mat_handle* source, int32_t cell_bits, double* out_norm) {
+    clear_error();
+    if (out_norm == nullptr) return invalid_argument("norm output must not be null");
+    *out_norm = 0;
+    if (source == nullptr) return invalid_argument("norm source must not be null");
+    if (cell_bits != 1 && cell_bits != 2)
+        return invalid_argument("binary cell selector must be 1 or 2");
+    try {
+        norm_storage_preflight(source->value, INT32_MAX / (cell_bits == 1 ? 8 : 4));
+        // ABI safety: empty success must not bypass the native binary type
+        // assertion, and null storage must not reach a vendor HAL kernel.
+        if (source->value.empty()) {
+            CV_Assert(source->value.type() == CV_8UC1);
+            return OPENCV_CORE_OK;
+        }
+        *out_norm = cv::norm(source->value,
+            cell_bits == 1 ? cv::NORM_HAMMING : cv::NORM_HAMMING2);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
+opencv_core_status opencv_core_mat_binary_difference_norm(
+    const opencv_core_mat_handle* left, const opencv_core_mat_handle* right,
+    int32_t cell_bits, double* out_norm) {
+    clear_error();
+    if (out_norm == nullptr) return invalid_argument("norm output must not be null");
+    *out_norm = 0;
+    if (left == nullptr || right == nullptr)
+        return invalid_argument("norm inputs must not be null");
+    if (cell_bits != 1 && cell_bits != 2)
+        return invalid_argument("binary cell selector must be 1 or 2");
+    try {
+        const uint64_t limit = INT32_MAX / (cell_bits == 1 ? 8 : 4);
+        norm_storage_preflight(left->value, limit);
+        norm_storage_preflight(right->value, limit);
+        // ABI safety: empty output correctness and vendor null-storage access.
+        if (left->value.empty()) {
+            norm_pair_preflight(left->value, right->value);
+            CV_Assert(left->value.type() == CV_8UC1);
+            return OPENCV_CORE_OK;
+        }
+        *out_norm = cv::norm(left->value, right->value,
+            cell_bits == 1 ? cv::NORM_HAMMING : cv::NORM_HAMMING2);
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+
 opencv_core_status
 opencv_core_mat_psnr(const opencv_core_mat_handle *left,
                      const opencv_core_mat_handle *right, double peak_value,

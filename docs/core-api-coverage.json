@@ -550,8 +550,8 @@
           "signature": "function Norm (Self : Mat; Kind : Norm_Kind : = L2) return Long_Float;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 5027,
-            "end": 5027,
+            "start": 5034,
+            "end": 5034,
             "text": "   function Norm (Self : Mat; Kind : Norm_Kind := L2) return Long_Float;",
             "sha256": "55ca59f689ceb85bc9f7ac608037331fb5a8cd9b92dcec319eb1693bdc72235a"
           }
@@ -561,8 +561,8 @@
           "signature": "function Norm (Self : Mat; Mask : Mat; Kind : Norm_Kind : = L2) return Long_Float;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 5039,
-            "end": 5040,
+            "start": 5046,
+            "end": 5047,
             "text": "   function Norm\n     (Self : Mat; Mask : Mat; Kind : Norm_Kind := L2) return Long_Float;",
             "sha256": "b791644c8397a7177876614525306cfc0975e6873462939e8f72ef481609611c"
           }
@@ -767,8 +767,8 @@
           "signature": "function K_Nearest_Neighbors (Queries : Mat; Candidates : Mat; Neighbor_Count : Positive; Kind : Batch_Distance_Kind : = L2_Distance) return Nearest_Neighbor_Result;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 1320,
-            "end": 1325,
+            "start": 1327,
+            "end": 1332,
             "text": "   function K_Nearest_Neighbors\n     (Queries        : Mat;\n      Candidates     : Mat;\n      Neighbor_Count : Positive;\n      Kind           : Batch_Distance_Kind := L2_Distance)\n      return Nearest_Neighbor_Result;",
             "sha256": "b31d7bd02e97bc8da18627a931df43e32c9719cbf5d47166f006daf50ed4012d"
           }
@@ -1142,8 +1142,8 @@
           "signature": "function Add (Left, Right : Mat) return Mat;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2459,
-            "end": 2459,
+            "start": 2466,
+            "end": 2466,
             "text": "   function Add (Left, Right : Mat) return Mat;",
             "sha256": "d6937b7560ec4698fdfd9abf154d205d109af4ea68b38a6b895da61edb044672"
           }
@@ -1153,8 +1153,8 @@
           "signature": "function Add (Left, Right : UMat) return UMat;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2524,
-            "end": 2524,
+            "start": 2531,
+            "end": 2531,
             "text": "   function Add (Left, Right : UMat) return UMat;",
             "sha256": "6bb921f2360ca7b3ee8be29e5aafd63976c9977757132cc5fb315d893b2e7293"
           }
@@ -1164,8 +1164,8 @@
           "signature": "procedure Add (Left, Right : Mat; Destination : in out Mat);",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2597,
-            "end": 2597,
+            "start": 2604,
+            "end": 2604,
             "text": "   procedure Add (Left, Right : Mat; Destination : in out Mat);",
             "sha256": "d598174c029121348f7a533209bb05c19bdb567d0944f3ee3407a5d7a85676b3"
           }
@@ -1175,8 +1175,8 @@
           "signature": "procedure Add (Left, Right : UMat; Destination : in out UMat);",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2616,
-            "end": 2616,
+            "start": 2623,
+            "end": 2623,
             "text": "   procedure Add (Left, Right : UMat; Destination : in out UMat);",
             "sha256": "ba65255bce896674086be8a072c478842a315fb7d8506a841ef521c3f31de10c"
           }
@@ -1186,8 +1186,8 @@
           "signature": "function Subtract (Left, Right : Mat) return Mat;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2468,
-            "end": 2468,
+            "start": 2475,
+            "end": 2475,
             "text": "   function Subtract (Left, Right : Mat) return Mat;",
             "sha256": "4e090e0c3b49a90ffa3bd23e01bea75decace22b2626a393175bef14edcf972f"
           }
@@ -1197,8 +1197,8 @@
           "signature": "function Subtract (Left, Right : UMat) return UMat;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2533,
-            "end": 2533,
+            "start": 2540,
+            "end": 2540,
             "text": "   function Subtract (Left, Right : UMat) return UMat;",
             "sha256": "21ed385f47b2fe8779296824d9664dd545e3c25459847eddd1e5047cb65d81f1"
           }
@@ -1208,8 +1208,8 @@
           "signature": "procedure Subtract (Left, Right : Mat; Destination : in out Mat);",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2606,
-            "end": 2606,
+            "start": 2613,
+            "end": 2613,
             "text": "   procedure Subtract (Left, Right : Mat; Destination : in out Mat);",
             "sha256": "7e285df72349bf054fea7bc4cb436ff7454e55863542f93b4bc5fa21d00fdcb8"
           }
@@ -1219,8 +1219,8 @@
           "signature": "procedure Subtract (Left, Right : UMat; Destination : in out UMat);",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2625,
-            "end": 2625,
+            "start": 2632,
+            "end": 2632,
             "text": "   procedure Subtract (Left, Right : UMat; Destination : in out UMat);",
             "sha256": "74a165d9da41bb2f20b225124507215596e8796b084fe4a8c1c8c35c30888246"
           }
@@ -1230,8 +1230,8 @@
           "signature": "function Multiply (Left, Right : Mat) return Mat;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2477,
-            "end": 2477,
+            "start": 2484,
+            "end": 2484,
             "text": "   function Multiply (Left, Right : Mat) return Mat;",
             "sha256": "8b235f817900a3b59d37424638dc9c41ff6d08fd08a7a8937f44570bd16a04d8"
           }
@@ -1241,8 +1241,8 @@
           "signature": "function Multiply (Left, Right : UMat) return UMat;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2542,
-            "end": 2542,
+            "start": 2549,
+            "end": 2549,
             "text": "   function Multiply (Left, Right : UMat) return UMat;",
             "sha256": "13cf13d836a7d8e98fbd34286314d0cbd45417e065f9d752155fb8f73d970ad2"
           }
@@ -1252,8 +1252,8 @@
           "signature": "procedure Multiply (Left, Right : Mat; Destination : in out Mat);",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2635,
-            "end": 2635,
+            "start": 2642,
+            "end": 2642,
             "text": "   procedure Multiply (Left, Right : Mat; Destination : in out Mat);",
             "sha256": "364d7d67a1ba73e9c5f3ca381a23b642a74ca23bf97d1bd27b60bd251bb8c053"
           }
@@ -1263,8 +1263,8 @@
           "signature": "procedure Multiply (Left, Right : UMat; Destination : in out UMat);",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2644,
-            "end": 2644,
+            "start": 2651,
+            "end": 2651,
             "text": "   procedure Multiply (Left, Right : UMat; Destination : in out UMat);",
             "sha256": "a0eff8ee8008ca1c8c296a465a410be1ce1ff561fb533d1c174d4007e98d95d8"
           }
@@ -1274,8 +1274,8 @@
           "signature": "function Divide (Left, Right : Mat) return Mat;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2487,
-            "end": 2487,
+            "start": 2494,
+            "end": 2494,
             "text": "   function Divide (Left, Right : Mat) return Mat;",
             "sha256": "d0fa6622164b11618655a0c93e514b1ab4d1dfb209cbb85ca6dc325b08364f6d"
           }
@@ -1285,8 +1285,8 @@
           "signature": "function Divide (Left, Right : UMat) return UMat;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2552,
-            "end": 2552,
+            "start": 2559,
+            "end": 2559,
             "text": "   function Divide (Left, Right : UMat) return UMat;",
             "sha256": "4c0d9dcaea8f72e7ec19530bfffdc4555b3be03aafd281d7048f66410c51489f"
           }
@@ -1296,8 +1296,8 @@
           "signature": "procedure Divide (Left, Right : Mat; Destination : in out Mat);",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2656,
-            "end": 2656,
+            "start": 2663,
+            "end": 2663,
             "text": "   procedure Divide (Left, Right : Mat; Destination : in out Mat);",
             "sha256": "af8be2c50d2c19dad6bd800746a885650e5fe4ef53bf4c0cf749597ed6fe30d9"
           }
@@ -1307,8 +1307,8 @@
           "signature": "procedure Divide (Left, Right : UMat; Destination : in out UMat);",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2665,
-            "end": 2665,
+            "start": 2672,
+            "end": 2672,
             "text": "   procedure Divide (Left, Right : UMat; Destination : in out UMat);",
             "sha256": "d98d1b9cc6e6fc8d334ebdfa7abd875c8ef497ccfa82f48bb8787f83618c8ead"
           }
@@ -1468,8 +1468,8 @@
           "signature": "function Compare (Left, Right : UMat; Kind : Comparison_Kind) return UMat;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 3054,
-            "end": 3054,
+            "start": 3061,
+            "end": 3061,
             "text": "   function Compare (Left, Right : UMat; Kind : Comparison_Kind) return UMat;",
             "sha256": "bab931025caea08ddb345dce3eac42c830f2d5b71ba017a0c6e8f9f7a8bd3fe9"
           }
@@ -1479,8 +1479,8 @@
           "signature": "function Compare (Left, Right : Mat; Kind : Comparison_Kind) return Mat;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 3607,
-            "end": 3607,
+            "start": 3614,
+            "end": 3614,
             "text": "   function Compare (Left, Right : Mat; Kind : Comparison_Kind) return Mat;",
             "sha256": "58c806fdf9a97d2b049327e7540f2ffe41e2fc73297a4b50b58679354f52c66a"
           }
@@ -1490,8 +1490,8 @@
           "signature": "procedure Compare (Left, Right : UMat; Kind : Comparison_Kind; Destination : in out UMat);",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 3069,
-            "end": 3070,
+            "start": 3076,
+            "end": 3077,
             "text": "   procedure Compare\n     (Left, Right : UMat; Kind : Comparison_Kind; Destination : in out UMat);",
             "sha256": "4939639fc6fb761975597618df1a5aeb4da31dc195fc32b49cddab15927155f2"
           }
@@ -1501,8 +1501,8 @@
           "signature": "procedure Compare (Left, Right : Mat; Kind : Comparison_Kind; Destination : in out Mat);",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 3621,
-            "end": 3622,
+            "start": 3628,
+            "end": 3629,
             "text": "   procedure Compare\n     (Left, Right : Mat; Kind : Comparison_Kind; Destination : in out Mat);",
             "sha256": "8c651a5cafb0bf5ddd0a5a8fa9a01465cf203d453982acd91d4f7000e6177f8c"
           }
@@ -1766,8 +1766,8 @@
           "signature": "procedure Set_To (Self : in out UMat; Value : Scalar);",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 558,
-            "end": 558,
+            "start": 565,
+            "end": 565,
             "text": "   procedure Set_To (Self : in out UMat; Value : Scalar);",
             "sha256": "975066926d62f989befcf257edbf78b5e7f60d7900fba1aa1761d248865ca04e"
           }
@@ -2271,8 +2271,8 @@
           "signature": "function Copy_To (Self : UMat) return UMat;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 513,
-            "end": 513,
+            "start": 520,
+            "end": 520,
             "text": "   function Copy_To (Self : UMat) return UMat;",
             "sha256": "d687049ca246d5c9a3ffe357707b5f8b790cb7a38fc394d6c9176aef6c969700"
           }
@@ -2944,8 +2944,8 @@
           "signature": "function Discrete_Fourier_Transform (Self : Mat) return Mat;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 1953,
-            "end": 1953,
+            "start": 1960,
+            "end": 1960,
             "text": "   function Discrete_Fourier_Transform (Self : Mat) return Mat;",
             "sha256": "bb5f171f3f021de3add93d870ddc0ffd45dfc47f1e54e0dab59ee381313ff1de"
           }
@@ -2955,8 +2955,8 @@
           "signature": "function Packed_Discrete_Fourier_Transform (Self : Mat) return Mat;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2022,
-            "end": 2022,
+            "start": 2029,
+            "end": 2029,
             "text": "   function Packed_Discrete_Fourier_Transform (Self : Mat) return Mat;",
             "sha256": "2f3bf14c50750a1d0cf021c75d4590353f8bc227ab2c724b839c8a5d496d81fe"
           }
@@ -2966,8 +2966,8 @@
           "signature": "function Discrete_Cosine_Transform (Self : Mat) return Mat;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2129,
-            "end": 2129,
+            "start": 2136,
+            "end": 2136,
             "text": "   function Discrete_Cosine_Transform (Self : Mat) return Mat;",
             "sha256": "87a6bc7ecd19d283e12257134879234d0d6a808f5d93959200be6efebfc2e6ab"
           }
@@ -2977,8 +2977,8 @@
           "signature": "function Discrete_Fourier_Transform_Rows (Self : Mat) return Mat;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2047,
-            "end": 2047,
+            "start": 2054,
+            "end": 2054,
             "text": "   function Discrete_Fourier_Transform_Rows (Self : Mat) return Mat;",
             "sha256": "16e2aa2cce3afef7ac8a99f8cbb50b999b0eb441bace98a723deb7461e0a1527"
           }
@@ -2988,8 +2988,8 @@
           "signature": "function Discrete_Cosine_Transform_Rows (Self : Mat) return Mat;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2160,
-            "end": 2160,
+            "start": 2167,
+            "end": 2167,
             "text": "   function Discrete_Cosine_Transform_Rows (Self : Mat) return Mat;",
             "sha256": "b706f1eb221144f7608e1eccb241d9e157cca7261e8f96eb0d229476d402be53"
           }
@@ -3198,8 +3198,8 @@
           "signature": "function Multiply_Spectra (Left : Mat; Right : Mat; Kind : Spectrum_Multiplication_Kind : = Ordinary_Spectrum_Product) return Mat;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2195,
-            "end": 2199,
+            "start": 2202,
+            "end": 2206,
             "text": "   function Multiply_Spectra\n     (Left  : Mat;\n      Right : Mat;\n      Kind  : Spectrum_Multiplication_Kind := Ordinary_Spectrum_Product)\n      return Mat;",
             "sha256": "31c877cdccba5536cf091a87658e4a655472e73cca8629b39b6b601e45ebcb8b"
           }
@@ -3209,8 +3209,8 @@
           "signature": "function Multiply_Packed_Spectra (Left : Mat; Right : Mat; Kind : Spectrum_Multiplication_Kind : = Ordinary_Spectrum_Product) return Mat;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2216,
-            "end": 2220,
+            "start": 2223,
+            "end": 2227,
             "text": "   function Multiply_Packed_Spectra\n     (Left  : Mat;\n      Right : Mat;\n      Kind  : Spectrum_Multiplication_Kind := Ordinary_Spectrum_Product)\n      return Mat;",
             "sha256": "4881c850e13bf8ee47b39477d1af5ad8a094636acaa81b17cc7fc541bbdd5d00"
           }
@@ -3220,8 +3220,8 @@
           "signature": "function Multiply_Packed_Spectra_Rows (Left : Mat; Right : Mat; Kind : Spectrum_Multiplication_Kind : = Ordinary_Spectrum_Product) return Mat;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 2239,
-            "end": 2243,
+            "start": 2246,
+            "end": 2250,
             "text": "   function Multiply_Packed_Spectra_Rows\n     (Left  : Mat;\n      Right : Mat;\n      Kind  : Spectrum_Multiplication_Kind := Ordinary_Spectrum_Product)\n      return Mat;",
             "sha256": "dbebf3c3a6d115a35fcf263a075d1f8134695e43548ee9773bf2c52e1506a657"
           }
@@ -5422,8 +5422,8 @@
           "signature": "function Matrix_Multiply (Left, Right : Mat) return Mat;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 4215,
-            "end": 4215,
+            "start": 4222,
+            "end": 4222,
             "text": "   function Matrix_Multiply (Left, Right : Mat) return Mat;",
             "sha256": "781c3a378099c123f45ddfa5f541c1e00d597544355697c9a0158b7f5d8a49a2"
           }
@@ -5433,8 +5433,8 @@
           "signature": "function Matrix_Multiply_Add (Left, Right : Mat; Addend : Mat; Product_Scale : Long_Float : = 1.0; Addend_Scale : Long_Float : = 1.0) return Mat;",
           "source": {
             "path": "src/opencv-core.ads",
-            "start": 4244,
-            "end": 4248,
+            "start": 4251,
+            "end": 4255,
             "text": "   function Matrix_Multiply_Add\n     (Left, Right   : Mat;\n      Addend        : Mat;\n      Product_Scale : Long_Float := 1.0;\n      Addend_Scale  : Long_Float := 1.0) return Mat;",
             "sha256": "eea5cd67ba7053e3821b4d6104b112592e6188a4ae0b604964f6b1f3d11d06bc"
           }

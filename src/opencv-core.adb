@@ -9541,6 +9541,223 @@ package body OpenCV.Core is
       return Long_Float (C_Result);
    end Norm;
 
+   procedure Validate_New_Norm
+     (Self   : Mat;
+      Binary : Boolean := False;
+      Kind   : Binary_Norm_Kind := One_Bit)
+   is
+      --  Check a corrupt selector explicitly before evaluating its value.
+      pragma Suppress (Validity_Check);
+      Count : Mat_Size := 1;
+      Limit : Mat_Size := 268_435_455;
+   begin
+      if Self.Handle = OpenCV.Internal.C_API.Null_Mat_Handle then
+         raise OpenCV_Error with "Norm requires a valid Mat handle";
+      end if;
+      if Binary then
+         if not Kind'Valid then
+            raise OpenCV_Error with "Invalid binary norm selector";
+         end if;
+         if Kind = Two_Bits then
+            Limit := 536_870_911;
+         end if;
+         if Self.Depth /= UInt8 or else Self.Channels /= 1 then
+            raise OpenCV_Error with "Binary norms require UInt8 C1";
+         end if;
+      elsif Self.Depth = Int32 or else Self.Depth = Float16 then
+         raise OpenCV_Error with "New numeric norms exclude Int32 and Float16";
+      end if;
+      if Self.Dimension_Count = 0 then
+         Count := 0;
+      end if;
+      for Axis in 1 .. Self.Dimension_Count loop
+         declare
+            Size : constant Mat_Size := Mat_Size (Self.Extent (Axis));
+         begin
+            if Size /= 0 and then Count > Limit / Size then
+               raise OpenCV_Error
+                 with "Norm count exceeds native signed bound";
+            end if;
+            Count := Count * Size;
+         end;
+      end loop;
+      if Count > Limit / Mat_Size (Self.Channels) then
+         raise OpenCV_Error with "Norm channel product exceeds native bound";
+      end if;
+   end Validate_New_Norm;
+
+   procedure Validate_Norm_Pair (Left, Right : Mat) is
+   begin
+      if Left.Dimension_Count /= Right.Dimension_Count
+        or else Left.Shape /= Right.Shape
+        or else Left.Depth /= Right.Depth
+        or else Left.Channels /= Right.Channels
+      then
+         raise OpenCV_Error
+           with "Norm operands must have identical shape/type";
+      end if;
+   end Validate_Norm_Pair;
+
+   procedure Validate_Norm_Mask (Self, Mask : Mat) is
+   begin
+      if Mask.Handle = OpenCV.Internal.C_API.Null_Mat_Handle then
+         raise OpenCV_Error with "Norm mask requires a valid Mat handle";
+      end if;
+      if Mask.Depth /= UInt8
+        or else Mask.Channels /= 1
+        or else Self.Dimension_Count /= Mask.Dimension_Count
+        or else Self.Shape /= Mask.Shape
+      then
+         raise OpenCV_Error
+           with "Norm mask must be UInt8 C1 with complete shape";
+      end if;
+   end Validate_Norm_Mask;
+
+   function Difference_Norm
+     (Left, Right : Mat; Kind : Norm_Kind := L2; Relative : Boolean := False)
+      return Long_Float
+   is
+      --  IEEE specials returned by OpenCV are results, not invalid Ada input.
+      pragma Suppress (Validity_Check);
+      Value : aliased OpenCV.Internal.C_API.C_Double := 0.0;
+   begin
+      Validate_New_Norm (Left);
+      Validate_New_Norm (Right);
+      Validate_Norm_Pair (Left, Right);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Difference_Norm
+           (Left.Handle,
+            Right.Handle,
+            OpenCV.Internal.C_API.Null_Mat_Handle,
+            To_C_Norm_Kind (Kind),
+            Boolean'Pos (Relative),
+            Value'Access),
+         "Difference norm");
+      return Long_Float (Value);
+   end Difference_Norm;
+
+   function Difference_Norm
+     (Left, Right : Mat;
+      Mask        : Mat;
+      Kind        : Norm_Kind := L2;
+      Relative    : Boolean := False) return Long_Float
+   is
+      pragma Suppress (Validity_Check);
+      Value : aliased OpenCV.Internal.C_API.C_Double := 0.0;
+   begin
+      Validate_New_Norm (Left);
+      Validate_New_Norm (Right);
+      Validate_Norm_Pair (Left, Right);
+      Validate_Norm_Mask (Left, Mask);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Difference_Norm
+           (Left.Handle,
+            Right.Handle,
+            Mask.Handle,
+            To_C_Norm_Kind (Kind),
+            Boolean'Pos (Relative),
+            Value'Access),
+         "Masked difference norm");
+      return Long_Float (Value);
+   end Difference_Norm;
+
+   function Squared_L2_Norm (Self : Mat) return Long_Float is
+      pragma Suppress (Validity_Check);
+      Value : aliased OpenCV.Internal.C_API.C_Double := 0.0;
+   begin
+      Validate_New_Norm (Self);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Numeric_Norm
+           (Self.Handle,
+            OpenCV.Internal.C_API.Null_Mat_Handle,
+            4,
+            Value'Access),
+         "Squared L2 norm");
+      return Long_Float (Value);
+   end Squared_L2_Norm;
+
+   function Squared_L2_Norm (Self, Mask : Mat) return Long_Float is
+      pragma Suppress (Validity_Check);
+      Value : aliased OpenCV.Internal.C_API.C_Double := 0.0;
+   begin
+      Validate_New_Norm (Self);
+      Validate_Norm_Mask (Self, Mask);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Numeric_Norm
+           (Self.Handle, Mask.Handle, 4, Value'Access),
+         "Masked squared L2 norm");
+      return Long_Float (Value);
+   end Squared_L2_Norm;
+
+   function Squared_L2_Difference_Norm (Left, Right : Mat) return Long_Float is
+      pragma Suppress (Validity_Check);
+      Value : aliased OpenCV.Internal.C_API.C_Double := 0.0;
+   begin
+      Validate_New_Norm (Left);
+      Validate_New_Norm (Right);
+      Validate_Norm_Pair (Left, Right);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Difference_Norm
+           (Left.Handle,
+            Right.Handle,
+            OpenCV.Internal.C_API.Null_Mat_Handle,
+            4,
+            0,
+            Value'Access),
+         "Squared L2 difference norm");
+      return Long_Float (Value);
+   end Squared_L2_Difference_Norm;
+
+   function Squared_L2_Difference_Norm
+     (Left, Right, Mask : Mat) return Long_Float
+   is
+      pragma Suppress (Validity_Check);
+      Value : aliased OpenCV.Internal.C_API.C_Double := 0.0;
+   begin
+      Validate_New_Norm (Left);
+      Validate_New_Norm (Right);
+      Validate_Norm_Pair (Left, Right);
+      Validate_Norm_Mask (Left, Mask);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Difference_Norm
+           (Left.Handle, Right.Handle, Mask.Handle, 4, 0, Value'Access),
+         "Masked squared L2 difference norm");
+      return Long_Float (Value);
+   end Squared_L2_Difference_Norm;
+
+   function Hamming_Norm
+     (Self : Mat; Kind : Binary_Norm_Kind := One_Bit) return Long_Float
+   is
+      pragma Suppress (Validity_Check);
+      Value : aliased OpenCV.Internal.C_API.C_Double := 0.0;
+   begin
+      Validate_New_Norm (Self, True, Kind);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Binary_Norm
+           (Self.Handle, Binary_Norm_Kind'Pos (Kind) + 1, Value'Access),
+         "Binary norm");
+      return Long_Float (Value);
+   end Hamming_Norm;
+
+   function Hamming_Pairwise_Norm
+     (Left, Right : Mat; Kind : Binary_Norm_Kind := One_Bit) return Long_Float
+   is
+      pragma Suppress (Validity_Check);
+      Value : aliased OpenCV.Internal.C_API.C_Double := 0.0;
+   begin
+      Validate_New_Norm (Left, True, Kind);
+      Validate_New_Norm (Right, True, Kind);
+      Validate_Norm_Pair (Left, Right);
+      Raise_On_Error
+        (OpenCV.Internal.C_API.Mat_Binary_Difference_Norm
+           (Left.Handle,
+            Right.Handle,
+            Binary_Norm_Kind'Pos (Kind) + 1,
+            Value'Access),
+         "Binary difference norm");
+      return Long_Float (Value);
+   end Hamming_Pairwise_Norm;
+
    function Peak_Signal_To_Noise_Ratio
      (Left : Mat; Right : Mat; Peak_Value : Long_Float := 255.0)
       return Long_Float

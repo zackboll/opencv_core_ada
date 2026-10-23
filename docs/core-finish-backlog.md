@@ -1,5 +1,13 @@
 # Finite practical Core backlog — CORE-CLOSE-001B
 
+Feature-local reconciliation (CORE-FIN-02): CORE-FIN-01 was implemented and
+merged in PR #90; the scalar planning text below is historical scope, not a
+claim that scalar modes are still missing. The additive
+[numerical norms feature](numerical-norms.md) is implemented on its feature
+branch; FIN-02 remains qualification-pending until exact-head review gates
+complete. The JSON planning ledger and forensic snapshots are deliberately
+unchanged; broader roadmap status reconciliation is a separate task.
+
 **Planning proposal; no production changes in this PR.** The first three are
 implementation tasks ready to start in separate feature PRs against main.
 They do **not** depend on closing the forensic declaration census, merging the

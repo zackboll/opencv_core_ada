@@ -380,9 +380,11 @@ class GeneratedSiteTests(unittest.TestCase):
         self.assertEqual(before, {p.name: p.read_bytes() for p in api.iterdir() if p.is_file()})
         from link_gnatdoc_types import process as check_types
         counts, pages = check_types(api, ROOT / 'src', check=True)
-        self.assertEqual((counts['linked'], pages), (2742, 168))
+        # CORE-FIN-02 adds 13 resolved references in the eight norm profiles.
+        self.assertEqual((counts['linked'], pages), (2755, 168))
         manifest = json.loads((api / 'type-crossrefs.json').read_text())
-        self.assertEqual(sum(len(p['snippets']) for p in manifest['pages'].values()), 1282)
+        # Eight operation profiles and one binary selector declaration.
+        self.assertEqual(sum(len(p['snippets']) for p in manifest['pages'].values()), 1291)
         from link_gnatdoc_types import LINK, SECTION
         from collections import Counter
         instances_linked = Counter()
