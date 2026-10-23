@@ -26,6 +26,19 @@ DECISIONS = {"REQUIRED_FOR_0_6", "OPTIONAL_LATER", "DEFERRED_RESEARCH",
 STATUSES = {"MISSING_CONFIRMED", "EXISTING_LIMITED", "OPTIONAL", "RESEARCH", "EXCLUDED"}
 DOCUMENTS = ("docs/core-portable-capabilities.md", "docs/core-finish-backlog.md",
              "docs/core-audit-artifact-policy.md")
+CURRENT = "docs/core-current-status.json"
+CURRENT_DOCUMENT = "docs/core-roadmap-reconciliation.md"
+UNSET = object()
+TASK_STATES = {
+    "CORE-FIN-01": "IMPLEMENTED_IN_MAIN", "CORE-FIN-02": "IMPLEMENTED_IN_MAIN",
+    "CORE-FIN-03": "PLANNED_REQUIRED",
+    **{f"CORE-OPT-0{i}": "OPTIONAL" for i in range(1, 5)},
+}
+# Historical planning meanings must not be overwritten with current statuses.
+PLANNING_BLOBS = {
+    PLAN: "3a68bda4d033867e61a8e8beb8eedda7b1031bf8",
+    EVIDENCE: "e216a80e5bbaad7782ac93cf8b9bfc618b236122",
+}
 REQUIRED_CANDIDATES = {
     "scalar-modes", "general-norms", "runtime-identity", "transpose-nd",
     "flip-broadcast-nd", "runtime-timing", "runtime-optimization", "umat-copy-set",
@@ -74,10 +87,123 @@ def check_document_links(root, name, text):
                 require(len(parts) >= 6 and parts[3] in {"blob", "tree"} and
                         parts[4] in {pin[0] for pin in audit.PINS.values()},
                         "unpinned practical Markdown upstream link")
-        elif url.path:
-            path = (root / name).parent / unquote(url.path)
-            require(path.resolve().is_relative_to(root.resolve()) and path.exists(),
+        else:
+            path = ((root / name).parent / unquote(url.path)) if url.path else root / name
+            require(not url.netloc and not url.query and
+                    path.resolve().is_relative_to(root.resolve()) and path.is_file(),
                     f"broken practical Markdown local link: {name}:{target}")
+            if url.fragment:
+                fragment = unquote(url.fragment)
+                if path.suffix == ".ads":
+                    require(any(item["name"].lower() == fragment.lower()
+                                for item in public_declarations(path)),
+                            f"missing Ada declaration fragment: {target}")
+                else:
+                    headings, counts = set(), {}
+                    for heading in re.findall(r"(?m)^#{1,6}\s+(.+?)\s*#*\s*$", path.read_text()):
+                        slug = re.sub(r"[^\w\- ]", "", heading.lower()).replace(" ", "-")
+                        count = counts.get(slug, 0)
+                        counts[slug] = count + 1
+                        headings.add(f"{slug}-{count}" if count else slug)
+                    require(path.suffix == ".md" and fragment in headings,
+                            f"missing Markdown fragment: {name}:{target}")
+
+
+def exact_record(value, expected, at="current status"):
+    """Small closed schema: types, keys and reviewed values all fail closed."""
+    require(type(value) is type(expected), f"{at}: invalid type")
+    if isinstance(expected, dict):
+        require(value.keys() == expected.keys(), f"{at}: missing/unknown fields")
+        for key in expected:
+            exact_record(value[key], expected[key], f"{at}.{key}")
+    elif isinstance(expected, list):
+        require(len(value) == len(expected), f"{at}: missing/duplicate records")
+        for index, item in enumerate(expected):
+            exact_record(value[index], item, f"{at}[{index}]")
+    else:
+        require(value == expected, f"{at}: contradictory reviewed value")
+
+
+def public_declarations(path):
+    # These package specs use a top-level private section, never a nested one.
+    source = path.read_text()
+    boundary = re.search(r"(?im)^private\s*$", source)
+    public_lines = source[:boundary.start()].count("\n") if boundary else len(source.splitlines())
+    return [item for item in audit.ada_index(path) if item["start"] <= public_lines]
+
+
+def check_implemented_profiles(root):
+    declarations = public_declarations(root / "src/opencv-core.ads")
+    signatures = {re.sub(r"\s+", "", item["signature"]).lower() for item in declarations}
+    profiles = []
+    for name in ("Add", "Subtract", "Multiply", "Divide"):
+        profiles += [f"function {name} (Self : Mat; Value : Scalar) return Mat;",
+                     f"procedure {name} (Self : Mat; Value : Scalar; Destination : in out Mat);"]
+    for name in ("Subtract_From", "Divide_Into"):
+        profiles += [f"function {name} (Value : Scalar; Self : Mat) return Mat;",
+                     f"procedure {name} (Value : Scalar; Self : Mat; Destination : in out Mat);"]
+    profiles += [
+        "function Compare (Self : Mat; Value : Float64_Value; Kind : Comparison_Kind) return Mat;",
+        "procedure Compare (Self : Mat; Value : Float64_Value; Kind : Comparison_Kind; Destination : in out Mat);",
+        "type Binary_Norm_Kind is (One_Bit, Two_Bits);",
+        "function Difference_Norm (Left, Right : Mat; Kind : Norm_Kind := L2; Relative : Boolean := False) return Long_Float;",
+        "function Difference_Norm (Left, Right : Mat; Mask : Mat; Kind : Norm_Kind := L2; Relative : Boolean := False) return Long_Float;",
+        "function Squared_L2_Norm (Self : Mat) return Long_Float;",
+        "function Squared_L2_Norm (Self, Mask : Mat) return Long_Float;",
+        "function Squared_L2_Difference_Norm (Left, Right : Mat) return Long_Float;",
+        "function Squared_L2_Difference_Norm (Left, Right, Mask : Mat) return Long_Float;",
+        "function Hamming_Norm (Self : Mat; Kind : Binary_Norm_Kind := One_Bit) return Long_Float;",
+        "function Hamming_Pairwise_Norm (Left, Right : Mat; Kind : Binary_Norm_Kind := One_Bit) return Long_Float;",
+    ]
+    for profile in profiles:
+        require(re.sub(r"\s+", "", profile).lower() in signatures,
+                f"missing implemented public Ada profile: {profile}")
+
+
+def validate_current(root, current=UNSET, documents=True):
+    current = audit.load(root / CURRENT) if current is UNSET else current
+    tasks = [{"id": key, "status": value} for key, value in TASK_STATES.items()]
+    tasks[0].update(source="365d22dfd76520c85e0c24ea1b228c39a424d57e",
+                    merge="26bf5e2e8151cb0545b928b72d3d87677543c1ae", pull_request=90)
+    tasks[1].update(source="3b71f0edf96b0adad421caa92173a55bd9f10961",
+                    merge="1d5d8e57feb02d91f596725a4988a274bfd2398c", pull_request=94)
+    expected = {
+        "schema_version": 1, "reconciled_main": tasks[1]["merge"], "crate_version": "0.5.2",
+        "discovery_status": "UPSTREAM_DISCOVERY_BLOCKED",
+        "coverage_status": "COVERAGE_AUDIT_BLOCKED", "tasks": tasks,
+        "latest_feature_qualification": {
+            "task": "CORE-FIN-02", "source": tasks[1]["source"],
+            "tree": "51ad49a7a8518364670a5bf44f4c248cb8a7b010",
+            "successful_registered_tests": 2052, "reference_versions": list(audit.VERSIONS),
+            "report": "https://github.com/zackboll/opencv_core_ada/pull/94#issuecomment-6329500097",
+        },
+    }
+    exact_record(current, expected)
+    require(re.search(r'(?m)^version\s*=\s*"0\.5\.2"\s*$',
+                      (root / "alire.toml").read_text()), "current crate version mismatch")
+    check_preservation(root, PLANNING_BLOBS)
+    check_implemented_profiles(root)
+    if documents:
+        for name in (*DOCUMENTS, "docs/core-completion-roadmap.md", CURRENT_DOCUMENT, "README.md"):
+            text = (root / name).read_text()
+            check_document_links(root, name, text)
+            if name != DOCUMENTS[2]:
+                require(re.search(r"Current crate version:\*\* `?0\.5\.2`?", text),
+                        f"readable current crate version missing: {name}")
+            if name in {CURRENT_DOCUMENT, DOCUMENTS[1]}:
+                for task in tasks:
+                    row = f"| {task['id']} | {task['status']} |"
+                    require(row in text, f"readable current task status missing: {name}:{task['id']}")
+            if name == DOCUMENTS[0]:
+                for capability in ("scalar-modes", "general-norms"):
+                    rows = [row for row in text.splitlines() if row.startswith(f"| `{capability}`:")]
+                    require(len(rows) == 1 and "**IMPLEMENTED_IN_MAIN**" in rows[0] and
+                            "**REQUIRED_FOR_0_6**" in rows[0],
+                            f"readable implemented capability missing: {capability}")
+        text = (root / CURRENT_DOCUMENT).read_text()
+        require("UPSTREAM_DISCOVERY_BLOCKED" in text and "COVERAGE_AUDIT_BLOCKED" in text,
+                "missing current forensic limitations")
+    return current
 
 
 def capture(root, parent):
@@ -197,10 +323,12 @@ def main():
         if args.capture:
             capture(args.root, args.capture)
         plan = validate(args.root)
+        validate_current(args.root)
         print(f"Practical scope: {len(plan['candidates'])} explicit decisions; first tasks: "
               + ", ".join(plan["first_tasks"]))
         print("Planning integrity verified; no exhaustive coverage or native discovery certification.")
-    except (audit.AuditError, KeyError, TypeError, OSError, subprocess.CalledProcessError) as error:
+        print("Current 0.5.2: FIN-01/02 IMPLEMENTED_IN_MAIN; FIN-03 PLANNED_REQUIRED; OPT-01..04 OPTIONAL.")
+    except (ValueError, KeyError, TypeError, OSError, RecursionError, subprocess.CalledProcessError) as error:
         print(str(error), file=sys.stderr)
         return 1
     return 0

@@ -14,6 +14,8 @@ jobs:
           apt-get install -y --no-install-recommends ca-certificates git python3 gnat-12 gnat-12-aarch64-linux-gnu gcc-aarch64-linux-gnu
           test -s /etc/ssl/certs/ca-certificates.crt
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Native GNAT 12 source-unit controls (not a production build)
         run: |
           gcc-12 --version

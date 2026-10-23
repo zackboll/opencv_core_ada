@@ -12,27 +12,31 @@ C++ ABI out of normal application code.
 - [Documentation Home](https://zackboll.github.io/opencv_core_ada/)
 - [Published Developer Guides](https://zackboll.github.io/opencv_core_ada/#developer-guides)
 - [Building and Contributing](docs/documentation.md)
+- [Practical Core roadmap and current status](docs/core-roadmap-reconciliation.md)
 
 The documentation site publishes styled HTML versions of the five developer
 guides. Repository-relative guide links below remain links to their authoritative
 Markdown sources on GitHub.
 
-> **Source-release candidate:** `0.5.2` (current `alire.toml`), not yet
-> tagged or published; see the
-> [release preparation record](docs/release-0.5.2-preparation.md).
-> **Existing source release:** [`0.5.1`](https://github.com/zackboll/opencv_core_ada/tree/0.5.1)
+> **Current crate version:** `0.5.2` (`alire.toml`). The existing
+> [`0.5.2` source tag](https://github.com/zackboll/opencv_core_ada/tree/0.5.2)
+> predates merged FIN-02; see the [current reconciliation](docs/core-roadmap-reconciliation.md)
+> and historical [release preparation record](docs/release-0.5.2-preparation.md).
+> **Earlier source release:** [`0.5.1`](https://github.com/zackboll/opencv_core_ada/tree/0.5.1)
 > (immutable source tag; no separate GitHub Release object).
 > **Latest indexed release:** [`0.5.0`](https://github.com/alire-project/alire-index/blob/stable-1.4.0/index/op/opencv_core/opencv_core-0.5.0.toml).
 > The separate [0.5.1 Alire submission, PR #2243](https://github.com/alire-project/alire-index/pull/2243),
-> remains pending. There is no 0.5.2 index submission at this preparation stage.
-> `alr with opencv_core` selects an indexed release, not this candidate.
+> remains pending. No new index submission or release is made by this reconciliation.
+> `alr with opencv_core` selects an indexed release, not current main.
 >
 > **Compatibility:** OpenCV **4.1 through 5.0**, inclusive, with one public Ada
 > API. Not every intermediate release is explicitly tested.
 >
-> **Status:** active, pre-1.0 API. Latest local campaign qualification:
-> **2,037 passing AUnit tests**, zero failed assertions or unexpected errors.
-> See the [release qualification protocol and provenance](docs/release-0.5.2-preparation.md).
+> **Status:** active, pre-1.0 API. Merged CORE-FIN-02 qualification:
+> **2,052 successful registered AUnit tests on each of OpenCV 4.1, 4.6, 4.10 and 5.0**,
+> zero failed assertions or unexpected errors. See [exact-source evidence and
+> remaining limits](docs/core-roadmap-reconciliation.md#qualification-and-provenance-boundaries).
+> FIN-01's 2,037-test campaign remains historical; neither is whole-Core qualification.
 >
 > **Scope:** Core only. Image processing, codecs, GUI, video, feature detection,
 > calibration and neural-network modules belong in separate dependent crates.
@@ -494,7 +498,8 @@ The test crate carries development-only dependencies such as AUnit, GNATprove,
 and GNATcov. They are intentionally not dependencies of the public library
 crate.
 
-At the time of this README update, the full suite contains **2037 AUnit tests**.
+Merged FIN-02 qualification records **2052 registered AUnit tests**; see the
+[current evidence and limits](docs/core-roadmap-reconciliation.md#qualification-and-provenance-boundaries).
 Coverage includes ordinary behavior, invalid input, shape/depth/channel
 compatibility, empty Mats, non-contiguous Regions, shallow-versus-independent
 ownership, callback lifetimes, arbitrary Ada array lower bounds, failure
@@ -607,8 +612,8 @@ partially integrated batches.
 
 ## Versioning
 
-The prepared manifest is `0.5.2`; this is a source-release candidate, not a
-publication claim. The existing tagged source is `0.5.1`; the latest accepted
+The current manifest is `0.5.2`; its existing source tag predates FIN-02 on main.
+This reconciliation is not a new release or publication claim. The latest accepted
 Alire release is `opencv_core=0.5.0`, with 0.5.1 pending separately in PR #2243.
 Unlike the tooling-only 0.5.1 patch, 0.5.2 includes fourteen additive public
 scalar overloads already merged into main. Existing declarations and ownership
@@ -619,7 +624,7 @@ a claim of a frozen, stable-API SemVer patch policy. See the
 A Git tag alone is not evidence of Alire publication.
 See [CHANGELOG.md](CHANGELOG.md) for UMat additions in 0.4.0, typed Mat/SparseMat
 additions in 0.3.0, the source-breaking shared-value relocation in 0.2.0, and
-the 0.5.0/0.5.1 releases and 0.5.2 candidate notes. The API remains experimental until 1.0.
+the 0.5.0/0.5.1 releases and historical 0.5.2 preparation notes. The API remains experimental until 1.0.
 
 ## License
 
