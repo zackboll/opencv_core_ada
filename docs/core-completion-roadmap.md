@@ -1,9 +1,26 @@
 # Core completion and freeze roadmap — provisional, audit blocked
 
+## Current implementation overlay — CORE-CLOSE-001D
+
+**Current crate version:** `0.5.2`. CORE-FIN-01 and CORE-FIN-02 are
+**IMPLEMENTED_IN_MAIN** (merged PRs #90 and #94); CORE-FIN-03 remains
+**PLANNED_REQUIRED**. The bounded optional queue is unchanged. See the
+[reconciliation ledger and qualification](core-roadmap-reconciliation.md),
+[current-status JSON](core-current-status.json) and [finite backlog](core-finish-backlog.md).
+The merged FIN-02 campaign has 2,052 successful registered tests on each of
+OpenCV 4.1/4.6/4.10/5.0; FIN-01's 2,037-test campaign is historical.
+This does not establish exhaustive Core coverage or a new release.
+
+PR #89 is merged. Its historical findings, the original 26 records and
+**UPSTREAM_DISCOVERY_BLOCKED / COVERAGE_AUDIT_BLOCKED** remain intact. All
+sections below retain historical ordering/proposals; they do not supersede
+this current implementation overlay. In particular, merging the forensic
+audit or finishing AUD-07 is not a prerequisite to FIN-03.
+
 ## CORE-CLOSE-001B: practical execution supersedes audit-first ordering
 
 The [portable capability scope](core-portable-capabilities.md) and
-[finite feature backlog](core-finish-backlog.md) are the current proposal for
+[finite feature backlog](core-finish-backlog.md) introduced the proposal for
 implementation sequencing. **CORE-FIN-01 scalar modes, CORE-FIN-02 general norms,
 and CORE-FIN-03 native runtime identity may start independently on main without
 waiting for AUD-01..AUD-07 or merging raw discovery data.** They require their
@@ -18,9 +35,9 @@ are optional/consumer-backed, not automatic stabilization requirements.
 planning readiness does not certify either forensic gate.
 
 The [artifact retention proposal](core-audit-artifact-policy.md) preserves every
-existing raw artifact and recommends an approved lightweight successor PR rather
-than importing large raw-history commits into main. No successor is created and
-no artifact is removed by CORE-CLOSE-001B. Original 26 semantic records are intact.
+existing raw artifact. Its pre-merge lightweight-successor recommendation is
+historical: the audit history is already on main. No artifact is removed by
+this reconciliation. Original 26 semantic records are intact.
 
 This is a proposal for independent review, **not** an approved release promise.
 The [coverage audit](core-api-coverage.md) has not established discovery closure.

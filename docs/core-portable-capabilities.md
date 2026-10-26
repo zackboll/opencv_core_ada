@@ -1,9 +1,12 @@
 # Practical portable Core completion scope — CORE-CLOSE-001B
 
-Current feature note: scalar modes landed in PR #90 (CORE-FIN-01). See
-[numerical norms](numerical-norms.md) for the bounded CORE-FIN-02 API and
-qualification boundary. The historical proposal/JSON ledger below is not a
-current implementation-status certificate; forensic artifacts remain unchanged.
+**Current crate version:** `0.5.2`. CORE-FIN-01 and CORE-FIN-02 are
+**IMPLEMENTED_IN_MAIN** via PRs #90 and #94. CORE-FIN-03 remains
+**PLANNED_REQUIRED**. See the [current status, provenance and qualification](core-roadmap-reconciliation.md)
+and [numerical norms](numerical-norms.md) for the bounded FIN-02 API.
+The historical JSON ledger is not a current implementation-status certificate;
+the [small overlay](core-current-status.json) records current states without
+rewriting the original planning findings or forensic evidence.
 
 **Proposal for independent review, not API approval or exhaustive coverage.**
 This document and the [finite backlog](core-finish-backlog.md) supersede the
@@ -11,8 +14,9 @@ earlier roadmap's requirement to finish the entire native census **before any
 feature implementation**. A focused feature needs its own source/ABI/mode review,
 not individual reconciliation of 9,000–10,000 declaration occurrences.
 
-Baseline: `bd60e969e2a2471c1bb4b90d3006e53f3f6e09eb`; fetched main remains
-`64d8a60b59acfe4334045280e430c4774b5cad89`. The original 26 records, complete
+Historical planning baseline: `bd60e969e2a2471c1bb4b90d3006e53f3f6e09eb`;
+historical audit baseline: `64d8a60b59acfe4334045280e430c4774b5cad89`.
+These are not current main identities. The original 26 records, complete
 header-path proofs, source/Clang ledgers and unresolved blockers are preserved
 byte-for-byte. `UPSTREAM_DISCOVERY_BLOCKED` and `COVERAGE_AUDIT_BLOCKED` remain
 honest forensic results, **not blockers to selecting these three features**.
@@ -105,8 +109,8 @@ value, **not a claim of measured demand or a mandatory feature request**.
 
 | Stable planning ID / native behavior | Existing Ada / status | Native reference availability | Decision and specific reason / consumers | Safety and evidence |
 | --- | --- | --- | --- | --- |
-| `scalar-modes`: add/subtract/multiply/divide/compare scalar modes | Matrix/matrix functions and destinations exist; **partial family / missing scalar modes confirmed** | All four | **REQUIRED_FOR_0_6**, task CORE-FIN-01: avoid allocating constant Mats for scales/offsets/thresholds; Imgproc, Features, Calib3D, Video | Initial seven non-Float16 depths, 2-D arithmetic C1..C4, scalar compare C1; native rounding/zero rules, reverse operands; seed scalar records; pinned arithm excerpts |
-| `general-norms`: difference/relative/squared/Hamming | Unary/masked Norm L1/L2/Infinity only; **missing confirmed** general modes; batch distance already has binary/squared modes | All four | **REQUIRED_FOR_0_6**, CORE-FIN-02: residual/error and descriptor comparisons across Features/Calib3D/navigation | Distinct Difference_Norm avoids existing mask-profile collision; new numeric subset excludes Int32/Float16 (legacy subtraction-before-widening), UInt8 C1 Hamming; bit masks deferred; [4.1 norm](https://github.com/opencv/opencv/blob/371bba8f54560b374fbcd47e7e02f015ac4969ad/modules/core/src/norm.cpp#L1014), [Int32 safety source](https://github.com/opencv/opencv/blob/371bba8f54560b374fbcd47e7e02f015ac4969ad/modules/core/src/norm.cpp#L218), [5.0 norm](https://github.com/opencv/opencv/blob/40738fb16ceddb5fb3fea747585f7ce6abb0605b/modules/core/src/norm.dispatch.cpp#L521) |
+| `scalar-modes`: add/subtract/multiply/divide/compare scalar modes | **IMPLEMENTED_IN_MAIN**, fourteen bounded scalar overloads plus existing matrix/matrix functions | All four | **REQUIRED_FOR_0_6**, task CORE-FIN-01: avoid allocating constant Mats for scales/offsets/thresholds; Imgproc, Features, Calib3D, Video | Seven non-Float16 depths, 2-D arithmetic C1..C4, scalar compare C1; native rounding/zero rules, reverse operands; seed scalar records; pinned arithm excerpts |
+| `general-norms`: difference/relative/squared/Hamming | **IMPLEMENTED_IN_MAIN**, eight bounded numerical/binary profiles; existing unary/masked Norm and batch distance unchanged | All four | **REQUIRED_FOR_0_6**, CORE-FIN-02: residual/error and descriptor comparisons across Features/Calib3D/navigation | Distinct Difference_Norm avoids existing mask-profile collision; new numeric subset excludes Int32/Float16 (legacy subtraction-before-widening), UInt8 C1 Hamming; bit masks deferred; [4.1 norm](https://github.com/opencv/opencv/blob/371bba8f54560b374fbcd47e7e02f015ac4969ad/modules/core/src/norm.cpp#L1014), [Int32 safety source](https://github.com/opencv/opencv/blob/371bba8f54560b374fbcd47e7e02f015ac4969ad/modules/core/src/norm.cpp#L218), [5.0 norm](https://github.com/opencv/opencv/blob/40738fb16ceddb5fb3fea747585f7ce6abb0605b/modules/core/src/norm.dispatch.cpp#L521) |
 | `runtime-identity`: getVersionString/getBuildInformation | No public equivalents found; **missing confirmed** | All four | **REQUIRED_FOR_0_6**, CORE-FIN-03: actual runtime identity for all downstream bug reports, tiny maintenance surface | Ada-owned copied strings, not std::string/borrowed pointer; four pinned system.cpp excerpts |
 | `transpose-nd`: transposeND | Only ordinary 2-D Transpose; **optional** | absent 4.1; present 4.6/4.10/5.0 | **OPTIONAL_LATER**, tensor consumer first; not needed for ordinary Geometry point collections | [4.10 implementation](https://github.com/opencv/opencv/blob/71d3237a093b60a27601c20e9ee6c3e52154e8b1/modules/core/src/matrix_transform.cpp#L292) requires continuous C1 and different data pointers; no blanket strided/in-place support |
 | `flip-broadcast-nd`: flipND/broadcast | No equivalent established; **optional** | absent 4.1/4.6; present 4.10/5.0; 5 adds MatShape overload | **OPTIONAL_LATER**, tensor layout consumer needed | Source/version gate, shape/permutation/overflow checks; no speculative historical fallback; seed native locations |
@@ -132,8 +136,8 @@ value, **not a claim of measured demand or a mandatory feature request**.
 
 ## Decision and verification boundary
 
-Only scalar modes, general norms and runtime identity are proposed as new
-mandatory features. Optional tasks must remain separate PRs, not creep into one
+Only scalar modes, general norms and runtime identity are selected as
+mandatory features; the first two are now implemented. Optional tasks must remain separate PRs, not creep into one
 “finish Core” wrapper batch. All require existing warning/error/ABI/lifetime
 policy and four-version tests where supported. Geometry stays point/value based;
 this plan does not require it to take a Core Mat bridge.
@@ -141,6 +145,7 @@ this plan does not require it to take a Core Mat bridge.
 `python3 scripts/check_core_portable_scope.py` checks required decisions, the
 first-three dependency-free tasks, local Ada declarations, pinned source excerpt
 identities, readable document entries and preservation of all nine forensic JSON
-artifacts. It certifies **planning consistency only**, not implementation success,
+artifacts, plus the separate current-status overlay and its public declaration
+profiles. It certifies **planning consistency only**, not implementation success,
 test completeness, source-discovery closure or API stability. Separate forensic
 checks remain unchanged; no completeness percentage is published.

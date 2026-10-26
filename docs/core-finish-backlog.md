@@ -1,17 +1,26 @@
 # Finite practical Core backlog — CORE-CLOSE-001B
 
-Feature-local reconciliation (CORE-FIN-02): CORE-FIN-01 was implemented and
-merged in PR #90; the scalar planning text below is historical scope, not a
-claim that scalar modes are still missing. The additive
-[numerical norms feature](numerical-norms.md) is implemented on its feature
-branch; FIN-02 remains qualification-pending until exact-head review gates
-complete. The JSON planning ledger and forensic snapshots are deliberately
-unchanged; broader roadmap status reconciliation is a separate task.
+**Current crate version:** `0.5.2`. See the [current reconciliation and evidence](core-roadmap-reconciliation.md)
+and [machine-readable overlay](core-current-status.json). PR #89's audit is
+merged; forensic incompleteness remains a separate concern.
 
-**Planning proposal; no production changes in this PR.** The first three are
-implementation tasks ready to start in separate feature PRs against main.
-They do **not** depend on closing the forensic declaration census, merging the
-large audit PR, or implementing one another. Each implementer revalidates the
+| Task | Current status | Meaning |
+| --- | --- | --- |
+| CORE-FIN-01 | IMPLEMENTED_IN_MAIN | PR #90; fourteen scalar overloads |
+| CORE-FIN-02 | IMPLEMENTED_IN_MAIN | PR #94; eight numerical/binary norm profiles |
+| CORE-FIN-03 | PLANNED_REQUIRED | Remaining required implementation task |
+| CORE-OPT-01 | OPTIONAL | Bounded tensor/finite-mask queue |
+| CORE-OPT-02 | OPTIONAL | Timing/global-control review |
+| CORE-OPT-03 | OPTIONAL | Selected UMat destination parity |
+| CORE-OPT-04 | OPTIONAL | Append then Base64 separately |
+
+The detailed FIN-01/02 sections below preserve their original implementation
+scope, not a claim of missing functionality. Merged FIN-02 qualification has
+**2,052 successful registered tests on each of OpenCV 4.1, 4.6, 4.10 and 5.0**;
+the 2,037-test FIN-01 campaign is historical, not the latest qualification.
+Neither is exhaustive Core qualification. FIN-03 may proceed independently:
+it does **not** depend on closing the forensic declaration census or on any
+optional task. Each implementer revalidates the
 focused source/ABI behavior in its own PR and adjusts naming through normal
 API review. The [portable matrix](core-portable-capabilities.md) defines the
 bounded required scope; native overload/template parity is not a release gate.
@@ -20,7 +29,7 @@ All source references are pinned in [practical evidence](core-portable-evidence.
 with older seed mappings retained in [coverage JSON](core-api-coverage.json).
 Approximate complexity means review size, not a promised delivery schedule.
 
-## First three: implementation-ready
+## Required feature scopes — FIN-01/02 implemented, FIN-03 planned
 
 ### CORE-FIN-01 — portable Mat/scalar arithmetic and C1 comparison
 
@@ -159,7 +168,7 @@ mutation or new controlled object.
 - **Native support:** `getVersionString` and `getBuildInformation` declared and
   implemented in all four references. `system.cpp` returns `CV_VERSION` and a
   native-owned static build string; these are **native runtime identity**, not
-  crate version 0.5.1 or whichever headers the Ada consumer happens to include.
+  crate version 0.5.2 or whichever headers the Ada consumer happens to include.
 - **Shim requirements:** caller-provided byte buffer/capacity plus explicit
   required/written count, status and safe initialization; a size/query then
   copy protocol is suitable because the native build description is immutable.
@@ -208,5 +217,5 @@ roadmap; it does not require C++ expression/template fidelity.
 
 No “zero maintenance” promise: new native releases, security fixes and compilers
 still require testing. The [artifact policy](core-audit-artifact-policy.md)
-recommends a lightweight successor PR **only after approval** so feature authors
-can start from main without importing raw research data or audit infrastructure.
+retains its pre-merge archival proposal as history; all merged evidence and
+existing validators remain in place. No archival migration is part of this plan.
