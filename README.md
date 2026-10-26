@@ -13,6 +13,7 @@ C++ ABI out of normal application code.
 - [Published Developer Guides](https://zackboll.github.io/opencv_core_ada/#developer-guides)
 - [Building and Contributing](docs/documentation.md)
 - [Practical Core roadmap and current status](docs/core-roadmap-reconciliation.md)
+- [Native runtime version and build information](docs/native-runtime-identity.md)
 
 The documentation site publishes styled HTML versions of the five developer
 guides. Repository-relative guide links below remain links to their authoritative

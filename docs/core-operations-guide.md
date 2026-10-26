@@ -1,5 +1,14 @@
 # Core operations guide
 
+## Native runtime identity
+
+`OpenCV.Core.Native_Version_String` and
+`OpenCV.Core.Native_Build_Information` return independently owned Ada Strings
+queried from the linked native OpenCV implementation, not the Ada crate version
+or consumer header macros. Build information preserves multiline, build-specific
+text without parsing. See the [runtime identity contract and example](native-runtime-identity.md)
+for ownership, errors, capacity limits, and pinned four-version source findings.
+
 ## Mat/scalar modes (CORE-FIN-01)
 
 `Add`, `Subtract`, `Multiply` and `Divide` accept `(Self : Mat; Value : Scalar)`

@@ -16,6 +16,18 @@
 
 constexpr int32_t maximum_probe_dimensions = 32;
 
+// Independent native oracle: no production runtime-text entry point or headers'
+// CV_VERSION value participates in this byte-for-byte comparison.
+extern "C" OPENCV_CORE_MODULE_PROBE_EXPORT int32_t opencv_core_runtime_text_matches(
+    int32_t build, const char *text, uint64_t length) noexcept {
+    try {
+        const cv::String &native = build ? cv::getBuildInformation()
+                                         : cv::getVersionString();
+        return text && native.size() == length &&
+            std::memcmp(text, native.data(), native.size()) == 0;
+    } catch (...) { return -1; }
+}
+
 namespace {
 
 opencv_core_status translate_exception() noexcept {

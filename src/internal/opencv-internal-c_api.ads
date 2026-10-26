@@ -26,6 +26,24 @@ package OpenCV.Internal.C_API is
    subtype C_Float64 is Interfaces.IEEE_Float_64;
    subtype C_Double is Interfaces.C.double;
 
+   function Native_Version_String
+     (Buffer            : System.Address;
+      Capacity          : C_UInt64;
+      Required, Written : access C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_native_version_string";
+
+   function Native_Build_Information
+     (Buffer            : System.Address;
+      Capacity          : C_UInt64;
+      Required, Written : access C_UInt64) return Status
+   with
+     Import,
+     Convention    => C,
+     External_Name => "opencv_core_native_build_information";
+
    type UMat_Handle is new System.Address;
    Null_UMat_Handle : constant UMat_Handle :=
      UMat_Handle (System.Null_Address);

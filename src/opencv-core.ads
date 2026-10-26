@@ -5371,6 +5371,24 @@ package OpenCV.Core is
    procedure Set_Identity
      (Self  : in out Mat;
       Value : Scalar := (Component_0 => 1.0, others => 0.0));
+
+   --  Version text queried on each call from the linked native OpenCV runtime,
+   --  not the Ada crate version or consumer headers. The returned String owns
+   --  its bytes independently of later queries and native object lifetimes.
+   --  Raises OpenCV_Error on native failure, inconsistent counts, or a payload
+   --  exceeding Natural'Last - 1 bytes. Allocation may raise Storage_Error.
+   --  @return Owned version bytes from the linked native library.
+   --  @exception OpenCV_Error Native failure or invalid/oversized text result.
+   function Native_Version_String return String;
+
+   --  Full build-specific native configuration text, queried on every call.
+   --  The independently owned String preserves all bytes, including newlines
+   --  and non-ASCII content; it excludes the ABI terminating NUL. No fixed
+   --  format or cross-build equality is promised. Same errors and capacity
+   --  limit as Native_Version_String.
+   --  @return Independently owned full native build information, without NUL.
+   --  @exception OpenCV_Error Native failure or invalid/oversized text result.
+   function Native_Build_Information return String;
 private
 
    type Float16_Value is record

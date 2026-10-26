@@ -15,6 +15,21 @@ typedef int32_t opencv_core_status;
 #define OPENCV_CORE_ERROR_UNKNOWN ((opencv_core_status)3)
 #define OPENCV_CORE_ERROR_INVALID_ARGUMENT ((opencv_core_status)4)
 
+/* Runtime text copied into caller-owned storage; no native pointer escapes.
+ * required/written are distinct, mandatory outputs, initialized to zero before
+ * validation. Counts exclude NUL. Query: buffer == NULL, capacity == 0; written
+ * is zero. Copy: capacity >= required + 1; exact payload plus NUL on success.
+ * Insufficient capacity reports required, written == 0, and leaves buffer
+ * untouched. Other failures leave written == 0; no partial payload is copied.
+ * Capacity and payload+NUL must fit size_t and PTRDIFF_MAX as well as uint64_t.
+ * Caller supplies valid, nonoverlapping count/buffer objects of stated capacity.
+ * No ownership transfer, shared scratch buffer, or shim cache. Each call queries
+ * the linked OpenCV runtime. Exceptions use the ordinary status/diagnostic API. */
+opencv_core_status opencv_core_native_version_string(
+    char *buffer, uint64_t capacity, uint64_t *required, uint64_t *written);
+opencv_core_status opencv_core_native_build_information(
+    char *buffer, uint64_t capacity, uint64_t *required, uint64_t *written);
+
 /* Stable linear-program result identifiers, translated from cv::SolveLPResult. */
 #define OPENCV_CORE_LP_UNIQUE ((int32_t)0)
 #define OPENCV_CORE_LP_MULTIPLE ((int32_t)1)

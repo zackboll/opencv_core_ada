@@ -22,10 +22,12 @@ echo "$version"
 # Resolve the library environment and its supported OpenCV configuration.
 # This builds only the library, not the test crate or unrelated applications.
 alr -n build
-alr exec -- gnat --version | grep -q '^GNAT 16\.1\.0$' || {
+# Consume the complete version output: grep -q can close the pipe early and
+# make Alire report SIGPIPE (-1) for an otherwise successful version command.
+alr exec -- gnat --version | grep '^GNAT 16\.1\.0$' > /dev/null || {
     echo 'error: documentation requires GNAT 16.1.0' >&2; exit 1;
 }
-alr exec -- gprbuild --version | grep -q '^GPRBUILD 26\.0\.0 (2026-04-15)' || {
+alr exec -- gprbuild --version | grep '^GPRBUILD 26\.0\.0 (2026-04-15)' > /dev/null || {
     echo 'error: documentation requires the GPRbuild 26.0.1 Alire release' >&2; exit 1;
 }
 # Fixed repository-owned output path: never delete a caller-selected directory.

@@ -2,3 +2,6 @@
 /bin/
 /alire/
 /config/
+/probes/obj-runtime-identity/
+/probes/obj-runtime-controls/
+/probes/bin-runtime-controls/
