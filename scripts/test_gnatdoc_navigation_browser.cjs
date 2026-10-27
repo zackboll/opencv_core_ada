@@ -34,14 +34,14 @@ fs.mkdirSync(evidence, {recursive: true});
       const names = await links.allTextContents();
       assert.equal(names.length, 195);
       assert.equal(await page.locator('#tagged-types + ul a').count(), 4);
-      const search = page.getByLabel('Search packages');
+      const search = page.getByLabel('Search documentation');
       await search.fill('fLoAt16_VeC2');
       assert.deepEqual(await page.locator('#compilation-units + ul li:not([hidden]) a').allTextContents(), names.filter(n => n.toLowerCase().includes('float16_vec2')));
       await expectPackage('OpenCV.Core');
       await page.getByRole('button', {name: 'Clear', exact: true}).click();
       assert.equal(await page.locator('#compilation-units + ul li:not([hidden])').count(), 195);
       await search.fill('NOT_A_PACKAGE');
-      assert.equal(await page.locator('#package-results').textContent(), 'No matching packages.');
+      assert.equal(await page.locator('#package-results').textContent(), 'No matching documentation.');
       await search.fill('Sparse');
       await page.getByRole('link', {name: 'OpenCV.Core.Sparse', exact: true}).click();
       await expectPackage('OpenCV.Core.Sparse');
@@ -67,7 +67,7 @@ fs.mkdirSync(evidence, {recursive: true});
       await expectPackage('OpenCV.Core.Float16_Vec2_Access');
       await page.goForward();
       await expectPackage('OpenCV.Core.Float16_Vec2');
-      // Package restoration deliberately does not promise declaration fragments.
+      // Qualified explanatory bookmarks retain their presentation-only fragment.
       await frame.locator('#instance-members-summary').waitFor();
       await frame.locator('#instance-members-summary a').filter({hasText: /^Vector$/}).click();
       await expectPackage('OpenCV.Core.Vectors');

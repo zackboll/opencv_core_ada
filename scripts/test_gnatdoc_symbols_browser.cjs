@@ -26,7 +26,7 @@ async function declaration(page, symbol) {
                             'OpenCV.Core.Mat', 'OpenCV.Float64_Value']) {
         await page.goto(base + '?symbol=' + symbol.toLowerCase());
         await declaration(page, symbol);
-        await page.getByLabel('Search packages').fill('Sparse');
+        await page.getByLabel('Search documentation').fill('Sparse');
         await declaration(page, symbol);
         await page.getByRole('button', {name: 'Clear', exact: true}).click();
         const bookmark = page.url();

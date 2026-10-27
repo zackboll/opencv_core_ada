@@ -9,6 +9,7 @@ import unittest
 
 from enhance_gnatdoc_navigation import enhance, check_navigation
 from validate_docs import validate
+from verify_core_enhancer import is_enhancer, validate as check_core
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -20,14 +21,19 @@ class NavigationTests(unittest.TestCase):
         self.site = Path(self.temp.name) / 'site'
         shutil.copytree(ROOT / '_site', self.site)
         self.api = self.site / 'api'
-        enhance(self.api)
+        self.shared = is_enhancer(self.api)
+        if not self.shared:
+            enhance(self.api)
 
     def test_complete_inventory_and_idempotence(self):
-        inventory = check_navigation(self.api)
+        inventory = check_core(self.site) if self.shared else check_navigation(self.api)
         self.assertEqual(len(inventory), 195)
         self.assertIn('OpenCV.Core', inventory)
         before = {p.name: p.read_bytes() for p in self.api.iterdir() if p.is_file()}
-        enhance(self.api)
+        if self.shared:
+            check_core(self.site)
+        else:
+            enhance(self.api)
         self.assertEqual(before, {p.name: p.read_bytes() for p in self.api.iterdir() if p.is_file()})
         with contextlib.redirect_stdout(io.StringIO()):
             validate(self.site)

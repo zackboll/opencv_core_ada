@@ -203,22 +203,28 @@ def validate(site):
     root = Path(__file__).resolve().parent.parent
     pages = {p.resolve(): Page(p) for p in site.rglob("*.html")}
     errors = []
+    from verify_core_enhancer import is_enhancer, validate as check_core
+    shared = is_enhancer(site / 'api')
     try:
         check_guides(root, site)
     except (ValueError, OSError) as error:
         errors.append(f"guide integrity: {error}")
     try:
-        check_instances(site / "api", root / "src", check=True, expected_count=25)
-        check_theme(site / "api")
-        check_navigation(site / "api")
-        manifest = json.loads((site / "api/type-crossrefs.json").read_text())
-        if manifest.get('highlighting') != 1:
-            errors.append("missing final Ada highlighting qualification")
+        if shared:
+            check_core(site)
+        else:
+            check_instances(site / "api", root / "src", check=True, expected_count=25)
+            check_theme(site / "api")
+            check_navigation(site / "api")
+            manifest = json.loads((site / "api/type-crossrefs.json").read_text())
+            if manifest.get('highlighting') != 1:
+                errors.append("missing final Ada highlighting qualification")
     except (CrossReferenceError, ValueError, KeyError, OSError) as error:
         errors.append(f"presentation integrity: {error}")
     try:
-        process(site / "api", root / "src", check=True,
-                minimum_links=500, minimum_pages=100)
+        if not shared:
+            process(site / "api", root / "src", check=True,
+                    minimum_links=500, minimum_pages=100)
     except (CrossReferenceError, ValueError, KeyError, WarningComparisonError) as error:
         errors.append(f"type cross-reference integrity: {error}")
     for required in (site / "index.html", site / "api/index.html",

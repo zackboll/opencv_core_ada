@@ -15,7 +15,8 @@ class Guides(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.site = Path(self.tmp.name) / "site"
         shutil.copytree(ROOT / "_site", self.site)
-        guides.generate(ROOT, self.site)
+        # Validate actual toolkit output before any legacy renderer can repair it.
+        guides.validate(ROOT, self.site)
         self.page = self.site / "guides/ownership-and-views.html"
 
     def mutation(self, old, new):

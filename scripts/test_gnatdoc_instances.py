@@ -368,11 +368,18 @@ class InstanceTests(unittest.TestCase):
 
 
 class GeneratedSiteTests(unittest.TestCase):
-    @unittest.skipUnless((ROOT / '_site/api/generic-instances.json').exists(),
+    @unittest.skipUnless((ROOT / '_site/api/presentation.json').exists(),
                          'full generated-site qualification runs after generation')
     def test_full_site_all_depths_and_exact_baseline(self):
         api = ROOT / '_site/api'
         before = {p.name: p.read_bytes() for p in api.iterdir() if p.is_file()}
+        from verify_core_enhancer import is_enhancer, validate as check_core
+        if is_enhancer(api):
+            instances = discover(sources(ROOT / 'src'))
+            check_core(ROOT / '_site')
+            self.assertEqual(before, {p.name: p.read_bytes() for p in api.iterdir() if p.is_file()})
+            self.assertEqual({i[1] for i in instances.values()}, set(ELEMENTS))
+            return
         instances, links = process(api, ROOT / 'src', check=True, expected_count=25)
         self.assertEqual(links, 102)
         self.assertEqual({i[1] for i in instances.values()}, set(ELEMENTS))
@@ -396,7 +403,7 @@ class GeneratedSiteTests(unittest.TestCase):
                     (10 if v[0] == VECTORS else 2) for p, v in instances.items()}
         self.assertEqual(dict(instances_linked), expected)
 
-    @unittest.skipUnless((ROOT / '_site/api/generic-instances.json').exists(),
+    @unittest.skipUnless((ROOT / '_site/api/presentation.json').exists(),
                          'full generated-site qualification runs after generation')
     def test_wrong_but_existing_instance_targets_and_missing_links(self):
         from validate_docs import validate
@@ -419,15 +426,21 @@ class GeneratedSiteTests(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 validate(site)
 
-    @unittest.skipUnless((ROOT / '_site/api/generic-instances.json').exists(),
+    @unittest.skipUnless((ROOT / '_site/api/presentation.json').exists(),
                          'full generated-site qualification runs after generation')
     def test_final_validator_rejects_valid_html_wrong_facts_and_targets(self):
         from validate_docs import validate
         with tempfile.TemporaryDirectory() as directory:
             site = Path(directory) / 'site'
             shutil.copytree(ROOT / '_site', site)
-            manifest = json.loads((site / 'api/generic-instances.json').read_text())
-            path = site / 'api' / manifest['pages']['opencv.core.uint8_vec4']['file']
+            from verify_core_enhancer import is_enhancer
+            if is_enhancer(site / 'api'):
+                from link_gnatdoc_types import pages_and_targets
+                pages, _ = pages_and_targets(site / 'api', sources(ROOT / 'src'))
+                path = pages['opencv.core.uint8_vec4'][0]
+            else:
+                manifest = json.loads((site / 'api/generic-instances.json').read_text())
+                path = site / 'api' / manifest['pages']['opencv.core.uint8_vec4']['file']
             original = path.read_text()
             source_map = sources(ROOT / 'src')
             from link_gnatdoc_types import pages_and_targets
