@@ -42,6 +42,10 @@ tests/bin/tests > "$work/logs/aunit-run.log" 2>&1
 gprbuild -P tests/probes/k_means_attempts_controls.gpr -p -j4 \
     > "$work/logs/k-means-build.log" 2>&1
 tests/probes/k_means_attempts_controls > "$work/logs/k-means-run.log" 2>&1
+gprbuild -P tests/probes/runtime_identity_controls.gpr -p -j4 \
+    > "$work/logs/runtime-identity-build.log" 2>&1
+tests/probes/bin-runtime-controls/runtime_identity_controls \
+    > "$work/logs/runtime-identity-run.log" 2>&1
 gprbuild -P tests/layout/all_family_controls.gpr -p -j4 \
     > "$work/logs/all-family-build.log" 2>&1
 tests/layout/bin-family/all_family_controls > "$work/logs/all-family-run.log" 2>&1

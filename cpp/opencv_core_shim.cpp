@@ -16533,4 +16533,57 @@ opencv_core_file_storage_read_string_at(
 }
 } // extern "C"
 
+namespace {
+// Strict inequality reserves a byte for NUL without first adding to length.
+// The explicit bound also permits focused small-limit arithmetic controls.
+constexpr bool runtime_text_length_fits(uint64_t length, uint64_t limit) noexcept {
+    return length < limit;
+}
+
+template <typename Provider>
+opencv_core_status runtime_text(Provider provider, char *buffer,
+                                uint64_t capacity, uint64_t *required,
+                                uint64_t *written) noexcept {
+    clear_error();
+    if (required) *required = 0;
+    if (written) *written = 0;
+    if (!required || !written || required == written)
+        return invalid_argument("runtime text requires distinct count outputs");
+    constexpr uint64_t limit = std::min(
+        static_cast<uint64_t>(std::numeric_limits<std::size_t>::max()),
+        static_cast<uint64_t>(std::numeric_limits<std::ptrdiff_t>::max()));
+    if ((!buffer && capacity != 0) || (buffer && capacity == 0) || capacity > limit)
+        return invalid_argument("invalid runtime text buffer/capacity");
+    try {
+        const auto &text = provider();
+        // ABI safety: reserve NUL and reject narrowing before memcpy/indexing.
+        if (text.size() > std::numeric_limits<uint64_t>::max() ||
+            !runtime_text_length_fits(static_cast<uint64_t>(text.size()), limit))
+            return invalid_argument("runtime text length exceeds ABI capacity");
+        const uint64_t length = static_cast<uint64_t>(text.size());
+        *required = length;
+        if (!buffer) return OPENCV_CORE_OK;
+        if (capacity <= length)
+            return invalid_argument("insufficient runtime text capacity (NUL required)");
+        std::memcpy(buffer, text.data(), static_cast<std::size_t>(length));
+        buffer[static_cast<std::size_t>(length)] = '\0';
+        *written = length;
+        return OPENCV_CORE_OK;
+    } catch (...) { return translate_current_exception(); }
+}
+} // namespace
+
+extern "C" {
+opencv_core_status opencv_core_native_version_string(
+    char *buffer, uint64_t capacity, uint64_t *required, uint64_t *written) {
+    return runtime_text([] { return cv::getVersionString(); },
+                        buffer, capacity, required, written);
+}
+
+opencv_core_status opencv_core_native_build_information(
+    char *buffer, uint64_t capacity, uint64_t *required, uint64_t *written) {
+    return runtime_text([]() -> const cv::String & { return cv::getBuildInformation(); },
+                        buffer, capacity, required, written);
+}
+} // extern "C"
 

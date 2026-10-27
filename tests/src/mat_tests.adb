@@ -1,6 +1,7 @@
 with OpenCV_Value_Tests;
 with Scalar_Modes_Tests;
 with Numerical_Norm_Tests;
+with Runtime_Identity_Tests;
 with Mat_Basic_Tests;
 with Mat_Access_Tests;
 with Mat_View_Tests;
@@ -91,6 +92,7 @@ package body Mat_Tests is
       Result.Add_Test (OpenCV_Value_Tests.Suite);
       Result.Add_Test (Scalar_Modes_Tests.Suite);
       Result.Add_Test (Numerical_Norm_Tests.Suite);
+      Result.Add_Test (Runtime_Identity_Tests.Suite);
       Result.Add_Test (Mat_Basic_Tests.Suite);
       Result.Add_Test (Mat_Access_Tests.Suite);
       Result.Add_Test (Mat_View_Tests.Suite);

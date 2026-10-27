@@ -383,8 +383,8 @@ class GeneratedSiteTests(unittest.TestCase):
         # CORE-FIN-02 adds 13 resolved references in the eight norm profiles.
         self.assertEqual((counts['linked'], pages), (2755, 168))
         manifest = json.loads((api / 'type-crossrefs.json').read_text())
-        # Eight operation profiles and one binary selector declaration.
-        self.assertEqual(sum(len(p['snippets']) for p in manifest['pages'].values()), 1291)
+        # FIN-02 profiles/selector plus FIN-03's two String-returning profiles.
+        self.assertEqual(sum(len(p['snippets']) for p in manifest['pages'].values()), 1293)
         from link_gnatdoc_types import LINK, SECTION
         from collections import Counter
         instances_linked = Counter()

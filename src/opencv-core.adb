@@ -2,7 +2,7 @@ with Ada.Exceptions;
 with Ada.Unchecked_Conversion;
 with Interfaces.C;
 with OpenCV.Internal.Safe_Arithmetic;
-
+with System;
 package body OpenCV.Core is
 
    Maximum_Jacobi_Dimension : constant Natural := 8_460;
@@ -10244,5 +10244,55 @@ package body OpenCV.Core is
         OpenCV.Internal.C_API.Mat_Set_Identity (Self.Handle, C_Value'Access);
       Raise_On_Error (Result, "Mat set identity operation");
    end Set_Identity;
+
+   function Native_Text (Build_Information : Boolean) return String is
+      use OpenCV.Internal.C_API;
+      Required, Written : aliased C_UInt64 := 0;
+      Operation         : constant String :=
+        (if Build_Information
+         then "Native_Build_Information"
+         else "Native_Version_String");
+
+      function Query
+        (Buffer : System.Address; Capacity : C_UInt64) return Status is
+      begin
+         if Build_Information then
+            return
+              OpenCV.Internal.C_API.Native_Build_Information
+                (Buffer, Capacity, Required'Access, Written'Access);
+         else
+            return
+              OpenCV.Internal.C_API.Native_Version_String
+                (Buffer, Capacity, Required'Access, Written'Access);
+         end if;
+      end Query;
+   begin
+      Raise_On_Error (Query (System.Null_Address, 0), Operation);
+      if Written /= 0 or else Required > C_UInt64 (Natural'Last - 1) then
+         raise OpenCV_Error
+           with Operation & ": invalid or oversized text length";
+      end if;
+      declare
+         Length : constant Natural := Natural (Required);
+         Buffer : String (1 .. Length + 1);
+      begin
+         Raise_On_Error
+           (Query (Buffer'Address, C_UInt64 (Buffer'Length)), Operation);
+         if Required /= C_UInt64 (Length)
+           or else Written /= Required
+           or else Buffer (Buffer'Last) /= Character'Val (0)
+         then
+            raise OpenCV_Error
+              with Operation & ": inconsistent native text result";
+         end if;
+         return Buffer (1 .. Length);
+      end;
+   end Native_Text;
+
+   function Native_Version_String return String
+   is (Native_Text (False));
+
+   function Native_Build_Information return String
+   is (Native_Text (True));
 
 end OpenCV.Core;

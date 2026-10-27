@@ -6,8 +6,10 @@ with OpenCV.Core.UInt8_Access;
 procedure Installed_Mat_Consumer is
    use OpenCV.Core;
    use type OpenCV.UInt8_Value;
-   Image    : Mat := Create (3, 4, (Depth => UInt8, Channels => 1));
-   Survivor : Mat;
+   Image          : Mat := Create (3, 4, (Depth => UInt8, Channels => 1));
+   Survivor       : Mat;
+   Native_Version : constant String := Native_Version_String;
+   Native_Build   : constant String := Native_Build_Information;
 begin
    if Image.Is_Empty or else Image.Depth /= UInt8 or else Image.Channels /= 1
    then
@@ -81,6 +83,27 @@ begin
             raise Program_Error with "reassignment failed" & Iteration'Image;
          end if;
       end;
+   end loop;
+   if Native_Version'Length = 0 or else Native_Build'Length = 0 then
+      raise Program_Error with "installed native runtime identity is empty";
+   end if;
+   for Iteration in 1 .. 20 loop
+      declare
+         Build     : constant String := Native_Build_Information;
+         Version   : String := Native_Version_String;
+         Temporary : Mat := Create (1, 1, (UInt8, 1));
+      begin
+         Temporary.Set_To (OpenCV.Make_Scalar (Long_Float (Iteration)));
+         if Version /= Native_Version or else Build /= Native_Build then
+            raise Program_Error with "installed runtime identity changed";
+         end if;
+         Version (Version'First) := '#';
+      end;
+      if Native_Version_String /= Native_Version
+        or else Native_Build_Information /= Native_Build
+      then
+         raise Program_Error with "installed runtime String ownership failed";
+      end if;
    end loop;
    --  CORE-FIN-02: compile and execute new operations using only installed
    --  projects/sources, including after relocating the installation prefix.

@@ -43,6 +43,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Cache Alire dependencies
         uses: actions/cache@v4
@@ -104,6 +106,9 @@ jobs:
 
               echo "=== Numerical norms native parity and actual-shim sanitizers ==="
               sh scripts/run_numerical_norms_probes.sh
+              sh scripts/run_runtime_identity_probes.sh
+              alr -C tests -n exec -- gprbuild -P probes/runtime_identity_controls.gpr -p
+              tests/probes/bin-runtime-controls/runtime_identity_controls
               alr -C tests -n exec -- gprbuild -P probes/numerical_norms_example.gpr -p
               tests/probes/bin-numerical-example/numerical_norms_example
 
@@ -171,6 +176,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Report source
         run: |
@@ -329,6 +336,9 @@ jobs:
             # System OpenCV is linked normally; it is NOT sanitizer-built.
             CXX=/usr/bin/g++ sh -x scripts/run_scalar_modes_probes.sh
             CXX=/usr/bin/g++ sh -x scripts/run_numerical_norms_probes.sh
+            CXX=/usr/bin/g++ sh -x scripts/run_runtime_identity_probes.sh
+            alr -C tests -n exec -- gprbuild -P probes/runtime_identity_controls.gpr -p
+            tests/probes/bin-runtime-controls/runtime_identity_controls
             probe=tests/probes/obj-scalar-native/shim
             file "$probe"
             readelf -h -d "$probe"
@@ -407,6 +417,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Install Alire
         env:
@@ -501,6 +513,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Install Alire
         env:
@@ -609,6 +623,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Report source and runner
         run: |
@@ -727,6 +743,11 @@ jobs:
         env:
           CXX: /usr/bin/clang++
         run: sh scripts/run_numerical_norms_probes.sh
+
+      - name: Runtime identity native parity and actual-shim sanitizers
+        env:
+          CXX: /usr/bin/clang++
+        run: sh scripts/run_runtime_identity_probes.sh
 
       - name: Independent macOS sanitizer lifetime controls
         if: ${{ always() && steps.root-build.outcome == 'success' }}
