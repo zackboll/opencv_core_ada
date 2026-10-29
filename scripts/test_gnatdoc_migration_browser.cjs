@@ -20,7 +20,7 @@ if (evidence) fs.mkdirSync(evidence, {recursive: true});
         page.on('pageerror', error => errors.push(error.message));
         await page.goto(base);
         if (evidence) {
-          await page.frameLocator('iframe').locator('h1').first().waitFor();
+          await page.locator('#compilation-units').waitFor();
           await page.screenshot({
             path: `${evidence}/migration-${width}-${colorScheme}-${javaScriptEnabled ? 'js' : 'nojs'}.png`,
             animations: 'disabled'
