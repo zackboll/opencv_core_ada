@@ -5,7 +5,11 @@ root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$root"
 command -v alr >/dev/null
 command -v python3 >/dev/null
-python=${DOC_PYTHON:-python3}
+python=${DOC_PYTHON:-"$root/.doc-tools/enhancer/bin/python"}
+enhancer="$(dirname -- "$python")/gnatdoc-enhancer"
+test -x "$enhancer" || { echo 'error: run sh scripts/install_doc_enhancer.sh first' >&2; exit 1; }
+test "$("$enhancer" --version)" = 0.1.2
+"$python" -c 'import sys, json; from importlib.metadata import distribution; assert sys.prefix != sys.base_prefix; assert sys.version_info[:2] in ((3,11),(3,12),(3,13)); d=distribution("ada-gnatdoc-enhancer"); assert d.version == "0.1.2"; u=json.loads(d.read_text("direct_url.json")); assert not u.get("dir_info") and u["url"].endswith(".whl")'
 test "$(alr --version)" = 'alr 2.1.1' || {
     echo 'error: documentation requires Alire 2.1.1' >&2; exit 1;
 }
@@ -31,11 +35,11 @@ alr exec -- gprbuild --version | grep '^GPRBUILD 26\.0\.0 (2026-04-15)' > /dev/n
     echo 'error: documentation requires the GPRbuild 26.0.1 Alire release' >&2; exit 1;
 }
 # Fixed repository-owned output path: never delete a caller-selected directory.
-rm -rf -- "$root/_site"
-mkdir -p _site/api obj/docs obj/docs-internal
+rm -rf -- "$root/obj/docs/native"
+mkdir -p obj/docs/native/api obj/docs-internal
 if ! alr exec -- "$prefix/bin/gnatdoc" -P docs_api.gpr \
     --backend html --generate public --style leading --warnings \
-    -O "$root/_site/api" > obj/docs/gnatdoc.log 2>&1; then
+    -O "$root/obj/docs/native/api" > obj/docs/gnatdoc.log 2>&1; then
     cat obj/docs/gnatdoc.log >&2
     exit 1
 fi
@@ -48,11 +52,15 @@ warnings=$(grep -c 'warning:' obj/docs/gnatdoc.log || true)
 echo "GNATdoc: $warnings documentation warnings (see obj/docs/gnatdoc.log)"
 python3 scripts/compare_gnatdoc_warnings.py \
     docs/gnatdoc-warning-baseline.txt obj/docs/gnatdoc.log
-cp docs/index.html _site/index.html
-python3 scripts/enhance_gnatdoc_instances.py _site/api
-python3 scripts/install_gnatdoc_theme.py _site/api
-python3 scripts/link_gnatdoc_types.py _site/api
-python3 scripts/highlight_gnatdoc_ada.py _site/api
-python3 scripts/enhance_gnatdoc_navigation.py _site/api
-"$python" scripts/render_gnatdoc_guides.py _site
+# The installed toolkit recursively scans sources. Stage only the exact public
+# source set used by docs_api.gpr; src/internal belongs to its excluded project.
+"$python" scripts/stage_gnatdoc_sources.py
+"$python" scripts/verify_core_enhancer.py --native obj/docs/native
+input="$root/obj/docs/enhancer-input"
+rm -rf -- "$root/_site"
+cp -a obj/docs/native _site
+"$enhancer" inventory --source-root "$input" --config docs/gnatdoc-enhancer.toml --site "$root/_site" > obj/docs/enhancer-inventory.json
+"$enhancer" enhance --dry-run --source-root "$input" --config docs/gnatdoc-enhancer.toml --site "$root/_site" > obj/docs/enhancer-dry-run.json
+"$enhancer" enhance --source-root "$input" --config docs/gnatdoc-enhancer.toml --site "$root/_site" > obj/docs/enhancer-result.json
+"$enhancer" verify --source-root "$input" --config docs/gnatdoc-enhancer.toml --site "$root/_site" > obj/docs/enhancer-verification.json
 "$python" scripts/validate_docs.py _site

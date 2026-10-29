@@ -8,7 +8,7 @@ fs.mkdirSync(evidence, {recursive: true});
 const names = ['ownership-and-views', 'typed-access-guide', 'core-operations-guide',
   'sparse-and-persistence-guide', 'interop-and-compatibility'];
 (async () => {
-  const browser = await chromium.launch({executablePath: '/usr/bin/google-chrome', headless: true});
+  const browser = await chromium.launch({executablePath: process.env.CHROME || '/usr/bin/google-chrome', headless: true});
   try {
     for (const width of [1280, 390]) for (const colorScheme of ['light', 'dark'])
       for (const javaScriptEnabled of [true, false]) {
@@ -47,6 +47,23 @@ const names = ['ownership-and-views', 'typed-access-guide', 'core-operations-gui
             await page.locator(`main a[href="${destination}"]`).first().click();
             assert.equal(new URL(page.url()).pathname.split('/').pop(), destination.split('#')[0]);
           }
+          await page.goto(new URL('guides/' + name + '.html', base).href);
+          const directHeading = await page.locator('main h2[id]').first().getAttribute('id');
+          const directBookmark = page.url() + '#' + directHeading;
+          await page.goto(directBookmark);
+          await page.reload();
+          assert.ok(await page.locator('#' + directHeading).evaluate(e => {
+            const r = e.getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0;
+          }));
+          const fresh = await context.newPage();
+          await fresh.goto(directBookmark);
+          assert.equal(await fresh.locator('h1').textContent(), await page.locator('h1').textContent());
+          await fresh.close();
+          await page.getByRole('link', {name: 'Documentation home', exact: true}).click();
+          await page.goBack();
+          assert.equal(page.url(), directBookmark);
+          await page.goForward();
+          assert.equal(new URL(page.url()).pathname, new URL('index.html', base).pathname);
           await page.goto(new URL('guides/' + name + '.html', base).href);
           await page.keyboard.press('Tab');
           assert.equal(await page.evaluate(() => getComputedStyle(document.activeElement).outlineStyle), 'solid');

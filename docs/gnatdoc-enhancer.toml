@@ -1,0 +1,106 @@
+# CORE-DOC-MIG-001: consumer policy; qualification records are reviewed inputs.
+schema_version = 1
+project = "OpenCV Core Ada"
+
+[gnatdoc]
+version = "26.0.0"
+
+[sources]
+directories = ["src"]
+comment_style = "leading"
+packages = [
+  "OpenCV", "OpenCV.Core", "OpenCV.Core.Fixed_Matrices",
+  "OpenCV.Core.Float16_Access", "OpenCV.Core.Float16_Buffer_Access",
+  "OpenCV.Core.Float16_Mat_View", "OpenCV.Core.Float16_Row_Access",
+  "OpenCV.Core.Float16_Vec2", "OpenCV.Core.Float16_Vec2_Access",
+  "OpenCV.Core.Float16_Vec2_Buffer_Access", "OpenCV.Core.Float16_Vec2_Mat_View", "OpenCV.Core.Float16_Vec2_Row_Access",
+  "OpenCV.Core.Float16_Vec3", "OpenCV.Core.Float16_Vec3_Access",
+  "OpenCV.Core.Float16_Vec3_Buffer_Access", "OpenCV.Core.Float16_Vec3_Mat_View", "OpenCV.Core.Float16_Vec3_Row_Access",
+  "OpenCV.Core.Float16_Vec4", "OpenCV.Core.Float16_Vec4_Access",
+  "OpenCV.Core.Float16_Vec4_Buffer_Access", "OpenCV.Core.Float16_Vec4_Mat_View", "OpenCV.Core.Float16_Vec4_Row_Access",
+  "OpenCV.Core.Float32_Access", "OpenCV.Core.Float32_Buffer_Access",
+  "OpenCV.Core.Float32_Mat_View", "OpenCV.Core.Float32_Matx3x3", "OpenCV.Core.Float32_Matx3x3_Conversions", "OpenCV.Core.Float32_Row_Access",
+  "OpenCV.Core.Float32_Vec2", "OpenCV.Core.Float32_Vec2_Access",
+  "OpenCV.Core.Float32_Vec2_Buffer_Access", "OpenCV.Core.Float32_Vec2_Mat_View", "OpenCV.Core.Float32_Vec2_Row_Access",
+  "OpenCV.Core.Float32_Vec3", "OpenCV.Core.Float32_Vec3_Access",
+  "OpenCV.Core.Float32_Vec3_Buffer_Access", "OpenCV.Core.Float32_Vec3_Mat_View", "OpenCV.Core.Float32_Vec3_Row_Access",
+  "OpenCV.Core.Float32_Vec4", "OpenCV.Core.Float32_Vec4_Access",
+  "OpenCV.Core.Float32_Vec4_Buffer_Access", "OpenCV.Core.Float32_Vec4_Mat_View", "OpenCV.Core.Float32_Vec4_Row_Access",
+  "OpenCV.Core.Float64_Access", "OpenCV.Core.Float64_Buffer_Access", "OpenCV.Core.Float64_Mat_View", "OpenCV.Core.Float64_Row_Access",
+  "OpenCV.Core.Float64_Vec2", "OpenCV.Core.Float64_Vec2_Access",
+  "OpenCV.Core.Float64_Vec2_Buffer_Access", "OpenCV.Core.Float64_Vec2_Mat_View", "OpenCV.Core.Float64_Vec2_Row_Access",
+  "OpenCV.Core.Float64_Vec3", "OpenCV.Core.Float64_Vec3_Access",
+  "OpenCV.Core.Float64_Vec3_Buffer_Access", "OpenCV.Core.Float64_Vec3_Mat_View", "OpenCV.Core.Float64_Vec3_Row_Access",
+  "OpenCV.Core.Float64_Vec4", "OpenCV.Core.Float64_Vec4_Access",
+  "OpenCV.Core.Float64_Vec4_Buffer_Access", "OpenCV.Core.Float64_Vec4_Mat_View", "OpenCV.Core.Float64_Vec4_Row_Access",
+  "OpenCV.Core.Int16_Access", "OpenCV.Core.Int16_Buffer_Access", "OpenCV.Core.Int16_Mat_View", "OpenCV.Core.Int16_Row_Access",
+  "OpenCV.Core.Int16_Vec2", "OpenCV.Core.Int16_Vec2_Access",
+  "OpenCV.Core.Int16_Vec2_Buffer_Access", "OpenCV.Core.Int16_Vec2_Mat_View", "OpenCV.Core.Int16_Vec2_Row_Access",
+  "OpenCV.Core.Int16_Vec3", "OpenCV.Core.Int16_Vec3_Access",
+  "OpenCV.Core.Int16_Vec3_Buffer_Access", "OpenCV.Core.Int16_Vec3_Mat_View", "OpenCV.Core.Int16_Vec3_Row_Access",
+  "OpenCV.Core.Int16_Vec4", "OpenCV.Core.Int16_Vec4_Access",
+  "OpenCV.Core.Int16_Vec4_Buffer_Access", "OpenCV.Core.Int16_Vec4_Mat_View", "OpenCV.Core.Int16_Vec4_Row_Access",
+  "OpenCV.Core.Int32_Access", "OpenCV.Core.Int32_Buffer_Access", "OpenCV.Core.Int32_Mat_View", "OpenCV.Core.Int32_Row_Access",
+  "OpenCV.Core.Int32_Vec2", "OpenCV.Core.Int32_Vec2_Access",
+  "OpenCV.Core.Int32_Vec2_Buffer_Access", "OpenCV.Core.Int32_Vec2_Mat_View", "OpenCV.Core.Int32_Vec2_Row_Access",
+  "OpenCV.Core.Int32_Vec3", "OpenCV.Core.Int32_Vec3_Access",
+  "OpenCV.Core.Int32_Vec3_Buffer_Access", "OpenCV.Core.Int32_Vec3_Mat_View", "OpenCV.Core.Int32_Vec3_Row_Access",
+  "OpenCV.Core.Int32_Vec4", "OpenCV.Core.Int32_Vec4_Access",
+  "OpenCV.Core.Int32_Vec4_Buffer_Access", "OpenCV.Core.Int32_Vec4_Mat_View", "OpenCV.Core.Int32_Vec4_Row_Access",
+  "OpenCV.Core.Int8_Access", "OpenCV.Core.Int8_Buffer_Access", "OpenCV.Core.Int8_Mat_View", "OpenCV.Core.Int8_Row_Access",
+  "OpenCV.Core.Int8_Vec2", "OpenCV.Core.Int8_Vec2_Access",
+  "OpenCV.Core.Int8_Vec2_Buffer_Access", "OpenCV.Core.Int8_Vec2_Mat_View", "OpenCV.Core.Int8_Vec2_Row_Access",
+  "OpenCV.Core.Int8_Vec3", "OpenCV.Core.Int8_Vec3_Access",
+  "OpenCV.Core.Int8_Vec3_Buffer_Access", "OpenCV.Core.Int8_Vec3_Mat_View", "OpenCV.Core.Int8_Vec3_Row_Access",
+  "OpenCV.Core.Int8_Vec4", "OpenCV.Core.Int8_Vec4_Access",
+  "OpenCV.Core.Int8_Vec4_Buffer_Access", "OpenCV.Core.Int8_Vec4_Mat_View", "OpenCV.Core.Int8_Vec4_Row_Access",
+  "OpenCV.Core.Module_Interop", "OpenCV.Core.Persistence", "OpenCV.Core.Sparse",
+  "OpenCV.Core.Sparse.Float16_Access", "OpenCV.Core.Sparse.Float16_Vec2_Access", "OpenCV.Core.Sparse.Float16_Vec3_Access", "OpenCV.Core.Sparse.Float16_Vec4_Access",
+  "OpenCV.Core.Sparse.Float32_Access", "OpenCV.Core.Sparse.Float32_Vec2_Access", "OpenCV.Core.Sparse.Float32_Vec3_Access", "OpenCV.Core.Sparse.Float32_Vec4_Access",
+  "OpenCV.Core.Sparse.Float64_Access", "OpenCV.Core.Sparse.Float64_Vec2_Access", "OpenCV.Core.Sparse.Float64_Vec3_Access", "OpenCV.Core.Sparse.Float64_Vec4_Access",
+  "OpenCV.Core.Sparse.Int16_Access", "OpenCV.Core.Sparse.Int16_Vec2_Access", "OpenCV.Core.Sparse.Int16_Vec3_Access", "OpenCV.Core.Sparse.Int16_Vec4_Access",
+  "OpenCV.Core.Sparse.Int32_Access", "OpenCV.Core.Sparse.Int32_Vec2_Access", "OpenCV.Core.Sparse.Int32_Vec3_Access", "OpenCV.Core.Sparse.Int32_Vec4_Access",
+  "OpenCV.Core.Sparse.Int8_Access", "OpenCV.Core.Sparse.Int8_Vec2_Access", "OpenCV.Core.Sparse.Int8_Vec3_Access", "OpenCV.Core.Sparse.Int8_Vec4_Access",
+  "OpenCV.Core.Sparse.Module_Interop",
+  "OpenCV.Core.Sparse.UInt16_Access", "OpenCV.Core.Sparse.UInt16_Vec2_Access", "OpenCV.Core.Sparse.UInt16_Vec3_Access", "OpenCV.Core.Sparse.UInt16_Vec4_Access",
+  "OpenCV.Core.Sparse.UInt8_Access", "OpenCV.Core.Sparse.UInt8_Vec2_Access", "OpenCV.Core.Sparse.UInt8_Vec3_Access", "OpenCV.Core.Sparse.UInt8_Vec4_Access",
+  "OpenCV.Core.Transfers",
+  "OpenCV.Core.UInt16_Access", "OpenCV.Core.UInt16_Buffer_Access", "OpenCV.Core.UInt16_Mat_View", "OpenCV.Core.UInt16_Row_Access",
+  "OpenCV.Core.UInt16_Vec2", "OpenCV.Core.UInt16_Vec2_Access",
+  "OpenCV.Core.UInt16_Vec2_Buffer_Access", "OpenCV.Core.UInt16_Vec2_Mat_View", "OpenCV.Core.UInt16_Vec2_Row_Access",
+  "OpenCV.Core.UInt16_Vec3", "OpenCV.Core.UInt16_Vec3_Access",
+  "OpenCV.Core.UInt16_Vec3_Buffer_Access", "OpenCV.Core.UInt16_Vec3_Mat_View", "OpenCV.Core.UInt16_Vec3_Row_Access",
+  "OpenCV.Core.UInt16_Vec4", "OpenCV.Core.UInt16_Vec4_Access",
+  "OpenCV.Core.UInt16_Vec4_Buffer_Access", "OpenCV.Core.UInt16_Vec4_Mat_View", "OpenCV.Core.UInt16_Vec4_Row_Access",
+  "OpenCV.Core.UInt8_Access", "OpenCV.Core.UInt8_Buffer_Access", "OpenCV.Core.UInt8_Mat_View", "OpenCV.Core.UInt8_Row_Access",
+  "OpenCV.Core.UInt8_Vec2", "OpenCV.Core.UInt8_Vec2_Access",
+  "OpenCV.Core.UInt8_Vec2_Buffer_Access", "OpenCV.Core.UInt8_Vec2_Mat_View", "OpenCV.Core.UInt8_Vec2_Row_Access",
+  "OpenCV.Core.UInt8_Vec3", "OpenCV.Core.UInt8_Vec3_Access",
+  "OpenCV.Core.UInt8_Vec3_Buffer_Access", "OpenCV.Core.UInt8_Vec3_Mat_View", "OpenCV.Core.UInt8_Vec3_Row_Access",
+  "OpenCV.Core.UInt8_Vec4", "OpenCV.Core.UInt8_Vec4_Access",
+  "OpenCV.Core.UInt8_Vec4_Buffer_Access", "OpenCV.Core.UInt8_Vec4_Mat_View", "OpenCV.Core.UInt8_Vec4_Row_Access",
+  "OpenCV.Core.Vectors",
+]
+
+[navigation]
+mode = "packages"
+symbol_bookmarks = true
+default_package = "OpenCV.Core"
+
+[presentation]
+theme = true
+syntax_highlighting = true
+type_links = true
+
+[security]
+external_hosts = ["github.com", "zackboll.github.io"]
+
+[generic_instances]
+qualification = "docs/enhancer-qualification/gnatdoc-generic-qualification.json"
+sha256 = "146a6f6375be14788996e04585ac141bfc308c5be87b040198f5d74c5c74bcfc"
+incoming_references = true
+
+[guides]
+mode = "authored-markdown"
+manifest = "docs/enhancer-qualification/gnatdoc-authored.json"
+sha256 = "97a3351cbe0f852d5aeddea64fcffab9f66fdf56499b717caab82d06e9f67b65"

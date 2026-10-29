@@ -26,6 +26,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends build-essential libopencv-dev pkg-config unzip python3 python3-venv
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
       - name: Install Alire 2.1.1
         run: |
           curl --fail --location --output /tmp/alire.zip https://github.com/alire-project/alire/releases/download/v2.1.1/alr-2.1.1-bin-x86_64-linux.zip
@@ -35,11 +38,17 @@ jobs:
         run: |
           alr -n --force toolchain --select gnat_native=16.1.0 gprbuild=26.0.1
           alr toolchain
-      - name: Install qualified documentation-only Markdown renderer
+      - name: Install checksum-qualified released documentation toolkit
         run: |
-          python3 -m venv .doc-tools/markdown
-          .doc-tools/markdown/bin/pip install -r docs/requirements.txt
-          echo "DOC_PYTHON=$GITHUB_WORKSPACE/.doc-tools/markdown/bin/python" >> "$GITHUB_ENV"
+          python -m unittest discover -s scripts -p 'test_install_doc_enhancer.py' -v
+          sh scripts/install_doc_enhancer.sh
+          echo "DOC_PYTHON=$GITHUB_WORKSPACE/.doc-tools/enhancer/bin/python" >> "$GITHUB_ENV"
+      - name: Record exact source and protected identities
+        run: |
+          mkdir -p obj/docs
+          test "$(git rev-parse HEAD)" = '${{ github.event.pull_request.head.sha || github.sha }}'
+          git rev-parse HEAD 'HEAD^{tree}' > obj/docs/git-identities.txt
+          git ls-tree HEAD src cpp alire.toml opencv_core.gpr opencv_core_shim.gpr tests docs_api.gpr docs_internal.gpr > obj/docs/protected-before.txt
       - name: Test warning comparison
         run: '"$DOC_PYTHON" -m unittest discover -s scripts -p ''test_compare_gnatdoc_warnings.py'' -v'
       - name: Test type cross-references
@@ -51,18 +60,24 @@ jobs:
       - name: Generate and validate public API
         run: sh scripts/generate_docs.sh
       - name: Qualify published guide integrity
-        run: .doc-tools/markdown/bin/python -m unittest discover -s scripts -p 'test_gnatdoc_guides.py' -v
+        run: '"$DOC_PYTHON" -m unittest discover -s scripts -p ''test_gnatdoc_guides.py'' -v'
       - name: Qualify deterministic fresh generation
         run: |
           cp -a _site /tmp/documentation-first
+          cp -a obj/docs/native /tmp/documentation-native-first
           sh scripts/generate_docs.sh
+          diff -r /tmp/documentation-native-first obj/docs/native
           diff -r /tmp/documentation-first _site
-          .doc-tools/markdown/bin/python scripts/render_gnatdoc_guides.py _site
+          .doc-tools/enhancer/bin/gnatdoc-enhancer enhance --source-root obj/docs/enhancer-input --config docs/gnatdoc-enhancer.toml --site "$GITHUB_WORKSPACE/_site"
           diff -r /tmp/documentation-first _site
+          .doc-tools/enhancer/bin/gnatdoc-enhancer verify --source-root obj/docs/enhancer-input --config docs/gnatdoc-enhancer.toml --site "$GITHUB_WORKSPACE/_site"
+          "$DOC_PYTHON" scripts/validate_docs.py _site
       - name: Qualify generated generic instance pages
         run: '"$DOC_PYTHON" -m unittest discover -s scripts -p ''test_gnatdoc_instances.py'' -v'
       - name: Qualify native navigation integrity
         run: '"$DOC_PYTHON" -m unittest discover -s scripts -p ''test_gnatdoc_navigation.py'' -v'
+      - name: Qualify independent publication and acquisition rejection
+        run: '"$DOC_PYTHON" -m unittest discover -s scripts -p ''test_core_enhancer.py'' -v'
       - name: Qualify real-browser package and declaration navigation
         run: |
           npm install --prefix /tmp/doc-browser --no-package-lock playwright@1.64.1
@@ -70,6 +85,7 @@ jobs:
           export PLAYWRIGHT_MODULE=/tmp/doc-browser/node_modules/playwright
           export CHROME=$(node -e 'console.log(require(process.env.PLAYWRIGHT_MODULE).chromium.executablePath())')
           export DOC_URL=http://127.0.0.1:8071/api/index.html
+          export DOC_EVIDENCE="$GITHUB_WORKSPACE/obj/docs/browser-screenshots"
           python3 -m http.server 8071 --bind 127.0.0.1 --directory _site &
           server=$!
           trap 'kill "$server"' EXIT
@@ -77,6 +93,15 @@ jobs:
           node scripts/test_gnatdoc_navigation_browser.cjs
           node scripts/test_gnatdoc_symbols_browser.cjs
           node scripts/test_gnatdoc_cross_origin_browser.cjs
+          "$DOC_PYTHON" scripts/gnatdoc_browser_oracle.py
+          node scripts/test_gnatdoc_migration_browser.cjs
+          DOC_URL=http://127.0.0.1:8071/ node scripts/test_gnatdoc_guides_browser.cjs
+      - name: Verify source and production integrity
+        run: |
+          git diff --exit-code
+          git ls-tree HEAD src cpp alire.toml opencv_core.gpr opencv_core_shim.gpr tests docs_api.gpr docs_internal.gpr > obj/docs/protected-after.txt
+          diff obj/docs/protected-before.txt obj/docs/protected-after.txt
+          "$DOC_PYTHON" scripts/verify_core_enhancer.py --native obj/docs/native
       - name: Upload review artifact
         uses: actions/upload-artifact@v4
         with:
@@ -88,7 +113,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: gnatdoc-diagnostics-${{ github.event.pull_request.head.sha || github.sha }}
-          path: obj/docs/gnatdoc.log
+          path: |
+            obj/docs/*.log
+            obj/docs/*.json
+            obj/docs/*.txt
+            obj/docs/native/
+            obj/docs/browser-screenshots/
+            .doc-tools/enhancer-release/SHA256SUMS
+            .doc-tools/enhancer-release/release-provenance.json
       - name: Configure Pages
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/configure-pages@v5
