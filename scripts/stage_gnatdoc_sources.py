@@ -9,7 +9,7 @@ import shutil
 from pathlib import Path
 
 from link_gnatdoc_types import sources, require
-from verify_core_enhancer import record, AUTHORED_SHA
+from verify_core_enhancer import record, AUTHORED_SHA, THEME_SOURCE, ASSETS, digest
 
 
 def stage(root):
@@ -27,7 +27,9 @@ def stage(root):
     shutil.copyfile(root / 'docs/gnatdoc-enhancer.toml', destination / 'docs/gnatdoc-enhancer.toml')
     shutil.copytree(root / 'docs/enhancer-qualification', destination / 'docs/enhancer-qualification')
     authored = record('gnatdoc-authored.json', AUTHORED_SHA)
-    for name in authored['inputs']:
+    require(digest((root / THEME_SOURCE).read_bytes()) == ASSETS['gnatdoc-theme.css'],
+            'unreviewed Core theme source')
+    for name in [*authored['inputs'], THEME_SOURCE]:
         source = root / name
         require(source.resolve().is_relative_to(root) and not any(p.is_symlink() for p in (source, *source.parents)),
                 'unsafe authored source')
