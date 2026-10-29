@@ -16,7 +16,7 @@ test "$(sha256sum "$release/SHA256SUMS" | cut -d ' ' -f 1)" = 0d7e16b2e932de982d
 (cd "$release" && sha256sum --check --ignore-missing SHA256SUMS)
 test "$(sha256sum "$release/release-provenance.json" | cut -d ' ' -f 1)" = adc77b4d906f379d71a4d1db2443a529d4fe68e56e2a3c007c591a79f1c16b00
 test "$(sha256sum "$release/$wheel" | cut -d ' ' -f 1)" = cb227554bc0c8f1906ba15875306b5fefac103a50d84a876d0fdbd2754e1657e
-"$python" -c 'import json,sys; from pathlib import Path; d=json.loads(Path(sys.argv[1]).read_text()); assert d["release_version"] == "0.1.2" and d["source_commit"] == "d7636cc50154ebb5535c699d2bed6406ebc92e62" and d["source_tree"] == "ca7d4d70f2fc556eafe6b222facacadb16fa272a"' "$release/release-provenance.json"
+"$python" -c 'import json,sys; from pathlib import Path; d=json.loads(Path(sys.argv[1]).read_text()); assert d["release_version"] == "0.1.2" and d["expected_source_commit"] == "d7636cc50154ebb5535c699d2bed6406ebc92e62" and d["expected_source_tree"] == "ca7d4d70f2fc556eafe6b222facacadb16fa272a"' "$release/release-provenance.json"
 "$python" -m venv .doc-tools/enhancer
 .doc-tools/enhancer/bin/python -m pip install --no-deps "$release/$wheel"
 .doc-tools/enhancer/bin/python -m pip install -r docs/requirements.txt

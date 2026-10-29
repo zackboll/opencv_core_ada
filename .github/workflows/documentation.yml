@@ -40,6 +40,7 @@ jobs:
           alr toolchain
       - name: Install checksum-qualified released documentation toolkit
         run: |
+          python -m unittest discover -s scripts -p 'test_install_doc_enhancer.py' -v
           sh scripts/install_doc_enhancer.sh
           echo "DOC_PYTHON=$GITHUB_WORKSPACE/.doc-tools/enhancer/bin/python" >> "$GITHUB_ENV"
       - name: Record exact source and protected identities
