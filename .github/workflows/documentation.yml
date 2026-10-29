@@ -97,6 +97,8 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: _site/
+          # Keep deployment evidence available for follow-up audits (default is 1 day).
+          retention-days: 30
 
   deploy:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
