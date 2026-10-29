@@ -45,7 +45,7 @@ def record(name, expected):
 
 def is_enhancer(api):
     path = api / 'presentation.json'
-    return path.is_file() and json.loads(path.read_text()).get('enhancer_version') == '0.1.1'
+    return path.is_file() and json.loads(path.read_text()).get('enhancer_version') == '0.1.2'
 
 
 def validate(site):
@@ -60,7 +60,7 @@ def validate(site):
     instances = discover(source)
     require(instances == qualified_instances(), 'changed instance associations')
     manifest = json.loads((api / 'presentation.json').read_text())
-    require(manifest.get('enhancer_version') == '0.1.1', 'wrong enhancer version')
+    require(manifest.get('enhancer_version') == '0.1.2', 'wrong enhancer version')
     require(set(manifest) == {'schema_version', 'enhancer_version', 'gnatdoc_version', 'project',
                              'original_api_html', 'native_css_sha256', 'source_sha256', 'output_sha256', 'counts'}
             and manifest['schema_version'] == 1 and manifest['gnatdoc_version'] == '26.0.0'

@@ -5,6 +5,39 @@ change, or completion of the exhaustive Core API audit. Crate version **0.5.2**,
 the FIN-03 overlay, production sources/projects, ABI, test registrations,
 forensic evidence and practical capability decisions are unchanged.
 
+## CORE-DOC-MIG-001R2 — published enhancer v0.1.2 adoption
+
+This follow-up updates the **existing PR #97**, not a replacement PR. The
+current installer acquires the official released v0.1.2 wheel only after
+verifying independently pinned SHA-256 values for the wheel, checksum manifest
+and release provenance. The release provenance must identify source commit
+`d7636cc50154ebb5535c699d2bed6406ebc92e62` and tree
+`ca7d4d70f2fc556eafe6b222facacadb16fa272a`.
+
+| v0.1.2 release asset | Pinned SHA-256 |
+| --- | --- |
+| `ada_gnatdoc_enhancer-0.1.2-py3-none-any.whl` | `cb227554bc0c8f1906ba15875306b5fefac103a50d84a876d0fdbd2754e1657e` |
+| `SHA256SUMS` | `0d7e16b2e932de982d929049db8bd6039ad39fd9f2a9dd791dc3751a127775b4` |
+| `release-provenance.json` | `adc77b4d906f379d71a4d1db2443a529d4fe68e56e2a3c007c591a79f1c16b00` |
+
+The packaged theme stylesheet and instance-navigation JavaScript are
+**byte-identical** between toolkit v0.1.1 and v0.1.2 (verified against both
+release-tag source blobs). Core has neither custom theme nor external bookmark
+opt-ins; its existing approved asset fingerprints remain applicable. The
+v0.1.2 default-router restoration feature is not silently reclassified as a
+change to Core's instance-navigation contract. The presentation manifest's
+enhancer version is expected to change to 0.1.2.
+
+Capture screenshots for desktop/mobile, light/dark, JavaScript on/off in the
+existing CI browser evidence directory. Compare relevant snapshots and native
+API destinations against the earlier v0.1.1 review baseline. Existing legacy
+and v0.1.1 coverage figures below are **historical baseline observations**,
+not proof of final v0.1.2 qualification. Complete exact-new-head CI, independent
+Core publication-oracle checks, deterministic generation, browser assertions
+and visual review before approving a merge. No Pages deployment from this PR.
+
+## Historical CORE-DOC-MIG-001 — original v0.1.1 qualification baseline
+
 ## Acquisition and trust
 
 Base: `33a2a4f3b83606a5c779b8a93abeb6c91fa49a21`, tree

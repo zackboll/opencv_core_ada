@@ -4,6 +4,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const oracle = JSON.parse(fs.readFileSync(process.env.DOC_ORACLE || 'obj/docs/browser-oracle.json'));
 const base = process.env.DOC_URL || 'http://127.0.0.1:8071/api/index.html';
+const evidence = process.env.DOC_EVIDENCE;
+if (evidence) fs.mkdirSync(evidence, {recursive: true});
 (async () => {
   const browser = await chromium.launch({executablePath: process.env.CHROME, headless: true});
   const results = [];
@@ -17,6 +19,13 @@ const base = process.env.DOC_URL || 'http://127.0.0.1:8071/api/index.html';
         const errors = [];
         page.on('pageerror', error => errors.push(error.message));
         await page.goto(base);
+        if (evidence) {
+          await page.frameLocator('iframe').locator('h1').first().waitFor();
+          await page.screenshot({
+            path: `${evidence}/migration-${width}-${colorScheme}-${javaScriptEnabled ? 'js' : 'nojs'}.png`,
+            animations: 'disabled'
+          });
+        }
         for (const expected of oracle.packages) {
           const link = page.locator('#compilation-units + ul a').filter({hasText: new RegExp('^' + expected.name.replaceAll('.', '\\.') + '$')});
           assert.equal(await link.getAttribute('href'), expected.page);

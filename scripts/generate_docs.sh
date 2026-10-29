@@ -8,8 +8,8 @@ command -v python3 >/dev/null
 python=${DOC_PYTHON:-"$root/.doc-tools/enhancer/bin/python"}
 enhancer="$(dirname -- "$python")/gnatdoc-enhancer"
 test -x "$enhancer" || { echo 'error: run sh scripts/install_doc_enhancer.sh first' >&2; exit 1; }
-test "$("$enhancer" --version)" = 0.1.1
-"$python" -c 'import sys, json; from importlib.metadata import distribution; assert sys.prefix != sys.base_prefix; assert sys.version_info[:2] in ((3,11),(3,12),(3,13)); d=distribution("ada-gnatdoc-enhancer"); assert d.version == "0.1.1"; u=json.loads(d.read_text("direct_url.json")); assert not u.get("dir_info") and u["url"].endswith(".whl")'
+test "$("$enhancer" --version)" = 0.1.2
+"$python" -c 'import sys, json; from importlib.metadata import distribution; assert sys.prefix != sys.base_prefix; assert sys.version_info[:2] in ((3,11),(3,12),(3,13)); d=distribution("ada-gnatdoc-enhancer"); assert d.version == "0.1.2"; u=json.loads(d.read_text("direct_url.json")); assert not u.get("dir_info") and u["url"].endswith(".whl")'
 test "$(alr --version)" = 'alr 2.1.1' || {
     echo 'error: documentation requires Alire 2.1.1' >&2; exit 1;
 }
