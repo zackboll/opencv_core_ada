@@ -7,6 +7,14 @@ const evidence = process.env.DOC_EVIDENCE || '/tmp/core-doc-072-screenshots';
 fs.mkdirSync(evidence, {recursive: true});
 const names = ['ownership-and-views', 'typed-access-guide', 'core-operations-guide',
   'sparse-and-persistence-guide', 'interop-and-compatibility'];
+// Native fragment scrolling can finish after load/reload; observe arrival,
+// never scroll from the test or accept an off-screen bookmark.
+const expectFragmentArrival = (page, fragment) => page.waitForFunction(fragment => {
+  const target = document.querySelector(fragment);
+  if (!target) return false;
+  const r = target.getBoundingClientRect();
+  return r.top < innerHeight && r.bottom > 0;
+}, fragment, {timeout: 5000});
 (async () => {
   const browser = await chromium.launch({executablePath: process.env.CHROME || '/usr/bin/google-chrome', headless: true});
   try {
@@ -36,6 +44,7 @@ const names = ['ownership-and-views', 'typed-access-guide', 'core-operations-gui
           for (const fragment of fragments) {
             await page.locator(`main a[href="${fragment}"]`).first().click();
             assert.equal(new URL(page.url()).hash, fragment);
+            await expectFragmentArrival(page, fragment);
             assert.ok(await page.locator(fragment).evaluate(e => {
               const r = e.getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0;
             }));
@@ -51,7 +60,9 @@ const names = ['ownership-and-views', 'typed-access-guide', 'core-operations-gui
           const directHeading = await page.locator('main h2[id]').first().getAttribute('id');
           const directBookmark = page.url() + '#' + directHeading;
           await page.goto(directBookmark);
+          await expectFragmentArrival(page, '#' + directHeading);
           await page.reload();
+          await expectFragmentArrival(page, '#' + directHeading);
           assert.ok(await page.locator('#' + directHeading).evaluate(e => {
             const r = e.getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0;
           }));

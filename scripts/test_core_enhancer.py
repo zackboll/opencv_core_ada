@@ -7,7 +7,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from verify_core_enhancer import validate, validate_native
+from verify_core_enhancer import (validate, validate_native, validate_theme_identity,
+                                  THEME_SOURCE, CONFIG_SOURCE, digest)
 from link_gnatdoc_types import sources, pages_and_targets, LINK
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -49,6 +50,55 @@ class Publication(unittest.TestCase):
         path.write_text(json.dumps(data))
         with self.assertRaises(ValueError):
             self.check()
+
+    def test_custom_theme_metadata_is_exact_not_authority(self):
+        path = self.site / 'api/presentation.json'
+        original = json.loads(path.read_text())
+        for key in original['theme_source']:
+            with self.subTest(key=key):
+                data = json.loads(json.dumps(original))
+                data['theme_source'][key] = 'unapproved'
+                path.write_text(json.dumps(data))
+                with self.assertRaises(ValueError):
+                    self.check()
+        for replacement in [None, {}, {**original['theme_source'], 'extra': True}]:
+            data = json.loads(json.dumps(original))
+            data['theme_source'] = replacement
+            path.write_text(json.dumps(data))
+            with self.assertRaises(ValueError):
+                self.check()
+        del data['theme_source']
+        path.write_text(json.dumps(data))
+        with self.assertRaises(ValueError):
+            self.check()
+
+    def test_rehashed_published_css_is_not_approved(self):
+        css = self.site / 'api/gnatdoc-theme.css'
+        css.write_bytes(css.read_bytes() + b'\n.landing { max-width: none; }\n')
+        path = self.site / 'api/presentation.json'
+        data = json.loads(path.read_text())
+        data['output_sha256']['api/gnatdoc-theme.css'] = digest(css.read_bytes())
+        path.write_text(json.dumps(data))
+        with self.assertRaises(ValueError):
+            self.check()
+
+    def test_rehashed_source_or_configuration_is_not_approved(self):
+        root = Path(self.temp.name) / 'inputs'
+        for name in [THEME_SOURCE, CONFIG_SOURCE]:
+            target = root / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(ROOT / name, target)
+        identity = json.loads((self.site / 'api/presentation.json').read_text())['theme_source']
+        validate_theme_identity(identity, root)
+        for name, key in [(THEME_SOURCE, 'sha256'), (CONFIG_SOURCE, 'config_sha256')]:
+            with self.subTest(name=name):
+                path = root / name
+                original = path.read_bytes()
+                path.write_bytes(original + b'\n')
+                forged = {**identity, key: digest(path.read_bytes())}
+                with self.assertRaises(ValueError):
+                    validate_theme_identity(forged, root)
+                path.write_bytes(original)
 
     def test_size_link_wrong_existing_destination_is_rejected(self):
         path = self.pages['opencv.core'][0]

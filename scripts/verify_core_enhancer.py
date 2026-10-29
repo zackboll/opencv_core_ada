@@ -11,6 +11,7 @@ import html
 import json
 import re
 import argparse
+import tomllib
 from collections import Counter
 from pathlib import Path
 
@@ -27,8 +28,11 @@ ROOT = Path(__file__).resolve().parent.parent
 QUALIFICATION = ROOT / 'docs/enhancer-qualification'
 GENERIC_SHA = '146a6f6375be14788996e04585ac141bfc308c5be87b040198f5d74c5c74bcfc'
 AUTHORED_SHA = '97a3351cbe0f852d5aeddea64fcffab9f66fdf56499b717caab82d06e9f67b65'
+THEME_SOURCE = 'docs/assets/gnatdoc-theme.css'
+CONFIG_SOURCE = 'docs/gnatdoc-enhancer.toml'
+CONFIG_SHA = '7ede7b535e69a2015fd0d64ccdb40b755f86d51c06bc53e7021d10525ebe1156'
 ASSETS = {
-    'gnatdoc-theme.css': 'cf06637732a8b047a7191bfb991a5c3da7cd31a52076876880d5f8a3f63929bc',
+    'gnatdoc-theme.css': 'fa265d63e73436a6a449fd16011c3db68a5430e7fa6a98ea8eb0fd6821dca9b2',
     'gnatdoc-navigation.js': '97dcc75055842e98a6294809b8e8c4e7436a427039d19c8afb6fdd1ca21ea310',
 }
 
@@ -48,6 +52,22 @@ def is_enhancer(api):
     return path.is_file() and json.loads(path.read_text()).get('enhancer_version') == '0.1.2'
 
 
+def validate_theme_identity(identity, root):
+    config_bytes = (root / CONFIG_SOURCE).read_bytes()
+    require(digest(config_bytes) == CONFIG_SHA, 'unreviewed Core configuration')
+    presentation = tomllib.loads(config_bytes.decode('utf-8'))['presentation']
+    require(presentation.get('theme') is True and
+            presentation.get('theme_css_source') == THEME_SOURCE and
+            presentation.get('theme_css_sha256') == ASSETS['gnatdoc-theme.css'],
+            'unapproved Core theme configuration')
+    require(digest((root / THEME_SOURCE).read_bytes()) == ASSETS['gnatdoc-theme.css'],
+            'unreviewed Core theme source')
+    require(identity == {
+        'source': THEME_SOURCE, 'sha256': ASSETS['gnatdoc-theme.css'],
+        'config': CONFIG_SOURCE, 'config_sha256': CONFIG_SHA},
+        'Core theme source/configuration identity mismatch')
+
+
 def validate(site):
     api = site / 'api'
     acquisition = record('gnatdoc-generic-qualification.json', GENERIC_SHA)
@@ -62,9 +82,11 @@ def validate(site):
     manifest = json.loads((api / 'presentation.json').read_text())
     require(manifest.get('enhancer_version') == '0.1.2', 'wrong enhancer version')
     require(set(manifest) == {'schema_version', 'enhancer_version', 'gnatdoc_version', 'project',
-                             'original_api_html', 'native_css_sha256', 'source_sha256', 'output_sha256', 'counts'}
+                             'original_api_html', 'native_css_sha256', 'source_sha256', 'output_sha256',
+                             'counts', 'theme_source'}
             and manifest['schema_version'] == 1 and manifest['gnatdoc_version'] == '26.0.0'
             and manifest['project'] == 'OpenCV Core Ada', 'unapproved presentation metadata')
+    validate_theme_identity(manifest['theme_source'], ROOT)
     require(manifest['source_sha256'] == acquisition['source_sha256'] and
             manifest['native_css_sha256'] == acquisition['native_sha256']['api/gnatdoc.css'],
             'presentation input identities mismatch')

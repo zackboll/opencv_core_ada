@@ -95,6 +95,7 @@ jobs:
           node scripts/test_gnatdoc_cross_origin_browser.cjs
           "$DOC_PYTHON" scripts/gnatdoc_browser_oracle.py
           node scripts/test_gnatdoc_migration_browser.cjs
+          DOC_URL=http://127.0.0.1:8071/ node scripts/test_gnatdoc_landing_browser.cjs
           DOC_URL=http://127.0.0.1:8071/ node scripts/test_gnatdoc_guides_browser.cjs
       - name: Verify source and production integrity
         run: |
