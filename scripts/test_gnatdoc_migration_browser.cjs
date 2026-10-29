@@ -54,7 +54,18 @@ if (evidence) fs.mkdirSync(evidence, {recursive: true});
           const target = page.locator('h4:target');
           assert.equal(await target.getAttribute('id'), expected.anchor);
           assert.equal(await target.textContent(), expected.name);
+          // Same-document fragment scrolling can complete after goto/load. A
+          // reload before that scroll settles may restore the preceding offset.
+          // Observe native arrival first; do not scroll the target from the test.
+          const expectNativeArrival = () => page.waitForFunction(() => {
+            const target = document.querySelector('h4:target');
+            if (!target) return false;
+            const r = target.getBoundingClientRect();
+            return r.top >= 0 && r.top < innerHeight;
+          }, undefined, {timeout: 5000});
+          await expectNativeArrival();
           await page.reload();
+          await expectNativeArrival();
           assert.ok(await target.evaluate(e => { const r = e.getBoundingClientRect(); return r.top >= 0 && r.top < innerHeight; }));
           const fresh = await context.newPage();
           await fresh.goto(bookmark);

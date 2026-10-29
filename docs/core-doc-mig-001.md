@@ -36,6 +36,59 @@ not proof of final v0.1.2 qualification. Complete exact-new-head CI, independent
 Core publication-oracle checks, deterministic generation, browser assertions
 and visual review before approving a merge. No Pages deployment from this PR.
 
+### Independent final qualification evidence
+
+The initial exact-head documentation run `40813369371` failed before generation:
+the installer checked nonexistent provenance fields `source_commit`/`source_tree`.
+The pinned official artifact uses `expected_source_commit`/`expected_source_tree`.
+The correction preserves all three digest pins and both expected identities.
+Installer regression tests reject absent/wrong versions, commits, trees and the
+unpublished field names. Isolated acquisition replay additionally rejects missing
+provenance, a renamed v0.1.1 wheel and corruption of each of the three assets,
+before creating an installation.
+
+Fresh v0.1.1 and v0.1.2 sites were generated from the same checksum-qualified
+pristine native inputs. All **207 publication files** are byte-identical except
+`api/presentation.json`, whose only changed field is `enhancer_version`.
+The published wheels also confirm unchanged theme, guide and instance-router
+assets. The toolkit's default-router asset differs but is not selected by Core.
+
+The side-by-side comparison captures **72 pairs / 144 screenshots**: nine states
+at 1280×900 and 390×900, light/dark, JavaScript on/off, using the same Linux
+environment, fonts, Chromium **156.0.8078.4**, Playwright **1.64.1**, scale 1,
+locale en-US and timezone UTC. States cover landing, API index, search/navigation
+focus, multiple native declarations, scrolled declarations, vector and matrix
+summaries, an authored guide and scrolled guide/focus. **54,108,000 RGB pixels
+were compared with zero differing pixels**, with no DOM/text/link/layout
+observation differences. This establishes pixel identity only for captured
+states, not every possible rendering or browser.
+
+Evidence and the clickable side-by-side report are under
+`/home/zboll/qualification/core-doc-mig-001r2/visual-report.html`; raw captures
+are in `visual/v011/` and `visual/v012/`, with exact metrics in
+`visual-comparison.json` and `site-comparison.json`. These are local evidence
+locations, not claims of hosted artifact upload.
+
+All 127 documentation Python tests passed. Independent publication verification
+retains 195 packages, 1,293 native sections, 216 symbol bookmarks, 25 summaries,
+102 summary links, 242 incoming references and five guides. Two fresh production
+generations and enhancer reapplication are byte-identical, with zero warning
+additions/removals. Native navigation, symbol, cross-origin and five-guide
+Chromium suites passed.
+
+The exhaustive browser suite independently exposed an initial-fragment/reload
+synchronization defect: reloading before native fragment arrival could preserve
+a stale offset. A 600-sample controlled reproduction found 15/150 failures on
+v0.1.1 and 22/150 on v0.1.2 without synchronization, versus 0/150 on each when
+waiting for initial native arrival. The corrected test waits on the actual
+viewport condition before reload and after reload, with a five-second bound;
+it never scrolls the target or changes the product. Original failure logs and
+reproduction data are retained in the evidence directory.
+
+Final hosted checks must be evaluated on the resulting Git HEAD, not inferred
+from these local results or the superseded run. PR #98 remains separate while
+open; its `retention-days: 30` change must be preserved if later reconciled.
+
 ## Historical CORE-DOC-MIG-001 — original v0.1.1 qualification baseline
 
 ## Acquisition and trust
