@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Stage exact public inputs: GNATdoc excludes the separate internal project.
 
-v0.1.2 scans source directories recursively and has no exclusion option. Keep
+The released enhancer scans source directories recursively. Keep
 the original src/*.ads paths and bytes, but never authorize src/internal units.
 The destination is a fixed disposable documentation-only directory.
 """

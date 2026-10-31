@@ -154,7 +154,8 @@ function qualify(metrics, width) {
           result.layoutDelta = Object.fromEntries(Object.keys(after.metrics).filter(k => k !== 'body')
             .map(k => [k, Object.fromEntries(['x', 'y', 'width', 'height'].map(p =>
               [p, after.metrics[k][p] - before.metrics[k][p]]))]));
-          assert.ok(delta.changedPixels > 0, 'actual before/after visual difference');
+          assert.equal(delta.changedPixels, 0, 'qualified v0.1.2 homepage pixel parity');
+          assert.deepEqual(before.metrics, after.metrics, 'qualified v0.1.2 homepage layout parity');
         }
         results.push(result);
         console.log(`PASS ${label}: original pixels/layout, focus, contrast, resources, missing-rule mutation`);

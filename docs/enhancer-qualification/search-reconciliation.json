@@ -1,0 +1,187 @@
+{
+  "additions": [
+    {
+      "href": "6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#aa5ff0afa6aff9ebaeb5ca1126e41b9771ea70f80c33e54ff2e0d5eb15bda39a",
+      "kind": "operation",
+      "label": "OpenCV.Core.Add (overload 1/6)",
+      "name": "OpenCV.Core.Add",
+      "text": "function Add (Self : Mat; Value : Scalar) return Mat; -- Adds channel-ordered Value to Self using native scalar arithmetic. -- Requires nonempty exactly 2-D C1..C4 storage, UInt8, Int8, UInt16, -- Int16, Int32, Float32 or Float64. Float16 is rejected. Scalar components -- are not repeated: Make_Scalar (5.0) leaves channels 1..3 zero. -- Native work-depth conversion, rounding and saturation apply; -- Int32 overflow is not portable mathematical arithmetic. Coefficients -- must be finite; see the operations guide for conversion limits. -- @param Self Source Mat, including a valid strided Region or scoped view. -- @param Value Component 0 applies to channel 0, and so on. -- @return Independently owned Mat with Self's shape and element type. -- @exception OpenCV_Error Raised for unsupported input or native failure. function Add (Self : Mat; Value : Scalar) return Mat;"
+    },
+    {
+      "href": "6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#2c5ffd419200afa50e343efe12685350f0a275dc71463f47c93e17cef7ef53f0",
+      "kind": "operation",
+      "label": "OpenCV.Core.Add (overload 2/6)",
+      "name": "OpenCV.Core.Add",
+      "text": "procedure Add (Self : Mat; Value : Scalar; Destination : in out Mat); -- Writes Self + Value into the actual caller-owned Destination. Compatible -- Region storage is reused; mismatches detach, retaining old aliases. -- Exact and same-layout shallow aliases are supported. Other possibly -- overlapping byte spans are rejected conservatively before mutation. -- Temporary external/selected outputs are rejected; scoped inputs -- are allowed. Preflight failures preserve Destination, but arbitrary -- native failures do not promise rollback. Input rules match scalar Add. -- @param Self Source Mat. -- @param Value Channel-ordered scalar, not implicitly repeated. -- @param Destination Caller-owned Mat receiving Self + Value. -- @exception OpenCV_Error Raised for unsupported input/alias or failure. procedure Add (Self : Mat; Value : Scalar; Destination : in out Mat);"
+    },
+    {
+      "href": "6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#88b1c16ef581d165a1d15373ccb543a266491a84b75e46eee68d56cf1fce657d",
+      "kind": "symbol",
+      "label": "OpenCV.Core.Binary_Norm_Kind",
+      "name": "OpenCV.Core.Binary_Norm_Kind",
+      "text": "type Binary_Norm_Kind is (One_Bit, Two_Bits); -- Native binary reduction cell size for UInt8 single-channel descriptors. -- No numeric selector mask or relative mode is provided for binary norms. -- @enum One_Bit Count set bits (or differing bits for a pair). -- @enum Two_Bits Count nonzero adjacent two-bit cells. A cell 11 counts -- once, not twice; this is not One_Bit divided by two. type Binary_Norm_Kind is (One_Bit, Two_Bits);"
+    },
+    {
+      "href": "6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#ad555b75a11376ab27ab904ff9e69289bf409d7e188dd34ad20b07e683fe87f0",
+      "kind": "operation",
+      "label": "OpenCV.Core.Compare (overload 1/6)",
+      "name": "OpenCV.Core.Compare",
+      "text": "function Compare (Self : Mat; Value : Float64_Value; Kind : Comparison_Kind) return Mat; -- Compares Self relation Value without narrowing Value to Self's depth. -- Requires nonempty exactly 2-D C1, one of the seven scalar Add depths. -- Fractional and out-of-integer-range finite values retain native compare -- behavior. Value must be finite. Nonfinite source pixels remain native. -- @param Self Single-channel source Mat. -- @param Value Finite Float64 comparison value. -- @param Kind Relation read as Self relation Value. -- @return Independent UInt8 C1 Mat containing only zero or 255. -- @exception OpenCV_Error Raised for unsupported input or native failure. function Compare (Self : Mat; Value : Float64_Value; Kind : Comparison_Kind) return Mat;"
+    },
+    {
+      "href": "6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#456dfc7743774448f2b16fe247fa76fff1bc7173a5a37b7a1f5c2b7a54145425",
+      "kind": "operation",
+      "label": "OpenCV.Core.Compare (overload 2/6)",
+      "name": "OpenCV.Core.Compare",
+      "text": "procedure Compare (Self : Mat; Value : Float64_Value; Kind : Comparison_Kind; Destination : in out Mat); -- Writes the scalar comparison mask into the actual Destination. -- Reuse/detachment/temporary rules match scalar Add. Overlapping inputs -- are allowed only for identical-layout UInt8 C1 source/destination; -- other overlap, including depth-changing exact alias, is rejected. -- @param Self Single-channel source Mat. -- @param Value Finite Float64 comparison value, not prematurely narrowed. -- @param Kind Relation read as Self relation Value. -- @param Destination Caller-owned Mat receiving the UInt8 C1 mask. -- @exception OpenCV_Error Raised for unsupported input/alias or failure. procedure Compare (Self : Mat; Value : Float64_Value; Kind : Comparison_Kind; Destination : in out Mat);"
+    },
+    {
+      "href": "6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#78e84f49aa36d6baac9283d3f58138731bbd2999d9a2a59368290012595f6657",
+      "kind": "operation",
+      "label": "OpenCV.Core.Difference_Norm (overload 1/2)",
+      "name": "OpenCV.Core.Difference_Norm",
+      "text": "function Difference_Norm (Left, Right : Mat; Kind : Norm_Kind := L2; Relative : Boolean := False) return Long_Float; -- Native two-input numerical norm across all channels. Left and Right -- must have identical native dimensionality, complete shape, depth and -- channels. Supports UInt8, Int8, UInt16, Int16, Float32 and Float64 only; -- Int32 and Float16 are rejected, even when empty. Callers may explicitly -- Convert_To (Float64). Matching N-D and noncontiguous views are accepted. -- Total * Channels must not exceed 268_435_455 (INT32_MAX / 8), with -- checked preflight arithmetic; native row strides must fit signed int. -- Compatible default-empty or typed-empty operands return zero, after -- checking all shape/type contracts. Inputs and shallow aliases are not -- modified. No difference Mat or implicit whole-matrix conversion is used. -- Relative passes NORM_RELATIVE to OpenCV: the generic implementation -- divides by Right's norm plus DBL_EPSILON, including zero/near-zero -- Right. -- Native backends may differ in precision and relative implementation. -- Float32 intermediates can round/overflow before the C double result; -- NaN/Infinity behavior is native-defined, not filtered or normalized. -- @param Left First numeric operand. -- @param Right Second operand and relative reference. -- @param Kind L1, L2 or infinity norm. -- @param Relative Request native relative normalization. -- @return Native C double result converted to Long_Float. -- @exception OpenCV_Error Invalid input, unsafe count/stride or native -- failure. Nonfinite native results are not validation errors. function Difference_Norm (Left, Right : Mat; Kind : Norm_Kind := L2; Relative : Boolean := False) return Long_Float;"
+    },
+    {
+      "href": "6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#7e2c9c3241a6ded536519ff7ff75f412e9d7e544d490ca9cd85676a2284986f1",
+      "kind": "operation",
+      "label": "OpenCV.Core.Difference_Norm (overload 2/2)",
+      "name": "OpenCV.Core.Difference_Norm",
+      "text": "function Difference_Norm (Left, Right : Mat; Mask : Mat; Kind : Norm_Kind := L2; Relative : Boolean := False) return Long_Float; -- Masked Difference_Norm with the same numeric, count, empty and -- exception contract. Mask must be UInt8 C1 with the complete native -- shape of Left. Every nonzero mask value selects the entire logical -- element and every channel, without scaling; zero excludes it. -- Noncontiguous/N-D masks and borrowed aliases are accepted. An all-zero -- mask returns zero for absolute norms of finite operands. Relative -- empty selection is backend-defined: IPP can return NaN, while the -- generic Right-norm-plus-epsilon path returns zero. Preserve that result. -- @param Left First numeric operand. -- @param Right Second numeric operand and relative reference. -- @param Mask Numeric selector, not a Hamming bit mask. -- @param Kind L1, L2 or infinity norm. -- @param Relative Request native relative normalization. -- @return Native masked C double result converted to Long_Float. -- @exception OpenCV_Error Invalid operands/mask, count/stride or native -- failure. Native nonfinite behavior is preserved. function Difference_Norm (Left, Right : Mat; Mask : Mat; Kind : Norm_Kind := L2; Relative : Boolean := False) return Long_Float;"
+    },
+    {
+      "href": "6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#191f716bb6bb1ae2e50a1d929819af8ceb0b142638a9ec4b257367886d7c97bf",
+      "kind": "operation",
+      "label": "OpenCV.Core.Divide (overload 1/6)",
+      "name": "OpenCV.Core.Divide",
+      "text": "function Divide (Self : Mat; Value : Scalar) return Mat; -- Returns Self / Value, channel by channel. Input rules match scalar Add. -- For all five integer depths, every active scalar denominator must be -- nonzero; otherwise OpenCV_Error is raised before native execution, -- preserving source and destination storage. Floating zeros and -- nonfinite source values retain native version/backend behavior; no NaN -- payload, signed-zero or cross-version bit guarantee is made. -- @param Self Source numerator Mat. -- @param Value Channel-ordered denominators; nonzero for integer results. -- @return Independent Mat preserving Self's shape and type. -- @exception OpenCV_Error Raised for unsupported input or native failure. function Divide (Self : Mat; Value : Scalar) return Mat;"
+    },
+    {
+      "href": "6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#15a772f4269a04aaebbb7fa5178c80c9c9d4f29df52d9ce2c1e1a322cfd16753",
+      "kind": "operation",
+      "label": "OpenCV.Core.Divide (overload 2/6)",
+      "name": "OpenCV.Core.Divide",
+      "text": "procedure Divide (Self : Mat; Value : Scalar; Destination : in out Mat); -- Writes Self / Value under scalar Add's destination/alias rules. -- Integer zero denominators are rejected before any destination mutation. -- @param Self Source numerator Mat. -- @param Value Channel-ordered denominators. -- @param Destination Caller-owned Mat receiving the quotients. -- @exception OpenCV_Error Raised for unsupported input/alias or failure. procedure Divide (Self : Mat; Value : Scalar; Destination : in out Mat);"
+    },
+    {
+      "href": "6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#a1e582bdc6e875ff52c5298240ab2e824df972c5d0b4428eb9c439bb58ebd2fb",
+      "kind": "operation",
+      "label": "OpenCV.Core.Divide_Into (overload 1/2)",
+      "name": "OpenCV.Core.Divide_Into",
+      "text": "function Divide_Into (Value : Scalar; Self : Mat) return Mat; -- Reverse division: returns Value / Self, not Self / Value. -- Input/ownership rules match scalar Add. For all five integer depths, -- any zero denominator component anywhere in Self raises OpenCV_Error -- before native execution. Every channel and logical Region row is -- inspected; rejection preserves source and destination storage. -- Floating zero/nonfinite behavior follows native Divide. -- @param Value Channel-ordered numerators. -- @param Self Source denominator Mat. -- @return Independent Mat preserving Self's shape and type. -- @exception OpenCV_Error Raised for unsupported input or native failure. function Divide_Into (Value : Scalar; Self : Mat) return Mat;"
+    },
+    {
+      "href": "6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#12d630f797c4f0504c6776ec44910e7e6ca03fde5879e6955c90e961451aace6",
+      "kind": "operation",
+      "label": "OpenCV.Core.Divide_Into (overload 2/2)",
+      "name": "OpenCV.Core.Divide_Into",
+      "text": "procedure Divide_Into (Value : Scalar; Self : Mat; Destination : in out Mat); -- Writes Value / Self under scalar Add's destination/alias rules. -- Integer zero Mat components are rejected before destination mutation. -- @param Value Channel-ordered numerators. -- @param Self Source denominator Mat. -- @param Destination Caller-owned Mat receiving Value / Self. -- @exception OpenCV_Error Raised for unsupported input/alias or failure. procedure Divide_Into (Value : Scalar; Self : Mat; Destination : in out Mat);"
+    },
+    {
+      "href": "6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#1963cc20ceb5fbae336bfcef8dab31e62160995d219b7682d6881e5671a937e2",
+      "kind": "operation",
+      "label": "OpenCV.Core.Hamming_Norm",
+      "name": "OpenCV.Core.Hamming_Norm",
+      "text": "function Hamming_Norm (Self : Mat; Kind : Binary_Norm_Kind := One_Bit) return Long_Float; -- Native Hamming/Hamming2 count of UInt8 C1 storage. One_Bit counts set -- bits, Two_Bits counts nonzero two-bit cells (11 counts once). No mask, -- relative mode or byte conversion. N-D/noncontiguous views are accepted. -- Total bytes must not exceed INT32_MAX/8 for One_Bit (268_435_455), -- INT32_MAX/4 for Two_Bits (536_870_911); row strides must fit signed int. -- Default-empty and UInt8 C1 typed-empty inputs return zero after type -- validation. Inputs/aliases are unchanged; the bounded count is exact. -- @param Self UInt8 single-channel source. -- @param Kind Strong binary cell-size selector. -- @return Exact native bit/cell count converted from C double. -- @exception OpenCV_Error Invalid type/selector, unsafe count/stride or -- native failure. function Hamming_Norm (Self : Mat; Kind : Binary_Norm_Kind := One_Bit) return Long_Float;"
+    },
+    {
+      "href": "6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#dc128d8c2f8fa55637f8dde00398a08bc9214350746a51193490808ef1e91c7f",
+      "kind": "operation",
+      "label": "OpenCV.Core.Hamming_Pairwise_Norm",
+      "name": "OpenCV.Core.Hamming_Pairwise_Norm",
+      "text": "function Hamming_Pairwise_Norm (Left, Right : Mat; Kind : Binary_Norm_Kind := One_Bit) return Long_Float; -- Native binary distance with Hamming_Norm's type/count/empty contract. -- Left and Right must have identical complete native shape and UInt8 C1 -- type, including when empty. One_Bit counts differing bits; Two_Bits -- counts nonzero XOR two-bit cells. Inputs and shallow aliases are -- unchanged. -- The distinct name preserves Batch_Distance_Kind.Hamming_Distance calls. -- @param Left First UInt8 C1 descriptor or N-D/strided byte array. -- @param Right Matching UInt8 C1 operand. -- @param Kind Strong binary cell-size selector. -- @return Exact native bit/cell distance converted from C double. -- @exception OpenCV_Error Invalid operands/selector, unsafe count/stride -- or native failure. Masks and relative binary distances are not exposed. function Hamming_Pairwise_Norm (Left, Right : Mat; Kind : Binary_Norm_Kind := One_Bit) return Long_Float;"
+    },
+    {
+      "href": "6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#1db93b086510c4d87a095f517654a19f0bb248f41b4cdff83e98681da1130da1",
+      "kind": "operation",
+      "label": "OpenCV.Core.Multiply (overload 1/6)",
+      "name": "OpenCV.Core.Multiply",
+      "text": "function Multiply (Self : Mat; Value : Scalar) return Mat; -- Returns Self * Value; input/ownership rules match scalar Add. -- Native multiplication uses its own working-depth conversion, not scalar -- pre-rounding to Self's type. Floating multiply/divide permit nonfinite -- coefficients; integer coefficients must be finite and within Int32 max. -- @param Self Source Mat. -- @param Value Channel-ordered factors. -- @return Independent Mat preserving Self's shape and type. -- @exception OpenCV_Error Raised for unsupported input or native failure. function Multiply (Self : Mat; Value : Scalar) return Mat;"
+    },
+    {
+      "href": "6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#f62c9a1d791b82e144fcc9d31751f219f742a0f8637a096127095f28dbe1c11b",
+      "kind": "operation",
+      "label": "OpenCV.Core.Multiply (overload 2/6)",
+      "name": "OpenCV.Core.Multiply",
+      "text": "procedure Multiply (Self : Mat; Value : Scalar; Destination : in out Mat); -- Writes Self * Value under scalar Add's destination/alias rules. -- @param Self Source Mat. -- @param Value Channel-ordered factors. -- @param Destination Caller-owned Mat receiving the products. -- @exception OpenCV_Error Raised for unsupported input/alias or failure. procedure Multiply (Self : Mat; Value : Scalar; Destination : in out Mat);"
+    },
+    {
+      "href": "6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#2372998edbf6cd826ca37aa990961ef139266357be379f82183eb45199a3a6bb",
+      "kind": "operation",
+      "label": "OpenCV.Core.Native_Build_Information",
+      "name": "OpenCV.Core.Native_Build_Information",
+      "text": "function Native_Build_Information return String; -- Full build-specific native configuration text, queried on every call. -- The independently owned String preserves all bytes, including newlines -- and non-ASCII content; it excludes the ABI terminating NUL. No fixed -- format or cross-build equality is promised. Same errors and capacity -- limit as Native_Version_String. -- @return Independently owned full native build information, without NUL. -- @exception OpenCV_Error Native failure or invalid/oversized text result. function Native_Build_Information return String;"
+    },
+    {
+      "href": "6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#101582b9ff912d3ba5c2171950b75d5ed1c0309a256f9f2c7233f2409d083816",
+      "kind": "operation",
+      "label": "OpenCV.Core.Native_Version_String",
+      "name": "OpenCV.Core.Native_Version_String",
+      "text": "function Native_Version_String return String; -- Version text queried on each call from the linked native OpenCV runtime, -- not the Ada crate version or consumer headers. The returned String owns -- its bytes independently of later queries and native object lifetimes. -- Raises OpenCV_Error on native failure, inconsistent counts, or a payload -- exceeding Natural'Last - 1 bytes. Allocation may raise Storage_Error. -- @return Owned version bytes from the linked native library. -- @exception OpenCV_Error Native failure or invalid/oversized text result. function Native_Version_String return String;"
+    },
+    {
+      "href": "6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#7cb97cdb2adacb3b932a02d6abdd8039b40410f6193a454af0e81752eeff1181",
+      "kind": "operation",
+      "label": "OpenCV.Core.Squared_L2_Difference_Norm (overload 1/2)",
+      "name": "OpenCV.Core.Squared_L2_Difference_Norm",
+      "text": "function Squared_L2_Difference_Norm (Left, Right : Mat) return Long_Float; -- Direct native two-input NORM_L2SQR. Same shape, six supported depths, -- channels, count/stride, empty and nonfinite contracts as -- Difference_Norm. -- No saturated subtraction, temporary difference or L2 squaring in Ada. -- @param Left First numeric operand. -- @param Right Matching numeric operand. -- @return Native squared difference norm converted from C double. -- @exception OpenCV_Error Invalid operands, count/stride or native -- failure. function Squared_L2_Difference_Norm (Left, Right : Mat) return Long_Float;"
+    },
+    {
+      "href": "6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#d9602d8c2f3539ab466dd9f0dc71467df532fee67373c542f9456e9aa8db3eb0",
+      "kind": "operation",
+      "label": "OpenCV.Core.Squared_L2_Difference_Norm (overload 2/2)",
+      "name": "OpenCV.Core.Squared_L2_Difference_Norm",
+      "text": "function Squared_L2_Difference_Norm (Left, Right, Mask : Mat) return Long_Float; -- Masked direct native two-input NORM_L2SQR. Same numeric/count/empty -- and nonfinite contracts as Difference_Norm. Mask is a complete-shape -- UInt8 C1 numeric selector; each nonzero byte selects all channels. -- @param Left First numeric operand. -- @param Right Matching numeric operand. -- @param Mask Numeric element selector, never a bitwise mask. -- @return Native masked squared difference norm converted from C double. -- @exception OpenCV_Error Invalid operands/mask, count/stride or native -- failure. function Squared_L2_Difference_Norm (Left, Right, Mask : Mat) return Long_Float;"
+    },
+    {
+      "href": "6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#1fd80ecef5ea91ab6955f16730809a0e012b74af84725c33509388926f85163d",
+      "kind": "operation",
+      "label": "OpenCV.Core.Squared_L2_Norm (overload 1/2)",
+      "name": "OpenCV.Core.Squared_L2_Norm",
+      "text": "function Squared_L2_Norm (Self : Mat) return Long_Float; -- Direct native NORM_L2SQR reduction, not the square of Mat.Norm. -- Supports the six numeric depths, layouts, count/stride bounds and -- nonfinite behavior documented for Difference_Norm. Int32/Float16 are -- rejected; compatible empty input returns zero after type validation. -- @param Self Numeric source; all channels contribute. -- @return Native squared-L2 result converted from C double. -- @exception OpenCV_Error Unsupported depth, unsafe count/stride or native -- failure. No automatic conversion or finite-result guarantee is made. function Squared_L2_Norm (Self : Mat) return Long_Float;"
+    },
+    {
+      "href": "6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#54321c0ba90ab9a7fdfd3b48c010817ebf9406c40be842acf2540dd75f3464d9",
+      "kind": "operation",
+      "label": "OpenCV.Core.Squared_L2_Norm (overload 2/2)",
+      "name": "OpenCV.Core.Squared_L2_Norm",
+      "text": "function Squared_L2_Norm (Self, Mask : Mat) return Long_Float; -- Direct masked NORM_L2SQR with Squared_L2_Norm's numeric/count/empty -- contract and Difference_Norm's numeric mask contract. Nonzero mask -- values select all channels without scaling. Native rounding and -- nonfinite behavior are preserved; finite all-zero selection gives zero. -- @param Self Numeric source, including N-D/noncontiguous views. -- @param Mask UInt8 C1 selector with Self's complete native shape. -- @return Native masked squared-L2 result converted from C double. -- @exception OpenCV_Error Invalid source/mask, count/stride or native -- failure. function Squared_L2_Norm (Self, Mask : Mat) return Long_Float;"
+    },
+    {
+      "href": "6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#f27027fb3d010a0bf20f4fa0fd2dd86e428a2a620d1480fd62af285af1276753",
+      "kind": "operation",
+      "label": "OpenCV.Core.Subtract (overload 1/6)",
+      "name": "OpenCV.Core.Subtract",
+      "text": "function Subtract (Self : Mat; Value : Scalar) return Mat; -- Returns Self - Value with the input and numerical rules of scalar Add. -- @param Self Source Mat. -- @param Value Channel-ordered subtrahend. -- @return Independent Mat preserving Self's shape and type. -- @exception OpenCV_Error Raised for unsupported input or native failure. function Subtract (Self : Mat; Value : Scalar) return Mat;"
+    },
+    {
+      "href": "6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#7822bc7f9f09bfd52da0e82951bb7b898e8bc3cf1738ca58826366b26d96aca2",
+      "kind": "operation",
+      "label": "OpenCV.Core.Subtract (overload 2/6)",
+      "name": "OpenCV.Core.Subtract",
+      "text": "procedure Subtract (Self : Mat; Value : Scalar; Destination : in out Mat); -- Writes Self - Value under scalar Add's destination/alias rules. -- @param Self Source Mat. -- @param Value Channel-ordered subtrahend. -- @param Destination Caller-owned Mat receiving Self - Value. -- @exception OpenCV_Error Raised for unsupported input/alias or failure. procedure Subtract (Self : Mat; Value : Scalar; Destination : in out Mat);"
+    },
+    {
+      "href": "6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#e47314ca884ee1702facbc169e165a9f3443f38e73ad2768587c725fc6cf0cc0",
+      "kind": "operation",
+      "label": "OpenCV.Core.Subtract_From (overload 1/2)",
+      "name": "OpenCV.Core.Subtract_From",
+      "text": "function Subtract_From (Value : Scalar; Self : Mat) return Mat; -- Reverse subtraction: returns Value - Self, not Self - Value. -- Input, numeric and ownership rules match scalar Add. -- @param Value Channel-ordered minuend. -- @param Self Source subtrahend Mat. -- @return Independent Mat preserving Self's shape and type. -- @exception OpenCV_Error Raised for unsupported input or native failure. function Subtract_From (Value : Scalar; Self : Mat) return Mat;"
+    },
+    {
+      "href": "6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#ec51db3ab2814735da307e727c9904535c7b4d4041ffe34627a27b724e57c765",
+      "kind": "operation",
+      "label": "OpenCV.Core.Subtract_From (overload 2/2)",
+      "name": "OpenCV.Core.Subtract_From",
+      "text": "procedure Subtract_From (Value : Scalar; Self : Mat; Destination : in out Mat); -- Writes Value - Self under scalar Add's destination/alias rules. -- @param Value Channel-ordered minuend. -- @param Self Source subtrahend Mat. -- @param Destination Caller-owned Mat receiving Value - Self. -- @exception OpenCV_Error Raised for unsupported input/alias or failure. procedure Subtract_From (Value : Scalar; Self : Mat; Destination : in out Mat);"
+    }
+  ],
+  "fixture_counts": {
+    "guide": 5,
+    "operation": 1047,
+    "package": 195,
+    "symbol": 215
+  },
+  "fixture_oracle_sha256": "0d9d04fceb9769e72fc156cbee69b4f75485e2d837415d67c07c53c61a83cbc9",
+  "fixture_source_commit": "ce117aedc7eeb8c45aafc07dea9357166caadf0d"
+}

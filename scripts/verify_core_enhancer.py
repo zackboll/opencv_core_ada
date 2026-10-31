@@ -23,6 +23,7 @@ from enhance_gnatdoc_instances import (discover, qualified_instances, render as 
 from enhance_gnatdoc_navigation import native_index, symbol_navigation, CONTROL
 from install_gnatdoc_theme import NATIVE, METADATA
 from render_gnatdoc_guides import validate as check_guides, GUIDES
+from verify_core_search import validate_search, search_markup, STYLE
 
 ROOT = Path(__file__).resolve().parent.parent
 QUALIFICATION = ROOT / 'docs/enhancer-qualification'
@@ -30,10 +31,11 @@ GENERIC_SHA = '146a6f6375be14788996e04585ac141bfc308c5be87b040198f5d74c5c74bcfc'
 AUTHORED_SHA = '97a3351cbe0f852d5aeddea64fcffab9f66fdf56499b717caab82d06e9f67b65'
 THEME_SOURCE = 'docs/assets/gnatdoc-theme.css'
 CONFIG_SOURCE = 'docs/gnatdoc-enhancer.toml'
-CONFIG_SHA = '7ede7b535e69a2015fd0d64ccdb40b755f86d51c06bc53e7021d10525ebe1156'
+CONFIG_SHA = '0a6182e7b042b54bd787305d3fcfc4c9892109d7d3a043105c35340a59f616a0'
 ASSETS = {
     'gnatdoc-theme.css': 'fa265d63e73436a6a449fd16011c3db68a5430e7fa6a98ea8eb0fd6821dca9b2',
-    'gnatdoc-navigation.js': '97dcc75055842e98a6294809b8e8c4e7436a427039d19c8afb6fdd1ca21ea310',
+    'gnatdoc-navigation.js': '68b894257b698bb2e3a7a8bed828af17cd122dcc39b1fe9012e14966beaca88e',
+    'gnatdoc-search.css': 'e99c0a5f7576381c99c1fbc2d43100c95bed733e53e62091b749d4bf77d8ffb8',
 }
 
 
@@ -49,7 +51,7 @@ def record(name, expected):
 
 def is_enhancer(api):
     path = api / 'presentation.json'
-    return path.is_file() and json.loads(path.read_text()).get('enhancer_version') == '0.1.2'
+    return path.is_file() and json.loads(path.read_text()).get('enhancer_version') == '0.1.3'
 
 
 def validate_theme_identity(identity, root):
@@ -80,7 +82,7 @@ def validate(site):
     instances = discover(source)
     require(instances == qualified_instances(), 'changed instance associations')
     manifest = json.loads((api / 'presentation.json').read_text())
-    require(manifest.get('enhancer_version') == '0.1.2', 'wrong enhancer version')
+    require(manifest.get('enhancer_version') == '0.1.3', 'wrong enhancer version')
     require(set(manifest) == {'schema_version', 'enhancer_version', 'gnatdoc_version', 'project',
                              'original_api_html', 'native_css_sha256', 'source_sha256', 'output_sha256',
                              'counts', 'theme_source'}
@@ -144,6 +146,8 @@ def validate(site):
             summaries += 1
         expected = document(expected, title(source[key]) + ' — OpenCV Core Ada')
         require(current == expected, f'native prose/structure/summary changed: {key}')
+    check_guides(ROOT, site)
+    search_payload, search_records = validate_search(site, source, pages)
     index, inventory = native_index(api)
     require(index == originals['api/index.html'], 'native index source/destination mismatch')
     symbols = symbol_navigation(api).replace('id="type-navigation" hidden',
@@ -165,16 +169,21 @@ def validate(site):
     index = index.replace('<body class=main>',
                           '<script src="gnatdoc-navigation.js" defer></script><body class=main>', 1)
     index = index.replace('<h2 id=compilation-units>', explanations + '<h2 id=compilation-units>', 1)
+    index = index.replace('<h2 id=compilation-units>',
+                          search_markup(search_payload, search_records, digest) +
+                          '<h2 id=compilation-units>', 1)
+    index = index.replace('<script src="gnatdoc-navigation.js" defer></script>',
+                          '<script src="gnatdoc-navigation.js" defer></script>' + STYLE, 1)
     require((api / 'index.html').read_text() == document(index, 'API Reference — OpenCV Core Ada'),
             'navigation shell/source destinations changed')
     require((total, links, summaries) == (1293, 2758, 25), 'Core declaration/link/summary baseline mismatch')
     require(incoming == Counter({key + ('.vector' if v[0] == VECTORS else '.matrix'):
                                  10 if v[0] == VECTORS else 2 for key, v in instances.items()}),
             'incoming instance-reference mismatch')
-    check_guides(ROOT, site)
     require((site / 'index.html').read_bytes() == (ROOT / 'docs/index.html').read_bytes(), 'landing changed')
     names = set(acquisition['native_sha256']) | {'api/presentation.json',
-            'api/gnatdoc-theme.css', 'api/gnatdoc-navigation.js', 'index.html',
+            'api/gnatdoc-theme.css', 'api/gnatdoc-navigation.js', 'api/gnatdoc-search.css',
+            'api/gnatdoc-search-index.json', 'index.html',
             'guides/gnatdoc-guides.css', *(f'guides/{name}.html' for name in GUIDES)}
     require({p.relative_to(site).as_posix() for p in site.rglob('*') if p.is_file()} == names,
             'exact publication file inventory mismatch')
@@ -193,6 +202,8 @@ def validate(site):
         'unsupported_instances': [], 'vector_summaries': 24}, 'publication accounting mismatch')
     print(f'Core independent oracle: {len(inventory)} packages; {total} native sections; '
           f'{links} type links; {summaries} summaries; 242 incoming references; exact publication inventory')
+    print('Core independent search: 195 packages; 216 types/subtypes; 1071 operations; '
+          '5 guides; 1487 records (1462 fixture + 25 reconciled existing declarations)')
     return inventory
 
 

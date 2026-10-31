@@ -1,0 +1,12 @@
+GNATdoc 26.0.0 (20260415)
+Note: Running pre-build actions for opencv_core=0.5.2...
+Note: Building opencv_core=0.5.2/opencv_core.gpr...
+Success: Build finished successfully in 0.32 seconds.
+GNATdoc: 0 documentation warnings (see obj/docs/gnatdoc.log)
+GNATdoc warning delta: 0 added, 0 removed
+Staged 195 exact public specifications and hash-bound authored inputs
+Pristine native/source inventory: 195 packages; reviewed hashes verified
+Guides: 5 authoritative pages; exact content, links and stylesheet verified
+Guides: 5 authoritative pages; exact content, links and stylesheet verified
+Core independent oracle: 195 packages; 1293 native sections; 2758 type links; 25 summaries; 242 incoming references; exact publication inventory
+Validated 195 public packages, 202 HTML pages; all local links, anchors and assets resolve under /opencv_core_ada/.
