@@ -87,6 +87,10 @@ mode = "packages"
 symbol_bookmarks = true
 default_package = "OpenCV.Core"
 
+[search]
+schema_version = 1
+mode = "documentation"
+
 [presentation]
 theme = true
 theme_css_source = "docs/assets/gnatdoc-theme.css"

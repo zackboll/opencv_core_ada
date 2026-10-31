@@ -1,0 +1,23 @@
+PASS 1280px: direct symbols/subtype/reload/fresh/history/native click
+PASS 390px: direct symbols/subtype/reload/fresh/history/native click
+PASS invalid/ambiguous/conflicting symbol requests rejected
+PASS 1280px cross-origin declaration history/stale offset/reload/fresh tab
+PASS 390px cross-origin declaration history/stale offset/reload/fresh tab
+Pristine native/source inventory: 195 packages; reviewed hashes verified
+Independent browser oracle: 195 packages; 216 symbols; 25 summaries
+PASS {"width":1280,"colorScheme":"light","javaScriptEnabled":true,"packages":195,"summaries":25,"symbols":216}
+PASS {"width":1280,"colorScheme":"light","javaScriptEnabled":false,"packages":195,"summaries":25,"symbols":0}
+PASS {"width":1280,"colorScheme":"dark","javaScriptEnabled":true,"packages":195,"summaries":25,"symbols":216}
+PASS {"width":1280,"colorScheme":"dark","javaScriptEnabled":false,"packages":195,"summaries":25,"symbols":0}
+PASS {"width":390,"colorScheme":"light","javaScriptEnabled":true,"packages":195,"summaries":25,"symbols":216}
+PASS {"width":390,"colorScheme":"light","javaScriptEnabled":false,"packages":195,"summaries":25,"symbols":0}
+PASS {"width":390,"colorScheme":"dark","javaScriptEnabled":true,"packages":195,"summaries":25,"symbols":216}
+PASS {"width":390,"colorScheme":"dark","javaScriptEnabled":false,"packages":195,"summaries":25,"symbols":0}
+PASS 1280px light JS=true: five guides, fragments, cross-links, native API, focus, overflow
+PASS 1280px light JS=false: five guides, fragments, cross-links, native API, focus, overflow
+PASS 1280px dark JS=true: five guides, fragments, cross-links, native API, focus, overflow
+PASS 1280px dark JS=false: five guides, fragments, cross-links, native API, focus, overflow
+PASS 390px light JS=true: five guides, fragments, cross-links, native API, focus, overflow
+PASS 390px light JS=false: five guides, fragments, cross-links, native API, focus, overflow
+PASS 390px dark JS=true: five guides, fragments, cross-links, native API, focus, overflow
+PASS 390px dark JS=false: five guides, fragments, cross-links, native API, focus, overflow

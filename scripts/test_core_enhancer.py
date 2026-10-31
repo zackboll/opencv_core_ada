@@ -128,6 +128,82 @@ class Publication(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_native(native)
 
+    def forge_search(self, mutate):
+        """Rehash cache AND shell AND manifest; none can bless forged content."""
+        path = self.site / 'api/gnatdoc-search-index.json'
+        old = digest(path.read_bytes())
+        data = json.loads(path.read_text())
+        mutate(data)
+        path.write_text(json.dumps(data, sort_keys=True, indent=2, ensure_ascii=False) + '\n')
+        shell = self.site / 'api/index.html'
+        shell.write_text(shell.read_text().replace(old, digest(path.read_bytes())))
+        manifest = self.site / 'api/presentation.json'
+        presentation = json.loads(manifest.read_text())
+        for name in ['api/index.html', 'api/gnatdoc-search-index.json']:
+            presentation['output_sha256'][name] = digest((self.site / name).read_bytes())
+        manifest.write_text(json.dumps(presentation))
+        with self.assertRaises(ValueError):
+            self.check()
+
+    def test_modified_search_text_rehashed(self):
+        self.forge_search(lambda d: d['records'][0].update(text='forged description'))
+
+    def test_missing_search_record_rehashed(self):
+        self.forge_search(lambda d: d['records'].pop())
+
+    def test_duplicate_search_record_rehashed(self):
+        self.forge_search(lambda d: d['records'].append(dict(d['records'][0])))
+
+    def test_forged_search_name_rehashed(self):
+        self.forge_search(lambda d: d['records'][0].update(name='OpenCV.Core.Private_Handle'))
+
+    def test_internal_search_record_rehashed(self):
+        self.forge_search(lambda d: d['records'][0].update(name='OpenCV.Internal.Native.Handle'))
+
+    def test_private_completion_rehashed(self):
+        self.forge_search(lambda d: next(r for r in d['records'] if r['name'] == 'OpenCV.Core.Mat').update(
+            text='type Mat is record Handle : System.Address; end record;'))
+
+    def test_reordered_search_records_rehashed(self):
+        self.forge_search(lambda d: d['records'].reverse())
+
+    def test_wrong_existing_search_destination_rehashed(self):
+        self.forge_search(lambda d: d['records'][0].update(href=d['records'][1]['href']))
+
+    def test_cross_origin_search_destination_rehashed(self):
+        self.forge_search(lambda d: d['records'][0].update(href='https://example.com/'))
+
+    def test_unauthorized_guide_rehashed(self):
+        self.forge_search(lambda d: next(r for r in d['records'] if r['kind'] == 'guide').update(
+            href='../guides/not-approved.html'))
+
+    def test_wrong_search_kind_rehashed(self):
+        self.forge_search(lambda d: d['records'][0].update(kind='operation'))
+
+    def test_wrong_search_schema_rehashed(self):
+        self.forge_search(lambda d: d.update(schema_version=2))
+
+    def test_forged_overload_label_rehashed(self):
+        self.forge_search(lambda d: next(r for r in d['records'] if 'overload' in r['label']).update(
+            label='OpenCV.Core.Create (overload 99/99)'))
+
+    def test_search_assets_missing_or_rehashed(self):
+        for name in ['gnatdoc-search-index.json', 'gnatdoc-search.css', 'gnatdoc-navigation.js']:
+            with self.subTest(name=name):
+                path = self.site / 'api' / name
+                original = path.read_bytes()
+                path.unlink()
+                with self.assertRaises((ValueError, FileNotFoundError)):
+                    self.check()
+                path.write_bytes(original + b'\n')
+                manifest = self.site / 'api/presentation.json'
+                data = json.loads(manifest.read_text())
+                data['output_sha256']['api/' + name] = digest(path.read_bytes())
+                manifest.write_text(json.dumps(data))
+                with self.assertRaises(ValueError):
+                    self.check()
+                path.write_bytes(original)
+
 
 if __name__ == '__main__':
     unittest.main()

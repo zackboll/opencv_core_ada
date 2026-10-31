@@ -40,8 +40,8 @@ jobs:
           alr toolchain
       - name: Install checksum-qualified released documentation toolkit
         run: |
-          python -m unittest discover -s scripts -p 'test_install_doc_enhancer.py' -v
           sh scripts/install_doc_enhancer.sh
+          python -m unittest discover -s scripts -p 'test_install_doc_enhancer.py' -v
           echo "DOC_PYTHON=$GITHUB_WORKSPACE/.doc-tools/enhancer/bin/python" >> "$GITHUB_ENV"
       - name: Record exact source and protected identities
         run: |
@@ -92,6 +92,7 @@ jobs:
           curl --fail --retry 10 --retry-connrefused --retry-delay 1 "$DOC_URL" --output /dev/null
           node scripts/test_gnatdoc_navigation_browser.cjs
           node scripts/test_gnatdoc_symbols_browser.cjs
+          node scripts/test_gnatdoc_search_browser.cjs
           node scripts/test_gnatdoc_cross_origin_browser.cjs
           "$DOC_PYTHON" scripts/gnatdoc_browser_oracle.py
           node scripts/test_gnatdoc_migration_browser.cjs
