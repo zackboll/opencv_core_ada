@@ -1,0 +1,27 @@
+test_ambiguous_or_changed_home_source_rejected (test_core_examples.Examples.test_ambiguous_or_changed_home_source_rejected) ... ok
+test_comment_link_rejected (test_core_examples.Examples.test_comment_link_rejected) ... ok
+test_complete_independent_reconstruction (test_core_examples.Examples.test_complete_independent_reconstruction) ... ok
+test_extra_asset (test_core_examples.Examples.test_extra_asset) ... ok
+test_formal_link_rejected (test_core_examples.Examples.test_formal_link_rejected) ... ok
+test_guide_prose_rehashed (test_core_examples.Examples.test_guide_prose_rehashed) ... ok
+test_guide_rehashed_wrong_valid_link (test_core_examples.Examples.test_guide_rehashed_wrong_valid_link) ... ok
+test_local_variable_link_rejected (test_core_examples.Examples.test_local_variable_link_rejected) ... ok
+test_missing_stylesheet (test_core_examples.Examples.test_missing_stylesheet) ... ok
+test_nonada_fence_rehashed (test_core_examples.Examples.test_nonada_fence_rehashed) ... ok
+test_object_prefixed_clone_link_rejected (test_core_examples.Examples.test_object_prefixed_clone_link_rejected) ... ok
+test_overloaded_create_link_rejected (test_core_examples.Examples.test_overloaded_create_link_rejected) ... ok
+test_rehashed_code_character (test_core_examples.Examples.test_rehashed_code_character) ... ok
+test_rehashed_extra_markup (test_core_examples.Examples.test_rehashed_extra_markup) ... ok
+test_rehashed_token_class (test_core_examples.Examples.test_rehashed_token_class) ... ok
+test_rehashed_unauthorized_css (test_core_examples.Examples.test_rehashed_unauthorized_css) ... ok
+test_rehashed_wrong_valid_link (test_core_examples.Examples.test_rehashed_wrong_valid_link) ... ok
+test_shell_highlighting_rejected (test_core_examples.Examples.test_shell_highlighting_rejected) ... ok
+test_string_link_rejected (test_core_examples.Examples.test_string_link_rejected) ... ok
+test_stylesheet_is_official_wheel_bytes (test_core_examples.Examples.test_stylesheet_is_official_wheel_bytes) ... ok
+test_stylesheet_symlink_substitution (test_core_examples.Examples.test_stylesheet_symlink_substitution) ... ok
+test_wrong_enhancer_version (test_core_examples.Examples.test_wrong_enhancer_version) ... ok
+
+----------------------------------------------------------------------
+Ran 22 tests in 40.444s
+
+OK

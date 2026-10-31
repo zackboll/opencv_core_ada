@@ -204,6 +204,8 @@ def validate(site):
     pages = {p.resolve(): Page(p) for p in site.rglob("*.html")}
     errors = []
     from verify_core_enhancer import is_enhancer, validate as check_core
+    # Presence selects the independent oracle; a wrong version must fail there,
+    # not silently downgrade to the historical legacy verification path.
     shared = is_enhancer(site / 'api')
     try:
         check_guides(root, site)

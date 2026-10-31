@@ -18,6 +18,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
     steps:
       - uses: actions/checkout@v4
         with:
@@ -78,6 +81,14 @@ jobs:
         run: '"$DOC_PYTHON" -m unittest discover -s scripts -p ''test_gnatdoc_navigation.py'' -v'
       - name: Qualify independent publication and acquisition rejection
         run: '"$DOC_PYTHON" -m unittest discover -s scripts -p ''test_core_enhancer.py'' -v'
+      - name: Qualify independent Ada examples and security mutations
+        run: '"$DOC_PYTHON" -m unittest discover -s scripts -p ''test_core_examples.py'' -v'
+      - name: Acquire authenticated historical publication
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sh scripts/acquire_core_doc_baseline.sh
+          "$DOC_PYTHON" scripts/compare_core_doc_examples.py
       - name: Qualify real-browser package and declaration navigation
         run: |
           npm install --prefix /tmp/doc-browser --no-package-lock playwright@1.64.1
@@ -88,7 +99,9 @@ jobs:
           export DOC_EVIDENCE="$GITHUB_WORKSPACE/obj/docs/browser-screenshots"
           python3 -m http.server 8071 --bind 127.0.0.1 --directory _site &
           server=$!
-          trap 'kill "$server"' EXIT
+          python3 -m http.server 8073 --bind 127.0.0.1 --directory obj/docs/historical/publication &
+          historical=$!
+          trap 'kill "$server" "$historical"' EXIT
           curl --fail --retry 10 --retry-connrefused --retry-delay 1 "$DOC_URL" --output /dev/null
           node scripts/test_gnatdoc_navigation_browser.cjs
           node scripts/test_gnatdoc_symbols_browser.cjs
@@ -96,8 +109,9 @@ jobs:
           node scripts/test_gnatdoc_cross_origin_browser.cjs
           "$DOC_PYTHON" scripts/gnatdoc_browser_oracle.py
           node scripts/test_gnatdoc_migration_browser.cjs
-          DOC_URL=http://127.0.0.1:8071/ node scripts/test_gnatdoc_landing_browser.cjs
+          DOC_URL=http://127.0.0.1:8071/ DOC_BEFORE_URL=http://127.0.0.1:8073/ node scripts/test_gnatdoc_landing_browser.cjs
           DOC_URL=http://127.0.0.1:8071/ node scripts/test_gnatdoc_guides_browser.cjs
+          DOC_URL=http://127.0.0.1:8071/ node scripts/test_gnatdoc_examples_browser.cjs
       - name: Verify source and production integrity
         run: |
           git diff --exit-code
@@ -121,6 +135,8 @@ jobs:
             obj/docs/*.txt
             obj/docs/native/
             obj/docs/browser-screenshots/
+            obj/docs/historical/run.json
+            obj/docs/historical/artifact.json
             .doc-tools/enhancer-release/SHA256SUMS
             .doc-tools/enhancer-release/release-provenance.json
       - name: Configure Pages

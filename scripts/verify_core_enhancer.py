@@ -24,6 +24,7 @@ from enhance_gnatdoc_navigation import native_index, symbol_navigation, CONTROL
 from install_gnatdoc_theme import NATIVE, METADATA
 from render_gnatdoc_guides import validate as check_guides, GUIDES
 from verify_core_search import validate_search, search_markup, STYLE
+from verify_core_examples import landing_example, STYLESHEET, CSS_SHA
 
 ROOT = Path(__file__).resolve().parent.parent
 QUALIFICATION = ROOT / 'docs/enhancer-qualification'
@@ -31,7 +32,11 @@ GENERIC_SHA = '146a6f6375be14788996e04585ac141bfc308c5be87b040198f5d74c5c74bcfc'
 AUTHORED_SHA = '97a3351cbe0f852d5aeddea64fcffab9f66fdf56499b717caab82d06e9f67b65'
 THEME_SOURCE = 'docs/assets/gnatdoc-theme.css'
 CONFIG_SOURCE = 'docs/gnatdoc-enhancer.toml'
-CONFIG_SHA = '0a6182e7b042b54bd787305d3fcfc4c9892109d7d3a043105c35340a59f616a0'
+CONFIG_SHA = '979949a58a149cec82aab50d5648142cbf2e69f69f861e2706dc80859634135c'
+HISTORICAL_SHA = '100af3824ee113bf1e58e166501d3fba2141bdb4386540cf1d768f2df3812851'
+EXAMPLES_SHA = '2d2a628b00534d30bfc7eb6b5568cad8584a5ff7846cfbd3081b68e70a5f318e'
+EXAMPLE_CHANGES = {'index.html', 'api/presentation.json',
+                   *(f'guides/{name}.html' for name in GUIDES)}
 ASSETS = {
     'gnatdoc-theme.css': 'fa265d63e73436a6a449fd16011c3db68a5430e7fa6a98ea8eb0fd6821dca9b2',
     'gnatdoc-navigation.js': '68b894257b698bb2e3a7a8bed828af17cd122dcc39b1fe9012e14966beaca88e',
@@ -51,7 +56,7 @@ def record(name, expected):
 
 def is_enhancer(api):
     path = api / 'presentation.json'
-    return path.is_file() and json.loads(path.read_text()).get('enhancer_version') == '0.1.3'
+    return path.is_file() and 'enhancer_version' in json.loads(path.read_text())
 
 
 def validate_theme_identity(identity, root):
@@ -82,7 +87,7 @@ def validate(site):
     instances = discover(source)
     require(instances == qualified_instances(), 'changed instance associations')
     manifest = json.loads((api / 'presentation.json').read_text())
-    require(manifest.get('enhancer_version') == '0.1.3', 'wrong enhancer version')
+    require(manifest.get('enhancer_version') == '0.1.4', 'wrong enhancer version')
     require(set(manifest) == {'schema_version', 'enhancer_version', 'gnatdoc_version', 'project',
                              'original_api_html', 'native_css_sha256', 'source_sha256', 'output_sha256',
                              'counts', 'theme_source'}
@@ -180,17 +185,29 @@ def validate(site):
     require(incoming == Counter({key + ('.vector' if v[0] == VECTORS else '.matrix'):
                                  10 if v[0] == VECTORS else 2 for key, v in instances.items()}),
             'incoming instance-reference mismatch')
-    require((site / 'index.html').read_bytes() == (ROOT / 'docs/index.html').read_bytes(), 'landing changed')
+    require((site / 'index.html').read_bytes() == landing_example(ROOT, site), 'unauthorized landing change')
+    require(digest((site / STYLESHEET).read_bytes()) == CSS_SHA, 'unapproved example stylesheet')
     names = set(acquisition['native_sha256']) | {'api/presentation.json',
             'api/gnatdoc-theme.css', 'api/gnatdoc-navigation.js', 'api/gnatdoc-search.css',
-            'api/gnatdoc-search-index.json', 'index.html',
+            'api/gnatdoc-search-index.json', 'index.html', STYLESHEET,
             'guides/gnatdoc-guides.css', *(f'guides/{name}.html' for name in GUIDES)}
     require({p.relative_to(site).as_posix() for p in site.rglob('*') if p.is_file()} == names,
             'exact publication file inventory mismatch')
     require(not any(p.is_symlink() for p in site.rglob('*')), 'symlink publication')
+    historical = record('search-publication-inventory.json', HISTORICAL_SHA)
+    require(len(historical) == 209 and names == historical.keys() | {STYLESHEET},
+            'historical 209-file to 210-file inventory mismatch')
+    require(all(digest((site / name).read_bytes()) == sha
+                for name, sha in historical.items() if name not in EXAMPLE_CHANGES),
+            'previously qualified native/search/presentation bytes changed')
     require(manifest['output_sha256'] == {
         name: digest((site / name).read_bytes()) for name in names - {'api/presentation.json', 'api/gnatdoc.css'}},
         'presentation output inventory/hash mismatch')
+    # This reviewed record is supplementary to complete source reconstruction,
+    # never a way for self-rehashed presentation metadata to authorize output.
+    qualified = record('examples-publication-inventory.json', EXAMPLES_SHA)
+    require({name: digest((site / name).read_bytes()) for name in names} == qualified,
+            'qualified 210-file publication hashes differ')
     require(manifest['counts'] == {
         'declaration_snippets': 1293, 'generic_actual_type_links': 25,
         'generic_conversion_package_links': 1, 'generic_member_links': 51,

@@ -14,10 +14,10 @@ assert.equal(createHash('sha256').update(css).digest('hex'),
   'fa265d63e73436a6a449fd16011c3db68a5430e7fa6a98ea8eb0fd6821dca9b2');
 fs.mkdirSync(evidence, {recursive: true});
 
-function pixels(before, after) {
+function pixels(before, after, authorized) {
   const a = PNG.sync.read(before), b = PNG.sync.read(after);
   const width = Math.max(a.width, b.width), height = Math.max(a.height, b.height);
-  let changed = 0, absoluteChannelDelta = 0;
+  let changed = 0, outsideChangedPixels = 0, absoluteChannelDelta = 0;
   const diff = new PNG({width, height});
   for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
     let delta = 0;
@@ -26,7 +26,11 @@ function pixels(before, after) {
       const bv = x < b.width && y < b.height ? b.data[(y * b.width + x) * 4 + c] : 0;
       delta += Math.abs(av - bv);
     }
-    if (delta) changed++;
+    if (delta) {
+      changed++;
+      if (!authorized || x < authorized.x || x >= authorized.x + authorized.width ||
+          y < authorized.y || y >= authorized.y + authorized.height) outsideChangedPixels++;
+    }
     absoluteChannelDelta += delta;
     const i = (y * width + x) * 4;
     diff.data[i] = delta ? 255 : 0;
@@ -35,7 +39,7 @@ function pixels(before, after) {
     diff.data[i + 3] = 255;
   }
   return {width, height, changedPixels: changed, changedFraction: changed / (width * height),
-    absoluteChannelDelta, image: PNG.sync.write(diff)};
+    outsideChangedPixels, authorized, absoluteChannelDelta, image: PNG.sync.write(diff)};
 }
 
 async function layout(page) {
@@ -107,21 +111,35 @@ function qualify(metrics, width) {
           });
           if (override) await page.route('**/api/gnatdoc-theme.css', route =>
             route.fulfill({status: 200, contentType: 'text/css', body: override}));
+          if (kind === 'original' || kind === 'missing-rules') await page.route(url, route =>
+            route.fulfill({status: 200, contentType: 'text/html',
+              body: fs.readFileSync(path.join(root, 'docs/index.html'))}));
           await page.goto(url);
           await page.evaluate(() => document.fonts.ready);
           const metrics = await layout(page);
           const image = await page.screenshot({path: `${evidence}/${label}-${kind}.png`,
             fullPage: true, animations: 'disabled'});
           assert.deepEqual(errors, [], `${kind} resource/browser errors`);
-          assert.equal(resources.length, 1, 'one loaded local stylesheet; no CSS subresources');
-          assert.equal(resources[0].status, 200);
-          return {page, metrics, image, resources};
+          const styles = ['api/gnatdoc-theme.css'];
+          if (kind === 'after' || kind === 'unauthorized-css') styles.push('assets/gnatdoc-examples.css');
+          assert.deepEqual(resources.map(r => new URL(r.url).pathname).sort(),
+            styles.map(s => new URL(s, url).pathname).sort(), 'only approved CSS resources');
+          assert.ok(resources.every(r => r.status === 200));
+          const example = await page.locator('pre').nth(1).evaluate(e => {
+            const r = e.getBoundingClientRect();
+            return {x: r.x + scrollX, y: r.y + scrollY, width: r.width, height: r.height};
+          });
+          return {page, metrics, image, resources, example};
         }
         const original = await capture('original', base, css);
         const after = await capture('after', base);
         assert.deepEqual(after.metrics, original.metrics, 'original Core geometry and typography');
-        const difference = pixels(original.image, after.image);
-        assert.equal(difference.changedPixels, 0, 'pixel-exact original Core presentation');
+        assert.deepEqual(after.example, original.example, 'authorized example geometry unchanged');
+        const difference = pixels(original.image, after.image, original.example);
+        assert.ok(difference.changedPixels > 0, 'highlighting must actually render');
+        assert.equal(difference.outsideChangedPixels, 0, 'pixel-exact outside authorized Ada example');
+        fs.writeFileSync(`${evidence}/${label}-diff.png`, difference.image);
+        delete difference.image;
         const ratios = qualify(after.metrics, width);
         await after.page.keyboard.press('Tab');
         assert.equal(await after.page.locator(':focus').getAttribute('class'), 'api-button');
@@ -140,13 +158,20 @@ function qualify(metrics, width) {
         const brokenCSS = css.toString().replace(/^\.(?:landing|eyebrow|lead|api-button)[^\n]*\n/gm, '');
         const mutation = await capture('missing-rules', base, brokenCSS);
         assert.throws(() => qualify(mutation.metrics, width));
+        const unauthorized = await capture('unauthorized-css', base,
+          css.toString() + '\n.lead { color: rgb(255, 0, 0) !important; }\n');
+        const unauthorizedDelta = pixels(after.image, unauthorized.image, after.example);
+        assert.ok(unauthorizedDelta.outsideChangedPixels > 0, 'out-of-example CSS mutation detected');
+        fs.writeFileSync(`${evidence}/${label}-unauthorized-css-diff.png`, unauthorizedDelta.image);
+        delete unauthorizedDelta.image;
         const result = {width, colorScheme, javaScriptEnabled, browser: browser.version(),
           original: original.metrics, after: after.metrics, contrast: ratios, focus,
           resources: after.resources, originalChangedPixels: difference.changedPixels,
-          missingRulesRejected: true};
+          originalPixelDifference: difference,
+          missingRulesRejected: true, unauthorizedCSSRejected: true, unauthorizedDelta};
         if (process.env.DOC_BEFORE_URL) {
           const before = await capture('before', process.env.DOC_BEFORE_URL);
-          const delta = pixels(before.image, after.image);
+          const delta = pixels(before.image, after.image, before.example);
           fs.writeFileSync(`${evidence}/${label}-diff.png`, delta.image);
           delete delta.image;
           result.before = before.metrics;
@@ -154,7 +179,7 @@ function qualify(metrics, width) {
           result.layoutDelta = Object.fromEntries(Object.keys(after.metrics).filter(k => k !== 'body')
             .map(k => [k, Object.fromEntries(['x', 'y', 'width', 'height'].map(p =>
               [p, after.metrics[k][p] - before.metrics[k][p]]))]));
-          assert.equal(delta.changedPixels, 0, 'qualified v0.1.2 homepage pixel parity');
+          assert.equal(delta.outsideChangedPixels, 0, 'historical homepage pixel parity outside Ada example');
           assert.deepEqual(before.metrics, after.metrics, 'qualified v0.1.2 homepage layout parity');
         }
         results.push(result);

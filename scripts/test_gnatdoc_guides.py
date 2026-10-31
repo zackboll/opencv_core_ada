@@ -52,7 +52,8 @@ class Guides(unittest.TestCase):
         self.mutation('blob/main/docs/ownership-and-views.md', 'blob/main/README.md')
 
     def test_code_mutation(self):
-        self.mutation('Width =&gt; 640', 'Width =&gt; 641')
+        self.mutation('<span class="ada-number">640</span>',
+                      '<span class="ada-number">641</span>')
 
     def test_script(self):
         self.mutation('</main>', '<script>alert(1)</script></main>')

@@ -1,0 +1,178 @@
+[
+  {
+    "width": 1280,
+    "colorScheme": "light",
+    "javaScriptEnabled": true,
+    "browser": "156.0.8078.4",
+    "blocks": 39,
+    "links": 23,
+    "copied": 39,
+    "tokenClassesPresent": [
+      "attribute",
+      "comment",
+      "keyword",
+      "number",
+      "operator",
+      "string"
+    ],
+    "tokenClassesAbsent": [
+      "character"
+    ],
+    "errors": [],
+    "external": []
+  },
+  {
+    "width": 1280,
+    "colorScheme": "light",
+    "javaScriptEnabled": false,
+    "browser": "156.0.8078.4",
+    "blocks": 39,
+    "links": 23,
+    "copied": 39,
+    "tokenClassesPresent": [
+      "attribute",
+      "comment",
+      "keyword",
+      "number",
+      "operator",
+      "string"
+    ],
+    "tokenClassesAbsent": [
+      "character"
+    ],
+    "errors": [],
+    "external": []
+  },
+  {
+    "width": 1280,
+    "colorScheme": "dark",
+    "javaScriptEnabled": true,
+    "browser": "156.0.8078.4",
+    "blocks": 39,
+    "links": 23,
+    "copied": 39,
+    "tokenClassesPresent": [
+      "attribute",
+      "comment",
+      "keyword",
+      "number",
+      "operator",
+      "string"
+    ],
+    "tokenClassesAbsent": [
+      "character"
+    ],
+    "errors": [],
+    "external": []
+  },
+  {
+    "width": 1280,
+    "colorScheme": "dark",
+    "javaScriptEnabled": false,
+    "browser": "156.0.8078.4",
+    "blocks": 39,
+    "links": 23,
+    "copied": 39,
+    "tokenClassesPresent": [
+      "attribute",
+      "comment",
+      "keyword",
+      "number",
+      "operator",
+      "string"
+    ],
+    "tokenClassesAbsent": [
+      "character"
+    ],
+    "errors": [],
+    "external": []
+  },
+  {
+    "width": 390,
+    "colorScheme": "light",
+    "javaScriptEnabled": true,
+    "browser": "156.0.8078.4",
+    "blocks": 39,
+    "links": 23,
+    "copied": 39,
+    "tokenClassesPresent": [
+      "attribute",
+      "comment",
+      "keyword",
+      "number",
+      "operator",
+      "string"
+    ],
+    "tokenClassesAbsent": [
+      "character"
+    ],
+    "errors": [],
+    "external": []
+  },
+  {
+    "width": 390,
+    "colorScheme": "light",
+    "javaScriptEnabled": false,
+    "browser": "156.0.8078.4",
+    "blocks": 39,
+    "links": 23,
+    "copied": 39,
+    "tokenClassesPresent": [
+      "attribute",
+      "comment",
+      "keyword",
+      "number",
+      "operator",
+      "string"
+    ],
+    "tokenClassesAbsent": [
+      "character"
+    ],
+    "errors": [],
+    "external": []
+  },
+  {
+    "width": 390,
+    "colorScheme": "dark",
+    "javaScriptEnabled": true,
+    "browser": "156.0.8078.4",
+    "blocks": 39,
+    "links": 23,
+    "copied": 39,
+    "tokenClassesPresent": [
+      "attribute",
+      "comment",
+      "keyword",
+      "number",
+      "operator",
+      "string"
+    ],
+    "tokenClassesAbsent": [
+      "character"
+    ],
+    "errors": [],
+    "external": []
+  },
+  {
+    "width": 390,
+    "colorScheme": "dark",
+    "javaScriptEnabled": false,
+    "browser": "156.0.8078.4",
+    "blocks": 39,
+    "links": 23,
+    "copied": 39,
+    "tokenClassesPresent": [
+      "attribute",
+      "comment",
+      "keyword",
+      "number",
+      "operator",
+      "string"
+    ],
+    "tokenClassesAbsent": [
+      "character"
+    ],
+    "errors": [],
+    "external": []
+  }
+]
