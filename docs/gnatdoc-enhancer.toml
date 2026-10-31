@@ -107,6 +107,9 @@ sha256 = "146a6f6375be14788996e04585ac141bfc308c5be87b040198f5d74c5c74bcfc"
 incoming_references = true
 
 [guides]
+ada_example_highlighting = true
+ada_example_api_links = true
+ada_landing_example_highlighting = true
 mode = "authored-markdown"
 manifest = "docs/enhancer-qualification/gnatdoc-authored.json"
 sha256 = "97a3351cbe0f852d5aeddea64fcffab9f66fdf56499b717caab82d06e9f67b65"

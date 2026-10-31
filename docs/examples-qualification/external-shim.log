@@ -1,0 +1,8 @@
+test_external_library_and_required_archive_install (test_external_shim_install.ExternalInstallTests.test_external_library_and_required_archive_install) ... ok
+test_language_only_does_not_install_library (test_external_shim_install.ExternalInstallTests.test_language_only_does_not_install_library) ... ok
+test_no_language_reproduces_predecessor_failure (test_external_shim_install.ExternalInstallTests.test_no_language_reproduces_predecessor_failure) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.338s
+
+OK

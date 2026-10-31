@@ -148,11 +148,14 @@ def packages(root, site):
     return result
 
 
-def expected(root, site):
+def expected(root, site, *, examples=True):
     root, site = root.resolve(), site.resolve()
     headings = heading_inventory(root)
     api = packages(root, site)
     outputs = {'gnatdoc-guides.css': (root / 'docs/assets/gnatdoc-guides.css').read_bytes()}
+    if examples:
+        from verify_core_examples import native_destinations, guide_examples
+        destinations = native_destinations(root, site)
     for name, (title, identities) in GUIDES.items():
         source = (root / f'docs/{name}.md').read_text(encoding='utf-8')
         content, _ = markdown(source, lambda link: resolve_link(root, name, link, headings))
@@ -190,6 +193,8 @@ def expected(root, site):
 '''
         require('native-api-entry-points' not in headings[name] and
                 'main-content' not in headings[name], 'reserved heading identity')
+        if examples:
+            page = guide_examples(page, name, destinations)
         outputs[name + '.html'] = page.encode('utf-8')
     return outputs
 

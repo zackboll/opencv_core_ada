@@ -1,0 +1,452 @@
+{
+  "index.html": [
+    {
+      "text": "with OpenCV.Core;\n\nprocedure Example is\n   use OpenCV.Core;\n   Image : constant Mat := Create (2, 3, (Depth => UInt8, Channels => 1));\n   Copy  : constant Mat := Image.Clone;\nbegin\n   pragma Assert (Copy.Rows = 2 and then Copy.Columns = 3);\nend Example;",
+      "links": [
+        {
+          "href": "api/6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#292b48d25d5af7f9173c36aa1336fe26305f00cc0f86b23654029fc9374ba1a2",
+          "text": "Mat"
+        },
+        {
+          "href": "api/6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#292b48d25d5af7f9173c36aa1336fe26305f00cc0f86b23654029fc9374ba1a2",
+          "text": "Mat"
+        }
+      ],
+      "tokens": {
+        "keyword": 11,
+        "operator": 28,
+        "number": 5
+      }
+    }
+  ],
+  "guides/ownership-and-views.html": [
+    {
+      "text": "Image : Mat :=\n  Create\n    (Dimensions   => (Width => 640, Height => 480),\n     Element_Type => (Depth => Float32, Channels => 1));\n\nDims : constant OpenCV.Size := Image.Dimensions;\n",
+      "links": [
+        {
+          "href": "../api/ea2ebcbc108269c77d7c6d44d2dabdfb5f6d0179ad5622b1be3cbceaee5c44aa.html#1215ef894b260b92bcbe497fa349340704bef8836a9078a52774af895fd1f278",
+          "text": "OpenCV.Size"
+        }
+      ],
+      "tokens": {
+        "operator": 23,
+        "number": 3,
+        "keyword": 1
+      }
+    },
+    {
+      "text": "ROI : Mat :=\n  Image.Region\n    ((X      => 100,\n      Y      => 50,\n      Width  => 200,\n      Height => 100));\n",
+      "links": [],
+      "tokens": {
+        "operator": 15,
+        "number": 4
+      }
+    },
+    {
+      "text": "with OpenCV.Core.Float32_Row_Access;\n\nprocedure Inspect_Row\n  (Data : aliased OpenCV.Core.Float32_Row_Access.Row_Array)\nis\nbegin\n   -- Data (0) is column 0 of the borrowed row.\n   null;\nend Inspect_Row;\n\nOpenCV.Core.Float32_Row_Access.With_Read_Only_Row\n  (Image   => Image,\n   Row     => 0,\n   Process => Inspect_Row'Access);\n",
+      "links": [
+        {
+          "href": "../api/268a4fd9a7054d83efd4fd2a67e6208382fa824c81da22914e56a98a5c97c94e.html#815e54fc296e7bb0b1433b45b56971571d3aa91d63f2614285f88de8c6a7aa03",
+          "text": "OpenCV.Core.Float32_Row_Access.Row_Array"
+        },
+        {
+          "href": "../api/268a4fd9a7054d83efd4fd2a67e6208382fa824c81da22914e56a98a5c97c94e.html#9ba7f72b1d750bebb6264c3498ec1818da42a42cc53061aeb990454d4036624f",
+          "text": "OpenCV.Core.Float32_Row_Access.With_Read_Only_Row"
+        }
+      ],
+      "tokens": {
+        "keyword": 7,
+        "operator": 22,
+        "comment": 1,
+        "number": 1,
+        "attribute": 1
+      }
+    },
+    {
+      "text": "with OpenCV.Core;\nwith OpenCV.Core.UInt8_Access;\nwith OpenCV.Core.UInt8_Mat_View;\n\nprocedure External_Buffer_Example is\n   Data : aliased OpenCV.Core.UInt8_Mat_View.Buffer_Array :=\n     (11 => 10,\n      12 => 20,\n      13 => 30,\n      14 => 40,\n      15 => 50,\n      16 => 60);\n\n   procedure Process (Image : in out OpenCV.Core.Mat) is\n   begin\n      OpenCV.Core.UInt8_Access.Set\n        (Image, Row => 1, Column => 0, Value => 200);\n      -- Data (14) is now 200 immediately. There is no copy-back phase.\n   end Process;\nbegin\n   OpenCV.Core.UInt8_Mat_View.With_Writable_Mat_View\n     (Data, Rows => 2, Columns => 3, Process => Process'Access);\nend External_Buffer_Example;\n",
+      "links": [
+        {
+          "href": "../api/6853da0ebca980e6c7f80e2171f85f62e8ac6f0b83a49780981cfd5923fef613.html#359a1d6917c0782f594a81aeaec6883c1a6c904e0a0c71a68dfcfc589b7c6aa6",
+          "text": "OpenCV.Core.UInt8_Mat_View.Buffer_Array"
+        },
+        {
+          "href": "../api/6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#292b48d25d5af7f9173c36aa1336fe26305f00cc0f86b23654029fc9374ba1a2",
+          "text": "OpenCV.Core.Mat"
+        }
+      ],
+      "tokens": {
+        "keyword": 14,
+        "operator": 58,
+        "number": 17,
+        "comment": 1,
+        "attribute": 1
+      }
+    },
+    {
+      "text": "with OpenCV.Core;\nwith OpenCV.Core.Float32_Access;\nwith OpenCV.Core.Float32_Mat_View;\n\nprocedure External_Volume_Example is\n   Volume : aliased OpenCV.Core.Float32_Mat_View.Buffer_Array :=\n     (11 .. 34 => 0.0);\n\n   procedure Process (Image : in out OpenCV.Core.Mat) is\n   begin\n      --  Image.Shape = (2, 3, 4) and Image.Is_Continuous.\n      OpenCV.Core.Float32_Access.Set (Image, (1, 2, 3), 1.5);\n      --  Volume (34) is now 1.5 immediately.\n   end Process;\nbegin\n   OpenCV.Core.Float32_Mat_View.With_Writable_Mat_View\n     (Volume, Shape => (2, 3, 4), Process => Process'Access);\nend External_Volume_Example;\n",
+      "links": [
+        {
+          "href": "../api/75f80eb15b2f305b801e78042ab7faa2ac7ac646bf998208d7fd93fd27354283.html#7b4daff1206da013f74a29d474798c002c963c3970a44634938c369b696ca32c",
+          "text": "OpenCV.Core.Float32_Mat_View.Buffer_Array"
+        },
+        {
+          "href": "../api/6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#292b48d25d5af7f9173c36aa1336fe26305f00cc0f86b23654029fc9374ba1a2",
+          "text": "OpenCV.Core.Mat"
+        }
+      ],
+      "tokens": {
+        "keyword": 14,
+        "operator": 51,
+        "number": 10,
+        "comment": 2,
+        "attribute": 1
+      }
+    },
+    {
+      "text": "with Ada.Text_IO;\nwith OpenCV;\nwith OpenCV.Core;\nwith OpenCV.Core.UInt8_Access;\nwith OpenCV.Core.UInt8_Mat_View;\n\nprocedure Inspect_Constant_Example is\n   Data : aliased constant OpenCV.Core.UInt8_Mat_View.Buffer_Array :=\n     (11 => 1, 12 => 2, 13 => 3, 14 => 4, 15 => 5, 16 => 6);\n\n   procedure Inspect (Image : OpenCV.Core.Mat) is\n   begin\n      Ada.Text_IO.Put_Line\n        (OpenCV.UInt8_Value'Image\n           (OpenCV.Core.UInt8_Access.Get (Image, 1, 2)));\n   end Inspect;\nbegin\n   OpenCV.Core.UInt8_Mat_View.With_Read_Only_Mat_View\n     (Data, Rows => 2, Columns => 3, Process => Inspect'Access);\nend Inspect_Constant_Example;\n",
+      "links": [
+        {
+          "href": "../api/6853da0ebca980e6c7f80e2171f85f62e8ac6f0b83a49780981cfd5923fef613.html#359a1d6917c0782f594a81aeaec6883c1a6c904e0a0c71a68dfcfc589b7c6aa6",
+          "text": "OpenCV.Core.UInt8_Mat_View.Buffer_Array"
+        },
+        {
+          "href": "../api/6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#292b48d25d5af7f9173c36aa1336fe26305f00cc0f86b23654029fc9374ba1a2",
+          "text": "OpenCV.Core.Mat"
+        }
+      ],
+      "tokens": {
+        "keyword": 15,
+        "operator": 64,
+        "number": 16,
+        "attribute": 2
+      }
+    },
+    {
+      "text": "OpenCV.Core.Float32_Mat_View.With_Writable_Mat_View\n  (Data                => Data,\n   Rows                => 3,\n   Columns             => 4,\n   Row_Stride_Elements => 8,\n   Process             => Process'Access);\n",
+      "links": [],
+      "tokens": {
+        "operator": 15,
+        "number": 3,
+        "attribute": 1
+      }
+    },
+    {
+      "text": "OpenCV.Core.Float64_Mat_View.With_Writable_Strided_Mat_View\n  (Data       => Data,\n   Rows       => 3,\n   Columns    => 4,\n   Row_Stride => 6,\n   Process    => Process'Access);\n",
+      "links": [],
+      "tokens": {
+        "operator": 15,
+        "number": 3,
+        "attribute": 1
+      }
+    },
+    {
+      "text": "with OpenCV.Core;\nwith OpenCV.Core.UInt16_Access;\nwith OpenCV.Core.UInt16_Mat_View;\n\nprocedure Padded_UInt16_Example is\n   Data : aliased OpenCV.Core.UInt16_Mat_View.Buffer_Array :=\n     (11 => 10, 12 => 20, 13 => 30, 14 => 40, 15 => 999, 16 => 999,\n      17 => 50, 18 => 60, 19 => 70, 20 => 80, 21 => 999, 22 => 999);\n\n   procedure Process (Image : in out OpenCV.Core.Mat) is\n   begin\n      OpenCV.Core.UInt16_Access.Set\n        (Image, Row => 1, Column => 2, Value => 65_535);\n      --  Data (19) changes immediately. Padding Data (15), Data (16),\n      --  Data (21), and Data (22) remains outside the logical Mat.\n   end Process;\nbegin\n   OpenCV.Core.UInt16_Mat_View.With_Writable_Strided_Mat_View\n     (Data, Rows => 2, Columns => 4, Row_Stride => 6,\n      Process => Process'Access);\n   --  The caller still owns Data. The temporary Mat was callback-scoped.\nend Padded_UInt16_Example;\n",
+      "links": [
+        {
+          "href": "../api/a12721a52fff6c6c58bdfd22b16a2cdd8bbb9439dce8dfca6a2c06e05f522e9b.html#226f91d3ab80963c94d68d8e2fbb5923ae8eabc3488c6f885fb8d09d93edb5b0",
+          "text": "OpenCV.Core.UInt16_Mat_View.Buffer_Array"
+        },
+        {
+          "href": "../api/6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#292b48d25d5af7f9173c36aa1336fe26305f00cc0f86b23654029fc9374ba1a2",
+          "text": "OpenCV.Core.Mat"
+        }
+      ],
+      "tokens": {
+        "keyword": 14,
+        "operator": 72,
+        "number": 30,
+        "comment": 3,
+        "attribute": 1
+      }
+    },
+    {
+      "text": "with OpenCV.Core;\nwith OpenCV.Core.Float32_Access;\nwith OpenCV.Core.Float32_Mat_View;\n\nprocedure Gapped_Volume_Example is\n   --  2 planes of 3 rows of 4 elements, each row padded to 6 elements and\n   --  each plane padded to 20 elements: 2 * 20 = 40 elements in total.\n   Volume : aliased OpenCV.Core.Float32_Mat_View.Buffer_Array :=\n     (0 .. 39 => 0.0);\n\n   procedure Process (Image : in out OpenCV.Core.Mat) is\n   begin\n      --  Image.Shape = (2, 3, 4); Image.Is_Continuous is False.\n      OpenCV.Core.Float32_Access.Set (Image, (1, 2, 3), 1.5);\n      --  Volume (1 * 20 + 2 * 6 + 3) = Volume (35) is now 1.5.\n   end Process;\nbegin\n   OpenCV.Core.Float32_Mat_View.With_Writable_Strided_Mat_View\n     (Volume,\n      Shape   => (2, 3, 4),\n      Strides => (20, 6, 1),\n      Process => Process'Access);\nend Gapped_Volume_Example;\n",
+      "links": [
+        {
+          "href": "../api/75f80eb15b2f305b801e78042ab7faa2ac7ac646bf998208d7fd93fd27354283.html#7b4daff1206da013f74a29d474798c002c963c3970a44634938c369b696ca32c",
+          "text": "OpenCV.Core.Float32_Mat_View.Buffer_Array"
+        },
+        {
+          "href": "../api/6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#292b48d25d5af7f9173c36aa1336fe26305f00cc0f86b23654029fc9374ba1a2",
+          "text": "OpenCV.Core.Mat"
+        },
+        {
+          "href": "../api/75f80eb15b2f305b801e78042ab7faa2ac7ac646bf998208d7fd93fd27354283.html#8f8906ae882595fa19b47eab14f5f198539815efe48874a1b9c7b253339ab405",
+          "text": "OpenCV.Core.Float32_Mat_View.With_Writable_Strided_Mat_View"
+        }
+      ],
+      "tokens": {
+        "keyword": 14,
+        "operator": 57,
+        "comment": 4,
+        "number": 13,
+        "attribute": 1
+      }
+    },
+    {
+      "text": "with OpenCV.Core;\nwith OpenCV.Core.Float32_Access;\n\nprocedure Selected_Plane_Example is\n   use OpenCV.Core;\n\n   Volume : Mat :=\n     Create (Shape => (2, 3, 2, 4), Element_Type => (Float32, 1));\n\n   procedure Process (View : in out Mat) is\n   begin\n      --  View.Shape = (3, 4); View (J, K) is Volume (1, J, 1, K).\n      OpenCV.Core.Float32_Access.Set (View, (2, 3), 1.5);\n      --  Volume (1, 2, 1, 3) is now 1.5.\n   end Process;\nbegin\n   With_Selected_View\n     (Volume,\n      ((Kind => Fix_Index,  Index  => 1),\n       (Kind => Keep_Range, Bounds => (Start => 0, Stop => 3)),\n       (Kind => Fix_Index,  Index  => 1),\n       (Kind => Keep_Range, Bounds => (Start => 0, Stop => 4))),\n      Process'Access);\nend Selected_Plane_Example;\n",
+      "links": [
+        {
+          "href": "../api/6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#292b48d25d5af7f9173c36aa1336fe26305f00cc0f86b23654029fc9374ba1a2",
+          "text": "Mat"
+        },
+        {
+          "href": "../api/6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#292b48d25d5af7f9173c36aa1336fe26305f00cc0f86b23654029fc9374ba1a2",
+          "text": "Mat"
+        }
+      ],
+      "tokens": {
+        "keyword": 13,
+        "operator": 79,
+        "number": 14,
+        "comment": 2,
+        "attribute": 1
+      }
+    },
+    {
+      "text": "B := A;\n",
+      "links": [],
+      "tokens": {
+        "operator": 2
+      }
+    },
+    {
+      "text": "B := A.Clone;\n",
+      "links": [],
+      "tokens": {
+        "operator": 3
+      }
+    },
+    {
+      "text": "Location : constant Region_Location := ROI.Locate_Region;\n--  Move each boundary outward by one, clipping to the retained parent.\nROI.Adjust_Region (Top => 1, Bottom => 1, Left => 1, Right => 1);\n",
+      "links": [],
+      "tokens": {
+        "operator": 15,
+        "keyword": 1,
+        "comment": 1,
+        "number": 4
+      }
+    },
+    {
+      "text": "with OpenCV.Core.Transfers;\nDevice : OpenCV.Core.UMat := OpenCV.Core.Transfers.To_UMat (Host);\nCopy   : OpenCV.Core.Mat  := OpenCV.Core.Transfers.To_Mat (Device);\n",
+      "links": [
+        {
+          "href": "../api/6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#317538313e93a643267d769c04f06781cf60002b444c21193c3ee92cae2d94ad",
+          "text": "OpenCV.Core.UMat"
+        },
+        {
+          "href": "../api/ab7f42b87f5659a06c60ec3b8858611c40598215d41c50551a1b7223dbd3cbf8.html#0f7c2c5aaecd293f70a78050dde1ef5b911125822cc3030767defba185b30101",
+          "text": "OpenCV.Core.Transfers.To_UMat"
+        },
+        {
+          "href": "../api/6913f2e7169ad4fb9224d4d93fd20e50615a317c7374a7e469bab89cdd6bb7e9.html#292b48d25d5af7f9173c36aa1336fe26305f00cc0f86b23654029fc9374ba1a2",
+          "text": "OpenCV.Core.Mat"
+        },
+        {
+          "href": "../api/ab7f42b87f5659a06c60ec3b8858611c40598215d41c50551a1b7223dbd3cbf8.html#24ece533df6c6b59c25459afee210c97d35eb78cc5742121a284cb713ab7e665",
+          "text": "OpenCV.Core.Transfers.To_Mat"
+        }
+      ],
+      "tokens": {
+        "keyword": 1,
+        "operator": 23
+      }
+    },
+    {
+      "text": "Result := Source.Normalize (Kind => L2, Alpha => 1.0);\nSource.Normalize\n  (Destination => Existing,\n   Kind        => L2,\n   Alpha       => 1.0);\n",
+      "links": [],
+      "tokens": {
+        "operator": 17,
+        "number": 2
+      }
+    },
+    {
+      "text": "Sqrt\n  (Self        => Input,\n   Destination => Existing);\n\nPow\n  (Self        => Input,\n   Power       => 2.0,\n   Destination => Existing);\n",
+      "links": [],
+      "tokens": {
+        "operator": 14,
+        "number": 1
+      }
+    }
+  ],
+  "guides/typed-access-guide.html": [
+    {
+      "text": "generic\n   type Element_Type is private;\n   Length : Positive;\npackage OpenCV.Core.Vectors;\n",
+      "links": [],
+      "tokens": {
+        "keyword": 5,
+        "operator": 6
+      }
+    },
+    {
+      "text": "generic\n   type Element_Type is private;\n   Row_Count : Positive;\n   Column_Count : Positive;\npackage OpenCV.Core.Fixed_Matrices;\n",
+      "links": [],
+      "tokens": {
+        "keyword": 5,
+        "operator": 8
+      }
+    }
+  ],
+  "guides/core-operations-guide.html": [
+    {
+      "text": "Image.Set_To (Make_Scalar (8.0));\nAdd (Image, Make_Scalar (2.0), Shifted);\nCompare (Shifted, 9.5, Greater_Than, Mask);\n",
+      "links": [],
+      "tokens": {
+        "operator": 19,
+        "number": 3
+      }
+    },
+    {
+      "text": "Cart_To_Polar\n  (X         => Horizontal,\n   Y         => Vertical,\n   Magnitude => Existing_Magnitude,\n   Angle     => Existing_Angle,\n   Units     => Radians);\n\nPolar_To_Cart\n  (Magnitude => Existing_Magnitude,\n   Angle     => Existing_Angle,\n   X         => Horizontal,\n   Y         => Vertical,\n   Units     => Radians);\n\nPolar_To_Cart (Existing_Angle, Horizontal, Vertical, Degrees);\n",
+      "links": [],
+      "tokens": {
+        "operator": 30
+      }
+    },
+    {
+      "text": "Volume := Image.Reshape (Shape => (2, 3, 4));\nPixels := Scalars.Reshape (Channels => 3, Shape => (2, 2, 3));\n",
+      "links": [],
+      "tokens": {
+        "operator": 22,
+        "number": 7
+      }
+    },
+    {
+      "text": "Result := Source.Convert_To\n  (Depth => OpenCV.Core.UInt8, Scale => 2.0, Offset => 3.0);\nSource.Convert_To\n  (Destination => Existing, Depth => OpenCV.Core.UInt8,\n   Scale => 2.0, Offset => 3.0);\n",
+      "links": [],
+      "tokens": {
+        "operator": 25,
+        "number": 4
+      }
+    },
+    {
+      "text": "Magnitude\n  (X           => Horizontal,\n   Y           => Vertical,\n   Destination => Existing);\n\nPhase\n  (X           => Horizontal,\n   Y           => Vertical,\n   Destination => Existing,\n   Units       => Degrees);\n",
+      "links": [],
+      "tokens": {
+        "operator": 18
+      }
+    },
+    {
+      "text": "Result := Add (A, B);\nResult := Subtract (A, B);\nResult := Multiply (A, B);\nResult := Divide (A, B);\nResult := Abs_Diff (A, B);\nLow  := Minimum (A, B);\nHigh := Maximum (A, B);\n\nAdd\n  (Left        => A,\n   Right       => B,\n   Destination => Existing);\nSubtract\n  (Left        => A,\n   Right       => B,\n   Destination => Existing);\nMultiply\n  (Left        => A,\n   Right       => B,\n   Destination => Existing);\nDivide\n  (Left        => A,\n   Right       => B,\n   Destination => Existing);\nAbs_Diff\n  (Left        => A,\n   Right       => B,\n   Destination => Existing);\n",
+      "links": [],
+      "tokens": {
+        "operator": 75
+      }
+    },
+    {
+      "text": "Minimum\n  (Left        => A,\n   Right       => B,\n   Destination => Existing_Low);\n\nMaximum\n  (Left        => A,\n   Right       => B,\n   Destination => Existing_High);\n",
+      "links": [],
+      "tokens": {
+        "operator": 16
+      }
+    },
+    {
+      "text": "Compare\n  (Left        => A,\n   Right       => B,\n   Kind        => Greater_Than,\n   Destination => Mask);\n\nIn_Range\n  (Self        => Image,\n   Lower       => Make_Scalar (10.0, 20.0, 30.0),\n   Upper       => Make_Scalar (50.0, 60.0, 70.0),\n   Destination => Mask);\n",
+      "links": [],
+      "tokens": {
+        "operator": 28,
+        "number": 6
+      }
+    },
+    {
+      "text": "Weighted := Add_Weighted (Left, 0.75, Right, 0.25, Gamma => 2.0);\nAdd_Weighted\n  (Left        => Left,\n   Alpha       => 0.75,\n   Right       => Right,\n   Beta        => 0.25,\n   Destination => Existing,\n   Gamma       => 2.0);\n\nScaled := Scale_Add (A, 1.5, B);\nScale_Add\n  (Self        => A,\n   Scale       => 1.5,\n   Right       => B,\n   Destination => Existing);\n",
+      "links": [],
+      "tokens": {
+        "operator": 39,
+        "number": 8
+      }
+    },
+    {
+      "text": "Bitwise_Xor\n  (Left        => A,\n   Right       => B,\n   Destination => Existing);\nBitwise_And\n  (Left        => A,\n   Right       => B,\n   Mask        => Selection,\n   Destination => Existing);\n",
+      "links": [],
+      "tokens": {
+        "operator": 18
+      }
+    }
+  ],
+  "guides/sparse-and-persistence-guide.html": [
+    {
+      "text": "OpenCV.Core.Sparse.UInt8_Access.For_Each_Stored (Image, Visit'Access);\n--  Visit (Indices : Index_Array; Value : UInt8_Value)\n",
+      "links": [
+        {
+          "href": "../api/8b1b70c335e7cb0d913085e89f39b5a5afede0758ca12468cd43715567117fa9.html#9dc4946b00977dfda5f083bb32bff734efd11488fb3ff9126e729bbb710bfc26",
+          "text": "OpenCV.Core.Sparse.UInt8_Access.For_Each_Stored"
+        }
+      ],
+      "tokens": {
+        "operator": 8,
+        "attribute": 1,
+        "comment": 1
+      }
+    },
+    {
+      "text": "Scaled := Source.Convert_To (OpenCV.Core.Float32, Scale => 2.0);\n",
+      "links": [],
+      "tokens": {
+        "operator": 9,
+        "number": 1
+      }
+    },
+    {
+      "text": "Dense :=\n  Source.To_Dense (OpenCV.Core.Float32, Scale => 2.0, Offset => 5.0);\n",
+      "links": [],
+      "tokens": {
+        "operator": 11,
+        "number": 2
+      }
+    },
+    {
+      "text": "Magnitude := Values.Norm (OpenCV.Core.L2);\nUnit      := Values.Normalize (Target_Norm => 1.0, Kind => OpenCV.Core.L2);\n",
+      "links": [],
+      "tokens": {
+        "operator": 17,
+        "number": 1
+      }
+    },
+    {
+      "text": "Extrema := Values.Min_Max_Loc;\n--  Extrema.Has_Minimum, Has_Maximum, Minimum, Maximum\n--  Minimum_Location (1 .. Extrema.Dimensions)\n--  Maximum_Location (1 .. Extrema.Dimensions)\n",
+      "links": [],
+      "tokens": {
+        "operator": 3,
+        "comment": 3
+      }
+    },
+    {
+      "text": "OpenCV.Core.Persistence\n",
+      "links": [],
+      "tokens": {
+        "operator": 2
+      }
+    },
+    {
+      "text": "with OpenCV.Core.Persistence;\n\ndeclare\n   package P renames OpenCV.Core.Persistence;\n   Storage : P.File_Storage := P.Create_Memory (P.JSON);\nbegin\n   Storage.Begin_Map (\"Camera\");\n   Storage.Write (\"Name\", \"Front Camera\");\n\n   Storage.Begin_Sequence (\"Distortion\");\n   Storage.Append (0.1);\n   Storage.Append (-0.05);\n   Storage.Append (0.001);\n   Storage.End_Structure;\n\n   Storage.End_Structure;\n\n   declare\n      Text : constant String := Storage.Close_And_Get_Text;\n   begin\n      null;\n   end;\nend;\n",
+      "links": [],
+      "tokens": {
+        "keyword": 11,
+        "operator": 51,
+        "string": 4,
+        "number": 3
+      }
+    },
+    {
+      "text": "Count := Reader.Map_Length;\nif Count > 0 then\n   for I in 0 .. Count - 1 loop\n      Put_Line (Reader.Map_Key (I));\n   end loop;\nend if;\n",
+      "links": [],
+      "tokens": {
+        "operator": 14,
+        "keyword": 9,
+        "number": 3
+      }
+    },
+    {
+      "text": "declare\n   Count : constant Natural := Reader.Map_Length;\nbegin\n   if Count > 0 then\n      for I in 0 .. Count - 1 loop\n         declare\n            Key : constant String := Reader.Map_Key (I);\n         begin\n            case Reader.Kind (Key) is\n               when P.Integer_Node  => Put_Line (Key & \": integer\");\n               when P.Real_Node     => Put_Line (Key & \": real\");\n               when P.String_Node   => Put_Line (Key & \": string\");\n               when P.Sequence_Node => Put_Line (Key & \": sequence\");\n               when P.Mapping_Node  => Put_Line (Key & \": mapping\");\n            end case;\n         end;\n      end loop;\n   end if;\nend;\n",
+      "links": [],
+      "tokens": {
+        "keyword": 26,
+        "operator": 51,
+        "number": 3,
+        "string": 5
+      }
+    }
+  ],
+  "guides/interop-and-compatibility.html": []
+}

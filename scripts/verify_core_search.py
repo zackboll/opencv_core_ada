@@ -14,7 +14,7 @@ from pathlib import Path
 
 from highlight_gnatdoc_ada import strip_highlighting
 from link_gnatdoc_types import require, plain
-from render_gnatdoc_guides import GUIDES
+from render_gnatdoc_guides import GUIDES, expected as original_guides
 
 COUNTS = {'package': 195, 'symbol': 215, 'operation': 1047, 'guide': 5}
 # Additions already in Core's hash-qualified source/native acquisition but not
@@ -29,6 +29,7 @@ FIXTURE_ADDITIONS = {
 CURRENT_COUNTS = {**COUNTS, 'symbol': 216, 'operation': 1071}
 RECONCILIATION_SHA = 'a89090f9e2315ef15826659777ffa4bbd0877e0cd29219c338c31efdad7bf4b0'
 INDEX = 'api/gnatdoc-search-index.json'
+INDEX_SHA = '91f0b80713ecad655e5560330a794244745ea0c19a71e60ce175f1adaac00bba'
 STYLE = '<link rel="stylesheet" href="gnatdoc-search.css">'
 
 
@@ -96,8 +97,11 @@ def expected_records(site, source, pages):
             records.append(dict(kind='symbol' if kind in ('type', 'subtype') else 'operation',
                                 name=name, label=label, href=path.name + '#' + section[1],
                                 text=(code + ' ' + description)[:64000]))
+    # Highlight spans split HTML text events. The original source renderer,
+    # not enhanced HTML or an output cache, defines legacy search whitespace.
+    guides = original_guides(Path(__file__).resolve().parent.parent, site, examples=False)
     for slug, (label, _) in GUIDES.items():
-        parser = MainText((site / f'guides/{slug}.html').read_text())
+        parser = MainText(guides[f'{slug}.html'].decode('utf-8'))
         records.append(dict(kind='guide', name=label, label=label,
                             href=f'../guides/{slug}.html',
                             text=' '.join(' '.join(parser.parts).split())))
@@ -126,6 +130,8 @@ def validate_search(site, source, pages):
                            indent=2, ensure_ascii=False) + '\n').encode()
     require((site / INDEX).read_bytes() == expected,
             'search schema/records differ from independent public source/native/guide identities')
+    require(hashlib.sha256(expected).hexdigest() == INDEX_SHA,
+            'qualified search-index bytes changed')
     return expected, records
 
 
