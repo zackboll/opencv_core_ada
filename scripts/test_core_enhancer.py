@@ -84,6 +84,12 @@ class Publication(unittest.TestCase):
 
     def test_rehashed_source_or_configuration_is_not_approved(self):
         root = Path(self.temp.name) / 'inputs'
+        from core_verified_examples import selected_mapping
+        (mapping_name, _), mapping = selected_mapping(ROOT)
+        for name in [mapping_name, *mapping['inputs']]:
+            target = root / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(ROOT / name, target)
         for name in [THEME_SOURCE, CONFIG_SOURCE]:
             target = root / name
             target.parent.mkdir(parents=True, exist_ok=True)

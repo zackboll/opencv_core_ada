@@ -21,9 +21,9 @@ class Provenance(unittest.TestCase):
                     if line.startswith('"$python" -c ') and 'release_version' in line)
         self.assertion = shlex.split(line)[2]
         self.record = {
-            'release_version': '0.1.4',
-            'expected_source_commit': '2200eb0e95e769a70d3d38a6c8b7facce8205924',
-            'expected_source_tree': 'a0c1038b8332c3ff040b678d393f2871e7d5eeb4',
+            'release_version': '0.1.5',
+            'expected_source_commit': '0120bee2f2455e4c832d1d5ddae0a4cb03cb9477',
+            'expected_source_tree': '01900ddb099c801eeb92fba718f4c528f87d865f',
         }
 
     def check(self, expected):
@@ -66,7 +66,7 @@ class Acquisition(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.assets = self.root / 'assets'
         self.assets.mkdir()
-        for name in ['ada_gnatdoc_enhancer-0.1.4-py3-none-any.whl',
+        for name in ['ada_gnatdoc_enhancer-0.1.5-py3-none-any.whl',
                      'SHA256SUMS', 'release-provenance.json']:
             shutil.copyfile(ROOT / '.doc-tools/enhancer-release' / name, self.assets / name)
         scripts = self.root / 'scripts'
@@ -123,11 +123,11 @@ class InstalledOrigin(unittest.TestCase):
         script = (ROOT / 'scripts/install_doc_enhancer.sh').read_text()
         line = next(line for line in script.splitlines() if 'direct_url.json' in line)
         self.assertion = shlex.split(line)[2]
-        self.version = '0.1.4'
+        self.version = '0.1.5'
         self.origin = {
-            'url': 'file:///qualified/ada_gnatdoc_enhancer-0.1.4-py3-none-any.whl',
+            'url': 'file:///qualified/ada_gnatdoc_enhancer-0.1.5-py3-none-any.whl',
             'archive_info': {'hashes': {'sha256':
-                '057b7945a71d3afb10cbabec32111b4ac2d94a116c6b8553f70c71229a68ffc7'}}}
+                'd712d330f213fc1909a66c47bc2c7e5e15d5ec687222bea3c4922f5243db4247'}}}
 
     def check(self, expected):
         distribution = SimpleNamespace(version=self.version,
@@ -169,9 +169,9 @@ class InstalledOrigin(unittest.TestCase):
     def test_wrong_cli_version(self):
         line = next(line for line in (ROOT / 'scripts/install_doc_enhancer.sh').read_text().splitlines()
                     if line.startswith('test ') and '--version' in line)
-        for version in ('0.1.3', '0.1.4.dev1', '0.1.4'):
+        for version in ('0.1.3', '0.1.4', '0.1.5.dev1', '0.1.5'):
             command = line.replace('$(.doc-tools/enhancer/bin/gnatdoc-enhancer --version)', version)
-            self.assertEqual(subprocess.run(['sh', '-c', command]).returncode == 0, version == '0.1.4')
+            self.assertEqual(subprocess.run(['sh', '-c', command]).returncode == 0, version == '0.1.5')
 
 
 if __name__ == '__main__':

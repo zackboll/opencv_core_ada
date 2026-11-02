@@ -7,6 +7,9 @@ from link_gnatdoc_types import require
 from verify_core_enhancer import (validate, digest, record, HISTORICAL_SHA,
                                   EXAMPLE_CHANGES)
 from verify_core_examples import STYLESHEET
+from core_verified_examples import compiler_destinations, staged_config, PUBLIC
+from acquire_core_doc_v014 import ARCHIVE_SHA, ARTIFACT, RUN
+from verify_core_enhancer import EXAMPLES_SHA
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -42,6 +45,50 @@ def compare():
         json.dumps(result, sort_keys=True, indent=2) + '\n')
     print(f'Historical comparison: {len(before)} -> {len(after)} files; '
           f'{len(changed)} authorized changes; {len(result["unchanged"])} byte-identical resources')
+    compare_v014(site)
+
+
+def compare_v014(site):
+    directory = ROOT / 'obj/docs/v014'
+    require(digest((directory / 'publication.zip').read_bytes()) == ARCHIVE_SHA,
+            'v0.1.4 authenticated archive changed')
+    before = {p.relative_to(directory / 'publication').as_posix(): digest(p.read_bytes())
+              for p in (directory / 'publication').rglob('*') if p.is_file()}
+    require(before == record('examples-publication-inventory.json', EXAMPLES_SHA),
+            'v0.1.4 authenticated publication changed')
+    after = {p.relative_to(site).as_posix(): digest(p.read_bytes()) for p in site.rglob('*') if p.is_file()}
+    changed = {name for name in before.keys() & after.keys() if before[name] != after[name]}
+    require(before.keys() == after.keys() and changed == {'index.html', 'api/presentation.json'},
+            'unexpected v0.1.4 adoption publication delta')
+    candidate = (site / 'index.html').read_text()
+    for call in compiler_destinations(ROOT, site):
+        anchor = f'<a class="ada-api-reference" href="api/{call["href"]}">{call["text"]}</a>'
+        require(candidate.count(anchor) == 1, 'missing/duplicate authenticated homepage call')
+        candidate = candidate.replace(anchor, call['text'])
+    require(candidate.encode() == (directory / 'publication/index.html').read_bytes(),
+            'homepage differs beyond four authenticated call wrappers')
+    previous = json.loads((directory / 'publication/api/presentation.json').read_bytes())
+    current = json.loads((site / 'api/presentation.json').read_bytes())
+    require(previous.keys() == current.keys(), 'unexpected presentation metadata fields')
+    normalized = json.loads(json.dumps(current))
+    normalized['enhancer_version'] = '0.1.4'
+    normalized['source_sha256'] = {n.replace(PUBLIC + '/', 'src/', 1): v
+                                   for n, v in current['source_sha256'].items()}
+    require(normalized['source_sha256'] == previous['source_sha256'], 'public export identity drift')
+    require(current['theme_source']['config_sha256'] == digest(staged_config(ROOT)),
+            'staged configuration identity differs')
+    normalized['theme_source']['config_sha256'] = previous['theme_source']['config_sha256']
+    normalized['output_sha256']['index.html'] = previous['output_sha256']['index.html']
+    require(normalized == previous, 'unexplained presentation metadata delta')
+    result = {'baseline_run': RUN, 'baseline_artifact': ARTIFACT, 'archive_sha256': ARCHIVE_SHA,
+              'baseline_files': len(before), 'candidate_files': len(after),
+              'changed': {n: {'before': before[n], 'after': after[n]} for n in sorted(changed)},
+              'unchanged_files': len(before) - len(changed), 'added': [], 'removed': [],
+              'homepage_change': 'Exactly four independently reconstructed call anchor wrappers',
+              'metadata_changes': ['enhancer_version', 'public source path prefix',
+                                   'staged configuration hash', 'homepage output hash']}
+    (ROOT / 'obj/docs/v015-publication-comparison.json').write_text(json.dumps(result, indent=2) + '\n')
+    print('v0.1.4 comparison: 210 files; exactly 2 justified changes; 208 byte-identical files')
 
 
 if __name__ == '__main__':

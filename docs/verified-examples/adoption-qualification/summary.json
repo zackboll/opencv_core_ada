@@ -1,0 +1,73 @@
+{
+  "hosted_ci_status": "HOSTED_CI_PENDING",
+  "local_python": {
+    "debian": {
+      "tests": 196,
+      "failures": 0,
+      "skips": 0
+    },
+    "ubuntu": {
+      "tests": 196,
+      "failures": 0,
+      "skips": 0
+    }
+  },
+  "private_generator": {
+    "normal": {
+      "tests": 4,
+      "failures": 0,
+      "skips": 0
+    },
+    "optimized": {
+      "tests": 4,
+      "failures": 0,
+      "skips": 0
+    }
+  },
+  "examples_browser": {
+    "configurations": 8,
+    "clipboard_copies": 312,
+    "keyboard_api_arrivals": 216,
+    "new_call_mouse_arrivals": 32
+  },
+  "deterministic_fresh_generation": {
+    "debian": true,
+    "ubuntu": true
+  },
+  "debian_enhancer_idempotent": true,
+  "public_site_delta_from_v014": [
+    "index.html",
+    "api/presentation.json"
+  ],
+  "debian_ubuntu_site_delta": "Only theme_source.config_sha256 in api/presentation.json",
+  "protected_sources_unchanged": true,
+  "final_evidence_sha256": {
+    "cross-origin-browser.log": "45076206b4a7d8c0a28acd52e5d36f34da582b29fdab57adb56de67effc99fe4",
+    "debian-deterministic.log": "6a5d3aa5f38d769ce4c33079c154793cae0733da8414dfe912020172ddfd5157",
+    "debian-idempotence-corrected.log": "901c791132a24ca9068f17db5a9e4a41d20d43f33c496d99ad0aaff746e4d064",
+    "examples-browser-final.log": "97b93ee78de6de3b399e714acf714b1330326b4aeaa86f6e5c78444891906ca1",
+    "examples-browser.json": "db00dd6cf087cfb3a0db47164053948e777dd603d22d74a32b4d2af3b637f6af",
+    "examples-publication-comparison.json": "9be2bc3351a6fcf2b646a723e9de68456aa8e0a6377d97afebaf282a23cf2b9a",
+    "guides-browser.log": "fbcadbea3a75a3582aad3fa13cd522cee79e552def24d9e303342ad31b06a06e",
+    "landing-browser.log": "a6846f47943f3ea3f57fcd454292699aadd9ba68382806998173689ab5ec9071",
+    "landing-visual.json": "0b8228088be61cdebef4feb5cb0dcb2f01fa0ec23573fa8f0d669f8c9034daef",
+    "migration-browser.log": "bc81117103a810bf1ef7c92d0b825d98de4d97d72892fa61fd685746b1bfded0",
+    "navigation-browser.log": "6852ec92279d63424c055b42d60d63cbb8ac44f5b03994cb6f291a4f0a883ddb",
+    "publication-comparison-final.log": "43b02f9a2b3f1551bdd96b4f49e4952c576d6c76b792355de1622c952c17e4e4",
+    "python-tests-final.log": "48c5abb37472869bfdd557ffcfbf1ac11cca52b904a58d0eb597015e9465ce68",
+    "search-browser.log": "a9bce9a95170a1152f713a1bc3d94872a7a7d24a8953dd265438dd52c6f68c07",
+    "symbols-browser.log": "c2501992999ea0be30fd5c6b40ba94cb42bbde16159b8eef36e2e54914e900d3",
+    "ubuntu-comparison.log": "0a33536d44fe54efaaefa57ec5d7c58fb8b1310172140a185d093b8f4177e771",
+    "ubuntu-deterministic.log": "9dc3d770730e55724d3f08e227d9e225181fe977725991acf824e5c02bfa5037",
+    "ubuntu-generator-optimized-tests.log": "bb699e3d0fabb3b90835968e442f1633a6ec33c89ebcc43cc308e79acbaf5a8a",
+    "ubuntu-generator-tests.log": "8cc8ade3b1f0a22056d361c7adc14a87da3b1cbb9fc0c52cff4430fc2c34b2d9",
+    "ubuntu-gnatdoc-clean.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "ubuntu-mapping-qualified.log": "f053bd33643bfaa8cc31e4bb6991d03566631bc448d12c5c0b4b61feb53e2119",
+    "ubuntu-python-tests.log": "55b8e31e7caa551e9ed8e6aadca3e9c558884eac18dbffc6f5dd60d77cc60830",
+    "ubuntu-v015-publication-comparison.json": "e1d65f9b2ab8ce4faac2c67fe647be0c5beee23b14d74a73f531f5611a6197c2",
+    "v014-artifact.json": "812e6ac4c98675f417f52651ab541e6ff87b9e8f398c4304bf0316304301f556",
+    "v014-run.json": "448401441ef7b1359a23b7c940f491468954ca8eb1802fbd27c66f3b7c181e5b",
+    "v015-publication-comparison.json": "811f591ee0eb126d9e2c8d77a427e5afb501a7c132ea5fc2194ef63c26174829",
+    "verified-tests-stable.log": "5519292b13035dc9690029a61c7f999cd4f2c7654051fcdd2cf88df8671a0f39"
+  }
+}

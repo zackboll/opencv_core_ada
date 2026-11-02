@@ -25,6 +25,7 @@ from install_gnatdoc_theme import NATIVE, METADATA
 from render_gnatdoc_guides import validate as check_guides, GUIDES
 from verify_core_search import validate_search, search_markup, STYLE
 from verify_core_examples import landing_example, STYLESHEET, CSS_SHA
+from core_verified_examples import PUBLIC, staged_config, selected_mapping
 
 ROOT = Path(__file__).resolve().parent.parent
 QUALIFICATION = ROOT / 'docs/enhancer-qualification'
@@ -32,7 +33,7 @@ GENERIC_SHA = '146a6f6375be14788996e04585ac141bfc308c5be87b040198f5d74c5c74bcfc'
 AUTHORED_SHA = '97a3351cbe0f852d5aeddea64fcffab9f66fdf56499b717caab82d06e9f67b65'
 THEME_SOURCE = 'docs/assets/gnatdoc-theme.css'
 CONFIG_SOURCE = 'docs/gnatdoc-enhancer.toml'
-CONFIG_SHA = '979949a58a149cec82aab50d5648142cbf2e69f69f861e2706dc80859634135c'
+CONFIG_SHA = 'f8dbafdb5f524bd6c877842f37bc904193fdafeadb175320c63e297b4310fcbb'
 HISTORICAL_SHA = '100af3824ee113bf1e58e166501d3fba2141bdb4386540cf1d768f2df3812851'
 EXAMPLES_SHA = '2d2a628b00534d30bfc7eb6b5568cad8584a5ff7846cfbd3081b68e70a5f318e'
 EXAMPLE_CHANGES = {'index.html', 'api/presentation.json',
@@ -71,7 +72,7 @@ def validate_theme_identity(identity, root):
             'unreviewed Core theme source')
     require(identity == {
         'source': THEME_SOURCE, 'sha256': ASSETS['gnatdoc-theme.css'],
-        'config': CONFIG_SOURCE, 'config_sha256': CONFIG_SHA},
+        'config': CONFIG_SOURCE, 'config_sha256': digest(staged_config(root))},
         'Core theme source/configuration identity mismatch')
 
 
@@ -87,14 +88,16 @@ def validate(site):
     instances = discover(source)
     require(instances == qualified_instances(), 'changed instance associations')
     manifest = json.loads((api / 'presentation.json').read_text())
-    require(manifest.get('enhancer_version') == '0.1.4', 'wrong enhancer version')
+    require(manifest.get('enhancer_version') == '0.1.5', 'wrong enhancer version')
     require(set(manifest) == {'schema_version', 'enhancer_version', 'gnatdoc_version', 'project',
                              'original_api_html', 'native_css_sha256', 'source_sha256', 'output_sha256',
                              'counts', 'theme_source'}
             and manifest['schema_version'] == 1 and manifest['gnatdoc_version'] == '26.0.0'
             and manifest['project'] == 'OpenCV Core Ada', 'unapproved presentation metadata')
     validate_theme_identity(manifest['theme_source'], ROOT)
-    require(manifest['source_sha256'] == acquisition['source_sha256'] and
+    public_sources = {name.replace('src/', PUBLIC + '/', 1): sha
+                      for name, sha in acquisition['source_sha256'].items()}
+    require(manifest['source_sha256'] == public_sources and
             manifest['native_css_sha256'] == acquisition['native_sha256']['api/gnatdoc.css'],
             'presentation input identities mismatch')
     originals = manifest['original_api_html']
@@ -206,8 +209,11 @@ def validate(site):
     # This reviewed record is supplementary to complete source reconstruction,
     # never a way for self-rehashed presentation metadata to authorize output.
     qualified = record('examples-publication-inventory.json', EXAMPLES_SHA)
-    require({name: digest((site / name).read_bytes()) for name in names} == qualified,
-            'qualified 210-file publication hashes differ')
+    require(all(digest((site / name).read_bytes()) == sha for name, sha in qualified.items()
+                if name not in {'index.html', 'api/presentation.json'}),
+            'qualified v0.1.4 publication changed outside adoption boundary')
+    # Neither output metadata nor a new inventory can grant link authority.
+    selected_mapping(ROOT)
     require(manifest['counts'] == {
         'declaration_snippets': 1293, 'generic_actual_type_links': 25,
         'generic_conversion_package_links': 1, 'generic_member_links': 51,

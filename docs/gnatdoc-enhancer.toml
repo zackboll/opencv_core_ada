@@ -6,7 +6,7 @@ project = "OpenCV Core Ada"
 version = "26.0.0"
 
 [sources]
-directories = ["src"]
+directories = ["public"]
 comment_style = "leading"
 packages = [
   "OpenCV", "OpenCV.Core", "OpenCV.Core.Fixed_Matrices",
@@ -102,8 +102,8 @@ type_links = true
 external_hosts = ["github.com", "zackboll.github.io"]
 
 [generic_instances]
-qualification = "docs/enhancer-qualification/gnatdoc-generic-qualification.json"
-sha256 = "146a6f6375be14788996e04585ac141bfc308c5be87b040198f5d74c5c74bcfc"
+qualification = "docs/verified-examples/public-generic-qualification.json"
+sha256 = "2623a2d5746241e567434fe0db4b86ea7b87ad518311cb24e45c71bd67e329be"
 incoming_references = true
 
 [guides]
@@ -113,3 +113,8 @@ ada_landing_example_highlighting = true
 mode = "authored-markdown"
 manifest = "docs/enhancer-qualification/gnatdoc-authored.json"
 sha256 = "97a3351cbe0f852d5aeddea64fcffab9f66fdf56499b717caab82d06e9f67b65"
+
+# Staging selects exactly one immutable reviewed map using actual GPR bytes.
+[guides.verified_examples]
+mapping = "docs/verified-examples/debian.json"
+sha256 = "2eeeb283aa0a54113dbeb423653549f13f6238f587c282ab391b9debfc6ba61a"
