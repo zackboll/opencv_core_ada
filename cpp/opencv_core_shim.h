@@ -760,7 +760,7 @@ opencv_core_mat_clone(const opencv_core_mat_handle *source,
  * pointer locations must be distinct. Each supplied output is initialized to
  * null/null/0 before validation or work. Both independently owned handles are
  * allocated before either is published, so every failure leaves safe values in
- * all supplied outputs. The shim rejects arithmetic ranges that OpenCV 4.10
+ * all supplied outputs. The shim rejects arithmetic ranges that cv::kmeans
  * evaluates with signed int before allocation or parallel work.
  */
 opencv_core_status
@@ -825,7 +825,7 @@ opencv_core_mat_flip(const opencv_core_mat_handle *source, int32_t flip_kind,
  * Returns a newly allocated, independent Mat with source dimensions and type.
  * axis is 0 (each row) or 1 (each column). descending is 0 (ascending) or 1
  * (descending). source is borrowed. The result does not share storage with
- * source. OpenCV 4.10 requires a single-channel source of a supported depth.
+ * source. cv::sort requires a single-channel source of a supported depth.
  */
 opencv_core_status
 opencv_core_mat_sort(const opencv_core_mat_handle *source, uint8_t axis,
@@ -836,7 +836,7 @@ opencv_core_mat_sort(const opencv_core_mat_handle *source, uint8_t axis,
  * size. axis is 0 (each row) or 1 (each column). descending is 0 (ascending)
  * or 1 (descending). source is borrowed. The result stores zero-based original
  * column indices when axis is 0 and original row indices when axis is 1.
- * OpenCV 4.10 requires a single-channel source of a supported depth.
+ * cv::sortIdx requires a single-channel source of a supported depth.
  */
 opencv_core_status
 opencv_core_mat_sort_indices(const opencv_core_mat_handle *source, uint8_t axis,
@@ -2619,9 +2619,9 @@ opencv_core_mat_solve_least_squares(
  * pointers must be non-null and are initialized to INFEASIBLE and null before
  * work. The public Ada layer owns mathematical input validation.
  *
- * constraint_tolerance is the OpenCV 4.8+ constr_eps argument. OpenCV 4.6
- * has no such parameter and no SOLVELP_LOST result: the default 1e-12 and
- * exact-zero values are accepted and the 3-argument solver is used;
+ * constraint_tolerance is the OpenCV 4.8+ constr_eps argument. Releases
+ * before 4.8 have no such parameter and no SOLVELP_LOST result: the default
+ * 1e-12 and exact-zero values are accepted and the 3-argument solver is used;
  * any other tolerance is rejected. OPENCV_CORE_LP_NUMERICAL_LOSS is
  * produced only when the linked OpenCV reports SOLVELP_LOST.
  */
@@ -2718,10 +2718,10 @@ opencv_core_mat_matrix_multiply_add(const opencv_core_mat_handle *left,
  *   order 1: scale * source * source^T, result is source.rows x source.rows
  * Source must be non-empty, at most two-dimensional, single-channel, and
  * one of CV_8U, CV_16U, CV_16S, CV_32F, or CV_64F. output_depth of -1
- * selects OpenCV 4.10 automatic depth, which is CV_64F for a CV_64F
+ * selects cv::mulTransposed automatic depth, which is CV_64F for a CV_64F
  * source and CV_32F otherwise. Explicit output_depth must be the
  * binding's Float32 or Float64 identifier. CV_64F source with explicit
- * Float32 is rejected because OpenCV 4.10 has no such kernel. Continuity
+ * Float32 is rejected because OpenCV has no such kernel. Continuity
  * is not required. The result owns independent storage.
  */
 opencv_core_status
@@ -2772,7 +2772,7 @@ opencv_core_mat_covariance(const opencv_core_mat_handle *source,
  * output pointer arguments must be non-null and distinct. On success
  * both returned handles are independently owned. Eigenvalues is N x 1
  * in descending order and eigenvectors is N x N with one vector per
- * row, matching OpenCV 4.10. The source is borrowed and unchanged.
+ * row, matching cv::eigen. The source is borrowed and unchanged.
  * If cv::eigen returns false, both outputs remain null and the call
  * fails. On any other failure both outputs remain null.
  */
@@ -2784,12 +2784,12 @@ opencv_core_mat_eigen_decomposition(
 
 /*
  * Decomposes a borrowed real square Mat using cv::eigenNonSymmetric.
- * OpenCV 4.10 assumes all eigenvalues are real and returns eigenvalues in
+ * OpenCV assumes all eigenvalues are real and returns eigenvalues in
  * descending order, with each corresponding eigenvector in a row. Both output
  * pointers must be non-null and distinct; both are initialized to null before
  * work. On success both handles are independently owned. On any failure both
  * remain null. The source is borrowed and unchanged. Dimensions above
- * INT_MAX / 1000 are rejected for OpenCV 4.10 signed iteration-limit safety.
+ * INT_MAX / 1000 are rejected for OpenCV signed iteration-limit safety.
  */
 opencv_core_status
 opencv_core_mat_non_symmetric_eigen_decomposition(
@@ -2815,14 +2815,14 @@ opencv_core_mat_principal_component_analysis(
     opencv_core_mat_handle **out_eigenvectors);
 
 /*
- * Computes an OpenCV 4.10 LDA discriminant basis for row-aligned samples.
+ * Computes a cv::LDA discriminant basis for row-aligned samples.
  * samples has N rows of D features and labels has one Int32 C1 label per
  * sample. components is zero for min(C - 1, D), or a positive exact retained
  * count. Both output pointers must be non-null and distinct. On success,
  * eigenvalues is a Float64 K x 1 column and eigenvectors is Float64 D x K,
  * with one discriminant direction per column. Inputs are borrowed and
  * unchanged; both outputs own independent storage. On any failure both output
- * handles remain null. D must not exceed 8460 because OpenCV 4.10's internal
+ * handles remain null. D must not exceed 8460 because OpenCV's internal
  * eigensolver can take either a non-symmetric path or cv::eigen fallback.
  */
 opencv_core_status
@@ -2835,7 +2835,7 @@ opencv_core_mat_linear_discriminant_analysis(
 /*
  * Projects row-aligned Float32 or Float64 C1 samples through a borrowed LDA
  * discriminant basis. eigenvectors must be CV_64FC1 D x K with 1 <= K <= D;
- * source must be N x D with N >= 1. This calls OpenCV 4.10
+ * source must be N x D with N >= 1. This calls
  * cv::LDA::subspaceProject(eigenvectors, cv::Mat(), source), so source is
  * converted to the basis type and the independently owned Float64 C1 result
  * is source * eigenvectors. Inputs are borrowed and unchanged.
@@ -2848,8 +2848,8 @@ opencv_core_mat_lda_project(const opencv_core_mat_handle *source,
 /*
  * Reconstructs row-aligned Float32 or Float64 C1 LDA coordinates through a
  * borrowed discriminant basis. eigenvectors must be CV_64FC1 D x K with
- * 1 <= K <= D; coordinates must be N x K with N >= 1. This calls OpenCV
- * 4.10 cv::LDA::subspaceReconstruct(eigenvectors, cv::Mat(), coordinates),
+ * 1 <= K <= D; coordinates must be N x K with N >= 1. This calls
+ * cv::LDA::subspaceReconstruct(eigenvectors, cv::Mat(), coordinates),
  * so coordinates are converted to the basis type and the independently owned
  * Float64 C1 result is coordinates * eigenvectors^T. Inputs are borrowed and
  * unchanged.
@@ -2860,8 +2860,8 @@ opencv_core_mat_lda_reconstruct(const opencv_core_mat_handle *coordinates,
                                 opencv_core_mat_handle **out_result);
 
 /*
- * Computes the PCA basis of a borrowed sample Mat using the OpenCV
- * 4.10 cv::PCA retained-variance overload. orientation is 0
+ * Computes the PCA basis of a borrowed sample Mat using the
+ * cv::PCA retained-variance overload. orientation is 0
  * (samples are rows) or 1 (samples are columns). retained_variance
  * is forwarded as a double so C++ overload resolution selects
  * PCA::operator()(..., double retainedVariance) rather than the
@@ -2955,7 +2955,7 @@ opencv_core_mat_pseudo_inverse(
 
 /*
  * Computes the reciprocal 2-norm condition number of a borrowed Mat
- * from OpenCV 4.10 singular-values-only SVD (SVD::NO_UV). On success
+ * from OpenCV singular-values-only SVD (SVD::NO_UV). On success
  * *out_value is sigma_min / sigma_max from the compact W column, or
  * 0.0 when sigma_max is exactly 0. On entry *out_value is set to 0.0
  * when out_value is non-null. On failure *out_value remains 0.0. The
@@ -2971,7 +2971,7 @@ opencv_core_mat_reciprocal_condition_number(
  * using cv::SVD::solveZ. out_mat must be non-null and is initialized to null.
  * The independently owned result is published only after success; it remains
  * null on failure. The source is borrowed and unchanged. Raw inputs whose
- * OpenCV 4.10 SVD workspace arithmetic exceeds size_t are rejected.
+ * OpenCV SVD workspace arithmetic exceeds size_t are rejected.
  */
 opencv_core_status
 opencv_core_mat_svd_solve_zero(
@@ -2986,7 +2986,7 @@ opencv_core_mat_svd_solve_zero(
  *
  * source must be non-empty, at most two-dimensional, have 1 to 4
  * channels, and depth CV_8U, CV_8S, CV_16U, CV_16S, CV_32S, CV_32F, or
- * CV_64F. CV_16F is rejected because OpenCV 4.10 has no TransformFunc
+ * CV_64F. CV_16F is rejected because OpenCV has no TransformFunc
  * for it.
  *
  * coefficients must be non-empty, at most two-dimensional, single-channel
@@ -3016,7 +3016,7 @@ opencv_core_mat_transform(const opencv_core_mat_handle *source,
  * matrix. A 3-channel source requires a 4x4 matrix. Continuity is not
  * required. OpenCV converts a non-continuous or non-CV_64F matrix to an
  * internal Float64 coefficient buffer; this wrapper does not pre-convert
- * it. When abs(w) <= FLT_EPSILON, OpenCV 4.10 writes a zero vector for
+ * it. When abs(w) <= FLT_EPSILON, OpenCV writes a zero vector for
  * both Float32 and Float64 sources.
  */
 opencv_core_status
@@ -3051,7 +3051,7 @@ opencv_core_mat_perspective_transform(
  *
  * nonzeroRows is always 0. Source is borrowed and unmodified. The
  * independently owned result is published only
- * after success. Dimensions whose OpenCV 4.10 signed DFT count or
+ * after success. Dimensions whose OpenCV signed DFT count or
  * byte-size products would overflow int are rejected before cv::dft.
  * On failure *out_mat remains null.
  */
@@ -3073,10 +3073,10 @@ opencv_core_mat_dft(const opencv_core_mat_handle *source,
  *
  * DCT_ROWS is never set. Source is borrowed and unmodified. The
  * independently owned result is published only after success.
- * Transformed dimensions whose OpenCV 4.10 signed DCT work-buffer
+ * Transformed dimensions whose OpenCV signed DCT work-buffer
  * products would overflow int are rejected before cv::dct. A
  * Float32 source whose row step cannot be represented as the
- * signed int expected by OpenCV 4.10's IPP DCT path is also
+ * signed int expected by OpenCV's IPP DCT path is also
  * rejected. On failure *out_mat remains null.
  */
 opencv_core_status
@@ -3086,7 +3086,7 @@ opencv_core_mat_dct(const opencv_core_mat_handle *source,
 
 /*
  * Returns the smallest OpenCV-efficient DFT length N >= minimum_size
- * using cv::getOptimalDFTSize. OpenCV 4.10 efficient sizes are
+ * using cv::getOptimalDFTSize. OpenCV efficient sizes are
  * 2^p * 3^q * 5^r. This is a size lookup only: it does not allocate a
  * Mat or apply the separate DFT signed-arithmetic safety limits.
  *
@@ -3301,7 +3301,7 @@ opencv_core_mat_find_non_zero(const opencv_core_mat_handle *mat,
  * out_valid is 1 when every value is accepted and 0 otherwise. On an
  * invalid Mat, out_x and out_y are the first-invalid column and row.
  * On a valid Mat they are the sentinel (-1, -1). use_bounds must be
- * 0 or 1. Float16 is not supported by OpenCV 4.10 checkRange.
+ * 0 or 1. cv::checkRange has no Float16 path; Ada rejects Float16 first.
  */
 opencv_core_status
 opencv_core_mat_check_range(const opencv_core_mat_handle *source,
@@ -3311,8 +3311,8 @@ opencv_core_mat_check_range(const opencv_core_mat_handle *source,
 /*
  * Replaces every NaN scalar in an existing Float32 Mat with value.
  * Mutates the Mat represented by the borrowed handle; the handle is
- * not consumed and no result Mat is allocated. OpenCV 4.10 accepts
- * only CV_32F depth and converts value to float before storing it.
+ * not consumed and no result Mat is allocated. Ada accepts only Float32
+ * (OpenCV 5.0 also accepts CV_64F); value is converted to float first.
  * Finite values and +/- Infinity are left unchanged. Multi-channel
  * and non-contiguous Mats are supported.
  */
@@ -3392,7 +3392,7 @@ opencv_core_file_storage_read_mat(
 
 /*
  * Writes a signed 32-bit integer under name using FileStorage::write.
- * name is a borrowed NUL-terminated node name. OpenCV 4.10 formats
+ * name is a borrowed NUL-terminated node name. OpenCV formats
  * integers through fs::itoa()/abs(int), so INT32_MIN is rejected.
  */
 opencv_core_status
@@ -3433,7 +3433,7 @@ opencv_core_file_storage_read_double(
 
 /*
  * Writes a borrowed NUL-terminated string under name using
- * FileStorage::write. OpenCV 4.10 persistence emitters measure string
+ * FileStorage::write. OpenCV persistence emitters measure string
  * values with strlen, so embedded NUL cannot be persisted.
  */
 opencv_core_status
@@ -3501,7 +3501,7 @@ opencv_core_file_storage_open_memory_write(
 /*
  * Opens a memory-backed cv::FileStorage for reading and returns a newly
  * owned handle. text is a borrowed NUL-terminated document. OpenCV
- * 4.10 auto-detects XML, YAML, or JSON from the contents. The handle
+ * auto-detects XML, YAML, or JSON from the contents. The handle
  * owns a copy of text for the FileStorage lifetime. On success
  * out_storage receives one independently owned handle. On every failure
  * out_storage remains null.

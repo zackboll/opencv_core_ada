@@ -4,10 +4,24 @@ import json
 
 from link_gnatdoc_types import require, sources, pages_and_targets, words, plain
 from highlight_gnatdoc_ada import strip_highlighting
+from core_doc_requalification import requalification
 
 CONFIGURATION = 'config/opencv_core_config.gpr'
 PUBLIC = 'public'
+# CORE-DOC-VER-001R1 fresh compiler maps for the comment-only source revision.
 MAPPINGS = {
+    'f405597289217976be3fd42d4b84da66179ebc412dad0f0a8c450861ee42a442': (
+        'docs/verified-examples/debian-core-doc-ver-001.json',
+        'ee12bd1257568a99c15c2571fd5e48a7ca064e8a938397deeec6aa729848be31'),
+    'bed2db88e56f69de7bd437319d8b1ed4086afe24629e423f9afd1fb113b8442b': (
+        'docs/verified-examples/ubuntu-core-doc-ver-001.json',
+        '5a7600d95f38e52b8214806f489fa826f4e56e1dc2efb4cc3c2de4d6dadb4cb7'),
+}
+# Frozen CORE-DOC-EXAMPLES-002R1 maps. Each successor may differ from its
+# predecessor only where generator output is bound to the edited source bytes
+# or to the whole frozen snapshot; profiles, identities, coordinates, skips,
+# compiler/ALI/Libadalang/native fingerprints and other inputs must be equal.
+PREDECESSORS = {
     'f405597289217976be3fd42d4b84da66179ebc412dad0f0a8c450861ee42a442': (
         'docs/verified-examples/debian.json',
         '2eeeb283aa0a54113dbeb423653549f13f6238f587c282ab391b9debfc6ba61a'),
@@ -15,6 +29,7 @@ MAPPINGS = {
         'docs/verified-examples/ubuntu.json',
         '7ef2b7d4da95909a382661dc2a501556c416241a15f12070fe9b27e81ff23f2e'),
 }
+SOURCE_BOUND = 'src/opencv-core.ads'
 # Reviewed coordinates, never selected by name/order or a URL in metadata.
 CALLS = ((1130, 5, 28, 87, 93, 'Create'),
          (1242, 6, 34, 168, 173, 'Clone'),
@@ -44,7 +59,36 @@ def selected_mapping(root):
     require(data['inputs'][CONFIGURATION] == key, 'incorrect mapping selection')
     for name, expected in data['inputs'].items():
         require(digest(regular(root, name).read_bytes()) == expected, 'stale/missing compiler input: ' + name)
+    successor_of_predecessor(root, key, data)
     return MAPPINGS[key], data
+
+
+def successor_of_predecessor(root, key, data):
+    """Bound a fresh map against its frozen predecessor; never a substitute check."""
+    name, pin = PREDECESSORS[key]
+    payload = regular(root, name).read_bytes()
+    require(digest(payload) == pin, 'frozen predecessor compiler mapping changed')
+    old = json.loads(payload)
+    before, after = old['inputs'][SOURCE_BOUND], data['inputs'][SOURCE_BOUND]
+    reviewed = requalification(root)['sources'][SOURCE_BOUND]
+    require((before, after) == (reviewed['before'], reviewed['after']),
+            'successor map does not requalify exactly the reviewed source revision')
+
+    def normalized(value):
+        value = json.loads(json.dumps(value))
+        value['inputs'][SOURCE_BOUND] = None
+        for field in ('evidence', 'project'):
+            value['provenance'][field] = None
+        for record in value['mappings']:
+            record['selected']['sha256'] = record['compiler_selected']['sha256'] = None
+            record['evidence_sha256'] = None
+        return value
+    require(all(r['selected']['sha256'] == r['compiler_selected']['sha256'] == before
+                for r in old['mappings']) and
+            all(r['selected']['sha256'] == r['compiler_selected']['sha256'] == after
+                for r in data['mappings']), 'compiler declaration source identity changed')
+    require(normalized(old) == normalized(data),
+            'compiler map changed outside the requalified source/snapshot boundary')
 
 
 def staged_config(root):

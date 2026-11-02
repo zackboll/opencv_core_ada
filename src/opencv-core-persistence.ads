@@ -37,9 +37,9 @@ private with OpenCV.Internal.C_API;
 --  Integer persistence uses OpenCV's signed 32-bit integer file node.
 --  Write rejects an Ada Integer outside that domain with OpenCV_Error
 --  rather than leaking Constraint_Error from a narrowing conversion.
---  With OpenCV 4.10, Write cannot persist -2_147_483_648 because
---  OpenCV's integer formatter uses abs(int); the supported write range
---  is -2_147_483_647 .. 2_147_483_647. This is an OpenCV 4.10 writer
+--  Write cannot persist -2_147_483_648 because OpenCV's integer
+--  formatter uses abs(int); the supported write range is
+--  -2_147_483_647 .. 2_147_483_647. This is an OpenCV writer
 --  limitation, not an Ada or file-format limitation.
 --  Read_Integer requires an actual integer node and does not round a
 --  real node.
@@ -49,10 +49,10 @@ private with OpenCV.Internal.C_API;
 --  node types are rejected.
 --
 --  Read_String requires an actual string node and does not stringify
---  numeric values. OpenCV 4.10 persistence emitters measure string
+--  numeric values. OpenCV persistence emitters measure string
 --  values with strlen, so Write rejects an embedded NUL in a String
 --  value. Node names, filenames, and memory-read text also reject
---  embedded NUL because they cross a NUL-terminated ABI. OpenCV 4.10
+--  embedded NUL because they cross a NUL-terminated ABI. OpenCV
 --  memory-read measures the document with strlen.
 --
 --  Sequence indices are zero-based and match OpenCV FileNode
@@ -129,7 +129,7 @@ package OpenCV.Core.Persistence is
    function Create_Memory (Format : Storage_Format) return File_Storage;
 
    --  Opens Text as a Read_Only memory-backed File_Storage. OpenCV
-   --  4.10 auto-detects XML, YAML, or JSON from the contents. Raises
+   --  auto-detects XML, YAML, or JSON from the contents. Raises
    --  OpenCV_Error if Text is empty, contains an embedded NUL, or
    --  cannot be parsed.
    --  @param Text A previously serialized document.
@@ -167,9 +167,9 @@ package OpenCV.Core.Persistence is
    --  embedded NUL.
    procedure Write (Self : in out File_Storage; Name : String; Value : Mat);
 
-   --  Writes Value as an OpenCV signed 32-bit integer node. With
-   --  OpenCV 4.10, Value must be in -2_147_483_647 .. 2_147_483_647
-   --  because OpenCV formats integers with abs(int). Raises
+   --  Writes Value as an OpenCV signed 32-bit integer node. Value must
+   --  be in -2_147_483_647 .. 2_147_483_647 because OpenCV formats
+   --  integers with abs(int). Raises
    --  OpenCV_Error if Value is outside that write domain, if Self is
    --  not open for writing, or if Name is empty or contains an
    --  embedded NUL.

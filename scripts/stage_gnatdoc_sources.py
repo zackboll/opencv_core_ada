@@ -9,7 +9,8 @@ import shutil
 from pathlib import Path
 
 from link_gnatdoc_types import sources, require
-from verify_core_enhancer import record, AUTHORED_SHA, THEME_SOURCE, ASSETS, digest
+from verify_core_enhancer import THEME_SOURCE, ASSETS, digest
+from core_doc_requalification import authored as requalified_authored
 from core_verified_examples import PUBLIC, selected_mapping, staged_config, regular
 
 
@@ -28,7 +29,7 @@ def stage(root):
     (destination / 'docs/gnatdoc-enhancer.toml').write_bytes(staged_config(root))
     shutil.copytree(root / 'docs/enhancer-qualification', destination / 'docs/enhancer-qualification')
     shutil.copytree(root / 'docs/verified-examples', destination / 'docs/verified-examples')
-    authored = record('gnatdoc-authored.json', AUTHORED_SHA)
+    authored = requalified_authored(root)
     require(digest((root / THEME_SOURCE).read_bytes()) == ASSETS['gnatdoc-theme.css'],
             'unreviewed Core theme source')
     for name in [*authored['inputs'], THEME_SOURCE]:

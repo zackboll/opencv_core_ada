@@ -84,9 +84,13 @@ class Publication(unittest.TestCase):
 
     def test_rehashed_source_or_configuration_is_not_approved(self):
         root = Path(self.temp.name) / 'inputs'
-        from core_verified_examples import selected_mapping
+        from core_verified_examples import selected_mapping, PREDECESSORS, CONFIGURATION, digest
+        from core_doc_requalification import RECORD
         (mapping_name, _), mapping = selected_mapping(ROOT)
-        for name in [mapping_name, *mapping['inputs']]:
+        # CORE-DOC-VER-001R1 map selection also authenticates the frozen
+        # predecessor map and the reviewed requalification record.
+        predecessor, _ = PREDECESSORS[digest((ROOT / CONFIGURATION).read_bytes())]
+        for name in [mapping_name, predecessor, RECORD, *mapping['inputs']]:
             target = root / name
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(ROOT / name, target)

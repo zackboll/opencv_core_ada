@@ -15,6 +15,7 @@ from pathlib import Path
 from highlight_gnatdoc_ada import strip_highlighting
 from link_gnatdoc_types import require, plain
 from render_gnatdoc_guides import GUIDES, expected as original_guides
+from core_doc_requalification import publication as requalified_publication
 
 COUNTS = {'package': 195, 'symbol': 215, 'operation': 1047, 'guide': 5}
 # Additions already in Core's hash-qualified source/native acquisition but not
@@ -29,7 +30,10 @@ FIXTURE_ADDITIONS = {
 CURRENT_COUNTS = {**COUNTS, 'symbol': 216, 'operation': 1071}
 RECONCILIATION_SHA = 'a89090f9e2315ef15826659777ffa4bbd0877e0cd29219c338c31efdad7bf4b0'
 INDEX = 'api/gnatdoc-search-index.json'
-INDEX_SHA = '91f0b80713ecad655e5560330a794244745ea0c19a71e60ce175f1adaac00bba'
+# CORE-DOC-VER-001R1: search records embed source comment text, so the
+# comment-only edits requalify these bytes. The predecessor digest is frozen.
+PREDECESSOR_INDEX_SHA = '91f0b80713ecad655e5560330a794244745ea0c19a71e60ce175f1adaac00bba'
+INDEX_SHA = 'd861a99d234fdfdfa1e96bb83ab2e36c0d3945b4d2c1395f00b19345b4a76b3c'
 STYLE = '<link rel="stylesheet" href="gnatdoc-search.css">'
 
 
@@ -132,6 +136,9 @@ def validate_search(site, source, pages):
             'search schema/records differ from independent public source/native/guide identities')
     require(hashlib.sha256(expected).hexdigest() == INDEX_SHA,
             'qualified search-index bytes changed')
+    change = requalified_publication()[INDEX]
+    require((change['before'], change['after']) == (PREDECESSOR_INDEX_SHA, INDEX_SHA),
+            'search-index requalification differs from reviewed record')
     return expected, records
 
 
