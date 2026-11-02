@@ -154,3 +154,81 @@ run lacked its object directory; the clean rerun has zero warnings and identical
 native bytes. The optional research parser run reports 17 passes and one accurately
 skipped full private integration; the fresh real Ubuntu generator tests pass all
 four controls normally and optimized without skips.
+# CORE-DOC-VER-001R1 — successor evidence for comment-only edits
+
+CORE-DOC-VER-001 changed only full-line Ada comments in `src/opencv-core.ads`
+(109 lines) and `src/opencv-core-persistence.ads` (9 lines), with line counts
+unchanged, plus C header comments outside the documentation inventory. Every
+002R1 record above stays byte-identical, pinned and auditable. Successor
+records are separate files:
+
+| Frozen 002R1 record | Successor |
+| --- | --- |
+| `debian.json` | `debian-core-doc-ver-001.json` |
+| `ubuntu.json` | `ubuntu-core-doc-ver-001.json` |
+| `public-generic-qualification.json` | `public-generic-qualification-core-doc-ver-001.json` |
+| `../enhancer-qualification/gnatdoc-generic-qualification.json` | `../enhancer-qualification/gnatdoc-generic-qualification-core-doc-ver-001.json` |
+| `../enhancer-qualification/gnatdoc-authored.json` | `../enhancer-qualification/gnatdoc-authored-core-doc-ver-001.json` |
+
+`../enhancer-qualification/core-doc-ver-001-requalification.json` is the reviewed
+delta: base commit `0798900142660fb7ac5b9ab395c808e911242fa7`, the two source
+hashes, the two changed pristine native pages, and the four changed publication
+files (the two package pages, `api/gnatdoc-search-index.json`, and
+`api/index.html`, whose only change is the search-authority digest). It also
+records the generation environment and compiler-map comparisons. It was emitted by
+`scripts/requalify_core_doc_ver_001.py`, which requires every "before" value to
+equal the frozen records and a fresh base generation to reproduce them.
+
+`scripts/core_doc_requalification.py` accepts a successor only when it equals its
+frozen predecessor except exactly those reviewed entries. Historical
+publication comparisons still require every other file to be byte-identical;
+each requalified file must have its frozen "before" hash and exactly its reviewed
+"after" hash. Compiler maps are bounded against their predecessors: only the
+`src/opencv-core.ads` hash, the per-call source hashes and the snapshot-bound
+`evidence`/`project` fingerprints (and the `evidence_sha256` derived from them) may
+differ. Identities, complete profiles, declaration and call coordinates, the
+line-9 `UNSUPPORTED` end-name, the other 26 inputs, and the native, compiler, ALI
+and Libadalang fingerprints must be equal. No output allowlist was broadened and
+the independent oracles still reconstruct every page, search record and
+destination from current source and native bytes. After authenticated history is
+acquired, `compare_core_doc_examples.py` checks each changed pristine page. With
+paragraph text removed it must equal the historical page, and each changed
+paragraph must be verbatim current comment text.
+
+## Environment
+
+The retained `/home/zboll/qualifications/core-doc-examples-002r1` workspace was not
+reachable from the cloud qualification session. The environment was rebuilt
+instead, and its tool identities were checked against the records above:
+
+* **Tools:** GNAT 16.1.0 `gcc`/`gnat1`, GPRbuild 26.0.1, Alire 2.1.1, the GNATdoc
+  26.0.0 binary, the v0.1.5 wheel and the generator are byte-identical to
+  `qualification.json`.
+* **Libadalang 26.0.0:** built with the enhancer's `research/gnatdoc031`
+  recipe. The release archive SHA-512 was verified by Alire. The egress policy
+  blocked GitHub source-zip downloads (HTTP 403), so 12 dependency manifests were
+  re-pinned to the same upstream v26.0.0 tag commits over git. The dependency
+  solution otherwise equals the recorded `alire.lock`; only the system `make`
+  differs (4.3 vs 4.4.1).
+* **Analyzer identity:** the Python binding is byte-identical to the qualified one
+  (`945bc33d…`), so the `libadalang` provenance fingerprint equals the qualified
+  `2d4b8d41…`. The native `.so` is a fresh build with a different hash.
+* **Analyzer tests:** GNATDOC-033 generator tests pass normally and with `-O`
+  (4/4). GNATDOC-032 passes 17 with the one recorded private skip.
+
+Equivalence was checked by regenerating the frozen maps from Core
+`dbdb410c0d86b640271733d7b999ede5a5f92267`. Ubuntu matches in 118/123 fields and
+Debian in 117/123. In both, every semantic field, every input, and the native,
+compiler, ALI and Libadalang fingerprints are equal. `provenance.project` cannot be
+reproduced because it includes the original, unrecorded invocation directory.
+The Debian `provenance.evidence` covers an unrecorded original snapshot file
+listing.
+
+Successor maps were generated from `git archive` of the comment-edit tree
+`136155e73724de62c80e79e986c6752048b04582`, with the generator invoked from the
+snapshot root. Fresh regeneration is byte-identical. **Deviation:** a real Debian 13
+environment could not be provisioned (no Debian package mirror), so the Debian map
+was compiled on Ubuntu 24.04 using the byte-identical qualified Debian
+configuration GPR (`f4055972…`). All 27 inputs equal the qualified Debian inputs,
+and the OpenCV version is not a mapping input, but this differs from the 002R1
+practice described above.

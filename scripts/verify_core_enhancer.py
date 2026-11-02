@@ -37,7 +37,9 @@ QUALIFICATION = ROOT / 'docs/enhancer-qualification'
 # core_doc_requalification.py and docs/enhancer-qualification/.
 THEME_SOURCE = 'docs/assets/gnatdoc-theme.css'
 CONFIG_SOURCE = 'docs/gnatdoc-enhancer.toml'
-CONFIG_SHA = 'f8dbafdb5f524bd6c877842f37bc904193fdafeadb175320c63e297b4310fcbb'
+# CORE-DOC-VER-001R1 successor-record configuration; the CORE-DOC-EXAMPLES-002R1
+# configuration digest was f8dbafdb5f524bd6c877842f37bc904193fdafeadb175320c63e297b4310fcbb.
+CONFIG_SHA = '751d9b7d245c9e50ad8edb645cb2e5d81a40d82cb8495157569b921bdc979093'
 HISTORICAL_SHA = '100af3824ee113bf1e58e166501d3fba2141bdb4386540cf1d768f2df3812851'
 EXAMPLES_SHA = '2d2a628b00534d30bfc7eb6b5568cad8584a5ff7846cfbd3081b68e70a5f318e'
 EXAMPLE_CHANGES = {'index.html', 'api/presentation.json',

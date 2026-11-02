@@ -12,10 +12,10 @@ PUBLIC = 'public'
 MAPPINGS = {
     'f405597289217976be3fd42d4b84da66179ebc412dad0f0a8c450861ee42a442': (
         'docs/verified-examples/debian-core-doc-ver-001.json',
-        'DEBIAN_MAP_SHA_PLACEHOLDER'),
+        'ee12bd1257568a99c15c2571fd5e48a7ca064e8a938397deeec6aa729848be31'),
     'bed2db88e56f69de7bd437319d8b1ed4086afe24629e423f9afd1fb113b8442b': (
         'docs/verified-examples/ubuntu-core-doc-ver-001.json',
-        'UBUNTU_MAP_SHA_PLACEHOLDER'),
+        '5a7600d95f38e52b8214806f489fa826f4e56e1dc2efb4cc3c2de4d6dadb4cb7'),
 }
 # Frozen CORE-DOC-EXAMPLES-002R1 maps. Each successor may differ from its
 # predecessor only where generator output is bound to the edited source bytes

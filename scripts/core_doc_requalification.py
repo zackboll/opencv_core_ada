@@ -20,7 +20,7 @@ from link_gnatdoc_types import require
 ROOT = Path(__file__).resolve().parent.parent
 QUALIFICATION = 'docs/enhancer-qualification'
 RECORD = QUALIFICATION + '/core-doc-ver-001-requalification.json'
-RECORD_SHA = 'REQUALIFICATION_SHA_PLACEHOLDER'
+RECORD_SHA = 'e78a285a0aa7a7e21307e0e6881b8c54b4904cfe549fed158a95693070741e26'
 # (frozen predecessor, its original pin), (successor, its reviewed pin)
 GENERIC = ((QUALIFICATION + '/gnatdoc-generic-qualification.json',
             '146a6f6375be14788996e04585ac141bfc308c5be87b040198f5d74c5c74bcfc'),
@@ -33,7 +33,7 @@ AUTHORED = ((QUALIFICATION + '/gnatdoc-authored.json',
 PUBLIC_GENERIC = (('docs/verified-examples/public-generic-qualification.json',
                    '2623a2d5746241e567434fe0db4b86ea7b87ad518311cb24e45c71bd67e329be'),
                   ('docs/verified-examples/public-generic-qualification-core-doc-ver-001.json',
-                   'PUBLIC_7356b7a95a9edc1cb8c1189d803cf61f952868297403c27125a4adcf4bcc7a77'))
+                   'bfbde59db7e3407d4f61abd4a3439d4b5e967d1b5d37c4b36c22049282f28137'))
 PARAGRAPH = re.compile(r'<p>([^<]*)')
 
 

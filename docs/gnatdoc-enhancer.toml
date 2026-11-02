@@ -118,5 +118,6 @@ sha256 = "8ff8d3ce6b48f658c196abe11ea39a821e03bf50a85c10fea6c026dde3b9eff3"
 
 # Staging selects exactly one immutable reviewed map using actual GPR bytes.
 [guides.verified_examples]
-mapping = "docs/verified-examples/debian.json"
-sha256 = "2eeeb283aa0a54113dbeb423653549f13f6238f587c282ab391b9debfc6ba61a"
+# CORE-DOC-VER-001R1 successor; the CORE-DOC-EXAMPLES-002R1 map is retained.
+mapping = "docs/verified-examples/debian-core-doc-ver-001.json"
+sha256 = "ee12bd1257568a99c15c2571fd5e48a7ca064e8a938397deeec6aa729848be31"
