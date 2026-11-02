@@ -3301,8 +3301,7 @@ opencv_core_mat_find_non_zero(const opencv_core_mat_handle *mat,
  * out_valid is 1 when every value is accepted and 0 otherwise. On an
  * invalid Mat, out_x and out_y are the first-invalid column and row.
  * On a valid Mat they are the sentinel (-1, -1). use_bounds must be
- * 0 or 1. cv::checkRange has no Float16 path; the public Ada layer
- * rejects Float16 before this call.
+ * 0 or 1. cv::checkRange has no Float16 path; Ada rejects Float16 first.
  */
 opencv_core_status
 opencv_core_mat_check_range(const opencv_core_mat_handle *source,
@@ -3312,10 +3311,8 @@ opencv_core_mat_check_range(const opencv_core_mat_handle *source,
 /*
  * Replaces every NaN scalar in an existing Float32 Mat with value.
  * Mutates the Mat represented by the borrowed handle; the handle is
- * not consumed and no result Mat is allocated. OpenCV 4.x accepts
- * only CV_32F depth; OpenCV 5.0 also accepts CV_64F. The public Ada
- * layer accepts only Float32. For CV_32F, value is converted to float
- * before it is stored.
+ * not consumed and no result Mat is allocated. Ada accepts only Float32
+ * (OpenCV 5.0 also accepts CV_64F); value is converted to float first.
  * Finite values and +/- Infinity are left unchanged. Multi-channel
  * and non-contiguous Mats are supported.
  */

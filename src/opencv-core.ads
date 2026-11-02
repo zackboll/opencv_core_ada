@@ -994,16 +994,14 @@ package OpenCV.Core is
    --  shape, depth or channel requirements or OpenCV reports a failure.
    function Solve_Least_Squares (Self : Mat; Right_Hand_Side : Mat) return Mat;
 
-   --  Solves a continuous linear program using the cv::solveLP simplex
-   --  solver: maximize c * x subject to A * x <= b and x >= 0. Objective
-   --  is a non-empty C1 Float32 or Float64 1 x N or N x 1 vector
-   --  (N >= 1). Constraints is a
+   --  Solves a continuous linear program using cv::solveLP simplex: maximize
+   --  c * x subject to A * x <= b and x >= 0. Objective is a non-empty C1
+   --  Float32 or Float64 1 x N or N x 1 vector (N >= 1). Constraints is a
    --  non-empty C1 Float32 or Float64 M x (N + 1) Mat (M >= 1), with A in its
    --  first N columns and b in its last column. Input depths may differ, but
    --  every coefficient must be finite. Constraint_Tolerance is finite and
-   --  nonnegative. On OpenCV 4.8 and later it is passed as constr_eps.
-   --  Releases before 4.8 have no constr_eps parameter, so they accept
-   --  only 0.0 and the 1.0E-12 default; any other tolerance raises
+   --  nonnegative. On OpenCV 4.8+ it is passed as constr_eps. Earlier releases
+   --  accept only 0.0 and the 1.0E-12 default; any other tolerance raises
    --  OpenCV_Error. Numerical_Loss is produced only when the linked OpenCV
    --  reports SOLVELP_LOST. Unique_Optimum and Multiple_Optima contain one
    --  arbitrary optimum as an independently owned N x 1 Float64 C1 Solution;
@@ -1587,11 +1585,9 @@ package OpenCV.Core is
    --  elements and either one channel or the same channel count as Self.
    --  The result has Self's shape and channel count and Table's depth, and
    --  owns independent storage. Int8 sources are indexed by their stored
-   --  8-bit pattern (0 .. 255), as cv::LUT does. This binding rejects
-   --  Float16 tables and 16-bit sources on every supported OpenCV release;
-   --  the additional native LUT forms in OpenCV 5.0 are not exposed. A 0x0
-   --  8-bit source produces a 0x0 result; a default empty Mat is rejected
-   --  by OpenCV.
+   --  8-bit pattern (0 .. 255), as cv::LUT does. Float16 tables and 16-bit
+   --  sources are rejected on every release; OpenCV 5.0's native forms are
+   --  not exposed. A 0x0 source yields 0x0; OpenCV rejects default empty Mats.
    --  @param Self The UInt8 or Int8 source Mat.
    --  @param Table The 256-entry lookup table.
    --  @return A new Mat with independent storage.
@@ -4958,10 +4954,9 @@ package OpenCV.Core is
    --  along Axis: Across_Rows produces 1 x Self.Columns row indices, while
    --  Across_Columns produces Self.Rows x 1 column indices. Self must be
    --  non-empty and single-channel; supported depths are UInt8, Int8, UInt16,
-   --  Int16, Int32, Float32, and Float64. This binding rejects Float16 on
-   --  every supported OpenCV release, including OpenCV 5.0, whose native
-   --  reduceArgMin and reduceArgMax dispatch CV_16F. Equal extrema select
-   --  the first or last occurrence as requested. Non-contiguous
+   --  Int16, Int32, Float32, and Float64. Float16 is rejected on every release
+   --  (OpenCV 5.0's native CV_16F path is not exposed). Equal
+   --  extrema select the first or last occurrence as requested. Non-contiguous
    --  Regions are supported, Self is unchanged, and results do not share its
    --  storage. OpenCV leaves behavior unspecified when Float32 or Float64 NaN
    --  values participate in the reduction.
@@ -5287,9 +5282,8 @@ package OpenCV.Core is
    --  row-major order. Multi-channel Mats are checked channel-by-channel;
    --  the reported Point identifies the element, not a channel. Supports
    --  UInt8, Int8, UInt16, Int16, Int32, Float32, and Float64. Float16 is
-   --  rejected because cv::checkRange has no Float16 path. Empty Mats,
-   --  including a default empty Mat and typed 0x0 Mats, are valid when
-   --  they contain no elements.
+   --  rejected: cv::checkRange has no Float16 path. Empty Mats, including a
+   --  default empty Mat and typed 0x0 Mats, are valid with no elements.
    --  Non-contiguous Regions are accepted; First_Invalid is relative to
    --  Self. Does not modify Self.
    --  @param Self The Mat to check.
@@ -5333,12 +5327,11 @@ package OpenCV.Core is
    --  the authoritative triangle. Upper_Triangle, the default, preserves
    --  the diagonal and upper triangle and copies each upper-triangle
    --  element onto its reflected lower-triangle location. That mapping
-   --  is cv::completeSymm with lowerToUpper=false. Lower_Triangle
-   --  preserves the diagonal and lower triangle and copies each
-   --  lower-triangle element onto its reflected upper-triangle location.
-   --  Self must be square and Float32 or Float64. Any valid channel count
-   --  is accepted because OpenCV copies each complete element with
-   --  elemSize().
+   --  is cv::completeSymm lowerToUpper=false. Lower_Triangle preserves the
+   --  diagonal and lower triangle and copies each lower-triangle element
+   --  onto its reflected upper-triangle location. Self must be square
+   --  and Float32 or Float64. Any valid channel count is accepted
+   --  because OpenCV copies each complete element with elemSize().
    --  Dimensions, depth, and channel count are unchanged. Continuity is
    --  not required. Non-contiguous Regions are supported and mutate the
    --  corresponding parent pixels around the Region's own diagonal. A
