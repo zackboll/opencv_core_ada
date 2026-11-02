@@ -83,11 +83,16 @@ jobs:
         run: '"$DOC_PYTHON" -m unittest discover -s scripts -p ''test_core_enhancer.py'' -v'
       - name: Qualify independent Ada examples and security mutations
         run: '"$DOC_PYTHON" -m unittest discover -s scripts -p ''test_core_examples.py'' -v'
+      - name: Qualify immutable compiler-map selection and input rejection
+        run: '"$DOC_PYTHON" -m unittest discover -s scripts -p ''test_core_verified_examples.py'' -v'
+      - name: Run complete Core documentation Python regression suite
+        run: '"$DOC_PYTHON" -m unittest discover -s scripts -p ''test_*.py'' -v'
       - name: Acquire authenticated historical publication
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           sh scripts/acquire_core_doc_baseline.sh
+          "$DOC_PYTHON" scripts/acquire_core_doc_v014.py
           "$DOC_PYTHON" scripts/compare_core_doc_examples.py
       - name: Qualify real-browser package and declaration navigation
         run: |
@@ -137,13 +142,15 @@ jobs:
             obj/docs/browser-screenshots/
             obj/docs/historical/run.json
             obj/docs/historical/artifact.json
+            obj/docs/v014/run.json
+            obj/docs/v014/artifact.json
             .doc-tools/enhancer-release/SHA256SUMS
             .doc-tools/enhancer-release/release-provenance.json
       - name: Configure Pages
-        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: actions/configure-pages@v5
       - name: Upload Pages artifact
-        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: actions/upload-pages-artifact@v3
         with:
           path: _site/
@@ -151,7 +158,7 @@ jobs:
           retention-days: 30
 
   deploy:
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: build
     runs-on: ubuntu-24.04
     permissions:

@@ -8,6 +8,7 @@ from enhance_gnatdoc_instances import discover, VECTORS, title
 from verify_core_enhancer import validate_native
 from render_gnatdoc_guides import expected, GUIDES
 from verify_core_examples import landing_example
+from core_verified_examples import compiler_destinations
 from html.parser import HTMLParser
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -85,6 +86,8 @@ guide_pages = expected(ROOT, native)
 example_pages = {'index.html': landing_example(ROOT, native).decode(),
                  **{f'guides/{slug}.html': guide_pages[slug + '.html'].decode() for slug in GUIDES}}
 examples = {name: Examples(page).blocks for name, page in example_pages.items()}
+(ROOT / 'obj/docs/browser-compiler-oracle.json').write_text(
+    json.dumps(compiler_destinations(ROOT, native), indent=2) + '\n')
 (ROOT / 'obj/docs/browser-examples-oracle.json').write_text(json.dumps(examples, indent=2) + '\n')
 print(f'Independent examples oracle: {sum(map(len, examples.values()))} Ada blocks; '
       f'{sum(len(b["links"]) for bs in examples.values() for b in bs)} verified links')

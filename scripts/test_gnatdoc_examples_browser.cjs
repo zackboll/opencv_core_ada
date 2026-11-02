@@ -3,6 +3,7 @@ const {chromium} = require(process.env.PLAYWRIGHT_MODULE);
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const root = path.resolve(__dirname, '..');
 const base = process.env.DOC_URL || 'http://127.0.0.1:8071/';
 const evidence = process.env.DOC_EVIDENCE || path.resolve(__dirname, '../obj/docs/browser-screenshots');
 const oracle = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../obj/docs/browser-examples-oracle.json')));
@@ -61,6 +62,14 @@ fs.mkdirSync(evidence, {recursive: true});
             const actualLinks = await block.locator('a').evaluateAll(es => es.map(e =>
               ({href: e.getAttribute('href'), text: e.textContent})));
             assert.deepEqual(actualLinks, spec.links, 'only independently authorized API references');
+            assert.equal(await block.locator('a a').count(), 0, 'no nested API links');
+            assert.ok(await block.locator('a').evaluateAll(es => es.every((e, i) => {
+              const a = e.getBoundingClientRect();
+              return es.slice(i + 1).every(other => {
+                const b = other.getBoundingClientRect();
+                return a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top;
+              });
+            })), 'no overlapping API links');
             for (const kind of Object.keys(palette[colorScheme]).filter(k => k !== 'link')) {
               const spans = block.locator(`.ada-${kind}`);
               assert.equal(await spans.count(), spec.tokens[kind] || 0);
@@ -105,6 +114,20 @@ fs.mkdirSync(evidence, {recursive: true});
             const destination = new URL(link.href, url);
             await page.waitForURL(destination.href);
             assert.equal(await page.locator('h4:target').getAttribute('id'), destination.hash.slice(1));
+            if (name === 'index.html') {
+              const calls = JSON.parse(fs.readFileSync(path.join(root, 'obj/docs/browser-compiler-oracle.json')));
+              const call = calls.find(c => `api/${c.href}` === link.href);
+              if (call) {
+                const profile = await page.locator('h4:target + pre').textContent();
+                assert.equal(profile, call.profile, 'complete exact compiler-selected native profile');
+                if (call.text === 'Clone') assert.ok(!profile.includes('UMat'), 'reject UMat Clone');
+                await page.goto(url);
+                await page.locator('.ada-example a').filter({hasText: new RegExp(`^${call.text}$`)}).click();
+                await page.waitForURL(destination.href);
+                assert.equal(await page.locator('h4:target + pre').textContent(), call.profile,
+                  'mouse activation reaches exact declaration too');
+              }
+            }
             links++;
           }
         }

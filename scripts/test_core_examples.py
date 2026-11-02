@@ -10,6 +10,7 @@ from pathlib import Path
 
 from verify_core_enhancer import validate, digest
 from verify_core_examples import CSS_SHA, STYLESHEET, landing_example, native_destinations
+from core_verified_examples import compiler_destinations
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -42,9 +43,9 @@ class Examples(unittest.TestCase):
         self.check()
 
     def test_stylesheet_is_official_wheel_bytes(self):
-        wheel = ROOT / '.doc-tools/enhancer-release/ada_gnatdoc_enhancer-0.1.4-py3-none-any.whl'
+        wheel = ROOT / '.doc-tools/enhancer-release/ada_gnatdoc_enhancer-0.1.5-py3-none-any.whl'
         self.assertEqual(digest(wheel.read_bytes()),
-                         '057b7945a71d3afb10cbabec32111b4ac2d94a116c6b8553f70c71229a68ffc7')
+                         'd712d330f213fc1909a66c47bc2c7e5e15d5ec687222bea3c4922f5243db4247')
         with zipfile.ZipFile(wheel) as archive:
             css = archive.read('ada_gnatdoc_enhancer/' + STYLESHEET)
         self.assertEqual(digest(css), CSS_SHA)
@@ -61,10 +62,25 @@ class Examples(unittest.TestCase):
         self.mutation('guides/ownership-and-views.html', lambda text: text.replace(
             destinations['opencv.core.mat'][0], destinations['opencv.core.umat'][0]))
 
+    def test_rehashed_compiler_link_wrong_existing_anchor(self):
+        calls = compiler_destinations(ROOT, self.site)
+        self.mutation('index.html', lambda text: text.replace(calls[0]['href'], calls[2]['href']))
+
+    def test_rehashed_mat_clone_replaced_with_umat_clone(self):
+        from link_gnatdoc_types import sources, pages_and_targets, plain
+        from highlight_gnatdoc_ada import strip_highlighting
+        pages, _ = pages_and_targets(self.site / 'api', sources(ROOT / 'src'))
+        page, _, sections = pages['opencv.core']
+        matches = [section for section in sections if
+                   plain(strip_highlighting(section[3])).strip() == 'function Clone (Self : UMat) return UMat']
+        self.assertEqual(len(matches), 1)
+        mat = compiler_destinations(ROOT, self.site)[1]['href']
+        self.mutation('index.html', lambda text: text.replace(mat, page.name + '#' + matches[0][1]))
+
     def test_overloaded_create_link_rejected(self):
         href = native_destinations(ROOT, self.site)['opencv.core.mat'][0]
-        self.mutation('index.html', lambda text: text.replace('Create ',
-            f'<a class="ada-api-reference" href="api/{href}">Create</a> ', 1))
+        call = compiler_destinations(ROOT, self.site)[0]
+        self.mutation('index.html', lambda text: text.replace(call['href'], href, 1))
 
     def test_object_prefixed_clone_link_rejected(self):
         href = native_destinations(ROOT, self.site)['opencv.core.mat'][0]
@@ -139,7 +155,7 @@ class Examples(unittest.TestCase):
             self.check()
 
     def test_wrong_enhancer_version(self):
-        self.mutation('api/presentation.json', lambda text: text.replace('0.1.4', '0.1.3'))
+        self.mutation('api/presentation.json', lambda text: text.replace('0.1.5', '0.1.3'))
 
     def test_ambiguous_or_changed_home_source_rejected(self):
         root = Path(self.temp.name) / 'inputs'

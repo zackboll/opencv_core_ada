@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Stage exact public inputs: GNATdoc excludes the separate internal project.
+"""Separate the 195 public exports from original-path compiler-only evidence.
 
-The released enhancer scans source directories recursively. Keep
-the original src/*.ads paths and bytes, but never authorize src/internal units.
+The released enhancer scans only public/ recursively. The separate src/ tree
+authenticates compiler evidence, including internal units, but is not inventoried.
 The destination is a fixed disposable documentation-only directory.
 """
 import shutil
@@ -10,6 +10,7 @@ from pathlib import Path
 
 from link_gnatdoc_types import sources, require
 from verify_core_enhancer import record, AUTHORED_SHA, THEME_SOURCE, ASSETS, digest
+from core_verified_examples import PUBLIC, selected_mapping, staged_config, regular
 
 
 def stage(root):
@@ -17,15 +18,16 @@ def stage(root):
     require(not destination.is_symlink(), 'symlink documentation input root')
     if destination.exists():
         shutil.rmtree(destination)
-    (destination / 'src').mkdir(parents=True)
+    (destination / PUBLIC).mkdir(parents=True)
     inventory = sources(root / 'src')
     require(len(inventory) == 195, 'public source inventory changed')
     for path in sorted((root / 'src').glob('*.ads')):
         require(not path.is_symlink(), 'symlink public specification')
-        shutil.copyfile(path, destination / 'src' / path.name)
+        shutil.copyfile(path, destination / PUBLIC / path.name)
     (destination / 'docs').mkdir(exist_ok=True)
-    shutil.copyfile(root / 'docs/gnatdoc-enhancer.toml', destination / 'docs/gnatdoc-enhancer.toml')
+    (destination / 'docs/gnatdoc-enhancer.toml').write_bytes(staged_config(root))
     shutil.copytree(root / 'docs/enhancer-qualification', destination / 'docs/enhancer-qualification')
+    shutil.copytree(root / 'docs/verified-examples', destination / 'docs/verified-examples')
     authored = record('gnatdoc-authored.json', AUTHORED_SHA)
     require(digest((root / THEME_SOURCE).read_bytes()) == ASSETS['gnatdoc-theme.css'],
             'unreviewed Core theme source')
@@ -36,7 +38,17 @@ def stage(root):
         target = destination / name
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, target)
-    print('Staged 195 exact public specifications and hash-bound authored inputs')
+    (mapping_name, _), mapping = selected_mapping(root)
+    # The original src/internal and project paths authenticate compiler evidence,
+    # while only public/ is recursively scanned for publishable packages.
+    for name in [mapping_name, *mapping['inputs']]:
+        source = regular(root, name)
+        target = destination / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, target)
+    require(len(list((destination / PUBLIC).rglob('*.ads'))) == 195, 'public staging inventory changed')
+    selected_mapping(destination)
+    print(f'Staged 195 public specifications; {len(mapping["inputs"])} separate compiler inputs; {mapping_name}')
 
 
 if __name__ == '__main__':

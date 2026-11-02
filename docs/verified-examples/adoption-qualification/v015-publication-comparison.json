@@ -1,0 +1,27 @@
+{
+  "baseline_run": 41245425725,
+  "baseline_artifact": 13059214885,
+  "archive_sha256": "247967ff696da66ea9d791b4584c4901adabe19c7e691d65a07234911d699334",
+  "baseline_files": 210,
+  "candidate_files": 210,
+  "changed": {
+    "api/presentation.json": {
+      "before": "eea9a06ba7bb5670818df3c1a57034059af9903a532b08fdbd958e48606eb908",
+      "after": "052df75bdc084e8254038b5c2cfe807eb07b69f7e2a09c0cc0ba23774ae7652d"
+    },
+    "index.html": {
+      "before": "8b4fbf85ec33a4fb8aa53601c474e09a979437de1b0926e08ead1fede01cca8e",
+      "after": "4b8b86e213c8b49b9fdc91f70d0ea36713200fb661c735fc368f65c429cd29b7"
+    }
+  },
+  "unchanged_files": 208,
+  "added": [],
+  "removed": [],
+  "homepage_change": "Exactly four independently reconstructed call anchor wrappers",
+  "metadata_changes": [
+    "enhancer_version",
+    "public source path prefix",
+    "staged configuration hash",
+    "homepage output hash"
+  ]
+}

@@ -1,0 +1,8 @@
+PASS landing-1280-light-js: original pixels/layout, focus, contrast, resources, missing-rule mutation
+PASS landing-1280-light-nojs: original pixels/layout, focus, contrast, resources, missing-rule mutation
+PASS landing-1280-dark-js: original pixels/layout, focus, contrast, resources, missing-rule mutation
+PASS landing-1280-dark-nojs: original pixels/layout, focus, contrast, resources, missing-rule mutation
+PASS landing-390-light-js: original pixels/layout, focus, contrast, resources, missing-rule mutation
+PASS landing-390-light-nojs: original pixels/layout, focus, contrast, resources, missing-rule mutation
+PASS landing-390-dark-js: original pixels/layout, focus, contrast, resources, missing-rule mutation
+PASS landing-390-dark-nojs: original pixels/layout, focus, contrast, resources, missing-rule mutation

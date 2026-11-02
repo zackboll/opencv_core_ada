@@ -10,6 +10,7 @@ import re
 
 from highlight_gnatdoc_ada import LEXEME, highlight_text, strip_highlighting
 from link_gnatdoc_types import sources, pages_and_targets, plain, require
+from core_verified_examples import compiler_destinations
 
 STYLESHEET = 'assets/gnatdoc-examples.css'
 CSS_SHA = '86ee3667f123c5f718e07c8b0c97c8e2844fa28d6d3c93e97c889e4e6fb6a395'
@@ -63,14 +64,14 @@ def native_destinations(root, site):
     return result
 
 
-def example_code(text, policy, destinations, landing=False):
+def example_code(text, policy, destinations, landing=False, verified=()):
     # Comments, literals and attributes cannot grant API references.
     masked = list(text)
     for token in LEXEME.finditer(text):
         if token.lastgroup in ('comment', 'string', 'character', 'attribute'):
             masked[token.start():token.end()] = ' ' * len(token[0])
     masked = ''.join(masked)
-    positions = []
+    positions = [(call['start'], call['end'], call['href']) for call in verified]
     for spelling, identity, count in policy:
         require(identity.lower() in destinations, 'example destination not unique/public/native')
         href, kind = destinations[identity.lower()]
@@ -129,6 +130,7 @@ def landing_example(root, site):
     require(len(blocks) == 2 and blocks[0][1] == 'alr with opencv_core' and
             html.unescape(blocks[1][1]) == text, 'exact authorized landing example mismatch')
     match = blocks[1]
-    code = example_code(text, LINKS['index'][0], native_destinations(root, site), landing=True)
+    code = example_code(text, LINKS['index'][0], native_destinations(root, site), landing=True,
+                        verified=compiler_destinations(root, site))
     result = home[:match.start()] + '<pre class="ada-example" tabindex="0">' + code + '</pre>' + home[match.end():]
     return result.replace('<body>', f'<link rel="stylesheet" href="{STYLESHEET}"><body>', 1).encode()

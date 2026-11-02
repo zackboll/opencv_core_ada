@@ -1,0 +1,21 @@
+test_actual_configuration_selects_exact_reviewed_map (test_core_verified_examples.VerifiedExamples.test_actual_configuration_selects_exact_reviewed_map) ... ok
+test_both_generated_configurations_select_only_their_map (test_core_verified_examples.VerifiedExamples.test_both_generated_configurations_select_only_their_map) ... ok
+test_immutable_mappings_semantically_equal (test_core_verified_examples.VerifiedExamples.test_immutable_mappings_semantically_equal) ... ok
+test_mapping_symlink_substitution (test_core_verified_examples.VerifiedExamples.test_mapping_symlink_substitution) ... ok
+test_missing_internal_compiler_input (test_core_verified_examples.VerifiedExamples.test_missing_internal_compiler_input) ... ok
+test_public_and_compiler_inventories_are_separate (test_core_verified_examples.VerifiedExamples.test_public_and_compiler_inventories_are_separate) ... ok
+test_rehashed_call_coordinate_rejected_by_wheel (test_core_verified_examples.VerifiedExamples.test_rehashed_call_coordinate_rejected_by_wheel) ... ok
+test_rehashed_complete_wrong_overload_rejected_by_independent_oracle (test_core_verified_examples.VerifiedExamples.test_rehashed_complete_wrong_overload_rejected_by_independent_oracle) ... ok
+test_rehashed_coordinate_rejected_by_independent_oracle (test_core_verified_examples.VerifiedExamples.test_rehashed_coordinate_rejected_by_independent_oracle) ... ok
+test_rehashed_incomplete_compiler_inputs_rejected_by_wheel (test_core_verified_examples.VerifiedExamples.test_rehashed_incomplete_compiler_inputs_rejected_by_wheel) ... ok
+test_rehashed_mat_umat_identity_disagreement_rejected_by_wheel (test_core_verified_examples.VerifiedExamples.test_rehashed_mat_umat_identity_disagreement_rejected_by_wheel) ... ok
+test_rehashed_stale_mapping_rejected_by_wheel (test_core_verified_examples.VerifiedExamples.test_rehashed_stale_mapping_rejected_by_wheel) ... ok
+test_stale_project (test_core_verified_examples.VerifiedExamples.test_stale_project) ... ok
+test_stale_source_hash (test_core_verified_examples.VerifiedExamples.test_stale_source_hash) ... ok
+test_unknown_configuration_fails_closed (test_core_verified_examples.VerifiedExamples.test_unknown_configuration_fails_closed) ... ok
+test_wrong_mapping_substitution (test_core_verified_examples.VerifiedExamples.test_wrong_mapping_substitution) ... ok
+
+----------------------------------------------------------------------
+Ran 16 tests in 40.397s
+
+OK
