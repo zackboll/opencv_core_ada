@@ -704,14 +704,14 @@ package OpenCV.Core is
    --  @return The byte size of one channel.
    function Channel_Size (Self : UMat) return Mat_Size;
 
-   --  OpenCV 4.10 cv::RNG Multiply-With-Carry state. This deterministic
+   --  OpenCV cv::RNG Multiply-With-Carry state. This deterministic
    --  pseudorandom generator is caller-owned rather than thread-local. Its
    --  complete state is 64 bits, so assignment copies the current sequence
    --  position and the copies subsequently advance independently. A default
    --  generator has state 16#FFFF_FFFF#; seed zero selects that same state.
    type Random_Number_Generator is private;
 
-   --  Draws OpenCV 4.10 cv::RNG::next's raw Unsigned_32 result from the
+   --  Draws the raw Unsigned_32 result of cv::RNG::next from the
    --  caller-owned Generator. Advances exactly one MWC step. This is
    --  deterministic pseudorandom data, not cryptographic randomness. It does
    --  not alter OpenCV's thread-local default RNG and composes with explicit
@@ -722,7 +722,7 @@ package OpenCV.Core is
      (Generator : in out Random_Number_Generator;
       Value     : out Interfaces.Unsigned_32);
 
-   --  Draws OpenCV 4.10's Float64 uniform value from caller-owned Generator.
+   --  Draws a cv::RNG::uniform Float64 value from caller-owned Generator.
    --  Finite ordered bounds are required. For distinct bounds, the result is
    --  in [Lower_Bound, Upper_Bound); equal bounds return that bound. Both
    --  forms consume exactly two MWC Next steps. This deterministic operation
@@ -750,9 +750,9 @@ package OpenCV.Core is
    --  procedure.
    type K_Means_Initialization is (Random_Centers, Plus_Plus_Centers);
 
-   --  OpenCV 4.10 k-means always uses both count and epsilon termination.
-   --  Its effective iteration count is constrained to 2 .. 100, so this type
-   --  prevents the silent clamping performed by the native implementation.
+   --  K_Means always passes both count and epsilon termination to
+   --  cv::kmeans, which constrains the effective iteration count to
+   --  2 .. 100. This type prevents that silent native clamping.
    type K_Means_Iteration_Count is range 2 .. 100;
 
    --  Termination criteria for K_Means. Iteration of an attempt ends when the
@@ -969,11 +969,11 @@ package OpenCV.Core is
       end case;
    end record;
 
-   --  Solves the least-squares problem A * X ~= B using OpenCV 4.10
-   --  cv::solve with DECOMP_SVD. Unlike Solve, which is the LU API for
+   --  Solves the least-squares problem A * X ~= B using cv::solve with
+   --  DECOMP_SVD. Unlike Solve, which is the LU API for
    --  ordinary square systems, Self (A) may be square or overdetermined:
    --  M = A.Rows must be at least N = A.Columns. Underdetermined systems
-   --  are rejected because OpenCV 4.10 cv::solve rejects M < N even for
+   --  are rejected because cv::solve rejects M < N even for
    --  DECOMP_SVD. Right_Hand_Side (B) must have M rows and may have K >= 1
    --  columns. The independently owned Float32 or Float64 C1 result has
    --  shape N x K. A and B must be non-empty, single-channel, Float32 or
@@ -994,14 +994,16 @@ package OpenCV.Core is
    --  shape, depth or channel requirements or OpenCV reports a failure.
    function Solve_Least_Squares (Self : Mat; Right_Hand_Side : Mat) return Mat;
 
-   --  Solves a continuous linear program using OpenCV 4.10 simplex: maximize
-   --  c * x subject to A * x <= b and x >= 0. Objective is a non-empty C1
-   --  Float32 or Float64 1 x N or N x 1 vector (N >= 1). Constraints is a
+   --  Solves a continuous linear program using the cv::solveLP simplex
+   --  solver: maximize c * x subject to A * x <= b and x >= 0. Objective
+   --  is a non-empty C1 Float32 or Float64 1 x N or N x 1 vector
+   --  (N >= 1). Constraints is a
    --  non-empty C1 Float32 or Float64 M x (N + 1) Mat (M >= 1), with A in its
    --  first N columns and b in its last column. Input depths may differ, but
    --  every coefficient must be finite. Constraint_Tolerance is finite and
-   --  nonnegative. On OpenCV 4.8+ it is passed as constr_eps. OpenCV 4.6
-   --  accepts only 0.0 and the 1.0E-12 default; any other tolerance raises
+   --  nonnegative. On OpenCV 4.8 and later it is passed as constr_eps.
+   --  Releases before 4.8 have no constr_eps parameter, so they accept
+   --  only 0.0 and the 1.0E-12 default; any other tolerance raises
    --  OpenCV_Error. Numerical_Loss is produced only when the linked OpenCV
    --  reports SOLVELP_LOST. Unique_Optimum and Multiple_Optima contain one
    --  arbitrary optimum as an independently owned N x 1 Float64 C1 Solution;
@@ -1060,9 +1062,9 @@ package OpenCV.Core is
 
    --  Result of Solve_Polynomial. Roots is an independently owned effective-
    --  degree x 1 C2 Mat. Trailing high-order coefficients whose converted
-   --  Float64 components' absolute-value sum is at most OpenCV 4.10's
-   --  DBL_EPSILON are trimmed; OpenCV's original-degree padding rows are not
-   --  exposed.
+   --  Float64 components' absolute-value sum is at most DBL_EPSILON, the
+   --  cv::solvePoly trimming threshold, are trimmed; OpenCV's
+   --  original-degree padding rows are not exposed.
    --  @field Roots The roots as complex values in C2 elements, one per row.
    --  @field Maximum_Correction The value returned by cv::solvePoly: the
    --  largest difference between successive root estimates.
@@ -1241,7 +1243,7 @@ package OpenCV.Core is
    --  @return A new Mat with independent storage.
    function Clone (Self : Mat) return Mat;
 
-   --  Clusters Float32 samples with OpenCV 4.10 cv::kmeans. Samples must be a
+   --  Clusters Float32 samples with cv::kmeans. Samples must be a
    --  non-empty 2-D Mat with at least one channel. For Rows = 1, each column
    --  is a sample and the feature dimension is Channels. Otherwise, each row
    --  is a sample and the feature dimension is Columns * Channels. Thus N x D
@@ -1269,7 +1271,7 @@ package OpenCV.Core is
       Initialization : K_Means_Initialization := Plus_Plus_Centers)
       return K_Means_Result;
 
-   --  Refines an initial partition using OpenCV 4.10 cv::kmeans. Samples has
+   --  Refines an initial partition using cv::kmeans. Samples has
    --  the same contract as the no-label overload. Initial_Labels must be a
    --  non-empty Int32 C1 row or column vector containing exactly one
    --  zero-based
@@ -1353,8 +1355,8 @@ package OpenCV.Core is
    --  the values down the rows of every column, top to bottom. Ascending is
    --  the default order and Each_Row is the default axis. Self must be
    --  single-channel. Supported depths are UInt8, Int8, UInt16, Int16,
-   --  Int32, Float32, and Float64. Float16 is rejected because OpenCV 4.10
-   --  has no sort implementation for it. Self is not modified. The result
+   --  Int32, Float32, and Float64. Float16 is rejected because cv::sort
+   --  has no implementation for it. Self is not modified. The result
    --  owns independent storage, including when Self is a non-contiguous
    --  Region. Continuity is not required. A default empty Mat and typed 0x0
    --  Mats of a supported depth produce an empty result that preserves the
@@ -1381,14 +1383,14 @@ package OpenCV.Core is
    --  order and Each_Row is the default axis. Self is not modified. Self must
    --  be single-channel. Supported source depths are UInt8, Int8, UInt16,
    --  Int16, Int32, Float32, and Float64. Float16 is rejected because
-   --  OpenCV 4.10 has no sortIdx implementation for it. Continuity is not
+   --  cv::sortIdx has no implementation for it. Continuity is not
    --  required. The result owns independent storage, including when Self is a
    --  non-contiguous Region; Region indices are relative to that Region
    --  rather than to its parent. Equal values produce a valid permutation
    --  that would sort those values, but their relative order is not stable
    --  or otherwise guaranteed. NaN ordering is not part of the public
    --  contract. A default empty Mat and typed 0x0 Mats of a supported depth
-   --  raise OpenCV_Error because OpenCV 4.10's sortIdx implementation asserts
+   --  raise OpenCV_Error because the cv::sortIdx implementation asserts
    --  that source and destination data pointers differ, and empty Mats share
    --  a null data pointer. Typed empty Float16 is rejected before the ABI.
    --  @param Self The single-channel Mat to order.
@@ -1436,7 +1438,7 @@ package OpenCV.Core is
    --  Constant_Border coordinate has no donor and returns Uses_Constant True;
    --  OpenCV's -1 sentinel is not exposed. This computes only a coordinate;
    --  it neither reads a Mat nor copies pixels. Extreme coordinates that would
-   --  overflow OpenCV 4.10 signed arithmetic raise OpenCV_Error.
+   --  overflow OpenCV's signed int arithmetic raise OpenCV_Error.
    --  @param Position Zero-based coordinate, possibly outside 0 .. Length - 1.
    --  @param Length Positive extent of the source axis.
    --  @param Kind Border extrapolation mode.
@@ -1585,9 +1587,11 @@ package OpenCV.Core is
    --  elements and either one channel or the same channel count as Self.
    --  The result has Self's shape and channel count and Table's depth, and
    --  owns independent storage. Int8 sources are indexed by their stored
-   --  8-bit pattern (0 .. 255), matching OpenCV 4.10.0. Float16 tables and
-   --  16-bit sources are not supported. A 0x0 8-bit source produces a 0x0
-   --  result; a default empty Mat is rejected by OpenCV.
+   --  8-bit pattern (0 .. 255), as cv::LUT does. This binding rejects
+   --  Float16 tables and 16-bit sources on every supported OpenCV release;
+   --  the additional native LUT forms in OpenCV 5.0 are not exposed. A 0x0
+   --  8-bit source produces a 0x0 result; a default empty Mat is rejected
+   --  by OpenCV.
    --  @param Self The UInt8 or Int8 source Mat.
    --  @param Table The 256-entry lookup table.
    --  @return A new Mat with independent storage.
@@ -1597,7 +1601,7 @@ package OpenCV.Core is
 
    --  Returns an independent Mat with Self's shape, depth, and channel count.
    --  Self must be Float32 or Float64. Each channel is processed independently
-   --  by cv::sqrt. On OpenCV 4.10 the 0.5-power HAL path uses std::sqrt, so
+   --  by cv::sqrt, which uses OpenCV's 0.5-power square-root path, so
    --  negative finite values and -Infinity become NaN, +Infinity stays
    --  +Infinity, and a typed 0x0 source stays empty. A default empty Mat and
    --  non-floating depths are rejected.
@@ -1624,7 +1628,7 @@ package OpenCV.Core is
 
    --  Returns an independent Mat with Self's shape, depth, and channel count.
    --  Self must be Float32 or Float64. Each channel is processed independently
-   --  by cv::exp. On OpenCV 4.10 the implementation is approximate (about
+   --  by cv::exp. OpenCV documents the implementation as approximate (about
    --  7e-6 relative error for Float32 and less than 1e-10 for Float64) and
    --  may convert denormalized outputs to zero. Special values such as NaN
    --  and Infinity are not handled. A typed 0x0 source stays empty. A default
@@ -1650,8 +1654,8 @@ package OpenCV.Core is
 
    --  Returns an independent Mat with Self's shape, depth, and channel count.
    --  Self must be Float32 or Float64. Each channel is processed independently
-   --  by cv::log (natural logarithm). On OpenCV 4.10 the implementation is
-   --  approximate. Output on zero, negative, and special values such as NaN
+   --  by cv::log (natural logarithm). OpenCV documents the implementation
+   --  as approximate. Output on zero, negative, and special values such as NaN
    --  and Infinity is undefined. A typed 0x0 source stays empty. A default
    --  empty Mat and non-floating depths are rejected.
    --  @param Self The Float32 or Float64 source.
@@ -1677,7 +1681,7 @@ package OpenCV.Core is
    --  Each channel is processed independently by cv::pow. When Power is an
    --  integer, source signs are preserved (src(I) ** Power). When Power is
    --  not an integer, OpenCV documents abs (src(I)) ** Power and Self must
-   --  be Float32 or Float64; on OpenCV 4.10 the general non-integer CPU path
+   --  be Float32 or Float64; OpenCV's general non-integer CPU path
    --  yields NaN for negative finite values. Nonnegative integer Power also
    --  supports UInt8, Int8, UInt16, Int16, and Int32. UInt8, Int8, UInt16,
    --  and Int16 results saturate; Int32 overflow is not saturated. Negative
@@ -1930,7 +1934,7 @@ package OpenCV.Core is
       Destination : in out Cartesian_Coordinates;
       Units       : Angle_Unit := Radians);
    --  Returns an independently owned full-complex Discrete Fourier
-   --  Transform of Self using OpenCV 4.10 cv::dft. This is not DCT,
+   --  Transform of Self using cv::dft. This is not DCT,
    --  a packed CCS spectrum, a batched DFT_ROWS transform, or an
    --  in-place procedure. Self must be a non-empty 2-D Float32 or
    --  Float64 Mat with 1 or 2 channels. A 1 x N row, an N x 1
@@ -1948,7 +1952,7 @@ package OpenCV.Core is
    --  unscaled. Continuity is not required; non-contiguous Regions
    --  are supported. Self is unchanged. The result owns independent
    --  storage. Very large matrices whose dimensions would cause
-   --  OpenCV 4.10's internal signed DFT arithmetic to overflow are
+   --  OpenCV's internal signed DFT arithmetic to overflow are
    --  rejected with OpenCV_Error. Rows * Columns must fit signed
    --  32-bit, and each transformed dimension must fit that same
    --  limit after multiplication by the full-complex element size
@@ -1960,8 +1964,8 @@ package OpenCV.Core is
    function Discrete_Fourier_Transform (Self : Mat) return Mat;
 
    --  Returns an independently owned normalized inverse Discrete
-   --  Fourier Transform of a full-complex spectrum using OpenCV
-   --  4.10 cv::dft with DFT_INVERSE and DFT_SCALE. Self must be a
+   --  Fourier Transform of a full-complex spectrum using
+   --  cv::dft with DFT_INVERSE and DFT_SCALE. Self must be a
    --  non-empty 2-D Float32 or Float64 Mat with exactly 2 channels.
    --  Channel 0 is the real part and channel 1 is the imaginary
    --  part. The result has Self's rows, columns, depth, and 2
@@ -1973,7 +1977,7 @@ package OpenCV.Core is
    --  Continuity is not required; non-contiguous Regions are
    --  supported. Self is unchanged. The result owns independent
    --  storage. Very large matrices whose dimensions would cause
-   --  OpenCV 4.10's internal signed DFT arithmetic to overflow are
+   --  OpenCV's internal signed DFT arithmetic to overflow are
    --  rejected with OpenCV_Error. Rows * Columns must fit signed
    --  32-bit, and each transformed dimension must fit that same
    --  limit after multiplication by the full-complex element size
@@ -1985,7 +1989,7 @@ package OpenCV.Core is
    function Inverse_Discrete_Fourier_Transform (Self : Mat) return Mat;
 
    --  Returns an independently owned real inverse Discrete Fourier
-   --  Transform of a full-complex spectrum using OpenCV 4.10
+   --  Transform of a full-complex spectrum using
    --  cv::dft with DFT_INVERSE, DFT_SCALE, and DFT_REAL_OUTPUT.
    --  Self must be a non-empty 2-D Float32 or Float64 Mat with
    --  exactly 2 channels. The result has Self's rows, columns, and
@@ -1993,7 +1997,7 @@ package OpenCV.Core is
    --  Discrete_Fourier_Transform when the original source was real.
    --  DFT_REAL_OUTPUT assumes the input complex spectrum has the
    --  conjugate symmetry required for a real spatial-domain result.
-   --  OpenCV 4.10 does not verify that symmetry, and this binding
+   --  OpenCV does not verify that symmetry, and this binding
    --  does not invent a numerical tolerance. A spectrum obtained
    --  from a real forward transform satisfies the assumption. A
    --  malformed arbitrary C2 input is a caller-precondition
@@ -2001,7 +2005,7 @@ package OpenCV.Core is
    --  symmetric-eigen policy. Continuity is not required;
    --  non-contiguous Regions are supported. Self is unchanged. The
    --  result owns independent storage. Very large matrices whose
-   --  dimensions would cause OpenCV 4.10's internal signed DFT
+   --  dimensions would cause OpenCV's internal signed DFT
    --  arithmetic to overflow are rejected with OpenCV_Error. Rows
    --  * Columns must fit signed 32-bit, and each transformed
    --  dimension must fit that same limit after multiplication by
@@ -2106,10 +2110,10 @@ package OpenCV.Core is
      (Self : Mat) return Mat;
 
    --  Returns an independently owned Discrete Cosine Transform of
-   --  Self using OpenCV 4.10 cv::dct. This is not DFT, a packed CCS
+   --  Self using cv::dct. This is not DFT, a packed CCS
    --  spectrum, a batched DCT_ROWS transform, or an in-place
    --  procedure. Self must be a non-empty 2-D Float32 or Float64 Mat
-   --  with exactly one channel. OpenCV 4.10 treats 1 x 1 as an
+   --  with exactly one channel. OpenCV treats 1 x 1 as an
    --  identity DCT. A 1 x N row or an N x 1 column with N > 1 is
    --  transformed as a 1-D vector and requires N even. An ordinary
    --  M x N matrix with M > 1 and N > 1 is transformed as 2-D and
@@ -2122,8 +2126,8 @@ package OpenCV.Core is
    --  Source without a caller scale factor. Continuity is not
    --  required; non-contiguous Regions are supported. Self is
    --  unchanged. The result owns independent storage. Very large
-   --  matrices whose transformed dimensions would cause OpenCV
-   --  4.10's internal signed DCT work-buffer arithmetic to overflow
+   --  matrices whose transformed dimensions would cause OpenCV's
+   --  internal signed DCT work-buffer arithmetic to overflow
    --  are rejected with OpenCV_Error. Each transformed dimension
    --  must fit signed 32-bit after multiplication by the complex
    --  element size used by the DCT DFT path (8 bytes for Float32,
@@ -2136,7 +2140,7 @@ package OpenCV.Core is
    function Discrete_Cosine_Transform (Self : Mat) return Mat;
 
    --  Returns an independently owned inverse Discrete Cosine
-   --  Transform of Self using OpenCV 4.10 cv::dct with DCT_INVERSE.
+   --  Transform of Self using cv::dct with DCT_INVERSE.
    --  Self must be a non-empty 2-D Float32 or Float64 Mat with
    --  exactly one channel and the same transform geometry as
    --  Discrete_Cosine_Transform, including the 1 x 1 identity case.
@@ -2144,7 +2148,7 @@ package OpenCV.Core is
    --  channel. Continuity is not required; non-contiguous Regions
    --  are supported. Self is unchanged. The result owns independent
    --  storage. Very large matrices whose transformed dimensions
-   --  would cause OpenCV 4.10's internal signed DCT work-buffer
+   --  would cause OpenCV's internal signed DCT work-buffer
    --  arithmetic to overflow are rejected with OpenCV_Error.
    --  @param Self The C1 DCT coefficients to invert.
    --  @return A new C1 Mat holding the inverse DCT.
@@ -2178,7 +2182,7 @@ package OpenCV.Core is
    function Inverse_Discrete_Cosine_Transform_Rows (Self : Mat) return Mat;
 
    --  Returns an independently owned per-element product of two
-   --  full-complex spectra using OpenCV 4.10 cv::mulSpectrums.
+   --  full-complex spectra using cv::mulSpectrums.
    --  Left and Right must be non-empty 2-D Float32 or Float64 Mats
    --  with exactly 2 channels, identical rows, identical columns,
    --  and identical depth. Channel 0 is the real part and channel 1
@@ -2250,11 +2254,11 @@ package OpenCV.Core is
       return Mat;
 
    --  Returns the smallest OpenCV-efficient DFT length N >=
-   --  Minimum_Size using OpenCV 4.10 cv::getOptimalDFTSize. Efficient
+   --  Minimum_Size using cv::getOptimalDFTSize. Efficient
    --  sizes are products of powers of 2, 3, and 5. This only selects
    --  an efficient length; it does not allocate a Mat or guarantee
    --  that Discrete_Fourier_Transform will accept a matrix of that
-   --  size under the separate OpenCV 4.10 DFT signed-arithmetic
+   --  size under the separate DFT signed-arithmetic
    --  safety limits. A request too close to INT_MAX raises
    --  OpenCV_Error because OpenCV returns a negative sentinel.
    --  @param Minimum_Size The smallest acceptable transform length.
@@ -2262,11 +2266,11 @@ package OpenCV.Core is
    --  @exception OpenCV_Error Raised when no valid length can be returned.
    function Optimal_DFT_Size (Minimum_Size : Positive) return Positive;
 
-   --  Returns OpenCV 4.10's recommended efficient even DCT length
+   --  Returns OpenCV's recommended efficient even DCT length
    --  N1 >= Minimum_Size using the documented relationship
    --  2 * Optimal_DFT_Size (ceil (Minimum_Size / 2)). The helper
    --  does not allocate or transform a Mat. It returns 2 for
-   --  Minimum_Size = 1 even though OpenCV 4.10 supports a 1 x 1
+   --  Minimum_Size = 1 even though OpenCV supports a 1 x 1
    --  DCT as an identity; this function follows OpenCV's
    --  performance-sizing formula rather than reporting the
    --  minimum executable DCT size. The returned length does not
@@ -3910,7 +3914,7 @@ package OpenCV.Core is
    --  @param Seed The new state seed for the calling thread's default RNG.
    procedure Set_Random_Seed (Seed : Interfaces.Integer_32);
 
-   --  Creates a caller-owned OpenCV 4.10 cv::RNG state. Seed zero maps to the
+   --  Creates a caller-owned OpenCV cv::RNG state. Seed zero maps to the
    --  default state 16#FFFF_FFFF#, matching cv::RNG (uint64).
    --  @param Seed The 64-bit initial state; zero selects 16#FFFF_FFFF#.
    --  @return A new generator, independent of OpenCV's default RNG.
@@ -4004,10 +4008,10 @@ package OpenCV.Core is
    --  on that thread. Self must be a non-empty 2-D row or column vector.
    --  Complete Mat elements are moved as units, so multi-channel elements keep
    --  their channels together. Valid non-contiguous vector Regions are
-   --  supported and retain their shared storage. OpenCV 4.10 supports complete
-   --  element sizes of only 1, 2, 3, 4, 6, 8, 12, 16, 24, and 32 bytes.
-   --  The order may remain unchanged by chance. Iteration_Factor is not
-   --  exposed because OpenCV 4.10's randShuffle implementation ignores it.
+   --  supported and retain their shared storage. cv::randShuffle supports
+   --  complete element sizes of only 1, 2, 3, 4, 6, 8, 12, 16, 24, and 32
+   --  bytes. The order may remain unchanged by chance. Iteration_Factor is
+   --  not exposed because the cv::randShuffle implementation ignores it.
    --  @param Self The row or column vector to permute.
    --  @exception OpenCV_Error Raised for an empty Mat, a Mat that is not a
    --  2-D vector, an unsupported element size, or an OpenCV failure.
@@ -4053,7 +4057,7 @@ package OpenCV.Core is
    --  Self, or an OpenCV failure.
    function Determinant (Self : Mat) return Long_Float;
 
-   --  Performs ordinary matrix inversion using OpenCV 4.10 DECOMP_LU.
+   --  Performs ordinary matrix inversion using cv::invert with DECOMP_LU.
    --  Self must be a non-empty square single-channel Float32 or Float64
    --  Mat. 1x1 through 3x3 use OpenCV's direct paths; larger matrices
    --  use OpenCV LU factorization. A non-singular matrix returns
@@ -4071,7 +4075,7 @@ package OpenCV.Core is
    --  Self, or an OpenCV failure.
    function Invert (Self : Mat) return Inversion_Result;
 
-   --  Solves A * X = B using OpenCV 4.10 DECOMP_LU only. Self is the
+   --  Solves A * X = B using cv::solve with DECOMP_LU only. Self is the
    --  coefficient matrix A and must be a non-empty square single-channel
    --  Float32 or Float64 Mat. Right_Hand_Side is B and must be a
    --  non-empty single-channel Mat with Self's depth and row count.
@@ -4091,7 +4095,7 @@ package OpenCV.Core is
    --  shape, depth or channel requirements or OpenCV reports a failure.
    function Solve (Self : Mat; Right_Hand_Side : Mat) return Solve_Result;
 
-   --  Finds real roots with OpenCV 4.10 cv::solveCubic, unlike Solve
+   --  Finds real roots with cv::solveCubic, unlike Solve
    --  which solves a linear system. Coefficients must be a non-empty,
    --  single-channel Float32 or Float64 vector of shape 1 x 3, 3 x 1, 1 x 4,
    --  or 4 x 1. Three coefficients represent x**3 + A*x**2 + B*x + C = 0;
@@ -4132,7 +4136,7 @@ package OpenCV.Core is
      (Coefficients : Mat; Maximum_Iterations : Positive := 300)
       return Polynomial_Solution_Result;
    --  Returns the scalar dot product of Self and Other as Long_Float,
-   --  corresponding to OpenCV 4.10 cv::Mat::dot's double. This is the
+   --  corresponding to the double returned by cv::Mat::dot. This is the
    --  sum of every corresponding spatial-element and channel product.
    --  It is not algebraic Matrix_Multiply, not element-wise Multiply,
    --  and not a complex or Hermitian inner product. Self and Other
@@ -4156,8 +4160,8 @@ package OpenCV.Core is
    function Dot_Product (Self : Mat; Other : Mat) return Long_Float;
 
    --  Returns the scalar Mahalanobis distance of Self and Other as
-   --  Long_Float, corresponding to OpenCV 4.10 cv::Mahalanobis's
-   --  double. This is the weighted distance
+   --  Long_Float, corresponding to the double returned by
+   --  cv::Mahalanobis. This is the weighted distance
    --  sqrt ((Self - Other)' * Inverse_Covariance * (Self - Other)).
    --  Self and Other are mathematical one-dimensional vectors: non-empty
    --  single-channel Float32 or Float64 row (1 x N) or column (N x 1)
@@ -4180,7 +4184,7 @@ package OpenCV.Core is
      (Self : Mat; Other : Mat; Inverse_Covariance : Mat) return Long_Float;
 
    --  Returns the three-dimensional vector cross product Self x Other
-   --  using OpenCV 4.10 cv::Mat::cross. This is not element-wise
+   --  using cv::Mat::cross. This is not element-wise
    --  Multiply and not algebraic Matrix_Multiply. Operand order
    --  matters: reversing the operands negates the result. Self and
    --  Other must both be non-empty and must share identical Rows,
@@ -4203,7 +4207,7 @@ package OpenCV.Core is
    function Cross_Product (Self : Mat; Other : Mat) return Mat;
 
    --  Performs algebraic matrix multiplication Result = Left * Right
-   --  using OpenCV 4.10 cv::gemm. This is not the existing element-wise
+   --  using cv::gemm. This is not the existing element-wise
    --  Multiply. Left.Columns must equal Right.Rows; the independently
    --  owned result has shape Left.Rows x Right.Columns and the same
    --  complete element type as both operands. Operands need not be
@@ -4222,7 +4226,7 @@ package OpenCV.Core is
    function Matrix_Multiply (Left, Right : Mat) return Mat;
 
    --  Computes Result = Product_Scale * Left * Right + Addend_Scale *
-   --  Addend using OpenCV 4.10 cv::gemm. This is algebraic matrix
+   --  Addend using cv::gemm. This is algebraic matrix
    --  multiplication followed by matrix addition. It is not the
    --  existing element-wise Multiply, Scale_Add, or Add_Weighted.
    --  Left.Columns must equal Right.Rows; Addend must have the exact
@@ -4255,18 +4259,18 @@ package OpenCV.Core is
       Addend_Scale  : Long_Float := 1.0) return Mat;
 
    --  Computes the uncentered transposed product of Self using
-   --  OpenCV 4.10 cv::mulTransposed with no Delta. Transpose_Times_Self
+   --  cv::mulTransposed with no Delta. Transpose_Times_Self
    --  computes Scale * Self'T * Self and yields a Self.Columns x
    --  Self.Columns result. Self_Times_Transpose computes Scale * Self
    --  * Self'T and yields a Self.Rows x Self.Rows result. Order has no
    --  default. Self must be non-empty and single-channel. Supported
    --  source depths are UInt8, UInt16, Int16, Float32, and Float64.
    --  Int8, Int32, Float16, and multi-channel Mats are rejected.
-   --  Automatic output depth follows the OpenCV 4.10 implementation,
+   --  Automatic output depth follows the cv::mulTransposed implementation,
    --  not the documentation's dtype=-1 claim: Float64 sources produce
    --  Float64 and every other supported source produces Float32.
    --  Explicit Output_Depth may be Float32 or Float64. Float64 source
-   --  with Float32 output is rejected because OpenCV 4.10 has no such
+   --  with Float32 output is rejected because OpenCV has no such
    --  kernel. Scale is applied to the complete product and may be
    --  positive, zero, negative, or fractional. The result is
    --  symmetric, owns independent storage, and does not modify Self.
@@ -4300,7 +4304,7 @@ package OpenCV.Core is
       Scale        : Long_Float := 1.0) return Mat;
 
    --  Computes the centered transposed product of Self using
-   --  OpenCV 4.10 cv::mulTransposed with a required non-empty Offset
+   --  cv::mulTransposed with a required non-empty Offset
    --  (OpenCV's delta). Offset is subtracted, with OpenCV
    --  broadcasting, before the product. Transpose_Times_Self computes
    --  Scale * (Self - Offset)'T * (Self - Offset) and yields a
@@ -4362,7 +4366,7 @@ package OpenCV.Core is
       Scale        : Long_Float := 1.0) return Mat;
 
    --  Calculates the normal feature covariance matrix and mean of
-   --  Self using OpenCV 4.10 cv::calcCovarMatrix. Self is a 2-D
+   --  Self using cv::calcCovarMatrix. Self is a 2-D
    --  single-channel sample matrix. Samples_Are_Rows, the default,
    --  treats an M x N Mat as M samples of N features: Mean is 1 x N
    --  and Covariance is N x N. Samples_Are_Columns treats an M x N
@@ -4394,10 +4398,10 @@ package OpenCV.Core is
       Scaling     : Covariance_Scaling := By_Sample_Count)
       return Covariance_Result;
 
-   --  Decomposes a real symmetric matrix using OpenCV 4.10 cv::eigen.
+   --  Decomposes a real symmetric matrix using cv::eigen.
    --  Self must be a non-empty square single-channel Float32 or
    --  Float64 Mat that represents a real symmetric matrix. This is
-   --  not PCA, SVD, or a non-symmetric eigen solver. OpenCV 4.10
+   --  not PCA, SVD, or a non-symmetric eigen solver. OpenCV
    --  does not validate symmetry and defines no symmetry
    --  tolerance. Its symmetric eigensolver backends assume
    --  self-adjoint input rather than comparing Self with its
@@ -4406,7 +4410,7 @@ package OpenCV.Core is
    --  output rather than a rejection. This binding does not invent a
    --  floating-point symmetry check. Multi-channel Mats, integer
    --  depths, and Float16 are rejected. The matrix dimension N must
-   --  not exceed 8_460. OpenCV 4.10's fallback symmetric eigensolver
+   --  not exceed 8_460. OpenCV's fallback symmetric eigensolver
    --  computes an internal iteration bound using signed integer
    --  arithmetic that is not safe for larger dimensions. Outputs
    --  preserve Self's floating-point depth. For an N x N source,
@@ -4414,7 +4418,7 @@ package OpenCV.Core is
    --  smallest, and Eigenvectors is N x N with one eigenvector per
    --  row so that row i corresponds
    --  to eigenvalue i. Eigenvector sign is mathematically arbitrary:
-   --  v and -v represent the same eigenvector. Both OpenCV 4.10
+   --  v and -v represent the same eigenvector. Both OpenCV
    --  backends produce orthonormal eigenvectors; a repeated
    --  eigenspace does not have a unique basis. Continuity is not
    --  required; non-contiguous Regions are supported. Self is
@@ -4432,7 +4436,7 @@ package OpenCV.Core is
    --  Self, a dimension above 8_460, or a numerical failure in OpenCV.
    function Eigen_Decomposition (Self : Mat) return Eigen_Decomposition_Result;
 
-   --  Computes the real non-symmetric eigendecomposition using OpenCV 4.10
+   --  Computes the real non-symmetric eigendecomposition using
    --  cv::eigenNonSymmetric. Self must be a non-empty square Float32 or
    --  Float64 single-channel Mat with dimension at most 2_147_483. Unlike
    --  Eigen_Decomposition, symmetry is not required. All eigenvalues must be
@@ -4451,8 +4455,8 @@ package OpenCV.Core is
    function Non_Symmetric_Eigen_Decomposition
      (Self : Mat) return Eigen_Decomposition_Result;
 
-   --  Computes a supervised Linear Discriminant Analysis basis using OpenCV
-   --  4.10 cv::LDA. Samples is an N x D row-aligned matrix: each row is one
+   --  Computes a supervised Linear Discriminant Analysis basis using
+   --  cv::LDA. Samples is an N x D row-aligned matrix: each row is one
    --  observation and each column is one feature. Samples must be non-empty,
    --  single-channel, Float32 or Float64, and finite. Labels must be a
    --  non-empty Int32 C1 row (1 x N) or column (N x 1) vector. Arbitrary
@@ -4468,9 +4472,9 @@ package OpenCV.Core is
    --  not exceed that value. This computes a discriminant subspace, not a
    --  classifier, and does not add projection or reconstruction wrappers.
    --  Singular or ill-conditioned within-class scatter can yield degenerate
-   --  numerical results under OpenCV 4.10. OpenCV warns to stdout when N < D;
+   --  numerical results. OpenCV warns to stdout when N < D;
    --  this binding preserves that native behavior rather than rejecting it.
-   --  D must not exceed 8460 because OpenCV 4.10's internal LDA eigensolver
+   --  D must not exceed 8460 because OpenCV's internal LDA eigensolver
    --  can use either a non-symmetric path or the symmetric cv::eigen fallback;
    --  this signed-arithmetic safety limit covers both paths.
    --  @param Samples The N x D matrix of observations, one per row.
@@ -4546,8 +4550,8 @@ package OpenCV.Core is
    function LDA_Reconstruct
      (Self : Mat; Basis : Linear_Discriminant_Analysis_Result) return Mat;
 
-   --  Computes the default compact/economy SVD of Self using OpenCV
-   --  4.10 cv::SVD::compute with flags = 0. This is not PCA, a
+   --  Computes the default compact/economy SVD of Self using
+   --  cv::SVD::compute with flags = 0. This is not PCA, a
    --  symmetric eigen solver, or a full-size SVD. Self is treated as
    --  the mathematical matrix A exactly as stored; no orientation
    --  parameter is required. The decomposition satisfies
@@ -4576,12 +4580,12 @@ package OpenCV.Core is
      (Self : Mat) return Singular_Value_Decomposition_Result;
 
    --  Solves A * X ~= Right_Hand_Side from an already computed
-   --  compact SVD basis using OpenCV 4.10 cv::SVD::backSubst. This
+   --  compact SVD basis using cv::SVD::backSubst. This
    --  does not recompute the SVD, does not reconstruct A, and does
    --  not expose cv::SVD. The mathematical operation is
    --  X ~= V * diag (W)^+ * U^T * Right_Hand_Side, where the
    --  reciprocal of sufficiently small singular values is omitted
-   --  according to OpenCV 4.10's internal threshold. There is no
+   --  according to OpenCV's internal threshold. There is no
    --  caller-configurable tolerance. For a full-rank square system
    --  this behaves like solving A * X = B. For an overdetermined
    --  system (M > N) it returns the SVD least-squares solution. For
@@ -4604,10 +4608,10 @@ package OpenCV.Core is
    --  plus Float32 RHS yields a Float32 result, and Float64 Basis
    --  plus Float64 RHS yields a Float64 result. The independently
    --  owned result has shape N x K. The products N * K and M * R
-   --  must not exceed 2_147_483_647 because OpenCV 4.10 forms
+   --  must not exceed 2_147_483_647 because OpenCV forms
    --  destination and U element addresses with signed int index
    --  arithmetic. Continuity is not required; ordinary
-   --  non-contiguous Regions are supported subject to OpenCV 4.10's
+   --  non-contiguous Regions are supported subject to OpenCV's
    --  signed-index limits on inherited physical row strides. Basis
    --  fields and Right_Hand_Side are unchanged.
    --  @param Basis A compact SVD result describing A.
@@ -4621,7 +4625,7 @@ package OpenCV.Core is
       return Mat;
 
    --  Returns the Moore-Penrose pseudoinverse of Self using compact
-   --  OpenCV 4.10 SVD and empty-RHS SVD back substitution. This is
+   --  cv::SVD and empty-RHS SVD back substitution. This is
    --  not Invert, Solve, or a caller-tunable rank decision. Self of
    --  shape M x N yields an independently owned N x M result with
    --  Self's floating depth and one channel. Self must be a
@@ -4629,14 +4633,14 @@ package OpenCV.Core is
    --  Mats, integer depths, and Float16 are rejected. Square,
    --  tall, and wide shapes are supported. Full rank and
    --  nonsingularity are not required. Rank-deficient matrices and
-   --  the zero matrix are valid. Numerical rank follows OpenCV
-   --  4.10's SVD back-substitution threshold; there is no caller
+   --  the zero matrix are valid. Numerical rank follows OpenCV's
+   --  SVD back-substitution threshold; there is no caller
    --  tolerance. For a square nonsingular matrix the result agrees
    --  numerically with Invert.Inverse subject to ordinary
    --  floating-point rounding. Continuity is not required;
    --  non-contiguous Regions are supported. The product
    --  Self.Rows * Self.Columns must not exceed 2_147_483_647
-   --  because OpenCV 4.10 forms the packed N x M destination
+   --  because OpenCV forms the packed N x M destination
    --  address with signed int index arithmetic. Self is unchanged.
    --  @param Self The non-empty single-channel Float32 or Float64 matrix.
    --  @return The N x M pseudoinverse, in independent storage.
@@ -4645,8 +4649,8 @@ package OpenCV.Core is
    function Pseudo_Inverse (Self : Mat) return Mat;
 
    --  Returns the reciprocal 2-norm condition number of Self:
-   --  sigma_min / sigma_max. Singular values come from OpenCV 4.10
-   --  SVD. Compact rank is R = min (Rows, Columns), so the values
+   --  sigma_min / sigma_max. Singular values come from
+   --  cv::SVD. Compact rank is R = min (Rows, Columns), so the values
    --  are sigma_1 >= ... >= sigma_R >= 0 and the result is
    --  sigma_R / sigma_1 when sigma_1 > 0. A result of 1.0 means
    --  well / perfectly conditioned. Values approaching 0 indicate
@@ -4673,7 +4677,7 @@ package OpenCV.Core is
    function Reciprocal_Condition_Number (Self : Mat) return Long_Float;
 
    --  Returns an independently owned unit-length N x 1 vector minimizing
-   --  ||Self * X|| for an M x N source, directly using OpenCV 4.10
+   --  ||Self * X|| for an M x N source, directly using
    --  cv::SVD::solveZ. This is an SVD null/minimum-residual vector, not an
    --  ordinary linear-system solution. For a nontrivial null space it is a
    --  null-space direction and Self * X is approximately zero; otherwise it
@@ -4681,8 +4685,8 @@ package OpenCV.Core is
    --  is arbitrary. Self must be non-empty Float32 or Float64 C1; square,
    --  tall, and wide Mats are accepted, including non-contiguous Regions.
    --  Wide Mats use OpenCV's internal FULL_UV behavior to obtain the complete
-   --  right-singular basis. Otherwise valid inputs are rejected when OpenCV
-   --  4.10's internal SVD temporary-workspace arithmetic would overflow the
+   --  right-singular basis. Otherwise valid inputs are rejected when OpenCV's
+   --  internal SVD temporary-workspace arithmetic would overflow the
    --  host allocation size. Self is unchanged, and there is no caller
    --  tolerance.
    --  @param Self The non-empty Float32 or Float64 C1 matrix.
@@ -4691,7 +4695,7 @@ package OpenCV.Core is
    --  workspace size beyond the stated limit, or an OpenCV failure.
    function SVD_Solve_Zero (Self : Mat) return Mat;
 
-   --  Computes the PCA basis of Self using OpenCV 4.10 cv::PCA.
+   --  Computes the PCA basis of Self using cv::PCA.
    --  Self is a 2-D single-channel sample matrix. Samples_Are_Rows,
    --  the default, treats an M x N Mat as M samples of N features:
    --  Mean is 1 x N. Samples_Are_Columns treats an M x N Mat as N
@@ -4703,21 +4707,21 @@ package OpenCV.Core is
    --  present. The Components overload requests exactly that many
    --  leading components: 1 <= Components <= K_all. Excess requests
    --  raise OpenCV_Error rather than silently clamping. The
-   --  Retained_Variance overload asks OpenCV 4.10 to choose K from a
+   --  Retained_Variance overload asks OpenCV to choose K from a
    --  variance fraction: 0.95 means 95 percent, not 95.0. Valid
    --  values satisfy 0.0 < Retained_Variance <= 1.0; NaN is
-   --  rejected. OpenCV 4.10 computes the full eigenvalue set, then
+   --  rejected. OpenCV computes the full eigenvalue set, then
    --  retains rowRange(0, L) after breaking at the first cumulative
    --  energy that is strictly greater than Retained_Variance. The
    --  component that first exceeded the threshold is therefore not
    --  included, so the returned basis is not guaranteed in every
    --  case to represent at least the requested fraction. This is
-   --  OpenCV 4.10 behavior. Retained_Variance = 1.0 cannot satisfy
+   --  native OpenCV behavior. Retained_Variance = 1.0 cannot satisfy
    --  energy > 1.0 for ordinary positive-total-variance input, so
    --  OpenCV retains every available component. The overload always
    --  keeps at least two components and therefore requires
    --  Available_Components >= 2. A one-component source is rejected
-   --  here because OpenCV 4.10's retained-variance implementation
+   --  here because OpenCV's retained-variance implementation
    --  would then attempt rowRange(0, 2) on a one-row eigen result.
    --  The all-components and Components overloads continue to
    --  support one-component PCA. Zero-total-variance input can
@@ -4736,7 +4740,7 @@ package OpenCV.Core is
    --  Float32 or Float64. Multi-channel Mats, integer depths, and
    --  Float16 are rejected. Sample count and feature count must both
    --  be nonzero. Available component count must not exceed 8_460
-   --  because OpenCV 4.10's fallback symmetric eigensolver computes
+   --  because OpenCV's fallback symmetric eigensolver computes
    --  an internal iteration bound using signed integer arithmetic
    --  that is not safe for larger covariance dimensions. This limit
    --  applies even when Components is 1, because OpenCV computes the
@@ -4859,7 +4863,7 @@ package OpenCV.Core is
       Orientation : Sample_Orientation := Samples_Are_Rows) return Mat;
 
    --  Interprets each Self element as its channel vector and applies
-   --  OpenCV 4.10 cv::transform. This is a per-element channel/vector
+   --  cv::transform. This is a per-element channel/vector
    --  transform at the same spatial location; it does not geometrically
    --  move pixels. Coefficients.Rows determines the result channel
    --  count. An M x N coefficient Mat, where N is Self.Channels,
@@ -4870,7 +4874,7 @@ package OpenCV.Core is
    --  depth. Self must be non-empty, at most two-dimensional, and have
    --  1 to 4 channels. Result channels may be 1 to 512. Supported
    --  source depths are UInt8, Int8, UInt16, Int16, Int32, Float32, and
-   --  Float64. Float16 is rejected because OpenCV 4.10 has no
+   --  Float64. Float16 is rejected because OpenCV has no
    --  TransformFunc for CV_16F. Coefficients must be a non-empty
    --  single-channel Float32 or Float64 Mat with at least one and at
    --  most 512 rows and either Self.Channels or Self.Channels + 1
@@ -4893,7 +4897,7 @@ package OpenCV.Core is
    function Transform (Self : Mat; Coefficients : Mat) return Mat;
 
    --  Interprets each Self element as a 2D or 3D vector and applies
-   --  OpenCV 4.10 cv::perspectiveTransform. This transforms vector
+   --  cv::perspectiveTransform. This transforms vector
    --  coordinates at each Mat element. It does not spatially resample,
    --  warp, interpolate, or move pixels in an image; that operation is
    --  imgproc warpPerspective. Self must be a non-empty Float32 or
@@ -4906,7 +4910,7 @@ package OpenCV.Core is
    --  OpenCV C3-to-C2 3x4 path, are not part of this API. The result
    --  preserves Self's rows, columns, depth, and channels. OpenCV
    --  performs the homogeneous division. When abs(w) <= FLT_EPSILON,
-   --  OpenCV 4.10 writes a zero vector; the same FLT_EPSILON threshold
+   --  OpenCV writes a zero vector; the same FLT_EPSILON threshold
    --  is used for Float32 and Float64 sources. OpenCV converts a
    --  non-continuous or non-Float64 matrix to an internal Float64
    --  coefficient buffer; this binding does not pre-convert it.
@@ -4954,9 +4958,10 @@ package OpenCV.Core is
    --  along Axis: Across_Rows produces 1 x Self.Columns row indices, while
    --  Across_Columns produces Self.Rows x 1 column indices. Self must be
    --  non-empty and single-channel; supported depths are UInt8, Int8, UInt16,
-   --  Int16, Int32, Float32, and Float64. Float16 is not dispatched by the
-   --  OpenCV 4.10 implementation. Equal
-   --  extrema select the first or last occurrence as requested. Non-contiguous
+   --  Int16, Int32, Float32, and Float64. This binding rejects Float16 on
+   --  every supported OpenCV release, including OpenCV 5.0, whose native
+   --  reduceArgMin and reduceArgMax dispatch CV_16F. Equal extrema select
+   --  the first or last occurrence as requested. Non-contiguous
    --  Regions are supported, Self is unchanged, and results do not share its
    --  storage. OpenCV leaves behavior unspecified when Float32 or Float64 NaN
    --  values participate in the reduction.
@@ -5169,7 +5174,7 @@ package OpenCV.Core is
    function Hamming_Pairwise_Norm
      (Left, Right : Mat; Kind : Binary_Norm_Kind := One_Bit) return Long_Float;
 
-   --  Computes OpenCV 4.10 cv::PSNR in decibels over every scalar channel
+   --  Computes cv::PSNR in decibels over every scalar channel
    --  component. Left and Right must be non-empty and have identical rows,
    --  columns, depth, and channel count. All public Mat depths, including
    --  Float16, and all channel counts are supported. Continuity is not
@@ -5268,7 +5273,7 @@ package OpenCV.Core is
    function Find_Non_Zero (Self : Mat) return Point_Array;
 
    --  Checks every scalar channel value of Self. The no-bound overload
-   --  uses OpenCV 4.10's default range check: NaN and +/- Infinity are
+   --  uses OpenCV's default checkRange bounds: NaN and +/- Infinity are
    --  invalid, and floating-point values are subject to OpenCV's default
    --  finite extrema. The positive maximum finite endpoint is excluded
    --  by the half-open upper bound. The bounded overload passes Minimum
@@ -5282,8 +5287,9 @@ package OpenCV.Core is
    --  row-major order. Multi-channel Mats are checked channel-by-channel;
    --  the reported Point identifies the element, not a channel. Supports
    --  UInt8, Int8, UInt16, Int16, Int32, Float32, and Float64. Float16 is
-   --  not supported by OpenCV 4.10. Empty Mats, including a default empty
-   --  Mat and typed 0x0 Mats, are valid when they contain no elements.
+   --  rejected because cv::checkRange has no Float16 path. Empty Mats,
+   --  including a default empty Mat and typed 0x0 Mats, are valid when
+   --  they contain no elements.
    --  Non-contiguous Regions are accepted; First_Invalid is relative to
    --  Self. Does not modify Self.
    --  @param Self The Mat to check.
@@ -5327,11 +5333,12 @@ package OpenCV.Core is
    --  the authoritative triangle. Upper_Triangle, the default, preserves
    --  the diagonal and upper triangle and copies each upper-triangle
    --  element onto its reflected lower-triangle location. That mapping
-   --  is OpenCV 4.10 lowerToUpper=false. Lower_Triangle preserves the
-   --  diagonal and lower triangle and copies each lower-triangle element
-   --  onto its reflected upper-triangle location. Self must be square
-   --  and Float32 or Float64. Any valid channel count is accepted
-   --  because OpenCV copies each complete element with elemSize().
+   --  is cv::completeSymm with lowerToUpper=false. Lower_Triangle
+   --  preserves the diagonal and lower triangle and copies each
+   --  lower-triangle element onto its reflected upper-triangle location.
+   --  Self must be square and Float32 or Float64. Any valid channel count
+   --  is accepted because OpenCV copies each complete element with
+   --  elemSize().
    --  Dimensions, depth, and channel count are unchanged. Continuity is
    --  not required. Non-contiguous Regions are supported and mutate the
    --  corresponding parent pixels around the Region's own diagonal. A
