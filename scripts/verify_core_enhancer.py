@@ -26,11 +26,15 @@ from render_gnatdoc_guides import validate as check_guides, GUIDES
 from verify_core_search import validate_search, search_markup, STYLE
 from verify_core_examples import landing_example, STYLESHEET, CSS_SHA
 from core_verified_examples import PUBLIC, staged_config, selected_mapping
+from core_doc_requalification import (generic as requalified_generic,
+                                      authored as requalified_authored,
+                                      unchanged_or_requalified)
 
 ROOT = Path(__file__).resolve().parent.parent
 QUALIFICATION = ROOT / 'docs/enhancer-qualification'
-GENERIC_SHA = '146a6f6375be14788996e04585ac141bfc308c5be87b040198f5d74c5c74bcfc'
-AUTHORED_SHA = '97a3351cbe0f852d5aeddea64fcffab9f66fdf56499b717caab82d06e9f67b65'
+# CORE-DOC-VER-001R1: the generic and authored acquisitions are successor
+# records bounded against their frozen, still-pinned predecessors; see
+# core_doc_requalification.py and docs/enhancer-qualification/.
 THEME_SOURCE = 'docs/assets/gnatdoc-theme.css'
 CONFIG_SOURCE = 'docs/gnatdoc-enhancer.toml'
 CONFIG_SHA = 'f8dbafdb5f524bd6c877842f37bc904193fdafeadb175320c63e297b4310fcbb'
@@ -78,8 +82,8 @@ def validate_theme_identity(identity, root):
 
 def validate(site):
     api = site / 'api'
-    acquisition = record('gnatdoc-generic-qualification.json', GENERIC_SHA)
-    authored = record('gnatdoc-authored.json', AUTHORED_SHA)
+    acquisition = requalified_generic(ROOT)
+    authored = requalified_authored(ROOT)
     for name, sha in {**acquisition['source_sha256'], **authored['inputs']}.items():
         require(digest((ROOT / name).read_bytes()) == sha, f'authoritative input changed: {name}')
     source = sources(ROOT / 'src')
@@ -200,18 +204,17 @@ def validate(site):
     historical = record('search-publication-inventory.json', HISTORICAL_SHA)
     require(len(historical) == 209 and names == historical.keys() | {STYLESHEET},
             'historical 209-file to 210-file inventory mismatch')
-    require(all(digest((site / name).read_bytes()) == sha
-                for name, sha in historical.items() if name not in EXAMPLE_CHANGES),
-            'previously qualified native/search/presentation bytes changed')
+    published = {name: digest((site / name).read_bytes()) for name in names}
+    # Comment-only CORE-DOC-VER-001 edits: only the reviewed requalified files
+    # may differ, and each only to its exact reviewed bytes.
+    unchanged_or_requalified(historical, published, EXAMPLE_CHANGES)
     require(manifest['output_sha256'] == {
         name: digest((site / name).read_bytes()) for name in names - {'api/presentation.json', 'api/gnatdoc.css'}},
         'presentation output inventory/hash mismatch')
     # This reviewed record is supplementary to complete source reconstruction,
     # never a way for self-rehashed presentation metadata to authorize output.
     qualified = record('examples-publication-inventory.json', EXAMPLES_SHA)
-    require(all(digest((site / name).read_bytes()) == sha for name, sha in qualified.items()
-                if name not in {'index.html', 'api/presentation.json'}),
-            'qualified v0.1.4 publication changed outside adoption boundary')
+    unchanged_or_requalified(qualified, published, {'index.html', 'api/presentation.json'})
     # Neither output metadata nor a new inventory can grant link authority.
     selected_mapping(ROOT)
     require(manifest['counts'] == {
@@ -238,7 +241,7 @@ def document(text, label):
 
 
 def validate_native(site):
-    acquisition = record('gnatdoc-generic-qualification.json', GENERIC_SHA)
+    acquisition = requalified_generic(ROOT)
     require({p.relative_to(site).as_posix(): digest(p.read_bytes())
              for p in site.rglob('*') if p.is_file()} == acquisition['native_sha256'],
             'pristine native inventory/hash mismatch; independent requalification required')
